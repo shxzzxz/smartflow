@@ -11,9 +11,9 @@ import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_submit_button.dart';
 import '../../../domain/accounting/entities/account_usage.dart';
 import '../../../domain/accounting/entities/account.dart';
-import '../../../domain/installments/entities/installment_contract.dart';
-import '../../../domain/installments/entities/installment_schedule.dart';
-import '../../../domain/installments/services/installment_service.dart';
+import '../../../domain/credit/entities/installment_contract.dart';
+import '../../../domain/credit/entities/installment_schedule.dart';
+import '../../../domain/credit/services/installment_service.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 
 enum InstallmentRepaymentMode { scheduled, extraPrincipal, earlySettlement }

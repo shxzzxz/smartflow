@@ -8,11 +8,11 @@ import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_surface.dart';
-import '../../../domain/installments/entities/installment_contract.dart';
-import '../../../domain/installments/entities/installment_schedule.dart';
-import '../../../domain/installments/enums/installment_enums.dart';
-import '../../../domain/installments/services/installment_metrics.dart';
-import '../../../domain/installments/services/installment_service.dart';
+import '../../../domain/credit/entities/installment_contract.dart';
+import '../../../domain/credit/entities/installment_schedule.dart';
+import '../../../domain/credit/enums/installment_enums.dart';
+import '../../../domain/credit/services/installment_metrics.dart';
+import '../../../domain/credit/services/installment_service.dart';
 
 class InstallmentDetailPage extends ConsumerWidget {
   const InstallmentDetailPage({required this.contractId, super.key});

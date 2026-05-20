@@ -12,8 +12,8 @@ import '../../../design_system/widgets/app_submit_button.dart';
 import '../../../domain/accounting/entities/account_usage.dart';
 import '../../../domain/accounting/entities/account.dart';
 import '../../../domain/accounting/enums/accounting_enums.dart';
-import '../../../domain/installments/enums/installment_enums.dart';
-import '../../../domain/installments/services/installment_service.dart';
+import '../../../domain/credit/enums/installment_enums.dart';
+import '../../../domain/credit/services/installment_service.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 import '../widgets/installment_field_options.dart';
 

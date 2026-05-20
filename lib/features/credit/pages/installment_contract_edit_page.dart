@@ -13,12 +13,12 @@ import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_submit_button.dart';
 import '../../../design_system/widgets/app_surface.dart';
-import '../../../domain/installments/entities/installment_contract.dart';
-import '../../../domain/installments/entities/installment_schedule.dart';
-import '../../../domain/installments/enums/installment_enums.dart';
-import '../../../domain/installments/services/installment_metrics.dart';
-import '../../../domain/installments/services/installment_schedule_generator.dart';
-import '../../../domain/installments/services/installment_service.dart';
+import '../../../domain/credit/entities/installment_contract.dart';
+import '../../../domain/credit/entities/installment_schedule.dart';
+import '../../../domain/credit/enums/installment_enums.dart';
+import '../../../domain/credit/services/installment_metrics.dart';
+import '../../../domain/credit/services/installment_schedule_generator.dart';
+import '../../../domain/credit/services/installment_service.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 import '../widgets/installment_field_options.dart';
 

@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/installments/entities/installment_contract.dart';
-import 'package:smartflow/domain/installments/entities/installment_schedule.dart';
-import 'package:smartflow/domain/installments/enums/installment_enums.dart';
-import 'package:smartflow/domain/installments/services/installment_metrics.dart';
+import 'package:smartflow/domain/credit/entities/installment_contract.dart';
+import 'package:smartflow/domain/credit/entities/installment_schedule.dart';
+import 'package:smartflow/domain/credit/enums/installment_enums.dart';
+import 'package:smartflow/domain/credit/services/installment_metrics.dart';
 
 void main() {
   const calc = InstallmentMetricsCalculator();

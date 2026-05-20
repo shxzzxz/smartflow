@@ -12,7 +12,7 @@ import '../../../design_system/widgets/app_submit_button.dart';
 import '../../../domain/accounting/entities/account.dart';
 import '../../../domain/accounting/entities/account_usage.dart';
 import '../../../domain/accounting/services/posting_command.dart';
-import '../../../domain/installments/services/credit_service.dart';
+import '../../../domain/credit/services/credit_service.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 
 class RepaymentFormPage extends ConsumerStatefulWidget {

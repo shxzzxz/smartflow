@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/installments/enums/installment_enums.dart';
-import 'package:smartflow/domain/installments/services/installment_schedule_generator.dart';
+import 'package:smartflow/domain/credit/enums/installment_enums.dart';
+import 'package:smartflow/domain/credit/services/installment_schedule_generator.dart';
 
 void main() {
   const generator = InstallmentScheduleGenerator();

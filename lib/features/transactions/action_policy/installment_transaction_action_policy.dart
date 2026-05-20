@@ -1,7 +1,7 @@
 import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
-import '../../../domain/installments/enums/installment_enums.dart';
-import '../../../domain/installments/services/installment_service.dart';
+import '../../../domain/credit/enums/installment_enums.dart';
+import '../../../domain/credit/services/installment_service.dart';
 import 'transaction_action_policy.dart';
 
 /// 分期业务域针对单笔交易的 action policy。

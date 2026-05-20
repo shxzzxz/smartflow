@@ -3,15 +3,15 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../domain/accounting/enums/accounting_enums.dart';
-import '../domain/installments/enums/installment_enums.dart';
+import '../domain/credit/enums/installment_enums.dart';
 import 'migrations/app_migration_strategy.dart';
 import 'accounting/tables/accounts.dart';
 import 'app_metadata.dart';
 import 'budgeting/tables/budgets.dart';
 import 'accounting/tables/entries.dart';
-import 'installments/tables/installment_contracts.dart';
-import 'installments/tables/installment_repayments.dart';
-import 'installments/tables/installment_schedules.dart';
+import 'credit/tables/installment_contracts.dart';
+import 'credit/tables/installment_repayments.dart';
+import 'credit/tables/installment_schedules.dart';
 import 'accounting/tables/transaction_details.dart';
 import 'accounting/tables/transactions.dart';
 
