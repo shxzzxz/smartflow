@@ -175,7 +175,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                       ),
                       const Divider(height: 1),
                     ],
-                    if (_kind == _AccountKind.credit) ...[
+                    if (_isLiabilityKind(_kind)) ...[
                       AppPlainFormRow(
                         label: '信用额度',
                         child: AppPlainTextFormField(
@@ -188,45 +188,46 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                         ),
                       ),
                       const Divider(height: 1),
-                      AppPlainFormRow(
-                        label: '出账还款日',
-                        child: _BillingRepaymentFields(
-                          billingDay: _billingDay,
-                          repaymentDay: _repaymentDay,
-                          onSelectBillingDay:
-                              () => _pickMonthlyDay(
-                                title: '选择出账日',
-                                selectedDay: _billingDay,
-                                onChanged:
-                                    (day) => setState(() => _billingDay = day),
-                              ),
-                          onSelectRepaymentDay:
-                              () => _pickMonthlyDay(
-                                title: '选择还款日',
-                                selectedDay: _repaymentDay,
-                                onChanged:
-                                    (day) =>
-                                        setState(() => _repaymentDay = day),
-                              ),
+                      if (_kind == _AccountKind.credit)
+                        AppPlainFormRow(
+                          label: '出账还款日',
+                          child: _BillingRepaymentFields(
+                            billingDay: _billingDay,
+                            repaymentDay: _repaymentDay,
+                            onSelectBillingDay:
+                                () => _pickMonthlyDay(
+                                  title: '选择出账日',
+                                  selectedDay: _billingDay,
+                                  onChanged:
+                                      (day) =>
+                                          setState(() => _billingDay = day),
+                                ),
+                            onSelectRepaymentDay:
+                                () => _pickMonthlyDay(
+                                  title: '选择还款日',
+                                  selectedDay: _repaymentDay,
+                                  onChanged:
+                                      (day) =>
+                                          setState(() => _repaymentDay = day),
+                                ),
+                          ),
+                        )
+                      else
+                        AppPlainFormRow(
+                          label: '还款日',
+                          child: _MonthlyDayField(
+                            day: _repaymentDay,
+                            placeholder: '还款日',
+                            onTap:
+                                () => _pickMonthlyDay(
+                                  title: '选择还款日',
+                                  selectedDay: _repaymentDay,
+                                  onChanged:
+                                      (day) =>
+                                          setState(() => _repaymentDay = day),
+                                ),
+                          ),
                         ),
-                      ),
-                      const Divider(height: 1),
-                    ] else if (_kind == _AccountKind.loan) ...[
-                      AppPlainFormRow(
-                        label: '还款日',
-                        child: _MonthlyDayField(
-                          day: _repaymentDay,
-                          placeholder: '还款日',
-                          onTap:
-                              () => _pickMonthlyDay(
-                                title: '选择还款日',
-                                selectedDay: _repaymentDay,
-                                onChanged:
-                                    (day) =>
-                                        setState(() => _repaymentDay = day),
-                              ),
-                        ),
-                      ),
                       const Divider(height: 1),
                     ],
                     AppPlainFormRow(
@@ -298,7 +299,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
   }
 
   Money? _creditLimitForKind() {
-    if (_kind != _AccountKind.credit) {
+    if (!_isLiabilityKind(_kind)) {
       return null;
     }
     final text = _creditLimitController.text.trim();
@@ -652,18 +653,18 @@ bool _isLiabilityKind(_AccountKind kind) {
 }
 
 bool _showsManualBalanceField(_AccountKind kind) {
-  return kind == _AccountKind.fund || kind == _AccountKind.credit;
+  return kind == _AccountKind.fund || _isLiabilityKind(kind);
 }
 
 String _manualBalanceLabel({required _AccountKind kind, required bool isEdit}) {
-  if (kind == _AccountKind.credit) {
+  if (_isLiabilityKind(kind)) {
     return isEdit ? '当前欠款' : '初始欠款';
   }
   return isEdit ? '当前余额' : '初始余额';
 }
 
 String _manualBalanceHint({required _AccountKind kind, required bool isEdit}) {
-  if (kind == _AccountKind.credit) {
+  if (_isLiabilityKind(kind)) {
     return isEdit ? '请输入当前欠款' : '请输入初始欠款';
   }
   return isEdit ? '请输入当前余额' : '请输入初始余额';

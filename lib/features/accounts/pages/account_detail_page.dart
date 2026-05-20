@@ -317,8 +317,6 @@ class _AccountActionBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isLiability = account.type == AccountType.liability;
     final isLoan = account.subtype == AccountSubtype.loan;
-    final showRepayment = isLiability && !isLoan;
-    final showInstallment = isLiability;
     final installmentSource = isLoan ? 'disbursement' : 'bill';
 
     return AppSurface(
@@ -336,7 +334,7 @@ class _AccountActionBar extends StatelessWidget {
                 onTap: () => _openTransactionForm(context, account),
               ),
             ),
-            if (showRepayment) ...[
+            if (isLiability) ...[
               const SizedBox(width: AppSpacing.space6),
               Expanded(
                 child: _ActionButton(
@@ -346,8 +344,6 @@ class _AccountActionBar extends StatelessWidget {
                       () => context.push('/accounts/${account.id}/repayment'),
                 ),
               ),
-            ],
-            if (showInstallment) ...[
               const SizedBox(width: AppSpacing.space6),
               Expanded(
                 child: _ActionButton(
@@ -360,18 +356,19 @@ class _AccountActionBar extends StatelessWidget {
                       ),
                 ),
               ),
-            ],
-            const SizedBox(width: AppSpacing.space6),
-            Expanded(
-              child: _ActionButton(
-                icon: RemixIcons.arrow_left_right_line,
-                label: '转账',
-                onTap:
-                    () => context.push(
-                      '/transactions/new?mode=transfer&fromAccountId=${account.id}',
-                    ),
+            ] else ...[
+              const SizedBox(width: AppSpacing.space6),
+              Expanded(
+                child: _ActionButton(
+                  icon: RemixIcons.arrow_left_right_line,
+                  label: '转账',
+                  onTap:
+                      () => context.push(
+                        '/transactions/new?mode=transfer&fromAccountId=${account.id}',
+                      ),
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),

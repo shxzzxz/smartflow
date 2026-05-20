@@ -36,7 +36,7 @@ class InstallmentTransactionActionPolicy implements TransactionActionPolicy {
       InstallmentOwnerRole.disbursement => _installment.deleteContract(
         DeleteContractCommand(contractId: _contractId),
       ),
-      InstallmentOwnerRole.regularRepayment ||
+      InstallmentOwnerRole.scheduledRepayment ||
       InstallmentOwnerRole.extraPrincipal ||
       InstallmentOwnerRole.earlySettlement => _installment.revertRepayment(
         RevertRepaymentCommand(transactionId: _transactionId),
@@ -56,7 +56,7 @@ class InstallmentTransactionActionPolicy implements TransactionActionPolicy {
           disbursementAccountId: newAccountId,
         ),
       ),
-      InstallmentOwnerRole.regularRepayment ||
+      InstallmentOwnerRole.scheduledRepayment ||
       InstallmentOwnerRole.extraPrincipal ||
       InstallmentOwnerRole.earlySettlement => _installment.editRepayment(
         EditRepaymentCommand(
@@ -77,7 +77,7 @@ class InstallmentTransactionActionPolicy implements TransactionActionPolicy {
           borrowingDate: newTime,
         ),
       ),
-      InstallmentOwnerRole.regularRepayment ||
+      InstallmentOwnerRole.scheduledRepayment ||
       InstallmentOwnerRole.extraPrincipal ||
       InstallmentOwnerRole.earlySettlement => _installment.editRepayment(
         EditRepaymentCommand(
@@ -97,7 +97,7 @@ class InstallmentTransactionActionPolicy implements TransactionActionPolicy {
       InstallmentOwnerRole.disbursement => _installment.updateContract(
         UpdateContractCommand(contractId: _contractId, note: notePatch),
       ),
-      InstallmentOwnerRole.regularRepayment ||
+      InstallmentOwnerRole.scheduledRepayment ||
       InstallmentOwnerRole.extraPrincipal ||
       InstallmentOwnerRole.earlySettlement => _installment.editRepayment(
         EditRepaymentCommand(
@@ -123,7 +123,7 @@ class InstallmentTransactionActionPolicy implements TransactionActionPolicy {
   String? displayBanner() {
     return switch (_ownerRole) {
       InstallmentOwnerRole.disbursement => '此为分期合同放款，金额、账户、日期等需在合同详情页内调整',
-      InstallmentOwnerRole.regularRepayment => '此为分期期次还款，撤销请在合同详情页操作',
+      InstallmentOwnerRole.scheduledRepayment => '此为分期期次还款，撤销请在合同详情页操作',
       InstallmentOwnerRole.extraPrincipal => '此为分期提前还本，撤销请在合同详情页操作',
       InstallmentOwnerRole.earlySettlement => '此为分期提前结清，撤销请在合同详情页操作',
     };

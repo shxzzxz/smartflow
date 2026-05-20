@@ -22,6 +22,7 @@ import '../domain/accounting/repositories/transaction_query_repository.dart';
 import '../domain/accounting/services/account_service.dart';
 import '../domain/accounting/services/category_service.dart';
 import '../domain/accounting/services/financial_metrics_service.dart';
+import '../domain/installments/services/credit_service.dart';
 import '../domain/installments/services/installment_metrics.dart';
 import '../domain/installments/services/installment_service.dart';
 import '../domain/accounting/services/posting_service.dart';
@@ -247,6 +248,16 @@ InstallmentService installmentService(Ref ref) {
     postingRepository: ref.watch(postingRepositoryProvider),
     transactionService: ref.watch(transactionServiceProvider),
     queryRepository: ref.watch(transactionQueryRepositoryProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+CreditService creditService(Ref ref) {
+  return CreditServiceImpl(
+    installmentService: ref.watch(installmentServiceProvider),
+    transactionService: ref.watch(transactionServiceProvider),
+    transactionQueryService: ref.watch(transactionQueryServiceProvider),
+    accountRepository: ref.watch(accountRepositoryProvider),
   );
 }
 

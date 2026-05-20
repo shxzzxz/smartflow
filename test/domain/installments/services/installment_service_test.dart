@@ -150,11 +150,11 @@ void main() {
       expect(feeSum, 36000);
     });
 
-    test('createRegularRepayment 翻转期次状态并联动合同 settled', () async {
+    test('createScheduledRepayment 翻转期次状态并联动合同 settled', () async {
       final contractId = await createSimpleContract();
       final schedules = await service.listSchedules(contractId);
-      final result = await service.createRegularRepayment(
-        CreateRegularRepaymentCommand(
+      final result = await service.createScheduledRepayment(
+        CreateScheduledRepaymentCommand(
           contractId: contractId,
           scheduleId: schedules.single.id,
           principal: const Money(minorUnits: 100000),
@@ -169,7 +169,7 @@ void main() {
         database,
         transactionId: transactionId,
         ownerId: contractId,
-        ownerRole: 'regular_repayment',
+        ownerRole: 'scheduled_repayment',
       );
       final updated = await service.listSchedules(contractId);
       expect(updated.single.status, InstallmentScheduleStatus.paid);
@@ -177,7 +177,7 @@ void main() {
       expect(contract!.status, InstallmentContractStatus.settled);
     });
 
-    test('createExtraPrincipalRepayment 触发 PENDING 期次重算', () async {
+    test('createPrincipalPrepayment 触发 PENDING 期次重算', () async {
       final result = await service.createDisbursementContract(
         CreateDisbursementContractCommand(
           liabilityAccountId: liabilityAccountId,
@@ -197,8 +197,8 @@ void main() {
             contractId,
           )).map((s) => s.expectedRepaymentDate).toList();
 
-      final extra = await service.createExtraPrincipalRepayment(
-        CreateExtraPrincipalRepaymentCommand(
+      final extra = await service.createPrincipalPrepayment(
+        CreatePrincipalPrepaymentCommand(
           contractId: contractId,
           principal: const Money(minorUnits: 300000),
           paidFromAccountId: assetAccountId,
@@ -226,7 +226,7 @@ void main() {
       expect(afterDates, beforeDates);
     });
 
-    test('createExtraPrincipalRepayment 支持利息', () async {
+    test('createPrincipalPrepayment 支持利息', () async {
       final contractResult = await service.createDisbursementContract(
         CreateDisbursementContractCommand(
           liabilityAccountId: liabilityAccountId,
@@ -241,8 +241,8 @@ void main() {
       final contractId =
           (contractResult as Success<CreateContractResult>).value.contractId;
 
-      final extra = await service.createExtraPrincipalRepayment(
-        CreateExtraPrincipalRepaymentCommand(
+      final extra = await service.createPrincipalPrepayment(
+        CreatePrincipalPrepaymentCommand(
           contractId: contractId,
           principal: const Money(minorUnits: 300000),
           interest: const Money(minorUnits: 1500),
@@ -301,8 +301,8 @@ void main() {
       final contractId = await createSimpleContract();
       final schedules = await service.listSchedules(contractId);
 
-      final repayResult = await service.createRegularRepayment(
-        CreateRegularRepaymentCommand(
+      final repayResult = await service.createScheduledRepayment(
+        CreateScheduledRepaymentCommand(
           contractId: contractId,
           scheduleId: schedules.single.id,
           principal: const Money(minorUnits: 100000),
@@ -409,8 +409,8 @@ void main() {
         final contractId =
             (contractResult as Success<CreateContractResult>).value.contractId;
         final schedules = await service.listSchedules(contractId);
-        await service.createRegularRepayment(
-          CreateRegularRepaymentCommand(
+        await service.createScheduledRepayment(
+          CreateScheduledRepaymentCommand(
             contractId: contractId,
             scheduleId: schedules.first.id,
             principal: const Money(minorUnits: 100000),
@@ -533,8 +533,8 @@ void main() {
             (contractResult as Success<CreateContractResult>).value.contractId;
         final schedules = await service.listSchedules(contractId);
         // 还掉前 2 期
-        await service.createRegularRepayment(
-          CreateRegularRepaymentCommand(
+        await service.createScheduledRepayment(
+          CreateScheduledRepaymentCommand(
             contractId: contractId,
             scheduleId: schedules[0].id,
             principal: const Money(minorUnits: 100000),
@@ -542,8 +542,8 @@ void main() {
             occurredAt: DateTime(2026, 6, 10),
           ),
         );
-        await service.createRegularRepayment(
-          CreateRegularRepaymentCommand(
+        await service.createScheduledRepayment(
+          CreateScheduledRepaymentCommand(
             contractId: contractId,
             scheduleId: schedules[1].id,
             principal: const Money(minorUnits: 100000),
@@ -774,8 +774,8 @@ void main() {
       test('改账户委托至放款源账户', () async {
         final contractId = await createSimpleContract();
         final schedules = await service.listSchedules(contractId);
-        final repayResult = await service.createRegularRepayment(
-          CreateRegularRepaymentCommand(
+        final repayResult = await service.createScheduledRepayment(
+          CreateScheduledRepaymentCommand(
             contractId: contractId,
             scheduleId: schedules.single.id,
             principal: const Money(minorUnits: 100000),
@@ -807,8 +807,8 @@ void main() {
       test('改时间与备注委托至 transaction', () async {
         final contractId = await createSimpleContract();
         final schedules = await service.listSchedules(contractId);
-        final repayResult = await service.createRegularRepayment(
-          CreateRegularRepaymentCommand(
+        final repayResult = await service.createScheduledRepayment(
+          CreateScheduledRepaymentCommand(
             contractId: contractId,
             scheduleId: schedules.single.id,
             principal: const Money(minorUnits: 100000),

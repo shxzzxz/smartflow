@@ -18,7 +18,7 @@ class InstallmentRepayments extends Table {
   @override
   List<String> get customConstraints => [
     'CHECK ('
-        '(repayment_type = \'regular\' AND schedule_id IS NOT NULL) '
+        '(repayment_type = \'scheduled\' AND schedule_id IS NOT NULL) '
         'OR (repayment_type IN (\'extraPrincipal\', \'earlySettlement\') '
         'AND schedule_id IS NULL)'
         ')',

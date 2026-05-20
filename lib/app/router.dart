@@ -14,6 +14,7 @@ import '../features/installments/pages/installment_contract_edit_page.dart';
 import '../features/installments/pages/installment_detail_page.dart';
 import '../features/installments/pages/installment_form_page.dart';
 import '../features/installments/pages/installment_repayment_form_page.dart';
+import '../features/installments/pages/repayment_form_page.dart';
 import '../features/placeholder/pages/placeholder_page.dart';
 import '../features/profile/pages/installment_guide_page.dart';
 import '../features/profile/pages/profile_page.dart';
@@ -21,7 +22,6 @@ import '../features/profile/pages/software_version_page.dart';
 import '../features/transactions/pages/refund_form_page.dart';
 import '../features/transactions/pages/reimbursement_close_form_page.dart';
 import '../features/transactions/pages/reimbursement_receipt_form_page.dart';
-import '../features/transactions/pages/repayment_form_page.dart';
 import '../features/transactions/pages/transaction_detail_page.dart';
 import '../features/transactions/pages/transaction_form_page.dart';
 
@@ -171,7 +171,7 @@ final appRouter = GoRouter(
         final mode = switch (state.uri.queryParameters['mode']) {
           'extra' => InstallmentRepaymentMode.extraPrincipal,
           'settle' => InstallmentRepaymentMode.earlySettlement,
-          _ => InstallmentRepaymentMode.regular,
+          _ => InstallmentRepaymentMode.scheduled,
         };
         final scheduleId = int.tryParse(
           state.uri.queryParameters['scheduleId'] ?? '',

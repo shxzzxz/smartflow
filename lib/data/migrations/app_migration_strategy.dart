@@ -175,7 +175,7 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
           "), "
           "owner_role = ("
           "SELECT CASE r.repayment_type "
-          "WHEN 'regular' THEN 'regular_repayment' "
+          "WHEN 'scheduled' THEN 'scheduled_repayment' "
           "WHEN 'extraPrincipal' THEN 'extra_principal' "
           "WHEN 'earlySettlement' THEN 'early_settlement' "
           "END FROM installment_repayments r "

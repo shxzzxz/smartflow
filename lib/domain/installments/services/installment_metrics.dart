@@ -162,10 +162,10 @@ class InstallmentMetricsCalculator {
   }) {
     final out = <_Breakdown>[];
 
-    // 索引：scheduleId -> 实际 repayment（regular）
+    // 索引：scheduleId -> 实际 repayment（scheduled）
     final actualByScheduleId = <int, RepaymentCashflow>{
       for (final r in repayments)
-        if (r.repaymentType == InstallmentRepaymentType.regular &&
+        if (r.repaymentType == InstallmentRepaymentType.scheduled &&
             r.scheduleId != null)
           r.scheduleId!: r,
     };

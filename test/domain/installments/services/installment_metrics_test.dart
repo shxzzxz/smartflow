@@ -203,7 +203,7 @@ void main() {
         RepaymentCashflow(
           id: 10,
           transactionId: 0,
-          repaymentType: InstallmentRepaymentType.regular,
+          repaymentType: InstallmentRepaymentType.scheduled,
           scheduleId: 1,
           occurredAt: DateTime(2026, 6, 10),
           principal: const Money(minorUnits: 50000, currency: cny),

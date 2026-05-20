@@ -95,8 +95,8 @@ class CreateBillConversionContractCommand {
   final String? note;
 }
 
-class CreateRegularRepaymentCommand {
-  const CreateRegularRepaymentCommand({
+class CreateScheduledRepaymentCommand {
+  const CreateScheduledRepaymentCommand({
     required this.contractId,
     required this.scheduleId,
     required this.principal,
@@ -125,8 +125,8 @@ class CreateRegularRepaymentCommand {
   final String? counterpartyName;
 }
 
-class CreateExtraPrincipalRepaymentCommand {
-  const CreateExtraPrincipalRepaymentCommand({
+class CreatePrincipalPrepaymentCommand {
+  const CreatePrincipalPrepaymentCommand({
     required this.contractId,
     required this.principal,
     required this.paidFromAccountId,
@@ -270,7 +270,7 @@ class UpdateContractCommand {
   final List<SchedulePendingPatch> schedulePatches;
 }
 
-/// 受分期管理的还款交易（regular / extraPrincipal / earlySettlement）的编辑命令。
+/// 受分期管理的还款交易（scheduled / extraPrincipal / earlySettlement）的编辑命令。
 ///
 /// 用于把通用 UI 对还款交易的"改账户 / 改时间 / 改备注"统一收口到分期 service。
 /// service 内部负责校验该 transaction 确实是分期还款，再委托 [TransactionService]
@@ -315,17 +315,17 @@ abstract interface class InstallmentService {
 
   Future<Result<void>> updateContract(UpdateContractCommand command);
 
-  /// 编辑受分期管理的还款交易（regular / extraPrincipal / earlySettlement）。
+  /// 编辑受分期管理的还款交易（scheduled / extraPrincipal / earlySettlement）。
   /// 通用 UI 在还款交易上的 universal 编辑入口；service 内部校验归属、
   /// 再委托 [TransactionService] 完成 transactions 表的写入。
   Future<Result<void>> editRepayment(EditRepaymentCommand command);
 
-  Future<Result<PostTransactionResult>> createRegularRepayment(
-    CreateRegularRepaymentCommand command,
+  Future<Result<PostTransactionResult>> createScheduledRepayment(
+    CreateScheduledRepaymentCommand command,
   );
 
-  Future<Result<PostTransactionResult>> createExtraPrincipalRepayment(
-    CreateExtraPrincipalRepaymentCommand command,
+  Future<Result<PostTransactionResult>> createPrincipalPrepayment(
+    CreatePrincipalPrepaymentCommand command,
   );
 
   Future<Result<PostTransactionResult>> createEarlySettlement(
@@ -333,6 +333,11 @@ abstract interface class InstallmentService {
   );
 
   Future<Result<void>> revertRepayment(RevertRepaymentCommand command);
+
+  /// 该负债账户上所有 active 分期合同的"未还本金合计"（minor units）。
+  /// 计算依据：Σ(contract.principal − 已 paid 期次本金 − extraPrincipal 还本) over active contracts。
+  /// credit 域据此推算"非分期合同还款"的可用额度。
+  Future<int> unpaidInstallmentPrincipalMinor(int liabilityAccountId);
 
   /// 删除合同：先回滚已发生的还款交易与放款交易，再级联删除 schedules / repayments / contract。
   Future<Result<void>> deleteContract(DeleteContractCommand command);
@@ -904,8 +909,8 @@ class InstallmentServiceImpl implements InstallmentService {
   }
 
   @override
-  Future<Result<PostTransactionResult>> createRegularRepayment(
-    CreateRegularRepaymentCommand command,
+  Future<Result<PostTransactionResult>> createScheduledRepayment(
+    CreateScheduledRepaymentCommand command,
   ) async {
     final contract = await _repository.findContract(command.contractId);
     if (contract == null) {
@@ -949,7 +954,7 @@ class InstallmentServiceImpl implements InstallmentService {
         note: command.note,
         ownership: _installmentOwnership(
           command.contractId,
-          InstallmentOwnerRole.regularRepayment,
+          InstallmentOwnerRole.scheduledRepayment,
         ),
       ),
     );
@@ -959,7 +964,7 @@ class InstallmentServiceImpl implements InstallmentService {
         await _repository.insertRepayment(
           InstallmentRepaymentDraft(
             contractId: command.contractId,
-            repaymentType: InstallmentRepaymentType.regular,
+            repaymentType: InstallmentRepaymentType.scheduled,
             scheduleId: command.scheduleId,
             transactionId: post.transactionId,
           ),
@@ -977,8 +982,8 @@ class InstallmentServiceImpl implements InstallmentService {
   }
 
   @override
-  Future<Result<PostTransactionResult>> createExtraPrincipalRepayment(
-    CreateExtraPrincipalRepaymentCommand command,
+  Future<Result<PostTransactionResult>> createPrincipalPrepayment(
+    CreatePrincipalPrepaymentCommand command,
   ) async {
     final contract = await _repository.findContract(command.contractId);
     if (contract == null) {
@@ -1124,7 +1129,7 @@ class InstallmentServiceImpl implements InstallmentService {
       success: (_) async {
         await _repository.deleteRepayment(repayment.id);
         switch (repayment.repaymentType) {
-          case InstallmentRepaymentType.regular:
+          case InstallmentRepaymentType.scheduled:
             if (repayment.scheduleId != null) {
               await _repository.updateSchedule(
                 repayment.scheduleId!,
@@ -1158,6 +1163,37 @@ class InstallmentServiceImpl implements InstallmentService {
         return const Result.success(null);
       },
     );
+  }
+
+  @override
+  Future<int> unpaidInstallmentPrincipalMinor(int liabilityAccountId) async {
+    final contracts =
+        await _repository.listContractsByLiabilityAccount(liabilityAccountId);
+    var sum = 0;
+    for (final c in contracts) {
+      if (c.status != InstallmentContractStatus.active) continue;
+      final paid = await _paidPrincipalForContract(c.id);
+      final unpaid = c.principal.minorUnits - paid;
+      if (unpaid > 0) sum += unpaid;
+    }
+    return sum;
+  }
+
+  Future<int> _paidPrincipalForContract(int contractId) async {
+    final repayments = await _repository.listRepayments(contractId);
+    var sum = 0;
+    for (final r in repayments) {
+      final view =
+          await _queryRepository.watchTransactionDetail(r.transactionId).first;
+      if (view == null) continue;
+      if (view.transaction.businessState != BusinessState.current) continue;
+      for (final d in view.details) {
+        if (d.type == TransactionDetailType.repaymentPrincipal) {
+          sum += d.amount.minorUnits;
+        }
+      }
+    }
+    return sum;
   }
 
   @override

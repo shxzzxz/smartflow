@@ -158,48 +158,36 @@ void main() {
     });
 
     test(
-      'rejects loan account opening balance and balance adjustment',
+      'allows loan account opening balance and balance adjustment',
       () async {
         final service = AccountServiceImpl(repository);
 
-        final invalidCreate = await service.createAccount(
-          const CreateAccountCommand(
-            name: '房贷',
-            type: AccountType.liability,
-            subtype: AccountSubtype.loan,
-            openingBalance: Money(minorUnits: 1000000),
-          ),
-        );
-
-        expect(invalidCreate, isA<FailureResult>());
-        expect(
-          (invalidCreate as FailureResult).failure.code,
-          'opening_balance_not_supported',
-        );
-
         final createResult = await service.createAccount(
-          const CreateAccountCommand(
+          CreateAccountCommand(
             name: '房贷',
             type: AccountType.liability,
             subtype: AccountSubtype.loan,
+            openingBalance: const Money(minorUnits: 1000000),
+            openingOccurredAt: DateTime(2026, 5),
           ),
         );
+        expect(createResult, isA<Success>());
         final account = (createResult as Success).value;
+        final afterCreate = await repository.findAccountById(account.id);
+        expect(afterCreate!.balance, const Money(minorUnits: 1000000));
 
-        final invalidEdit = await service.editAccount(
+        final editResult = await service.editAccount(
           EditAccountCommand(
             id: account.id,
             name: account.name,
             subtype: account.subtype,
-            targetBalance: const Money(minorUnits: 1000000),
+            targetBalance: const Money(minorUnits: 800000),
+            balanceAdjustmentOccurredAt: DateTime(2026, 5, 2),
           ),
         );
-
-        expect(invalidEdit, isA<FailureResult>());
-        expect(
-          (invalidEdit as FailureResult).failure.code,
-          'account_target_balance_not_supported',
-        );
+        expect(editResult, isA<Success>());
+        final afterEdit = await repository.findAccountById(account.id);
+        expect(afterEdit!.balance, const Money(minorUnits: 800000));
       },
     );
 

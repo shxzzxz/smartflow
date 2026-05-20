@@ -1475,6 +1475,47 @@ final class InstallmentServiceProvider
 String _$installmentServiceHash() =>
     r'd9a47858e26d41d4133e5dbfe7797e33e327dfcc';
 
+@ProviderFor(creditService)
+final creditServiceProvider = CreditServiceProvider._();
+
+final class CreditServiceProvider
+    extends $FunctionalProvider<CreditService, CreditService, CreditService>
+    with $Provider<CreditService> {
+  CreditServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'creditServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$creditServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<CreditService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  CreditService create(Ref ref) {
+    return creditService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CreditService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CreditService>(value),
+    );
+  }
+}
+
+String _$creditServiceHash() => r'f67bdd9927cc7b2af93253121197a599bba69b9b';
+
 @ProviderFor(installmentContractsByAccount)
 final installmentContractsByAccountProvider =
     InstallmentContractsByAccountFamily._();

@@ -16,7 +16,7 @@ import '../../../domain/installments/entities/installment_schedule.dart';
 import '../../../domain/installments/services/installment_service.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 
-enum InstallmentRepaymentMode { regular, extraPrincipal, earlySettlement }
+enum InstallmentRepaymentMode { scheduled, extraPrincipal, earlySettlement }
 
 class InstallmentRepaymentFormPage extends ConsumerStatefulWidget {
   const InstallmentRepaymentFormPage({
@@ -95,7 +95,7 @@ class _InstallmentRepaymentFormPageState
     List<InstallmentSchedule> schedules,
     List<Account> fundAccounts,
   ) {
-    final schedule = widget.mode == InstallmentRepaymentMode.regular
+    final schedule = widget.mode == InstallmentRepaymentMode.scheduled
         ? _findSchedule(schedules, widget.scheduleId)
         : null;
 
@@ -160,7 +160,7 @@ class _InstallmentRepaymentFormPageState
                 hintText: '请输入手续费（可选）',
                 validator: _validateOptionalMoney,
               ),
-              if (widget.mode == InstallmentRepaymentMode.regular)
+              if (widget.mode == InstallmentRepaymentMode.scheduled)
                 MoneyPlainFormRow(
                   label: '优惠',
                   controller: _discountController,
@@ -250,14 +250,14 @@ class _InstallmentRepaymentFormPageState
     final service = ref.read(installmentServiceProvider);
     Result<dynamic> result;
     switch (widget.mode) {
-      case InstallmentRepaymentMode.regular:
+      case InstallmentRepaymentMode.scheduled:
         if (schedule == null) {
           setState(() => _submitting = false);
           _showError('计划行不存在');
           return;
         }
-        result = await service.createRegularRepayment(
-          CreateRegularRepaymentCommand(
+        result = await service.createScheduledRepayment(
+          CreateScheduledRepaymentCommand(
             contractId: contract.id,
             scheduleId: schedule.id,
             principal: principal,
@@ -271,8 +271,8 @@ class _InstallmentRepaymentFormPageState
           ),
         );
       case InstallmentRepaymentMode.extraPrincipal:
-        result = await service.createExtraPrincipalRepayment(
-          CreateExtraPrincipalRepaymentCommand(
+        result = await service.createPrincipalPrepayment(
+          CreatePrincipalPrepaymentCommand(
             contractId: contract.id,
             principal: principal,
             fee: fee != null && fee.minorUnits > 0 ? fee : null,
@@ -345,7 +345,7 @@ class _InstallmentRepaymentFormPageState
 
 String _titleForMode(InstallmentRepaymentMode mode) {
   return switch (mode) {
-    InstallmentRepaymentMode.regular => '期次还款',
+    InstallmentRepaymentMode.scheduled => '期次还款',
     InstallmentRepaymentMode.extraPrincipal => '提前还本',
     InstallmentRepaymentMode.earlySettlement => '提前结清',
   };
@@ -353,7 +353,7 @@ String _titleForMode(InstallmentRepaymentMode mode) {
 
 String _submitLabel(InstallmentRepaymentMode mode) {
   return switch (mode) {
-    InstallmentRepaymentMode.regular => '保存',
+    InstallmentRepaymentMode.scheduled => '保存',
     InstallmentRepaymentMode.extraPrincipal => '提交并重算',
     InstallmentRepaymentMode.earlySettlement => '结清',
   };

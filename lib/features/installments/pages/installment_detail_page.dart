@@ -629,7 +629,7 @@ Color _scheduleStatusColor(
 
 String _repaymentTypeLabel(InstallmentRepaymentType type) {
   return switch (type) {
-    InstallmentRepaymentType.regular => '正常还款',
+    InstallmentRepaymentType.scheduled => '正常还款',
     InstallmentRepaymentType.extraPrincipal => '提前还本',
     InstallmentRepaymentType.earlySettlement => '提前结清',
   };
@@ -640,7 +640,7 @@ Color _repaymentTypeColor(
   ColorScheme colors,
 ) {
   return switch (type) {
-    InstallmentRepaymentType.regular => colors.tertiary,
+    InstallmentRepaymentType.scheduled => colors.tertiary,
     InstallmentRepaymentType.extraPrincipal => colors.primary,
     InstallmentRepaymentType.earlySettlement => colors.secondary,
   };

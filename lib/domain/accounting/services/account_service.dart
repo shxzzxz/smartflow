@@ -179,10 +179,7 @@ class AccountServiceImpl implements AccountService {
     if (type == AccountType.asset) {
       return subtype != AccountSubtype.reimbursement;
     }
-    if (type == AccountType.liability) {
-      return subtype != AccountSubtype.loan;
-    }
-    return false;
+    return type == AccountType.liability;
   }
 }
 
