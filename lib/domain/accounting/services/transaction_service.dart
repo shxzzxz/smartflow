@@ -119,10 +119,10 @@ abstract interface class TransactionService {
 class TransactionServiceImpl implements TransactionService {
   const TransactionServiceImpl(
     this._postingService, {
-    AccountRepository? accountRepository,
-    TransactionQueryRepository? transactionQueryRepository,
-    SystemAccountResolver? systemAccountResolver,
-    PostingRepository? postingRepository,
+    required AccountRepository accountRepository,
+    required TransactionQueryRepository transactionQueryRepository,
+    required SystemAccountResolver systemAccountResolver,
+    required PostingRepository postingRepository,
   }) : _accountRepository = accountRepository,
        _queryRepository = transactionQueryRepository,
        _systemAccounts = systemAccountResolver,
@@ -157,10 +157,10 @@ class TransactionServiceImpl implements TransactionService {
   }
 
   final Poster _postingService;
-  final AccountRepository? _accountRepository;
-  final TransactionQueryRepository? _queryRepository;
-  final SystemAccountResolver? _systemAccounts;
-  final PostingRepository? _postingRepository;
+  final AccountRepository _accountRepository;
+  final TransactionQueryRepository _queryRepository;
+  final SystemAccountResolver _systemAccounts;
+  final PostingRepository _postingRepository;
 
   @override
   Future<Result<CreatedTransactionResult>> createExpense(
@@ -348,7 +348,7 @@ class TransactionServiceImpl implements TransactionService {
         ),
       );
     }
-    final query = _requireQueryRepository();
+    final query = _queryRepository;
     final parent = await query.findTransactionById(command.parentTransactionId);
     if (parent == null) {
       return const Result.failure(
@@ -540,7 +540,7 @@ class TransactionServiceImpl implements TransactionService {
         ),
       );
     }
-    final query = _requireQueryRepository();
+    final query = _queryRepository;
     final advance = await query.findTransactionById(
       command.advanceTransactionId,
     );
@@ -630,8 +630,8 @@ class TransactionServiceImpl implements TransactionService {
         ),
       );
     }
-    final query = _requireQueryRepository();
-    final resolver = _requireSystemAccountResolver();
+    final query = _queryRepository;
+    final resolver = _systemAccounts;
     final advance = await query.findTransactionById(
       command.advanceTransactionId,
     );
@@ -819,13 +819,13 @@ class TransactionServiceImpl implements TransactionService {
 
     final interestExpenseAccountId =
         hasInterest && command.interestExpenseAccountId == null
-            ? await _requireSystemAccountResolver().resolveDebtInterestExpense(
+            ? await _systemAccounts.resolveDebtInterestExpense(
               currencyCode: principal.currency,
             )
             : command.interestExpenseAccountId;
     final discountIncomeAccountId =
         hasDiscount
-            ? await _requireSystemAccountResolver().resolveDiscountIncome(
+            ? await _systemAccounts.resolveDiscountIncome(
               currencyCode: principal.currency,
             )
             : null;
@@ -944,7 +944,7 @@ class TransactionServiceImpl implements TransactionService {
 
     final debitAccountId =
         useSystemEquity
-            ? await _requireSystemAccountResolver().resolveOpeningBalance(
+            ? await _systemAccounts.resolveOpeningBalance(
               currencyCode: command.amount.currency,
             )
             : receiveAccountId;
@@ -988,14 +988,6 @@ class TransactionServiceImpl implements TransactionService {
     CreateOpeningBalanceCommand command,
   ) async {
     final repository = _accountRepository;
-    if (repository == null) {
-      return const Result.failure(
-        Failure(
-          code: 'account_repository_unavailable',
-          message: 'AccountRepository is required to create opening balance.',
-        ),
-      );
-    }
     final account = await repository.findAccountById(command.accountId);
     if (account == null) {
       return const Result.failure(
@@ -1037,7 +1029,7 @@ class TransactionServiceImpl implements TransactionService {
             ? EntryDirection.credit
             : EntryDirection.debit;
 
-    final equityAccountId = await _requireSystemAccountResolver()
+    final equityAccountId = await _systemAccounts
         .resolveOpeningBalance(currencyCode: amount.currency);
 
     return _post(
@@ -1078,14 +1070,6 @@ class TransactionServiceImpl implements TransactionService {
     AdjustBalanceCommand command,
   ) async {
     final repository = _accountRepository;
-    if (repository == null) {
-      return const Result.failure(
-        Failure(
-          code: 'account_repository_unavailable',
-          message: 'AccountRepository is required to adjust balance.',
-        ),
-      );
-    }
     final account = await repository.findAccountById(command.accountId);
     if (account == null) {
       return const Result.failure(
@@ -1143,7 +1127,7 @@ class TransactionServiceImpl implements TransactionService {
             ? EntryDirection.credit
             : EntryDirection.debit;
 
-    final equityAccountId = await _requireSystemAccountResolver()
+    final equityAccountId = await _systemAccounts
         .resolveOpeningBalance(currencyCode: amount.currency);
 
     return _post(
@@ -1425,7 +1409,7 @@ class TransactionServiceImpl implements TransactionService {
   Future<Result<CreatedTransactionResult>> _correctTransaction(
     _CorrectTransactionDraft command,
   ) async {
-    final query = _requireQueryRepository();
+    final query = _queryRepository;
     final original =
         await query.watchTransactionDetail(command.transactionId).first;
     if (original == null) {
@@ -1524,7 +1508,7 @@ class TransactionServiceImpl implements TransactionService {
   Future<Result<void>> deleteTransaction(
     DeleteTransactionCommand command,
   ) async {
-    final query = _requireQueryRepository();
+    final query = _queryRepository;
     final target =
         await query.watchTransactionDetail(command.transactionId).first;
     if (target == null) {
@@ -1583,28 +1567,16 @@ class TransactionServiceImpl implements TransactionService {
       return const Result.success(null);
     }
     final repository = _postingRepository;
-    if (repository == null) {
+    final transaction = await _queryRepository.findTransactionById(
+      command.transactionId,
+    );
+    if (transaction == null) {
       return const Result.failure(
         Failure(
-          code: 'posting_repository_unavailable',
-          message:
-              'PostingRepository is required to update transaction metadata.',
+          code: 'transaction_not_found',
+          message: 'Transaction does not exist.',
         ),
       );
-    }
-    final query = _queryRepository;
-    if (query != null) {
-      final transaction = await query.findTransactionById(
-        command.transactionId,
-      );
-      if (transaction == null) {
-        return const Result.failure(
-          Failure(
-            code: 'transaction_not_found',
-            message: 'Transaction does not exist.',
-          ),
-        );
-      }
     }
     try {
       await repository.updateTransactionMetadata(
@@ -1635,17 +1607,8 @@ class TransactionServiceImpl implements TransactionService {
       return const Result.success(null);
     }
     final repository = _postingRepository;
-    if (repository == null) {
-      return const Result.failure(
-        Failure(
-          code: 'posting_repository_unavailable',
-          message:
-              'PostingRepository is required to update transaction basics.',
-        ),
-      );
-    }
 
-    final query = _requireQueryRepository();
+    final query = _queryRepository;
     final detail =
         await query.watchTransactionDetail(command.transactionId).first;
     if (detail == null) {
@@ -1762,28 +1725,16 @@ class TransactionServiceImpl implements TransactionService {
     UpdateTransactionOwnershipCommand command,
   ) async {
     final repository = _postingRepository;
-    if (repository == null) {
+    final transaction = await _queryRepository.findTransactionById(
+      command.transactionId,
+    );
+    if (transaction == null) {
       return const Result.failure(
         Failure(
-          code: 'posting_repository_unavailable',
-          message:
-              'PostingRepository is required to update transaction ownership.',
+          code: 'transaction_not_found',
+          message: 'Transaction does not exist.',
         ),
       );
-    }
-    final query = _queryRepository;
-    if (query != null) {
-      final transaction = await query.findTransactionById(
-        command.transactionId,
-      );
-      if (transaction == null) {
-        return const Result.failure(
-          Failure(
-            code: 'transaction_not_found',
-            message: 'Transaction does not exist.',
-          ),
-        );
-      }
     }
     try {
       await repository.updateTransactionOwnership(
@@ -1852,7 +1803,6 @@ class TransactionServiceImpl implements TransactionService {
     bool allowReimbursementSubtype = true,
   }) async {
     final repository = _accountRepository;
-    if (repository == null) return null;
     final account = await repository.findAccountById(accountId);
     if (account == null) {
       return Failure(
@@ -2214,7 +2164,7 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
 
-    final query = _requireQueryRepository();
+    final query = _queryRepository;
     final transaction = original.transaction;
     final parentId = transaction.parentTransactionId;
     if (parentId == null) {
@@ -2360,7 +2310,7 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
 
-    final query = _requireQueryRepository();
+    final query = _queryRepository;
     final transaction = original.transaction;
     final advance = await query.findTransactionById(
       transaction.parentTransactionId ?? transaction.rootTransactionId,
@@ -2476,7 +2426,7 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
 
-    final query = _requireQueryRepository();
+    final query = _queryRepository;
     final advance = await query.findTransactionById(
       transaction.parentTransactionId ?? transaction.rootTransactionId,
     );
@@ -2522,7 +2472,7 @@ class TransactionServiceImpl implements TransactionService {
     ];
 
     if (hasOverGap) {
-      final gapAccountId = await _requireSystemAccountResolver()
+      final gapAccountId = await _systemAccounts
           .resolveReimbursementGapIncome(currencyCode: actual.currency);
       entries.add(
         PostEntryInput(
@@ -2646,13 +2596,13 @@ class TransactionServiceImpl implements TransactionService {
 
     final interestExpenseAccountId =
         hasInterest && command.interestExpenseAccountId == null
-            ? await _requireSystemAccountResolver().resolveDebtInterestExpense(
+            ? await _systemAccounts.resolveDebtInterestExpense(
               currencyCode: principal.currency,
             )
             : command.interestExpenseAccountId;
     final discountIncomeAccountId =
         hasDiscount
-            ? await _requireSystemAccountResolver().resolveDiscountIncome(
+            ? await _systemAccounts.resolveDiscountIncome(
               currencyCode: principal.currency,
             )
             : null;
@@ -2876,9 +2826,6 @@ class TransactionServiceImpl implements TransactionService {
     required BusinessPurpose parentPurpose,
   }) async {
     final query = _queryRepository;
-    if (query == null) {
-      return null;
-    }
     final view = await query.watchTransactionDetail(parentId).first;
     if (view == null) return null;
     for (final entry in view.entries) {
@@ -2897,24 +2844,6 @@ class TransactionServiceImpl implements TransactionService {
     return null;
   }
 
-  TransactionQueryRepository _requireQueryRepository() {
-    final query = _queryRepository;
-    if (query == null) {
-      throw StateError(
-        'TransactionQueryRepository is required for this operation.',
-      );
-    }
-    return query;
-  }
-
-  SystemAccountResolver _requireSystemAccountResolver() {
-    final resolver = _systemAccounts;
-    if (resolver == null) {
-      throw StateError('SystemAccountResolver is required for this operation.');
-    }
-    return resolver;
-  }
-
   Future<Failure?> _validateAccountConstraints({
     Map<int, Set<AccountType>> types = const {},
     Map<int, AccountUsage> usages = const {},
@@ -2930,7 +2859,7 @@ class TransactionServiceImpl implements TransactionService {
     Map<int, AccountUsage> expectedUsageByAccountId,
   ) async {
     final repository = _accountRepository;
-    if (repository == null || expectedUsageByAccountId.isEmpty) {
+    if (expectedUsageByAccountId.isEmpty) {
       return null;
     }
 
@@ -2966,7 +2895,7 @@ class TransactionServiceImpl implements TransactionService {
     Map<int, Set<AccountType>> expectedTypesByAccountId,
   ) async {
     final repository = _accountRepository;
-    if (repository == null || expectedTypesByAccountId.isEmpty) {
+    if (expectedTypesByAccountId.isEmpty) {
       return null;
     }
 

@@ -26,12 +26,12 @@ class AccountServiceImpl implements AccountService {
   const AccountServiceImpl(
     this._repository, {
     required TransactionRunner transactionRunner,
-    TransactionService? transactions,
+    required TransactionService transactions,
   }) : _runner = transactionRunner,
        _transactions = transactions;
 
   final AccountRepository _repository;
-  final TransactionService? _transactions;
+  final TransactionService _transactions;
   final TransactionRunner _runner;
 
   @override
@@ -76,17 +76,7 @@ class AccountServiceImpl implements AccountService {
         if (command.openingBalance.minorUnits == 0) {
           return Result.success(account);
         }
-        final transactionService = _transactions;
-        if (transactionService == null) {
-          return const Result.failure(
-            Failure(
-              code: 'transaction_service_unavailable',
-              message:
-                  'TransactionService is required to post opening balance.',
-            ),
-          );
-        }
-        final openingResult = await transactionService.createOpeningBalance(
+        final openingResult = await _transactions.createOpeningBalance(
           CreateOpeningBalanceCommand(
             accountId: account.id,
             amount: command.openingBalance,
@@ -202,17 +192,7 @@ class AccountServiceImpl implements AccountService {
             targetBalance.minorUnits == account.balance.minorUnits) {
           return const Result.success(null);
         }
-        final transactionService = _transactions;
-        if (transactionService == null) {
-          return const Result.failure(
-            Failure(
-              code: 'transaction_service_unavailable',
-              message:
-                  'TransactionService is required to post balance adjustment.',
-            ),
-          );
-        }
-        final adjustmentResult = await transactionService.adjustBalance(
+        final adjustmentResult = await _transactions.adjustBalance(
           AdjustBalanceCommand(
             accountId: command.id,
             targetBalance: targetBalance,

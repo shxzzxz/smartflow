@@ -6,6 +6,7 @@ import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/data/accounting/repositories/drift_account_repository.dart';
 import 'package:smartflow/data/accounting/repositories/drift_posting_repository.dart';
 import 'package:smartflow/data/accounting/repositories/drift_system_account_resolver.dart';
+import 'package:smartflow/data/accounting/repositories/drift_transaction_query_repository.dart';
 import 'package:smartflow/data/transaction/drift_transaction_runner.dart';
 import 'package:smartflow/domain/accounting/accounting_api.dart';
 import 'package:smartflow/domain/accounting/ledger/poster.dart';
@@ -27,10 +28,14 @@ void main() {
         database,
         systemAccounts: systemAccounts,
       );
+      final queryRepository = DriftTransactionQueryRepository(database);
+      final postingRepository = DriftPostingRepository(database);
       transactionService = TransactionServiceImpl(
-        PosterImpl(DriftPostingRepository(database)),
+        PosterImpl(postingRepository),
         accountRepository: repository,
+        transactionQueryRepository: queryRepository,
         systemAccountResolver: systemAccounts,
+        postingRepository: postingRepository,
       );
       service = AccountServiceImpl(
         repository,

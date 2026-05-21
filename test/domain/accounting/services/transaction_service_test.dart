@@ -3,6 +3,9 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/domain/accounting/accounting_api.dart';
 import 'package:smartflow/domain/accounting/repositories/account_repository.dart';
+import 'package:smartflow/domain/accounting/repositories/posting_repository.dart';
+import 'package:smartflow/domain/accounting/repositories/system_account_resolver.dart';
+import 'package:smartflow/domain/accounting/repositories/transaction_query_repository.dart';
 import 'package:smartflow/domain/accounting/ledger/poster.dart';
 import 'package:smartflow/domain/accounting/ledger/posting_protocol.dart';
 
@@ -11,9 +14,21 @@ void main() {
     late _RecordingPoster postingService;
     late TransactionService service;
 
+    TransactionServiceImpl buildService({
+      AccountRepository? accountRepository,
+    }) {
+      return TransactionServiceImpl(
+        postingService,
+        accountRepository: accountRepository ?? _defaultAccounts(),
+        transactionQueryRepository: _StubQueryRepository(),
+        systemAccountResolver: _StubSystemAccountResolver(),
+        postingRepository: _StubPostingRepository(),
+      );
+    }
+
     setUp(() {
       postingService = _RecordingPoster();
-      service = TransactionServiceImpl(postingService);
+      service = buildService();
     });
 
     test(
@@ -130,8 +145,7 @@ void main() {
     });
 
     test('rejects accounts used in the wrong transaction role', () async {
-      service = TransactionServiceImpl(
-        postingService,
+      service = buildService(
         accountRepository: _FakeAccountRepository({
           1: _account(id: 1, type: AccountType.expense),
           101: _account(id: 101, type: AccountType.expense),
@@ -152,8 +166,7 @@ void main() {
     });
 
     test('rejects loan accounts as expense settlement accounts', () async {
-      service = TransactionServiceImpl(
-        postingService,
+      service = buildService(
         accountRepository: _FakeAccountRepository({
           1: _account(
             id: 1,
@@ -178,8 +191,7 @@ void main() {
     });
 
     test('rejects loan accounts as income receive accounts', () async {
-      service = TransactionServiceImpl(
-        postingService,
+      service = buildService(
         accountRepository: _FakeAccountRepository({
           1: _account(
             id: 1,
@@ -204,8 +216,7 @@ void main() {
     });
 
     test('rejects loan accounts in transfers', () async {
-      service = TransactionServiceImpl(
-        postingService,
+      service = buildService(
         accountRepository: _FakeAccountRepository({
           1: _account(id: 1, type: AccountType.asset),
           2: _account(
@@ -303,4 +314,41 @@ Account _account({
     currencyCode: Money.defaultCurrency,
     balance: Money.zero(),
   );
+}
+
+_FakeAccountRepository _defaultAccounts() {
+  return _FakeAccountRepository({
+    1: _account(id: 1, type: AccountType.asset),
+    2: _account(id: 2, type: AccountType.asset),
+    101: _account(id: 101, type: AccountType.expense),
+    103: _account(id: 103, type: AccountType.expense),
+    201: _account(id: 201, type: AccountType.income),
+  });
+}
+
+class _StubQueryRepository implements TransactionQueryRepository {
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    throw UnimplementedError(
+      '${invocation.memberName} is not stubbed in _StubQueryRepository.',
+    );
+  }
+}
+
+class _StubSystemAccountResolver implements SystemAccountResolver {
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    throw UnimplementedError(
+      '${invocation.memberName} is not stubbed in _StubSystemAccountResolver.',
+    );
+  }
+}
+
+class _StubPostingRepository implements PostingRepository {
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    throw UnimplementedError(
+      '${invocation.memberName} is not stubbed in _StubPostingRepository.',
+    );
+  }
 }

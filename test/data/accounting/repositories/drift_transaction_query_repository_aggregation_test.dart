@@ -34,11 +34,13 @@ void main() {
       );
       queryRepository = DriftTransactionQueryRepository(database);
       queryService = TransactionQueryServiceImpl(queryRepository);
+      final postingRepository = DriftPostingRepository(database);
       service = TransactionServiceImpl(
-        PosterImpl(DriftPostingRepository(database)),
+        PosterImpl(postingRepository),
         accountRepository: accountRepository,
         transactionQueryRepository: queryRepository,
         systemAccountResolver: systemAccounts,
+        postingRepository: postingRepository,
       );
       accountService = AccountServiceImpl(
         accountRepository,
