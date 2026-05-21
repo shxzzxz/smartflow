@@ -2,6 +2,8 @@ import '../../../core/money/money.dart';
 import '../entities/transaction_ownership.dart';
 import '../enums/accounting_enums.dart';
 
+/// ledger 子模块的内部协议：用例服务 → Poster → PostingRepository 之间传递的写入指令。
+/// 不通过 accounting_api 暴露；外部只能拿到 CreatedTransactionResult。
 class PostTransactionCommand {
   const PostTransactionCommand({
     required this.businessPurpose,

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/accounting/services/financial_metrics_service.dart';
+import 'package:smartflow/domain/accounting/accounting_api.dart';
 import 'package:smartflow/features/home/widgets/monthly_summary_card.dart';
 
 void main() {

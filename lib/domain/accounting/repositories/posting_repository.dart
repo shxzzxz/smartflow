@@ -1,7 +1,7 @@
 import '../../../core/patch/patch.dart';
 import '../entities/account.dart';
 import '../entities/transaction_ownership.dart';
-import '../services/posting_command.dart';
+import '../ledger/posting_protocol.dart';
 
 abstract interface class PostingRepository {
   Future<List<Account>> findAccountsByIds(Set<int> ids);

@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
-import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
-import 'package:smartflow/domain/accounting/services/transaction_query_service.dart';
+import 'package:smartflow/domain/accounting/accounting_api.dart';
 import 'package:smartflow/features/home/widgets/transaction_progress_badges.dart';
 
 void main() {

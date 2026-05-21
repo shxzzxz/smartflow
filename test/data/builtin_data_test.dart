@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/data/builtin_data.dart';
-import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
+import 'package:smartflow/domain/accounting/accounting_api.dart';
 
 import '../helpers/test_app_database.dart';
 

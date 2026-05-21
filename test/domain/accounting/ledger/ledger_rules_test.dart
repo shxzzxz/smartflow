@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
+import 'package:smartflow/domain/accounting/accounting_api.dart';
 import 'package:smartflow/domain/accounting/ledger/ledger_rules.dart';
-import 'package:smartflow/domain/accounting/services/posting_command.dart';
+import 'package:smartflow/domain/accounting/ledger/posting_protocol.dart';
 
 void main() {
   group('ledger rules', () {

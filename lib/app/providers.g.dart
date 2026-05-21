@@ -102,7 +102,7 @@ final class AccountRepositoryProvider
   }
 }
 
-String _$accountRepositoryHash() => r'65fc03a76cbcbe6d277d9fdec12a58237bb3639b';
+String _$accountRepositoryHash() => r'd18c6b65455a5da1e8787472648c66c231ce9741';
 
 @ProviderFor(categoryRepository)
 final categoryRepositoryProvider = CategoryRepositoryProvider._();
@@ -150,7 +150,7 @@ final class CategoryRepositoryProvider
 }
 
 String _$categoryRepositoryHash() =>
-    r'8306f40f86bc6cf3f9e69eed8dc8e29f3fb02423';
+    r'237ab55433bc628170e8a7fddf828014bc7141b5';
 
 @ProviderFor(postingRepository)
 final postingRepositoryProvider = PostingRepositoryProvider._();
@@ -297,6 +297,53 @@ final class FinancialMetricsRepositoryProvider
 String _$financialMetricsRepositoryHash() =>
     r'e524f0373c9c731f50a3d991bd7d4bb6e75a4263';
 
+@ProviderFor(transactionRunner)
+final transactionRunnerProvider = TransactionRunnerProvider._();
+
+final class TransactionRunnerProvider
+    extends
+        $FunctionalProvider<
+          TransactionRunner,
+          TransactionRunner,
+          TransactionRunner
+        >
+    with $Provider<TransactionRunner> {
+  TransactionRunnerProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'transactionRunnerProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$transactionRunnerHash();
+
+  @$internal
+  @override
+  $ProviderElement<TransactionRunner> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  TransactionRunner create(Ref ref) {
+    return transactionRunner(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TransactionRunner value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TransactionRunner>(value),
+    );
+  }
+}
+
+String _$transactionRunnerHash() => r'ac2e79f7455255f3338788cfe57587c4e97b9fe4';
+
 @ProviderFor(accountService)
 final accountServiceProvider = AccountServiceProvider._();
 
@@ -336,7 +383,7 @@ final class AccountServiceProvider
   }
 }
 
-String _$accountServiceHash() => r'8b3fee17b78242fe97ff2f648e3564c7cebf8c5f';
+String _$accountServiceHash() => r'0412a347ba153a1373636ab99695fc69f3480b7c';
 
 @ProviderFor(categoryService)
 final categoryServiceProvider = CategoryServiceProvider._();
@@ -380,46 +427,45 @@ final class CategoryServiceProvider
 
 String _$categoryServiceHash() => r'c576c3f8ce0d2d70485652aedfa43551f60ebdba';
 
-@ProviderFor(postingService)
-final postingServiceProvider = PostingServiceProvider._();
+@ProviderFor(poster)
+final posterProvider = PosterProvider._();
 
-final class PostingServiceProvider
-    extends $FunctionalProvider<PostingService, PostingService, PostingService>
-    with $Provider<PostingService> {
-  PostingServiceProvider._()
+final class PosterProvider extends $FunctionalProvider<Poster, Poster, Poster>
+    with $Provider<Poster> {
+  PosterProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'postingServiceProvider',
+        name: r'posterProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$postingServiceHash();
+  String debugGetCreateSourceHash() => _$posterHash();
 
   @$internal
   @override
-  $ProviderElement<PostingService> $createElement($ProviderPointer pointer) =>
+  $ProviderElement<Poster> $createElement($ProviderPointer pointer) =>
       $ProviderElement(pointer);
 
   @override
-  PostingService create(Ref ref) {
-    return postingService(ref);
+  Poster create(Ref ref) {
+    return poster(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(PostingService value) {
+  Override overrideWithValue(Poster value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<PostingService>(value),
+      providerOverride: $SyncValueProvider<Poster>(value),
     );
   }
 }
 
-String _$postingServiceHash() => r'd6ade9ef20c33eafa484de7e74493e540b28cc92';
+String _$posterHash() => r'bc6dc19e1749fa6516971dd1e49a9399fd89119b';
 
 @ProviderFor(transactionService)
 final transactionServiceProvider = TransactionServiceProvider._();
@@ -467,7 +513,7 @@ final class TransactionServiceProvider
 }
 
 String _$transactionServiceHash() =>
-    r'62c3502d8b334bc85e38765049b2130168a44c18';
+    r'dae28df669a7e63544764579bc162a0ad5685548';
 
 @ProviderFor(transactionQueryService)
 final transactionQueryServiceProvider = TransactionQueryServiceProvider._();
@@ -602,7 +648,7 @@ final class AccountListProvider
   }
 }
 
-String _$accountListHash() => r'604f0ccedf8e249a36081a3c95152268e618d6a8';
+String _$accountListHash() => r'978dd44ed872fd543bfdd523b25ec9e0abb3b4c4';
 
 @ProviderFor(accountsForUsage)
 final accountsForUsageProvider = AccountsForUsageFamily._();
@@ -659,7 +705,7 @@ final class AccountsForUsageProvider
   }
 }
 
-String _$accountsForUsageHash() => r'17bbd29addec4cbe5a3312330dcaf7ee16636991';
+String _$accountsForUsageHash() => r'e07fe379531b94b729cc8779355b11b9292cb7e6';
 
 final class AccountsForUsageFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<Account>>, AccountUsage> {
@@ -734,7 +780,7 @@ final class AccountsByTypesProvider
   }
 }
 
-String _$accountsByTypesHash() => r'32e91322158a461a3d81fda4ff9f6b578722fe70';
+String _$accountsByTypesHash() => r'ae2b2101e8ac69bdf98ac83f64da4474b8f4bd80';
 
 final class AccountsByTypesFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<Account>>, Set<AccountType>> {
@@ -1473,7 +1519,7 @@ final class InstallmentServiceProvider
 }
 
 String _$installmentServiceHash() =>
-    r'd9a47858e26d41d4133e5dbfe7797e33e327dfcc';
+    r'61e97412c66428281829dd6e1ba4c827f78b5541';
 
 @ProviderFor(creditService)
 final creditServiceProvider = CreditServiceProvider._();
@@ -1514,7 +1560,7 @@ final class CreditServiceProvider
   }
 }
 
-String _$creditServiceHash() => r'f67bdd9927cc7b2af93253121197a599bba69b9b';
+String _$creditServiceHash() => r'61dd7d65ac78e64427c2733e0f09705b8f9f0890';
 
 @ProviderFor(installmentContractsByAccount)
 final installmentContractsByAccountProvider =
@@ -1898,7 +1944,7 @@ final class InstallmentRepaymentCashflowsProvider
 }
 
 String _$installmentRepaymentCashflowsHash() =>
-    r'bb89bda6c61608c0e0e9ac75111310f5d77e15c7';
+    r'3c54d6edcad292ea5f5ec4a2fd98c94203b0f74c';
 
 /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
 /// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。

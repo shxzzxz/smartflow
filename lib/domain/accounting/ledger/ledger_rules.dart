@@ -1,6 +1,6 @@
 import '../../../core/money/money.dart';
 import '../enums/accounting_enums.dart';
-import '../services/posting_command.dart';
+import 'posting_protocol.dart';
 
 int balanceDeltaMinor({
   required AccountType accountType,

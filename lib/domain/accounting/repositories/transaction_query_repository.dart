@@ -1,6 +1,8 @@
 import '../../../core/money/money.dart';
 import '../entities/transaction.dart';
-import '../services/transaction_query_service.dart';
+import '../enums/accounting_enums.dart';
+import '../queries/transaction_queries.dart';
+import '../views/transaction_views.dart';
 
 abstract interface class TransactionQueryRepository {
   Stream<List<TransactionListItem>> watchTransactions(
@@ -19,4 +21,9 @@ abstract interface class TransactionQueryRepository {
   });
 
   Future<ReimbursementSummary?> getReimbursementSummary(int rootTransactionId);
+
+  Future<int> getDetailAmountSum({
+    required Iterable<int> transactionIds,
+    required TransactionDetailType detailType,
+  });
 }

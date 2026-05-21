@@ -1,12 +1,21 @@
 import '../../../core/errors/failure.dart';
 import '../../../core/money/money.dart';
+import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
+import '../../../core/transaction/transaction_runner.dart';
+import '../commands/account_commands.dart';
+import '../commands/transaction_commands.dart';
 import '../entities/account.dart';
 import '../enums/accounting_enums.dart';
 import '../repositories/account_repository.dart';
+import 'transaction_service.dart';
 
 abstract interface class AccountService {
-  Stream<List<Account>> watchAccounts();
+  Stream<List<Account>> watchAccounts(Set<AccountType> types);
+
+  Future<Account?> findAccountById(int id);
+
+  Future<List<Account>> findAccountsByIds(Set<int> ids);
 
   Future<Result<Account>> createAccount(CreateAccountCommand command);
 
@@ -14,16 +23,30 @@ abstract interface class AccountService {
 }
 
 class AccountServiceImpl implements AccountService {
-  const AccountServiceImpl(this._repository);
+  const AccountServiceImpl(
+    this._repository, {
+    required TransactionRunner transactionRunner,
+    TransactionService? transactions,
+  }) : _runner = transactionRunner,
+       _transactions = transactions;
 
   final AccountRepository _repository;
+  final TransactionService? _transactions;
+  final TransactionRunner _runner;
 
   @override
-  Stream<List<Account>> watchAccounts() {
-    return _repository.watchAccounts({
-      AccountType.asset,
-      AccountType.liability,
-    });
+  Stream<List<Account>> watchAccounts(Set<AccountType> types) {
+    return _repository.watchAccounts(types);
+  }
+
+  @override
+  Future<Account?> findAccountById(int id) {
+    return _repository.findAccountById(id);
+  }
+
+  @override
+  Future<List<Account>> findAccountsByIds(Set<int> ids) {
+    return _repository.findAccountsByIds(ids);
   }
 
   @override
@@ -33,9 +56,51 @@ class AccountServiceImpl implements AccountService {
       return Result.failure(failure);
     }
 
+    final spec = AccountInsertSpec(
+      name: command.name.trim(),
+      type: command.type,
+      currencyCode: command.currencyCode,
+      subtype: command.subtype,
+      iconKey: _blankToNull(command.iconKey),
+      note: _blankToNull(command.note),
+      creditLimitMinor: command.creditLimit?.minorUnits,
+      billingDay: command.billingDay,
+      repaymentDay: command.repaymentDay,
+      sortOrder: command.sortOrder,
+      isHidden: command.isHidden,
+    );
+
     try {
-      final account = await _repository.createAccount(command);
-      return Result.success(account);
+      return await _runner.run<Account>(() async {
+        final account = await _repository.createAccount(spec);
+        if (command.openingBalance.minorUnits == 0) {
+          return Result.success(account);
+        }
+        final transactionService = _transactions;
+        if (transactionService == null) {
+          return const Result.failure(
+            Failure(
+              code: 'transaction_service_unavailable',
+              message:
+                  'TransactionService is required to post opening balance.',
+            ),
+          );
+        }
+        final openingResult = await transactionService.createOpeningBalance(
+          CreateOpeningBalanceCommand(
+            accountId: account.id,
+            amount: command.openingBalance,
+            occurredAt: DateTime.now(),
+          ),
+        );
+        switch (openingResult) {
+          case Success():
+            final refreshed = await _repository.findAccountById(account.id);
+            return Result.success(refreshed ?? account);
+          case FailureResult(:final failure):
+            return Result.failure(failure);
+        }
+      });
     } on Object catch (error) {
       return Result.failure(
         Failure(
@@ -49,16 +114,12 @@ class AccountServiceImpl implements AccountService {
 
   @override
   Future<Result<void>> editAccount(EditAccountCommand command) async {
-    if (command.name.trim().isEmpty) {
-      return const Result.failure(
-        Failure(
-          code: 'account_name_required',
-          message: 'Account name is required.',
-        ),
-      );
+    final nameFailure = _validateEditName(command.name);
+    if (nameFailure != null) {
+      return Result.failure(nameFailure);
     }
-    if (command.targetBalance != null &&
-        command.targetBalance!.minorUnits < 0) {
+    final targetBalance = command.targetBalance;
+    if (targetBalance != null && targetBalance.minorUnits < 0) {
       return const Result.failure(
         Failure(
           code: 'account_target_balance_negative',
@@ -93,8 +154,8 @@ class AccountServiceImpl implements AccountService {
           ),
         );
       }
-      if (command.targetBalance != null &&
-          command.targetBalance!.currency != account.currencyCode) {
+      if (targetBalance != null &&
+          targetBalance.currency != account.currencyCode) {
         return const Result.failure(
           Failure(
             code: 'account_target_balance_currency_mismatch',
@@ -102,8 +163,9 @@ class AccountServiceImpl implements AccountService {
           ),
         );
       }
-      if (command.creditLimit != null &&
-          command.creditLimit!.currency != account.currencyCode) {
+      final creditLimitPatch = command.creditLimit;
+      if (creditLimitPatch is PatchSet<Money> &&
+          creditLimitPatch.value.currency != account.currencyCode) {
         return const Result.failure(
           Failure(
             code: 'credit_limit_currency_mismatch',
@@ -111,7 +173,7 @@ class AccountServiceImpl implements AccountService {
           ),
         );
       }
-      if (command.targetBalance != null &&
+      if (targetBalance != null &&
           !_supportsManualBalance(account.type, account.subtype)) {
         return const Result.failure(
           Failure(
@@ -121,8 +183,49 @@ class AccountServiceImpl implements AccountService {
         );
       }
 
-      await _repository.updateAccount(command);
-      return const Result.success(null);
+      final spec = AccountUpdateSpec(
+        name: command.name?.trim(),
+        sortOrder: command.sortOrder,
+        isHidden: command.isHidden,
+        subtype: command.subtype,
+        iconKey: _normalizeStringPatch(command.iconKey),
+        note: _normalizeStringPatch(command.note),
+        creditLimitMinor: _moneyPatchToMinor(command.creditLimit),
+        billingDay: command.billingDay,
+        repaymentDay: command.repaymentDay,
+      );
+
+      return await _runner.run<void>(() async {
+        await _repository.updateAccount(command.id, spec);
+
+        if (targetBalance == null ||
+            targetBalance.minorUnits == account.balance.minorUnits) {
+          return const Result.success(null);
+        }
+        final transactionService = _transactions;
+        if (transactionService == null) {
+          return const Result.failure(
+            Failure(
+              code: 'transaction_service_unavailable',
+              message:
+                  'TransactionService is required to post balance adjustment.',
+            ),
+          );
+        }
+        final adjustmentResult = await transactionService.adjustBalance(
+          AdjustBalanceCommand(
+            accountId: command.id,
+            targetBalance: targetBalance,
+            occurredAt: DateTime.now(),
+          ),
+        );
+        switch (adjustmentResult) {
+          case Success():
+            return const Result.success(null);
+          case FailureResult(:final failure):
+            return Result.failure(failure);
+        }
+      });
     } on Object catch (error) {
       return Result.failure(
         Failure(
@@ -171,6 +274,19 @@ class AccountServiceImpl implements AccountService {
     return null;
   }
 
+  Failure? _validateEditName(String? name) {
+    if (name == null) {
+      return null;
+    }
+    if (name.trim().isEmpty) {
+      return const Failure(
+        code: 'account_name_required',
+        message: 'Account name is required.',
+      );
+    }
+    return null;
+  }
+
   bool _isUserAccountType(AccountType type) {
     return type == AccountType.asset || type == AccountType.liability;
   }
@@ -181,66 +297,28 @@ class AccountServiceImpl implements AccountService {
     }
     return type == AccountType.liability;
   }
-}
 
-class CreateAccountCommand {
-  const CreateAccountCommand({
-    required this.name,
-    required this.type,
-    this.currencyCode = Money.defaultCurrency,
-    this.openingBalance = const Money(minorUnits: 0),
-    this.openingOccurredAt,
-    this.subtype,
-    this.iconKey,
-    this.note,
-    this.creditLimit,
-    this.billingDay,
-    this.repaymentDay,
-    this.sortOrder = 0,
-    this.isHidden = false,
-  });
+  String? _blankToNull(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
 
-  final String name;
-  final AccountType type;
-  final String currencyCode;
-  final Money openingBalance;
-  final DateTime? openingOccurredAt;
-  final AccountSubtype? subtype;
-  final String? iconKey;
-  final String? note;
-  final Money? creditLimit;
-  final int? billingDay;
-  final int? repaymentDay;
-  final int sortOrder;
-  final bool isHidden;
-}
+  Patch<String>? _normalizeStringPatch(Patch<String>? patch) {
+    return switch (patch) {
+      null => null,
+      PatchClear<String>() => patch,
+      PatchSet<String>(:final value) =>
+        _blankToNull(value) == null
+            ? const Patch<String>.clear()
+            : Patch.set(value.trim()),
+    };
+  }
 
-class EditAccountCommand {
-  const EditAccountCommand({
-    required this.id,
-    required this.name,
-    this.subtype,
-    this.iconKey,
-    this.note,
-    this.creditLimit,
-    this.billingDay,
-    this.repaymentDay,
-    this.targetBalance,
-    this.balanceAdjustmentOccurredAt,
-    this.sortOrder = 0,
-    this.isHidden = false,
-  });
-
-  final int id;
-  final String name;
-  final AccountSubtype? subtype;
-  final String? iconKey;
-  final String? note;
-  final Money? creditLimit;
-  final int? billingDay;
-  final int? repaymentDay;
-  final Money? targetBalance;
-  final DateTime? balanceAdjustmentOccurredAt;
-  final int sortOrder;
-  final bool isHidden;
+  Patch<int>? _moneyPatchToMinor(Patch<Money>? patch) {
+    return switch (patch) {
+      null => null,
+      PatchClear<Money>() => const Patch<int>.clear(),
+      PatchSet<Money>(:final value) => Patch.set(value.minorUnits),
+    };
+  }
 }

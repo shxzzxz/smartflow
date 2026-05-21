@@ -1,4 +1,5 @@
-import '../services/financial_metrics_service.dart';
+import '../queries/financial_metrics_queries.dart';
+import '../views/financial_metrics_views.dart';
 
 abstract interface class FinancialMetricsRepository {
   Stream<CashflowComparison> watchCashflowComparison(

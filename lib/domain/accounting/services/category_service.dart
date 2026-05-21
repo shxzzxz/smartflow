@@ -1,9 +1,10 @@
 import '../../../core/errors/failure.dart';
-import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
+import '../commands/category_commands.dart';
 import '../entities/account.dart';
 import '../enums/accounting_enums.dart';
 import '../repositories/account_repository.dart';
+import '../views/category_views.dart';
 
 abstract interface class CategoryService {
   Stream<List<CategoryNode>> watchCategoryTree(AccountType type);
@@ -29,7 +30,16 @@ class CategoryServiceImpl implements CategoryService {
     }
 
     try {
-      final account = await _repository.createCategory(command);
+      final spec = CategoryInsertSpec(
+        name: command.name.trim(),
+        type: command.type,
+        currencyCode: command.currencyCode,
+        parentId: command.parentId,
+        iconKey: _blankToNull(command.iconKey),
+        note: _blankToNull(command.note),
+        sortOrder: command.sortOrder,
+      );
+      final account = await _repository.createCategory(spec);
       return Result.success(account);
     } on Object catch (error) {
       return Result.failure(
@@ -112,31 +122,9 @@ class CategoryServiceImpl implements CategoryService {
         ),
     ];
   }
-}
 
-class CreateCategoryCommand {
-  const CreateCategoryCommand({
-    required this.name,
-    required this.type,
-    this.parentId,
-    this.currencyCode = Money.defaultCurrency,
-    this.iconKey,
-    this.note,
-    this.sortOrder = 0,
-  });
-
-  final String name;
-  final AccountType type;
-  final int? parentId;
-  final String currencyCode;
-  final String? iconKey;
-  final String? note;
-  final int sortOrder;
-}
-
-class CategoryNode {
-  const CategoryNode({required this.account, this.children = const []});
-
-  final Account account;
-  final List<Account> children;
+  String? _blankToNull(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
 }

@@ -7,9 +7,7 @@ import 'package:smartflow/core/errors/failure.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/data/database_provider.dart';
-import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
-import 'package:smartflow/domain/accounting/services/posting_command.dart';
-import 'package:smartflow/domain/accounting/services/transaction_service.dart';
+import 'package:smartflow/domain/accounting/accounting_api.dart';
 import 'package:smartflow/features/transactions/pages/transaction_form_page.dart';
 
 import '../../helpers/test_app_database.dart';
@@ -220,7 +218,7 @@ class _CapturingTransactionService implements TransactionService {
   CreateReimbursementAdvanceCommand? reimbursementAdvanceCommand;
 
   @override
-  Future<Result<PostTransactionResult>> createExpense(
+  Future<Result<CreatedTransactionResult>> createExpense(
     CreateExpenseCommand command,
   ) async {
     expenseCommand = command;
@@ -228,7 +226,7 @@ class _CapturingTransactionService implements TransactionService {
   }
 
   @override
-  Future<Result<PostTransactionResult>> createReimbursementAdvance(
+  Future<Result<CreatedTransactionResult>> createReimbursementAdvance(
     CreateReimbursementAdvanceCommand command,
   ) async {
     reimbursementAdvanceCommand = command;

@@ -4,32 +4,42 @@ import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/data/accounting/repositories/drift_account_repository.dart';
 import 'package:smartflow/data/accounting/repositories/drift_posting_repository.dart';
+import 'package:smartflow/data/accounting/repositories/drift_system_account_resolver.dart';
 import 'package:smartflow/data/accounting/repositories/drift_transaction_query_repository.dart';
-import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
-import 'package:smartflow/domain/accounting/services/account_service.dart';
-import 'package:smartflow/domain/accounting/services/category_service.dart';
-import 'package:smartflow/domain/accounting/services/posting_service.dart';
-import 'package:smartflow/domain/accounting/services/transaction_query_service.dart';
-import 'package:smartflow/domain/accounting/services/transaction_service.dart';
+import 'package:smartflow/data/transaction/drift_transaction_runner.dart';
+import 'package:smartflow/domain/accounting/accounting_api.dart';
+import 'package:smartflow/domain/accounting/ledger/poster.dart';
 
 import '../../../helpers/test_app_database.dart';
 
 void main() {
   group('DriftTransactionQueryRepository', () {
     late AppDatabase database;
+    late DriftSystemAccountResolver systemAccounts;
     late DriftAccountRepository accountRepository;
     late TransactionService transactionService;
     late TransactionQueryService queryService;
+    late AccountServiceImpl accountService;
 
     setUp(() {
       database = createTestDatabase();
-      accountRepository = DriftAccountRepository(database);
+      systemAccounts = DriftSystemAccountResolver(database);
+      accountRepository = DriftAccountRepository(
+        database,
+        systemAccounts: systemAccounts,
+      );
       transactionService = TransactionServiceImpl(
-        PostingServiceImpl(DriftPostingRepository(database)),
+        PosterImpl(DriftPostingRepository(database)),
         accountRepository: accountRepository,
+        systemAccountResolver: systemAccounts,
       );
       queryService = TransactionQueryServiceImpl(
         DriftTransactionQueryRepository(database),
+      );
+      accountService = AccountServiceImpl(
+        accountRepository,
+        transactionRunner: DriftTransactionRunner(database),
+        transactions: transactionService,
       );
     });
 
@@ -38,7 +48,6 @@ void main() {
     });
 
     test('lists transactions and returns details with entries', () async {
-      final accountService = AccountServiceImpl(accountRepository);
       final categoryService = CategoryServiceImpl(accountRepository);
       final wallet =
           (await accountService.createAccount(
@@ -97,7 +106,6 @@ void main() {
     });
 
     test('filters account ledger by entry account', () async {
-      final accountService = AccountServiceImpl(accountRepository);
       final categoryService = CategoryServiceImpl(accountRepository);
       final wallet =
           (await accountService.createAccount(

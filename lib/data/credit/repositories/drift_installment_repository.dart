@@ -1,7 +1,6 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/money/money.dart';
-import '../../../core/patch/patch.dart';
 import '../../../domain/credit/entities/installment_contract.dart';
 import '../../../domain/credit/entities/installment_repayment.dart';
 import '../../../domain/credit/entities/installment_schedule.dart';
@@ -9,6 +8,7 @@ import '../../../domain/credit/enums/installment_enums.dart';
 import '../../../domain/credit/repositories/installment_repository.dart';
 import '../../../domain/credit/services/installment_schedule_generator.dart';
 import '../../app_database.dart';
+import '../../patch_value.dart';
 
 class DriftInstallmentRepository implements InstallmentRepository {
   DriftInstallmentRepository(this._database);
@@ -141,15 +141,15 @@ class DriftInstallmentRepository implements InstallmentRepository {
       repaymentMethod: patch.repaymentMethod == null
           ? const Value.absent()
           : Value(patch.repaymentMethod!),
-      interestRatePeriod: _toNullableValue(patch.interestRatePeriod),
-      interestRatePpm: _toNullableValue(patch.interestRatePpm),
+      interestRatePeriod: patch.interestRatePeriod.toValue(),
+      interestRatePpm: patch.interestRatePpm.toValue(),
       interestAccrualMethod: patch.interestAccrualMethod == null
           ? const Value.absent()
           : Value(patch.interestAccrualMethod!),
       totalFeeMinor: patch.totalFeeMinor == null
           ? const Value.absent()
           : Value(patch.totalFeeMinor!),
-      note: _toNullableValue(patch.note),
+      note: patch.note.toValue(),
       disbursementAccountId: patch.disbursementAccountId == null
           ? const Value.absent()
           : Value(patch.disbursementAccountId!),
@@ -158,14 +158,6 @@ class DriftInstallmentRepository implements InstallmentRepository {
     await (_database.update(_database.installmentContracts)
           ..where((c) => c.id.equals(contractId)))
         .write(companion);
-  }
-
-  Value<T?> _toNullableValue<T>(Patch<T>? patch) {
-    return switch (patch) {
-      null => const Value.absent(),
-      PatchSet<T>(:final value) => Value<T?>(value),
-      PatchClear<T>() => Value<T?>(null),
-    };
   }
 
   @override
@@ -245,7 +237,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
           ? const Value.absent()
           : Value(patch.expectedFee!.minorUnits),
       status: patch.status == null ? const Value.absent() : Value(patch.status!),
-      note: _toNullableValue(patch.note),
+      note: patch.note.toValue(),
       updatedAt: Value(DateTime.now()),
     );
     await (_database.update(_database.installmentSchedules)

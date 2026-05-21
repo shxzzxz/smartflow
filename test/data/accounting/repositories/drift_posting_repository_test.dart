@@ -4,22 +4,21 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/data/accounting/repositories/drift_posting_repository.dart';
-import 'package:smartflow/domain/accounting/entities/transaction_ownership.dart';
-import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
+import 'package:smartflow/domain/accounting/accounting_api.dart';
 import 'package:smartflow/domain/accounting/ledger/ledger_rules.dart';
-import 'package:smartflow/domain/accounting/services/posting_command.dart';
-import 'package:smartflow/domain/accounting/services/posting_service.dart';
+import 'package:smartflow/domain/accounting/ledger/poster.dart';
+import 'package:smartflow/domain/accounting/ledger/posting_protocol.dart';
 
 import '../../../helpers/test_app_database.dart';
 
 void main() {
   group('DriftPostingRepository', () {
     late AppDatabase database;
-    late PostingService service;
+    late Poster service;
 
     setUp(() {
       database = createTestDatabase();
-      service = PostingServiceImpl(DriftPostingRepository(database));
+      service = PosterImpl(DriftPostingRepository(database));
     });
 
     tearDown(() async {

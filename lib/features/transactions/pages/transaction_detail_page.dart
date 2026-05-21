@@ -13,14 +13,9 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_surface.dart';
-import '../../../domain/accounting/entities/account_usage.dart';
-import '../../../domain/accounting/entities/account.dart';
-import '../../../domain/accounting/enums/accounting_enums.dart';
+import '../../../domain/accounting/accounting_api.dart';
 import '../action_policy/transaction_action_policy.dart';
 import '../providers/transaction_action_policy_provider.dart';
-import '../../../domain/accounting/services/posting_command.dart';
-import '../../../domain/accounting/services/transaction_query_service.dart';
-import '../../../domain/accounting/services/transaction_service.dart';
 import '../../../widgets/business/account_endpoint_view.dart';
 import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/business_icon_bubble.dart';
@@ -1002,7 +997,7 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
     setState(() => _submitting = true);
     final service = ref.read(transactionServiceProvider);
     final note = _blankToNull(_noteController.text);
-    final Result<PostTransactionResult> result =
+    final Result<CreatedTransactionResult> result =
         _closeReimbursement
             ? await service.closeReimbursement(
               CloseReimbursementCommand(

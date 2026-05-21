@@ -38,7 +38,7 @@ final class TransactionActionPolicyProvider
   /// 的统一契约，不属于任何业务域；详见 docs/08.2。
   TransactionActionPolicyProvider._({
     required TransactionActionPolicyFamily super.from,
-    required domain.Transaction super.argument,
+    required Transaction super.argument,
   }) : super(
          retry: null,
          name: r'transactionActionPolicyProvider',
@@ -65,7 +65,7 @@ final class TransactionActionPolicyProvider
 
   @override
   TransactionActionPolicy create(Ref ref) {
-    final argument = this.argument as domain.Transaction;
+    final argument = this.argument as Transaction;
     return transactionActionPolicy(ref, argument);
   }
 
@@ -90,7 +90,7 @@ final class TransactionActionPolicyProvider
 }
 
 String _$transactionActionPolicyHash() =>
-    r'60691339cfb63448259784f4f3b71126cfe8e6ed';
+    r'7c8a82e53d09d251167f00de8b11695a49420948';
 
 /// 交易详情页据此获取该笔交易适用的 action policy。
 ///
@@ -99,8 +99,7 @@ String _$transactionActionPolicyHash() =>
 /// 的统一契约，不属于任何业务域；详见 docs/08.2。
 
 final class TransactionActionPolicyFamily extends $Family
-    with
-        $FunctionalFamilyOverride<TransactionActionPolicy, domain.Transaction> {
+    with $FunctionalFamilyOverride<TransactionActionPolicy, Transaction> {
   TransactionActionPolicyFamily._()
     : super(
         retry: null,
@@ -116,7 +115,7 @@ final class TransactionActionPolicyFamily extends $Family
   /// 这里属于 features 集成层——TransactionActionPolicy 的本质是 UI 接入业务域
   /// 的统一契约，不属于任何业务域；详见 docs/08.2。
 
-  TransactionActionPolicyProvider call(domain.Transaction transaction) =>
+  TransactionActionPolicyProvider call(Transaction transaction) =>
       TransactionActionPolicyProvider._(argument: transaction, from: this);
 
   @override

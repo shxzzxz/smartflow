@@ -1,5 +1,4 @@
-import '../../../domain/accounting/services/financial_metrics_service.dart';
-import '../../../domain/accounting/services/transaction_query_service.dart';
+import '../../../domain/accounting/accounting_api.dart';
 import '../../home/view_models/home_transaction_group.dart';
 import '../../home/view_models/transaction_row_presentation.dart';
 import 'lunar_label_resolver.dart';

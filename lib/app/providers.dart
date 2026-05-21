@@ -7,27 +7,22 @@ import '../data/credit/repositories/drift_installment_repository.dart';
 import '../data/accounting/repositories/drift_posting_repository.dart';
 import '../data/accounting/repositories/drift_system_account_resolver.dart';
 import '../data/accounting/repositories/drift_transaction_query_repository.dart';
-import '../domain/accounting/entities/account_usage.dart';
-import '../domain/accounting/entities/account.dart';
+import '../data/transaction/drift_transaction_runner.dart';
+import '../domain/accounting/accounting_api.dart';
 import '../domain/credit/entities/installment_contract.dart';
 import '../domain/credit/entities/installment_repayment.dart';
 import '../domain/credit/entities/installment_schedule.dart';
-import '../domain/accounting/enums/accounting_enums.dart';
 import '../domain/accounting/repositories/account_repository.dart';
 import '../domain/accounting/repositories/financial_metrics_repository.dart';
 import '../domain/credit/repositories/installment_repository.dart';
 import '../domain/accounting/repositories/posting_repository.dart';
 import '../domain/accounting/repositories/system_account_resolver.dart';
 import '../domain/accounting/repositories/transaction_query_repository.dart';
-import '../domain/accounting/services/account_service.dart';
-import '../domain/accounting/services/category_service.dart';
-import '../domain/accounting/services/financial_metrics_service.dart';
+import '../core/transaction/transaction_runner.dart';
 import '../domain/credit/services/credit_service.dart';
 import '../domain/credit/services/installment_metrics.dart';
 import '../domain/credit/services/installment_service.dart';
-import '../domain/accounting/services/posting_service.dart';
-import '../domain/accounting/services/transaction_query_service.dart';
-import '../domain/accounting/services/transaction_service.dart';
+import '../domain/accounting/ledger/poster.dart';
 import '../core/time/month_key.dart';
 import '../core/money/money.dart';
 
@@ -40,18 +35,12 @@ SystemAccountResolver systemAccountResolver(Ref ref) {
 
 @Riverpod(keepAlive: true)
 AccountRepository accountRepository(Ref ref) {
-  return DriftAccountRepository(
-    ref.watch(appDatabaseProvider),
-    systemAccounts: ref.watch(systemAccountResolverProvider),
-  );
+  return DriftAccountRepository(ref.watch(appDatabaseProvider));
 }
 
 @Riverpod(keepAlive: true)
 CategoryRepository categoryRepository(Ref ref) {
-  return DriftAccountRepository(
-    ref.watch(appDatabaseProvider),
-    systemAccounts: ref.watch(systemAccountResolverProvider),
-  );
+  return DriftAccountRepository(ref.watch(appDatabaseProvider));
 }
 
 @Riverpod(keepAlive: true)
@@ -70,8 +59,17 @@ FinancialMetricsRepository financialMetricsRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+TransactionRunner transactionRunner(Ref ref) {
+  return DriftTransactionRunner(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
 AccountService accountService(Ref ref) {
-  return AccountServiceImpl(ref.watch(accountRepositoryProvider));
+  return AccountServiceImpl(
+    ref.watch(accountRepositoryProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
+    transactions: ref.watch(transactionServiceProvider),
+  );
 }
 
 @Riverpod(keepAlive: true)
@@ -80,14 +78,14 @@ CategoryService categoryService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-PostingService postingService(Ref ref) {
-  return PostingServiceImpl(ref.watch(postingRepositoryProvider));
+Poster poster(Ref ref) {
+  return PosterImpl(ref.watch(postingRepositoryProvider));
 }
 
 @Riverpod(keepAlive: true)
 TransactionService transactionService(Ref ref) {
   return TransactionServiceImpl(
-    ref.watch(postingServiceProvider),
+    ref.watch(posterProvider),
     accountRepository: ref.watch(accountRepositoryProvider),
     transactionQueryRepository: ref.watch(transactionQueryRepositoryProvider),
     systemAccountResolver: ref.watch(systemAccountResolverProvider),
@@ -111,14 +109,16 @@ FinancialMetricsService financialMetricsService(Ref ref) {
 
 @riverpod
 Stream<List<Account>> accountList(Ref ref) {
-  return ref.watch(accountServiceProvider).watchAccounts();
+  return ref
+      .watch(accountServiceProvider)
+      .watchAccounts({AccountType.asset, AccountType.liability});
 }
 
 @riverpod
 Stream<List<Account>> accountsForUsage(Ref ref, AccountUsage usage) {
   return ref
       .watch(accountServiceProvider)
-      .watchAccounts()
+      .watchAccounts({AccountType.asset, AccountType.liability})
       .map(
         (accounts) =>
             accounts
@@ -129,7 +129,7 @@ Stream<List<Account>> accountsForUsage(Ref ref, AccountUsage usage) {
 
 @riverpod
 Stream<List<Account>> accountsByTypes(Ref ref, Set<AccountType> types) {
-  return ref.watch(accountRepositoryProvider).watchAccounts(types);
+  return ref.watch(accountServiceProvider).watchAccounts(types);
 }
 
 @riverpod
@@ -245,9 +245,9 @@ InstallmentRepository installmentRepository(Ref ref) {
 InstallmentService installmentService(Ref ref) {
   return InstallmentServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),
-    postingRepository: ref.watch(postingRepositoryProvider),
     transactionService: ref.watch(transactionServiceProvider),
-    queryRepository: ref.watch(transactionQueryRepositoryProvider),
+    transactionQueryService: ref.watch(transactionQueryServiceProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
   );
 }
 
@@ -257,7 +257,7 @@ CreditService creditService(Ref ref) {
     installmentService: ref.watch(installmentServiceProvider),
     transactionService: ref.watch(transactionServiceProvider),
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
-    accountRepository: ref.watch(accountRepositoryProvider),
+    accountService: ref.watch(accountServiceProvider),
   );
 }
 
@@ -302,11 +302,11 @@ Future<List<RepaymentCashflow>> installmentRepaymentCashflows(
   final repayments = await ref.watch(
     installmentRepaymentsProvider(contractId).future,
   );
-  final queryRepository = ref.watch(transactionQueryRepositoryProvider);
+  final queryService = ref.watch(transactionQueryServiceProvider);
   final result = <RepaymentCashflow>[];
   for (final r in repayments) {
     final view =
-        await queryRepository.watchTransactionDetail(r.transactionId).first;
+        await queryService.watchTransactionDetail(r.transactionId).first;
     if (view == null) continue;
     final currency = view.transaction.currencyCode;
     var principalMinor = 0;

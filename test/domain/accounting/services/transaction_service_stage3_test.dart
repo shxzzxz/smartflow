@@ -6,13 +6,9 @@ import 'package:smartflow/data/accounting/repositories/drift_account_repository.
 import 'package:smartflow/data/accounting/repositories/drift_posting_repository.dart';
 import 'package:smartflow/data/accounting/repositories/drift_system_account_resolver.dart';
 import 'package:smartflow/data/accounting/repositories/drift_transaction_query_repository.dart';
-import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
-import 'package:smartflow/domain/accounting/services/account_service.dart';
-import 'package:smartflow/domain/accounting/services/category_service.dart';
-import 'package:smartflow/domain/accounting/services/posting_command.dart';
-import 'package:smartflow/domain/accounting/services/posting_service.dart';
-import 'package:smartflow/domain/accounting/services/transaction_query_service.dart';
-import 'package:smartflow/domain/accounting/services/transaction_service.dart';
+import 'package:smartflow/data/transaction/drift_transaction_runner.dart';
+import 'package:smartflow/domain/accounting/accounting_api.dart';
+import 'package:smartflow/domain/accounting/ledger/poster.dart';
 
 import '../../../helpers/test_app_database.dart';
 
@@ -38,13 +34,17 @@ void main() {
       queryService = TransactionQueryServiceImpl(queryRepository);
       final postingRepository = DriftPostingRepository(database);
       service = TransactionServiceImpl(
-        PostingServiceImpl(postingRepository),
+        PosterImpl(postingRepository),
         accountRepository: accountRepository,
         transactionQueryRepository: queryRepository,
         systemAccountResolver: systemAccounts,
         postingRepository: postingRepository,
       );
-      accountService = AccountServiceImpl(accountRepository);
+      accountService = AccountServiceImpl(
+        accountRepository,
+        transactionRunner: DriftTransactionRunner(database),
+        transactions: service,
+      );
       categoryService = CategoryServiceImpl(accountRepository);
     });
 
@@ -68,7 +68,7 @@ void main() {
                       occurredAt: DateTime(2026, 5, 1),
                     ),
                   )
-                  as Success<PostTransactionResult>)
+                  as Success<CreatedTransactionResult>)
               .value;
 
       final refund = await service.createRefund(
@@ -79,7 +79,7 @@ void main() {
           occurredAt: DateTime(2026, 5, 2),
         ),
       );
-      expect(refund, isA<Success<PostTransactionResult>>());
+      expect(refund, isA<Success<CreatedTransactionResult>>());
 
       expect(await _balance(database, wallet.id), -6600);
       expect(await _balance(database, food.id), 6600);
@@ -106,7 +106,7 @@ void main() {
                       occurredAt: DateTime(2026, 5, 1),
                     ),
                   )
-                  as Success<PostTransactionResult>)
+                  as Success<CreatedTransactionResult>)
               .value;
 
       final result = await service.createRefund(
@@ -117,7 +117,7 @@ void main() {
           occurredAt: DateTime(2026, 5, 2),
         ),
       );
-      expect(result, isA<FailureResult<PostTransactionResult>>());
+      expect(result, isA<FailureResult<CreatedTransactionResult>>());
       expect(
         (result as FailureResult).failure.code,
         'refund_exceeds_remaining',
@@ -148,7 +148,7 @@ void main() {
                       occurredAt: DateTime(2026, 5, 1),
                     ),
                   )
-                  as Success<PostTransactionResult>)
+                  as Success<CreatedTransactionResult>)
               .value;
 
       final receipt = await service.createReimbursementReceipt(
@@ -160,7 +160,7 @@ void main() {
           occurredAt: DateTime(2026, 5, 5),
         ),
       );
-      expect(receipt, isA<Success<PostTransactionResult>>());
+      expect(receipt, isA<Success<CreatedTransactionResult>>());
 
       final summary = await queryRepository.getReimbursementSummary(
         advance.transactionId,
@@ -180,7 +180,7 @@ void main() {
           occurredAt: DateTime(2026, 5, 9),
         ),
       );
-      expect(close, isA<Success<PostTransactionResult>>());
+      expect(close, isA<Success<CreatedTransactionResult>>());
 
       expect(await _balance(database, receivable.id), 0);
       expect(await _balance(database, bank.id), 210000);
@@ -220,7 +220,7 @@ void main() {
                         occurredAt: DateTime(2026, 5, 1),
                       ),
                     )
-                    as Success<PostTransactionResult>)
+                    as Success<CreatedTransactionResult>)
                 .value;
 
         final close = await service.closeReimbursement(
@@ -232,7 +232,7 @@ void main() {
             occurredAt: DateTime(2026, 5, 5),
           ),
         );
-        expect(close, isA<Success<PostTransactionResult>>());
+        expect(close, isA<Success<CreatedTransactionResult>>());
 
         expect(await _balance(database, electricity.id), 10000);
         expect(await _balance(database, bank.id), 140000);
@@ -271,7 +271,7 @@ void main() {
                         occurredAt: DateTime(2026, 5, 1),
                       ),
                     )
-                    as Success<PostTransactionResult>)
+                    as Success<CreatedTransactionResult>)
                 .value;
         final receipt =
             (await service.createReimbursementReceipt(
@@ -283,7 +283,7 @@ void main() {
                         occurredAt: DateTime(2026, 5, 2),
                       ),
                     )
-                    as Success<PostTransactionResult>)
+                    as Success<CreatedTransactionResult>)
                 .value;
 
         final result = await service.updateTransactionBasics(
@@ -351,7 +351,7 @@ void main() {
                       occurredAt: DateTime(2026, 5, 1),
                     ),
                   )
-                  as Success<PostTransactionResult>)
+                  as Success<CreatedTransactionResult>)
               .value;
       await service.closeReimbursement(
         CloseReimbursementCommand(
@@ -372,7 +372,7 @@ void main() {
           occurredAt: DateTime(2026, 5, 6),
         ),
       );
-      expect(retry, isA<FailureResult<PostTransactionResult>>());
+      expect(retry, isA<FailureResult<CreatedTransactionResult>>());
       expect(
         (retry as FailureResult).failure.code,
         'reimbursement_already_closed',
@@ -398,7 +398,7 @@ void main() {
           occurredAt: DateTime(2026, 5, 10),
         ),
       );
-      expect(result, isA<Success<PostTransactionResult>>());
+      expect(result, isA<Success<CreatedTransactionResult>>());
 
       expect(await _balance(database, bank.id), -83000);
       expect(await _balance(database, card.id), -80000);
@@ -420,7 +420,7 @@ void main() {
             occurredAt: DateTime(2026, 5, 10),
           ),
         );
-        expect(result, isA<Success<PostTransactionResult>>());
+        expect(result, isA<Success<CreatedTransactionResult>>());
 
         final discountIncomeId = await systemAccounts.resolveDiscountIncome();
         expect(await _balance(database, bank.id), -9500);
@@ -441,7 +441,7 @@ void main() {
             occurredAt: DateTime(2026, 5, 1),
           ),
         );
-        expect(result, isA<Success<PostTransactionResult>>());
+        expect(result, isA<Success<CreatedTransactionResult>>());
 
         final equityId = await systemAccounts.resolveOpeningBalance();
         expect(await _balance(database, card.id), 1000000);
@@ -463,7 +463,7 @@ void main() {
           occurredAt: DateTime(2026, 5, 9),
         ),
       );
-      expect(result, isA<Success<PostTransactionResult>>());
+      expect(result, isA<Success<CreatedTransactionResult>>());
 
       expect(await _balance(database, fund.id), 950000);
     });
@@ -484,7 +484,7 @@ void main() {
                       occurredAt: DateTime(2026, 5, 1),
                     ),
                   )
-                  as Success<PostTransactionResult>)
+                  as Success<CreatedTransactionResult>)
               .value;
       await service.createRefund(
         CreateRefundCommand(

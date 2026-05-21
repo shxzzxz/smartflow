@@ -9,9 +9,8 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_submit_button.dart';
-import '../../../domain/accounting/entities/account.dart';
-import '../../../domain/accounting/entities/account_usage.dart';
-import '../../../domain/accounting/services/posting_command.dart';
+import '../../../domain/accounting/accounting_api.dart'
+    hide CreateRepaymentCommand, CorrectRepaymentCommand;
 import '../../../domain/credit/services/credit_service.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 
@@ -290,7 +289,7 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
     setState(() => _submitting = true);
     final service = ref.read(creditServiceProvider);
     final editTransactionId = widget.editTransactionId;
-    final Result<PostTransactionResult> result;
+    final Result<CreatedTransactionResult> result;
     if (editTransactionId == null) {
       result = await service.createRepayment(
         CreateRepaymentCommand(

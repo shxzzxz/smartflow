@@ -1,7 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/providers.dart';
-import '../../../domain/accounting/entities/transaction.dart' as domain;
+import '../../../domain/accounting/accounting_api.dart';
 import '../../../domain/credit/enums/installment_enums.dart';
 import '../action_policy/default_transaction_action_policy.dart';
 import '../action_policy/installment_transaction_action_policy.dart';
@@ -17,7 +17,7 @@ part 'transaction_action_policy_provider.g.dart';
 @riverpod
 TransactionActionPolicy transactionActionPolicy(
   Ref ref,
-  domain.Transaction transaction,
+  Transaction transaction,
 ) {
   final ownership = transaction.ownership;
   if (ownership == null) {

@@ -7,9 +7,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/data/database_provider.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
-import 'package:smartflow/domain/accounting/entities/transaction.dart';
-import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
-import 'package:smartflow/domain/accounting/services/transaction_query_service.dart';
+import 'package:smartflow/domain/accounting/accounting_api.dart';
 import 'package:smartflow/features/transactions/pages/refund_form_page.dart';
 
 import '../../helpers/test_app_database.dart';

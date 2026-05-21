@@ -14,13 +14,7 @@ import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_surface.dart';
-import '../../../domain/accounting/entities/account_usage.dart';
-import '../../../domain/accounting/entities/account.dart';
-import '../../../domain/accounting/enums/accounting_enums.dart';
-import '../../../domain/accounting/services/category_service.dart';
-import '../../../domain/accounting/services/posting_command.dart';
-import '../../../domain/accounting/services/transaction_query_service.dart';
-import '../../../domain/accounting/services/transaction_service.dart';
+import '../../../domain/accounting/accounting_api.dart';
 import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/category_grid_picker.dart';
 import '../../../widgets/business/money_text.dart';
@@ -630,7 +624,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     }
   }
 
-  Future<Result<PostTransactionResult>> _submitCorrection({
+  Future<Result<CreatedTransactionResult>> _submitCorrection({
     required TransactionService service,
     required int transactionId,
     required Money amount,
@@ -658,17 +652,27 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
           _reimbursementAccountId,
           reimbursementAccounts,
         );
-        return service.correctTransaction(
-          CorrectTransactionCommand(
+        if (reimbursementAccountId == null) {
+          return service.correctExpense(
+            CorrectExpenseCommand(
+              transactionId: transactionId,
+              amount: amount,
+              paidFromAccountId: paidFromAccountId,
+              expenseAccountId: expenseCategoryId,
+              occurredAt: _occurredAt,
+              note: note,
+              isExcludedFromStats: _excludeStats,
+              isExcludedFromBudget: _excludeBudget,
+            ),
+          );
+        }
+        return service.correctReimbursementAdvance(
+          CorrectReimbursementAdvanceCommand(
             transactionId: transactionId,
-            businessPurpose:
-                reimbursementAccountId == null
-                    ? BusinessPurpose.dailyExpense
-                    : BusinessPurpose.reimbursementAdvance,
             amount: amount,
-            paidFromAccountId: paidFromAccountId,
-            expenseAccountId: expenseCategoryId,
             receivableAccountId: reimbursementAccountId,
+            paidFromAccountId: paidFromAccountId,
+            expenseCategoryId: expenseCategoryId,
             occurredAt: _occurredAt,
             note: note,
             isExcludedFromStats: _excludeStats,
@@ -688,10 +692,9 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
           _showError('请选择收入账户');
           return const Result.failure(Failure(message: '请选择收入账户'));
         }
-        return service.correctTransaction(
-          CorrectTransactionCommand(
+        return service.correctIncome(
+          CorrectIncomeCommand(
             transactionId: transactionId,
-            businessPurpose: BusinessPurpose.dailyIncome,
             amount: amount,
             receiveAccountId: receiveAccountId,
             incomeAccountId: incomeCategoryId,
@@ -709,10 +712,9 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
           _showError('请选择转出和转入账户');
           return const Result.failure(Failure(message: '请选择转出和转入账户'));
         }
-        return service.correctTransaction(
-          CorrectTransactionCommand(
+        return service.correctTransfer(
+          CorrectTransferCommand(
             transactionId: transactionId,
-            businessPurpose: BusinessPurpose.transfer,
             amount: amount,
             fromAccountId: fromAccountId,
             toAccountId: toAccountId,
@@ -733,10 +735,9 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
           _showError('请选择借出和借入账户');
           return const Result.failure(Failure(message: '请选择借出和借入账户'));
         }
-        return service.correctTransaction(
-          CorrectTransactionCommand(
+        return service.correctBorrowing(
+          CorrectBorrowingCommand(
             transactionId: transactionId,
-            businessPurpose: BusinessPurpose.borrowing,
             amount: amount,
             liabilityAccountId: liabilityAccountId,
             receiveAccountId: receiveAccountId,

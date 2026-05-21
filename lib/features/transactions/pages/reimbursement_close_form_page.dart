@@ -10,11 +10,7 @@ import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_page_header.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_submit_button.dart';
-import '../../../domain/accounting/entities/account_usage.dart';
-import '../../../domain/accounting/entities/account.dart';
-import '../../../domain/accounting/enums/accounting_enums.dart';
-import '../../../domain/accounting/services/transaction_query_service.dart';
-import '../../../domain/accounting/services/transaction_service.dart';
+import '../../../domain/accounting/accounting_api.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 
 class ReimbursementCloseFormPage extends ConsumerStatefulWidget {

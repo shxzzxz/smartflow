@@ -4,20 +4,39 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/data/accounting/repositories/drift_account_repository.dart';
-import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
-import 'package:smartflow/domain/accounting/services/account_service.dart';
-import 'package:smartflow/domain/accounting/services/category_service.dart';
+import 'package:smartflow/data/accounting/repositories/drift_posting_repository.dart';
+import 'package:smartflow/data/accounting/repositories/drift_system_account_resolver.dart';
+import 'package:smartflow/data/transaction/drift_transaction_runner.dart';
+import 'package:smartflow/domain/accounting/accounting_api.dart';
+import 'package:smartflow/domain/accounting/ledger/poster.dart';
 
 import '../../../helpers/test_app_database.dart';
 
 void main() {
   group('DriftAccountRepository', () {
     late AppDatabase database;
+    late DriftSystemAccountResolver systemAccounts;
     late DriftAccountRepository repository;
+    late TransactionService transactionService;
+    late AccountServiceImpl service;
 
     setUp(() {
       database = createTestDatabase();
-      repository = DriftAccountRepository(database);
+      systemAccounts = DriftSystemAccountResolver(database);
+      repository = DriftAccountRepository(
+        database,
+        systemAccounts: systemAccounts,
+      );
+      transactionService = TransactionServiceImpl(
+        PosterImpl(DriftPostingRepository(database)),
+        accountRepository: repository,
+        systemAccountResolver: systemAccounts,
+      );
+      service = AccountServiceImpl(
+        repository,
+        transactionRunner: DriftTransactionRunner(database),
+        transactions: transactionService,
+      );
     });
 
     tearDown(() async {
@@ -27,14 +46,11 @@ void main() {
     test(
       'creates an account with opening balance in one posting chain',
       () async {
-        final service = AccountServiceImpl(repository);
-
         final result = await service.createAccount(
           CreateAccountCommand(
             name: '招行',
             type: AccountType.asset,
             openingBalance: const Money(minorUnits: 5000000),
-            openingOccurredAt: DateTime(2026, 5),
           ),
         );
 
@@ -46,7 +62,7 @@ void main() {
         final details =
             await database.select(database.transactionDetails).get();
         final entries = await database.select(database.entries).get();
-        final systemAccounts =
+        final systemAccountRows =
             await (database.select(database.accounts)..where(
               (row) => row.systemKey.equalsValue(SystemKey.openingBalance),
             )).get();
@@ -61,19 +77,17 @@ void main() {
           TransactionDetailType.openingBalanceMain,
         );
         expect(entries, hasLength(2));
-        expect(systemAccounts.single.accountType, AccountType.equity);
-        expect(systemAccounts.single.balanceMinor, 5000000);
+        expect(systemAccountRows.single.accountType, AccountType.equity);
+        expect(systemAccountRows.single.balanceMinor, 5000000);
       },
     );
 
     test('edits fund account balance through balance adjustment', () async {
-      final service = AccountServiceImpl(repository);
       final createResult = await service.createAccount(
         CreateAccountCommand(
           name: '招行',
           type: AccountType.asset,
           openingBalance: const Money(minorUnits: 500000),
-          openingOccurredAt: DateTime(2026, 5),
         ),
       );
       final account = (createResult as Success).value;
@@ -83,7 +97,6 @@ void main() {
           id: account.id,
           name: '招商银行',
           targetBalance: const Money(minorUnits: 700000),
-          balanceAdjustmentOccurredAt: DateTime(2026, 5, 2),
         ),
       );
 
@@ -111,14 +124,12 @@ void main() {
     });
 
     test('edits credit account debt through balance adjustment', () async {
-      final service = AccountServiceImpl(repository);
       final createResult = await service.createAccount(
         CreateAccountCommand(
           name: '花呗',
           type: AccountType.liability,
           subtype: AccountSubtype.consumerCredit,
           openingBalance: const Money(minorUnits: 1000000),
-          openingOccurredAt: DateTime(2026, 5),
         ),
       );
       final account = (createResult as Success).value;
@@ -128,7 +139,6 @@ void main() {
           id: account.id,
           name: '花呗',
           targetBalance: const Money(minorUnits: 800000),
-          balanceAdjustmentOccurredAt: DateTime(2026, 5, 2),
         ),
       );
 
@@ -160,15 +170,12 @@ void main() {
     test(
       'allows loan account opening balance and balance adjustment',
       () async {
-        final service = AccountServiceImpl(repository);
-
         final createResult = await service.createAccount(
           CreateAccountCommand(
             name: '房贷',
             type: AccountType.liability,
             subtype: AccountSubtype.loan,
             openingBalance: const Money(minorUnits: 1000000),
-            openingOccurredAt: DateTime(2026, 5),
           ),
         );
         expect(createResult, isA<Success>());
@@ -180,9 +187,7 @@ void main() {
           EditAccountCommand(
             id: account.id,
             name: account.name,
-            subtype: account.subtype,
             targetBalance: const Money(minorUnits: 800000),
-            balanceAdjustmentOccurredAt: DateTime(2026, 5, 2),
           ),
         );
         expect(editResult, isA<Success>());
@@ -192,8 +197,6 @@ void main() {
     );
 
     test('creates reimbursement account as asset subtype', () async {
-      final service = AccountServiceImpl(repository);
-
       final result = await service.createAccount(
         const CreateAccountCommand(
           name: '公司报销',
@@ -209,13 +212,13 @@ void main() {
     });
 
     test('builds income and expense category trees', () async {
-      final service = CategoryServiceImpl(repository);
-      final parentResult = await service.createCategory(
+      final categoryService = CategoryServiceImpl(repository);
+      final parentResult = await categoryService.createCategory(
         const CreateCategoryCommand(name: '餐饮', type: AccountType.expense),
       );
       final parent = (parentResult as Success).value;
 
-      await service.createCategory(
+      await categoryService.createCategory(
         CreateCategoryCommand(
           name: '咖啡',
           type: AccountType.expense,
@@ -223,7 +226,8 @@ void main() {
         ),
       );
 
-      final tree = await service.watchCategoryTree(AccountType.expense).first;
+      final tree =
+          await categoryService.watchCategoryTree(AccountType.expense).first;
 
       final node = tree.singleWhere((node) => node.account.name == '餐饮');
       expect(node.children.single.name, '咖啡');

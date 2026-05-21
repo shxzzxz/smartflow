@@ -2,61 +2,103 @@ import '../../../core/errors/failure.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
+import '../commands/transaction_commands.dart';
 import '../entities/account_usage.dart';
 import '../entities/transaction.dart';
-import '../entities/transaction_ownership.dart';
 import '../enums/accounting_enums.dart';
+import '../ledger/poster.dart';
+import '../ledger/posting_protocol.dart';
 import '../repositories/account_repository.dart';
 import '../repositories/posting_repository.dart';
 import '../repositories/system_account_resolver.dart';
 import '../repositories/transaction_query_repository.dart';
-import 'posting_command.dart';
-import 'posting_service.dart';
-import 'transaction_query_service.dart';
+import '../views/transaction_views.dart';
+
+CreatedTransactionResult _toCreated(PostTransactionResult post) =>
+    CreatedTransactionResult(
+      transactionId: post.transactionId,
+      rootTransactionId: post.rootTransactionId,
+    );
 
 abstract interface class TransactionService {
-  Future<Result<PostTransactionResult>> createExpense(
+  Future<Result<CreatedTransactionResult>> createExpense(
     CreateExpenseCommand command,
   );
 
-  Future<Result<PostTransactionResult>> createIncome(
+  Future<Result<CreatedTransactionResult>> createIncome(
     CreateIncomeCommand command,
   );
 
-  Future<Result<PostTransactionResult>> createTransfer(
+  Future<Result<CreatedTransactionResult>> createTransfer(
     CreateTransferCommand command,
   );
 
-  Future<Result<PostTransactionResult>> createRefund(
+  Future<Result<CreatedTransactionResult>> createRefund(
     CreateRefundCommand command,
   );
 
-  Future<Result<PostTransactionResult>> createReimbursementAdvance(
+  Future<Result<CreatedTransactionResult>> createReimbursementAdvance(
     CreateReimbursementAdvanceCommand command,
   );
 
-  Future<Result<PostTransactionResult>> createReimbursementReceipt(
+  Future<Result<CreatedTransactionResult>> createReimbursementReceipt(
     CreateReimbursementReceiptCommand command,
   );
 
-  Future<Result<PostTransactionResult>> closeReimbursement(
+  Future<Result<CreatedTransactionResult>> closeReimbursement(
     CloseReimbursementCommand command,
   );
 
-  Future<Result<PostTransactionResult>> createRepayment(
+  Future<Result<CreatedTransactionResult>> createRepayment(
     CreateRepaymentCommand command,
   );
 
-  Future<Result<PostTransactionResult>> createBorrowing(
+  Future<Result<CreatedTransactionResult>> createBorrowing(
     CreateBorrowingCommand command,
   );
 
-  Future<Result<PostTransactionResult>> adjustBalance(
+  Future<Result<CreatedTransactionResult>> createOpeningBalance(
+    CreateOpeningBalanceCommand command,
+  );
+
+  Future<Result<CreatedTransactionResult>> adjustBalance(
     AdjustBalanceCommand command,
   );
 
-  Future<Result<PostTransactionResult>> correctTransaction(
-    CorrectTransactionCommand command,
+  Future<Result<CreatedTransactionResult>> correctExpense(
+    CorrectExpenseCommand command,
+  );
+
+  Future<Result<CreatedTransactionResult>> correctIncome(
+    CorrectIncomeCommand command,
+  );
+
+  Future<Result<CreatedTransactionResult>> correctTransfer(
+    CorrectTransferCommand command,
+  );
+
+  Future<Result<CreatedTransactionResult>> correctReimbursementAdvance(
+    CorrectReimbursementAdvanceCommand command,
+  );
+
+  Future<Result<CreatedTransactionResult>> correctRefund(
+    CorrectRefundCommand command,
+  );
+
+  Future<Result<CreatedTransactionResult>> correctReimbursementReceipt(
+    CorrectReimbursementReceiptCommand command,
+  );
+
+  Future<Result<CreatedTransactionResult>> correctReimbursementClose(
+    CorrectReimbursementCloseCommand command,
+  );
+
+  Future<Result<CreatedTransactionResult>> correctBorrowing(
+    CorrectBorrowingCommand command,
+  );
+
+  Future<Result<CreatedTransactionResult>> correctRepayment(
+    CorrectRepaymentCommand command,
   );
 
   Future<Result<void>> deleteTransaction(DeleteTransactionCommand command);
@@ -67,6 +109,10 @@ abstract interface class TransactionService {
 
   Future<Result<void>> updateTransactionBasics(
     UpdateTransactionBasicsCommand command,
+  );
+
+  Future<Result<void>> updateTransactionOwnership(
+    UpdateTransactionOwnershipCommand command,
   );
 }
 
@@ -82,14 +128,42 @@ class TransactionServiceImpl implements TransactionService {
        _systemAccounts = systemAccountResolver,
        _postingRepository = postingRepository;
 
-  final PostingService _postingService;
+  Future<Result<CreatedTransactionResult>> _post(
+    PostTransactionCommand command,
+  ) async {
+    final result = await _postingService.post(command);
+    switch (result) {
+      case Success(:final value):
+        return Result.success(_toCreated(value));
+      case FailureResult(:final failure):
+        return Result.failure(failure);
+    }
+  }
+
+  Future<Result<List<CreatedTransactionResult>>> _postMutation({
+    required List<TransactionStateUpdate> stateUpdates,
+    required List<PostTransactionCommand> commands,
+  }) async {
+    final result = await _postingService.postMutation(
+      stateUpdates: stateUpdates,
+      commands: commands,
+    );
+    switch (result) {
+      case Success(:final value):
+        return Result.success([for (final r in value) _toCreated(r)]);
+      case FailureResult(:final failure):
+        return Result.failure(failure);
+    }
+  }
+
+  final Poster _postingService;
   final AccountRepository? _accountRepository;
   final TransactionQueryRepository? _queryRepository;
   final SystemAccountResolver? _systemAccounts;
   final PostingRepository? _postingRepository;
 
   @override
-  Future<Result<PostTransactionResult>> createExpense(
+  Future<Result<CreatedTransactionResult>> createExpense(
     CreateExpenseCommand command,
   ) async {
     final roleFailure = await _validateAccountConstraints(
@@ -102,7 +176,7 @@ class TransactionServiceImpl implements TransactionService {
       return Result.failure(roleFailure);
     }
 
-    return _postingService.post(
+    return _post(
       PostTransactionCommand(
         businessPurpose: BusinessPurpose.dailyExpense,
         occurredAt: command.occurredAt,
@@ -136,7 +210,7 @@ class TransactionServiceImpl implements TransactionService {
   }
 
   @override
-  Future<Result<PostTransactionResult>> createIncome(
+  Future<Result<CreatedTransactionResult>> createIncome(
     CreateIncomeCommand command,
   ) async {
     final roleFailure = await _validateAccountConstraints(
@@ -149,7 +223,7 @@ class TransactionServiceImpl implements TransactionService {
       return Result.failure(roleFailure);
     }
 
-    return _postingService.post(
+    return _post(
       PostTransactionCommand(
         businessPurpose: BusinessPurpose.dailyIncome,
         occurredAt: command.occurredAt,
@@ -183,10 +257,10 @@ class TransactionServiceImpl implements TransactionService {
   }
 
   @override
-  Future<Result<PostTransactionResult>> createTransfer(
+  Future<Result<CreatedTransactionResult>> createTransfer(
     CreateTransferCommand command,
   ) async {
-    final feeFailure = command._validateFee();
+    final feeFailure = _validateTransferFee(command);
     if (feeFailure != null) {
       return Result.failure(feeFailure);
     }
@@ -217,7 +291,7 @@ class TransactionServiceImpl implements TransactionService {
       return Result.failure(roleFailure);
     }
 
-    return _postingService.post(
+    return _post(
       PostTransactionCommand(
         businessPurpose: BusinessPurpose.transfer,
         occurredAt: command.occurredAt,
@@ -263,7 +337,7 @@ class TransactionServiceImpl implements TransactionService {
   }
 
   @override
-  Future<Result<PostTransactionResult>> createRefund(
+  Future<Result<CreatedTransactionResult>> createRefund(
     CreateRefundCommand command,
   ) async {
     if (command.amount.minorUnits <= 0) {
@@ -360,7 +434,7 @@ class TransactionServiceImpl implements TransactionService {
       return Result.failure(roleFailure);
     }
 
-    return _postingService.post(
+    return _post(
       PostTransactionCommand(
         businessPurpose: BusinessPurpose.refund,
         occurredAt: command.occurredAt,
@@ -396,7 +470,7 @@ class TransactionServiceImpl implements TransactionService {
   }
 
   @override
-  Future<Result<PostTransactionResult>> createReimbursementAdvance(
+  Future<Result<CreatedTransactionResult>> createReimbursementAdvance(
     CreateReimbursementAdvanceCommand command,
   ) async {
     if (command.amount.minorUnits <= 0) {
@@ -420,7 +494,7 @@ class TransactionServiceImpl implements TransactionService {
       return Result.failure(roleFailure);
     }
 
-    return _postingService.post(
+    return _post(
       PostTransactionCommand(
         businessPurpose: BusinessPurpose.reimbursementAdvance,
         occurredAt: command.occurredAt,
@@ -455,7 +529,7 @@ class TransactionServiceImpl implements TransactionService {
   }
 
   @override
-  Future<Result<PostTransactionResult>> createReimbursementReceipt(
+  Future<Result<CreatedTransactionResult>> createReimbursementReceipt(
     CreateReimbursementReceiptCommand command,
   ) async {
     if (command.amount.minorUnits <= 0) {
@@ -509,7 +583,7 @@ class TransactionServiceImpl implements TransactionService {
       return Result.failure(roleFailure);
     }
 
-    return _postingService.post(
+    return _post(
       PostTransactionCommand(
         businessPurpose: BusinessPurpose.reimbursementReceipt,
         occurredAt: command.occurredAt,
@@ -545,7 +619,7 @@ class TransactionServiceImpl implements TransactionService {
   }
 
   @override
-  Future<Result<PostTransactionResult>> closeReimbursement(
+  Future<Result<CreatedTransactionResult>> closeReimbursement(
     CloseReimbursementCommand command,
   ) async {
     if (command.actualReceivedAmount.minorUnits < 0) {
@@ -656,7 +730,7 @@ class TransactionServiceImpl implements TransactionService {
       return Result.failure(roleFailure);
     }
 
-    return _postingService.post(
+    return _post(
       PostTransactionCommand(
         businessPurpose: BusinessPurpose.reimbursementClose,
         occurredAt: command.occurredAt,
@@ -676,7 +750,7 @@ class TransactionServiceImpl implements TransactionService {
   }
 
   @override
-  Future<Result<PostTransactionResult>> createRepayment(
+  Future<Result<CreatedTransactionResult>> createRepayment(
     CreateRepaymentCommand command,
   ) async {
     final principal = command.principal;
@@ -828,7 +902,7 @@ class TransactionServiceImpl implements TransactionService {
       ),
     ];
 
-    return _postingService.post(
+    return _post(
       PostTransactionCommand(
         businessPurpose: BusinessPurpose.debtRepayment,
         occurredAt: command.occurredAt,
@@ -846,7 +920,7 @@ class TransactionServiceImpl implements TransactionService {
   }
 
   @override
-  Future<Result<PostTransactionResult>> createBorrowing(
+  Future<Result<CreatedTransactionResult>> createBorrowing(
     CreateBorrowingCommand command,
   ) async {
     if (command.amount.minorUnits <= 0) {
@@ -875,7 +949,7 @@ class TransactionServiceImpl implements TransactionService {
             )
             : receiveAccountId;
 
-    return _postingService.post(
+    return _post(
       PostTransactionCommand(
         businessPurpose: BusinessPurpose.borrowing,
         occurredAt: command.occurredAt,
@@ -910,7 +984,97 @@ class TransactionServiceImpl implements TransactionService {
   }
 
   @override
-  Future<Result<PostTransactionResult>> adjustBalance(
+  Future<Result<CreatedTransactionResult>> createOpeningBalance(
+    CreateOpeningBalanceCommand command,
+  ) async {
+    final repository = _accountRepository;
+    if (repository == null) {
+      return const Result.failure(
+        Failure(
+          code: 'account_repository_unavailable',
+          message: 'AccountRepository is required to create opening balance.',
+        ),
+      );
+    }
+    final account = await repository.findAccountById(command.accountId);
+    if (account == null) {
+      return const Result.failure(
+        Failure(code: 'account_not_found', message: 'Account does not exist.'),
+      );
+    }
+    if (account.archivedAt != null) {
+      return const Result.failure(
+        Failure(
+          code: 'account_archived',
+          message: 'Cannot initialize archived account.',
+        ),
+      );
+    }
+    if (account.currencyCode != command.amount.currency) {
+      return const Result.failure(
+        Failure(
+          code: 'opening_balance_currency_mismatch',
+          message: 'Opening balance currency must match account currency.',
+        ),
+      );
+    }
+    if (command.amount.minorUnits == 0) {
+      return const Result.failure(
+        Failure(
+          code: 'opening_balance_zero',
+          message: 'Opening balance amount cannot be zero.',
+        ),
+      );
+    }
+
+    final amount = command.amount.abs();
+    final accountDirection = _directionForBalanceDelta(
+      accountType: account.type,
+      deltaMinor: command.amount.minorUnits,
+    );
+    final equityDirection =
+        accountDirection == EntryDirection.debit
+            ? EntryDirection.credit
+            : EntryDirection.debit;
+
+    final equityAccountId = await _requireSystemAccountResolver()
+        .resolveOpeningBalance(currencyCode: amount.currency);
+
+    return _post(
+      PostTransactionCommand(
+        businessPurpose: BusinessPurpose.openingBalance,
+        occurredAt: command.occurredAt,
+        currencyCode: amount.currency,
+        primaryAmount: amount,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+        isExcludedFromStats: command.isExcludedFromStats,
+        isExcludedFromBudget: command.isExcludedFromBudget,
+        details: [
+          PostTransactionDetailInput(
+            lineNo: 1,
+            type: TransactionDetailType.openingBalanceMain,
+            amount: amount,
+          ),
+        ],
+        entries: [
+          PostEntryInput(
+            accountId: command.accountId,
+            direction: accountDirection,
+            amount: amount,
+          ),
+          PostEntryInput(
+            accountId: equityAccountId,
+            direction: equityDirection,
+            amount: amount,
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Future<Result<CreatedTransactionResult>> adjustBalance(
     AdjustBalanceCommand command,
   ) async {
     final repository = _accountRepository;
@@ -970,12 +1134,10 @@ class TransactionServiceImpl implements TransactionService {
       minorUnits: deltaMinor.abs(),
       currency: command.targetBalance.currency,
     );
-    final increasesOnDebit = account.type == AccountType.asset;
-    final increase = deltaMinor > 0;
-    final accountDirection =
-        increasesOnDebit
-            ? (increase ? EntryDirection.debit : EntryDirection.credit)
-            : (increase ? EntryDirection.credit : EntryDirection.debit);
+    final accountDirection = _directionForBalanceDelta(
+      accountType: account.type,
+      deltaMinor: deltaMinor,
+    );
     final equityDirection =
         accountDirection == EntryDirection.debit
             ? EntryDirection.credit
@@ -984,7 +1146,7 @@ class TransactionServiceImpl implements TransactionService {
     final equityAccountId = await _requireSystemAccountResolver()
         .resolveOpeningBalance(currencyCode: amount.currency);
 
-    return _postingService.post(
+    return _post(
       PostTransactionCommand(
         businessPurpose: BusinessPurpose.balanceAdjustment,
         occurredAt: command.occurredAt,
@@ -1017,9 +1179,251 @@ class TransactionServiceImpl implements TransactionService {
     );
   }
 
+  EntryDirection _directionForBalanceDelta({
+    required AccountType accountType,
+    required int deltaMinor,
+  }) {
+    final increasesOnDebit =
+        accountType == AccountType.asset || accountType == AccountType.expense;
+    final increase = deltaMinor > 0;
+
+    if (increasesOnDebit) {
+      return increase ? EntryDirection.debit : EntryDirection.credit;
+    }
+
+    return increase ? EntryDirection.credit : EntryDirection.debit;
+  }
+
+  Failure? _validateTransferFee(CreateTransferCommand command) {
+    final feeAmount = command.feeAmount;
+    final feeExpenseAccountId = command.feeExpenseAccountId;
+    if (feeAmount == null) {
+      return feeExpenseAccountId == null
+          ? null
+          : const Failure(
+            code: 'transfer_fee_amount_required',
+            message: 'Transfer fee amount is required when fee account is set.',
+          );
+    }
+
+    if (feeAmount.currency != command.amount.currency) {
+      return const Failure(
+        code: 'transfer_fee_currency_mismatch',
+        message: 'Transfer fee currency must match transfer amount currency.',
+      );
+    }
+    if (feeAmount.minorUnits < 0) {
+      return const Failure(
+        code: 'transfer_fee_negative',
+        message: 'Transfer fee cannot be negative.',
+      );
+    }
+    if (feeAmount.minorUnits == 0) {
+      return feeExpenseAccountId == null
+          ? null
+          : const Failure(
+            code: 'transfer_fee_positive_required',
+            message: 'Transfer fee must be positive when fee account is set.',
+          );
+    }
+    if (feeExpenseAccountId == null) {
+      return const Failure(
+        code: 'transfer_fee_account_required',
+        message:
+            'Transfer fee account is required when fee amount is positive.',
+      );
+    }
+
+    return null;
+  }
+
   @override
-  Future<Result<PostTransactionResult>> correctTransaction(
-    CorrectTransactionCommand command,
+  Future<Result<CreatedTransactionResult>> correctExpense(
+    CorrectExpenseCommand command,
+  ) {
+    return _correctTransaction(
+      _CorrectTransactionDraft(
+        transactionId: command.transactionId,
+        businessPurpose: BusinessPurpose.dailyExpense,
+        amount: command.amount,
+        paidFromAccountId: command.paidFromAccountId,
+        expenseAccountId: command.expenseAccountId,
+        occurredAt: command.occurredAt,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+        isExcludedFromStats: command.isExcludedFromStats,
+        isExcludedFromBudget: command.isExcludedFromBudget,
+      ),
+    );
+  }
+
+  @override
+  Future<Result<CreatedTransactionResult>> correctIncome(
+    CorrectIncomeCommand command,
+  ) {
+    return _correctTransaction(
+      _CorrectTransactionDraft(
+        transactionId: command.transactionId,
+        businessPurpose: BusinessPurpose.dailyIncome,
+        amount: command.amount,
+        receiveAccountId: command.receiveAccountId,
+        incomeAccountId: command.incomeAccountId,
+        occurredAt: command.occurredAt,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+        isExcludedFromStats: command.isExcludedFromStats,
+        isExcludedFromBudget: command.isExcludedFromBudget,
+      ),
+    );
+  }
+
+  @override
+  Future<Result<CreatedTransactionResult>> correctTransfer(
+    CorrectTransferCommand command,
+  ) {
+    return _correctTransaction(
+      _CorrectTransactionDraft(
+        transactionId: command.transactionId,
+        businessPurpose: BusinessPurpose.transfer,
+        amount: command.amount,
+        fromAccountId: command.fromAccountId,
+        toAccountId: command.toAccountId,
+        occurredAt: command.occurredAt,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+        isExcludedFromStats: command.isExcludedFromStats,
+        isExcludedFromBudget: command.isExcludedFromBudget,
+      ),
+    );
+  }
+
+  @override
+  Future<Result<CreatedTransactionResult>> correctReimbursementAdvance(
+    CorrectReimbursementAdvanceCommand command,
+  ) {
+    return _correctTransaction(
+      _CorrectTransactionDraft(
+        transactionId: command.transactionId,
+        businessPurpose: BusinessPurpose.reimbursementAdvance,
+        amount: command.amount,
+        paidFromAccountId: command.paidFromAccountId,
+        expenseAccountId: command.expenseCategoryId,
+        receivableAccountId: command.receivableAccountId,
+        occurredAt: command.occurredAt,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+        isExcludedFromStats: command.isExcludedFromStats,
+        isExcludedFromBudget: command.isExcludedFromBudget,
+      ),
+    );
+  }
+
+  @override
+  Future<Result<CreatedTransactionResult>> correctRefund(
+    CorrectRefundCommand command,
+  ) {
+    return _correctTransaction(
+      _CorrectTransactionDraft(
+        transactionId: command.transactionId,
+        businessPurpose: BusinessPurpose.refund,
+        amount: command.amount,
+        receiveAccountId: command.refundToAccountId,
+        occurredAt: command.occurredAt,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+        isExcludedFromStats: command.isExcludedFromStats,
+        isExcludedFromBudget: command.isExcludedFromBudget,
+      ),
+    );
+  }
+
+  @override
+  Future<Result<CreatedTransactionResult>> correctReimbursementReceipt(
+    CorrectReimbursementReceiptCommand command,
+  ) {
+    return _correctTransaction(
+      _CorrectTransactionDraft(
+        transactionId: command.transactionId,
+        businessPurpose: BusinessPurpose.reimbursementReceipt,
+        amount: command.amount,
+        receivableAccountId: command.receivableAccountId,
+        receiveAccountId: command.receiveAccountId,
+        occurredAt: command.occurredAt,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+        isExcludedFromStats: command.isExcludedFromStats,
+        isExcludedFromBudget: command.isExcludedFromBudget,
+      ),
+    );
+  }
+
+  @override
+  Future<Result<CreatedTransactionResult>> correctReimbursementClose(
+    CorrectReimbursementCloseCommand command,
+  ) {
+    return _correctTransaction(
+      _CorrectTransactionDraft(
+        transactionId: command.transactionId,
+        businessPurpose: BusinessPurpose.reimbursementClose,
+        amount: command.actualReceivedAmount,
+        receivableAccountId: command.receivableAccountId,
+        receiveAccountId: command.receiveAccountId,
+        occurredAt: command.occurredAt,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+        isExcludedFromStats: command.isExcludedFromStats,
+        isExcludedFromBudget: command.isExcludedFromBudget,
+      ),
+    );
+  }
+
+  @override
+  Future<Result<CreatedTransactionResult>> correctBorrowing(
+    CorrectBorrowingCommand command,
+  ) {
+    return _correctTransaction(
+      _CorrectTransactionDraft(
+        transactionId: command.transactionId,
+        businessPurpose: BusinessPurpose.borrowing,
+        amount: command.amount,
+        liabilityAccountId: command.liabilityAccountId,
+        receiveAccountId: command.receiveAccountId,
+        occurredAt: command.occurredAt,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+        isExcludedFromStats: command.isExcludedFromStats,
+        isExcludedFromBudget: command.isExcludedFromBudget,
+      ),
+    );
+  }
+
+  @override
+  Future<Result<CreatedTransactionResult>> correctRepayment(
+    CorrectRepaymentCommand command,
+  ) {
+    return _correctTransaction(
+      _CorrectTransactionDraft(
+        transactionId: command.transactionId,
+        businessPurpose: BusinessPurpose.debtRepayment,
+        amount: command.principal,
+        repaymentInterest: command.interest,
+        repaymentFee: command.fee,
+        repaymentDiscount: command.discount,
+        liabilityAccountId: command.liabilityAccountId,
+        paidFromAccountId: command.paidFromAccountId,
+        interestExpenseAccountId: command.interestExpenseAccountId,
+        feeExpenseAccountId: command.feeExpenseAccountId,
+        occurredAt: command.occurredAt,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+        isExcludedFromStats: command.isExcludedFromStats,
+        isExcludedFromBudget: command.isExcludedFromBudget,
+      ),
+    );
+  }
+
+  Future<Result<CreatedTransactionResult>> _correctTransaction(
+    _CorrectTransactionDraft command,
   ) async {
     final query = _requireQueryRepository();
     final original =
@@ -1048,6 +1452,14 @@ class TransactionServiceImpl implements TransactionService {
         ),
       );
     }
+    if (original.transaction.businessPurpose != command.businessPurpose) {
+      return const Result.failure(
+        Failure(
+          code: 'transaction_correction_purpose_mismatch',
+          message: 'Correction command purpose must match the transaction.',
+        ),
+      );
+    }
 
     if (original.children.isNotEmpty) {
       final structure = _replacementStructure(command);
@@ -1063,9 +1475,10 @@ class TransactionServiceImpl implements TransactionService {
       final metadata = await updateTransactionMetadata(
         UpdateTransactionMetadataCommand(
           transactionId: command.transactionId,
-          note: command.note == null
-              ? const Patch<String>.clear()
-              : Patch.set(command.note!),
+          note:
+              command.note == null
+                  ? const Patch<String>.clear()
+                  : Patch.set(command.note!),
           isExcludedFromStats: command.isExcludedFromStats,
           isExcludedFromBudget: command.isExcludedFromBudget,
         ),
@@ -1073,7 +1486,7 @@ class TransactionServiceImpl implements TransactionService {
       return metadata.when(
         success:
             (_) => Result.success(
-              PostTransactionResult(
+              CreatedTransactionResult(
                 transactionId: original.transaction.id,
                 rootTransactionId: original.transaction.rootTransactionId,
               ),
@@ -1091,7 +1504,7 @@ class TransactionServiceImpl implements TransactionService {
           original,
           reason: MutationReason.correction,
         );
-        final result = await _postingService.postMutation(
+        final result = await _postMutation(
           stateUpdates: [
             TransactionStateUpdate(
               transactionId: original.transaction.id,
@@ -1141,7 +1554,7 @@ class TransactionServiceImpl implements TransactionService {
     }
     detailsToCancel.add(target);
 
-    final result = await _postingService.postMutation(
+    final result = await _postMutation(
       stateUpdates: [
         for (final detail in detailsToCancel)
           TransactionStateUpdate(
@@ -1344,6 +1757,51 @@ class TransactionServiceImpl implements TransactionService {
     }
   }
 
+  @override
+  Future<Result<void>> updateTransactionOwnership(
+    UpdateTransactionOwnershipCommand command,
+  ) async {
+    final repository = _postingRepository;
+    if (repository == null) {
+      return const Result.failure(
+        Failure(
+          code: 'posting_repository_unavailable',
+          message:
+              'PostingRepository is required to update transaction ownership.',
+        ),
+      );
+    }
+    final query = _queryRepository;
+    if (query != null) {
+      final transaction = await query.findTransactionById(
+        command.transactionId,
+      );
+      if (transaction == null) {
+        return const Result.failure(
+          Failure(
+            code: 'transaction_not_found',
+            message: 'Transaction does not exist.',
+          ),
+        );
+      }
+    }
+    try {
+      await repository.updateTransactionOwnership(
+        transactionId: command.transactionId,
+        ownership: command.ownership,
+      );
+      return const Result.success(null);
+    } on Object catch (error) {
+      return Result.failure(
+        Failure(
+          code: 'transaction_ownership_update_failed',
+          message: 'Failed to update transaction ownership.',
+          cause: error,
+        ),
+      );
+    }
+  }
+
   EntryLineView? _settlementEntry(TransactionDetailView detail) {
     final direction = switch (detail.transaction.businessPurpose) {
       BusinessPurpose.dailyExpense ||
@@ -1448,6 +1906,9 @@ class TransactionServiceImpl implements TransactionService {
       BusinessPurpose.dailyIncome ||
       BusinessPurpose.transfer ||
       BusinessPurpose.reimbursementAdvance ||
+      BusinessPurpose.refund ||
+      BusinessPurpose.reimbursementReceipt ||
+      BusinessPurpose.reimbursementClose ||
       BusinessPurpose.debtRepayment ||
       BusinessPurpose.borrowing => true,
       _ => false,
@@ -1497,7 +1958,7 @@ class TransactionServiceImpl implements TransactionService {
   }
 
   Future<Result<PostTransactionCommand>> _buildReplacementCommand(
-    CorrectTransactionCommand command,
+    _CorrectTransactionDraft command,
     TransactionDetailView original,
   ) async {
     final base = _replacementStructure(command);
@@ -1508,6 +1969,15 @@ class TransactionServiceImpl implements TransactionService {
 
     if (command.businessPurpose == BusinessPurpose.debtRepayment) {
       return _buildRepaymentReplacementCommand(command, original);
+    }
+    if (command.businessPurpose == BusinessPurpose.refund) {
+      return _buildRefundReplacementCommand(command, original);
+    }
+    if (command.businessPurpose == BusinessPurpose.reimbursementReceipt) {
+      return _buildReimbursementReceiptReplacementCommand(command, original);
+    }
+    if (command.businessPurpose == BusinessPurpose.reimbursementClose) {
+      return _buildReimbursementCloseReplacementCommand(command, original);
     }
 
     final transaction = original.transaction;
@@ -1537,8 +2007,10 @@ class TransactionServiceImpl implements TransactionService {
                 : null,
         mutationKind: MutationKind.correction,
         mutationPreviousTransactionId: transaction.id,
-        isExcludedFromStats: command.isExcludedFromStats,
-        isExcludedFromBudget: command.isExcludedFromBudget,
+        isExcludedFromStats:
+            command.isExcludedFromStats ?? transaction.isExcludedFromStats,
+        isExcludedFromBudget:
+            command.isExcludedFromBudget ?? transaction.isExcludedFromBudget,
         sourceKind: transaction.sourceKind,
         ownership: transaction.ownership,
         details: _replacementDetails(command.businessPurpose, amount),
@@ -1570,6 +2042,14 @@ class TransactionServiceImpl implements TransactionService {
           structure.incomeAccountId!: {AccountType.income},
         },
       ),
+      BusinessPurpose.refund => _validateAccountUsages({
+        structure.receiveAccountId!: AccountUsage.settlement,
+      }),
+      BusinessPurpose.reimbursementReceipt ||
+      BusinessPurpose.reimbursementClose => _validateAccountUsages({
+        structure.receivableAccountId!: AccountUsage.reimbursement,
+        structure.receiveAccountId!: AccountUsage.settlement,
+      }),
       BusinessPurpose.transfer => _validateAccountUsages({
         structure.fromAccountId!: AccountUsage.settlement,
         structure.toAccountId!: AccountUsage.settlement,
@@ -1604,6 +2084,9 @@ class TransactionServiceImpl implements TransactionService {
       BusinessPurpose.transfer => TransactionDetailType.transferMain,
       BusinessPurpose.reimbursementAdvance =>
         TransactionDetailType.reimbursementAdvanceMain,
+      BusinessPurpose.refund => TransactionDetailType.refundMain,
+      BusinessPurpose.reimbursementReceipt =>
+        TransactionDetailType.reimbursementReceiptMain,
       BusinessPurpose.debtRepayment => TransactionDetailType.repaymentPrincipal,
       BusinessPurpose.borrowing => TransactionDetailType.borrowingPrincipal,
       _ => TransactionDetailType.primaryExpense,
@@ -1653,6 +2136,30 @@ class TransactionServiceImpl implements TransactionService {
           amount: amount,
         ),
       ],
+      BusinessPurpose.refund => [
+        PostEntryInput(
+          accountId: structure.receiveAccountId!,
+          direction: EntryDirection.debit,
+          amount: amount,
+        ),
+        PostEntryInput(
+          accountId: structure.expenseAccountId!,
+          direction: EntryDirection.credit,
+          amount: amount,
+        ),
+      ],
+      BusinessPurpose.reimbursementReceipt => [
+        PostEntryInput(
+          accountId: structure.receiveAccountId!,
+          direction: EntryDirection.debit,
+          amount: amount,
+        ),
+        PostEntryInput(
+          accountId: structure.receivableAccountId!,
+          direction: EntryDirection.credit,
+          amount: amount,
+        ),
+      ],
       BusinessPurpose.transfer => [
         PostEntryInput(
           accountId: structure.toAccountId!,
@@ -1693,8 +2200,385 @@ class TransactionServiceImpl implements TransactionService {
     };
   }
 
+  Future<Result<PostTransactionCommand>> _buildRefundReplacementCommand(
+    _CorrectTransactionDraft command,
+    TransactionDetailView original,
+  ) async {
+    final amount = command.amount;
+    if (amount.minorUnits <= 0) {
+      return const Result.failure(
+        Failure(
+          code: 'refund_amount_not_positive',
+          message: 'Refund amount must be positive.',
+        ),
+      );
+    }
+
+    final query = _requireQueryRepository();
+    final transaction = original.transaction;
+    final parentId = transaction.parentTransactionId;
+    if (parentId == null) {
+      return const Result.failure(
+        Failure(
+          code: 'refund_parent_not_found',
+          message: 'Original expense not found.',
+        ),
+      );
+    }
+    final parent = await query.findTransactionById(parentId);
+    if (parent == null) {
+      return const Result.failure(
+        Failure(
+          code: 'refund_parent_not_found',
+          message: 'Original expense not found.',
+        ),
+      );
+    }
+    if (parent.businessPurpose != BusinessPurpose.dailyExpense &&
+        parent.businessPurpose != BusinessPurpose.reimbursementAdvance) {
+      return const Result.failure(
+        Failure(
+          code: 'refund_parent_not_expense',
+          message: 'Refund can only be applied to an expense transaction.',
+        ),
+      );
+    }
+    if (parent.businessPurpose == BusinessPurpose.reimbursementAdvance) {
+      final summary = await query.getReimbursementSummary(
+        parent.rootTransactionId,
+      );
+      if (summary?.isClosed ?? false) {
+        return const Result.failure(
+          Failure(
+            code: 'refund_parent_reimbursement_closed',
+            message: 'Refund is not supported after reimbursement is closed.',
+          ),
+        );
+      }
+    }
+    if (parent.businessState != BusinessState.current) {
+      return const Result.failure(
+        Failure(
+          code: 'refund_parent_not_current',
+          message: 'Refund can only be applied to a current expense.',
+        ),
+      );
+    }
+    if (parent.currencyCode != amount.currency) {
+      return const Result.failure(
+        Failure(
+          code: 'refund_currency_mismatch',
+          message: 'Refund currency must match the original expense.',
+        ),
+      );
+    }
+
+    final refunded = await query.getRefundedTotal(
+      parent.rootTransactionId,
+      currencyCode: parent.currencyCode,
+    );
+    final remaining =
+        parent.primaryAmount - refunded + transaction.primaryAmount;
+    if (amount.minorUnits > remaining.minorUnits) {
+      return Result.failure(
+        Failure(
+          code: 'refund_exceeds_remaining',
+          message:
+              'Refund exceeds remaining refundable amount '
+              '(${remaining.format(withCurrency: true)}).',
+        ),
+      );
+    }
+
+    final refundCreditAccountId =
+        await _findRefundCreditAccountIdInParentEntries(
+          parentId: parent.id,
+          parentPurpose: parent.businessPurpose,
+        );
+    if (refundCreditAccountId == null) {
+      return const Result.failure(
+        Failure(
+          code: 'refund_expense_account_not_found',
+          message: 'Original refund target account cannot be located.',
+        ),
+      );
+    }
+
+    return Result.success(
+      PostTransactionCommand(
+        businessPurpose: BusinessPurpose.refund,
+        occurredAt: command.occurredAt,
+        currencyCode: amount.currency,
+        primaryAmount: amount,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+        rootTransactionId: transaction.rootTransactionId,
+        parentTransactionId: transaction.parentTransactionId,
+        mutationKind: MutationKind.correction,
+        mutationPreviousTransactionId: transaction.id,
+        isExcludedFromStats:
+            command.isExcludedFromStats ?? transaction.isExcludedFromStats,
+        isExcludedFromBudget:
+            command.isExcludedFromBudget ?? transaction.isExcludedFromBudget,
+        sourceKind: transaction.sourceKind,
+        ownership: transaction.ownership,
+        details: [
+          PostTransactionDetailInput(
+            lineNo: 1,
+            type: TransactionDetailType.refundMain,
+            amount: amount,
+          ),
+        ],
+        entries: [
+          PostEntryInput(
+            accountId: command.receiveAccountId!,
+            direction: EntryDirection.debit,
+            amount: amount,
+          ),
+          PostEntryInput(
+            accountId: refundCreditAccountId,
+            direction: EntryDirection.credit,
+            amount: amount,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<Result<PostTransactionCommand>>
+  _buildReimbursementReceiptReplacementCommand(
+    _CorrectTransactionDraft command,
+    TransactionDetailView original,
+  ) async {
+    final amount = command.amount;
+    if (amount.minorUnits <= 0) {
+      return const Result.failure(
+        Failure(
+          code: 'reimbursement_amount_not_positive',
+          message: 'Receipt amount must be positive.',
+        ),
+      );
+    }
+
+    final query = _requireQueryRepository();
+    final transaction = original.transaction;
+    final advance = await query.findTransactionById(
+      transaction.parentTransactionId ?? transaction.rootTransactionId,
+    );
+    final advanceFailure = _validateAdvance(advance, amount.currency);
+    if (advanceFailure != null) {
+      return Result.failure(advanceFailure);
+    }
+    final summary = await query.getReimbursementSummary(advance!.id);
+    if (summary == null) {
+      return const Result.failure(
+        Failure(
+          code: 'reimbursement_summary_unavailable',
+          message: 'Cannot resolve reimbursement state.',
+        ),
+      );
+    }
+    if (summary.isClosed) {
+      return const Result.failure(
+        Failure(
+          code: 'reimbursement_already_closed',
+          message: 'This reimbursement chain is already closed.',
+        ),
+      );
+    }
+    final remaining = summary.outstanding + transaction.primaryAmount;
+    if (amount.minorUnits > remaining.minorUnits) {
+      return Result.failure(
+        Failure(
+          code: 'reimbursement_receipt_exceeds_outstanding',
+          message:
+              'Receipt exceeds outstanding receivable '
+              '(${remaining.format(withCurrency: true)}).',
+        ),
+      );
+    }
+
+    return Result.success(
+      PostTransactionCommand(
+        businessPurpose: BusinessPurpose.reimbursementReceipt,
+        occurredAt: command.occurredAt,
+        currencyCode: amount.currency,
+        primaryAmount: amount,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+        rootTransactionId: transaction.rootTransactionId,
+        parentTransactionId: transaction.parentTransactionId,
+        mutationKind: MutationKind.correction,
+        mutationPreviousTransactionId: transaction.id,
+        isExcludedFromStats:
+            command.isExcludedFromStats ?? transaction.isExcludedFromStats,
+        isExcludedFromBudget:
+            command.isExcludedFromBudget ?? transaction.isExcludedFromBudget,
+        sourceKind: transaction.sourceKind,
+        ownership: transaction.ownership,
+        details: [
+          PostTransactionDetailInput(
+            lineNo: 1,
+            type: TransactionDetailType.reimbursementReceiptMain,
+            amount: amount,
+          ),
+        ],
+        entries: [
+          PostEntryInput(
+            accountId: command.receiveAccountId!,
+            direction: EntryDirection.debit,
+            amount: amount,
+          ),
+          PostEntryInput(
+            accountId: command.receivableAccountId!,
+            direction: EntryDirection.credit,
+            amount: amount,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<Result<PostTransactionCommand>>
+  _buildReimbursementCloseReplacementCommand(
+    _CorrectTransactionDraft command,
+    TransactionDetailView original,
+  ) async {
+    final actual = command.amount;
+    if (actual.minorUnits < 0) {
+      return const Result.failure(
+        Failure(
+          code: 'reimbursement_close_amount_negative',
+          message: 'Final receipt amount cannot be negative.',
+        ),
+      );
+    }
+
+    final transaction = original.transaction;
+    final outstanding = _detailAmount(
+      original,
+      TransactionDetailType.reimbursementCloseMain,
+    );
+    if (outstanding == null) {
+      return const Result.failure(
+        Failure(
+          code: 'reimbursement_close_structure_invalid',
+          message: 'Reimbursement close transaction structure is invalid.',
+        ),
+      );
+    }
+    if (actual.currency != outstanding.currency) {
+      return const Result.failure(
+        Failure(
+          code: 'reimbursement_currency_mismatch',
+          message: 'Currency must match the reimbursement advance.',
+        ),
+      );
+    }
+
+    final query = _requireQueryRepository();
+    final advance = await query.findTransactionById(
+      transaction.parentTransactionId ?? transaction.rootTransactionId,
+    );
+    final advanceFailure = _validateAdvance(advance, actual.currency);
+    if (advanceFailure != null) {
+      return Result.failure(advanceFailure);
+    }
+
+    final gap = actual - outstanding;
+    final hasOverGap = gap.minorUnits > 0;
+    final hasUnderGap = gap.minorUnits < 0;
+    final details = <PostTransactionDetailInput>[
+      PostTransactionDetailInput(
+        lineNo: 1,
+        type: TransactionDetailType.reimbursementCloseMain,
+        amount: outstanding,
+      ),
+      if (hasOverGap)
+        PostTransactionDetailInput(
+          lineNo: 2,
+          type: TransactionDetailType.reimbursementGapIncome,
+          amount: gap,
+        ),
+      if (hasUnderGap)
+        PostTransactionDetailInput(
+          lineNo: 2,
+          type: TransactionDetailType.reimbursementGapExpense,
+          amount: gap.abs(),
+        ),
+    ];
+    final entries = <PostEntryInput>[
+      if (actual.minorUnits > 0)
+        PostEntryInput(
+          accountId: command.receiveAccountId!,
+          direction: EntryDirection.debit,
+          amount: actual,
+        ),
+      PostEntryInput(
+        accountId: command.receivableAccountId!,
+        direction: EntryDirection.credit,
+        amount: outstanding,
+      ),
+    ];
+
+    if (hasOverGap) {
+      final gapAccountId = await _requireSystemAccountResolver()
+          .resolveReimbursementGapIncome(currencyCode: actual.currency);
+      entries.add(
+        PostEntryInput(
+          accountId: gapAccountId,
+          direction: EntryDirection.credit,
+          amount: gap,
+        ),
+      );
+    } else if (hasUnderGap) {
+      final originalExpenseId = advance!.reimbursementExpenseAccountId;
+      if (originalExpenseId == null) {
+        return const Result.failure(
+          Failure(
+            code: 'reimbursement_close_expense_missing',
+            message: 'Original reimbursement expense category is not recorded.',
+          ),
+        );
+      }
+      entries.add(
+        PostEntryInput(
+          accountId: originalExpenseId,
+          direction: EntryDirection.debit,
+          amount: gap.abs(),
+        ),
+      );
+    }
+
+    return Result.success(
+      PostTransactionCommand(
+        businessPurpose: BusinessPurpose.reimbursementClose,
+        occurredAt: command.occurredAt,
+        currencyCode: actual.currency,
+        primaryAmount: actual.minorUnits > 0 ? actual : outstanding,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+        rootTransactionId: transaction.rootTransactionId,
+        parentTransactionId: transaction.parentTransactionId,
+        reimbursementExpenseAccountId:
+            transaction.reimbursementExpenseAccountId ??
+            advance!.reimbursementExpenseAccountId,
+        mutationKind: MutationKind.correction,
+        mutationPreviousTransactionId: transaction.id,
+        isExcludedFromStats:
+            command.isExcludedFromStats ?? transaction.isExcludedFromStats,
+        isExcludedFromBudget:
+            command.isExcludedFromBudget ?? transaction.isExcludedFromBudget,
+        sourceKind: transaction.sourceKind,
+        ownership: transaction.ownership,
+        details: details,
+        entries: entries,
+      ),
+    );
+  }
+
   Future<Result<PostTransactionCommand>> _buildRepaymentReplacementCommand(
-    CorrectTransactionCommand command,
+    _CorrectTransactionDraft command,
     TransactionDetailView original,
   ) async {
     final principal = command.amount;
@@ -1801,8 +2685,10 @@ class TransactionServiceImpl implements TransactionService {
         parentTransactionId: transaction.parentTransactionId,
         mutationKind: MutationKind.correction,
         mutationPreviousTransactionId: transaction.id,
-        isExcludedFromStats: command.isExcludedFromStats,
-        isExcludedFromBudget: command.isExcludedFromBudget,
+        isExcludedFromStats:
+            command.isExcludedFromStats ?? transaction.isExcludedFromStats,
+        isExcludedFromBudget:
+            command.isExcludedFromBudget ?? transaction.isExcludedFromBudget,
         sourceKind: transaction.sourceKind,
         ownership: transaction.ownership,
         details: [
@@ -1864,8 +2750,20 @@ class TransactionServiceImpl implements TransactionService {
     );
   }
 
+  Money? _detailAmount(
+    TransactionDetailView detail,
+    TransactionDetailType type,
+  ) {
+    for (final line in detail.details) {
+      if (line.type == type) {
+        return line.amount;
+      }
+    }
+    return null;
+  }
+
   _ReplacementStructure _replacementStructure(
-    CorrectTransactionCommand command,
+    _CorrectTransactionDraft command,
   ) {
     return _ReplacementStructure(
       businessPurpose: command.businessPurpose,
@@ -1920,6 +2818,12 @@ class TransactionServiceImpl implements TransactionService {
             replacement.receivableAccountId ==
                 firstAsset(EntryDirection.debit) &&
             replacement.paidFromAccountId == firstAsset(EntryDirection.credit),
+      BusinessPurpose.refund =>
+        replacement.receiveAccountId == firstAsset(EntryDirection.debit),
+      BusinessPurpose.reimbursementReceipt ||
+      BusinessPurpose.reimbursementClose =>
+        replacement.receivableAccountId == firstAsset(EntryDirection.credit) &&
+            replacement.receiveAccountId == firstAsset(EntryDirection.debit),
       BusinessPurpose.dailyIncome =>
         replacement.incomeAccountId ==
                 firstAccount(AccountType.income, EntryDirection.credit) &&
@@ -2098,291 +3002,8 @@ class TransactionServiceImpl implements TransactionService {
   }
 }
 
-class CreateExpenseCommand {
-  const CreateExpenseCommand({
-    required this.amount,
-    required this.paidFromAccountId,
-    required this.expenseAccountId,
-    required this.occurredAt,
-    this.counterpartyName,
-    this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
-  });
-
-  final Money amount;
-  final int paidFromAccountId;
-  final int expenseAccountId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
-}
-
-class CreateIncomeCommand {
-  const CreateIncomeCommand({
-    required this.amount,
-    required this.receiveAccountId,
-    required this.incomeAccountId,
-    required this.occurredAt,
-    this.counterpartyName,
-    this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
-  });
-
-  final Money amount;
-  final int receiveAccountId;
-  final int incomeAccountId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
-}
-
-class CreateTransferCommand {
-  const CreateTransferCommand({
-    required this.amount,
-    required this.fromAccountId,
-    required this.toAccountId,
-    required this.occurredAt,
-    this.feeAmount,
-    this.feeExpenseAccountId,
-    this.counterpartyName,
-    this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
-  });
-
-  final Money amount;
-  final int fromAccountId;
-  final int toAccountId;
-  final DateTime occurredAt;
-  final Money? feeAmount;
-  final int? feeExpenseAccountId;
-  final String? counterpartyName;
-  final String? note;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
-
-  Failure? _validateFee() {
-    if (feeAmount == null) {
-      return feeExpenseAccountId == null
-          ? null
-          : const Failure(
-            code: 'transfer_fee_amount_required',
-            message: 'Transfer fee amount is required when fee account is set.',
-          );
-    }
-
-    if (feeAmount!.currency != amount.currency) {
-      return const Failure(
-        code: 'transfer_fee_currency_mismatch',
-        message: 'Transfer fee currency must match transfer amount currency.',
-      );
-    }
-    if (feeAmount!.minorUnits < 0) {
-      return const Failure(
-        code: 'transfer_fee_negative',
-        message: 'Transfer fee cannot be negative.',
-      );
-    }
-    if (feeAmount!.minorUnits == 0) {
-      return feeExpenseAccountId == null
-          ? null
-          : const Failure(
-            code: 'transfer_fee_positive_required',
-            message: 'Transfer fee must be positive when fee account is set.',
-          );
-    }
-    if (feeExpenseAccountId == null) {
-      return const Failure(
-        code: 'transfer_fee_account_required',
-        message:
-            'Transfer fee account is required when fee amount is positive.',
-      );
-    }
-
-    return null;
-  }
-}
-
-class CreateRefundCommand {
-  const CreateRefundCommand({
-    required this.amount,
-    required this.parentTransactionId,
-    required this.refundToAccountId,
-    required this.occurredAt,
-    this.counterpartyName,
-    this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
-  });
-
-  final Money amount;
-  final int parentTransactionId;
-  final int refundToAccountId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
-}
-
-class CreateReimbursementAdvanceCommand {
-  const CreateReimbursementAdvanceCommand({
-    required this.amount,
-    required this.receivableAccountId,
-    required this.paidFromAccountId,
-    required this.expenseCategoryId,
-    required this.occurredAt,
-    this.counterpartyName,
-    this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
-  });
-
-  final Money amount;
-  final int receivableAccountId;
-  final int paidFromAccountId;
-  final int expenseCategoryId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
-}
-
-class CreateReimbursementReceiptCommand {
-  const CreateReimbursementReceiptCommand({
-    required this.amount,
-    required this.advanceTransactionId,
-    required this.receivableAccountId,
-    required this.receiveAccountId,
-    required this.occurredAt,
-    this.counterpartyName,
-    this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
-  });
-
-  final Money amount;
-  final int advanceTransactionId;
-  final int receivableAccountId;
-  final int receiveAccountId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
-}
-
-class CloseReimbursementCommand {
-  const CloseReimbursementCommand({
-    required this.actualReceivedAmount,
-    required this.advanceTransactionId,
-    required this.receivableAccountId,
-    required this.receiveAccountId,
-    required this.occurredAt,
-    this.counterpartyName,
-    this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
-  });
-
-  final Money actualReceivedAmount;
-  final int advanceTransactionId;
-  final int receivableAccountId;
-  final int receiveAccountId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
-}
-
-class CreateRepaymentCommand {
-  const CreateRepaymentCommand({
-    required this.principal,
-    required this.liabilityAccountId,
-    required this.paidFromAccountId,
-    required this.occurredAt,
-    this.interest,
-    this.fee,
-    this.discount,
-    this.interestExpenseAccountId,
-    this.feeExpenseAccountId,
-    this.counterpartyName,
-    this.note,
-    this.ownership,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
-  });
-
-  final Money principal;
-  final Money? interest;
-  final Money? fee;
-  final Money? discount;
-  final int liabilityAccountId;
-  final int paidFromAccountId;
-  final int? interestExpenseAccountId;
-  final int? feeExpenseAccountId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
-  final TransactionOwnership? ownership;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
-}
-
-class CreateBorrowingCommand {
-  const CreateBorrowingCommand({
-    required this.amount,
-    required this.liabilityAccountId,
-    required this.occurredAt,
-    this.receiveAccountId,
-    this.counterpartyName,
-    this.note,
-    this.ownership,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
-  });
-
-  final Money amount;
-  final int liabilityAccountId;
-  final int? receiveAccountId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
-  final TransactionOwnership? ownership;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
-}
-
-class AdjustBalanceCommand {
-  const AdjustBalanceCommand({
-    required this.accountId,
-    required this.targetBalance,
-    required this.occurredAt,
-    this.counterpartyName,
-    this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
-  });
-
-  final int accountId;
-  final Money targetBalance;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
-}
-
-class CorrectTransactionCommand {
-  const CorrectTransactionCommand({
+class _CorrectTransactionDraft {
+  const _CorrectTransactionDraft({
     required this.transactionId,
     required this.businessPurpose,
     required this.amount,
@@ -2402,8 +3023,8 @@ class CorrectTransactionCommand {
     this.feeExpenseAccountId,
     this.counterpartyName,
     this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
+    this.isExcludedFromStats,
+    this.isExcludedFromBudget,
   });
 
   final int transactionId;
@@ -2425,14 +3046,8 @@ class CorrectTransactionCommand {
   final int? feeExpenseAccountId;
   final String? counterpartyName;
   final String? note;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
-}
-
-class DeleteTransactionCommand {
-  const DeleteTransactionCommand({required this.transactionId});
-
-  final int transactionId;
+  final bool? isExcludedFromStats;
+  final bool? isExcludedFromBudget;
 }
 
 class _ReplacementStructure {
@@ -2457,34 +3072,4 @@ class _ReplacementStructure {
   final int? fromAccountId;
   final int? toAccountId;
   final int? liabilityAccountId;
-}
-
-class UpdateTransactionMetadataCommand {
-  const UpdateTransactionMetadataCommand({
-    required this.transactionId,
-    this.note,
-    this.isExcludedFromStats,
-    this.isExcludedFromBudget,
-  });
-
-  final int transactionId;
-
-  /// `null` 表示不改备注；`Patch.set(value)` 设置；`Patch.clear()` 清空。
-  final Patch<String>? note;
-  final bool? isExcludedFromStats;
-  final bool? isExcludedFromBudget;
-}
-
-class UpdateTransactionBasicsCommand {
-  const UpdateTransactionBasicsCommand({
-    required this.transactionId,
-    this.occurredAt,
-    this.settlementAccountId,
-    this.reimbursementAccountId,
-  });
-
-  final int transactionId;
-  final DateTime? occurredAt;
-  final int? settlementAccountId;
-  final int? reimbursementAccountId;
 }

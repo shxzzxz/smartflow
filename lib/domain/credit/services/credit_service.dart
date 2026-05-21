@@ -1,22 +1,22 @@
 import '../../../core/errors/failure.dart';
 import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
-import '../../accounting/enums/accounting_enums.dart';
-import '../../accounting/repositories/account_repository.dart';
-import '../../accounting/services/posting_command.dart';
-import '../../accounting/services/transaction_query_service.dart';
-import '../../accounting/services/transaction_service.dart' as tx;
+import '../../accounting/accounting_api.dart'
+    hide TransactionService, CreateRepaymentCommand, CorrectRepaymentCommand;
+import '../../accounting/accounting_api.dart'
+    as tx
+    show TransactionService, CreateRepaymentCommand, CorrectRepaymentCommand;
 import '../enums/installment_enums.dart';
 import 'installment_service.dart';
 
 /// 信贷域对外的通用入口。承载"非分期合同关联的普通还款"的创建、更正与编辑视图反解；
 /// 内部委托账务核心写入，并强制走额度校验（debt − 未还分期本金）。
 abstract interface class CreditService {
-  Future<Result<PostTransactionResult>> createRepayment(
+  Future<Result<CreatedTransactionResult>> createRepayment(
     CreateRepaymentCommand command,
   );
 
-  Future<Result<PostTransactionResult>> correctRepayment(
+  Future<Result<CreatedTransactionResult>> correctRepayment(
     CorrectRepaymentCommand command,
   );
 
@@ -52,8 +52,7 @@ class CreateRepaymentCommand {
 }
 
 /// 编辑命令。`liabilityAccountId` 必填且不允许改动——UI 携带原值用于额度校验。
-/// `isExcludedFromStats/Budget` 不暴露：service 内部读原交易回填，避免被 [tx.CorrectTransactionCommand]
-/// 那一侧 `bool=false` 的默认值悄悄翻成 false。
+/// `isExcludedFromStats/Budget` 不暴露：service 内部读原交易回填，避免编辑时改动统计口径。
 class CorrectRepaymentCommand {
   const CorrectRepaymentCommand({
     required this.transactionId,
@@ -113,19 +112,19 @@ class CreditServiceImpl implements CreditService {
     required InstallmentService installmentService,
     required tx.TransactionService transactionService,
     required TransactionQueryService transactionQueryService,
-    required AccountRepository accountRepository,
-  })  : _installmentService = installmentService,
-        _transactionService = transactionService,
-        _transactionQueryService = transactionQueryService,
-        _accountRepository = accountRepository;
+    required AccountService accountService,
+  }) : _installmentService = installmentService,
+       _transactionService = transactionService,
+       _transactionQueryService = transactionQueryService,
+       _accountService = accountService;
 
   final InstallmentService _installmentService;
   final tx.TransactionService _transactionService;
   final TransactionQueryService _transactionQueryService;
-  final AccountRepository _accountRepository;
+  final AccountService _accountService;
 
   @override
-  Future<Result<PostTransactionResult>> createRepayment(
+  Future<Result<CreatedTransactionResult>> createRepayment(
     CreateRepaymentCommand command,
   ) async {
     final failure = await _validatePrincipal(
@@ -151,12 +150,13 @@ class CreditServiceImpl implements CreditService {
   }
 
   @override
-  Future<Result<PostTransactionResult>> correctRepayment(
+  Future<Result<CreatedTransactionResult>> correctRepayment(
     CorrectRepaymentCommand command,
   ) async {
-    final detail = await _transactionQueryService
-        .watchTransactionDetail(command.transactionId)
-        .first;
+    final detail =
+        await _transactionQueryService
+            .watchTransactionDetail(command.transactionId)
+            .first;
     if (detail == null) {
       return const Result.failure(
         Failure(
@@ -169,7 +169,8 @@ class CreditServiceImpl implements CreditService {
       return const Result.failure(
         Failure(
           code: 'credit_correct_purpose_invalid',
-          message: 'CreditService.correctRepayment only handles DEBT_REPAYMENT.',
+          message:
+              'CreditService.correctRepayment only handles DEBT_REPAYMENT.',
         ),
       );
     }
@@ -181,22 +182,20 @@ class CreditServiceImpl implements CreditService {
     );
     if (failure != null) return Result.failure(failure);
 
-    return _transactionService.correctTransaction(
-      tx.CorrectTransactionCommand(
+    return _transactionService.correctRepayment(
+      tx.CorrectRepaymentCommand(
         transactionId: command.transactionId,
-        businessPurpose: BusinessPurpose.debtRepayment,
-        amount: command.principal,
-        repaymentInterest: command.interest,
-        repaymentFee: command.fee,
-        repaymentDiscount: command.discount,
+        principal: command.principal,
+        interest: command.interest,
+        fee: command.fee,
+        discount: command.discount,
         liabilityAccountId: command.liabilityAccountId,
         paidFromAccountId: command.paidFromAccountId,
         interestExpenseAccountId: command.interestExpenseAccountId,
         feeExpenseAccountId: command.feeExpenseAccountId,
         occurredAt: command.occurredAt,
         note: command.note,
-        // 回填原交易的统计/预算排除标记。CorrectTransactionCommand 把这两个字段当
-        // bool 默认 false 处理，若不显式传入会把"已排除"的交易悄悄翻成"计入"。
+        // 回填原交易的统计/预算排除标记，信贷域的编辑命令不暴露这两个账务口径。
         isExcludedFromStats: detail.transaction.isExcludedFromStats,
         isExcludedFromBudget: detail.transaction.isExcludedFromBudget,
       ),
@@ -243,7 +242,9 @@ class CreditServiceImpl implements CreditService {
       fee: (fee?.minorUnits ?? 0) > 0 ? fee : null,
       discount: (discount?.minorUnits ?? 0) > 0 ? discount : null,
       feeExpenseAccountId:
-          fee != null && fee.minorUnits > 0 ? _expenseAccountIdByAmount(detail, fee) : null,
+          fee != null && fee.minorUnits > 0
+              ? _expenseAccountIdByAmount(detail, fee)
+              : null,
       liabilityAccountId: liabilityAccountId,
       paidFromAccountId: paidFromAccountId,
       occurredAt: detail.transaction.occurredAt,
@@ -268,7 +269,7 @@ class CreditServiceImpl implements CreditService {
       return null;
     }
 
-    final account = await _accountRepository.findAccountById(liabilityAccountId);
+    final account = await _accountService.findAccountById(liabilityAccountId);
     if (account == null) return null;
 
     var oldPrincipalMinor = 0;
@@ -281,10 +282,8 @@ class CreditServiceImpl implements CreditService {
     }
 
     final debtMinor = account.balance.minorUnits + oldPrincipalMinor;
-    final unpaidMinor =
-        await _installmentService.unpaidInstallmentPrincipalMinor(
-      liabilityAccountId,
-    );
+    final unpaidMinor = await _installmentService
+        .unpaidInstallmentPrincipalMinor(liabilityAccountId);
     final availableMinor = debtMinor - unpaidMinor;
 
     if (principal.minorUnits > availableMinor) {

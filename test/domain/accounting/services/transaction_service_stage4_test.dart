@@ -6,13 +6,9 @@ import 'package:smartflow/data/accounting/repositories/drift_account_repository.
 import 'package:smartflow/data/accounting/repositories/drift_posting_repository.dart';
 import 'package:smartflow/data/accounting/repositories/drift_system_account_resolver.dart';
 import 'package:smartflow/data/accounting/repositories/drift_transaction_query_repository.dart';
-import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
-import 'package:smartflow/domain/accounting/services/account_service.dart';
-import 'package:smartflow/domain/accounting/services/category_service.dart';
-import 'package:smartflow/domain/accounting/services/posting_command.dart';
-import 'package:smartflow/domain/accounting/services/posting_service.dart';
-import 'package:smartflow/domain/accounting/services/transaction_query_service.dart';
-import 'package:smartflow/domain/accounting/services/transaction_service.dart';
+import 'package:smartflow/data/transaction/drift_transaction_runner.dart';
+import 'package:smartflow/domain/accounting/accounting_api.dart';
+import 'package:smartflow/domain/accounting/ledger/poster.dart';
 
 import '../../../helpers/test_app_database.dart';
 
@@ -34,14 +30,18 @@ void main() {
       final queryRepository = DriftTransactionQueryRepository(database);
       final postingRepository = DriftPostingRepository(database);
       service = TransactionServiceImpl(
-        PostingServiceImpl(postingRepository),
+        PosterImpl(postingRepository),
         accountRepository: accountRepository,
         transactionQueryRepository: queryRepository,
         systemAccountResolver: systemAccounts,
         postingRepository: postingRepository,
       );
       queryService = TransactionQueryServiceImpl(queryRepository);
-      accountService = AccountServiceImpl(accountRepository);
+      accountService = AccountServiceImpl(
+        accountRepository,
+        transactionRunner: DriftTransactionRunner(database),
+        transactions: service,
+      );
       categoryService = CategoryServiceImpl(accountRepository);
     });
 
@@ -70,20 +70,19 @@ void main() {
                       occurredAt: DateTime(2026, 5, 1),
                     ),
                   )
-                  as Success<PostTransactionResult>)
+                  as Success<CreatedTransactionResult>)
               .value;
 
-      final corrected = await service.correctTransaction(
-        CorrectTransactionCommand(
+      final corrected = await service.correctExpense(
+        CorrectExpenseCommand(
           transactionId: original.transactionId,
-          businessPurpose: BusinessPurpose.dailyExpense,
           amount: const Money(minorUnits: 1500),
           paidFromAccountId: wallet.id,
           expenseAccountId: shopping.id,
           occurredAt: DateTime(2026, 5, 2),
         ),
       );
-      expect(corrected, isA<Success<PostTransactionResult>>());
+      expect(corrected, isA<Success<CreatedTransactionResult>>());
 
       expect(await _balance(database, wallet.id), -1500);
       expect(await _balance(database, food.id), 0);
@@ -121,7 +120,7 @@ void main() {
                       occurredAt: DateTime(2026, 5, 1),
                     ),
                   )
-                  as Success<PostTransactionResult>)
+                  as Success<CreatedTransactionResult>)
               .value;
 
       final deleted = await service.deleteTransaction(
@@ -148,6 +147,171 @@ void main() {
         BusinessPurpose.dailyExpense,
       );
     });
+
+    test(
+      'corrects a refund and keeps refundable limit relative to original',
+      () async {
+        final wallet = await _createAsset(accountService, '钱包');
+        final food = await _createCategory(
+          categoryService,
+          '餐饮',
+          AccountType.expense,
+        );
+        final expense =
+            (await service.createExpense(
+                      CreateExpenseCommand(
+                        amount: const Money(minorUnits: 1000),
+                        paidFromAccountId: wallet.id,
+                        expenseAccountId: food.id,
+                        occurredAt: DateTime(2026, 5, 1),
+                      ),
+                    )
+                    as Success<CreatedTransactionResult>)
+                .value;
+        final refund =
+            (await service.createRefund(
+                      CreateRefundCommand(
+                        amount: const Money(minorUnits: 300),
+                        parentTransactionId: expense.transactionId,
+                        refundToAccountId: wallet.id,
+                        occurredAt: DateTime(2026, 5, 2),
+                      ),
+                    )
+                    as Success<CreatedTransactionResult>)
+                .value;
+
+        final corrected = await service.correctRefund(
+          CorrectRefundCommand(
+            transactionId: refund.transactionId,
+            amount: const Money(minorUnits: 500),
+            refundToAccountId: wallet.id,
+            occurredAt: DateTime(2026, 5, 3),
+          ),
+        );
+
+        expect(corrected, isA<Success<CreatedTransactionResult>>());
+        expect(await _balance(database, wallet.id), -500);
+        expect(await _balance(database, food.id), 500);
+      },
+    );
+
+    test(
+      'corrects a reimbursement receipt and reuses its own outstanding',
+      () async {
+        final wallet = await _createAsset(accountService, '钱包');
+        final receivable = await _createReimbursementAccount(
+          accountService,
+          '报销',
+        );
+        final travel = await _createCategory(
+          categoryService,
+          '差旅',
+          AccountType.expense,
+        );
+        final advance =
+            (await service.createReimbursementAdvance(
+                      CreateReimbursementAdvanceCommand(
+                        amount: const Money(minorUnits: 1000),
+                        receivableAccountId: receivable.id,
+                        paidFromAccountId: wallet.id,
+                        expenseCategoryId: travel.id,
+                        occurredAt: DateTime(2026, 5, 1),
+                      ),
+                    )
+                    as Success<CreatedTransactionResult>)
+                .value;
+        final receipt =
+            (await service.createReimbursementReceipt(
+                      CreateReimbursementReceiptCommand(
+                        amount: const Money(minorUnits: 300),
+                        advanceTransactionId: advance.transactionId,
+                        receivableAccountId: receivable.id,
+                        receiveAccountId: wallet.id,
+                        occurredAt: DateTime(2026, 5, 2),
+                      ),
+                    )
+                    as Success<CreatedTransactionResult>)
+                .value;
+
+        final corrected = await service.correctReimbursementReceipt(
+          CorrectReimbursementReceiptCommand(
+            transactionId: receipt.transactionId,
+            amount: const Money(minorUnits: 500),
+            receivableAccountId: receivable.id,
+            receiveAccountId: wallet.id,
+            occurredAt: DateTime(2026, 5, 3),
+          ),
+        );
+
+        expect(corrected, isA<Success<CreatedTransactionResult>>());
+        expect(await _balance(database, wallet.id), -500);
+        expect(await _balance(database, receivable.id), 500);
+      },
+    );
+
+    test(
+      'corrects a reimbursement close without treating itself as blocked',
+      () async {
+        final wallet = await _createAsset(accountService, '钱包');
+        final receivable = await _createReimbursementAccount(
+          accountService,
+          '报销',
+        );
+        final travel = await _createCategory(
+          categoryService,
+          '差旅',
+          AccountType.expense,
+        );
+        final advance =
+            (await service.createReimbursementAdvance(
+                      CreateReimbursementAdvanceCommand(
+                        amount: const Money(minorUnits: 1000),
+                        receivableAccountId: receivable.id,
+                        paidFromAccountId: wallet.id,
+                        expenseCategoryId: travel.id,
+                        occurredAt: DateTime(2026, 5, 1),
+                      ),
+                    )
+                    as Success<CreatedTransactionResult>)
+                .value;
+        await service.createReimbursementReceipt(
+          CreateReimbursementReceiptCommand(
+            amount: const Money(minorUnits: 300),
+            advanceTransactionId: advance.transactionId,
+            receivableAccountId: receivable.id,
+            receiveAccountId: wallet.id,
+            occurredAt: DateTime(2026, 5, 2),
+          ),
+        );
+        final close =
+            (await service.closeReimbursement(
+                      CloseReimbursementCommand(
+                        actualReceivedAmount: const Money(minorUnits: 600),
+                        advanceTransactionId: advance.transactionId,
+                        receivableAccountId: receivable.id,
+                        receiveAccountId: wallet.id,
+                        occurredAt: DateTime(2026, 5, 3),
+                      ),
+                    )
+                    as Success<CreatedTransactionResult>)
+                .value;
+
+        final corrected = await service.correctReimbursementClose(
+          CorrectReimbursementCloseCommand(
+            transactionId: close.transactionId,
+            actualReceivedAmount: const Money(minorUnits: 800),
+            receivableAccountId: receivable.id,
+            receiveAccountId: wallet.id,
+            occurredAt: DateTime(2026, 5, 4),
+          ),
+        );
+
+        expect(corrected, isA<Success<CreatedTransactionResult>>());
+        expect(await _balance(database, wallet.id), 100);
+        expect(await _balance(database, receivable.id), 0);
+        expect(await _balance(database, travel.id), 0);
+      },
+    );
   });
 }
 
@@ -165,6 +329,20 @@ Future<dynamic> _createCategory(
 ) async {
   final result = await service.createCategory(
     CreateCategoryCommand(name: name, type: type),
+  );
+  return (result as Success).value;
+}
+
+Future<dynamic> _createReimbursementAccount(
+  AccountService service,
+  String name,
+) async {
+  final result = await service.createAccount(
+    CreateAccountCommand(
+      name: name,
+      type: AccountType.asset,
+      subtype: AccountSubtype.reimbursement,
+    ),
   );
   return (result as Success).value;
 }

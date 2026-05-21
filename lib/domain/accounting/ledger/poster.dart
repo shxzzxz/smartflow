@@ -1,11 +1,13 @@
 import '../../../core/errors/failure.dart';
 import '../../../core/result/result.dart';
 import '../enums/accounting_enums.dart';
-import '../ledger/ledger_rules.dart';
 import '../repositories/posting_repository.dart';
-import 'posting_command.dart';
+import 'ledger_rules.dart';
+import 'posting_protocol.dart';
 
-abstract interface class PostingService {
+/// 过账执行器：ledger 子模块对内提供的写入入口。
+/// 接收 PostTransactionCommand，校验 + 平账 + 委托 PostingRepository 落库。
+abstract interface class Poster {
   Future<Result<PostTransactionResult>> post(PostTransactionCommand command);
 
   Future<Result<List<PostTransactionResult>>> postMutation({
@@ -14,8 +16,8 @@ abstract interface class PostingService {
   });
 }
 
-class PostingServiceImpl implements PostingService {
-  const PostingServiceImpl(this._repository);
+class PosterImpl implements Poster {
+  const PosterImpl(this._repository);
 
   final PostingRepository _repository;
 

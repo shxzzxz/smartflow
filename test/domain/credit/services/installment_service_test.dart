@@ -9,12 +9,11 @@ import 'package:smartflow/data/credit/repositories/drift_installment_repository.
 import 'package:smartflow/data/accounting/repositories/drift_posting_repository.dart';
 import 'package:smartflow/data/accounting/repositories/drift_system_account_resolver.dart';
 import 'package:smartflow/data/accounting/repositories/drift_transaction_query_repository.dart';
-import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
+import 'package:smartflow/data/transaction/drift_transaction_runner.dart';
+import 'package:smartflow/domain/accounting/accounting_api.dart';
 import 'package:smartflow/domain/credit/enums/installment_enums.dart';
 import 'package:smartflow/domain/credit/services/installment_service.dart';
-import 'package:smartflow/domain/accounting/services/posting_command.dart';
-import 'package:smartflow/domain/accounting/services/posting_service.dart';
-import 'package:smartflow/domain/accounting/services/transaction_service.dart';
+import 'package:smartflow/domain/accounting/ledger/poster.dart';
 
 import '../../../helpers/test_app_database.dart';
 
@@ -32,7 +31,7 @@ void main() {
       final queryRepository = DriftTransactionQueryRepository(database);
       final systemAccounts = DriftSystemAccountResolver(database);
       final transactionService = TransactionServiceImpl(
-        PostingServiceImpl(postingRepository),
+        PosterImpl(postingRepository),
         accountRepository: accountRepository,
         transactionQueryRepository: queryRepository,
         systemAccountResolver: systemAccounts,
@@ -40,9 +39,9 @@ void main() {
       );
       service = InstallmentServiceImpl(
         repository: DriftInstallmentRepository(database),
-        postingRepository: DriftPostingRepository(database),
         transactionService: transactionService,
-        queryRepository: queryRepository,
+        transactionQueryService: TransactionQueryServiceImpl(queryRepository),
+        transactionRunner: DriftTransactionRunner(database),
       );
 
       assetAccountId = await _insertAccount(
@@ -164,7 +163,7 @@ void main() {
       );
       expect(result, isA<Success>());
       final transactionId =
-          (result as Success<PostTransactionResult>).value.transactionId;
+          (result as Success<CreatedTransactionResult>).value.transactionId;
       await _expectOwnership(
         database,
         transactionId: transactionId,
@@ -207,7 +206,7 @@ void main() {
       );
       expect(extra, isA<Success>());
       final transactionId =
-          (extra as Success<PostTransactionResult>).value.transactionId;
+          (extra as Success<CreatedTransactionResult>).value.transactionId;
       await _expectOwnership(
         database,
         transactionId: transactionId,
@@ -282,7 +281,7 @@ void main() {
       );
       expect(settle, isA<Success>());
       final transactionId =
-          (settle as Success<PostTransactionResult>).value.transactionId;
+          (settle as Success<CreatedTransactionResult>).value.transactionId;
       await _expectOwnership(
         database,
         transactionId: transactionId,
@@ -580,14 +579,14 @@ void main() {
         final contractId =
             (contractResult as Success<CreateContractResult>).value.contractId;
         final disbursementTxId =
-            (await service.findContract(contractId))!.disbursementTransactionId!;
+            (await service.findContract(
+              contractId,
+            ))!.disbursementTransactionId!;
         final beforeSchedules = await service.listSchedules(contractId);
-        final beforeDates = beforeSchedules
-            .map((s) => s.expectedRepaymentDate)
-            .toList();
-        final beforePrincipals = beforeSchedules
-            .map((s) => s.expectedPrincipal.minorUnits)
-            .toList();
+        final beforeDates =
+            beforeSchedules.map((s) => s.expectedRepaymentDate).toList();
+        final beforePrincipals =
+            beforeSchedules.map((s) => s.expectedPrincipal.minorUnits).toList();
 
         final newAssetId = await _insertAccount(
           database,
@@ -642,7 +641,9 @@ void main() {
         final contractId =
             (contractResult as Success<CreateContractResult>).value.contractId;
         final disbursementTxId =
-            (await service.findContract(contractId))!.disbursementTransactionId!;
+            (await service.findContract(
+              contractId,
+            ))!.disbursementTransactionId!;
 
         final res = await service.updateContract(
           UpdateContractCommand(
@@ -676,7 +677,9 @@ void main() {
         final contractId =
             (contractResult as Success<CreateContractResult>).value.contractId;
         final disbursementTxId =
-            (await service.findContract(contractId))!.disbursementTransactionId!;
+            (await service.findContract(
+              contractId,
+            ))!.disbursementTransactionId!;
 
         await service.updateContract(
           UpdateContractCommand(
@@ -684,10 +687,7 @@ void main() {
             note: const Patch.set('新备注'),
           ),
         );
-        expect(
-          (await service.findContract(contractId))!.note,
-          '新备注',
-        );
+        expect((await service.findContract(contractId))!.note, '新备注');
         expect(
           (await _readTransaction(database, disbursementTxId)).note,
           '新备注',
@@ -699,10 +699,7 @@ void main() {
             note: const Patch.clear(),
           ),
         );
-        expect(
-          (await service.findContract(contractId))!.note,
-          isNull,
-        );
+        expect((await service.findContract(contractId))!.note, isNull);
         expect(
           (await _readTransaction(database, disbursementTxId)).note,
           isNull,
@@ -784,7 +781,7 @@ void main() {
           ),
         );
         final txId =
-            (repayResult as Success<PostTransactionResult>).value.transactionId;
+            (repayResult as Success<CreatedTransactionResult>).value.transactionId;
 
         final newAssetId = await _insertAccount(
           database,
@@ -818,7 +815,7 @@ void main() {
           ),
         );
         final txId =
-            (repayResult as Success<PostTransactionResult>).value.transactionId;
+            (repayResult as Success<CreatedTransactionResult>).value.transactionId;
 
         await service.editRepayment(
           EditRepaymentCommand(
@@ -832,10 +829,7 @@ void main() {
         expect(tx.note, '改后');
 
         await service.editRepayment(
-          EditRepaymentCommand(
-            transactionId: txId,
-            note: const Patch.clear(),
-          ),
+          EditRepaymentCommand(transactionId: txId, note: const Patch.clear()),
         );
         expect((await _readTransaction(database, txId)).note, isNull);
       });
@@ -847,7 +841,7 @@ void main() {
         final queryRepository = DriftTransactionQueryRepository(database);
         final systemAccounts = DriftSystemAccountResolver(database);
         final transactionService = TransactionServiceImpl(
-          PostingServiceImpl(postingRepository),
+          PosterImpl(postingRepository),
           accountRepository: accountRepository,
           transactionQueryRepository: queryRepository,
           systemAccountResolver: systemAccounts,
@@ -867,7 +861,9 @@ void main() {
           ),
         );
         final txId =
-            (incomeResult as Success<PostTransactionResult>).value.transactionId;
+            (incomeResult as Success<CreatedTransactionResult>)
+                .value
+                .transactionId;
 
         final res = await service.editRepayment(
           EditRepaymentCommand(
@@ -927,8 +923,7 @@ Future<TransactionRow> _readTransaction(
   int transactionId,
 ) {
   return (database.select(database.transactions)
-        ..where((t) => t.id.equals(transactionId)))
-      .getSingle();
+    ..where((t) => t.id.equals(transactionId))).getSingle();
 }
 
 /// 反查交易的"结算账户"对应 entry 的 accountId。

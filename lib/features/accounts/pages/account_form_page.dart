@@ -6,6 +6,7 @@ import 'package:remixicon/remixicon.dart';
 import '../../../app/providers.dart';
 import '../../../core/errors/failure.dart';
 import '../../../core/money/money.dart';
+import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/radius.dart';
@@ -13,9 +14,7 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_form_field.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
-import '../../../domain/accounting/entities/account.dart';
-import '../../../domain/accounting/enums/accounting_enums.dart';
-import '../../../domain/accounting/services/account_service.dart';
+import '../../../domain/accounting/accounting_api.dart';
 import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/icon_choice_grid.dart';
 
@@ -367,25 +366,40 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
         );
         return;
       }
+      final noteText = _noteController.text.trim();
+      final creditLimit = _creditLimitForKind();
+      final billingDayValue =
+          _kind == _AccountKind.credit ? _billingDay : null;
+      final repaymentDayValue =
+          _isLiabilityKind(_kind) ? _repaymentDay : null;
+
       final result = await ref
           .read(accountServiceProvider)
           .editAccount(
             EditAccountCommand(
               id: account.id,
               name: _nameController.text,
-              subtype: account.subtype,
-              iconKey: _iconKey,
-              note: _noteController.text,
-              creditLimit: _creditLimitForKind(),
-              billingDay: _kind == _AccountKind.credit ? _billingDay : null,
-              repaymentDay: _isLiabilityKind(_kind) ? _repaymentDay : null,
-              sortOrder: account.sortOrder,
-              isHidden: account.isHidden,
+              iconKey: Patch.set(_iconKey),
+              note:
+                  noteText.isEmpty
+                      ? const Patch<String>.clear()
+                      : Patch.set(noteText),
+              creditLimit:
+                  creditLimit == null
+                      ? const Patch<Money>.clear()
+                      : Patch.set(creditLimit),
+              billingDay:
+                  billingDayValue == null
+                      ? const Patch<int>.clear()
+                      : Patch.set(billingDayValue),
+              repaymentDay:
+                  repaymentDayValue == null
+                      ? const Patch<int>.clear()
+                      : Patch.set(repaymentDayValue),
               targetBalance:
                   _showsManualBalanceField(_kind)
                       ? _openingBalanceForKind()
                       : null,
-              balanceAdjustmentOccurredAt: DateTime.now(),
             ),
           );
       _completeSubmit(result);
@@ -403,7 +417,6 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
             subtype: _accountSubtypeForKind(_kind),
             iconKey: _iconKey,
             openingBalance: _openingBalanceForKind(),
-            openingOccurredAt: DateTime.now(),
             note: _noteController.text,
             creditLimit: _creditLimitForKind(),
             billingDay: _kind == _AccountKind.credit ? _billingDay : null,

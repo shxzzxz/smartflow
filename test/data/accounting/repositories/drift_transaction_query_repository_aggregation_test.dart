@@ -7,13 +7,10 @@ import 'package:smartflow/data/accounting/repositories/drift_account_repository.
 import 'package:smartflow/data/accounting/repositories/drift_posting_repository.dart';
 import 'package:smartflow/data/accounting/repositories/drift_system_account_resolver.dart';
 import 'package:smartflow/data/accounting/repositories/drift_transaction_query_repository.dart';
-import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
-import 'package:smartflow/domain/accounting/services/account_service.dart';
-import 'package:smartflow/domain/accounting/services/category_service.dart';
-import 'package:smartflow/domain/accounting/services/posting_command.dart';
-import 'package:smartflow/domain/accounting/services/posting_service.dart';
-import 'package:smartflow/domain/accounting/services/transaction_query_service.dart';
-import 'package:smartflow/domain/accounting/services/transaction_service.dart';
+import 'package:smartflow/data/transaction/drift_transaction_runner.dart';
+import 'package:smartflow/domain/accounting/accounting_api.dart';
+import 'package:smartflow/domain/accounting/ledger/poster.dart';
+import 'package:smartflow/domain/accounting/ledger/posting_protocol.dart';
 
 import '../../../helpers/test_app_database.dart';
 
@@ -38,12 +35,16 @@ void main() {
       queryRepository = DriftTransactionQueryRepository(database);
       queryService = TransactionQueryServiceImpl(queryRepository);
       service = TransactionServiceImpl(
-        PostingServiceImpl(DriftPostingRepository(database)),
+        PosterImpl(DriftPostingRepository(database)),
         accountRepository: accountRepository,
         transactionQueryRepository: queryRepository,
         systemAccountResolver: systemAccounts,
       );
-      accountService = AccountServiceImpl(accountRepository);
+      accountService = AccountServiceImpl(
+        accountRepository,
+        transactionRunner: DriftTransactionRunner(database),
+        transactions: service,
+      );
       categoryService = CategoryServiceImpl(accountRepository);
     });
 
@@ -81,7 +82,7 @@ void main() {
                         occurredAt: DateTime(2026, 5, 1),
                       ),
                     )
-                    as Success<PostTransactionResult>)
+                    as Success<CreatedTransactionResult>)
                 .value;
         await service.createRefund(
           CreateRefundCommand(
@@ -141,7 +142,7 @@ void main() {
                       occurredAt: DateTime(2026, 5, 1),
                     ),
                   )
-                  as Success<PostTransactionResult>)
+                  as Success<CreatedTransactionResult>)
               .value;
       await service.createRefund(
         CreateRefundCommand(
@@ -158,7 +159,7 @@ void main() {
           businessState: Value(BusinessState.replaced),
         ),
       );
-      final correctionResult = await PostingServiceImpl(
+      final correctionResult = await PosterImpl(
         DriftPostingRepository(database),
       ).post(
         PostTransactionCommand(
@@ -243,7 +244,7 @@ void main() {
                         occurredAt: DateTime(2026, 5, 1),
                       ),
                     )
-                    as Success<PostTransactionResult>)
+                    as Success<CreatedTransactionResult>)
                 .value;
         await service.createRefund(
           CreateRefundCommand(
@@ -331,7 +332,7 @@ void main() {
             occurredAt: DateTime(2026, 5, 10),
           ),
         );
-        expect(result, isA<Success<PostTransactionResult>>());
+        expect(result, isA<Success<CreatedTransactionResult>>());
 
         final items =
             await queryService
@@ -399,7 +400,7 @@ void main() {
                         occurredAt: DateTime(2026, 5, 1),
                       ),
                     )
-                    as Success<PostTransactionResult>)
+                    as Success<CreatedTransactionResult>)
                 .value;
         // Close with under-receive to generate a gap-expense detail on child.
         await service.closeReimbursement(

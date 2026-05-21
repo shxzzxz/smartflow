@@ -4,8 +4,7 @@ import '../../design_system/theme/app_text_styles.dart';
 import '../../design_system/tokens/radius.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/widgets/app_surface.dart';
-import '../../domain/accounting/entities/account.dart';
-import '../../domain/accounting/services/category_service.dart';
+import '../../domain/accounting/accounting_api.dart';
 import 'business_icon.dart';
 import 'business_icon_bubble.dart';
 

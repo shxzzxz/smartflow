@@ -2,12 +2,12 @@ import 'package:drift/drift.dart';
 
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
-import '../../../domain/accounting/entities/account.dart' as domain;
+import '../../../domain/accounting/entities/account.dart';
 import '../../../domain/accounting/entities/transaction_ownership.dart';
 import '../../../domain/accounting/enums/accounting_enums.dart';
 import '../../../domain/accounting/ledger/ledger_rules.dart';
+import '../../../domain/accounting/ledger/posting_protocol.dart';
 import '../../../domain/accounting/repositories/posting_repository.dart';
-import '../../../domain/accounting/services/posting_command.dart';
 import '../../app_database.dart';
 
 class DriftPostingRepository implements PostingRepository {
@@ -16,7 +16,7 @@ class DriftPostingRepository implements PostingRepository {
   final AppDatabase _database;
 
   @override
-  Future<List<domain.Account>> findAccountsByIds(Set<int> ids) async {
+  Future<List<Account>> findAccountsByIds(Set<int> ids) async {
     if (ids.isEmpty) {
       return const [];
     }
@@ -186,8 +186,9 @@ class DriftPostingRepository implements PostingRepository {
     final noteValue = switch (note) {
       null => const Value<String?>.absent(),
       // 沿用现有约定：空字符串视作清除，避免存储"空字符串备注"这种半残状态。
-      PatchSet<String>(:final value) =>
-        Value<String?>(value.isEmpty ? null : value),
+      PatchSet<String>(:final value) => Value<String?>(
+        value.isEmpty ? null : value,
+      ),
       PatchClear<String>() => const Value<String?>(null),
     };
     await (_database.update(_database.transactions)
@@ -350,8 +351,8 @@ class DriftPostingRepository implements PostingRepository {
     return query.get();
   }
 
-  domain.Account _mapAccount(AccountRow row) {
-    return domain.Account(
+  Account _mapAccount(AccountRow row) {
+    return Account(
       id: row.id,
       name: row.name,
       type: row.accountType,

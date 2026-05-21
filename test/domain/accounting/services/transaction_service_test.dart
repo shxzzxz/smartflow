@@ -1,20 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
-import 'package:smartflow/domain/accounting/entities/account.dart';
-import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
+import 'package:smartflow/domain/accounting/accounting_api.dart';
 import 'package:smartflow/domain/accounting/repositories/account_repository.dart';
-import 'package:smartflow/domain/accounting/services/posting_command.dart';
-import 'package:smartflow/domain/accounting/services/posting_service.dart';
-import 'package:smartflow/domain/accounting/services/transaction_service.dart';
+import 'package:smartflow/domain/accounting/ledger/poster.dart';
+import 'package:smartflow/domain/accounting/ledger/posting_protocol.dart';
 
 void main() {
   group('TransactionService', () {
-    late _RecordingPostingService postingService;
+    late _RecordingPoster postingService;
     late TransactionService service;
 
     setUp(() {
-      postingService = _RecordingPostingService();
+      postingService = _RecordingPoster();
       service = TransactionServiceImpl(postingService);
     });
 
@@ -32,7 +30,7 @@ void main() {
           ),
         );
 
-        expect(result, isA<Success<PostTransactionResult>>());
+        expect(result, isA<Success<CreatedTransactionResult>>());
         final command = postingService.lastCommand!;
         expect(command.businessPurpose, BusinessPurpose.dailyExpense);
         expect(command.primaryAmount, const Money(minorUnits: 2000));
@@ -66,7 +64,7 @@ void main() {
           ),
         );
 
-        expect(result, isA<Success<PostTransactionResult>>());
+        expect(result, isA<Success<CreatedTransactionResult>>());
         final command = postingService.lastCommand!;
         expect(command.businessPurpose, BusinessPurpose.dailyIncome);
         expect(
@@ -95,7 +93,7 @@ void main() {
           ),
         );
 
-        expect(result, isA<Success<PostTransactionResult>>());
+        expect(result, isA<Success<CreatedTransactionResult>>());
         final command = postingService.lastCommand!;
         expect(command.businessPurpose, BusinessPurpose.transfer);
         expect(command.primaryAmount, const Money(minorUnits: 100000));
@@ -127,7 +125,7 @@ void main() {
         ),
       );
 
-      expect(result, isA<FailureResult<PostTransactionResult>>());
+      expect(result, isA<FailureResult<CreatedTransactionResult>>());
       expect(postingService.lastCommand, isNull);
     });
 
@@ -149,7 +147,7 @@ void main() {
         ),
       );
 
-      expect(result, isA<FailureResult<PostTransactionResult>>());
+      expect(result, isA<FailureResult<CreatedTransactionResult>>());
       expect(postingService.lastCommand, isNull);
     });
 
@@ -175,7 +173,7 @@ void main() {
         ),
       );
 
-      expect(result, isA<FailureResult<PostTransactionResult>>());
+      expect(result, isA<FailureResult<CreatedTransactionResult>>());
       expect(postingService.lastCommand, isNull);
     });
 
@@ -201,7 +199,7 @@ void main() {
         ),
       );
 
-      expect(result, isA<FailureResult<PostTransactionResult>>());
+      expect(result, isA<FailureResult<CreatedTransactionResult>>());
       expect(postingService.lastCommand, isNull);
     });
 
@@ -227,13 +225,13 @@ void main() {
         ),
       );
 
-      expect(result, isA<FailureResult<PostTransactionResult>>());
+      expect(result, isA<FailureResult<CreatedTransactionResult>>());
       expect(postingService.lastCommand, isNull);
     });
   });
 }
 
-class _RecordingPostingService implements PostingService {
+class _RecordingPoster implements Poster {
   PostTransactionCommand? lastCommand;
 
   @override
@@ -282,12 +280,12 @@ class _FakeAccountRepository implements AccountRepository {
   }
 
   @override
-  Future<Account> createAccount(command) {
+  Future<Account> createAccount(spec) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> updateAccount(command) {
+  Future<void> updateAccount(id, spec) {
     throw UnimplementedError();
   }
 }

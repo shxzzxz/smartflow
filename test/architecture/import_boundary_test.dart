@@ -4,8 +4,8 @@
 //
 // 1. 账务核心（domain/accounting）不得 import 其它业务域；
 // 2. 其它业务域只能 import accounting 的对外面：
-//      entities / enums / services；
-//    不得 import 内部目录：repositories / ledger；
+//      accounting_api.dart；
+//    不得 import 内部目录：entities / enums / services / repositories / ledger；
 // 3. 兄弟业务域之间不得互相 import；
 // 4. data/<域> 遵循同样规则；
 // 5. domain/ 不得 import features / app / data（依赖反转：domain 是最内核）；
@@ -21,19 +21,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 const List<String> _businessDomains = <String>[
   'accounting',
-  'installments',
+  'credit',
   'budgeting',
   'analytics',
 ];
 
 const String _kernel = 'accounting';
 
-/// 账务核心对外允许被其它业务域 import 的子目录。
-const Set<String> _accountingPublicDirs = <String>{
-  'entities',
-  'enums',
-  'services',
-};
+const String _accountingApi = 'domain/accounting/accounting_api.dart';
 
 void main() {
   group('业务域 import 边界', () {
@@ -41,14 +36,13 @@ void main() {
       final List<_Violation> violations = <_Violation>[];
       for (final File file in _dartFiles('lib/domain/$_kernel')) {
         for (final String importPath in _importPaths(file)) {
+          final target = _libPathForImport(file, importPath) ?? importPath;
           for (final String other in _businessDomains) {
             if (other == _kernel) continue;
-            if (importPath.contains('domain/$other/')) {
-              violations.add(_Violation(
-                file,
-                importPath,
-                '账务核心不能依赖业务域 "$other"',
-              ));
+            if (target.contains('domain/$other/')) {
+              violations.add(
+                _Violation(file, importPath, '账务核心不能依赖业务域 "$other"'),
+              );
             }
           }
         }
@@ -60,14 +54,17 @@ void main() {
       final List<_Violation> violations = <_Violation>[];
       for (final File file in _dartFiles('lib/data/$_kernel')) {
         for (final String importPath in _importPaths(file)) {
+          final target = _libPathForImport(file, importPath) ?? importPath;
           for (final String other in _businessDomains) {
             if (other == _kernel) continue;
-            if (importPath.contains('data/$other/')) {
-              violations.add(_Violation(
-                file,
-                importPath,
-                '账务核心 data 不能依赖业务域 "$other" 的 data',
-              ));
+            if (target.contains('data/$other/')) {
+              violations.add(
+                _Violation(
+                  file,
+                  importPath,
+                  '账务核心 data 不能依赖业务域 "$other" 的 data',
+                ),
+              );
             }
           }
         }
@@ -75,24 +72,24 @@ void main() {
       _assertClean(violations);
     });
 
-    test('其它业务域 domain 只 import 账务核心的对外面', () {
+    test('其它业务域 domain 只 import accounting_api.dart', () {
       final List<_Violation> violations = <_Violation>[];
       for (final String bc in _businessDomains) {
         if (bc == _kernel) continue;
         for (final File file in _dartFiles('lib/domain/$bc')) {
           for (final String importPath in _importPaths(file)) {
-            final RegExpMatch? match = RegExp(
-              r'domain/' + _kernel + r'/([^/]+)/',
-            ).firstMatch(importPath);
-            if (match == null) continue;
-            final String subDir = match.group(1)!;
-            if (!_accountingPublicDirs.contains(subDir)) {
-              violations.add(_Violation(
-                file,
-                importPath,
-                '业务域 "$bc" 不能 import 账务核心内部目录 "$subDir/"，'
-                '仅允许 ${_accountingPublicDirs.join("/")}',
-              ));
+            final target = _libPathForImport(file, importPath);
+            if (target == null || !target.contains('domain/$_kernel/')) {
+              continue;
+            }
+            if (target != _accountingApi) {
+              violations.add(
+                _Violation(
+                  file,
+                  importPath,
+                  '业务域 "$bc" 只能通过 accounting_api.dart 使用账务核心',
+                ),
+              );
             }
           }
         }
@@ -106,14 +103,17 @@ void main() {
         if (bc == _kernel) continue;
         for (final File file in _dartFiles('lib/domain/$bc')) {
           for (final String importPath in _importPaths(file)) {
+            final target = _libPathForImport(file, importPath) ?? importPath;
             for (final String other in _businessDomains) {
               if (other == _kernel || other == bc) continue;
-              if (importPath.contains('domain/$other/')) {
-                violations.add(_Violation(
-                  file,
-                  importPath,
-                  '业务域 "$bc" 不能 import 兄弟业务域 "$other"',
-                ));
+              if (target.contains('domain/$other/')) {
+                violations.add(
+                  _Violation(
+                    file,
+                    importPath,
+                    '业务域 "$bc" 不能 import 兄弟业务域 "$other"',
+                  ),
+                );
               }
             }
           }
@@ -128,14 +128,17 @@ void main() {
         if (bc == _kernel) continue;
         for (final File file in _dartFiles('lib/data/$bc')) {
           for (final String importPath in _importPaths(file)) {
+            final target = _libPathForImport(file, importPath) ?? importPath;
             for (final String other in _businessDomains) {
               if (other == _kernel || other == bc) continue;
-              if (importPath.contains('data/$other/')) {
-                violations.add(_Violation(
-                  file,
-                  importPath,
-                  '业务域 "$bc" data 不能 import 兄弟业务域 "$other" 的 data',
-                ));
+              if (target.contains('data/$other/')) {
+                violations.add(
+                  _Violation(
+                    file,
+                    importPath,
+                    '业务域 "$bc" data 不能 import 兄弟业务域 "$other" 的 data',
+                  ),
+                );
               }
             }
           }
@@ -155,13 +158,13 @@ void main() {
       final List<_Violation> violations = <_Violation>[];
       for (final File file in _dartFiles('lib/domain')) {
         for (final String importPath in _importPaths(file)) {
+          final target = _libPathForImport(file, importPath);
+          if (target == null) continue;
           for (final String root in forbiddenRoots) {
-            if (_importTouchesRoot(importPath, root)) {
-              violations.add(_Violation(
-                file,
-                importPath,
-                'domain/ 不能反向依赖外层 "$root"',
-              ));
+            if (target.startsWith(root)) {
+              violations.add(
+                _Violation(file, importPath, 'domain/ 不能反向依赖外层 "$root"'),
+              );
               break;
             }
           }
@@ -182,13 +185,13 @@ void main() {
       final List<_Violation> violations = <_Violation>[];
       for (final File file in _dartFiles('lib/core')) {
         for (final String importPath in _importPaths(file)) {
+          final target = _libPathForImport(file, importPath);
+          if (target == null) continue;
           for (final String root in forbiddenRoots) {
-            if (_importTouchesRoot(importPath, root)) {
-              violations.add(_Violation(
-                file,
-                importPath,
-                'core/ 不能依赖业务层 "$root"',
-              ));
+            if (target.startsWith(root)) {
+              violations.add(
+                _Violation(file, importPath, 'core/ 不能依赖业务层 "$root"'),
+              );
               break;
             }
           }
@@ -199,21 +202,19 @@ void main() {
   });
 }
 
-/// 判断一个 import URI 是否最终指向 `lib/<root>...`。
-///
-/// 包格式（`package:smartflow/<root>...`）与相对路径（`../<root>...` 或
-/// 多层 `../` 后接 `<root>...`）都覆盖。
-bool _importTouchesRoot(String importPath, String root) {
-  if (importPath.startsWith('package:smartflow/$root')) return true;
-  if (importPath.startsWith('package:')) return false; // 第三方包
-  // 相对路径：剥掉所有前导 ../ 与 ./
-  String stripped = importPath;
-  while (stripped.startsWith('../') || stripped.startsWith('./')) {
-    stripped = stripped.startsWith('./')
-        ? stripped.substring(2)
-        : stripped.substring(3);
+String? _libPathForImport(File file, String importPath) {
+  if (importPath.startsWith('dart:')) return null;
+  if (importPath.startsWith('package:')) {
+    const prefix = 'package:smartflow/';
+    if (!importPath.startsWith(prefix)) return null;
+    return importPath.substring(prefix.length);
   }
-  return stripped.startsWith(root);
+
+  final resolved = file.parent.uri.resolve(importPath).toFilePath();
+  final normalized = resolved.replaceAll('\\', '/');
+  final markerIndex = normalized.lastIndexOf('/lib/');
+  if (markerIndex < 0) return null;
+  return normalized.substring(markerIndex + '/lib/'.length);
 }
 
 /// 收集目录下所有 .dart 源文件（跳过生成代码）。
@@ -253,6 +254,8 @@ class _Violation {
 
 void _assertClean(List<_Violation> violations) {
   if (violations.isEmpty) return;
-  final String detail = violations.map((_Violation v) => v.toString()).join('\n');
+  final String detail = violations
+      .map((_Violation v) => v.toString())
+      .join('\n');
   fail('发现 ${violations.length} 处业务域 import 越界：\n$detail');
 }

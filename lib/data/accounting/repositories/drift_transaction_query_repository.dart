@@ -4,8 +4,9 @@ import '../../../core/money/money.dart';
 import '../../../domain/accounting/entities/transaction.dart' as domain;
 import '../../../domain/accounting/entities/transaction_ownership.dart';
 import '../../../domain/accounting/enums/accounting_enums.dart';
+import '../../../domain/accounting/queries/transaction_queries.dart';
 import '../../../domain/accounting/repositories/transaction_query_repository.dart';
-import '../../../domain/accounting/services/transaction_query_service.dart';
+import '../../../domain/accounting/views/transaction_views.dart';
 import '../../app_database.dart';
 
 class DriftTransactionQueryRepository implements TransactionQueryRepository {
@@ -366,6 +367,27 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
       outstanding: outstanding,
       isClosed: isClosed,
     );
+  }
+
+  @override
+  Future<int> getDetailAmountSum({
+    required Iterable<int> transactionIds,
+    required TransactionDetailType detailType,
+  }) async {
+    final ids = transactionIds.toSet();
+    if (ids.isEmpty) return 0;
+    final sumAmount = _database.transactionDetails.amountMinor.sum();
+    final row =
+        await (_database.selectOnly(_database.transactionDetails)
+              ..addColumns([sumAmount])
+              ..where(
+                _database.transactionDetails.transactionId.isIn(ids) &
+                    _database.transactionDetails.detailType.equalsValue(
+                      detailType,
+                    ),
+              ))
+            .getSingle();
+    return row.read(sumAmount) ?? 0;
   }
 
   Future<TransactionDetailView?> _getTransactionDetail(
