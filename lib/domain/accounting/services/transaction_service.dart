@@ -4,6 +4,7 @@ import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
 import '../commands/transaction_commands.dart';
 import '../entities/account_usage.dart';
+import '../entities/entry.dart';
 import '../entities/transaction.dart';
 import '../enums/accounting_enums.dart';
 import '../ledger/poster.dart';
@@ -11,8 +12,8 @@ import '../ledger/posting_protocol.dart';
 import '../repositories/account_repository.dart';
 import '../repositories/posting_repository.dart';
 import '../repositories/system_account_resolver.dart';
-import '../repositories/transaction_query_repository.dart';
-import '../views/transaction_views.dart';
+import '../read_models/transaction_read_models.dart';
+import 'transaction_query_service.dart';
 
 CreatedTransactionResult _toCreated(PostTransactionResult post) =>
     CreatedTransactionResult(
@@ -120,11 +121,11 @@ class TransactionServiceImpl implements TransactionService {
   const TransactionServiceImpl(
     this._postingService, {
     required AccountRepository accountRepository,
-    required TransactionQueryRepository transactionQueryRepository,
+    required TransactionQueryService transactionQueryService,
     required SystemAccountResolver systemAccountResolver,
     required PostingRepository postingRepository,
   }) : _accountRepository = accountRepository,
-       _queryRepository = transactionQueryRepository,
+       _queryService = transactionQueryService,
        _systemAccounts = systemAccountResolver,
        _postingRepository = postingRepository;
 
@@ -158,7 +159,7 @@ class TransactionServiceImpl implements TransactionService {
 
   final Poster _postingService;
   final AccountRepository _accountRepository;
-  final TransactionQueryRepository _queryRepository;
+  final TransactionQueryService _queryService;
   final SystemAccountResolver _systemAccounts;
   final PostingRepository _postingRepository;
 
@@ -348,7 +349,7 @@ class TransactionServiceImpl implements TransactionService {
         ),
       );
     }
-    final query = _queryRepository;
+    final query = _queryService;
     final parent = await query.findTransactionById(command.parentTransactionId);
     if (parent == null) {
       return const Result.failure(
@@ -540,7 +541,7 @@ class TransactionServiceImpl implements TransactionService {
         ),
       );
     }
-    final query = _queryRepository;
+    final query = _queryService;
     final advance = await query.findTransactionById(
       command.advanceTransactionId,
     );
@@ -630,7 +631,7 @@ class TransactionServiceImpl implements TransactionService {
         ),
       );
     }
-    final query = _queryRepository;
+    final query = _queryService;
     final resolver = _systemAccounts;
     final advance = await query.findTransactionById(
       command.advanceTransactionId,
@@ -1409,7 +1410,7 @@ class TransactionServiceImpl implements TransactionService {
   Future<Result<CreatedTransactionResult>> _correctTransaction(
     _CorrectTransactionDraft command,
   ) async {
-    final query = _queryRepository;
+    final query = _queryService;
     final original =
         await query.watchTransactionDetail(command.transactionId).first;
     if (original == null) {
@@ -1447,7 +1448,10 @@ class TransactionServiceImpl implements TransactionService {
 
     if (original.children.isNotEmpty) {
       final structure = _replacementStructure(command);
-      if (!_matchesOriginalStructure(original, structure)) {
+      final accountTypes = await _loadAccountTypes(
+        original.entries.map((e) => e.accountId),
+      );
+      if (!_matchesOriginalStructure(original, structure, accountTypes)) {
         return const Result.failure(
           Failure(
             code: 'transaction_has_children',
@@ -1508,7 +1512,7 @@ class TransactionServiceImpl implements TransactionService {
   Future<Result<void>> deleteTransaction(
     DeleteTransactionCommand command,
   ) async {
-    final query = _queryRepository;
+    final query = _queryService;
     final target =
         await query.watchTransactionDetail(command.transactionId).first;
     if (target == null) {
@@ -1528,7 +1532,7 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
 
-    final detailsToCancel = <TransactionDetailView>[];
+    final detailsToCancel = <TransactionDetail>[];
     for (final child in target.children) {
       final childDetail = await query.watchTransactionDetail(child.id).first;
       if (childDetail != null &&
@@ -1567,7 +1571,7 @@ class TransactionServiceImpl implements TransactionService {
       return const Result.success(null);
     }
     final repository = _postingRepository;
-    final transaction = await _queryRepository.findTransactionById(
+    final transaction = await _queryService.findTransactionById(
       command.transactionId,
     );
     if (transaction == null) {
@@ -1608,7 +1612,7 @@ class TransactionServiceImpl implements TransactionService {
     }
     final repository = _postingRepository;
 
-    final query = _queryRepository;
+    final query = _queryService;
     final detail =
         await query.watchTransactionDetail(command.transactionId).first;
     if (detail == null) {
@@ -1629,9 +1633,12 @@ class TransactionServiceImpl implements TransactionService {
     }
 
     final reassignments = <EntryAccountReassignment>[];
+    final accountTypes = await _loadAccountTypes(
+      detail.entries.map((e) => e.accountId),
+    );
     final settlementAccountId = command.settlementAccountId;
     if (settlementAccountId != null) {
-      final entry = _settlementEntry(detail);
+      final entry = _settlementEntry(detail, accountTypes);
       if (entry == null) {
         return const Result.failure(
           Failure(
@@ -1673,7 +1680,7 @@ class TransactionServiceImpl implements TransactionService {
           ),
         );
       }
-      final entry = _reimbursementReceivableEntry(detail);
+      final entry = _reimbursementReceivableEntry(detail, accountTypes);
       if (entry == null) {
         return const Result.failure(
           Failure(
@@ -1725,7 +1732,7 @@ class TransactionServiceImpl implements TransactionService {
     UpdateTransactionOwnershipCommand command,
   ) async {
     final repository = _postingRepository;
-    final transaction = await _queryRepository.findTransactionById(
+    final transaction = await _queryService.findTransactionById(
       command.transactionId,
     );
     if (transaction == null) {
@@ -1753,7 +1760,10 @@ class TransactionServiceImpl implements TransactionService {
     }
   }
 
-  EntryLineView? _settlementEntry(TransactionDetailView detail) {
+  Entry? _settlementEntry(
+    TransactionDetail detail,
+    Map<int, AccountType> accountTypes,
+  ) {
     final direction = switch (detail.transaction.businessPurpose) {
       BusinessPurpose.dailyExpense ||
       BusinessPurpose.reimbursementAdvance ||
@@ -1767,14 +1777,15 @@ class TransactionServiceImpl implements TransactionService {
     };
     if (direction == null) return null;
     for (final entry in detail.entries) {
+      final accountType = accountTypes[entry.accountId];
       final settlementType =
-          entry.accountType == AccountType.asset ||
-          entry.accountType == AccountType.liability;
+          accountType == AccountType.asset ||
+          accountType == AccountType.liability;
       final isReimbursementReceivable =
           detail.transaction.businessPurpose ==
               BusinessPurpose.reimbursementAdvance &&
           entry.direction == EntryDirection.debit &&
-          entry.accountType == AccountType.asset;
+          accountType == AccountType.asset;
       if (settlementType &&
           !isReimbursementReceivable &&
           entry.direction == direction) {
@@ -1784,14 +1795,26 @@ class TransactionServiceImpl implements TransactionService {
     return null;
   }
 
-  EntryLineView? _reimbursementReceivableEntry(TransactionDetailView detail) {
+  Entry? _reimbursementReceivableEntry(
+    TransactionDetail detail,
+    Map<int, AccountType> accountTypes,
+  ) {
     for (final entry in detail.entries) {
-      if (entry.accountType == AccountType.asset &&
+      if (accountTypes[entry.accountId] == AccountType.asset &&
           entry.direction == EntryDirection.debit) {
         return entry;
       }
     }
     return null;
+  }
+
+  Future<Map<int, AccountType>> _loadAccountTypes(
+    Iterable<int> accountIds,
+  ) async {
+    final ids = accountIds.toSet();
+    if (ids.isEmpty) return const {};
+    final accounts = await _accountRepository.findAccountsByIds(ids);
+    return {for (final account in accounts) account.id: account.type};
   }
 
   Future<Failure?> _validateDirectAccount(
@@ -1866,7 +1889,7 @@ class TransactionServiceImpl implements TransactionService {
   }
 
   PostTransactionCommand _buildReversalCommand(
-    TransactionDetailView detail, {
+    TransactionDetail detail, {
     required MutationReason reason,
   }) {
     final transaction = detail.transaction;
@@ -1909,7 +1932,7 @@ class TransactionServiceImpl implements TransactionService {
 
   Future<Result<PostTransactionCommand>> _buildReplacementCommand(
     _CorrectTransactionDraft command,
-    TransactionDetailView original,
+    TransactionDetail original,
   ) async {
     final base = _replacementStructure(command);
     final roleFailure = await _validateReplacementRoles(base);
@@ -2152,7 +2175,7 @@ class TransactionServiceImpl implements TransactionService {
 
   Future<Result<PostTransactionCommand>> _buildRefundReplacementCommand(
     _CorrectTransactionDraft command,
-    TransactionDetailView original,
+    TransactionDetail original,
   ) async {
     final amount = command.amount;
     if (amount.minorUnits <= 0) {
@@ -2164,7 +2187,7 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
 
-    final query = _queryRepository;
+    final query = _queryService;
     final transaction = original.transaction;
     final parentId = transaction.parentTransactionId;
     if (parentId == null) {
@@ -2298,7 +2321,7 @@ class TransactionServiceImpl implements TransactionService {
   Future<Result<PostTransactionCommand>>
   _buildReimbursementReceiptReplacementCommand(
     _CorrectTransactionDraft command,
-    TransactionDetailView original,
+    TransactionDetail original,
   ) async {
     final amount = command.amount;
     if (amount.minorUnits <= 0) {
@@ -2310,7 +2333,7 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
 
-    final query = _queryRepository;
+    final query = _queryService;
     final transaction = original.transaction;
     final advance = await query.findTransactionById(
       transaction.parentTransactionId ?? transaction.rootTransactionId,
@@ -2392,7 +2415,7 @@ class TransactionServiceImpl implements TransactionService {
   Future<Result<PostTransactionCommand>>
   _buildReimbursementCloseReplacementCommand(
     _CorrectTransactionDraft command,
-    TransactionDetailView original,
+    TransactionDetail original,
   ) async {
     final actual = command.amount;
     if (actual.minorUnits < 0) {
@@ -2426,7 +2449,7 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
 
-    final query = _queryRepository;
+    final query = _queryService;
     final advance = await query.findTransactionById(
       transaction.parentTransactionId ?? transaction.rootTransactionId,
     );
@@ -2529,7 +2552,7 @@ class TransactionServiceImpl implements TransactionService {
 
   Future<Result<PostTransactionCommand>> _buildRepaymentReplacementCommand(
     _CorrectTransactionDraft command,
-    TransactionDetailView original,
+    TransactionDetail original,
   ) async {
     final principal = command.amount;
     final interest = command.repaymentInterest;
@@ -2701,7 +2724,7 @@ class TransactionServiceImpl implements TransactionService {
   }
 
   Money? _detailAmount(
-    TransactionDetailView detail,
+    TransactionDetail detail,
     TransactionDetailType type,
   ) {
     for (final line in detail.details) {
@@ -2729,8 +2752,9 @@ class TransactionServiceImpl implements TransactionService {
   }
 
   bool _matchesOriginalStructure(
-    TransactionDetailView original,
+    TransactionDetail original,
     _ReplacementStructure replacement,
+    Map<int, AccountType> accountTypes,
   ) {
     final transaction = original.transaction;
     if (transaction.businessPurpose != replacement.businessPurpose) {
@@ -2739,7 +2763,8 @@ class TransactionServiceImpl implements TransactionService {
     final entries = original.entries;
     int? firstAccount(AccountType type, EntryDirection direction) {
       for (final entry in entries) {
-        if (entry.accountType == type && entry.direction == direction) {
+        if (accountTypes[entry.accountId] == type &&
+            entry.direction == direction) {
           return entry.accountId;
         }
       }
@@ -2748,8 +2773,8 @@ class TransactionServiceImpl implements TransactionService {
 
     int? firstAsset(EntryDirection direction) {
       for (final entry in entries) {
-        if ((entry.accountType == AccountType.asset ||
-                entry.accountType == AccountType.liability) &&
+        final type = accountTypes[entry.accountId];
+        if ((type == AccountType.asset || type == AccountType.liability) &&
             entry.direction == direction) {
           return entry.accountId;
         }
@@ -2825,17 +2850,21 @@ class TransactionServiceImpl implements TransactionService {
     required int parentId,
     required BusinessPurpose parentPurpose,
   }) async {
-    final query = _queryRepository;
+    final query = _queryService;
     final view = await query.watchTransactionDetail(parentId).first;
     if (view == null) return null;
+    final accountTypes = await _loadAccountTypes(
+      view.entries.map((e) => e.accountId),
+    );
     for (final entry in view.entries) {
+      final accountType = accountTypes[entry.accountId];
       final isDailyExpenseTarget =
           parentPurpose == BusinessPurpose.dailyExpense &&
-          entry.accountType == AccountType.expense &&
+          accountType == AccountType.expense &&
           entry.direction == EntryDirection.debit;
       final isAdvanceTarget =
           parentPurpose == BusinessPurpose.reimbursementAdvance &&
-          entry.accountType == AccountType.asset &&
+          accountType == AccountType.asset &&
           entry.direction == EntryDirection.debit;
       if (isDailyExpenseTarget || isAdvanceTarget) {
         return entry.accountId;

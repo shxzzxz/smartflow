@@ -74,26 +74,38 @@ List<_BadgeData> _resolveBadges(
       ),
     );
   }
-  if (item.repaymentInterest != null) {
+  final repaymentInterest = _detailAmount(
+    item,
+    TransactionDetailType.repaymentInterest,
+  );
+  if (repaymentInterest != null) {
     badges.add(
       _BadgeData(
-        label: '利 ${_format(item.repaymentInterest!)}',
+        label: '利 ${_format(repaymentInterest)}',
         color: financeColors.expense,
       ),
     );
   }
-  if (item.repaymentFee != null) {
+  final repaymentFee = _detailAmount(
+    item,
+    TransactionDetailType.repaymentFee,
+  );
+  if (repaymentFee != null) {
     badges.add(
       _BadgeData(
-        label: '费 ${_format(item.repaymentFee!)}',
+        label: '费 ${_format(repaymentFee)}',
         color: financeColors.expense,
       ),
     );
   }
-  if (item.repaymentDiscount != null) {
+  final repaymentDiscount = _detailAmount(
+    item,
+    TransactionDetailType.repaymentDiscount,
+  );
+  if (repaymentDiscount != null) {
     badges.add(
       _BadgeData(
-        label: '优 ${_format(item.repaymentDiscount!)}',
+        label: '优 ${_format(repaymentDiscount)}',
         color: financeColors.income,
       ),
     );
@@ -116,6 +128,16 @@ List<_BadgeData> _resolveBadges(
   }
 
   return badges;
+}
+
+/// 从 details 中取指定 type 的金额(>0 才返回)。
+Money? _detailAmount(TransactionListItem item, TransactionDetailType type) {
+  for (final line in item.details) {
+    if (line.type == type && line.amount.minorUnits > 0) {
+      return line.amount;
+    }
+  }
+  return null;
 }
 
 String _format(Money money) {

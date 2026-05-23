@@ -21,8 +21,12 @@ abstract interface class CreditService {
   );
 
   /// 把已加载好的 detail 反解为编辑视图。非 DEBT_REPAYMENT 或结构异常时返回 null。
-  /// 纯函数，无 IO；调用方自行 watch detail provider 以保留响应式。
-  RepaymentEditView? parseRepaymentEditView(TransactionDetailView detail);
+  /// 纯函数,无 IO;`accountsById` 由调用方(UI 层)从 accountsByIdProvider 提供,
+  /// 用于把 entries 的 accountId 解析为 AccountType。
+  RepaymentEditView? parseRepaymentEditView(
+    TransactionDetail detail, {
+    required Map<int, Account> accountsById,
+  });
 }
 
 class CreateRepaymentCommand {
@@ -203,7 +207,10 @@ class CreditServiceImpl implements CreditService {
   }
 
   @override
-  RepaymentEditView? parseRepaymentEditView(TransactionDetailView detail) {
+  RepaymentEditView? parseRepaymentEditView(
+    TransactionDetail detail, {
+    required Map<int, Account> accountsById,
+  }) {
     if (detail.transaction.businessPurpose != BusinessPurpose.debtRepayment) {
       return null;
     }
@@ -230,10 +237,14 @@ class CreditServiceImpl implements CreditService {
 
     final liabilityAccountId = _firstAccountId(
       detail,
+      accountsById: accountsById,
       accountType: AccountType.liability,
       direction: EntryDirection.debit,
     );
-    final paidFromAccountId = _firstSettlementAccountId(detail);
+    final paidFromAccountId = _firstSettlementAccountId(
+      detail,
+      accountsById: accountsById,
+    );
     if (liabilityAccountId == null || paidFromAccountId == null) return null;
 
     return RepaymentEditView(
@@ -243,7 +254,11 @@ class CreditServiceImpl implements CreditService {
       discount: (discount?.minorUnits ?? 0) > 0 ? discount : null,
       feeExpenseAccountId:
           fee != null && fee.minorUnits > 0
-              ? _expenseAccountIdByAmount(detail, fee)
+              ? _expenseAccountIdByAmount(
+                detail,
+                accountsById: accountsById,
+                amount: fee,
+              )
               : null,
       liabilityAccountId: liabilityAccountId,
       paidFromAccountId: paidFromAccountId,
@@ -259,7 +274,7 @@ class CreditServiceImpl implements CreditService {
   Future<Failure?> _validatePrincipal({
     required int liabilityAccountId,
     required Money principal,
-    TransactionDetailView? editingTransactionDetail,
+    TransactionDetail? editingTransactionDetail,
   }) async {
     if (principal.minorUnits <= 0) return null;
 
@@ -302,32 +317,41 @@ class CreditServiceImpl implements CreditService {
   }
 
   int? _firstAccountId(
-    TransactionDetailView detail, {
+    TransactionDetail detail, {
+    required Map<int, Account> accountsById,
     required AccountType accountType,
     required EntryDirection direction,
   }) {
     for (final entry in detail.entries) {
-      if (entry.accountType == accountType && entry.direction == direction) {
+      if (accountsById[entry.accountId]?.type == accountType &&
+          entry.direction == direction) {
         return entry.accountId;
       }
     }
     return null;
   }
 
-  int? _firstSettlementAccountId(TransactionDetailView detail) {
+  int? _firstSettlementAccountId(
+    TransactionDetail detail, {
+    required Map<int, Account> accountsById,
+  }) {
     for (final entry in detail.entries) {
       if (entry.direction != EntryDirection.credit) continue;
-      if (entry.accountType == AccountType.asset ||
-          entry.accountType == AccountType.liability) {
+      final type = accountsById[entry.accountId]?.type;
+      if (type == AccountType.asset || type == AccountType.liability) {
         return entry.accountId;
       }
     }
     return null;
   }
 
-  int? _expenseAccountIdByAmount(TransactionDetailView detail, Money amount) {
+  int? _expenseAccountIdByAmount(
+    TransactionDetail detail, {
+    required Map<int, Account> accountsById,
+    required Money amount,
+  }) {
     for (final entry in detail.entries) {
-      if (entry.accountType == AccountType.expense &&
+      if (accountsById[entry.accountId]?.type == AccountType.expense &&
           entry.direction == EntryDirection.debit &&
           entry.amount == amount) {
         return entry.accountId;

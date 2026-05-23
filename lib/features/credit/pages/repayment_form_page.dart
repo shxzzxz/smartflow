@@ -88,9 +88,13 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
 
     if (isEdit && !_editInitialized) {
       final detail = detailAsync!.value;
+      final accountsById =
+          ref.read(accountsByIdProvider).value ?? const <int, Account>{};
       final view = detail == null
           ? null
-          : ref.read(creditServiceProvider).parseRepaymentEditView(detail);
+          : ref
+              .read(creditServiceProvider)
+              .parseRepaymentEditView(detail, accountsById: accountsById);
       if (view == null) {
         return _scaffold(const Center(child: Text('该还款记录不可编辑')));
       }

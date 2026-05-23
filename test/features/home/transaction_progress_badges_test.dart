@@ -89,19 +89,46 @@ TransactionListItem _item({
   Money? repaymentInterest,
   Money? repaymentFee,
 }) {
+  final details = <TransactionDetailRecord>[];
+  var lineNo = 1;
+  if (repaymentInterest != null) {
+    details.add(
+      TransactionDetailRecord(
+        id: lineNo,
+        transactionId: 1,
+        lineNo: lineNo++,
+        type: TransactionDetailType.repaymentInterest,
+        amount: repaymentInterest,
+      ),
+    );
+  }
+  if (repaymentFee != null) {
+    details.add(
+      TransactionDetailRecord(
+        id: lineNo,
+        transactionId: 1,
+        lineNo: lineNo++,
+        type: TransactionDetailType.repaymentFee,
+        amount: repaymentFee,
+      ),
+    );
+  }
+
   return TransactionListItem(
     id: 1,
+    rootTransactionId: 1,
     businessPurpose: BusinessPurpose.dailyExpense,
+    businessState: BusinessState.current,
     occurredAt: DateTime(2026, 5, 12, 8, 30),
+    currencyCode: Money.defaultCurrency,
     primaryAmount: const Money(minorUnits: 1000),
-    accountNames: '现金',
+    entries: const [],
+    details: details,
     isExcludedFromStats: isExcludedFromStats,
     isExcludedFromBudget: isExcludedFromBudget,
     refundedTotal: refundedTotal,
     reimbursementReceivedTotal: reimbursementReceivedTotal,
     reimbursementGapIncome: reimbursementGapIncome,
     reimbursementGapExpense: reimbursementGapExpense,
-    repaymentInterest: repaymentInterest,
-    repaymentFee: repaymentFee,
   );
 }

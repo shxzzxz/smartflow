@@ -1,8 +1,12 @@
 import '../../../core/money/money.dart';
 import '../enums/accounting_enums.dart';
 
-class TransactionDetail {
-  const TransactionDetail({
+/// transactions / transaction_details 表的明细行(领域实体)。
+///
+/// 与 `read_models/transaction_read_models.dart` 中 `TransactionDetailLine` 的区别:
+/// 实体含 db 标识符(id / transactionId),read model line 仅含会计字段(lineNo/type/amount)。
+class TransactionDetailRecord {
+  const TransactionDetailRecord({
     required this.id,
     required this.transactionId,
     required this.lineNo,

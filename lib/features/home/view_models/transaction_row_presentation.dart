@@ -3,18 +3,76 @@ import 'package:flutter/material.dart';
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../domain/accounting/accounting_api.dart';
+import '../../../widgets/business/account_lookup.dart';
 import '../../../widgets/business/finance_labels.dart';
 
 /// 主交易行展示用的纯计算函数。
 ///
-/// 把列表项 → 文案 / 图标 / 颜色 / 金额格式 的映射集中在此，
-/// widgets 层只做组装与渲染，便于单元测试与跨视图复用。
+/// 把列表项 → 文案 / 图标 / 颜色 / 金额格式 的映射集中在此,
+/// widgets 层只做组装与渲染,便于单元测试与跨视图复用。
+///
+/// `accountsById` 由 widget 端从 `accountsByIdProvider` 提供,
+/// 用于把 entries 的 accountId 解析为 Account 元数据。
 
-String? resolveCategoryIconKey(TransactionListItem item) {
+/// 类目账户(expense / income / 报销垫付的 expense 账户)。
+Account? categoryAccount(
+  TransactionListItem item,
+  Map<int, Account> accountsById,
+) {
+  return switch (item.businessPurpose) {
+    BusinessPurpose.dailyExpense || BusinessPurpose.refund =>
+      firstEntryByType(
+        item.entries,
+        accountsById: accountsById,
+        accountType: AccountType.expense,
+      )?.resolveAccount(accountsById),
+    BusinessPurpose.dailyIncome =>
+      firstEntryByType(
+        item.entries,
+        accountsById: accountsById,
+        accountType: AccountType.income,
+      )?.resolveAccount(accountsById),
+    BusinessPurpose.reimbursementAdvance =>
+      item.reimbursementExpenseAccountId == null
+          ? null
+          : accountsById[item.reimbursementExpenseAccountId!],
+    _ => null,
+  };
+}
+
+/// 资金「流出账户」:asset / liability 上的 credit 分录(付款方)。
+Account? flowOutAccount(
+  TransactionListItem item,
+  Map<int, Account> accountsById,
+) {
+  return firstSettlementEntry(
+    item.entries,
+    accountsById: accountsById,
+    direction: EntryDirection.credit,
+  )?.resolveAccount(accountsById);
+}
+
+/// 资金「流入账户」:asset / liability 上的 debit 分录(收款方)。
+Account? flowInAccount(
+  TransactionListItem item,
+  Map<int, Account> accountsById,
+) {
+  return firstSettlementEntry(
+    item.entries,
+    accountsById: accountsById,
+    direction: EntryDirection.debit,
+  )?.resolveAccount(accountsById);
+}
+
+String? resolveCategoryIconKey(
+  TransactionListItem item,
+  Map<int, Account> accountsById,
+) {
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense ||
     BusinessPurpose.dailyIncome ||
-    BusinessPurpose.reimbursementAdvance => item.categoryIconKey,
+    BusinessPurpose.reimbursementAdvance =>
+      categoryAccount(item, accountsById)?.iconKey,
     BusinessPurpose.transfer => 'transfer',
     BusinessPurpose.debtRepayment => 'loan',
     BusinessPurpose.borrowing => 'hand-coin-line',
@@ -26,47 +84,43 @@ String? resolveCategoryIconKey(TransactionListItem item) {
   };
 }
 
-String transactionPrimaryLabel(TransactionListItem item) {
+String transactionPrimaryLabel(
+  TransactionListItem item,
+  Map<int, Account> accountsById,
+) {
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense || BusinessPurpose.dailyIncome =>
-      _cleanText(item.categoryName) ??
+      _cleanText(categoryAccount(item, accountsById)?.name) ??
           transactionPurposeLabel(item.businessPurpose),
     BusinessPurpose.reimbursementAdvance =>
-      _cleanText(item.categoryName) ?? '支出',
+      _cleanText(categoryAccount(item, accountsById)?.name) ?? '支出',
     _ => transactionPurposeLabel(item.businessPurpose),
   };
 }
 
-String transactionAccountLabel(TransactionListItem item) {
+String transactionAccountLabel(
+  TransactionListItem item,
+  Map<int, Account> accountsById,
+) {
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense || BusinessPurpose.reimbursementAdvance =>
-      _cleanText(item.flowOutAccountName) ?? _firstAccountName(item),
+      _cleanText(flowOutAccount(item, accountsById)?.name) ?? '',
     BusinessPurpose.dailyIncome =>
-      _cleanText(item.flowInAccountName) ?? _firstAccountName(item),
-    _ => _flowAccountLabel(item),
+      _cleanText(flowInAccount(item, accountsById)?.name) ?? '',
+    _ => _flowAccountLabel(item, accountsById),
   };
 }
 
-String _flowAccountLabel(TransactionListItem item) {
-  final flowOut = _cleanText(item.flowOutAccountName);
-  final flowIn = _cleanText(item.flowInAccountName);
-  if (flowOut != null && flowIn != null) {
-    return '$flowOut → $flowIn';
+String _flowAccountLabel(
+  TransactionListItem item,
+  Map<int, Account> accountsById,
+) {
+  final out = _cleanText(flowOutAccount(item, accountsById)?.name);
+  final in_ = _cleanText(flowInAccount(item, accountsById)?.name);
+  if (out != null && in_ != null) {
+    return '$out → $in_';
   }
-  return flowOut ?? flowIn ?? _firstAccountName(item);
-}
-
-String _firstAccountName(TransactionListItem item) {
-  final parts =
-      item.accountNames
-          .split('/')
-          .map((part) => part.trim())
-          .where((part) => part.isNotEmpty)
-          .toList();
-  if (parts.isEmpty) {
-    return '';
-  }
-  return parts.first;
+  return out ?? in_ ?? '';
 }
 
 String? _cleanText(String? value) {

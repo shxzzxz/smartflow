@@ -153,10 +153,14 @@ TransactionListItem _item({
 }) {
   return TransactionListItem(
     id: id,
+    rootTransactionId: id,
     businessPurpose: purpose,
+    businessState: BusinessState.current,
     occurredAt: occurredAt,
+    currencyCode: Money.defaultCurrency,
     primaryAmount: Money(minorUnits: amountMinor),
-    accountNames: '现金',
+    entries: const [],
+    details: const [],
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
   );

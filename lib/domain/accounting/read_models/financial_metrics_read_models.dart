@@ -1,6 +1,6 @@
 import '../../../core/money/money.dart';
 import '../../../core/time/month_key.dart';
-import 'transaction_views.dart';
+import 'transaction_read_models.dart';
 
 class DailyCashflowSummary {
   const DailyCashflowSummary({

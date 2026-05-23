@@ -10,39 +10,52 @@ import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../domain/accounting/accounting_api.dart';
 import '../../../widgets/business/account_endpoint_view.dart';
+import '../../../widgets/business/account_lookup.dart';
 import '../../../widgets/business/category_avatar.dart';
 import '../view_models/transaction_row_presentation.dart';
 import 'transaction_progress_badges.dart';
 
-class TransactionRow extends StatelessWidget {
+class TransactionRow extends ConsumerWidget {
   const TransactionRow({
     required this.item,
     super.key,
     this.enableQuickEdit = true,
     this.onQuickEdit,
+    this.viewAccountId,
   });
 
   final TransactionListItem item;
   final bool enableQuickEdit;
   final VoidCallback? onQuickEdit;
 
+  /// 「账户视角」下当前账户 id。提供时,显示对该账户的余额变动而非交易金额。
+  final int? viewAccountId;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final accountsById =
+        ref.watch(accountsByIdProvider).value ?? const <int, Account>{};
     final colors = Theme.of(context).colorScheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
     final textStyles = context.appTextStyles;
-    final isAccountLedger = item.accountBalanceDelta != null;
-    final color =
-        isAccountLedger
-            ? colors.onSurface
-            : amountColor(colors, financeColors, item.businessPurpose);
-    final title = transactionPrimaryLabel(item);
+    final balanceDelta = viewAccountId == null
+        ? null
+        : balanceDeltaForAccount(
+            accountId: viewAccountId!,
+            entries: item.entries,
+            accountsById: accountsById,
+            currencyCode: item.currencyCode,
+          );
+    final isAccountLedger = balanceDelta != null;
+    final color = isAccountLedger
+        ? colors.onSurface
+        : amountColor(colors, financeColors, item.businessPurpose);
+    final title = transactionPrimaryLabel(item, accountsById);
     final note = item.note?.trim();
     final hasNote = note != null && note.isNotEmpty;
-    final subtitle =
-        hasNote
-            ? '${formatTime(item.occurredAt)}  $note'
-            : formatTime(item.occurredAt);
+    final subtitle = hasNote
+        ? '${formatTime(item.occurredAt)}  $note'
+        : formatTime(item.occurredAt);
     final hasBadges = _hasBadges(item);
 
     final row = InkWell(
@@ -55,7 +68,10 @@ class TransactionRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            CategoryAvatar(iconKey: resolveCategoryIconKey(item), size: 24),
+            CategoryAvatar(
+              iconKey: resolveCategoryIconKey(item, accountsById),
+              size: 24,
+            ),
             const SizedBox(width: AppSpacing.space8),
             Expanded(
               child: Column(
@@ -85,14 +101,14 @@ class TransactionRow extends StatelessWidget {
                 children: [
                   Text(
                     isAccountLedger
-                        ? _formatAccountDelta(item.accountBalanceDelta!)
+                        ? _formatAccountDelta(balanceDelta)
                         : formatTransactionAmount(item),
                     style: textStyles.amountList.copyWith(color: color),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: AppSpacing.space2),
-                  _AccountLine(item: item),
+                  _AccountLine(item: item, accountsById: accountsById),
                 ],
               ),
             ),
@@ -177,15 +193,26 @@ class _QuickEditBackground extends StatelessWidget {
 }
 
 bool _hasBadges(TransactionListItem item) {
-  return item.isExcludedFromStats ||
+  if (item.isExcludedFromStats ||
       item.isExcludedFromBudget ||
       item.refundedTotal != null ||
       item.reimbursementReceivedTotal != null ||
-      item.repaymentInterest != null ||
-      item.repaymentFee != null ||
-      item.repaymentDiscount != null ||
       item.reimbursementGapIncome != null ||
-      item.reimbursementGapExpense != null;
+      item.reimbursementGapExpense != null) {
+    return true;
+  }
+  for (final line in item.details) {
+    if (line.amount.minorUnits <= 0) continue;
+    switch (line.type) {
+      case TransactionDetailType.repaymentInterest:
+      case TransactionDetailType.repaymentFee:
+      case TransactionDetailType.repaymentDiscount:
+        return true;
+      default:
+        break;
+    }
+  }
+  return false;
 }
 
 class _TitleLine extends StatelessWidget {
@@ -261,17 +288,17 @@ class _TitleLine extends StatelessWidget {
   }
 }
 
-class _AccountLine extends ConsumerWidget {
-  const _AccountLine({required this.item});
+class _AccountLine extends StatelessWidget {
+  const _AccountLine({required this.item, required this.accountsById});
 
   final TransactionListItem item;
+  final Map<int, Account> accountsById;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final accounts = ref.watch(accountListProvider).value ?? const <Account>[];
+  Widget build(BuildContext context) {
     final textStyle = context.appTextStyles.listSupporting;
-    final flow = _resolveAccountFlow(item, accounts);
-    final fallbackText = transactionAccountLabel(item);
+    final flow = _resolveAccountFlow(item, accountsById);
+    final fallbackText = transactionAccountLabel(item, accountsById);
 
     if (flow.out != null && flow.in_ != null) {
       return Row(
@@ -320,52 +347,24 @@ class _AccountFlow {
 
 _AccountFlow _resolveAccountFlow(
   TransactionListItem item,
-  List<Account> accounts,
+  Map<int, Account> accountsById,
 ) {
-  final flowOut = _resolveAccountEndpoint(
-    id: item.flowOutAccountId,
-    name: item.flowOutAccountName,
-    accounts: accounts,
-  );
-  final flowIn = _resolveAccountEndpoint(
-    id: item.flowInAccountId,
-    name: item.flowInAccountName,
-    accounts: accounts,
-  );
+  AccountEndpoint? endpointOf(Account? account) {
+    if (account == null) return null;
+    return AccountEndpoint(label: account.name, iconKey: account.iconKey);
+  }
+
+  final out = endpointOf(flowOutAccount(item, accountsById));
+  final in_ = endpointOf(flowInAccount(item, accountsById));
 
   return switch (item.businessPurpose) {
-    BusinessPurpose.dailyExpense => _AccountFlow(out: flowOut),
+    BusinessPurpose.dailyExpense => _AccountFlow(out: out),
     BusinessPurpose.reimbursementAdvance => _AccountFlow(
-      out: flowIn,
-      in_: flowOut,
+      out: in_,
+      in_: out,
       separator: '|',
     ),
-    BusinessPurpose.dailyIncome => _AccountFlow(in_: flowIn),
-    _ => _AccountFlow(out: flowOut, in_: flowIn),
+    BusinessPurpose.dailyIncome => _AccountFlow(in_: in_),
+    _ => _AccountFlow(out: out, in_: in_),
   };
-}
-
-AccountEndpoint? _resolveAccountEndpoint({
-  required int? id,
-  required String? name,
-  required List<Account> accounts,
-}) {
-  final account = _findAccount(id, accounts);
-  final label = _cleanText(name) ?? account?.name;
-  if (label == null) return null;
-  return AccountEndpoint(label: label, iconKey: account?.iconKey);
-}
-
-Account? _findAccount(int? id, List<Account> accounts) {
-  if (id == null) return null;
-  for (final account in accounts) {
-    if (account.id == id) return account;
-  }
-  return null;
-}
-
-String? _cleanText(String? value) {
-  final trimmed = value?.trim();
-  if (trimmed == null || trimmed.isEmpty) return null;
-  return trimmed;
 }

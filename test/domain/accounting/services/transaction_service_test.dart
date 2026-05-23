@@ -5,7 +5,6 @@ import 'package:smartflow/domain/accounting/accounting_api.dart';
 import 'package:smartflow/domain/accounting/repositories/account_repository.dart';
 import 'package:smartflow/domain/accounting/repositories/posting_repository.dart';
 import 'package:smartflow/domain/accounting/repositories/system_account_resolver.dart';
-import 'package:smartflow/domain/accounting/repositories/transaction_query_repository.dart';
 import 'package:smartflow/domain/accounting/ledger/poster.dart';
 import 'package:smartflow/domain/accounting/ledger/posting_protocol.dart';
 
@@ -20,7 +19,7 @@ void main() {
       return TransactionServiceImpl(
         postingService,
         accountRepository: accountRepository ?? _defaultAccounts(),
-        transactionQueryRepository: _StubQueryRepository(),
+        transactionQueryService: _StubQueryService(),
         systemAccountResolver: _StubSystemAccountResolver(),
         postingRepository: _StubPostingRepository(),
       );
@@ -326,11 +325,11 @@ _FakeAccountRepository _defaultAccounts() {
   });
 }
 
-class _StubQueryRepository implements TransactionQueryRepository {
+class _StubQueryService implements TransactionQueryService {
   @override
   dynamic noSuchMethod(Invocation invocation) {
     throw UnimplementedError(
-      '${invocation.memberName} is not stubbed in _StubQueryRepository.',
+      '${invocation.memberName} is not stubbed in _StubQueryService.',
     );
   }
 }

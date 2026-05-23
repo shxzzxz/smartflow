@@ -5,10 +5,13 @@ import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/data/accounting/repositories/drift_account_repository.dart';
+import 'package:smartflow/data/accounting/repositories/drift_balance_aggregate_repository.dart';
+import 'package:smartflow/data/accounting/repositories/drift_entry_read_repository.dart';
 import 'package:smartflow/data/credit/repositories/drift_installment_repository.dart';
 import 'package:smartflow/data/accounting/repositories/drift_posting_repository.dart';
 import 'package:smartflow/data/accounting/repositories/drift_system_account_resolver.dart';
-import 'package:smartflow/data/accounting/repositories/drift_transaction_query_repository.dart';
+import 'package:smartflow/data/accounting/repositories/drift_transaction_detail_read_repository.dart';
+import 'package:smartflow/data/accounting/repositories/drift_transaction_read_repository.dart';
 import 'package:smartflow/data/transaction/drift_transaction_runner.dart';
 import 'package:smartflow/domain/accounting/accounting_api.dart';
 import 'package:smartflow/domain/credit/enums/installment_enums.dart';
@@ -28,19 +31,24 @@ void main() {
       database = createTestDatabase();
       final accountRepository = DriftAccountRepository(database);
       final postingRepository = DriftPostingRepository(database);
-      final queryRepository = DriftTransactionQueryRepository(database);
       final systemAccounts = DriftSystemAccountResolver(database);
+      final queryService = TransactionQueryServiceImpl(
+        transactionRead: DriftTransactionReadRepository(database),
+        entryRead: DriftEntryReadRepository(database),
+        detailRead: DriftTransactionDetailReadRepository(database),
+        balanceAggregate: DriftBalanceAggregateRepository(database),
+      );
       final transactionService = TransactionServiceImpl(
         PosterImpl(postingRepository),
         accountRepository: accountRepository,
-        transactionQueryRepository: queryRepository,
+        transactionQueryService: queryService,
         systemAccountResolver: systemAccounts,
         postingRepository: postingRepository,
       );
       service = InstallmentServiceImpl(
         repository: DriftInstallmentRepository(database),
         transactionService: transactionService,
-        transactionQueryService: TransactionQueryServiceImpl(queryRepository),
+        transactionQueryService: queryService,
         transactionRunner: DriftTransactionRunner(database),
       );
 
@@ -838,12 +846,17 @@ void main() {
         // 用普通收入交易模拟一笔与分期无关的 transaction
         final accountRepository = DriftAccountRepository(database);
         final postingRepository = DriftPostingRepository(database);
-        final queryRepository = DriftTransactionQueryRepository(database);
         final systemAccounts = DriftSystemAccountResolver(database);
+        final queryService = TransactionQueryServiceImpl(
+          transactionRead: DriftTransactionReadRepository(database),
+          entryRead: DriftEntryReadRepository(database),
+          detailRead: DriftTransactionDetailReadRepository(database),
+          balanceAggregate: DriftBalanceAggregateRepository(database),
+        );
         final transactionService = TransactionServiceImpl(
           PosterImpl(postingRepository),
           accountRepository: accountRepository,
-          transactionQueryRepository: queryRepository,
+          transactionQueryService: queryService,
           systemAccountResolver: systemAccounts,
           postingRepository: postingRepository,
         );

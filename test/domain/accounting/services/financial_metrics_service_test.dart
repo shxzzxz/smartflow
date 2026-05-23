@@ -1,20 +1,22 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/time/month_key.dart';
+import 'package:smartflow/data/accounting/repositories/drift_balance_aggregate_repository.dart';
 import 'package:smartflow/data/app_database.dart';
-import 'package:smartflow/data/accounting/repositories/drift_financial_metrics_repository.dart';
 import 'package:smartflow/domain/accounting/accounting_api.dart';
 
 import '../../../helpers/test_app_database.dart';
 
 void main() {
-  group('DriftFinancialMetricsRepository', () {
+  group('FinancialMetricsServiceImpl', () {
     late AppDatabase database;
-    late DriftFinancialMetricsRepository repository;
+    late FinancialMetricsServiceImpl service;
 
     setUp(() {
       database = createTestDatabase();
-      repository = DriftFinancialMetricsRepository(database);
+      service = FinancialMetricsServiceImpl(
+        DriftBalanceAggregateRepository(database),
+      );
     });
 
     tearDown(() async {
@@ -79,7 +81,7 @@ void main() {
         );
 
         final comparison =
-            await repository
+            await service
                 .watchCashflowComparison(
                   CashflowComparisonQuery(
                     month: MonthKey(year: 2026, month: 5),
@@ -143,7 +145,7 @@ void main() {
       );
 
       final summaries =
-          await repository
+          await service
               .watchDailyCashflowSummaries(
                 DailyCashflowSummaryQuery(
                   month: MonthKey(year: 2026, month: 5),
@@ -191,7 +193,7 @@ void main() {
         );
 
         final comparison =
-            await repository
+            await service
                 .watchBalanceSheetComparison(
                   BalanceSheetComparisonQuery(
                     month: MonthKey(year: 2026, month: 5),
@@ -205,7 +207,7 @@ void main() {
         expect(comparison.netAssetChange.delta.minorUnits, -250000);
 
         final trend =
-            await repository
+            await service
                 .watchNetAssetTrend(
                   NetAssetTrendQuery(
                     endMonth: MonthKey(year: 2026, month: 5),

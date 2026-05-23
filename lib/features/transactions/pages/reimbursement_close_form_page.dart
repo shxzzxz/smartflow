@@ -53,11 +53,13 @@ class _ReimbursementCloseFormPageState
     final accounts =
         ref.watch(accountsForUsageProvider(AccountUsage.settlement)).value ??
         const <Account>[];
+    final accountsById =
+        ref.watch(accountsByIdProvider).value ?? const <int, Account>{};
     final receiveAccount = _findAccount(_receiveAccountId, accounts);
     final detail =
         ref.watch(transactionDetailProvider(widget.advanceTransactionId)).value;
     final summary = detail?.reimbursementSummary;
-    final receivable = _resolveReceivable(detail);
+    final receivable = _resolveReceivable(detail, accountsById);
     final outstanding = summary?.outstanding;
     final actualMinor = _parseMinorOrNull(_amountController.text);
     final gap =
@@ -162,10 +164,13 @@ class _ReimbursementCloseFormPageState
     }
   }
 
-  int? _resolveReceivable(TransactionDetailView? detail) {
+  int? _resolveReceivable(
+    TransactionDetail? detail,
+    Map<int, Account> accountsById,
+  ) {
     if (detail == null) return null;
     for (final entry in detail.entries) {
-      if (entry.accountType == AccountType.asset &&
+      if (accountsById[entry.accountId]?.type == AccountType.asset &&
           entry.direction == EntryDirection.debit) {
         return entry.accountId;
       }

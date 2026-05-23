@@ -35,18 +35,10 @@ void main() {
           theme: AppTheme.light(),
           home: Scaffold(
             body: home.TransactionRow(
-              item: TransactionListItem(
+              item: _transferItem(
                 id: 1,
-                businessPurpose: BusinessPurpose.transfer,
-                occurredAt: DateTime(2026, 5, 12, 8, 30),
-                primaryAmount: const Money(minorUnits: 1000),
-                accountNames: '支付宝 / 微信',
-                flowOutAccountId: outAccountId,
-                flowInAccountId: inAccountId,
-                flowOutAccountName: '支付宝',
-                flowInAccountName: '微信',
-                isExcludedFromStats: false,
-                isExcludedFromBudget: false,
+                outAccountId: outAccountId,
+                inAccountId: inAccountId,
               ),
             ),
           ),
@@ -89,19 +81,10 @@ void main() {
           theme: AppTheme.light(),
           home: Scaffold(
             body: home.TransactionRow(
-              item: TransactionListItem(
+              item: _reimbursementAdvanceItem(
                 id: 2,
-                businessPurpose: BusinessPurpose.reimbursementAdvance,
-                occurredAt: DateTime(2026, 5, 12, 8, 30),
-                primaryAmount: const Money(minorUnits: 1000),
-                accountNames: '信用卡 / 公司报销',
-                categoryName: '电费',
-                flowOutAccountId: outAccountId,
-                flowInAccountId: inAccountId,
-                flowOutAccountName: '信用卡',
-                flowInAccountName: '公司报销',
-                isExcludedFromStats: false,
-                isExcludedFromBudget: false,
+                outAccountId: outAccountId,
+                inAccountId: inAccountId,
               ),
             ),
           ),
@@ -136,30 +119,21 @@ void main() {
       routes: [
         GoRoute(
           path: '/',
-          builder:
-              (context, state) => Scaffold(
-                body: home.TransactionRow(
-                  item: TransactionListItem(
-                    id: 3,
-                    businessPurpose: BusinessPurpose.transfer,
-                    occurredAt: DateTime(2026, 5, 12, 8, 30),
-                    primaryAmount: const Money(minorUnits: 1000),
-                    accountNames: '支付宝 / 微信',
-                    isExcludedFromStats: false,
-                    isExcludedFromBudget: false,
-                  ),
-                ),
-              ),
+          builder: (context, state) => Scaffold(
+            body: home.TransactionRow(
+              item: _bareTransferItem(id: 3),
+            ),
+          ),
         ),
         GoRoute(
           path: '/transactions/:id',
-          builder:
-              (context, state) => Text("detail ${state.pathParameters['id']}"),
+          builder: (context, state) =>
+              Text("detail ${state.pathParameters['id']}"),
         ),
         GoRoute(
           path: '/transactions/:id/edit',
-          builder:
-              (context, state) => Text("edit ${state.pathParameters['id']}"),
+          builder: (context, state) =>
+              Text("edit ${state.pathParameters['id']}"),
         ),
       ],
     );
@@ -191,15 +165,7 @@ void main() {
     addTearDown(database.close);
 
     final router = _buildTransactionRowRouter(
-      item: TransactionListItem(
-        id: 4,
-        businessPurpose: BusinessPurpose.transfer,
-        occurredAt: DateTime(2026, 5, 12, 8, 30),
-        primaryAmount: const Money(minorUnits: 1000),
-        accountNames: '支付宝 / 微信',
-        isExcludedFromStats: false,
-        isExcludedFromBudget: false,
-      ),
+      item: _bareTransferItem(id: 4),
     );
     addTearDown(router.dispose);
 
@@ -229,15 +195,7 @@ void main() {
     addTearDown(database.close);
 
     final router = _buildTransactionRowRouter(
-      item: TransactionListItem(
-        id: 5,
-        businessPurpose: BusinessPurpose.transfer,
-        occurredAt: DateTime(2026, 5, 12, 8, 30),
-        primaryAmount: const Money(minorUnits: 1000),
-        accountNames: '支付宝 / 微信',
-        isExcludedFromStats: false,
-        isExcludedFromBudget: false,
-      ),
+      item: _bareTransferItem(id: 5),
     );
     addTearDown(router.dispose);
 
@@ -273,13 +231,13 @@ GoRouter _buildTransactionRowRouter({required TransactionListItem item}) {
     routes: [
       GoRoute(
         path: '/',
-        builder:
-            (context, state) => Scaffold(body: home.TransactionRow(item: item)),
+        builder: (context, state) =>
+            Scaffold(body: home.TransactionRow(item: item)),
       ),
       GoRoute(
         path: '/transactions/:id',
-        builder:
-            (context, state) => Text("detail ${state.pathParameters['id']}"),
+        builder: (context, state) =>
+            Text("detail ${state.pathParameters['id']}"),
       ),
       GoRoute(
         path: '/transactions/:id/edit',
@@ -304,4 +262,91 @@ Future<int> _insertAccount(
           iconKey: Value(iconKey),
         ),
       );
+}
+
+TransactionListItem _transferItem({
+  required int id,
+  required int outAccountId,
+  required int inAccountId,
+}) {
+  return TransactionListItem(
+    id: id,
+    rootTransactionId: id,
+    businessPurpose: BusinessPurpose.transfer,
+    businessState: BusinessState.current,
+    occurredAt: DateTime(2026, 5, 12, 8, 30),
+    currencyCode: Money.defaultCurrency,
+    primaryAmount: const Money(minorUnits: 1000),
+    entries: [
+      Entry(
+        id: 1,
+        transactionId: id,
+        accountId: inAccountId,
+        direction: EntryDirection.debit,
+        amount: const Money(minorUnits: 1000),
+      ),
+      Entry(
+        id: 2,
+        transactionId: id,
+        accountId: outAccountId,
+        direction: EntryDirection.credit,
+        amount: const Money(minorUnits: 1000),
+      ),
+    ],
+    details: const [],
+    isExcludedFromStats: false,
+    isExcludedFromBudget: false,
+  );
+}
+
+TransactionListItem _reimbursementAdvanceItem({
+  required int id,
+  required int outAccountId,
+  required int inAccountId,
+}) {
+  return TransactionListItem(
+    id: id,
+    rootTransactionId: id,
+    businessPurpose: BusinessPurpose.reimbursementAdvance,
+    businessState: BusinessState.current,
+    occurredAt: DateTime(2026, 5, 12, 8, 30),
+    currencyCode: Money.defaultCurrency,
+    primaryAmount: const Money(minorUnits: 1000),
+    entries: [
+      Entry(
+        id: 1,
+        transactionId: id,
+        accountId: inAccountId,
+        direction: EntryDirection.debit,
+        amount: const Money(minorUnits: 1000),
+      ),
+      Entry(
+        id: 2,
+        transactionId: id,
+        accountId: outAccountId,
+        direction: EntryDirection.credit,
+        amount: const Money(minorUnits: 1000),
+      ),
+    ],
+    details: const [],
+    isExcludedFromStats: false,
+    isExcludedFromBudget: false,
+  );
+}
+
+/// 仅用于路由跳转测试,不依赖账户解析的最小 item。
+TransactionListItem _bareTransferItem({required int id}) {
+  return TransactionListItem(
+    id: id,
+    rootTransactionId: id,
+    businessPurpose: BusinessPurpose.transfer,
+    businessState: BusinessState.current,
+    occurredAt: DateTime(2026, 5, 12, 8, 30),
+    currencyCode: Money.defaultCurrency,
+    primaryAmount: const Money(minorUnits: 1000),
+    entries: const [],
+    details: const [],
+    isExcludedFromStats: false,
+    isExcludedFromBudget: false,
+  );
 }

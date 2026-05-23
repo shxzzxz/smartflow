@@ -2,22 +2,26 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../data/database_provider.dart';
 import '../data/accounting/repositories/drift_account_repository.dart';
-import '../data/accounting/repositories/drift_financial_metrics_repository.dart';
+import '../data/accounting/repositories/drift_balance_aggregate_repository.dart';
+import '../data/accounting/repositories/drift_entry_read_repository.dart';
 import '../data/credit/repositories/drift_installment_repository.dart';
 import '../data/accounting/repositories/drift_posting_repository.dart';
 import '../data/accounting/repositories/drift_system_account_resolver.dart';
-import '../data/accounting/repositories/drift_transaction_query_repository.dart';
+import '../data/accounting/repositories/drift_transaction_detail_read_repository.dart';
+import '../data/accounting/repositories/drift_transaction_read_repository.dart';
 import '../data/transaction/drift_transaction_runner.dart';
 import '../domain/accounting/accounting_api.dart';
 import '../domain/credit/entities/installment_contract.dart';
 import '../domain/credit/entities/installment_repayment.dart';
 import '../domain/credit/entities/installment_schedule.dart';
 import '../domain/accounting/repositories/account_repository.dart';
-import '../domain/accounting/repositories/financial_metrics_repository.dart';
+import '../domain/accounting/repositories/balance_aggregate_repository.dart';
+import '../domain/accounting/repositories/entry_read_repository.dart';
 import '../domain/credit/repositories/installment_repository.dart';
 import '../domain/accounting/repositories/posting_repository.dart';
 import '../domain/accounting/repositories/system_account_resolver.dart';
-import '../domain/accounting/repositories/transaction_query_repository.dart';
+import '../domain/accounting/repositories/transaction_detail_read_repository.dart';
+import '../domain/accounting/repositories/transaction_read_repository.dart';
 import '../core/transaction/transaction_runner.dart';
 import '../domain/credit/services/credit_service.dart';
 import '../domain/credit/services/installment_metrics.dart';
@@ -49,13 +53,23 @@ PostingRepository postingRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-TransactionQueryRepository transactionQueryRepository(Ref ref) {
-  return DriftTransactionQueryRepository(ref.watch(appDatabaseProvider));
+TransactionReadRepository transactionReadRepository(Ref ref) {
+  return DriftTransactionReadRepository(ref.watch(appDatabaseProvider));
 }
 
 @Riverpod(keepAlive: true)
-FinancialMetricsRepository financialMetricsRepository(Ref ref) {
-  return DriftFinancialMetricsRepository(ref.watch(appDatabaseProvider));
+EntryReadRepository entryReadRepository(Ref ref) {
+  return DriftEntryReadRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+TransactionDetailReadRepository transactionDetailReadRepository(Ref ref) {
+  return DriftTransactionDetailReadRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+BalanceAggregateRepository balanceAggregateRepository(Ref ref) {
+  return DriftBalanceAggregateRepository(ref.watch(appDatabaseProvider));
 }
 
 @Riverpod(keepAlive: true)
@@ -87,7 +101,7 @@ TransactionService transactionService(Ref ref) {
   return TransactionServiceImpl(
     ref.watch(posterProvider),
     accountRepository: ref.watch(accountRepositoryProvider),
-    transactionQueryRepository: ref.watch(transactionQueryRepositoryProvider),
+    transactionQueryService: ref.watch(transactionQueryServiceProvider),
     systemAccountResolver: ref.watch(systemAccountResolverProvider),
     postingRepository: ref.watch(postingRepositoryProvider),
   );
@@ -96,14 +110,17 @@ TransactionService transactionService(Ref ref) {
 @Riverpod(keepAlive: true)
 TransactionQueryService transactionQueryService(Ref ref) {
   return TransactionQueryServiceImpl(
-    ref.watch(transactionQueryRepositoryProvider),
+    transactionRead: ref.watch(transactionReadRepositoryProvider),
+    entryRead: ref.watch(entryReadRepositoryProvider),
+    detailRead: ref.watch(transactionDetailReadRepositoryProvider),
+    balanceAggregate: ref.watch(balanceAggregateRepositoryProvider),
   );
 }
 
 @Riverpod(keepAlive: true)
 FinancialMetricsService financialMetricsService(Ref ref) {
   return FinancialMetricsServiceImpl(
-    ref.watch(financialMetricsRepositoryProvider),
+    ref.watch(balanceAggregateRepositoryProvider),
   );
 }
 
@@ -112,6 +129,25 @@ Stream<List<Account>> accountList(Ref ref) {
   return ref
       .watch(accountServiceProvider)
       .watchAccounts({AccountType.asset, AccountType.liability});
+}
+
+/// 全量账户索引。覆盖 5 种 account_type,供 UI 层把 entries 的 accountId
+/// 解析为 Account 元数据(type / name / iconKey 等)。
+///
+/// 用法:在 widget 内 `ref.watch(accountsByIdProvider).value ?? const {}`,
+/// 配合 `widgets/business/account_lookup.dart` 的 extension 使用。
+@riverpod
+Stream<Map<int, Account>> accountsById(Ref ref) {
+  return ref
+      .watch(accountServiceProvider)
+      .watchAccounts({
+        AccountType.asset,
+        AccountType.liability,
+        AccountType.equity,
+        AccountType.income,
+        AccountType.expense,
+      })
+      .map((accounts) => {for (final a in accounts) a.id: a});
 }
 
 @riverpod
@@ -230,7 +266,7 @@ Stream<List<NetAssetTrendPoint>> netAssetTrend(Ref ref, {int months = 6}) {
 }
 
 @riverpod
-Stream<TransactionDetailView?> transactionDetail(Ref ref, int transactionId) {
+Stream<TransactionDetail?> transactionDetail(Ref ref, int transactionId) {
   return ref
       .watch(transactionQueryServiceProvider)
       .watchTransactionDetail(transactionId);

@@ -44,6 +44,8 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
     final accounts =
         ref.watch(accountsForUsageProvider(AccountUsage.settlement)).value ??
         const <Account>[];
+    final accountsById =
+        ref.watch(accountsByIdProvider).value ?? const <int, Account>{};
     final detailAsync = ref.watch(
       transactionDetailProvider(widget.parentTransactionId),
     );
@@ -51,6 +53,7 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
       selectedId: _refundToAccountId,
       parentSettlementAccountId: _resolveParentSettlementAccountId(
         detailAsync.value,
+        accountsById,
       ),
       accounts: accounts,
     );
@@ -168,11 +171,16 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
     final accounts =
         ref.read(accountsForUsageProvider(AccountUsage.settlement)).value ??
         const <Account>[];
+    final accountsById =
+        ref.read(accountsByIdProvider).value ?? const <int, Account>{};
     final detail =
         ref.read(transactionDetailProvider(widget.parentTransactionId)).value;
     final refundToAccountId = _effectiveRefundToAccountId(
       selectedId: _refundToAccountId,
-      parentSettlementAccountId: _resolveParentSettlementAccountId(detail),
+      parentSettlementAccountId: _resolveParentSettlementAccountId(
+        detail,
+        accountsById,
+      ),
       accounts: accounts,
     );
     if (refundToAccountId == null) {
@@ -234,13 +242,16 @@ bool _containsAccount(List<Account> accounts, int? accountId) {
   return accounts.any((account) => account.id == accountId);
 }
 
-int? _resolveParentSettlementAccountId(TransactionDetailView? detail) {
+int? _resolveParentSettlementAccountId(
+  TransactionDetail? detail,
+  Map<int, Account> accountsById,
+) {
   if (detail == null) {
     return null;
   }
   for (final entry in detail.entries) {
-    if ((entry.accountType == AccountType.asset ||
-            entry.accountType == AccountType.liability) &&
+    final type = accountsById[entry.accountId]?.type;
+    if ((type == AccountType.asset || type == AccountType.liability) &&
         entry.direction == EntryDirection.credit) {
       return entry.accountId;
     }

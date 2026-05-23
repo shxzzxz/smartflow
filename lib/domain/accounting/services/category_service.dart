@@ -4,7 +4,7 @@ import '../commands/category_commands.dart';
 import '../entities/account.dart';
 import '../enums/accounting_enums.dart';
 import '../repositories/account_repository.dart';
-import '../views/category_views.dart';
+import '../read_models/category_read_models.dart';
 
 abstract interface class CategoryService {
   Stream<List<CategoryNode>> watchCategoryTree(AccountType type);

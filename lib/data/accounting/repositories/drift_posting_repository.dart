@@ -1,6 +1,5 @@
 import 'package:drift/drift.dart';
 
-import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../../../domain/accounting/entities/account.dart';
 import '../../../domain/accounting/entities/transaction_ownership.dart';
@@ -9,6 +8,7 @@ import '../../../domain/accounting/ledger/ledger_rules.dart';
 import '../../../domain/accounting/ledger/posting_protocol.dart';
 import '../../../domain/accounting/repositories/posting_repository.dart';
 import '../../app_database.dart';
+import '../mappers/account_mapper.dart';
 
 class DriftPostingRepository implements PostingRepository {
   const DriftPostingRepository(this._database);
@@ -25,7 +25,7 @@ class DriftPostingRepository implements PostingRepository {
         await (_database.select(_database.accounts)
           ..where((account) => account.id.isIn(ids))).get();
 
-    return rows.map(_mapAccount).toList();
+    return rows.map(mapAccount).toList();
   }
 
   @override
@@ -152,17 +152,7 @@ class DriftPostingRepository implements PostingRepository {
 
     for (final MapEntry(key: accountId, value: delta)
         in balanceDeltasMinor.entries) {
-      await _database.customUpdate(
-        'UPDATE accounts '
-        'SET balance_minor = balance_minor + ?, updated_at = ? '
-        'WHERE id = ?',
-        variables: [
-          Variable<int>(delta),
-          Variable<DateTime>(now),
-          Variable<int>(accountId),
-        ],
-        updates: {_database.accounts},
-      );
+      await _applyBalanceDelta(accountId: accountId, deltaMinor: delta, now: now);
     }
 
     return PostTransactionResult(
@@ -312,18 +302,31 @@ class DriftPostingRepository implements PostingRepository {
     for (final MapEntry(key: accountId, value: delta)
         in balanceDeltas.entries) {
       if (delta == 0) continue;
-      await _database.customUpdate(
-        'UPDATE accounts '
-        'SET balance_minor = balance_minor + ?, updated_at = ? '
-        'WHERE id = ?',
-        variables: [
-          Variable<int>(delta),
-          Variable<DateTime>(now),
-          Variable<int>(accountId),
-        ],
-        updates: {_database.accounts},
-      );
+      await _applyBalanceDelta(accountId: accountId, deltaMinor: delta, now: now);
     }
+  }
+
+  /// `accounts.balance_minor` 的单一写入口。
+  ///
+  /// 过账内核(`postTransaction` / `mutateTransactions`)在事务内调用此方法,
+  /// domain 层的余额写入语义统一从这里发生 — 切断了外部直写 customUpdate
+  /// 的可能性。
+  Future<void> _applyBalanceDelta({
+    required int accountId,
+    required int deltaMinor,
+    required DateTime now,
+  }) {
+    return _database.customUpdate(
+      'UPDATE accounts '
+      'SET balance_minor = balance_minor + ?, updated_at = ? '
+      'WHERE id = ?',
+      variables: [
+        Variable<int>(deltaMinor),
+        Variable<DateTime>(now),
+        Variable<int>(accountId),
+      ],
+      updates: {_database.accounts},
+    );
   }
 
   Future<List<TypedResult>> _entryRowsForReassignment(
@@ -349,33 +352,5 @@ class DriftPostingRepository implements PostingRepository {
       );
     }
     return query.get();
-  }
-
-  Account _mapAccount(AccountRow row) {
-    return Account(
-      id: row.id,
-      name: row.name,
-      type: row.accountType,
-      subtype: row.accountSubtype,
-      parentId: row.parentId,
-      currencyCode: row.currencyCode,
-      balance: Money(minorUnits: row.balanceMinor, currency: row.currencyCode),
-      iconKey: row.iconKey,
-      note: row.note,
-      creditLimit:
-          row.creditLimitMinor == null
-              ? null
-              : Money(
-                minorUnits: row.creditLimitMinor!,
-                currency: row.currencyCode,
-              ),
-      billingDay: row.billingDay,
-      repaymentDay: row.repaymentDay,
-      sortOrder: row.sortOrder,
-      isHidden: row.isHidden,
-      archivedAt: row.archivedAt,
-      systemKey: row.systemKey,
-      source: row.source,
-    );
   }
 }

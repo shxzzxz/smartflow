@@ -79,9 +79,10 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   }
 
   void _applyEditData(
-    TransactionDetailView detail,
+    TransactionDetail detail,
     List<CategoryNode> expenseTree,
     List<CategoryNode> incomeTree,
+    Map<int, Account> accountsById,
   ) {
     final transaction = detail.transaction;
     _amountController.text = transaction.primaryAmount.format();
@@ -95,43 +96,71 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
         _mode = _TransactionFormMode.expense;
         _expenseCategoryId = _firstAccountId(
           detail,
+          accountsById,
           AccountType.expense,
           EntryDirection.debit,
         );
         _expenseRootId = _rootCategoryId(expenseTree, _expenseCategoryId);
-        _fromAccountId = _firstSettlementId(detail, EntryDirection.credit);
+        _fromAccountId = _firstSettlementId(
+          detail,
+          accountsById,
+          EntryDirection.credit,
+        );
       case BusinessPurpose.reimbursementAdvance:
         _mode = _TransactionFormMode.expense;
         _expenseCategoryId = transaction.reimbursementExpenseAccountId;
         _expenseRootId = _rootCategoryId(expenseTree, _expenseCategoryId);
-        _fromAccountId = _firstSettlementId(detail, EntryDirection.credit);
+        _fromAccountId = _firstSettlementId(
+          detail,
+          accountsById,
+          EntryDirection.credit,
+        );
         _reimbursementAccountId = _firstSettlementId(
           detail,
+          accountsById,
           EntryDirection.debit,
         );
       case BusinessPurpose.dailyIncome:
         _mode = _TransactionFormMode.income;
         _incomeCategoryId = _firstAccountId(
           detail,
+          accountsById,
           AccountType.income,
           EntryDirection.credit,
         );
         _incomeRootId = _rootCategoryId(incomeTree, _incomeCategoryId);
-        _toAccountId = _firstSettlementId(detail, EntryDirection.debit);
+        _toAccountId = _firstSettlementId(
+          detail,
+          accountsById,
+          EntryDirection.debit,
+        );
       case BusinessPurpose.transfer:
         _mode = _TransactionFormMode.transfer;
-        _fromAccountId = _firstSettlementId(detail, EntryDirection.credit);
-        _toAccountId = _firstSettlementId(detail, EntryDirection.debit);
+        _fromAccountId = _firstSettlementId(
+          detail,
+          accountsById,
+          EntryDirection.credit,
+        );
+        _toAccountId = _firstSettlementId(
+          detail,
+          accountsById,
+          EntryDirection.debit,
+        );
         _excludeStats = false;
         _excludeBudget = false;
       case BusinessPurpose.borrowing:
         _mode = _TransactionFormMode.borrowing;
         _liabilityAccountId = _firstAccountId(
           detail,
+          accountsById,
           AccountType.liability,
           EntryDirection.credit,
         );
-        _toAccountId = _firstSettlementId(detail, EntryDirection.debit);
+        _toAccountId = _firstSettlementId(
+          detail,
+          accountsById,
+          EntryDirection.debit,
+        );
         _excludeStats = false;
         _excludeBudget = false;
       default:
@@ -186,7 +215,9 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
       return const Scaffold(body: Center(child: Text('交易不存在')));
     }
     if (!_editInitialized && editDetail != null) {
-      _applyEditData(editDetail, expenseTree, incomeTree);
+      final accountsById =
+          ref.watch(accountsByIdProvider).value ?? const <int, Account>{};
+      _applyEditData(editDetail, expenseTree, incomeTree, accountsById);
     }
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final keyboardVisible = keyboardInset > 0;
@@ -839,12 +870,14 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   }
 
   int? _firstAccountId(
-    TransactionDetailView detail,
+    TransactionDetail detail,
+    Map<int, Account> accountsById,
     AccountType type,
     EntryDirection direction,
   ) {
     for (final entry in detail.entries) {
-      if (entry.accountType == type && entry.direction == direction) {
+      if (accountsById[entry.accountId]?.type == type &&
+          entry.direction == direction) {
         return entry.accountId;
       }
     }
@@ -852,12 +885,13 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   }
 
   int? _firstSettlementId(
-    TransactionDetailView detail,
+    TransactionDetail detail,
+    Map<int, Account> accountsById,
     EntryDirection direction,
   ) {
     for (final entry in detail.entries) {
-      if ((entry.accountType == AccountType.asset ||
-              entry.accountType == AccountType.liability) &&
+      final type = accountsById[entry.accountId]?.type;
+      if ((type == AccountType.asset || type == AccountType.liability) &&
           entry.direction == direction) {
         return entry.accountId;
       }

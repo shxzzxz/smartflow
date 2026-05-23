@@ -3,9 +3,12 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/data/accounting/repositories/drift_account_repository.dart';
+import 'package:smartflow/data/accounting/repositories/drift_balance_aggregate_repository.dart';
+import 'package:smartflow/data/accounting/repositories/drift_entry_read_repository.dart';
 import 'package:smartflow/data/accounting/repositories/drift_posting_repository.dart';
 import 'package:smartflow/data/accounting/repositories/drift_system_account_resolver.dart';
-import 'package:smartflow/data/accounting/repositories/drift_transaction_query_repository.dart';
+import 'package:smartflow/data/accounting/repositories/drift_transaction_detail_read_repository.dart';
+import 'package:smartflow/data/accounting/repositories/drift_transaction_read_repository.dart';
 import 'package:smartflow/data/transaction/drift_transaction_runner.dart';
 import 'package:smartflow/domain/accounting/accounting_api.dart';
 import 'package:smartflow/domain/accounting/ledger/poster.dart';
@@ -27,16 +30,20 @@ void main() {
         database,
         systemAccounts: systemAccounts,
       );
-      final queryRepository = DriftTransactionQueryRepository(database);
+      queryService = TransactionQueryServiceImpl(
+        transactionRead: DriftTransactionReadRepository(database),
+        entryRead: DriftEntryReadRepository(database),
+        detailRead: DriftTransactionDetailReadRepository(database),
+        balanceAggregate: DriftBalanceAggregateRepository(database),
+      );
       final postingRepository = DriftPostingRepository(database);
       service = TransactionServiceImpl(
         PosterImpl(postingRepository),
         accountRepository: accountRepository,
-        transactionQueryRepository: queryRepository,
+        transactionQueryService: queryService,
         systemAccountResolver: systemAccounts,
         postingRepository: postingRepository,
       );
-      queryService = TransactionQueryServiceImpl(queryRepository);
       accountService = AccountServiceImpl(
         accountRepository,
         transactionRunner: DriftTransactionRunner(database),

@@ -1,4 +1,5 @@
 import '../../../core/money/money.dart';
+import 'transaction_scope.dart';
 
 class TransactionListQuery {
   const TransactionListQuery({
@@ -8,6 +9,7 @@ class TransactionListQuery {
     this.topLevelOnly = true,
     this.limit = 50,
     this.offset = 0,
+    this.scope = TransactionScopeFilter.assetLiability,
   });
 
   final int? accountId;
@@ -16,6 +18,7 @@ class TransactionListQuery {
   final bool topLevelOnly;
   final int limit;
   final int offset;
+  final TransactionScopeFilter scope;
 }
 
 class CashflowSummaryQuery {

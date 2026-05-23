@@ -1,12 +1,12 @@
 import 'package:drift/drift.dart';
 
-import '../../../core/money/money.dart';
 import '../../../domain/accounting/entities/account.dart';
 import '../../../domain/accounting/enums/accounting_enums.dart';
 import '../../../domain/accounting/repositories/account_repository.dart';
 import '../../../domain/accounting/repositories/system_account_resolver.dart';
 import '../../app_database.dart';
 import '../../patch_value.dart';
+import '../mappers/account_mapper.dart';
 
 class DriftAccountRepository implements AccountRepository, CategoryRepository {
   DriftAccountRepository(
@@ -21,7 +21,7 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
     final row =
         await (_database.select(_database.accounts)
           ..where((account) => account.id.equals(id))).getSingleOrNull();
-    return row == null ? null : _mapAccount(row);
+    return row == null ? null : mapAccount(row);
   }
 
   @override
@@ -33,7 +33,7 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
     final rows =
         await (_database.select(_database.accounts)
           ..where((account) => account.id.isIn(ids))).get();
-    return rows.map(_mapAccount).toList();
+    return rows.map(mapAccount).toList();
   }
 
   @override
@@ -50,7 +50,7 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
             (account) => OrderingTerm.asc(account.name),
           ]);
 
-    return query.watch().map((rows) => rows.map(_mapAccount).toList());
+    return query.watch().map((rows) => rows.map(mapAccount).toList());
   }
 
   @override
@@ -82,7 +82,7 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
       final row =
           await (_database.select(_database.accounts)
             ..where((account) => account.id.equals(accountId))).getSingle();
-      return _mapAccount(row);
+      return mapAccount(row);
     });
   }
 
@@ -125,7 +125,7 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
                 AccountType.expense,
               }),
         )).getSingleOrNull();
-    return row == null ? null : _mapAccount(row);
+    return row == null ? null : mapAccount(row);
   }
 
   @override
@@ -143,7 +143,7 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
             (account) => OrderingTerm.asc(account.name),
           ]);
 
-    return query.watch().map((rows) => rows.map(_mapAccount).toList());
+    return query.watch().map((rows) => rows.map(mapAccount).toList());
   }
 
   @override
@@ -168,34 +168,6 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
     final row =
         await (_database.select(_database.accounts)
           ..where((account) => account.id.equals(id))).getSingle();
-    return _mapAccount(row);
-  }
-
-  Account _mapAccount(AccountRow row) {
-    return Account(
-      id: row.id,
-      name: row.name,
-      type: row.accountType,
-      subtype: row.accountSubtype,
-      parentId: row.parentId,
-      currencyCode: row.currencyCode,
-      balance: Money(minorUnits: row.balanceMinor, currency: row.currencyCode),
-      iconKey: row.iconKey,
-      note: row.note,
-      creditLimit:
-          row.creditLimitMinor == null
-              ? null
-              : Money(
-                minorUnits: row.creditLimitMinor!,
-                currency: row.currencyCode,
-              ),
-      billingDay: row.billingDay,
-      repaymentDay: row.repaymentDay,
-      sortOrder: row.sortOrder,
-      isHidden: row.isHidden,
-      archivedAt: row.archivedAt,
-      systemKey: row.systemKey,
-      source: row.source,
-    );
+    return mapAccount(row);
   }
 }

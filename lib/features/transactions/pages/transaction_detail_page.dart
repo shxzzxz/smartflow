@@ -17,6 +17,7 @@ import '../../../domain/accounting/accounting_api.dart';
 import '../action_policy/transaction_action_policy.dart';
 import '../providers/transaction_action_policy_provider.dart';
 import '../../../widgets/business/account_endpoint_view.dart';
+import '../../../widgets/business/account_lookup.dart';
 import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/business_icon_bubble.dart';
 import '../../../widgets/business/finance_labels.dart';
@@ -103,7 +104,7 @@ class TransactionDetailPage extends ConsumerWidget {
 class _DetailBody extends ConsumerWidget {
   const _DetailBody({required this.detail, required this.policy});
 
-  final TransactionDetailView detail;
+  final TransactionDetail detail;
   final TransactionActionPolicy policy;
 
   @override
@@ -111,7 +112,9 @@ class _DetailBody extends ConsumerWidget {
     final transaction = detail.transaction;
     final purpose = transaction.businessPurpose;
     final semantic = _semanticForPurpose(purpose);
-    final accountRows = _resolveAccountRows(detail);
+    final accountsById =
+        ref.watch(accountsByIdProvider).value ?? const <int, Account>{};
+    final accountRows = _resolveAccountRows(detail, accountsById);
     final settlementAccounts =
         ref.watch(accountsForUsageProvider(AccountUsage.settlement)).value ??
         const <Account>[];
@@ -320,18 +323,20 @@ class _DetailBody extends ConsumerWidget {
   }
 }
 
-class _HeroCard extends StatelessWidget {
+class _HeroCard extends ConsumerWidget {
   const _HeroCard({required this.detail, required this.semantic});
 
-  final TransactionDetailView detail;
+  final TransactionDetail detail;
   final MoneySemantic semantic;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final transaction = detail.transaction;
     final textStyles = context.appTextStyles;
-    final categoryName = _resolveCategoryName(detail);
-    final iconKey = _resolveCategoryIconKey(detail);
+    final accountsById =
+        ref.watch(accountsByIdProvider).value ?? const <int, Account>{};
+    final categoryName = _resolveCategoryName(detail, accountsById);
+    final iconKey = _resolveCategoryIconKey(detail, accountsById);
     final subtitle = _resolveHeroSubtitle(detail);
 
     return AppSurface(
@@ -385,7 +390,7 @@ class _RefundReimbursementCard extends StatelessWidget {
     required this.showReimbursement,
   });
 
-  final TransactionDetailView detail;
+  final TransactionDetail detail;
   final bool showRefund;
   final bool showReimbursement;
 
@@ -448,10 +453,10 @@ class _RefundReimbursementCard extends StatelessWidget {
     BuildContext context,
     List<TransactionListItem> children,
   ) {
-    final refunds =
-        children
-            .where((c) => c.businessPurpose == BusinessPurpose.refund)
-            .toList();
+    final refunds = children
+        .where((c) => c.businessPurpose == BusinessPurpose.refund)
+        .map(_listItemToSheet)
+        .toList();
     _showChildrenSheet(context, title: '退款记录', items: refunds);
   }
 
@@ -459,16 +464,23 @@ class _RefundReimbursementCard extends StatelessWidget {
     BuildContext context,
     List<TransactionListItem> children,
   ) {
-    final receipts =
-        children
-            .where(
-              (c) =>
-                  c.businessPurpose == BusinessPurpose.reimbursementReceipt ||
-                  c.businessPurpose == BusinessPurpose.reimbursementClose,
-            )
-            .toList();
+    final receipts = children
+        .where(
+          (c) =>
+              c.businessPurpose == BusinessPurpose.reimbursementReceipt ||
+              c.businessPurpose == BusinessPurpose.reimbursementClose,
+        )
+        .map(_listItemToSheet)
+        .toList();
     _showChildrenSheet(context, title: '报销记录', items: receipts);
   }
+
+  _SheetItem _listItemToSheet(TransactionListItem c) => _SheetItem(
+    id: c.id,
+    purpose: c.businessPurpose,
+    occurredAt: c.occurredAt,
+    primaryAmount: c.primaryAmount,
+  );
 }
 
 class _PrimaryMetaCard extends StatelessWidget {
@@ -480,7 +492,7 @@ class _PrimaryMetaCard extends StatelessWidget {
     required this.onNoteTap,
   });
 
-  final TransactionDetailView detail;
+  final TransactionDetail detail;
   final List<_AccountRowInfo> accountRows;
   final VoidCallback onOccurredAtTap;
   final ValueChanged<_AccountRowInfo> onAccountTap;
@@ -530,7 +542,7 @@ class _PrimaryMetaCard extends StatelessWidget {
 class _HistoryCard extends StatelessWidget {
   const _HistoryCard({required this.detail});
 
-  final TransactionDetailView detail;
+  final TransactionDetail detail;
 
   @override
   Widget build(BuildContext context) {
@@ -539,12 +551,19 @@ class _HistoryCard extends StatelessWidget {
         AppPlainValueRow(
           label: '历史链路',
           value: '${detail.history.length} 条记录',
-          onTap:
-              () => _showChildrenSheet(
-                context,
-                title: '历史链路',
-                items: detail.history,
-              ),
+          onTap: () => _showChildrenSheet(
+            context,
+            title: '历史链路',
+            items: [
+              for (final h in detail.history)
+                _SheetItem(
+                  id: h.id,
+                  purpose: h.businessPurpose,
+                  occurredAt: h.occurredAt,
+                  primaryAmount: h.primaryAmount,
+                ),
+            ],
+          ),
         ),
       ],
     );
@@ -554,7 +573,7 @@ class _HistoryCard extends StatelessWidget {
 class _ExclusionCard extends ConsumerWidget {
   const _ExclusionCard({required this.detail});
 
-  final TransactionDetailView detail;
+  final TransactionDetail detail;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -635,7 +654,7 @@ class _RowCard extends StatelessWidget {
 class _ActionBar extends StatelessWidget {
   const _ActionBar({required this.detail, required this.policy});
 
-  final TransactionDetailView detail;
+  final TransactionDetail detail;
   final TransactionActionPolicy policy;
 
   @override
@@ -721,7 +740,7 @@ class _ActionBar extends StatelessWidget {
 
   void _showReimbursementDialog(
     BuildContext context,
-    TransactionDetailView detail,
+    TransactionDetail detail,
   ) {
     showDialog<void>(
       context: context,
@@ -733,7 +752,7 @@ class _ActionBar extends StatelessWidget {
 class _ReimbursementDialog extends ConsumerStatefulWidget {
   const _ReimbursementDialog({required this.detail});
 
-  final TransactionDetailView detail;
+  final TransactionDetail detail;
 
   @override
   ConsumerState<_ReimbursementDialog> createState() =>
@@ -987,7 +1006,12 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    final receivableAccountId = _resolveReceivableAccountId(widget.detail);
+    final accountsById =
+        ref.read(accountsByIdProvider).value ?? const <int, Account>{};
+    final receivableAccountId = _resolveReceivableAccountId(
+      widget.detail,
+      accountsById,
+    );
     if (receivableAccountId == null) {
       _showFailure('无法定位报销账户');
       return;
@@ -1198,19 +1222,44 @@ class _AccountRowInfo {
 
 enum _AccountEditKind { settlement, reimbursement }
 
-List<_AccountRowInfo> _resolveAccountRows(TransactionDetailView detail) {
+List<_AccountRowInfo> _resolveAccountRows(
+  TransactionDetail detail,
+  Map<int, Account> accountsById,
+) {
   final purpose = detail.transaction.businessPurpose;
   final entries = detail.entries;
-  final asset =
-      entries
-          .where(
-            (e) =>
-                e.accountType == AccountType.asset ||
-                e.accountType == AccountType.liability,
-          )
-          .toList();
+  final asset = entries.where((e) {
+    final type = accountsById[e.accountId]?.type;
+    return type == AccountType.asset || type == AccountType.liability;
+  }).toList();
+
+  _AccountRowInfo info(
+    String label,
+    Entry entry, {
+    _AccountEditKind? editKind,
+  }) {
+    return _AccountRowInfo(
+      label: label,
+      accountId: entry.accountId,
+      endpoint: _endpointFromEntry(entry, accountsById),
+      editKind: editKind,
+    );
+  }
+
+  _AccountRowInfo placeholderRow(String label, {_AccountEditKind? editKind}) {
+    return _AccountRowInfo(
+      label: label,
+      accountId: 0,
+      endpoint: const AccountEndpoint(label: '—', iconKey: null),
+      editKind: editKind,
+    );
+  }
+
   switch (purpose) {
     case BusinessPurpose.transfer:
+      if (asset.isEmpty) {
+        return [placeholderRow('转出账户'), placeholderRow('转入账户')];
+      }
       final from = asset.firstWhere(
         (e) => e.direction == EntryDirection.credit,
         orElse: () => asset.first,
@@ -1219,112 +1268,80 @@ List<_AccountRowInfo> _resolveAccountRows(TransactionDetailView detail) {
         (e) => e.direction == EntryDirection.debit,
         orElse: () => asset.first,
       );
-      return [
-        _AccountRowInfo(
-          label: '转出账户',
-          accountId: from.accountId,
-          endpoint: _endpointFromEntry(from),
-        ),
-        _AccountRowInfo(
-          label: '转入账户',
-          accountId: to.accountId,
-          endpoint: _endpointFromEntry(to),
-        ),
-      ];
+      return [info('转出账户', from), info('转入账户', to)];
     case BusinessPurpose.dailyIncome:
     case BusinessPurpose.refund:
     case BusinessPurpose.reimbursementReceipt:
     case BusinessPurpose.reimbursementClose:
     case BusinessPurpose.borrowing:
+      final editKind =
+          purpose == BusinessPurpose.dailyIncome ||
+              purpose == BusinessPurpose.borrowing
+          ? _AccountEditKind.settlement
+          : null;
+      if (asset.isEmpty) {
+        return [placeholderRow('收支账户', editKind: editKind)];
+      }
       final inAccount = asset.firstWhere(
         (e) => e.direction == EntryDirection.debit,
-        orElse: () => asset.isEmpty ? _placeholder() : asset.first,
+        orElse: () => asset.first,
       );
-      return [
-        _AccountRowInfo(
-          label: '收支账户',
-          accountId: inAccount.accountId,
-          endpoint: _endpointFromEntry(inAccount),
-          editKind:
-              purpose == BusinessPurpose.dailyIncome ||
-                      purpose == BusinessPurpose.borrowing
-                  ? _AccountEditKind.settlement
-                  : null,
-        ),
-      ];
+      return [info('收支账户', inAccount, editKind: editKind)];
     case BusinessPurpose.dailyExpense:
     case BusinessPurpose.debtRepayment:
+      final label = purpose == BusinessPurpose.debtRepayment ? '还款账户' : '收支账户';
+      if (asset.isEmpty) {
+        return [placeholderRow(label, editKind: _AccountEditKind.settlement)];
+      }
       final outAccount = asset.firstWhere(
         (e) => e.direction == EntryDirection.credit,
-        orElse: () => asset.isEmpty ? _placeholder() : asset.first,
+        orElse: () => asset.first,
       );
-      return [
-        _AccountRowInfo(
-          label: purpose == BusinessPurpose.debtRepayment ? '还款账户' : '收支账户',
-          accountId: outAccount.accountId,
-          endpoint: _endpointFromEntry(outAccount),
-          editKind: _AccountEditKind.settlement,
-        ),
-      ];
+      return [info(label, outAccount, editKind: _AccountEditKind.settlement)];
     case BusinessPurpose.reimbursementAdvance:
+      if (asset.isEmpty) {
+        return [
+          placeholderRow('收支账户', editKind: _AccountEditKind.settlement),
+          placeholderRow('报销账户', editKind: _AccountEditKind.reimbursement),
+        ];
+      }
       final receivable = asset.firstWhere(
         (e) =>
             e.direction == EntryDirection.debit &&
-            e.accountType == AccountType.asset,
-        orElse: () => asset.isEmpty ? _placeholder() : asset.first,
+            accountsById[e.accountId]?.type == AccountType.asset,
+        orElse: () => asset.first,
       );
       final paidFrom = asset.firstWhere(
         (e) => e.direction == EntryDirection.credit,
-        orElse: () => asset.isEmpty ? _placeholder() : asset.first,
+        orElse: () => asset.first,
       );
       return [
-        _AccountRowInfo(
-          label: '收支账户',
-          accountId: paidFrom.accountId,
-          endpoint: _endpointFromEntry(paidFrom),
-          editKind: _AccountEditKind.settlement,
-        ),
-        _AccountRowInfo(
-          label: '报销账户',
-          accountId: receivable.accountId,
-          endpoint: _endpointFromEntry(receivable),
-          editKind: _AccountEditKind.reimbursement,
-        ),
+        info('收支账户', paidFrom, editKind: _AccountEditKind.settlement),
+        info('报销账户', receivable, editKind: _AccountEditKind.reimbursement),
       ];
     case BusinessPurpose.openingBalance:
     case BusinessPurpose.balanceAdjustment:
-      final acct = asset.firstWhere((_) => true, orElse: () => _placeholder());
-      return [
-        _AccountRowInfo(
-          label: '账户',
-          accountId: acct.accountId,
-          endpoint: _endpointFromEntry(acct),
-        ),
-      ];
+      if (asset.isEmpty) {
+        return [placeholderRow('账户')];
+      }
+      return [info('账户', asset.first)];
   }
 }
 
-AccountEndpoint _endpointFromEntry(EntryLineView entry) {
+AccountEndpoint _endpointFromEntry(Entry entry, Map<int, Account> accountsById) {
+  final account = accountsById[entry.accountId];
   return AccountEndpoint(
-    label: entry.accountName,
-    iconKey: entry.accountIconKey,
+    label: account?.name ?? '—',
+    iconKey: account?.iconKey,
   );
 }
 
-EntryLineView _placeholder() {
-  return EntryLineView(
-    accountId: 0,
-    accountName: '—',
-    accountType: AccountType.asset,
-    direction: EntryDirection.debit,
-    amount: Money.zero(),
-    accountIconKey: null,
-  );
-}
-
-int? _resolveReceivableAccountId(TransactionDetailView detail) {
+int? _resolveReceivableAccountId(
+  TransactionDetail detail,
+  Map<int, Account> accountsById,
+) {
   for (final entry in detail.entries) {
-    if (entry.accountType == AccountType.asset &&
+    if (accountsById[entry.accountId]?.type == AccountType.asset &&
         entry.direction == EntryDirection.debit) {
       return entry.accountId;
     }
@@ -1373,36 +1390,68 @@ InputDecoration _dialogInlineInputDecoration(
   );
 }
 
-String? _resolveCategoryName(TransactionDetailView detail) {
-  if (detail.categoryName != null && detail.categoryName!.isNotEmpty) {
-    return detail.categoryName;
-  }
+String? _resolveCategoryName(
+  TransactionDetail detail,
+  Map<int, Account> accountsById,
+) {
   final purpose = detail.transaction.businessPurpose;
+  Account? categoryAccount;
   if (purpose == BusinessPurpose.dailyExpense ||
       purpose == BusinessPurpose.refund) {
-    return detail.entries
-        .firstWhere(
-          (e) => e.accountType == AccountType.expense,
-          orElse: _placeholder,
-        )
-        .accountName;
+    final entry = firstEntryByType(
+      detail.entries,
+      accountsById: accountsById,
+      accountType: AccountType.expense,
+    );
+    categoryAccount = entry?.resolveAccount(accountsById);
+  } else if (purpose == BusinessPurpose.dailyIncome) {
+    final entry = firstEntryByType(
+      detail.entries,
+      accountsById: accountsById,
+      accountType: AccountType.income,
+    );
+    categoryAccount = entry?.resolveAccount(accountsById);
+  } else if (purpose == BusinessPurpose.reimbursementAdvance) {
+    final expenseId = detail.transaction.reimbursementExpenseAccountId;
+    if (expenseId != null) {
+      categoryAccount = accountsById[expenseId];
+    }
   }
-  if (purpose == BusinessPurpose.dailyIncome) {
-    return detail.entries
-        .firstWhere(
-          (e) => e.accountType == AccountType.income,
-          orElse: _placeholder,
-        )
-        .accountName;
-  }
-  return null;
+  return categoryAccount?.name;
 }
 
-String? _resolveCategoryIconKey(TransactionDetailView detail) {
-  if (detail.categoryIconKey != null && detail.categoryIconKey!.isNotEmpty) {
-    return detail.categoryIconKey;
+String? _resolveCategoryIconKey(
+  TransactionDetail detail,
+  Map<int, Account> accountsById,
+) {
+  final purpose = detail.transaction.businessPurpose;
+  Account? categoryAccount;
+  if (purpose == BusinessPurpose.dailyExpense ||
+      purpose == BusinessPurpose.refund) {
+    final entry = firstEntryByType(
+      detail.entries,
+      accountsById: accountsById,
+      accountType: AccountType.expense,
+    );
+    categoryAccount = entry?.resolveAccount(accountsById);
+  } else if (purpose == BusinessPurpose.dailyIncome) {
+    final entry = firstEntryByType(
+      detail.entries,
+      accountsById: accountsById,
+      accountType: AccountType.income,
+    );
+    categoryAccount = entry?.resolveAccount(accountsById);
+  } else if (purpose == BusinessPurpose.reimbursementAdvance) {
+    final expenseId = detail.transaction.reimbursementExpenseAccountId;
+    if (expenseId != null) {
+      categoryAccount = accountsById[expenseId];
+    }
   }
-  final name = _resolveCategoryName(detail);
+  if (categoryAccount?.iconKey != null &&
+      categoryAccount!.iconKey!.isNotEmpty) {
+    return categoryAccount.iconKey;
+  }
+  final name = categoryAccount?.name;
   return switch (name) {
     '茶叶' || '咖啡' => 'coffee',
     '早餐' => 'breakfast',
@@ -1426,7 +1475,7 @@ String? _resolveCategoryIconKey(TransactionDetailView detail) {
   };
 }
 
-String? _resolveHeroSubtitle(TransactionDetailView detail) {
+String? _resolveHeroSubtitle(TransactionDetail detail) {
   final transaction = detail.transaction;
   final counterparty = transaction.counterpartyName;
   if (counterparty != null && counterparty.isNotEmpty) {
@@ -1458,7 +1507,7 @@ Money _signedAmount(Money money, MoneySemantic semantic) {
   return money;
 }
 
-bool _showsExclusionCard(TransactionDetailView detail) {
+bool _showsExclusionCard(TransactionDetail detail) {
   return detail.transaction.businessPurpose == BusinessPurpose.dailyExpense ||
       detail.transaction.businessPurpose == BusinessPurpose.dailyIncome;
 }
@@ -1469,10 +1518,24 @@ String _formatDateTime(DateTime dt) {
       '${two(dt.hour)}:${two(dt.minute)}';
 }
 
+class _SheetItem {
+  const _SheetItem({
+    required this.id,
+    required this.purpose,
+    required this.occurredAt,
+    required this.primaryAmount,
+  });
+
+  final int id;
+  final BusinessPurpose purpose;
+  final DateTime occurredAt;
+  final Money primaryAmount;
+}
+
 void _showChildrenSheet(
   BuildContext context, {
   required String title,
-  required List<TransactionListItem> items,
+  required List<_SheetItem> items,
 }) {
   if (items.isEmpty) return;
   showModalBottomSheet<void>(
@@ -1501,16 +1564,16 @@ void _showChildrenSheet(
               for (final item in items)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text(transactionPurposeLabel(item.businessPurpose)),
+                  title: Text(transactionPurposeLabel(item.purpose)),
                   subtitle: Text(_formatDateTime(item.occurredAt)),
                   trailing: MoneyText(
                     money: _signedAmount(
                       item.primaryAmount,
-                      _semanticForPurpose(item.businessPurpose),
+                      _semanticForPurpose(item.purpose),
                     ),
-                    semantic: _semanticForPurpose(item.businessPurpose),
+                    semantic: _semanticForPurpose(item.purpose),
                     showSign:
-                        _semanticForPurpose(item.businessPurpose) ==
+                        _semanticForPurpose(item.purpose) ==
                         MoneySemantic.income,
                   ),
                   onTap: () {

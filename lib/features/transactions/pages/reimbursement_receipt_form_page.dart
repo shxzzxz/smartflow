@@ -47,11 +47,13 @@ class _ReimbursementReceiptFormPageState
     final accounts =
         ref.watch(accountsForUsageProvider(AccountUsage.settlement)).value ??
         const <Account>[];
+    final accountsById =
+        ref.watch(accountsByIdProvider).value ?? const <int, Account>{};
     final receiveAccount = _findAccount(_receiveAccountId, accounts);
     final detail =
         ref.watch(transactionDetailProvider(widget.advanceTransactionId)).value;
     final summary = detail?.reimbursementSummary;
-    final receivable = _resolveReceivable(detail);
+    final receivable = _resolveReceivable(detail, accountsById);
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -124,10 +126,13 @@ class _ReimbursementReceiptFormPageState
     }
   }
 
-  int? _resolveReceivable(TransactionDetailView? detail) {
+  int? _resolveReceivable(
+    TransactionDetail? detail,
+    Map<int, Account> accountsById,
+  ) {
     if (detail == null) return null;
     for (final entry in detail.entries) {
-      if (entry.accountType == AccountType.asset &&
+      if (accountsById[entry.accountId]?.type == AccountType.asset &&
           entry.direction == EntryDirection.debit) {
         return entry.accountId;
       }

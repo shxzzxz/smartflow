@@ -3,9 +3,12 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/data/accounting/repositories/drift_account_repository.dart';
+import 'package:smartflow/data/accounting/repositories/drift_balance_aggregate_repository.dart';
+import 'package:smartflow/data/accounting/repositories/drift_entry_read_repository.dart';
 import 'package:smartflow/data/accounting/repositories/drift_posting_repository.dart';
 import 'package:smartflow/data/accounting/repositories/drift_system_account_resolver.dart';
-import 'package:smartflow/data/accounting/repositories/drift_transaction_query_repository.dart';
+import 'package:smartflow/data/accounting/repositories/drift_transaction_detail_read_repository.dart';
+import 'package:smartflow/data/accounting/repositories/drift_transaction_read_repository.dart';
 import 'package:smartflow/data/transaction/drift_transaction_runner.dart';
 import 'package:smartflow/domain/accounting/accounting_api.dart';
 import 'package:smartflow/domain/accounting/ledger/poster.dart';
@@ -16,7 +19,6 @@ void main() {
   group('TransactionService stage 3', () {
     late AppDatabase database;
     late DriftAccountRepository accountRepository;
-    late DriftTransactionQueryRepository queryRepository;
     late DriftSystemAccountResolver systemAccounts;
     late TransactionService service;
     late TransactionQueryService queryService;
@@ -30,13 +32,17 @@ void main() {
         database,
         systemAccounts: systemAccounts,
       );
-      queryRepository = DriftTransactionQueryRepository(database);
-      queryService = TransactionQueryServiceImpl(queryRepository);
+      queryService = TransactionQueryServiceImpl(
+        transactionRead: DriftTransactionReadRepository(database),
+        entryRead: DriftEntryReadRepository(database),
+        detailRead: DriftTransactionDetailReadRepository(database),
+        balanceAggregate: DriftBalanceAggregateRepository(database),
+      );
       final postingRepository = DriftPostingRepository(database);
       service = TransactionServiceImpl(
         PosterImpl(postingRepository),
         accountRepository: accountRepository,
-        transactionQueryRepository: queryRepository,
+        transactionQueryService: queryService,
         systemAccountResolver: systemAccounts,
         postingRepository: postingRepository,
       );
@@ -84,7 +90,7 @@ void main() {
       expect(await _balance(database, wallet.id), -6600);
       expect(await _balance(database, food.id), 6600);
 
-      final refunded = await queryRepository.getRefundedTotal(
+      final refunded = await queryService.getRefundedTotal(
         expense.rootTransactionId,
       );
       expect(refunded.minorUnits, 200);
@@ -162,7 +168,7 @@ void main() {
       );
       expect(receipt, isA<Success<CreatedTransactionResult>>());
 
-      final summary = await queryRepository.getReimbursementSummary(
+      final summary = await queryService.getReimbursementSummary(
         advance.transactionId,
       );
       expect(summary, isNotNull);
@@ -185,7 +191,7 @@ void main() {
       expect(await _balance(database, receivable.id), 0);
       expect(await _balance(database, bank.id), 210000);
 
-      final closed = await queryRepository.getReimbursementSummary(
+      final closed = await queryService.getReimbursementSummary(
         advance.transactionId,
       );
       expect(closed!.isClosed, isTrue);

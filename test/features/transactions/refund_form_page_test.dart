@@ -18,6 +18,11 @@ void main() {
   ) async {
     final database = createTestDatabase();
     addTearDown(database.close);
+    final categoryId = await _insertAccount(
+      database,
+      name: '餐饮',
+      type: AccountType.expense,
+    );
     final walletId = await _insertAccount(
       database,
       name: '钱包',
@@ -31,7 +36,7 @@ void main() {
           appDatabaseProvider.overrideWithValue(database),
           transactionQueryServiceProvider.overrideWithValue(
             _FakeTransactionQueryService(
-              TransactionDetailView(
+              TransactionDetail(
                 transaction: Transaction(
                   id: 1,
                   rootTransactionId: 1,
@@ -48,17 +53,17 @@ void main() {
                 ),
                 details: const [],
                 entries: [
-                  const EntryLineView(
-                    accountId: 99,
-                    accountName: '餐饮',
-                    accountType: AccountType.expense,
+                  Entry(
+                    id: 1,
+                    transactionId: 1,
+                    accountId: categoryId,
                     direction: EntryDirection.debit,
-                    amount: Money(minorUnits: 1200),
+                    amount: const Money(minorUnits: 1200),
                   ),
-                  EntryLineView(
+                  Entry(
+                    id: 2,
+                    transactionId: 1,
                     accountId: walletId,
-                    accountName: '钱包',
-                    accountType: AccountType.asset,
                     direction: EntryDirection.credit,
                     amount: const Money(minorUnits: 1200),
                   ),
@@ -103,10 +108,10 @@ Future<int> _insertAccount(
 class _FakeTransactionQueryService implements TransactionQueryService {
   const _FakeTransactionQueryService(this.detail);
 
-  final TransactionDetailView detail;
+  final TransactionDetail detail;
 
   @override
-  Stream<TransactionDetailView?> watchTransactionDetail(int transactionId) {
+  Stream<TransactionDetail?> watchTransactionDetail(int transactionId) {
     return Stream.value(detail);
   }
 
