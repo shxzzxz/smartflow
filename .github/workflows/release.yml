@@ -33,7 +33,7 @@ jobs:
       manifest_channels: ${{ steps.release-meta.outputs.manifest_channels }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
@@ -180,29 +180,29 @@ jobs:
           done
 
       - name: Upload APK artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smartflow-${{ steps.release-meta.outputs.version_name }}-apk
           path: dist/*.apk
           if-no-files-found: error
 
       - name: Upload manifest artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smartflow-${{ steps.release-meta.outputs.version_name }}-manifests
           path: public/update-*.json
           if-no-files-found: error
 
       - name: Configure Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: public
 
       - name: Deploy Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
         with:
           artifact_name: github-pages
