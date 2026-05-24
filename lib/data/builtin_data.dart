@@ -4,7 +4,7 @@ import '../domain/accounting/enums/accounting_enums.dart';
 import 'app_database.dart';
 
 const builtinDataVersionKey = 'builtin_data_version';
-const currentBuiltinDataVersion = 5;
+const currentBuiltinDataVersion = 6;
 const _currency = 'CNY';
 
 Future<void> ensureBuiltinData(AppDatabase database) async {
@@ -25,6 +25,9 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
     }
     if (version < 5) {
       await _upgradeDiscountIncome(database);
+    }
+    if (version < 6) {
+      await _seedGhostAccount(database);
     }
 
     await _writeBuiltinDataVersion(database, currentBuiltinDataVersion);
@@ -195,7 +198,7 @@ Future<void> _upgradeBuiltinIncomeIcons(AppDatabase database) async {
     database,
     name: '借出',
     type: AccountType.expense,
-    systemKey: SystemKey.lendingExpense,
+    parentName: '其他',
     iconKey: 'logout-box-r-line',
   );
   await _updateCategoryIcon(
@@ -240,7 +243,7 @@ Future<void> _upgradeBuiltinIncomeIcons(AppDatabase database) async {
     database,
     name: '借入',
     type: AccountType.income,
-    systemKey: SystemKey.borrowingIncome,
+    parentName: '其他',
     iconKey: 'hand-coin-line',
   );
   await _updateCategoryIcon(
@@ -267,6 +270,18 @@ Future<void> _upgradeDiscountIncome(AppDatabase database) async {
       iconKey: 'coupon-3-line',
       sortOrder: 30,
       systemKey: SystemKey.discountIncome,
+    ),
+  );
+}
+
+Future<void> _seedGhostAccount(AppDatabase database) async {
+  await _ensureSystemAccount(
+    database,
+    const _BuiltinAccount(
+      name: '幽灵账户',
+      type: AccountType.equity,
+      systemKey: SystemKey.ghostAccount,
+      iconKey: 'ghost-line',
     ),
   );
 }
@@ -335,6 +350,7 @@ Future<void> _seedBuiltinAccounts(AppDatabase database) async {
       iconKey: 'transfer',
     ),
   );
+  await _seedGhostAccount(database);
 }
 
 Future<void> _ensureCategoryTree(
@@ -611,7 +627,6 @@ const _expenseCategories = [
         name: '借出',
         iconKey: 'logout-box-r-line',
         sortOrder: 40,
-        systemKey: SystemKey.lendingExpense,
       ),
     ],
   ),
@@ -650,7 +665,6 @@ const _incomeCategories = [
         name: '借入',
         iconKey: 'hand-coin-line',
         sortOrder: 10,
-        systemKey: SystemKey.borrowingIncome,
       ),
       _BuiltinCategory(
         name: '报销收入',

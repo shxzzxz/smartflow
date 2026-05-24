@@ -101,8 +101,6 @@ class CreateScheduledRepaymentCommand {
     this.interest,
     this.fee,
     this.discount,
-    this.interestExpenseAccountId,
-    this.feeExpenseAccountId,
     this.note,
     this.counterpartyName,
   });
@@ -114,8 +112,6 @@ class CreateScheduledRepaymentCommand {
   final Money? fee;
   final Money? discount;
   final int paidFromAccountId;
-  final int? interestExpenseAccountId;
-  final int? feeExpenseAccountId;
   final DateTime occurredAt;
   final String? note;
   final String? counterpartyName;
@@ -129,8 +125,6 @@ class CreatePrincipalPrepaymentCommand {
     required this.occurredAt,
     this.interest,
     this.fee,
-    this.interestExpenseAccountId,
-    this.feeExpenseAccountId,
     this.note,
     this.counterpartyName,
   });
@@ -145,8 +139,6 @@ class CreatePrincipalPrepaymentCommand {
   final Money? fee;
 
   final int paidFromAccountId;
-  final int? interestExpenseAccountId;
-  final int? feeExpenseAccountId;
   final DateTime occurredAt;
   final String? note;
   final String? counterpartyName;
@@ -160,8 +152,6 @@ class CreateEarlySettlementCommand {
     required this.occurredAt,
     this.fee,
     this.interest,
-    this.interestExpenseAccountId,
-    this.feeExpenseAccountId,
     this.note,
     this.counterpartyName,
   });
@@ -171,8 +161,6 @@ class CreateEarlySettlementCommand {
   final Money? interest;
   final Money? fee;
   final int paidFromAccountId;
-  final int? interestExpenseAccountId;
-  final int? feeExpenseAccountId;
   final DateTime occurredAt;
   final String? note;
   final String? counterpartyName;
@@ -964,8 +952,6 @@ class InstallmentServiceImpl implements InstallmentService {
           discount: command.discount,
           liabilityAccountId: contract.liabilityAccountId,
           paidFromAccountId: command.paidFromAccountId,
-          interestExpenseAccountId: command.interestExpenseAccountId,
-          feeExpenseAccountId: command.feeExpenseAccountId,
           occurredAt: command.occurredAt,
           counterpartyName: command.counterpartyName,
           note: command.note,
@@ -1028,8 +1014,6 @@ class InstallmentServiceImpl implements InstallmentService {
           fee: command.fee,
           liabilityAccountId: contract.liabilityAccountId,
           paidFromAccountId: command.paidFromAccountId,
-          interestExpenseAccountId: command.interestExpenseAccountId,
-          feeExpenseAccountId: command.feeExpenseAccountId,
           occurredAt: command.occurredAt,
           counterpartyName: command.counterpartyName,
           note: command.note,
@@ -1085,8 +1069,6 @@ class InstallmentServiceImpl implements InstallmentService {
           fee: command.fee,
           liabilityAccountId: contract.liabilityAccountId,
           paidFromAccountId: command.paidFromAccountId,
-          interestExpenseAccountId: command.interestExpenseAccountId,
-          feeExpenseAccountId: command.feeExpenseAccountId,
           occurredAt: command.occurredAt,
           counterpartyName: command.counterpartyName,
           note: command.note,

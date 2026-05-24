@@ -29,10 +29,7 @@ void main() {
     setUp(() {
       database = createTestDatabase();
       systemAccounts = DriftSystemAccountResolver(database);
-      accountRepository = DriftAccountRepository(
-        database,
-        systemAccounts: systemAccounts,
-      );
+      accountRepository = DriftAccountRepository(database);
       queryService = TransactionQueryServiceImpl(
         transactionRead: DriftTransactionReadRepository(database),
         entryRead: DriftEntryReadRepository(database),
@@ -393,11 +390,6 @@ void main() {
     test('repayment splits principal and interest', () async {
       final bank = await _createAsset(accountService, '招行');
       final card = await _createLiability(accountService, '信用卡');
-      final interest = await _createCategory(
-        categoryService,
-        '还款利息',
-        AccountType.expense,
-      );
 
       final result = await service.createRepayment(
         CreateRepaymentCommand(
@@ -405,15 +397,15 @@ void main() {
           interest: const Money(minorUnits: 3000),
           liabilityAccountId: card.id,
           paidFromAccountId: bank.id,
-          interestExpenseAccountId: interest.id,
           occurredAt: DateTime(2026, 5, 10),
         ),
       );
       expect(result, isA<Success<CreatedTransactionResult>>());
 
+      final interestSystemId = await systemAccounts.resolveDebtInterestExpense();
       expect(await _balance(database, bank.id), -83000);
       expect(await _balance(database, card.id), -80000);
-      expect(await _balance(database, interest.id), 3000);
+      expect(await _balance(database, interestSystemId), 3000);
     });
 
     test(
@@ -437,26 +429,6 @@ void main() {
         expect(await _balance(database, bank.id), -9500);
         expect(await _balance(database, card.id), -10000);
         expect(await _balance(database, discountIncomeId), 500);
-      },
-    );
-
-    test(
-      'borrowing without cash account uses opening balance equity',
-      () async {
-        final card = await _createLiability(accountService, '亲友借款');
-
-        final result = await service.createBorrowing(
-          CreateBorrowingCommand(
-            amount: const Money(minorUnits: 1000000),
-            liabilityAccountId: card.id,
-            occurredAt: DateTime(2026, 5, 1),
-          ),
-        );
-        expect(result, isA<Success<CreatedTransactionResult>>());
-
-        final equityId = await systemAccounts.resolveOpeningBalance();
-        expect(await _balance(database, card.id), 1000000);
-        expect(await _balance(database, equityId), -1000000);
       },
     );
 

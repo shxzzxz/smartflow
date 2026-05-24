@@ -2,7 +2,6 @@ import '../../../core/errors/failure.dart';
 import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
 import '../commands/transaction_commands.dart';
-import '../entities/account.dart';
 import '../entities/account_usage.dart';
 import '../entities/transaction.dart';
 import '../enums/accounting_enums.dart';
@@ -26,7 +25,7 @@ import 'post_receipt.dart';
 /// builder 关心:
 /// - 业务规则校验(金额非负、币种一致、父交易状态等)
 /// - 账户角色校验(usage/type 匹配)
-/// - 系统科目懒加载
+/// - 系统科目按需查找
 /// - 凭证组装(details + entries + 必要的业务字段)
 class ReceiptBuilder {
   ReceiptBuilder({
@@ -391,7 +390,7 @@ class ReceiptBuilder {
     required int parentId,
     required BusinessPurpose parentPurpose,
   }) async {
-    final detail = await _query.watchTransactionDetail(parentId).first;
+    final detail = await _query.findTransactionDetail(parentId);
     if (detail == null) return null;
     final accountTypes = await _loadAccountTypes(
       detail.entries.map((e) => e.accountId),
@@ -570,7 +569,7 @@ class ReceiptBuilder {
   }
 
   /// 结束报销:= 剩余全额报销 + 差额收支。
-  /// - 多收差额 → 系统 reimbursement_gap_income(懒加载)贷
+  /// - 多收差额 → 系统 reimbursement_gap_income 贷
   /// - 少收差额 → advance 的原报销支出分类借
   ///
   /// [outstandingOverride] 编辑场景下从原 close-main detail 取 outstanding,
@@ -621,12 +620,15 @@ class ReceiptBuilder {
     final hasOverGap = gap.minorUnits > 0;
     final hasUnderGap = gap.minorUnits < 0;
 
+    final hasOutstanding = outstanding.minorUnits > 0;
+
     final details = <ReceiptDetail>[
-      ReceiptDetail(
-        lineNo: 1,
-        type: TransactionDetailType.reimbursementCloseMain,
-        amount: outstanding,
-      ),
+      if (hasOutstanding)
+        ReceiptDetail(
+          lineNo: 1,
+          type: TransactionDetailType.reimbursementCloseMain,
+          amount: outstanding,
+        ),
       if (hasOverGap)
         ReceiptDetail(
           lineNo: 2,
@@ -648,11 +650,12 @@ class ReceiptBuilder {
           direction: EntryDirection.debit,
           amount: actual,
         ),
-      ReceiptEntry(
-        accountId: cmd.receivableAccountId,
-        direction: EntryDirection.credit,
-        amount: outstanding,
-      ),
+      if (hasOutstanding)
+        ReceiptEntry(
+          accountId: cmd.receivableAccountId,
+          direction: EntryDirection.credit,
+          amount: outstanding,
+        ),
     ];
 
     if (hasOverGap) {
@@ -792,15 +795,6 @@ class ReceiptBuilder {
     final hasFee = fee != null && fee.minorUnits > 0;
     final hasDiscount = discount != null && discount.minorUnits > 0;
 
-    if (hasFee && cmd.feeExpenseAccountId == null) {
-      return const Result.failure(
-        Failure(
-          code: 'repayment_fee_account_required',
-          message: 'Fee category is required when fee is positive.',
-        ),
-      );
-    }
-
     final zero = Money.zero(currency: principal.currency);
     final totalPaid = principal +
         (hasInterest ? interest : zero) +
@@ -815,12 +809,16 @@ class ReceiptBuilder {
       );
     }
 
-    final interestExpenseAccountId =
-        hasInterest && cmd.interestExpenseAccountId == null
-            ? await _systemAccounts.resolveDebtInterestExpense(
-                currencyCode: principal.currency,
-              )
-            : cmd.interestExpenseAccountId;
+    final interestExpenseAccountId = hasInterest
+        ? await _systemAccounts.resolveDebtInterestExpense(
+            currencyCode: principal.currency,
+          )
+        : null;
+    final feeExpenseAccountId = hasFee
+        ? await _systemAccounts.resolveDebtFeeExpense(
+            currencyCode: principal.currency,
+          )
+        : null;
     final discountIncomeAccountId = hasDiscount
         ? await _systemAccounts.resolveDiscountIncome(
             currencyCode: principal.currency,
@@ -831,11 +829,6 @@ class ReceiptBuilder {
       usages: {
         cmd.liabilityAccountId: AccountUsage.repaymentTarget,
         cmd.paidFromAccountId: AccountUsage.repaymentSource,
-      },
-      types: {
-        if (hasInterest) interestExpenseAccountId!: {AccountType.expense},
-        if (hasFee) cmd.feeExpenseAccountId!: {AccountType.expense},
-        if (hasDiscount) discountIncomeAccountId!: {AccountType.income},
       },
     );
     if (roleFailure != null) return Result.failure(roleFailure);
@@ -880,7 +873,7 @@ class ReceiptBuilder {
         ),
       if (hasFee)
         ReceiptEntry(
-          accountId: cmd.feeExpenseAccountId!,
+          accountId: feeExpenseAccountId!,
           direction: EntryDirection.debit,
           amount: fee,
         ),
@@ -914,7 +907,7 @@ class ReceiptBuilder {
     );
   }
 
-  /// 借入:receive 借(若无,则系统期初权益借) / liability 贷。
+  /// 借入:receive 借 / liability 贷。
   Future<Result<PostReceipt>> buildBorrowing(
     CreateBorrowingCommand cmd,
   ) async {
@@ -927,21 +920,13 @@ class ReceiptBuilder {
       );
     }
 
-    final receiveAccountId = cmd.receiveAccountId;
-    final useSystemEquity = receiveAccountId == null;
     final roleFailure = await _validateAccountConstraints(
       usages: {
         cmd.liabilityAccountId: AccountUsage.borrowingLiability,
-        if (!useSystemEquity) receiveAccountId: AccountUsage.fund,
+        cmd.receiveAccountId: AccountUsage.fund,
       },
     );
     if (roleFailure != null) return Result.failure(roleFailure);
-
-    final debitAccountId = useSystemEquity
-        ? await _systemAccounts.resolveOpeningBalance(
-            currencyCode: cmd.amount.currency,
-          )
-        : receiveAccountId;
 
     return Result.success(
       PostReceipt(
@@ -963,7 +948,7 @@ class ReceiptBuilder {
         ],
         entries: [
           ReceiptEntry(
-            accountId: debitAccountId,
+            accountId: cmd.receiveAccountId,
             direction: EntryDirection.debit,
             amount: cmd.amount,
           ),
@@ -1243,17 +1228,5 @@ class ReceiptBuilder {
     if (ids.isEmpty) return const {};
     final accounts = await _accounts.findAccountsByIds(ids);
     return {for (final a in accounts) a.id: a.type};
-  }
-
-  /// 暴露给 service:更新基础字段(改 settlement 账户)时,
-  /// 用同一份 account-type 加载逻辑。
-  Future<Map<int, AccountType>> loadAccountTypes(Iterable<int> accountIds) =>
-      _loadAccountTypes(accountIds);
-
-  Future<Map<int, Account>> loadAccountsByIds(Iterable<int> accountIds) async {
-    final ids = accountIds.toSet();
-    if (ids.isEmpty) return const {};
-    final accounts = await _accounts.findAccountsByIds(ids);
-    return {for (final a in accounts) a.id: a};
   }
 }

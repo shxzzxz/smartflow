@@ -61,4 +61,18 @@ abstract interface class TransactionReadRepository {
     required Set<TransactionDetailType> detailTypes,
     required Set<BusinessState> states,
   });
+
+  /// 按 (rootId, purpose) 双维度分桶,对子交易 (state ∈ states) 求 primary_amount 和 + count。
+  /// 用于一次查询拿到"每个 root 下每种 purpose 的累计 + 计数"。
+  Future<Map<int, Map<BusinessPurpose, TransactionChildAggregate>>>
+      aggregateChildrenByPurpose({
+    required Set<int> rootIds,
+    required Set<BusinessPurpose> purposes,
+    required Set<BusinessState> states,
+  });
+
+  /// 监听 transactions / entries / transaction_details 任一表更新。
+  /// 立即发射一次,后续每次相关表 commit 再次发射。供 service 用 asyncMap 编排
+  /// 多步只读查询并暴露 Stream。
+  Stream<void> watchChanges();
 }

@@ -180,4 +180,60 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
     }
     return result;
   }
+
+  @override
+  Future<Map<int, Map<BusinessPurpose, TransactionChildAggregate>>>
+      aggregateChildrenByPurpose({
+    required Set<int> rootIds,
+    required Set<BusinessPurpose> purposes,
+    required Set<BusinessState> states,
+  }) async {
+    if (rootIds.isEmpty || purposes.isEmpty || states.isEmpty) {
+      return const {};
+    }
+    final sumExpr = _db.transactions.primaryAmountMinor.sum();
+    final countExpr = _db.transactions.id.count();
+    final rootIdCol = _db.transactions.rootTransactionId;
+    final purposeCol = _db.transactions.businessPurpose;
+
+    final select = _db.selectOnly(_db.transactions)
+      ..addColumns([rootIdCol, purposeCol, sumExpr, countExpr])
+      ..where(_db.transactions.rootTransactionId.isIn(rootIds))
+      ..where(_db.transactions.businessPurpose.isInValues(purposes))
+      ..where(_db.transactions.businessState.isInValues(states))
+      ..where(_db.transactions.parentTransactionId.isNotNull())
+      ..groupBy([rootIdCol, purposeCol]);
+
+    final rows = await select.get();
+    final result = <int, Map<BusinessPurpose, TransactionChildAggregate>>{};
+    for (final row in rows) {
+      final rootId = row.read(rootIdCol);
+      final purposeName = row.read(purposeCol);
+      if (rootId == null || purposeName == null) continue;
+      final purpose = BusinessPurpose.values.byName(purposeName);
+      final bucket = result.putIfAbsent(
+        rootId,
+        () => <BusinessPurpose, TransactionChildAggregate>{},
+      );
+      bucket[purpose] = TransactionChildAggregate(
+        sumMinor: row.read(sumExpr) ?? 0,
+        count: row.read(countExpr) ?? 0,
+      );
+    }
+    return result;
+  }
+
+  @override
+  Stream<void> watchChanges() async* {
+    yield null;
+    await for (final _ in _db.tableUpdates(
+      TableUpdateQuery.onAllTables([
+        _db.transactions,
+        _db.entries,
+        _db.transactionDetails,
+      ]),
+    )) {
+      yield null;
+    }
+  }
 }

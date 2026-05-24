@@ -38,8 +38,6 @@ class CreateRepaymentCommand {
     this.interest,
     this.fee,
     this.discount,
-    this.feeExpenseAccountId,
-    this.interestExpenseAccountId,
     this.note,
   });
 
@@ -49,8 +47,6 @@ class CreateRepaymentCommand {
   final Money? interest;
   final Money? fee;
   final Money? discount;
-  final int? feeExpenseAccountId;
-  final int? interestExpenseAccountId;
   final DateTime occurredAt;
   final String? note;
 }
@@ -67,8 +63,6 @@ class CorrectRepaymentCommand {
     this.interest,
     this.fee,
     this.discount,
-    this.feeExpenseAccountId,
-    this.interestExpenseAccountId,
     this.note,
   });
 
@@ -79,8 +73,6 @@ class CorrectRepaymentCommand {
   final Money? interest;
   final Money? fee;
   final Money? discount;
-  final int? feeExpenseAccountId;
-  final int? interestExpenseAccountId;
   final DateTime occurredAt;
   final String? note;
 }
@@ -96,7 +88,6 @@ class RepaymentEditView {
     this.interest,
     this.fee,
     this.discount,
-    this.feeExpenseAccountId,
     this.note,
   });
 
@@ -106,7 +97,6 @@ class RepaymentEditView {
   final Money? discount;
   final int liabilityAccountId;
   final int paidFromAccountId;
-  final int? feeExpenseAccountId;
   final DateTime occurredAt;
   final String? note;
 }
@@ -145,8 +135,6 @@ class CreditServiceImpl implements CreditService {
         discount: command.discount,
         liabilityAccountId: command.liabilityAccountId,
         paidFromAccountId: command.paidFromAccountId,
-        interestExpenseAccountId: command.interestExpenseAccountId,
-        feeExpenseAccountId: command.feeExpenseAccountId,
         occurredAt: command.occurredAt,
         note: command.note,
       ),
@@ -157,10 +145,9 @@ class CreditServiceImpl implements CreditService {
   Future<Result<CreatedTransactionResult>> correctRepayment(
     CorrectRepaymentCommand command,
   ) async {
-    final detail =
-        await _transactionQueryService
-            .watchTransactionDetail(command.transactionId)
-            .first;
+    final detail = await _transactionQueryService.findTransactionDetail(
+      command.transactionId,
+    );
     if (detail == null) {
       return const Result.failure(
         Failure(
@@ -195,8 +182,6 @@ class CreditServiceImpl implements CreditService {
         discount: command.discount,
         liabilityAccountId: command.liabilityAccountId,
         paidFromAccountId: command.paidFromAccountId,
-        interestExpenseAccountId: command.interestExpenseAccountId,
-        feeExpenseAccountId: command.feeExpenseAccountId,
         occurredAt: command.occurredAt,
         note: command.note,
         // 回填原交易的统计/预算排除标记，信贷域的编辑命令不暴露这两个账务口径。
@@ -252,14 +237,6 @@ class CreditServiceImpl implements CreditService {
       interest: (interest?.minorUnits ?? 0) > 0 ? interest : null,
       fee: (fee?.minorUnits ?? 0) > 0 ? fee : null,
       discount: (discount?.minorUnits ?? 0) > 0 ? discount : null,
-      feeExpenseAccountId:
-          fee != null && fee.minorUnits > 0
-              ? _expenseAccountIdByAmount(
-                detail,
-                accountsById: accountsById,
-                amount: fee,
-              )
-              : null,
       liabilityAccountId: liabilityAccountId,
       paidFromAccountId: paidFromAccountId,
       occurredAt: detail.transaction.occurredAt,
@@ -339,21 +316,6 @@ class CreditServiceImpl implements CreditService {
       if (entry.direction != EntryDirection.credit) continue;
       final type = accountsById[entry.accountId]?.type;
       if (type == AccountType.asset || type == AccountType.liability) {
-        return entry.accountId;
-      }
-    }
-    return null;
-  }
-
-  int? _expenseAccountIdByAmount(
-    TransactionDetail detail, {
-    required Map<int, Account> accountsById,
-    required Money amount,
-  }) {
-    for (final entry in detail.entries) {
-      if (accountsById[entry.accountId]?.type == AccountType.expense &&
-          entry.direction == EntryDirection.debit &&
-          entry.amount == amount) {
         return entry.accountId;
       }
     }

@@ -40,11 +40,31 @@ class DriftSystemAccountResolver implements SystemAccountResolver {
   }
 
   @override
+  Future<int> resolveDebtFeeExpense({String currencyCode = 'CNY'}) {
+    return _resolve(
+      systemKey: SystemKey.debtFeeExpense,
+      accountType: AccountType.expense,
+      defaultName: '手续费',
+      currencyCode: currencyCode,
+    );
+  }
+
+  @override
   Future<int> resolveDiscountIncome({String currencyCode = 'CNY'}) {
     return _resolve(
       systemKey: SystemKey.discountIncome,
       accountType: AccountType.income,
       defaultName: '优惠',
+      currencyCode: currencyCode,
+    );
+  }
+
+  @override
+  Future<int> resolveGhostAccount({String currencyCode = 'CNY'}) {
+    return _resolve(
+      systemKey: SystemKey.ghostAccount,
+      accountType: AccountType.equity,
+      defaultName: '幽灵账户',
       currencyCode: currencyCode,
     );
   }

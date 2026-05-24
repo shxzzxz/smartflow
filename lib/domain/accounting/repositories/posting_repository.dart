@@ -31,21 +31,7 @@ abstract interface class PostingRepository {
     int? mutationPreviousTransactionId,
   });
 
-  /// 单个 db 事务内完成"用 newReceipt 替换 original"的全套写入:
-  ///
-  /// 1. 把 [originalTransactionId] 标记为 [BusinessState.replaced]
-  /// 2. 插入 [reversalReceipt],附 mutation 元数据:
-  ///    - mutationKind = reversal
-  ///    - businessState = compensation
-  ///    - mutationReason = correction
-  ///    - mutationPreviousTransactionId = originalTransactionId
-  ///    → 拿到 reversalId
-  /// 3. 插入 [correctionReceipt],附 mutation 元数据:
-  ///    - mutationKind = correction
-  ///    - businessState = current
-  ///    - mutationPreviousTransactionId = reversalId
-  /// 4. 累加两次 balance deltas
-  ///
+  /// 在单个 db 事务内完成"original → replaced + reversal + correction"全套写入,
   /// 返回最终 correction 交易的 id 与 root。
   Future<PostReceiptResult> replaceTransaction({
     required int originalTransactionId,
@@ -55,8 +41,8 @@ abstract interface class PostingRepository {
     required Map<int, int> correctionBalanceDeltasMinor,
   });
 
-  /// 单个 db 事务内完成一组交易的取消:每个 [CancelInstruction] 对应
-  /// 一笔 original → [BusinessState.canceled] + 插入对应 reversal。
+  /// 在单个 db 事务内取消一组交易:每个 [CancelInstruction] 对应
+  /// 一笔 original → canceled + 插入对应 reversal。
   Future<void> cancelTransactions({
     required List<CancelInstruction> cancellations,
   });

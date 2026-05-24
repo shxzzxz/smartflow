@@ -3,16 +3,12 @@ import 'package:drift/drift.dart';
 import '../../../domain/accounting/entities/account.dart';
 import '../../../domain/accounting/enums/accounting_enums.dart';
 import '../../../domain/accounting/repositories/account_repository.dart';
-import '../../../domain/accounting/repositories/system_account_resolver.dart';
 import '../../app_database.dart';
 import '../../patch_value.dart';
 import '../mappers/account_mapper.dart';
 
 class DriftAccountRepository implements AccountRepository, CategoryRepository {
-  DriftAccountRepository(
-    this._database, {
-    SystemAccountResolver? systemAccounts,
-  });
+  DriftAccountRepository(this._database);
 
   final AppDatabase _database;
 

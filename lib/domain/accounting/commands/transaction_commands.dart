@@ -175,8 +175,6 @@ class CreateRepaymentCommand {
     this.interest,
     this.fee,
     this.discount,
-    this.interestExpenseAccountId,
-    this.feeExpenseAccountId,
     this.counterpartyName,
     this.note,
     this.ownership,
@@ -190,8 +188,6 @@ class CreateRepaymentCommand {
   final Money? discount;
   final int liabilityAccountId;
   final int paidFromAccountId;
-  final int? interestExpenseAccountId;
-  final int? feeExpenseAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -204,8 +200,8 @@ class CreateBorrowingCommand {
   const CreateBorrowingCommand({
     required this.amount,
     required this.liabilityAccountId,
+    required this.receiveAccountId,
     required this.occurredAt,
-    this.receiveAccountId,
     this.counterpartyName,
     this.note,
     this.ownership,
@@ -215,7 +211,7 @@ class CreateBorrowingCommand {
 
   final Money amount;
   final int liabilityAccountId;
-  final int? receiveAccountId;
+  final int receiveAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -466,8 +462,6 @@ class CorrectRepaymentCommand {
     this.interest,
     this.fee,
     this.discount,
-    this.interestExpenseAccountId,
-    this.feeExpenseAccountId,
     this.counterpartyName,
     this.note,
     this.isExcludedFromStats,
@@ -481,8 +475,6 @@ class CorrectRepaymentCommand {
   final Money? discount;
   final int liabilityAccountId;
   final int paidFromAccountId;
-  final int? interestExpenseAccountId;
-  final int? feeExpenseAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;

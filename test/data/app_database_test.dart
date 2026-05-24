@@ -8,7 +8,7 @@ void main() {
       final database = createTestDatabase();
       addTearDown(database.close);
 
-      expect(database.schemaVersion, 7);
+      expect(database.schemaVersion, 8);
 
       final row = await database.customSelect('select 1 as value').getSingle();
       expect(row.read<int>('value'), 1);

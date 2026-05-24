@@ -41,7 +41,6 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
   DateTime _occurredAt = DateTime.now();
   int? _liabilityAccountId;
   int? _paidFromAccountId;
-  int? _feeExpenseAccountId;
   bool _submitting = false;
   bool _editInitialized = false;
 
@@ -227,7 +226,6 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
     _noteController.text = view.note ?? '';
     _liabilityAccountId = view.liabilityAccountId;
     _paidFromAccountId = view.paidFromAccountId;
-    _feeExpenseAccountId = view.feeExpenseAccountId;
     _occurredAt = view.occurredAt;
   }
 
@@ -303,7 +301,6 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
           interest: interest,
           fee: fee,
           discount: discount,
-          feeExpenseAccountId: fee != null ? _feeExpenseAccountId : null,
           occurredAt: _occurredAt,
           note: note,
         ),
@@ -318,7 +315,6 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
           interest: interest,
           fee: fee,
           discount: discount,
-          feeExpenseAccountId: fee != null ? _feeExpenseAccountId : null,
           occurredAt: _occurredAt,
           note: note,
         ),

@@ -1,5 +1,7 @@
 import '../../../core/money/money.dart';
+import '../entities/entry.dart';
 import '../entities/transaction.dart';
+import '../entities/transaction_detail_record.dart';
 import '../enums/accounting_enums.dart';
 import '../queries/transaction_queries.dart';
 import '../queries/transaction_scope.dart';
@@ -17,6 +19,14 @@ abstract interface class TransactionQueryService {
   Stream<CashflowSummary> watchCashflowSummary(CashflowSummaryQuery query);
 
   Stream<TransactionDetail?> watchTransactionDetail(int transactionId);
+
+  /// 一次性取一笔的聚合视图(transaction + entries + details + 子树 + 历史)。
+  /// 写路径(correct / delete / updateBasics)取 original 快照用,无需 stream 订阅。
+  Future<TransactionDetail?> findTransactionDetail(int transactionId);
+
+  /// 批量取一组交易的会计事实(transaction + entries + details),不含子树 / 历史。
+  /// 用于批量取消等只关心账本事实的场景。
+  Future<List<TransactionDetail>> findTransactionFacts(Set<int> transactionIds);
 
   Stream<List<TransactionHistorySnapshot>> watchTransactionHistory(
     int rootTransactionId,
@@ -225,15 +235,36 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
 
   @override
   Stream<TransactionDetail?> watchTransactionDetail(int transactionId) {
-    // 任一相关表变更触发重新加载。txRead.watchPage 不适用(它分页),用一个轻量
-    // 单交易 watch 作 trigger。
-    return _txRead
-        .watchPage(TransactionListQuery(
-          limit: 1,
-          offset: 0,
-          topLevelOnly: false,
-        ))
-        .asyncMap((_) => _loadDetail(transactionId));
+    return _txRead.watchChanges().asyncMap((_) => _loadDetail(transactionId));
+  }
+
+  @override
+  Future<TransactionDetail?> findTransactionDetail(int transactionId) =>
+      _loadDetail(transactionId);
+
+  @override
+  Future<List<TransactionDetail>> findTransactionFacts(
+    Set<int> transactionIds,
+  ) async {
+    if (transactionIds.isEmpty) return const [];
+    final transactions = await _txRead.findByIds(transactionIds);
+    if (transactions.isEmpty) return const [];
+    final fetchedIds = transactions.map((t) => t.id).toSet();
+    final entriesF = _entryRead.findByTransactionIds(fetchedIds);
+    final detailsF = _detailRead.findByTransactionIds(fetchedIds);
+    await Future.wait<void>([entriesF, detailsF]);
+    final entriesByTx = await entriesF;
+    final detailsByTx = await detailsF;
+    return [
+      for (final t in transactions)
+        TransactionDetail(
+          transaction: t,
+          entries: List<Entry>.unmodifiable(entriesByTx[t.id] ?? const <Entry>[]),
+          details: List<TransactionDetailRecord>.unmodifiable(
+            detailsByTx[t.id] ?? const <TransactionDetailRecord>[],
+          ),
+        ),
+    ];
   }
 
   Future<TransactionDetail?> _loadDetail(int transactionId) async {
@@ -297,9 +328,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   Stream<List<TransactionHistorySnapshot>> watchTransactionHistory(
     int rootTransactionId,
   ) {
-    return _txRead
-        .watchPage(const TransactionListQuery(limit: 1, topLevelOnly: false))
-        .asyncMap((_) async {
+    return _txRead.watchChanges().asyncMap((_) async {
       final txs = await _txRead.findRootDescendants(
         rootId: rootTransactionId,
         excludeStateMutation: (
@@ -380,7 +409,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
       return null;
     }
 
-    final agg = await _txRead.aggregateChildren(
+    final byPurpose = await _txRead.aggregateChildrenByPurpose(
       rootIds: {rootTransactionId},
       purposes: const {
         BusinessPurpose.reimbursementReceipt,
@@ -388,15 +417,13 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
       },
       states: const {BusinessState.current},
     );
-    final receivedMinor = agg[rootTransactionId]?.sumMinor ?? 0;
-
-    // isClosed 由「是否存在 close 子交易」判定
-    final closeAgg = await _txRead.aggregateChildren(
-      rootIds: {rootTransactionId},
-      purposes: const {BusinessPurpose.reimbursementClose},
-      states: const {BusinessState.current},
-    );
-    final isClosed = (closeAgg[rootTransactionId]?.count ?? 0) > 0;
+    final bucket = byPurpose[rootTransactionId] ?? const {};
+    final receiptAgg = bucket[BusinessPurpose.reimbursementReceipt] ??
+        TransactionChildAggregate.empty;
+    final closeAgg = bucket[BusinessPurpose.reimbursementClose] ??
+        TransactionChildAggregate.empty;
+    final receivedMinor = receiptAgg.sumMinor + closeAgg.sumMinor;
+    final isClosed = closeAgg.count > 0;
 
     final currency = advance.currencyCode;
     final advanceAmount = advance.primaryAmount;

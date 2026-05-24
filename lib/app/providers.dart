@@ -351,8 +351,7 @@ Future<List<RepaymentCashflow>> installmentRepaymentCashflows(
   final queryService = ref.watch(transactionQueryServiceProvider);
   final result = <RepaymentCashflow>[];
   for (final r in repayments) {
-    final view =
-        await queryService.watchTransactionDetail(r.transactionId).first;
+    final view = await queryService.findTransactionDetail(r.transactionId);
     if (view == null) continue;
     final currency = view.transaction.currencyCode;
     var principalMinor = 0;

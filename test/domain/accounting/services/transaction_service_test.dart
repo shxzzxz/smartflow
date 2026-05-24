@@ -270,7 +270,12 @@ class _RecordingPoster implements Poster {
   }
 
   @override
-  Future<Result<void>> cancel({
+  Future<Result<void>> cancel(TransactionDetail original) async {
+    return const Result.success(null);
+  }
+
+  @override
+  Future<Result<void>> cancelMany({
     required List<TransactionDetail> originals,
   }) async {
     return const Result.success(null);

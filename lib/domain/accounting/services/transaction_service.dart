@@ -1,6 +1,5 @@
 import '../../../core/errors/failure.dart';
 import '../../../core/money/money.dart';
-import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
 import '../commands/transaction_commands.dart';
 import '../entities/account_usage.dart';
@@ -129,10 +128,6 @@ class TransactionServiceImpl implements TransactionService {
   final AccountRepository _accountRepository;
   final PostingRepository _postingRepository;
 
-  // ============================================================
-  //  Create
-  // ============================================================
-
   @override
   Future<Result<CreatedTransactionResult>> createExpense(
     CreateExpenseCommand command,
@@ -188,10 +183,6 @@ class TransactionServiceImpl implements TransactionService {
     AdjustBalanceCommand command,
   ) => _runCreate(_receipts.buildBalanceAdjustment(command));
 
-  // ============================================================
-  //  Correct
-  // ============================================================
-
   @override
   Future<Result<CreatedTransactionResult>> correctExpense(
     CorrectExpenseCommand cmd,
@@ -213,9 +204,6 @@ class TransactionServiceImpl implements TransactionService {
               original.transaction.isExcludedFromBudget,
         ),
       ),
-      note: cmd.note,
-      isExcludedFromStats: cmd.isExcludedFromStats,
-      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
@@ -240,9 +228,6 @@ class TransactionServiceImpl implements TransactionService {
               original.transaction.isExcludedFromBudget,
         ),
       ),
-      note: cmd.note,
-      isExcludedFromStats: cmd.isExcludedFromStats,
-      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
@@ -267,9 +252,6 @@ class TransactionServiceImpl implements TransactionService {
               original.transaction.isExcludedFromBudget,
         ),
       ),
-      note: cmd.note,
-      isExcludedFromStats: cmd.isExcludedFromStats,
-      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
@@ -295,9 +277,6 @@ class TransactionServiceImpl implements TransactionService {
               original.transaction.isExcludedFromBudget,
         ),
       ),
-      note: cmd.note,
-      isExcludedFromStats: cmd.isExcludedFromStats,
-      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
@@ -323,9 +302,6 @@ class TransactionServiceImpl implements TransactionService {
         ),
         selfPrimaryAddback: original.transaction.primaryAmount,
       ),
-      note: cmd.note,
-      isExcludedFromStats: cmd.isExcludedFromStats,
-      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
@@ -353,9 +329,6 @@ class TransactionServiceImpl implements TransactionService {
         ),
         selfPrimaryAddback: original.transaction.primaryAmount,
       ),
-      note: cmd.note,
-      isExcludedFromStats: cmd.isExcludedFromStats,
-      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
@@ -386,9 +359,6 @@ class TransactionServiceImpl implements TransactionService {
           TransactionDetailType.reimbursementCloseMain,
         ),
       ),
-      note: cmd.note,
-      isExcludedFromStats: cmd.isExcludedFromStats,
-      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
@@ -414,9 +384,6 @@ class TransactionServiceImpl implements TransactionService {
               original.transaction.isExcludedFromBudget,
         ),
       ),
-      note: cmd.note,
-      isExcludedFromStats: cmd.isExcludedFromStats,
-      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
@@ -435,8 +402,6 @@ class TransactionServiceImpl implements TransactionService {
           discount: cmd.discount,
           liabilityAccountId: cmd.liabilityAccountId,
           paidFromAccountId: cmd.paidFromAccountId,
-          interestExpenseAccountId: cmd.interestExpenseAccountId,
-          feeExpenseAccountId: cmd.feeExpenseAccountId,
           occurredAt: cmd.occurredAt,
           counterpartyName: cmd.counterpartyName,
           note: cmd.note,
@@ -447,21 +412,14 @@ class TransactionServiceImpl implements TransactionService {
               original.transaction.isExcludedFromBudget,
         ),
       ),
-      note: cmd.note,
-      isExcludedFromStats: cmd.isExcludedFromStats,
-      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
-
-  // ============================================================
-  //  Delete
-  // ============================================================
 
   @override
   Future<Result<void>> deleteTransaction(
     DeleteTransactionCommand command,
   ) async {
-    final target = await _query.watchTransactionDetail(command.transactionId).first;
+    final target = await _query.findTransactionDetail(command.transactionId);
     if (target == null) {
       return const Result.failure(
         Failure(
@@ -479,23 +437,18 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
 
-    final originals = <TransactionDetail>[];
-    for (final child in target.children) {
-      final childDetail =
-          await _query.watchTransactionDetail(child.id).first;
-      if (childDetail != null &&
-          childDetail.transaction.businessState == BusinessState.current) {
-        originals.add(childDetail);
-      }
+    final activeChildIds = <int>{
+      for (final child in target.children)
+        if (child.businessState == BusinessState.current) child.id,
+    };
+
+    final originals = <TransactionDetail>[target];
+    if (activeChildIds.isNotEmpty) {
+      originals.addAll(await _query.findTransactionFacts(activeChildIds));
     }
-    originals.add(target);
 
-    return _poster.cancel(originals: originals);
+    return _poster.cancelMany(originals: originals);
   }
-
-  // ============================================================
-  //  Metadata-only updates
-  // ============================================================
 
   @override
   Future<Result<void>> updateTransactionMetadata(
@@ -546,7 +499,7 @@ class TransactionServiceImpl implements TransactionService {
     }
 
     final detail =
-        await _query.watchTransactionDetail(command.transactionId).first;
+        await _query.findTransactionDetail(command.transactionId);
     if (detail == null) {
       return const Result.failure(
         Failure(
@@ -565,7 +518,7 @@ class TransactionServiceImpl implements TransactionService {
     }
 
     final reassignments = <EntryAccountReassignment>[];
-    final accountTypes = await _receipts.loadAccountTypes(
+    final accountTypes = await _loadAccountTypes(
       detail.entries.map((e) => e.accountId),
     );
     final settlementAccountId = command.settlementAccountId;
@@ -690,10 +643,6 @@ class TransactionServiceImpl implements TransactionService {
     }
   }
 
-  // ============================================================
-  //  内部:create / correct 编排骨架
-  // ============================================================
-
   Future<Result<CreatedTransactionResult>> _runCreate(
     Future<Result<PostReceipt>> receiptFuture,
   ) async {
@@ -720,11 +669,8 @@ class TransactionServiceImpl implements TransactionService {
     required BusinessPurpose expectedPurpose,
     required Future<Result<PostReceipt>> Function(TransactionDetail original)
         build,
-    required String? note,
-    required bool? isExcludedFromStats,
-    required bool? isExcludedFromBudget,
   }) async {
-    final original = await _query.watchTransactionDetail(transactionId).first;
+    final original = await _query.findTransactionDetail(transactionId);
     if (original == null) {
       return const Result.failure(
         Failure(
@@ -749,42 +695,22 @@ class TransactionServiceImpl implements TransactionService {
         ),
       );
     }
+    if (original.children.isNotEmpty) {
+      return const Result.failure(
+        Failure(
+          code: 'transaction_has_children',
+          message:
+              'Transactions with child records cannot be corrected; '
+              'use updateTransactionMetadata to change note / exclusion flags.',
+        ),
+      );
+    }
 
     final receiptResult = await build(original);
     switch (receiptResult) {
       case FailureResult(:final failure):
         return Result.failure(failure);
       case Success(:final value):
-        if (original.children.isNotEmpty) {
-          if (!structureMatches(value, original)) {
-            return const Result.failure(
-              Failure(
-                code: 'transaction_has_children',
-                message:
-                    'Transactions with child records can only update metadata.',
-              ),
-            );
-          }
-          final metadata = await updateTransactionMetadata(
-            UpdateTransactionMetadataCommand(
-              transactionId: transactionId,
-              note: note == null
-                  ? const Patch<String>.clear()
-                  : Patch.set(note),
-              isExcludedFromStats: isExcludedFromStats,
-              isExcludedFromBudget: isExcludedFromBudget,
-            ),
-          );
-          return metadata.when(
-            success: (_) => Result.success(
-              CreatedTransactionResult(
-                transactionId: original.transaction.id,
-                rootTransactionId: original.transaction.rootTransactionId,
-              ),
-            ),
-            failure: Result.failure,
-          );
-        }
         final post = await _poster.replace(
           original: original,
           newReceipt: value,
@@ -800,10 +726,6 @@ class TransactionServiceImpl implements TransactionService {
         );
     }
   }
-
-  // ============================================================
-  //  Update basics helpers
-  // ============================================================
 
   Entry? _settlementEntry(
     TransactionDetail detail,
@@ -916,5 +838,14 @@ class TransactionServiceImpl implements TransactionService {
       }
     }
     return null;
+  }
+
+  Future<Map<int, AccountType>> _loadAccountTypes(
+    Iterable<int> accountIds,
+  ) async {
+    final ids = accountIds.toSet();
+    if (ids.isEmpty) return const {};
+    final accounts = await _accountRepository.findAccountsByIds(ids);
+    return {for (final a in accounts) a.id: a.type};
   }
 }

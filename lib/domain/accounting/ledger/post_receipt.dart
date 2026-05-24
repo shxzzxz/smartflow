@@ -42,6 +42,43 @@ class PostReceipt {
   final bool isExcludedFromBudget;
   final SourceKind sourceKind;
   final TransactionOwnership? ownership;
+
+  PostReceipt copyWith({
+    BusinessPurpose? businessPurpose,
+    DateTime? occurredAt,
+    String? currencyCode,
+    Money? primaryAmount,
+    List<ReceiptDetail>? details,
+    List<ReceiptEntry>? entries,
+    int? rootTransactionId,
+    int? parentTransactionId,
+    int? reimbursementExpenseAccountId,
+    String? counterpartyName,
+    String? note,
+    bool? isExcludedFromStats,
+    bool? isExcludedFromBudget,
+    SourceKind? sourceKind,
+    TransactionOwnership? ownership,
+  }) {
+    return PostReceipt(
+      businessPurpose: businessPurpose ?? this.businessPurpose,
+      occurredAt: occurredAt ?? this.occurredAt,
+      currencyCode: currencyCode ?? this.currencyCode,
+      primaryAmount: primaryAmount ?? this.primaryAmount,
+      details: details ?? this.details,
+      entries: entries ?? this.entries,
+      rootTransactionId: rootTransactionId ?? this.rootTransactionId,
+      parentTransactionId: parentTransactionId ?? this.parentTransactionId,
+      reimbursementExpenseAccountId:
+          reimbursementExpenseAccountId ?? this.reimbursementExpenseAccountId,
+      counterpartyName: counterpartyName ?? this.counterpartyName,
+      note: note ?? this.note,
+      isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
+      isExcludedFromBudget: isExcludedFromBudget ?? this.isExcludedFromBudget,
+      sourceKind: sourceKind ?? this.sourceKind,
+      ownership: ownership ?? this.ownership,
+    );
+  }
 }
 
 class ReceiptDetail {

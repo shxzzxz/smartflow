@@ -28,10 +28,7 @@ void main() {
     setUp(() {
       database = createTestDatabase();
       systemAccounts = DriftSystemAccountResolver(database);
-      repository = DriftAccountRepository(
-        database,
-        systemAccounts: systemAccounts,
-      );
+      repository = DriftAccountRepository(database);
       final queryService = TransactionQueryServiceImpl(
         transactionRead: DriftTransactionReadRepository(database),
         entryRead: DriftEntryReadRepository(database),

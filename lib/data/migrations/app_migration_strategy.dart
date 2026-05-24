@@ -187,6 +187,19 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
           ")",
         );
       }
+      if (from < 8) {
+        // 收敛 SystemKey:lendingExpense / borrowingIncome 不再是系统账户,
+        // 旧行的 system_key 置空(它们退化为普通内置分类)。
+        // importFallback 重命名为 ghostAccount(预留用,未见生产数据)。
+        await database.customStatement(
+          "UPDATE accounts SET system_key = NULL "
+          "WHERE system_key IN ('lendingExpense', 'borrowingIncome')",
+        );
+        await database.customStatement(
+          "UPDATE accounts SET system_key = 'ghostAccount' "
+          "WHERE system_key = 'importFallback'",
+        );
+      }
     },
     beforeOpen: (_) async {
       await ensureBuiltinData(database);

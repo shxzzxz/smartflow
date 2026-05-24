@@ -12,7 +12,7 @@ import 'post_receipt.dart';
 /// - [create]:用户新建一笔交易。
 /// - [replace]:用户更正一笔交易 — Poster 内部从 original 派生红字凭证、注入
 ///   correction 元数据,在单 db 事务内完成"original→replaced + 红字 + 新蓝字"。
-/// - [cancel]:用户删除一笔(或一组)交易 — 对每笔 original 派生红字凭证,
+/// - [cancel] / [cancelMany]:用户删除一笔(或一组)交易 — 对每笔 original 派生红字凭证,
 ///   置 canceled。
 ///
 /// 调用方(service)只造"纯净蓝字" [PostReceipt],不知道也不应知道 mutation
@@ -25,7 +25,9 @@ abstract interface class Poster {
     required PostReceipt newReceipt,
   });
 
-  Future<Result<void>> cancel({required List<TransactionDetail> originals});
+  Future<Result<void>> cancel(TransactionDetail original);
+
+  Future<Result<void>> cancelMany({required List<TransactionDetail> originals});
 }
 
 class PosterImpl implements Poster {
@@ -116,7 +118,11 @@ class PosterImpl implements Poster {
   }
 
   @override
-  Future<Result<void>> cancel({
+  Future<Result<void>> cancel(TransactionDetail original) =>
+      cancelMany(originals: [original]);
+
+  @override
+  Future<Result<void>> cancelMany({
     required List<TransactionDetail> originals,
   }) async {
     try {
@@ -311,24 +317,13 @@ class PosterImpl implements Poster {
     TransactionDetail original,
   ) {
     final t = original.transaction;
-    return PostReceipt(
-      businessPurpose: newReceipt.businessPurpose,
-      occurredAt: newReceipt.occurredAt,
-      currencyCode: newReceipt.currencyCode,
-      primaryAmount: newReceipt.primaryAmount,
-      counterpartyName: newReceipt.counterpartyName,
-      note: newReceipt.note,
+    return newReceipt.copyWith(
       rootTransactionId: t.rootTransactionId,
       parentTransactionId: t.parentTransactionId,
-      reimbursementExpenseAccountId:
-          newReceipt.reimbursementExpenseAccountId ??
-              t.reimbursementExpenseAccountId,
-      isExcludedFromStats: newReceipt.isExcludedFromStats,
-      isExcludedFromBudget: newReceipt.isExcludedFromBudget,
+      reimbursementExpenseAccountId: newReceipt.reimbursementExpenseAccountId ??
+          t.reimbursementExpenseAccountId,
       sourceKind: t.sourceKind,
       ownership: t.ownership,
-      details: newReceipt.details,
-      entries: newReceipt.entries,
     );
   }
 
@@ -367,20 +362,4 @@ class PosterImpl implements Poster {
       ],
     );
   }
-}
-
-/// 判断 [newReceipt] 与 [original] 在账户结构上是否一致(忽略金额差异)。
-/// 编辑场景中,若 original 存在子交易但结构未变,service 走 metadata-only 路径。
-bool structureMatches(PostReceipt newReceipt, TransactionDetail original) {
-  if (original.transaction.businessPurpose != newReceipt.businessPurpose) {
-    return false;
-  }
-  final origKeys = {
-    for (final e in original.entries) (e.accountId, e.direction),
-  };
-  final repKeys = {
-    for (final e in newReceipt.entries) (e.accountId, e.direction),
-  };
-  if (origKeys.length != repKeys.length) return false;
-  return origKeys.difference(repKeys).isEmpty;
 }

@@ -263,7 +263,6 @@ class _InstallmentRepaymentFormPageState
             interest: interest != null && interest.minorUnits > 0 ? interest : null,
             fee: fee != null && fee.minorUnits > 0 ? fee : null,
             discount: discount != null && discount.minorUnits > 0 ? discount : null,
-            feeExpenseAccountId: null,
             paidFromAccountId: _paidFromAccountId!,
             occurredAt: _occurredAt,
             note: note,
