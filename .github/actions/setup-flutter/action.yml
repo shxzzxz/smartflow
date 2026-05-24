@@ -1,0 +1,30 @@
+name: Setup Flutter
+description: Install FVM, the project Flutter SDK, and Dart dependencies.
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Dart
+      uses: dart-lang/setup-dart@v1
+
+    - name: Cache FVM Flutter SDKs
+      uses: actions/cache@v5
+      with:
+        path: ~/.fvm
+        key: fvm-${{ runner.os }}-${{ hashFiles('.fvmrc') }}
+        restore-keys: |
+          fvm-${{ runner.os }}-
+
+    - name: Install FVM
+      shell: bash
+      run: |
+        dart pub global activate fvm
+        echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+
+    - name: Install Flutter SDK
+      shell: bash
+      run: fvm install
+
+    - name: Get dependencies
+      shell: bash
+      run: fvm flutter pub get

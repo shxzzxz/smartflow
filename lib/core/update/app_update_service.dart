@@ -16,7 +16,7 @@ class AppUpdateService {
   }) : _httpClientFactory = httpClientFactory ?? HttpClient.new;
 
   static const defaultManifestBaseUrl =
-      'https://raw.githubusercontent.com/shxzzxz/smartflow/main/release';
+      'https://shxzzxz.github.io/smartflow';
 
   final Uri manifestUri;
   final AppUpdateChannel? expectedChannel;

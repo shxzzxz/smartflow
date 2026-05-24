@@ -1,0 +1,227 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - v*
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to release, for manual reruns.
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  android-release:
+    name: Build Android Release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release-meta.outputs.tag }}
+      version_name: ${{ steps.release-meta.outputs.version_name }}
+      version_code: ${{ steps.release-meta.outputs.version_code }}
+      release_channel: ${{ steps.release-meta.outputs.release_channel }}
+      prerelease: ${{ steps.release-meta.outputs.prerelease }}
+      manifest_channels: ${{ steps.release-meta.outputs.manifest_channels }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Setup Flutter
+        uses: ./.github/actions/setup-flutter
+
+      - name: Resolve release metadata
+        id: release-meta
+        shell: bash
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          VERSION_NAME="${TAG#v}"
+          PUBSPEC_VERSION="$(grep '^version:' pubspec.yaml | awk '{print $2}')"
+          PUBSPEC_NAME="${PUBSPEC_VERSION%%+*}"
+          VERSION_CODE="${PUBSPEC_VERSION##*+}"
+
+          if [[ "$PUBSPEC_NAME" != "$VERSION_NAME" ]]; then
+            echo "::error::Tag $TAG does not match pubspec version name $PUBSPEC_NAME."
+            exit 1
+          fi
+
+          if [[ "$VERSION_CODE" == "$PUBSPEC_VERSION" || -z "$VERSION_CODE" ]]; then
+            echo "::error::pubspec.yaml version must include a build number, for example 1.2.3+123."
+            exit 1
+          fi
+
+          if [[ "$VERSION_NAME" == *"-dev."* || "$VERSION_NAME" == *"-dev-"* ]]; then
+            RELEASE_CHANNEL="dev"
+            PRERELEASE="true"
+            MANIFEST_CHANNELS="dev"
+          elif [[ "$VERSION_NAME" == *"-beta."* || "$VERSION_NAME" == *"-beta-"* ]]; then
+            RELEASE_CHANNEL="beta"
+            PRERELEASE="true"
+            MANIFEST_CHANNELS="beta dev"
+          else
+            RELEASE_CHANNEL="stable"
+            PRERELEASE="false"
+            MANIFEST_CHANNELS="stable beta dev"
+          fi
+
+          {
+            echo "tag=$TAG"
+            echo "version_name=$VERSION_NAME"
+            echo "version_code=$VERSION_CODE"
+            echo "release_channel=$RELEASE_CHANNEL"
+            echo "prerelease=$PRERELEASE"
+            echo "manifest_channels=$MANIFEST_CHANNELS"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Prepare Android signing
+        shell: bash
+        env:
+          SMARTFLOW_ANDROID_KEYSTORE_BASE64: ${{ secrets.SMARTFLOW_ANDROID_KEYSTORE_BASE64 }}
+          SMARTFLOW_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.SMARTFLOW_ANDROID_KEYSTORE_PASSWORD }}
+          SMARTFLOW_ANDROID_KEY_PASSWORD: ${{ secrets.SMARTFLOW_ANDROID_KEY_PASSWORD }}
+          SMARTFLOW_ANDROID_KEY_ALIAS: ${{ secrets.SMARTFLOW_ANDROID_KEY_ALIAS }}
+        run: |
+          if [[ -z "$SMARTFLOW_ANDROID_KEYSTORE_BASE64" || -z "$SMARTFLOW_ANDROID_KEYSTORE_PASSWORD" || -z "$SMARTFLOW_ANDROID_KEY_PASSWORD" || -z "$SMARTFLOW_ANDROID_KEY_ALIAS" ]]; then
+            echo "::error::Android signing secrets are missing. Configure SMARTFLOW_ANDROID_KEYSTORE_BASE64, SMARTFLOW_ANDROID_KEYSTORE_PASSWORD, SMARTFLOW_ANDROID_KEY_PASSWORD, and SMARTFLOW_ANDROID_KEY_ALIAS."
+            exit 1
+          fi
+
+          printf '%s' "$SMARTFLOW_ANDROID_KEYSTORE_BASE64" | base64 --decode > android/smartflow-release.jks
+          {
+            printf 'storePassword=%s\n' "$SMARTFLOW_ANDROID_KEYSTORE_PASSWORD"
+            printf 'keyPassword=%s\n' "$SMARTFLOW_ANDROID_KEY_PASSWORD"
+            printf 'keyAlias=%s\n' "$SMARTFLOW_ANDROID_KEY_ALIAS"
+            printf 'storeFile=smartflow-release.jks\n'
+          } > android/key.properties
+
+      - name: Build universal APK
+        run: fvm flutter build apk --release
+
+      - name: Collect universal APK
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/smartflow-${{ steps.release-meta.outputs.version_name }}.apk"
+
+      - name: Build split APKs
+        run: fvm flutter build apk --release --split-per-abi
+
+      - name: Collect split APKs
+        shell: bash
+        run: |
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "dist/smartflow-${{ steps.release-meta.outputs.version_name }}-arm64-v8a.apk"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "dist/smartflow-${{ steps.release-meta.outputs.version_name }}-armeabi-v7a.apk"
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk "dist/smartflow-${{ steps.release-meta.outputs.version_name }}-x86_64.apk"
+
+      - name: Create release notes
+        shell: bash
+        run: |
+          TAG="${{ steps.release-meta.outputs.tag }}"
+          PREVIOUS_TAG="$(git describe --tags --abbrev=0 "${TAG}^{commit}^" 2>/dev/null || true)"
+
+          {
+            printf 'SmartFlow %s\n\n' "${{ steps.release-meta.outputs.version_name }}"
+            printf 'Channel: %s\n\n' "${{ steps.release-meta.outputs.release_channel }}"
+
+            printf '## Changes\n\n'
+            if [[ -n "$PREVIOUS_TAG" ]]; then
+              git log --no-merges --pretty=format:'- %s (%h)' "$PREVIOUS_TAG..$TAG"
+              printf '\n\n'
+              printf 'Full changelog: https://github.com/${{ github.repository }}/compare/%s...%s\n\n' "$PREVIOUS_TAG" "$TAG"
+            else
+              git log --no-merges --pretty=format:'- %s (%h)' "$TAG"
+              printf '\n\n'
+            fi
+
+            printf '## Downloads\n\n'
+            printf 'This release contains a universal APK and ABI-specific APKs for arm64-v8a, armeabi-v7a, and x86_64.\n'
+          } > dist/release-notes.md
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.release-meta.outputs.tag }}"
+          PRERELEASE_FLAG=""
+          if [[ "${{ steps.release-meta.outputs.prerelease }}" == "true" ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/*.apk --clobber
+            gh release edit "$TAG" \
+              --title "SmartFlow ${{ steps.release-meta.outputs.version_name }}" \
+              --notes-file dist/release-notes.md \
+              $PRERELEASE_FLAG
+          else
+            gh release create "$TAG" dist/*.apk \
+              --title "SmartFlow ${{ steps.release-meta.outputs.version_name }}" \
+              --notes-file dist/release-notes.md \
+              $PRERELEASE_FLAG
+          fi
+
+      - name: Prepare Pages payload
+        shell: bash
+        run: |
+          mkdir -p public
+          for CHANNEL in stable beta dev; do
+            URL="https://shxzzxz.github.io/smartflow/update-${CHANNEL}.json"
+            if ! curl -fsSL "$URL" -o "public/update-${CHANNEL}.json"; then
+              cp "release/update-${CHANNEL}.json" "public/update-${CHANNEL}.json"
+            fi
+          done
+          touch public/.nojekyll
+
+      - name: Generate update manifests
+        shell: bash
+        run: |
+          for CHANNEL in ${{ steps.release-meta.outputs.manifest_channels }}; do
+            fvm dart run scripts/generate_update_manifest.dart \
+              --channel "$CHANNEL" \
+              --version-name "${{ steps.release-meta.outputs.version_name }}" \
+              --version-code "${{ steps.release-meta.outputs.version_code }}" \
+              --tag "${{ steps.release-meta.outputs.tag }}" \
+              --repository "${{ github.repository }}" \
+              --asset-dir dist \
+              --output-dir public
+          done
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: smartflow-${{ steps.release-meta.outputs.version_name }}-apk
+          path: dist/*.apk
+          if-no-files-found: error
+
+      - name: Upload manifest artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: smartflow-${{ steps.release-meta.outputs.version_name }}-manifests
+          path: public/update-*.json
+          if-no-files-found: error
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: public
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+        with:
+          artifact_name: github-pages
