@@ -2,11 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/domain/accounting/accounting_api.dart';
+import 'package:smartflow/domain/accounting/ledger/post_receipt.dart';
+import 'package:smartflow/domain/accounting/ledger/poster.dart';
+import 'package:smartflow/domain/accounting/ledger/receipt_builder.dart';
 import 'package:smartflow/domain/accounting/repositories/account_repository.dart';
 import 'package:smartflow/domain/accounting/repositories/posting_repository.dart';
 import 'package:smartflow/domain/accounting/repositories/system_account_resolver.dart';
-import 'package:smartflow/domain/accounting/ledger/poster.dart';
-import 'package:smartflow/domain/accounting/ledger/posting_protocol.dart';
 
 void main() {
   group('TransactionService', () {
@@ -16,11 +17,16 @@ void main() {
     TransactionServiceImpl buildService({
       AccountRepository? accountRepository,
     }) {
+      final accounts = accountRepository ?? _defaultAccounts();
       return TransactionServiceImpl(
-        postingService,
-        accountRepository: accountRepository ?? _defaultAccounts(),
+        poster: postingService,
+        receiptBuilder: ReceiptBuilder(
+          accounts: accounts,
+          query: _StubQueryService(),
+          systemAccounts: _StubSystemAccountResolver(),
+        ),
         transactionQueryService: _StubQueryService(),
-        systemAccountResolver: _StubSystemAccountResolver(),
+        accountRepository: accounts,
         postingRepository: _StubPostingRepository(),
       );
     }
@@ -45,24 +51,24 @@ void main() {
         );
 
         expect(result, isA<Success<CreatedTransactionResult>>());
-        final command = postingService.lastCommand!;
-        expect(command.businessPurpose, BusinessPurpose.dailyExpense);
-        expect(command.primaryAmount, const Money(minorUnits: 2000));
-        expect(command.counterpartyName, 'Coffee shop');
-        expect(command.note, 'Latte');
-        expect(command.details, hasLength(1));
+        final receipt = postingService.lastReceipt!;
+        expect(receipt.businessPurpose, BusinessPurpose.dailyExpense);
+        expect(receipt.primaryAmount, const Money(minorUnits: 2000));
+        expect(receipt.counterpartyName, 'Coffee shop');
+        expect(receipt.note, 'Latte');
+        expect(receipt.details, hasLength(1));
         expect(
-          command.details.single.type,
+          receipt.details.single.type,
           TransactionDetailType.primaryExpense,
         );
-        expect(command.details.single.amount, const Money(minorUnits: 2000));
-        expect(command.entries, hasLength(2));
-        expect(command.entries[0].accountId, 101);
-        expect(command.entries[0].direction, EntryDirection.debit);
-        expect(command.entries[0].amount, const Money(minorUnits: 2000));
-        expect(command.entries[1].accountId, 1);
-        expect(command.entries[1].direction, EntryDirection.credit);
-        expect(command.entries[1].amount, const Money(minorUnits: 2000));
+        expect(receipt.details.single.amount, const Money(minorUnits: 2000));
+        expect(receipt.entries, hasLength(2));
+        expect(receipt.entries[0].accountId, 101);
+        expect(receipt.entries[0].direction, EntryDirection.debit);
+        expect(receipt.entries[0].amount, const Money(minorUnits: 2000));
+        expect(receipt.entries[1].accountId, 1);
+        expect(receipt.entries[1].direction, EntryDirection.credit);
+        expect(receipt.entries[1].amount, const Money(minorUnits: 2000));
       },
     );
 
@@ -79,17 +85,17 @@ void main() {
         );
 
         expect(result, isA<Success<CreatedTransactionResult>>());
-        final command = postingService.lastCommand!;
-        expect(command.businessPurpose, BusinessPurpose.dailyIncome);
+        final receipt = postingService.lastReceipt!;
+        expect(receipt.businessPurpose, BusinessPurpose.dailyIncome);
         expect(
-          command.details.single.type,
+          receipt.details.single.type,
           TransactionDetailType.primaryIncome,
         );
-        expect(command.entries, hasLength(2));
-        expect(command.entries[0].accountId, 2);
-        expect(command.entries[0].direction, EntryDirection.debit);
-        expect(command.entries[1].accountId, 201);
-        expect(command.entries[1].direction, EntryDirection.credit);
+        expect(receipt.entries, hasLength(2));
+        expect(receipt.entries[0].accountId, 2);
+        expect(receipt.entries[0].direction, EntryDirection.debit);
+        expect(receipt.entries[1].accountId, 201);
+        expect(receipt.entries[1].direction, EntryDirection.credit);
       },
     );
 
@@ -108,23 +114,23 @@ void main() {
         );
 
         expect(result, isA<Success<CreatedTransactionResult>>());
-        final command = postingService.lastCommand!;
-        expect(command.businessPurpose, BusinessPurpose.transfer);
-        expect(command.primaryAmount, const Money(minorUnits: 100000));
-        expect(command.details.map((detail) => detail.type), [
+        final receipt = postingService.lastReceipt!;
+        expect(receipt.businessPurpose, BusinessPurpose.transfer);
+        expect(receipt.primaryAmount, const Money(minorUnits: 100000));
+        expect(receipt.details.map((detail) => detail.type), [
           TransactionDetailType.transferMain,
           TransactionDetailType.transferFee,
         ]);
-        expect(command.entries, hasLength(3));
-        expect(command.entries[0].accountId, 1);
-        expect(command.entries[0].direction, EntryDirection.debit);
-        expect(command.entries[0].amount, const Money(minorUnits: 100000));
-        expect(command.entries[1].accountId, 103);
-        expect(command.entries[1].direction, EntryDirection.debit);
-        expect(command.entries[1].amount, const Money(minorUnits: 200));
-        expect(command.entries[2].accountId, 2);
-        expect(command.entries[2].direction, EntryDirection.credit);
-        expect(command.entries[2].amount, const Money(minorUnits: 100200));
+        expect(receipt.entries, hasLength(3));
+        expect(receipt.entries[0].accountId, 1);
+        expect(receipt.entries[0].direction, EntryDirection.debit);
+        expect(receipt.entries[0].amount, const Money(minorUnits: 100000));
+        expect(receipt.entries[1].accountId, 103);
+        expect(receipt.entries[1].direction, EntryDirection.debit);
+        expect(receipt.entries[1].amount, const Money(minorUnits: 200));
+        expect(receipt.entries[2].accountId, 2);
+        expect(receipt.entries[2].direction, EntryDirection.credit);
+        expect(receipt.entries[2].amount, const Money(minorUnits: 100200));
       },
     );
 
@@ -140,7 +146,7 @@ void main() {
       );
 
       expect(result, isA<FailureResult<CreatedTransactionResult>>());
-      expect(postingService.lastCommand, isNull);
+      expect(postingService.lastReceipt, isNull);
     });
 
     test('rejects accounts used in the wrong transaction role', () async {
@@ -161,7 +167,7 @@ void main() {
       );
 
       expect(result, isA<FailureResult<CreatedTransactionResult>>());
-      expect(postingService.lastCommand, isNull);
+      expect(postingService.lastReceipt, isNull);
     });
 
     test('rejects loan accounts as expense settlement accounts', () async {
@@ -186,7 +192,7 @@ void main() {
       );
 
       expect(result, isA<FailureResult<CreatedTransactionResult>>());
-      expect(postingService.lastCommand, isNull);
+      expect(postingService.lastReceipt, isNull);
     });
 
     test('rejects loan accounts as income receive accounts', () async {
@@ -211,7 +217,7 @@ void main() {
       );
 
       expect(result, isA<FailureResult<CreatedTransactionResult>>());
-      expect(postingService.lastCommand, isNull);
+      expect(postingService.lastReceipt, isNull);
     });
 
     test('rejects loan accounts in transfers', () async {
@@ -236,33 +242,38 @@ void main() {
       );
 
       expect(result, isA<FailureResult<CreatedTransactionResult>>());
-      expect(postingService.lastCommand, isNull);
+      expect(postingService.lastReceipt, isNull);
     });
   });
 }
 
 class _RecordingPoster implements Poster {
-  PostTransactionCommand? lastCommand;
+  PostReceipt? lastReceipt;
 
   @override
-  Future<Result<PostTransactionResult>> post(
-    PostTransactionCommand command,
-  ) async {
-    lastCommand = command;
+  Future<Result<PostReceiptResult>> create(PostReceipt receipt) async {
+    lastReceipt = receipt;
     return const Result.success(
-      PostTransactionResult(transactionId: 1, rootTransactionId: 1),
+      PostReceiptResult(transactionId: 1, rootTransactionId: 1),
     );
   }
 
   @override
-  Future<Result<List<PostTransactionResult>>> postMutation({
-    required List<TransactionStateUpdate> stateUpdates,
-    required List<PostTransactionCommand> commands,
+  Future<Result<PostReceiptResult>> replace({
+    required TransactionDetail original,
+    required PostReceipt newReceipt,
   }) async {
-    lastCommand = commands.isEmpty ? null : commands.last;
-    return const Result.success([
-      PostTransactionResult(transactionId: 1, rootTransactionId: 1),
-    ]);
+    lastReceipt = newReceipt;
+    return const Result.success(
+      PostReceiptResult(transactionId: 1, rootTransactionId: 1),
+    );
+  }
+
+  @override
+  Future<Result<void>> cancel({
+    required List<TransactionDetail> originals,
+  }) async {
+    return const Result.success(null);
   }
 }
 

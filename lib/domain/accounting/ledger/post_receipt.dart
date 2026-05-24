@@ -2,10 +2,14 @@ import '../../../core/money/money.dart';
 import '../entities/transaction_ownership.dart';
 import '../enums/accounting_enums.dart';
 
-/// ledger 子模块的内部协议：用例服务 → Poster → PostingRepository 之间传递的写入指令。
-/// 不通过 accounting_api 暴露；外部只能拿到 CreatedTransactionResult。
-class PostTransactionCommand {
-  const PostTransactionCommand({
+/// 入账凭证:对一笔交易"长什么样"的完整描述。
+///
+/// 由 ReceiptBuilder 从 user command 派生,经 Poster 校验后落库。
+/// 不携带 mutation 元数据(mutationKind / mutationPreviousTransactionId 等) —
+/// 这些字段在 [Poster.replace] / [Poster.cancel] 内部从 original 派生注入,
+/// builder 永远只造"独立合法"的蓝字凭证。
+class PostReceipt {
+  const PostReceipt({
     required this.businessPurpose,
     required this.occurredAt,
     required this.primaryAmount,
@@ -13,14 +17,10 @@ class PostTransactionCommand {
     required this.entries,
     this.currencyCode = Money.defaultCurrency,
     this.rootTransactionId,
-    this.counterpartyName,
-    this.note,
     this.parentTransactionId,
     this.reimbursementExpenseAccountId,
-    this.mutationKind = MutationKind.original,
-    this.mutationPreviousTransactionId,
-    this.mutationReason,
-    this.businessState = BusinessState.current,
+    this.counterpartyName,
+    this.note,
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
@@ -31,25 +31,21 @@ class PostTransactionCommand {
   final DateTime occurredAt;
   final String currencyCode;
   final Money primaryAmount;
-  final List<PostTransactionDetailInput> details;
-  final List<PostEntryInput> entries;
+  final List<ReceiptDetail> details;
+  final List<ReceiptEntry> entries;
   final int? rootTransactionId;
-  final String? counterpartyName;
-  final String? note;
   final int? parentTransactionId;
   final int? reimbursementExpenseAccountId;
-  final MutationKind mutationKind;
-  final int? mutationPreviousTransactionId;
-  final MutationReason? mutationReason;
-  final BusinessState businessState;
+  final String? counterpartyName;
+  final String? note;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
   final SourceKind sourceKind;
   final TransactionOwnership? ownership;
 }
 
-class PostTransactionDetailInput {
-  const PostTransactionDetailInput({
+class ReceiptDetail {
+  const ReceiptDetail({
     required this.lineNo,
     required this.type,
     required this.amount,
@@ -60,8 +56,8 @@ class PostTransactionDetailInput {
   final Money amount;
 }
 
-class PostEntryInput {
-  const PostEntryInput({
+class ReceiptEntry {
+  const ReceiptEntry({
     required this.accountId,
     required this.direction,
     required this.amount,
@@ -72,8 +68,8 @@ class PostEntryInput {
   final Money amount;
 }
 
-class PostTransactionResult {
-  const PostTransactionResult({
+class PostReceiptResult {
+  const PostReceiptResult({
     required this.transactionId,
     required this.rootTransactionId,
   });
@@ -82,16 +78,8 @@ class PostTransactionResult {
   final int rootTransactionId;
 }
 
-class TransactionStateUpdate {
-  const TransactionStateUpdate({
-    required this.transactionId,
-    required this.businessState,
-  });
-
-  final int transactionId;
-  final BusinessState businessState;
-}
-
+/// `updateTransactionBasics` 用于改交易 settlement / reimbursement account
+/// 的指令。
 class EntryAccountReassignment {
   const EntryAccountReassignment({
     required this.fromAccountId,
@@ -107,14 +95,4 @@ class EntryAccountReassignment {
   final int toAccountId;
   final int? transactionId;
   final int? rootTransactionId;
-}
-
-class PostTransactionMutation {
-  const PostTransactionMutation({
-    required this.command,
-    required this.balanceDeltasMinor,
-  });
-
-  final PostTransactionCommand command;
-  final Map<int, int> balanceDeltasMinor;
 }

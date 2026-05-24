@@ -5,7 +5,7 @@ import '../../../domain/accounting/entities/account.dart';
 import '../../../domain/accounting/entities/transaction_ownership.dart';
 import '../../../domain/accounting/enums/accounting_enums.dart';
 import '../../../domain/accounting/ledger/ledger_rules.dart';
-import '../../../domain/accounting/ledger/posting_protocol.dart';
+import '../../../domain/accounting/ledger/post_receipt.dart';
 import '../../../domain/accounting/repositories/posting_repository.dart';
 import '../../app_database.dart';
 import '../mappers/account_mapper.dart';
@@ -23,108 +23,163 @@ class DriftPostingRepository implements PostingRepository {
 
     final rows =
         await (_database.select(_database.accounts)
-          ..where((account) => account.id.isIn(ids))).get();
+              ..where((account) => account.id.isIn(ids)))
+            .get();
 
     return rows.map(mapAccount).toList();
   }
 
   @override
-  Future<PostTransactionResult> postTransaction({
-    required PostTransactionCommand command,
+  Future<PostReceiptResult> insertReceipt({
+    required PostReceipt receipt,
     required Map<int, int> balanceDeltasMinor,
+    MutationKind mutationKind = MutationKind.original,
+    BusinessState businessState = BusinessState.current,
+    MutationReason? mutationReason,
+    int? mutationPreviousTransactionId,
   }) {
     return _database.transaction(() async {
-      return _insertPostedTransaction(
-        command: command,
+      return _insertReceiptRow(
+        receipt: receipt,
         balanceDeltasMinor: balanceDeltasMinor,
+        mutationKind: mutationKind,
+        businessState: businessState,
+        mutationReason: mutationReason,
+        mutationPreviousTransactionId: mutationPreviousTransactionId,
         now: DateTime.now(),
       );
     });
   }
 
   @override
-  Future<List<PostTransactionResult>> mutateTransactions({
-    required List<TransactionStateUpdate> stateUpdates,
-    required List<PostTransactionMutation> posts,
+  Future<PostReceiptResult> replaceTransaction({
+    required int originalTransactionId,
+    required PostReceipt reversalReceipt,
+    required PostReceipt correctionReceipt,
+    required Map<int, int> reversalBalanceDeltasMinor,
+    required Map<int, int> correctionBalanceDeltasMinor,
   }) {
     return _database.transaction(() async {
       final now = DateTime.now();
-      for (final update in stateUpdates) {
-        await (_database.update(_database.transactions)
-          ..where((t) => t.id.equals(update.transactionId))).write(
-          TransactionsCompanion(
-            businessState: Value(update.businessState),
-            updatedAt: Value(now),
-          ),
-        );
-      }
 
-      final results = <PostTransactionResult>[];
-      for (final post in posts) {
-        results.add(
-          await _insertPostedTransaction(
-            command: post.command,
-            balanceDeltasMinor: post.balanceDeltasMinor,
-            now: now,
-          ),
-        );
-      }
-      return results;
+      await (_database.update(_database.transactions)
+            ..where((t) => t.id.equals(originalTransactionId)))
+          .write(
+            TransactionsCompanion(
+              businessState: const Value(BusinessState.replaced),
+              updatedAt: Value(now),
+            ),
+          );
+
+      final reversal = await _insertReceiptRow(
+        receipt: reversalReceipt,
+        balanceDeltasMinor: reversalBalanceDeltasMinor,
+        mutationKind: MutationKind.reversal,
+        businessState: BusinessState.compensation,
+        mutationReason: MutationReason.correction,
+        mutationPreviousTransactionId: originalTransactionId,
+        now: now,
+      );
+
+      return _insertReceiptRow(
+        receipt: correctionReceipt,
+        balanceDeltasMinor: correctionBalanceDeltasMinor,
+        mutationKind: MutationKind.correction,
+        businessState: BusinessState.current,
+        mutationPreviousTransactionId: reversal.transactionId,
+        now: now,
+      );
     });
   }
 
-  Future<PostTransactionResult> _insertPostedTransaction({
-    required PostTransactionCommand command,
+  @override
+  Future<void> cancelTransactions({
+    required List<CancelInstruction> cancellations,
+  }) {
+    if (cancellations.isEmpty) {
+      return Future.value();
+    }
+    return _database.transaction(() async {
+      final now = DateTime.now();
+      for (final instruction in cancellations) {
+        await (_database.update(_database.transactions)
+              ..where((t) => t.id.equals(instruction.originalTransactionId)))
+            .write(
+              TransactionsCompanion(
+                businessState: const Value(BusinessState.canceled),
+                updatedAt: Value(now),
+              ),
+            );
+        await _insertReceiptRow(
+          receipt: instruction.reversalReceipt,
+          balanceDeltasMinor: instruction.balanceDeltasMinor,
+          mutationKind: MutationKind.reversal,
+          businessState: BusinessState.compensation,
+          mutationReason: MutationReason.delete,
+          mutationPreviousTransactionId: instruction.originalTransactionId,
+          now: now,
+        );
+      }
+    });
+  }
+
+  Future<PostReceiptResult> _insertReceiptRow({
+    required PostReceipt receipt,
     required Map<int, int> balanceDeltasMinor,
+    required MutationKind mutationKind,
+    required BusinessState businessState,
     required DateTime now,
+    MutationReason? mutationReason,
+    int? mutationPreviousTransactionId,
   }) async {
     final transactionId = await _database
         .into(_database.transactions)
         .insert(
           TransactionsCompanion.insert(
-            businessPurpose: command.businessPurpose,
-            occurredAt: command.occurredAt,
-            currencyCode: command.currencyCode,
-            primaryAmountMinor: command.primaryAmount.minorUnits,
-            mutationKind: command.mutationKind,
-            businessState: command.businessState,
-            sourceKind: command.sourceKind,
-            ownerType: Value(command.ownership?.ownerType),
-            ownerId: Value(command.ownership?.ownerId),
-            ownerRole: Value(command.ownership?.ownerRole),
-            rootTransactionId: Value(command.rootTransactionId),
-            counterpartyName: Value(command.counterpartyName),
-            note: Value(command.note),
-            parentTransactionId: Value(command.parentTransactionId),
+            businessPurpose: receipt.businessPurpose,
+            occurredAt: receipt.occurredAt,
+            currencyCode: receipt.currencyCode,
+            primaryAmountMinor: receipt.primaryAmount.minorUnits,
+            mutationKind: mutationKind,
+            businessState: businessState,
+            sourceKind: receipt.sourceKind,
+            ownerType: Value(receipt.ownership?.ownerType),
+            ownerId: Value(receipt.ownership?.ownerId),
+            ownerRole: Value(receipt.ownership?.ownerRole),
+            rootTransactionId: Value(receipt.rootTransactionId),
+            counterpartyName: Value(receipt.counterpartyName),
+            note: Value(receipt.note),
+            parentTransactionId: Value(receipt.parentTransactionId),
             reimbursementExpenseAccountId: Value(
-              command.reimbursementExpenseAccountId,
+              receipt.reimbursementExpenseAccountId,
             ),
             mutationPreviousTransactionId: Value(
-              command.mutationPreviousTransactionId,
+              mutationPreviousTransactionId,
             ),
-            mutationReason: Value(command.mutationReason),
-            isExcludedFromStats: Value(command.isExcludedFromStats),
-            isExcludedFromBudget: Value(command.isExcludedFromBudget),
+            mutationReason: Value(mutationReason),
+            isExcludedFromStats: Value(receipt.isExcludedFromStats),
+            isExcludedFromBudget: Value(receipt.isExcludedFromBudget),
             createdAt: Value(now),
             updatedAt: Value(now),
           ),
         );
 
-    final rootTransactionId = command.rootTransactionId ?? transactionId;
-    if (command.rootTransactionId == null) {
+    final rootTransactionId = receipt.rootTransactionId ?? transactionId;
+    if (receipt.rootTransactionId == null) {
       await (_database.update(_database.transactions)
-        ..where((transaction) => transaction.id.equals(transactionId))).write(
-        TransactionsCompanion(
-          rootTransactionId: Value(rootTransactionId),
-          updatedAt: Value(now),
-        ),
-      );
+            ..where((transaction) => transaction.id.equals(transactionId)))
+          .write(
+            TransactionsCompanion(
+              rootTransactionId: Value(rootTransactionId),
+              updatedAt: Value(now),
+            ),
+          );
     }
 
     await _database.batch((batch) {
       batch.insertAll(
         _database.transactionDetails,
-        command.details.map(
+        receipt.details.map(
           (detail) => TransactionDetailsCompanion.insert(
             transactionId: transactionId,
             lineNo: detail.lineNo,
@@ -137,7 +192,7 @@ class DriftPostingRepository implements PostingRepository {
       );
       batch.insertAll(
         _database.entries,
-        command.entries.map(
+        receipt.entries.map(
           (entry) => EntriesCompanion.insert(
             transactionId: transactionId,
             accountId: entry.accountId,
@@ -152,10 +207,14 @@ class DriftPostingRepository implements PostingRepository {
 
     for (final MapEntry(key: accountId, value: delta)
         in balanceDeltasMinor.entries) {
-      await _applyBalanceDelta(accountId: accountId, deltaMinor: delta, now: now);
+      await _applyBalanceDelta(
+        accountId: accountId,
+        deltaMinor: delta,
+        now: now,
+      );
     }
 
-    return PostTransactionResult(
+    return PostReceiptResult(
       transactionId: transactionId,
       rootTransactionId: rootTransactionId,
     );
@@ -182,20 +241,19 @@ class DriftPostingRepository implements PostingRepository {
       PatchClear<String>() => const Value<String?>(null),
     };
     await (_database.update(_database.transactions)
-      ..where((t) => t.id.equals(transactionId))).write(
-      TransactionsCompanion(
-        note: noteValue,
-        isExcludedFromStats:
-            isExcludedFromStats == null
+          ..where((t) => t.id.equals(transactionId)))
+        .write(
+          TransactionsCompanion(
+            note: noteValue,
+            isExcludedFromStats: isExcludedFromStats == null
                 ? const Value.absent()
                 : Value(isExcludedFromStats),
-        isExcludedFromBudget:
-            isExcludedFromBudget == null
+            isExcludedFromBudget: isExcludedFromBudget == null
                 ? const Value.absent()
                 : Value(isExcludedFromBudget),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
   }
 
   @override
@@ -204,14 +262,15 @@ class DriftPostingRepository implements PostingRepository {
     required TransactionOwnership ownership,
   }) async {
     await (_database.update(_database.transactions)
-      ..where((t) => t.id.equals(transactionId))).write(
-      TransactionsCompanion(
-        ownerType: Value(ownership.ownerType),
-        ownerId: Value(ownership.ownerId),
-        ownerRole: Value(ownership.ownerRole),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
+          ..where((t) => t.id.equals(transactionId)))
+        .write(
+          TransactionsCompanion(
+            ownerType: Value(ownership.ownerType),
+            ownerId: Value(ownership.ownerId),
+            ownerRole: Value(ownership.ownerRole),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
   }
 
   @override
@@ -224,12 +283,13 @@ class DriftPostingRepository implements PostingRepository {
       final now = DateTime.now();
       if (occurredAt != null) {
         await (_database.update(_database.transactions)
-          ..where((t) => t.id.equals(transactionId))).write(
-          TransactionsCompanion(
-            occurredAt: Value(occurredAt),
-            updatedAt: Value(now),
-          ),
-        );
+              ..where((t) => t.id.equals(transactionId)))
+            .write(
+              TransactionsCompanion(
+                occurredAt: Value(occurredAt),
+                updatedAt: Value(now),
+              ),
+            );
       }
 
       for (final reassignment in entryAccountReassignments) {
@@ -248,9 +308,12 @@ class DriftPostingRepository implements PostingRepository {
 
     final accountRows =
         await (_database.select(_database.accounts)..where(
-          (a) =>
-              a.id.isIn({reassignment.fromAccountId, reassignment.toAccountId}),
-        )).get();
+              (a) => a.id.isIn({
+                reassignment.fromAccountId,
+                reassignment.toAccountId,
+              }),
+            ))
+            .get();
     final accountsById = {
       for (final account in accountRows) account.id: account,
     };
@@ -288,29 +351,34 @@ class DriftPostingRepository implements PostingRepository {
       );
 
       await (_database.update(_database.entries)
-        ..where((e) => e.id.equals(entry.id))).write(
-        EntriesCompanion(
-          accountId: Value(newAccount.id),
-          updatedAt: Value(now),
-        ),
-      );
-      await (_database.update(_database.transactions)..where(
-        (t) => t.id.equals(entry.transactionId),
-      )).write(TransactionsCompanion(updatedAt: Value(now)));
+            ..where((e) => e.id.equals(entry.id)))
+          .write(
+            EntriesCompanion(
+              accountId: Value(newAccount.id),
+              updatedAt: Value(now),
+            ),
+          );
+      await (_database.update(_database.transactions)
+            ..where((t) => t.id.equals(entry.transactionId)))
+          .write(TransactionsCompanion(updatedAt: Value(now)));
     }
 
     for (final MapEntry(key: accountId, value: delta)
         in balanceDeltas.entries) {
       if (delta == 0) continue;
-      await _applyBalanceDelta(accountId: accountId, deltaMinor: delta, now: now);
+      await _applyBalanceDelta(
+        accountId: accountId,
+        deltaMinor: delta,
+        now: now,
+      );
     }
   }
 
   /// `accounts.balance_minor` 的单一写入口。
   ///
-  /// 过账内核(`postTransaction` / `mutateTransactions`)在事务内调用此方法,
-  /// domain 层的余额写入语义统一从这里发生 — 切断了外部直写 customUpdate
-  /// 的可能性。
+  /// 过账内核(`insertReceipt` / `replaceTransaction` / `cancelTransactions`)
+  /// 在事务内调用此方法,domain 层的余额写入语义统一从这里发生 — 切断了
+  /// 外部直写 customUpdate 的可能性。
   Future<void> _applyBalanceDelta({
     required int accountId,
     required int deltaMinor,

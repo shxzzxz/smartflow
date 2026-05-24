@@ -12,6 +12,7 @@ import 'package:smartflow/data/accounting/repositories/drift_transaction_read_re
 import 'package:smartflow/data/transaction/drift_transaction_runner.dart';
 import 'package:smartflow/domain/accounting/accounting_api.dart';
 import 'package:smartflow/domain/accounting/ledger/poster.dart';
+import 'package:smartflow/domain/accounting/ledger/receipt_builder.dart';
 
 import '../../../helpers/test_app_database.dart';
 
@@ -38,10 +39,14 @@ void main() {
       );
       final postingRepository = DriftPostingRepository(database);
       service = TransactionServiceImpl(
-        PosterImpl(postingRepository),
+        poster: PosterImpl(postingRepository),
+        receiptBuilder: ReceiptBuilder(
+          accounts: accountRepository,
+          query: queryService,
+          systemAccounts: systemAccounts,
+        ),
         accountRepository: accountRepository,
         transactionQueryService: queryService,
-        systemAccountResolver: systemAccounts,
         postingRepository: postingRepository,
       );
       accountService = AccountServiceImpl(

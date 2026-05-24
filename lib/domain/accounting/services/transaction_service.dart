@@ -6,25 +6,12 @@ import '../commands/transaction_commands.dart';
 import '../entities/account_usage.dart';
 import '../entities/entry.dart';
 import '../enums/accounting_enums.dart';
+import '../ledger/post_receipt.dart';
 import '../ledger/poster.dart';
-import '../ledger/posting_protocol.dart';
+import '../ledger/receipt_builder.dart';
+import '../read_models/transaction_read_models.dart';
 import '../repositories/account_repository.dart';
 import '../repositories/posting_repository.dart';
-import '../repositories/system_account_resolver.dart';
-import '../read_models/transaction_read_models.dart';
-import '../vouchers/balance_adjustment_voucher.dart';
-import '../vouchers/borrowing_voucher.dart';
-import '../vouchers/expense_voucher.dart';
-import '../vouchers/income_voucher.dart';
-import '../vouchers/opening_balance_voucher.dart';
-import '../vouchers/refund_voucher.dart';
-import '../vouchers/reimbursement_advance_voucher.dart';
-import '../vouchers/reimbursement_close_voucher.dart';
-import '../vouchers/reimbursement_receipt_voucher.dart';
-import '../vouchers/repayment_voucher.dart';
-import '../vouchers/transaction_voucher.dart';
-import '../vouchers/transfer_voucher.dart';
-import '../vouchers/voucher_runner.dart';
 import 'transaction_query_service.dart';
 
 abstract interface class TransactionService {
@@ -124,621 +111,357 @@ abstract interface class TransactionService {
 }
 
 class TransactionServiceImpl implements TransactionService {
-  TransactionServiceImpl(
-    this._postingService, {
-    required AccountRepository accountRepository,
+  TransactionServiceImpl({
+    required Poster poster,
+    required ReceiptBuilder receiptBuilder,
     required TransactionQueryService transactionQueryService,
-    required SystemAccountResolver systemAccountResolver,
+    required AccountRepository accountRepository,
     required PostingRepository postingRepository,
-  }) : _accountRepository = accountRepository,
-       _queryService = transactionQueryService,
-       _systemAccounts = systemAccountResolver,
+  }) : _poster = poster,
+       _receipts = receiptBuilder,
+       _query = transactionQueryService,
+       _accountRepository = accountRepository,
        _postingRepository = postingRepository;
 
-  final Poster _postingService;
+  final Poster _poster;
+  final ReceiptBuilder _receipts;
+  final TransactionQueryService _query;
   final AccountRepository _accountRepository;
-  final TransactionQueryService _queryService;
-  final SystemAccountResolver _systemAccounts;
   final PostingRepository _postingRepository;
 
-  late final VoucherContext _voucherContext = VoucherContext(
-    accountRepository: _accountRepository,
-    queryService: _queryService,
-    systemAccountResolver: _systemAccounts,
-  );
-
-  late final VoucherRunner _runner = VoucherRunner(
-    poster: _postingService,
-    context: _voucherContext,
-  );
+  // ============================================================
+  //  Create
+  // ============================================================
 
   @override
   Future<Result<CreatedTransactionResult>> createExpense(
     CreateExpenseCommand command,
-  ) {
-    return _runner.runCreate(
-      const ExpenseVoucher(),
-      ExpenseVoucherInput(
-        amount: command.amount,
-        paidFromAccountId: command.paidFromAccountId,
-        expenseAccountId: command.expenseAccountId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats: command.isExcludedFromStats,
-        isExcludedFromBudget: command.isExcludedFromBudget,
-      ),
-    );
-  }
+  ) => _runCreate(_receipts.buildExpense(command));
 
   @override
   Future<Result<CreatedTransactionResult>> createIncome(
     CreateIncomeCommand command,
-  ) {
-    return _runner.runCreate(
-      const IncomeVoucher(),
-      IncomeVoucherInput(
-        amount: command.amount,
-        receiveAccountId: command.receiveAccountId,
-        incomeAccountId: command.incomeAccountId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats: command.isExcludedFromStats,
-        isExcludedFromBudget: command.isExcludedFromBudget,
-      ),
-    );
-  }
+  ) => _runCreate(_receipts.buildIncome(command));
 
   @override
   Future<Result<CreatedTransactionResult>> createTransfer(
     CreateTransferCommand command,
-  ) {
-    return _runner.runCreate(
-      const TransferVoucher(),
-      TransferVoucherInput(
-        amount: command.amount,
-        fromAccountId: command.fromAccountId,
-        toAccountId: command.toAccountId,
-        occurredAt: command.occurredAt,
-        feeAmount: command.feeAmount,
-        feeExpenseAccountId: command.feeExpenseAccountId,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats: command.isExcludedFromStats,
-        isExcludedFromBudget: command.isExcludedFromBudget,
-      ),
-    );
-  }
+  ) => _runCreate(_receipts.buildTransfer(command));
 
   @override
   Future<Result<CreatedTransactionResult>> createRefund(
     CreateRefundCommand command,
-  ) {
-    return _runner.runCreate(
-      const RefundVoucher(),
-      RefundVoucherInput(
-        amount: command.amount,
-        parentTransactionId: command.parentTransactionId,
-        refundToAccountId: command.refundToAccountId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats: command.isExcludedFromStats,
-        isExcludedFromBudget: command.isExcludedFromBudget,
-      ),
-    );
-  }
+  ) => _runCreate(_receipts.buildRefund(command));
 
   @override
   Future<Result<CreatedTransactionResult>> createReimbursementAdvance(
     CreateReimbursementAdvanceCommand command,
-  ) {
-    return _runner.runCreate(
-      const ReimbursementAdvanceVoucher(),
-      ReimbursementAdvanceVoucherInput(
-        amount: command.amount,
-        receivableAccountId: command.receivableAccountId,
-        paidFromAccountId: command.paidFromAccountId,
-        expenseCategoryId: command.expenseCategoryId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats: command.isExcludedFromStats,
-        isExcludedFromBudget: command.isExcludedFromBudget,
-      ),
-    );
-  }
+  ) => _runCreate(_receipts.buildReimbursementAdvance(command));
 
   @override
   Future<Result<CreatedTransactionResult>> createReimbursementReceipt(
     CreateReimbursementReceiptCommand command,
-  ) {
-    return _runner.runCreate(
-      const ReimbursementReceiptVoucher(),
-      ReimbursementReceiptVoucherInput(
-        amount: command.amount,
-        advanceTransactionId: command.advanceTransactionId,
-        receivableAccountId: command.receivableAccountId,
-        receiveAccountId: command.receiveAccountId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats: command.isExcludedFromStats,
-        isExcludedFromBudget: command.isExcludedFromBudget,
-      ),
-    );
-  }
+  ) => _runCreate(_receipts.buildReimbursementReceipt(command));
 
   @override
   Future<Result<CreatedTransactionResult>> closeReimbursement(
     CloseReimbursementCommand command,
-  ) {
-    return _runner.runCreate(
-      const ReimbursementCloseVoucher(),
-      ReimbursementCloseVoucherInput(
-        actualReceivedAmount: command.actualReceivedAmount,
-        advanceTransactionId: command.advanceTransactionId,
-        receivableAccountId: command.receivableAccountId,
-        receiveAccountId: command.receiveAccountId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats: command.isExcludedFromStats,
-        isExcludedFromBudget: command.isExcludedFromBudget,
-      ),
-    );
-  }
+  ) => _runCreate(_receipts.buildReimbursementClose(command));
 
   @override
   Future<Result<CreatedTransactionResult>> createRepayment(
     CreateRepaymentCommand command,
-  ) {
-    return _runner.runCreate(
-      const RepaymentVoucher(),
-      RepaymentVoucherInput(
-        principal: command.principal,
-        interest: command.interest,
-        fee: command.fee,
-        discount: command.discount,
-        liabilityAccountId: command.liabilityAccountId,
-        paidFromAccountId: command.paidFromAccountId,
-        interestExpenseAccountId: command.interestExpenseAccountId,
-        feeExpenseAccountId: command.feeExpenseAccountId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        ownership: command.ownership,
-        isExcludedFromStats: command.isExcludedFromStats,
-        isExcludedFromBudget: command.isExcludedFromBudget,
-      ),
-    );
-  }
+  ) => _runCreate(_receipts.buildRepayment(command));
 
   @override
   Future<Result<CreatedTransactionResult>> createBorrowing(
     CreateBorrowingCommand command,
-  ) {
-    return _runner.runCreate(
-      const BorrowingVoucher(),
-      BorrowingVoucherInput(
-        amount: command.amount,
-        liabilityAccountId: command.liabilityAccountId,
-        receiveAccountId: command.receiveAccountId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        ownership: command.ownership,
-        isExcludedFromStats: command.isExcludedFromStats,
-        isExcludedFromBudget: command.isExcludedFromBudget,
-      ),
-    );
-  }
+  ) => _runCreate(_receipts.buildBorrowing(command));
 
   @override
   Future<Result<CreatedTransactionResult>> createOpeningBalance(
     CreateOpeningBalanceCommand command,
-  ) {
-    return _runner.runCreate(
-      const OpeningBalanceVoucher(),
-      OpeningBalanceVoucherInput(
-        accountId: command.accountId,
-        amount: command.amount,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats: command.isExcludedFromStats,
-        isExcludedFromBudget: command.isExcludedFromBudget,
-      ),
-    );
-  }
+  ) => _runCreate(_receipts.buildOpeningBalance(command));
 
   @override
   Future<Result<CreatedTransactionResult>> adjustBalance(
     AdjustBalanceCommand command,
-  ) {
-    return _runner.runCreate(
-      const BalanceAdjustmentVoucher(),
-      BalanceAdjustmentVoucherInput(
-        accountId: command.accountId,
-        targetBalance: command.targetBalance,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats: command.isExcludedFromStats,
-        isExcludedFromBudget: command.isExcludedFromBudget,
-      ),
-    );
-  }
+  ) => _runCreate(_receipts.buildBalanceAdjustment(command));
+
+  // ============================================================
+  //  Correct
+  // ============================================================
 
   @override
   Future<Result<CreatedTransactionResult>> correctExpense(
-    CorrectExpenseCommand command,
+    CorrectExpenseCommand cmd,
   ) {
     return _runCorrection(
-      transactionId: command.transactionId,
+      transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.dailyExpense,
-      note: command.note,
-      isExcludedFromStats: command.isExcludedFromStats,
-      isExcludedFromBudget: command.isExcludedFromBudget,
-      voucher: const ExpenseVoucher(),
-      buildInput: (original) => ExpenseVoucherInput(
-        amount: command.amount,
-        paidFromAccountId: command.paidFromAccountId,
-        expenseAccountId: command.expenseAccountId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats:
-            command.isExcludedFromStats ??
-                original.transaction.isExcludedFromStats,
-        isExcludedFromBudget:
-            command.isExcludedFromBudget ??
-                original.transaction.isExcludedFromBudget,
+      build: (original) => _receipts.buildExpense(
+        CreateExpenseCommand(
+          amount: cmd.amount,
+          paidFromAccountId: cmd.paidFromAccountId,
+          expenseAccountId: cmd.expenseAccountId,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
+          isExcludedFromStats: cmd.isExcludedFromStats ??
+              original.transaction.isExcludedFromStats,
+          isExcludedFromBudget: cmd.isExcludedFromBudget ??
+              original.transaction.isExcludedFromBudget,
+        ),
       ),
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
   @override
   Future<Result<CreatedTransactionResult>> correctIncome(
-    CorrectIncomeCommand command,
+    CorrectIncomeCommand cmd,
   ) {
     return _runCorrection(
-      transactionId: command.transactionId,
+      transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.dailyIncome,
-      note: command.note,
-      isExcludedFromStats: command.isExcludedFromStats,
-      isExcludedFromBudget: command.isExcludedFromBudget,
-      voucher: const IncomeVoucher(),
-      buildInput: (original) => IncomeVoucherInput(
-        amount: command.amount,
-        receiveAccountId: command.receiveAccountId,
-        incomeAccountId: command.incomeAccountId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats:
-            command.isExcludedFromStats ??
-                original.transaction.isExcludedFromStats,
-        isExcludedFromBudget:
-            command.isExcludedFromBudget ??
-                original.transaction.isExcludedFromBudget,
+      build: (original) => _receipts.buildIncome(
+        CreateIncomeCommand(
+          amount: cmd.amount,
+          receiveAccountId: cmd.receiveAccountId,
+          incomeAccountId: cmd.incomeAccountId,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
+          isExcludedFromStats: cmd.isExcludedFromStats ??
+              original.transaction.isExcludedFromStats,
+          isExcludedFromBudget: cmd.isExcludedFromBudget ??
+              original.transaction.isExcludedFromBudget,
+        ),
       ),
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
   @override
   Future<Result<CreatedTransactionResult>> correctTransfer(
-    CorrectTransferCommand command,
+    CorrectTransferCommand cmd,
   ) {
     return _runCorrection(
-      transactionId: command.transactionId,
+      transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.transfer,
-      note: command.note,
-      isExcludedFromStats: command.isExcludedFromStats,
-      isExcludedFromBudget: command.isExcludedFromBudget,
-      voucher: const TransferVoucher(),
-      buildInput: (original) => TransferVoucherInput(
-        amount: command.amount,
-        fromAccountId: command.fromAccountId,
-        toAccountId: command.toAccountId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats:
-            command.isExcludedFromStats ??
-                original.transaction.isExcludedFromStats,
-        isExcludedFromBudget:
-            command.isExcludedFromBudget ??
-                original.transaction.isExcludedFromBudget,
+      build: (original) => _receipts.buildTransfer(
+        CreateTransferCommand(
+          amount: cmd.amount,
+          fromAccountId: cmd.fromAccountId,
+          toAccountId: cmd.toAccountId,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
+          isExcludedFromStats: cmd.isExcludedFromStats ??
+              original.transaction.isExcludedFromStats,
+          isExcludedFromBudget: cmd.isExcludedFromBudget ??
+              original.transaction.isExcludedFromBudget,
+        ),
       ),
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
   @override
   Future<Result<CreatedTransactionResult>> correctReimbursementAdvance(
-    CorrectReimbursementAdvanceCommand command,
+    CorrectReimbursementAdvanceCommand cmd,
   ) {
     return _runCorrection(
-      transactionId: command.transactionId,
+      transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.reimbursementAdvance,
-      note: command.note,
-      isExcludedFromStats: command.isExcludedFromStats,
-      isExcludedFromBudget: command.isExcludedFromBudget,
-      voucher: const ReimbursementAdvanceVoucher(),
-      buildInput: (original) => ReimbursementAdvanceVoucherInput(
-        amount: command.amount,
-        receivableAccountId: command.receivableAccountId,
-        paidFromAccountId: command.paidFromAccountId,
-        expenseCategoryId: command.expenseCategoryId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats:
-            command.isExcludedFromStats ??
-                original.transaction.isExcludedFromStats,
-        isExcludedFromBudget:
-            command.isExcludedFromBudget ??
-                original.transaction.isExcludedFromBudget,
+      build: (original) => _receipts.buildReimbursementAdvance(
+        CreateReimbursementAdvanceCommand(
+          amount: cmd.amount,
+          receivableAccountId: cmd.receivableAccountId,
+          paidFromAccountId: cmd.paidFromAccountId,
+          expenseCategoryId: cmd.expenseCategoryId,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
+          isExcludedFromStats: cmd.isExcludedFromStats ??
+              original.transaction.isExcludedFromStats,
+          isExcludedFromBudget: cmd.isExcludedFromBudget ??
+              original.transaction.isExcludedFromBudget,
+        ),
       ),
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
   @override
   Future<Result<CreatedTransactionResult>> correctRefund(
-    CorrectRefundCommand command,
+    CorrectRefundCommand cmd,
   ) {
     return _runCorrection(
-      transactionId: command.transactionId,
+      transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.refund,
-      note: command.note,
-      isExcludedFromStats: command.isExcludedFromStats,
-      isExcludedFromBudget: command.isExcludedFromBudget,
-      voucher: const RefundVoucher(),
-      buildInput: (original) => RefundVoucherInput(
-        amount: command.amount,
-        parentTransactionId: original.transaction.parentTransactionId,
-        refundToAccountId: command.refundToAccountId,
-        occurredAt: command.occurredAt,
+      build: (original) => _receipts.buildRefund(
+        CreateRefundCommand(
+          amount: cmd.amount,
+          parentTransactionId: original.transaction.parentTransactionId!,
+          refundToAccountId: cmd.refundToAccountId,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
+          isExcludedFromStats: cmd.isExcludedFromStats ??
+              original.transaction.isExcludedFromStats,
+          isExcludedFromBudget: cmd.isExcludedFromBudget ??
+              original.transaction.isExcludedFromBudget,
+        ),
         selfPrimaryAddback: original.transaction.primaryAmount,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats:
-            command.isExcludedFromStats ??
-                original.transaction.isExcludedFromStats,
-        isExcludedFromBudget:
-            command.isExcludedFromBudget ??
-                original.transaction.isExcludedFromBudget,
       ),
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
   @override
   Future<Result<CreatedTransactionResult>> correctReimbursementReceipt(
-    CorrectReimbursementReceiptCommand command,
+    CorrectReimbursementReceiptCommand cmd,
   ) {
     return _runCorrection(
-      transactionId: command.transactionId,
+      transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.reimbursementReceipt,
-      note: command.note,
-      isExcludedFromStats: command.isExcludedFromStats,
-      isExcludedFromBudget: command.isExcludedFromBudget,
-      voucher: const ReimbursementReceiptVoucher(),
-      buildInput: (original) => ReimbursementReceiptVoucherInput(
-        amount: command.amount,
-        advanceTransactionId: original.transaction.parentTransactionId ??
-            original.transaction.rootTransactionId,
-        receivableAccountId: command.receivableAccountId,
-        receiveAccountId: command.receiveAccountId,
-        occurredAt: command.occurredAt,
+      build: (original) => _receipts.buildReimbursementReceipt(
+        CreateReimbursementReceiptCommand(
+          amount: cmd.amount,
+          advanceTransactionId: original.transaction.parentTransactionId ??
+              original.transaction.rootTransactionId,
+          receivableAccountId: cmd.receivableAccountId,
+          receiveAccountId: cmd.receiveAccountId,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
+          isExcludedFromStats: cmd.isExcludedFromStats ??
+              original.transaction.isExcludedFromStats,
+          isExcludedFromBudget: cmd.isExcludedFromBudget ??
+              original.transaction.isExcludedFromBudget,
+        ),
         selfPrimaryAddback: original.transaction.primaryAmount,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats:
-            command.isExcludedFromStats ??
-                original.transaction.isExcludedFromStats,
-        isExcludedFromBudget:
-            command.isExcludedFromBudget ??
-                original.transaction.isExcludedFromBudget,
       ),
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
   @override
   Future<Result<CreatedTransactionResult>> correctReimbursementClose(
-    CorrectReimbursementCloseCommand command,
+    CorrectReimbursementCloseCommand cmd,
   ) {
     return _runCorrection(
-      transactionId: command.transactionId,
+      transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.reimbursementClose,
-      note: command.note,
-      isExcludedFromStats: command.isExcludedFromStats,
-      isExcludedFromBudget: command.isExcludedFromBudget,
-      voucher: const ReimbursementCloseVoucher(),
-      buildInput: (original) => ReimbursementCloseVoucherInput(
-        actualReceivedAmount: command.actualReceivedAmount,
-        advanceTransactionId: original.transaction.parentTransactionId ??
-            original.transaction.rootTransactionId,
-        receivableAccountId: command.receivableAccountId,
-        receiveAccountId: command.receiveAccountId,
-        occurredAt: command.occurredAt,
+      build: (original) => _receipts.buildReimbursementClose(
+        CloseReimbursementCommand(
+          actualReceivedAmount: cmd.actualReceivedAmount,
+          advanceTransactionId: original.transaction.parentTransactionId ??
+              original.transaction.rootTransactionId,
+          receivableAccountId: cmd.receivableAccountId,
+          receiveAccountId: cmd.receiveAccountId,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
+          isExcludedFromStats: cmd.isExcludedFromStats ??
+              original.transaction.isExcludedFromStats,
+          isExcludedFromBudget: cmd.isExcludedFromBudget ??
+              original.transaction.isExcludedFromBudget,
+        ),
         outstandingOverride: _detailAmount(
           original,
           TransactionDetailType.reimbursementCloseMain,
         ),
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats:
-            command.isExcludedFromStats ??
-                original.transaction.isExcludedFromStats,
-        isExcludedFromBudget:
-            command.isExcludedFromBudget ??
-                original.transaction.isExcludedFromBudget,
       ),
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
   @override
   Future<Result<CreatedTransactionResult>> correctBorrowing(
-    CorrectBorrowingCommand command,
+    CorrectBorrowingCommand cmd,
   ) {
     return _runCorrection(
-      transactionId: command.transactionId,
+      transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.borrowing,
-      note: command.note,
-      isExcludedFromStats: command.isExcludedFromStats,
-      isExcludedFromBudget: command.isExcludedFromBudget,
-      voucher: const BorrowingVoucher(),
-      buildInput: (original) => BorrowingVoucherInput(
-        amount: command.amount,
-        liabilityAccountId: command.liabilityAccountId,
-        receiveAccountId: command.receiveAccountId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        ownership: original.transaction.ownership,
-        isExcludedFromStats:
-            command.isExcludedFromStats ??
-                original.transaction.isExcludedFromStats,
-        isExcludedFromBudget:
-            command.isExcludedFromBudget ??
-                original.transaction.isExcludedFromBudget,
+      build: (original) => _receipts.buildBorrowing(
+        CreateBorrowingCommand(
+          amount: cmd.amount,
+          liabilityAccountId: cmd.liabilityAccountId,
+          receiveAccountId: cmd.receiveAccountId,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
+          ownership: original.transaction.ownership,
+          isExcludedFromStats: cmd.isExcludedFromStats ??
+              original.transaction.isExcludedFromStats,
+          isExcludedFromBudget: cmd.isExcludedFromBudget ??
+              original.transaction.isExcludedFromBudget,
+        ),
       ),
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
   @override
   Future<Result<CreatedTransactionResult>> correctRepayment(
-    CorrectRepaymentCommand command,
+    CorrectRepaymentCommand cmd,
   ) {
     return _runCorrection(
-      transactionId: command.transactionId,
+      transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.debtRepayment,
-      note: command.note,
-      isExcludedFromStats: command.isExcludedFromStats,
-      isExcludedFromBudget: command.isExcludedFromBudget,
-      voucher: const RepaymentVoucher(),
-      buildInput: (original) => RepaymentVoucherInput(
-        principal: command.principal,
-        interest: command.interest,
-        fee: command.fee,
-        discount: command.discount,
-        liabilityAccountId: command.liabilityAccountId,
-        paidFromAccountId: command.paidFromAccountId,
-        interestExpenseAccountId: command.interestExpenseAccountId,
-        feeExpenseAccountId: command.feeExpenseAccountId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        ownership: original.transaction.ownership,
-        isExcludedFromStats:
-            command.isExcludedFromStats ??
-                original.transaction.isExcludedFromStats,
-        isExcludedFromBudget:
-            command.isExcludedFromBudget ??
-                original.transaction.isExcludedFromBudget,
+      build: (original) => _receipts.buildRepayment(
+        CreateRepaymentCommand(
+          principal: cmd.principal,
+          interest: cmd.interest,
+          fee: cmd.fee,
+          discount: cmd.discount,
+          liabilityAccountId: cmd.liabilityAccountId,
+          paidFromAccountId: cmd.paidFromAccountId,
+          interestExpenseAccountId: cmd.interestExpenseAccountId,
+          feeExpenseAccountId: cmd.feeExpenseAccountId,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
+          ownership: original.transaction.ownership,
+          isExcludedFromStats: cmd.isExcludedFromStats ??
+              original.transaction.isExcludedFromStats,
+          isExcludedFromBudget: cmd.isExcludedFromBudget ??
+              original.transaction.isExcludedFromBudget,
+        ),
       ),
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
-  Future<Result<CreatedTransactionResult>> _runCorrection<I>({
-    required int transactionId,
-    required BusinessPurpose expectedPurpose,
-    required String? note,
-    required bool? isExcludedFromStats,
-    required bool? isExcludedFromBudget,
-    required TransactionVoucher<I> voucher,
-    required I Function(TransactionDetail original) buildInput,
-  }) async {
-    final original = await _queryService
-        .watchTransactionDetail(transactionId)
-        .first;
-    if (original == null) {
-      return const Result.failure(
-        Failure(
-          code: 'transaction_not_found',
-          message: 'Transaction not found.',
-        ),
-      );
-    }
-    if (original.transaction.businessState != BusinessState.current) {
-      return const Result.failure(
-        Failure(
-          code: 'transaction_not_current',
-          message: 'Only current transactions can be corrected.',
-        ),
-      );
-    }
-    if (!_supportsFormCorrection(original.transaction.businessPurpose)) {
-      return const Result.failure(
-        Failure(
-          code: 'transaction_correction_unsupported',
-          message: 'This transaction type cannot be edited in this form.',
-        ),
-      );
-    }
-    if (original.transaction.businessPurpose != expectedPurpose) {
-      return const Result.failure(
-        Failure(
-          code: 'transaction_correction_purpose_mismatch',
-          message: 'Correction command purpose must match the transaction.',
-        ),
-      );
-    }
-
-    final input = buildInput(original);
-
-    if (original.children.isNotEmpty) {
-      final replacementBuild = await voucher.build(input, _voucherContext);
-      switch (replacementBuild) {
-        case FailureResult(:final failure):
-          return Result.failure(failure);
-        case Success(:final value):
-          if (!structureMatches(value, original)) {
-            return const Result.failure(
-              Failure(
-                code: 'transaction_has_children',
-                message:
-                    'Transactions with child records can only update metadata.',
-              ),
-            );
-          }
-          final metadata = await updateTransactionMetadata(
-            UpdateTransactionMetadataCommand(
-              transactionId: transactionId,
-              note: note == null
-                  ? const Patch<String>.clear()
-                  : Patch.set(note),
-              isExcludedFromStats: isExcludedFromStats,
-              isExcludedFromBudget: isExcludedFromBudget,
-            ),
-          );
-          return metadata.when(
-            success: (_) => Result.success(
-              CreatedTransactionResult(
-                transactionId: original.transaction.id,
-                rootTransactionId: original.transaction.rootTransactionId,
-              ),
-            ),
-            failure: Result.failure,
-          );
-      }
-    }
-
-    return _runner.runReplacement(
-      voucher: voucher,
-      input: input,
-      original: original,
-    );
-  }
+  // ============================================================
+  //  Delete
+  // ============================================================
 
   @override
   Future<Result<void>> deleteTransaction(
     DeleteTransactionCommand command,
   ) async {
-    final query = _queryService;
-    final target =
-        await query.watchTransactionDetail(command.transactionId).first;
+    final target = await _query.watchTransactionDetail(command.transactionId).first;
     if (target == null) {
       return const Result.failure(
         Failure(
@@ -756,18 +479,23 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
 
-    final detailsToCancel = <TransactionDetail>[];
+    final originals = <TransactionDetail>[];
     for (final child in target.children) {
-      final childDetail = await query.watchTransactionDetail(child.id).first;
+      final childDetail =
+          await _query.watchTransactionDetail(child.id).first;
       if (childDetail != null &&
           childDetail.transaction.businessState == BusinessState.current) {
-        detailsToCancel.add(childDetail);
+        originals.add(childDetail);
       }
     }
-    detailsToCancel.add(target);
+    originals.add(target);
 
-    return _runner.runCancellation(details: detailsToCancel);
+    return _poster.cancel(originals: originals);
   }
+
+  // ============================================================
+  //  Metadata-only updates
+  // ============================================================
 
   @override
   Future<Result<void>> updateTransactionMetadata(
@@ -778,10 +506,8 @@ class TransactionServiceImpl implements TransactionService {
         command.isExcludedFromBudget == null) {
       return const Result.success(null);
     }
-    final repository = _postingRepository;
-    final transaction = await _queryService.findTransactionById(
-      command.transactionId,
-    );
+    final transaction =
+        await _query.findTransactionById(command.transactionId);
     if (transaction == null) {
       return const Result.failure(
         Failure(
@@ -791,7 +517,7 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
     try {
-      await repository.updateTransactionMetadata(
+      await _postingRepository.updateTransactionMetadata(
         transactionId: command.transactionId,
         note: command.note,
         isExcludedFromStats: command.isExcludedFromStats,
@@ -818,11 +544,9 @@ class TransactionServiceImpl implements TransactionService {
         command.reimbursementAccountId == null) {
       return const Result.success(null);
     }
-    final repository = _postingRepository;
 
-    final query = _queryService;
     final detail =
-        await query.watchTransactionDetail(command.transactionId).first;
+        await _query.watchTransactionDetail(command.transactionId).first;
     if (detail == null) {
       return const Result.failure(
         Failure(
@@ -841,7 +565,7 @@ class TransactionServiceImpl implements TransactionService {
     }
 
     final reassignments = <EntryAccountReassignment>[];
-    final accountTypes = await _loadAccountTypes(
+    final accountTypes = await _receipts.loadAccountTypes(
       detail.entries.map((e) => e.accountId),
     );
     final settlementAccountId = command.settlementAccountId;
@@ -918,7 +642,7 @@ class TransactionServiceImpl implements TransactionService {
     }
 
     try {
-      await repository.updateTransactionBasics(
+      await _postingRepository.updateTransactionBasics(
         transactionId: command.transactionId,
         occurredAt: command.occurredAt,
         entryAccountReassignments: reassignments,
@@ -939,10 +663,8 @@ class TransactionServiceImpl implements TransactionService {
   Future<Result<void>> updateTransactionOwnership(
     UpdateTransactionOwnershipCommand command,
   ) async {
-    final repository = _postingRepository;
-    final transaction = await _queryService.findTransactionById(
-      command.transactionId,
-    );
+    final transaction =
+        await _query.findTransactionById(command.transactionId);
     if (transaction == null) {
       return const Result.failure(
         Failure(
@@ -952,7 +674,7 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
     try {
-      await repository.updateTransactionOwnership(
+      await _postingRepository.updateTransactionOwnership(
         transactionId: command.transactionId,
         ownership: command.ownership,
       );
@@ -967,6 +689,121 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
   }
+
+  // ============================================================
+  //  内部:create / correct 编排骨架
+  // ============================================================
+
+  Future<Result<CreatedTransactionResult>> _runCreate(
+    Future<Result<PostReceipt>> receiptFuture,
+  ) async {
+    final receiptResult = await receiptFuture;
+    switch (receiptResult) {
+      case FailureResult(:final failure):
+        return Result.failure(failure);
+      case Success(:final value):
+        final post = await _poster.create(value);
+        return post.when(
+          success: (r) => Result.success(
+            CreatedTransactionResult(
+              transactionId: r.transactionId,
+              rootTransactionId: r.rootTransactionId,
+            ),
+          ),
+          failure: Result.failure,
+        );
+    }
+  }
+
+  Future<Result<CreatedTransactionResult>> _runCorrection({
+    required int transactionId,
+    required BusinessPurpose expectedPurpose,
+    required Future<Result<PostReceipt>> Function(TransactionDetail original)
+        build,
+    required String? note,
+    required bool? isExcludedFromStats,
+    required bool? isExcludedFromBudget,
+  }) async {
+    final original = await _query.watchTransactionDetail(transactionId).first;
+    if (original == null) {
+      return const Result.failure(
+        Failure(
+          code: 'transaction_not_found',
+          message: 'Transaction not found.',
+        ),
+      );
+    }
+    if (original.transaction.businessState != BusinessState.current) {
+      return const Result.failure(
+        Failure(
+          code: 'transaction_not_current',
+          message: 'Only current transactions can be corrected.',
+        ),
+      );
+    }
+    if (original.transaction.businessPurpose != expectedPurpose) {
+      return const Result.failure(
+        Failure(
+          code: 'transaction_correction_purpose_mismatch',
+          message: 'Correction command purpose must match the transaction.',
+        ),
+      );
+    }
+
+    final receiptResult = await build(original);
+    switch (receiptResult) {
+      case FailureResult(:final failure):
+        return Result.failure(failure);
+      case Success(:final value):
+        if (original.children.isNotEmpty) {
+          if (!structureMatches(value, original)) {
+            return const Result.failure(
+              Failure(
+                code: 'transaction_has_children',
+                message:
+                    'Transactions with child records can only update metadata.',
+              ),
+            );
+          }
+          final metadata = await updateTransactionMetadata(
+            UpdateTransactionMetadataCommand(
+              transactionId: transactionId,
+              note: note == null
+                  ? const Patch<String>.clear()
+                  : Patch.set(note),
+              isExcludedFromStats: isExcludedFromStats,
+              isExcludedFromBudget: isExcludedFromBudget,
+            ),
+          );
+          return metadata.when(
+            success: (_) => Result.success(
+              CreatedTransactionResult(
+                transactionId: original.transaction.id,
+                rootTransactionId: original.transaction.rootTransactionId,
+              ),
+            ),
+            failure: Result.failure,
+          );
+        }
+        final post = await _poster.replace(
+          original: original,
+          newReceipt: value,
+        );
+        return post.when(
+          success: (r) => Result.success(
+            CreatedTransactionResult(
+              transactionId: r.transactionId,
+              rootTransactionId: r.rootTransactionId,
+            ),
+          ),
+          failure: Result.failure,
+        );
+    }
+  }
+
+  // ============================================================
+  //  Update basics helpers
+  // ============================================================
 
   Entry? _settlementEntry(
     TransactionDetail detail,
@@ -986,11 +823,9 @@ class TransactionServiceImpl implements TransactionService {
     if (direction == null) return null;
     for (final entry in detail.entries) {
       final accountType = accountTypes[entry.accountId];
-      final settlementType =
-          accountType == AccountType.asset ||
+      final settlementType = accountType == AccountType.asset ||
           accountType == AccountType.liability;
-      final isReimbursementReceivable =
-          detail.transaction.businessPurpose ==
+      final isReimbursementReceivable = detail.transaction.businessPurpose ==
               BusinessPurpose.reimbursementAdvance &&
           entry.direction == EntryDirection.debit &&
           accountType == AccountType.asset;
@@ -1016,15 +851,6 @@ class TransactionServiceImpl implements TransactionService {
     return null;
   }
 
-  Future<Map<int, AccountType>> _loadAccountTypes(
-    Iterable<int> accountIds,
-  ) async {
-    final ids = accountIds.toSet();
-    if (ids.isEmpty) return const {};
-    final accounts = await _accountRepository.findAccountsByIds(ids);
-    return {for (final account in accounts) account.id: account.type};
-  }
-
   Future<Failure?> _validateDirectAccount(
     int accountId, {
     required String currencyCode,
@@ -1033,8 +859,7 @@ class TransactionServiceImpl implements TransactionService {
     AccountUsage? requiredUsage,
     bool allowReimbursementSubtype = true,
   }) async {
-    final repository = _accountRepository;
-    final account = await repository.findAccountById(accountId);
+    final account = await _accountRepository.findAccountById(accountId);
     if (account == null) {
       return Failure(
         code: 'account_not_found',
@@ -1081,21 +906,6 @@ class TransactionServiceImpl implements TransactionService {
     return null;
   }
 
-  bool _supportsFormCorrection(BusinessPurpose purpose) {
-    return switch (purpose) {
-      BusinessPurpose.dailyExpense ||
-      BusinessPurpose.dailyIncome ||
-      BusinessPurpose.transfer ||
-      BusinessPurpose.reimbursementAdvance ||
-      BusinessPurpose.refund ||
-      BusinessPurpose.reimbursementReceipt ||
-      BusinessPurpose.reimbursementClose ||
-      BusinessPurpose.debtRepayment ||
-      BusinessPurpose.borrowing => true,
-      _ => false,
-    };
-  }
-
   Money? _detailAmount(
     TransactionDetail detail,
     TransactionDetailType type,
@@ -1107,5 +917,4 @@ class TransactionServiceImpl implements TransactionService {
     }
     return null;
   }
-
 }

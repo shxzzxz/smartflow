@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/accounting/accounting_api.dart';
 import 'package:smartflow/domain/accounting/ledger/ledger_rules.dart';
-import 'package:smartflow/domain/accounting/ledger/posting_protocol.dart';
+import 'package:smartflow/domain/accounting/ledger/post_receipt.dart';
 
 void main() {
   group('ledger rules', () {
@@ -59,17 +59,17 @@ void main() {
 
     test('validates balanced entries', () {
       final balanced = [
-        PostEntryInput(
+        ReceiptEntry(
           accountId: 1,
           direction: EntryDirection.debit,
           amount: const Money(minorUnits: 1200),
         ),
-        PostEntryInput(
+        ReceiptEntry(
           accountId: 2,
           direction: EntryDirection.credit,
           amount: const Money(minorUnits: 1000),
         ),
-        PostEntryInput(
+        ReceiptEntry(
           accountId: 3,
           direction: EntryDirection.credit,
           amount: const Money(minorUnits: 200),
@@ -77,12 +77,12 @@ void main() {
       ];
 
       final unbalanced = [
-        PostEntryInput(
+        ReceiptEntry(
           accountId: 1,
           direction: EntryDirection.debit,
           amount: const Money(minorUnits: 1200),
         ),
-        PostEntryInput(
+        ReceiptEntry(
           accountId: 2,
           direction: EntryDirection.credit,
           amount: const Money(minorUnits: 1000),

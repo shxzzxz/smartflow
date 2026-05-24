@@ -27,6 +27,7 @@ import '../domain/credit/services/credit_service.dart';
 import '../domain/credit/services/installment_metrics.dart';
 import '../domain/credit/services/installment_service.dart';
 import '../domain/accounting/ledger/poster.dart';
+import '../domain/accounting/ledger/receipt_builder.dart';
 import '../core/time/month_key.dart';
 import '../core/money/money.dart';
 
@@ -97,12 +98,21 @@ Poster poster(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+ReceiptBuilder receiptBuilder(Ref ref) {
+  return ReceiptBuilder(
+    accounts: ref.watch(accountRepositoryProvider),
+    query: ref.watch(transactionQueryServiceProvider),
+    systemAccounts: ref.watch(systemAccountResolverProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
 TransactionService transactionService(Ref ref) {
   return TransactionServiceImpl(
-    ref.watch(posterProvider),
-    accountRepository: ref.watch(accountRepositoryProvider),
+    poster: ref.watch(posterProvider),
+    receiptBuilder: ref.watch(receiptBuilderProvider),
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
-    systemAccountResolver: ref.watch(systemAccountResolverProvider),
+    accountRepository: ref.watch(accountRepositoryProvider),
     postingRepository: ref.watch(postingRepositoryProvider),
   );
 }
