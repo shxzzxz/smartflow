@@ -127,9 +127,24 @@ jobs:
       - name: Create release notes
         shell: bash
         run: |
+          TAG="${{ steps.release-meta.outputs.tag }}"
+          PREVIOUS_TAG="$(git describe --tags --abbrev=0 "${TAG}^{commit}^" 2>/dev/null || true)"
+
           {
             printf 'SmartFlow %s\n\n' "${{ steps.release-meta.outputs.version_name }}"
             printf 'Channel: %s\n\n' "${{ steps.release-meta.outputs.release_channel }}"
+
+            printf '## Changes\n\n'
+            if [[ -n "$PREVIOUS_TAG" ]]; then
+              git log --no-merges --pretty=format:'- %s (%h)' "$PREVIOUS_TAG..$TAG"
+              printf '\n\n'
+              printf 'Full changelog: https://github.com/${{ github.repository }}/compare/%s...%s\n\n' "$PREVIOUS_TAG" "$TAG"
+            else
+              git log --no-merges --pretty=format:'- %s (%h)' "$TAG"
+              printf '\n\n'
+            fi
+
+            printf '## Downloads\n\n'
             printf 'This release contains a universal APK and ABI-specific APKs for arm64-v8a, armeabi-v7a, and x86_64.\n'
           } > dist/release-notes.md
 
@@ -146,6 +161,10 @@ jobs:
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/*.apk --clobber
+            gh release edit "$TAG" \
+              --title "SmartFlow ${{ steps.release-meta.outputs.version_name }}" \
+              --notes-file dist/release-notes.md \
+              $PRERELEASE_FLAG
           else
             gh release create "$TAG" dist/*.apk \
               --title "SmartFlow ${{ steps.release-meta.outputs.version_name }}" \
