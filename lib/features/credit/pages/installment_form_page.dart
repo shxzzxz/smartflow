@@ -9,9 +9,8 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_submit_button.dart';
-import '../../../domain/accounting/accounting_api.dart';
-import '../../../domain/credit/enums/installment_enums.dart';
-import '../../../domain/credit/services/installment_service.dart';
+import '../../../application/accounting/accounting_api.dart';
+import 'package:smartflow/application/credit/credit_api.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 import '../widgets/installment_field_options.dart';
 
@@ -40,11 +39,15 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
   final _noteController = TextEditingController();
 
   DateTime _borrowingDate = DateTime.now();
-  DateTime _firstRepaymentDate =
-      DateTime(DateTime.now().year, DateTime.now().month + 1, DateTime.now().day);
+  DateTime _firstRepaymentDate = DateTime(
+    DateTime.now().year,
+    DateTime.now().month + 1,
+    DateTime.now().day,
+  );
   // 用户是否手工调整过首期还款日；未调整时跟随借款日期联动。
   bool _firstDateTouched = false;
-  InstallmentRepaymentMethod _method = InstallmentRepaymentMethod.equalInstallment;
+  InstallmentRepaymentMethod _method =
+      InstallmentRepaymentMethod.equalInstallment;
   InterestRatePeriod _ratePeriod = InterestRatePeriod.monthly;
   InterestAccrualMethod _accrualMethod = InterestAccrualMethod.daily;
   InstallmentSourceType? _sourceType;
@@ -64,20 +67,24 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final liabilityAccountsAsync =
-        ref.watch(accountsForUsageProvider(AccountUsage.repaymentTarget));
-    final fundAccountsAsync =
-        ref.watch(accountsForUsageProvider(AccountUsage.fund));
+    final liabilityAccountsAsync = ref.watch(
+      accountsForUsageProvider(AccountUsage.repaymentTarget),
+    );
+    final fundAccountsAsync = ref.watch(
+      accountsForUsageProvider(AccountUsage.fund),
+    );
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(title: const Text('新建分期')),
       body: switch ((liabilityAccountsAsync, fundAccountsAsync)) {
-        (AsyncData(value: final liabilityAccounts), AsyncData(value: final fundAccounts)) =>
+        (
+          AsyncData(value: final liabilityAccounts),
+          AsyncData(value: final fundAccounts),
+        ) =>
           _buildForm(context, liabilityAccounts, fundAccounts),
         (AsyncError(:final error), _) ||
-        (_, AsyncError(:final error)) =>
-          Center(child: Text('加载失败：$error')),
+        (_, AsyncError(:final error)) => Center(child: Text('加载失败：$error')),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
@@ -88,7 +95,10 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
     List<Account> liabilityAccounts,
     List<Account> fundAccounts,
   ) {
-    final liability = _findAccount(liabilityAccounts, widget.liabilityAccountId);
+    final liability = _findAccount(
+      liabilityAccounts,
+      widget.liabilityAccountId,
+    );
     if (liability == null) {
       return const Center(child: Text('负债账户不存在'));
     }
@@ -110,10 +120,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
             children: [
               AppPlainFormRow(
                 label: '负债账户',
-                child: AccountPlainValue(
-                  account: liability,
-                  placeholder: '',
-                ),
+                child: AccountPlainValue(account: liability, placeholder: ''),
               ),
               if (widget.lockedSourceType == null)
                 _SourceTypeRow(
@@ -126,14 +133,16 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                   account: _findAccount(fundAccounts, _disbursementAccountId),
                   selectedId: _disbursementAccountId,
                   placeholder: '请选择放款入账账户',
-                  onTap: fundAccounts.isEmpty
-                      ? null
-                      : () => _pickAccount(
+                  onTap:
+                      fundAccounts.isEmpty
+                          ? null
+                          : () => _pickAccount(
                             title: '选择到账账户',
                             accounts: fundAccounts,
                             selectedId: _disbursementAccountId,
-                            onSelected: (id) => setState(
-                                () => _disbursementAccountId = id),
+                            onSelected:
+                                (id) =>
+                                    setState(() => _disbursementAccountId = id),
                           ),
                 ),
               MoneyPlainFormRow(
@@ -170,8 +179,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                   label: '计息方式',
                   value: _accrualMethod,
                   items: interestAccrualMethodItems,
-                  onChanged: (value) =>
-                      setState(() => _accrualMethod = value),
+                  onChanged: (value) => setState(() => _accrualMethod = value),
                 ),
               if (_method != InstallmentRepaymentMethod.flatFee &&
                   _method != InstallmentRepaymentMethod.custom)
@@ -179,12 +187,13 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                   label: '利率(%)',
                   controller: _rateController,
                   hintText: '例：7.2',
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   unit: _ratePeriod,
                   unitItems: interestRatePeriodItems,
-                  onUnitChanged: (period) =>
-                      setState(() => _ratePeriod = period),
+                  onUnitChanged:
+                      (period) => setState(() => _ratePeriod = period),
                 ),
               if (_method == InstallmentRepaymentMethod.equalInstallment)
                 MoneyPlainFormRow(
@@ -276,7 +285,8 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
     }
 
     final ratePpm = _parseRatePpm(_rateController.text);
-    final totalFeeMinor = _parseOptionalMoney(_totalFeeController.text).minorUnits;
+    final totalFeeMinor =
+        _parseOptionalMoney(_totalFeeController.text).minorUnits;
     final overrideMinor =
         _method == InstallmentRepaymentMethod.equalInstallment
             ? _parseOptionalOverride(_overrideInstallmentController.text)

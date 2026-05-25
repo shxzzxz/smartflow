@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
-import 'package:smartflow/domain/accounting/accounting_api.dart';
+import 'package:smartflow/application/accounting/accounting_api.dart';
 import 'package:smartflow/features/home/view_models/home_transaction_group.dart';
 import 'package:smartflow/features/home/view_models/transaction_row_presentation.dart';
 
@@ -17,10 +17,7 @@ void main() {
         flowInName: '公司报销',
       );
 
-      expect(
-        transactionPrimaryLabel(fixture.item, fixture.accountsById),
-        '电费',
-      );
+      expect(transactionPrimaryLabel(fixture.item, fixture.accountsById), '电费');
       expect(
         resolveCategoryIconKey(fixture.item, fixture.accountsById),
         'flashlight-line',
@@ -87,16 +84,17 @@ void main() {
         amountMinor: 5800,
         refundedTotal: const Money(minorUnits: 1000),
       );
-      final group = groupTransactionsByDay(
-        [expense.item],
-        [
-          DailyCashflowSummary(
-            date: DateTime(2026, 5, 12),
-            income: Money.zero(),
-            expense: const Money(minorUnits: 4800),
-          ),
-        ],
-      ).single;
+      final group =
+          groupTransactionsByDay(
+            [expense.item],
+            [
+              DailyCashflowSummary(
+                date: DateTime(2026, 5, 12),
+                income: Money.zero(),
+                expense: const Money(minorUnits: 4800),
+              ),
+            ],
+          ).single;
 
       expect(group.expenseMinor, 4800);
       expect(group.incomeMinor, 0);
@@ -129,12 +127,16 @@ _Fixture _buildFixture(
   final accounts = <int, Account>{};
   final entries = <Entry>[];
 
-  Account makeAccount(int id, String name, AccountType type, {String? iconKey}) {
+  Account makeAccount(
+    int id,
+    String name,
+    AccountType type, {
+    String? iconKey,
+  }) {
     final account = Account(
       id: id,
       name: name,
       type: type,
-      currencyCode: amount.currency,
       balance: Money.zero(),
       iconKey: iconKey,
     );
@@ -234,7 +236,6 @@ _Fixture _buildFixture(
     businessPurpose: purpose,
     businessState: BusinessState.current,
     occurredAt: DateTime(2026, 5, 12, 8, 30),
-    currencyCode: amount.currency,
     primaryAmount: amount,
     entries: entries,
     details: const [],

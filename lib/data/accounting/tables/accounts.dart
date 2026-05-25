@@ -10,8 +10,6 @@ class Accounts extends Table {
   TextColumn get accountSubtype =>
       textEnum<AccountSubtype>().named('account_subtype').nullable()();
   IntColumn get parentId => integer().named('parent_id').nullable()();
-  TextColumn get currencyCode =>
-      text().named('currency_code').withLength(min: 3, max: 3)();
   IntColumn get balanceMinor =>
       integer().named('balance_minor').withDefault(const Constant(0))();
   TextColumn get iconKey => text().named('icon_key').nullable()();
@@ -37,5 +35,5 @@ class Accounts extends Table {
       dateTime().named('updated_at').withDefault(currentDateAndTime)();
 
   @override
-  List<String> get customConstraints => ['UNIQUE (system_key, currency_code)'];
+  List<String> get customConstraints => ['UNIQUE (system_key)'];
 }

@@ -4,8 +4,7 @@ import '../domain/accounting/enums/accounting_enums.dart';
 import 'app_database.dart';
 
 const builtinDataVersionKey = 'builtin_data_version';
-const currentBuiltinDataVersion = 6;
-const _currency = 'CNY';
+const currentBuiltinDataVersion = 7;
 
 Future<void> ensureBuiltinData(AppDatabase database) async {
   await database.transaction(() async {
@@ -29,9 +28,23 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
     if (version < 6) {
       await _seedGhostAccount(database);
     }
+    if (version < 7) {
+      await _renameOpeningBalanceAccount(database);
+    }
 
     await _writeBuiltinDataVersion(database, currentBuiltinDataVersion);
   });
+}
+
+Future<void> _renameOpeningBalanceAccount(AppDatabase database) async {
+  await (database.update(database.accounts)..where(
+    (account) => account.systemKey.equalsValue(SystemKey.openingBalance),
+  )).write(
+    AccountsCompanion(
+      name: const Value('系统期初余额'),
+      updatedAt: Value(DateTime.now()),
+    ),
+  );
 }
 
 Future<int> _readBuiltinDataVersion(AppDatabase database) async {
@@ -312,7 +325,6 @@ Future<void> _updateCategoryIcon(
             : account.systemKey.equalsValue(systemKey);
     return identity &
         account.accountType.equalsValue(type) &
-        account.currencyCode.equals(_currency) &
         account.source.equalsValue(AccountSource.builtin);
   })).write(
     AccountsCompanion(
@@ -332,8 +344,7 @@ Future<int?> _findParentId(
         (account) =>
             account.name.equals(name) &
             account.accountType.equalsValue(type) &
-            account.parentId.isNull() &
-            account.currencyCode.equals(_currency),
+            account.parentId.isNull(),
       )).getSingleOrNull();
   return row?.id;
 }
@@ -344,7 +355,7 @@ Future<void> _seedBuiltinAccounts(AppDatabase database) async {
   await _ensureSystemAccount(
     database,
     const _BuiltinAccount(
-      name: '系统期初余额(CNY)',
+      name: '系统期初余额',
       type: AccountType.equity,
       systemKey: SystemKey.openingBalance,
       iconKey: 'transfer',
@@ -392,7 +403,6 @@ Future<int> _ensureCategory(
           name: category.name,
           accountType: category.type!,
           parentId: Value(category.parentId),
-          currencyCode: _currency,
           iconKey: Value(category.iconKey),
           sortOrder: Value(category.sortOrder),
           systemKey: Value(category.systemKey),
@@ -425,7 +435,6 @@ Future<void> _ensureSystemAccount(
         AccountsCompanion.insert(
           name: account.name,
           accountType: account.type,
-          currencyCode: _currency,
           iconKey: Value(account.iconKey),
           systemKey: Value(account.systemKey),
           source: const Value(AccountSource.builtin),
@@ -450,9 +459,7 @@ Future<AccountRow?> _findBuiltinAccount(
                     ? account.parentId.isNull()
                     : account.parentId.equals(parentId))
             : account.systemKey.equalsValue(systemKey);
-    return identity &
-        account.accountType.equalsValue(type) &
-        account.currencyCode.equals(_currency);
+    return identity & account.accountType.equalsValue(type);
   })).getSingleOrNull();
 }
 
@@ -623,11 +630,7 @@ const _expenseCategories = [
         sortOrder: 30,
         systemKey: SystemKey.debtFeeExpense,
       ),
-      _BuiltinCategory(
-        name: '借出',
-        iconKey: 'logout-box-r-line',
-        sortOrder: 40,
-      ),
+      _BuiltinCategory(name: '借出', iconKey: 'logout-box-r-line', sortOrder: 40),
     ],
   ),
 ];
@@ -661,11 +664,7 @@ const _incomeCategories = [
     iconKey: 'more-2-line',
     sortOrder: 40,
     children: [
-      _BuiltinCategory(
-        name: '借入',
-        iconKey: 'hand-coin-line',
-        sortOrder: 10,
-      ),
+      _BuiltinCategory(name: '借入', iconKey: 'hand-coin-line', sortOrder: 10),
       _BuiltinCategory(
         name: '报销收入',
         iconKey: 'currency-line',

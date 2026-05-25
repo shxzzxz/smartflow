@@ -1,5 +1,5 @@
 import '../../core/money/money.dart';
-import '../../domain/accounting/accounting_api.dart';
+import '../../application/accounting/accounting_api.dart';
 
 /// `Entry` 在 UI 层的查表能力。
 ///
@@ -55,7 +55,6 @@ Money? balanceDeltaForAccount({
   required int accountId,
   required Iterable<Entry> entries,
   required Map<int, Account> accountsById,
-  required String currencyCode,
 }) {
   final accountType = accountsById[accountId]?.type;
   if (accountType == null) return null;
@@ -73,7 +72,7 @@ Money? balanceDeltaForAccount({
     deltaMinor += signed;
   }
   if (!matched) return null;
-  return Money(minorUnits: deltaMinor, currency: currencyCode);
+  return Money(minorUnits: deltaMinor);
 }
 
 int _signedAmount({

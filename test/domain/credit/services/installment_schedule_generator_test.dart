@@ -1,11 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/credit/enums/installment_enums.dart';
-import 'package:smartflow/domain/credit/services/installment_schedule_generator.dart';
+import 'package:smartflow/application/credit/credit_api.dart';
 
 void main() {
   const generator = InstallmentScheduleGenerator();
-  const cny = 'CNY';
 
   group('InstallmentScheduleGenerator.generateDates', () {
     test('totalPeriods=1 时返回末期日', () {
@@ -47,7 +45,7 @@ void main() {
   group('InstallmentScheduleGenerator.generate (整体)', () {
     test('equalInstallment：本金累计等于合同本金', () {
       final drafts = generator.generate(
-        principal: const Money(minorUnits: 1200000, currency: cny),
+        principal: const Money(minorUnits: 1200000),
         borrowingDate: DateTime(2026, 5, 10),
         firstRepaymentDate: DateTime(2026, 6, 10),
         lastRepaymentDate: DateTime(2027, 5, 10),
@@ -67,7 +65,7 @@ void main() {
 
     test('equalInstallment 零利率退化为等额本金', () {
       final drafts = generator.generate(
-        principal: const Money(minorUnits: 1000, currency: cny),
+        principal: const Money(minorUnits: 1000),
         borrowingDate: DateTime(2026, 1, 1),
         firstRepaymentDate: DateTime(2026, 2, 1),
         lastRepaymentDate: DateTime(2026, 5, 1),
@@ -87,7 +85,7 @@ void main() {
 
     test('equalPrincipal 本金均分，末期吸收误差', () {
       final drafts = generator.generate(
-        principal: const Money(minorUnits: 1000, currency: cny),
+        principal: const Money(minorUnits: 1000),
         borrowingDate: DateTime(2026, 1, 1),
         firstRepaymentDate: DateTime(2026, 2, 1),
         lastRepaymentDate: DateTime(2026, 4, 1),
@@ -104,7 +102,7 @@ void main() {
 
     test('interestFirst 前 N-1 期只付息，末期付本金', () {
       final drafts = generator.generate(
-        principal: const Money(minorUnits: 100000, currency: cny),
+        principal: const Money(minorUnits: 100000),
         borrowingDate: DateTime(2026, 1, 1),
         firstRepaymentDate: DateTime(2026, 2, 1),
         lastRepaymentDate: DateTime(2026, 5, 1),
@@ -122,7 +120,7 @@ void main() {
 
     test('flatFee 本金 + 手续费均分', () {
       final drafts = generator.generate(
-        principal: const Money(minorUnits: 500000, currency: cny),
+        principal: const Money(minorUnits: 500000),
         borrowingDate: DateTime(2026, 5, 9),
         firstRepaymentDate: DateTime(2026, 6, 9),
         lastRepaymentDate: DateTime(2027, 5, 9),
@@ -145,7 +143,7 @@ void main() {
 
     test('custom 返回 N 个全零草稿，日期由 generateDates 决定', () {
       final drafts = generator.generate(
-        principal: const Money(minorUnits: 9999, currency: cny),
+        principal: const Money(minorUnits: 9999),
         borrowingDate: DateTime(2025, 12, 15),
         firstRepaymentDate: DateTime(2026, 1, 15),
         lastRepaymentDate: DateTime(2026, 5, 15),
@@ -165,7 +163,7 @@ void main() {
       // 借款 2026-01-01，首期 2026-02-15（45 天），末期 2026-05-15
       // 首期天数比 30 天多 15 天，利息应明显大于标准月供利息
       final drafts = generator.generate(
-        principal: const Money(minorUnits: 1000000, currency: cny),
+        principal: const Money(minorUnits: 1000000),
         borrowingDate: DateTime(2026, 1, 1),
         firstRepaymentDate: DateTime(2026, 2, 15),
         lastRepaymentDate: DateTime(2026, 5, 15),
@@ -185,7 +183,7 @@ void main() {
     test('daily + interestFirst 不规则末期：末期天数缩短，利息按比例缩小', () {
       // 借款 2026-01-01，首期 2026-02-01，末期 2026-04-15（仅 14 天 vs 30 天）
       final drafts = generator.generate(
-        principal: const Money(minorUnits: 1000000, currency: cny),
+        principal: const Money(minorUnits: 1000000),
         borrowingDate: DateTime(2026, 1, 1),
         firstRepaymentDate: DateTime(2026, 2, 1),
         lastRepaymentDate: DateTime(2026, 4, 15),
@@ -207,7 +205,7 @@ void main() {
 
     test('monthly + equalInstallment：各期 total 严格相等（末期容差 ≤ 10 minor）', () {
       final drafts = generator.generate(
-        principal: const Money(minorUnits: 1200000, currency: cny),
+        principal: const Money(minorUnits: 1200000),
         borrowingDate: DateTime(2026, 5, 10),
         firstRepaymentDate: DateTime(2026, 6, 10),
         lastRepaymentDate: DateTime(2027, 5, 10),
@@ -219,15 +217,18 @@ void main() {
       );
       expect(drafts, hasLength(12));
       // 中间期 total 严格相等
-      final firstTotal = drafts.first.expectedPrincipal.minorUnits +
+      final firstTotal =
+          drafts.first.expectedPrincipal.minorUnits +
           drafts.first.expectedInterest.minorUnits;
       for (var i = 1; i < 11; i++) {
-        final t = drafts[i].expectedPrincipal.minorUnits +
+        final t =
+            drafts[i].expectedPrincipal.minorUnits +
             drafts[i].expectedInterest.minorUnits;
         expect(t, firstTotal, reason: 'period ${i + 1} total');
       }
       // 末期受 round() 累积误差影响，与中间期相比偏差应 ≤ 10 minor
-      final lastTotal = drafts.last.expectedPrincipal.minorUnits +
+      final lastTotal =
+          drafts.last.expectedPrincipal.minorUnits +
           drafts.last.expectedInterest.minorUnits;
       expect((lastTotal - firstTotal).abs(), lessThanOrEqualTo(10));
       // 本金累加 = 总本金
@@ -241,7 +242,7 @@ void main() {
     test('monthly + equalPrincipal：不规则天数不影响利息', () {
       // 借款 2026-01-01，首期 2026-02-15（45 天），中间 2026-03-15（28 天），末期 2026-04-15（31 天）
       final drafts = generator.generate(
-        principal: const Money(minorUnits: 1000000, currency: cny),
+        principal: const Money(minorUnits: 1000000),
         borrowingDate: DateTime(2026, 1, 1),
         firstRepaymentDate: DateTime(2026, 2, 15),
         lastRepaymentDate: DateTime(2026, 4, 15),
@@ -263,7 +264,7 @@ void main() {
 
     test('monthly + interestFirst：各期利息严格相等 = P × r', () {
       final drafts = generator.generate(
-        principal: const Money(minorUnits: 100000, currency: cny),
+        principal: const Money(minorUnits: 100000),
         borrowingDate: DateTime(2026, 1, 1),
         firstRepaymentDate: DateTime(2026, 2, 15), // 不规则首期
         lastRepaymentDate: DateTime(2026, 5, 1),
@@ -286,7 +287,7 @@ void main() {
   group('InstallmentScheduleGenerator.allocate (按 dates 重算)', () {
     test('给定 anchor + dates 分配等额本金', () {
       final allocs = generator.allocate(
-        remainingPrincipal: const Money(minorUnits: 600000, currency: cny),
+        remainingPrincipal: const Money(minorUnits: 600000),
         anchorDate: DateTime(2026, 3, 10),
         pendingDates: [
           DateTime(2026, 4, 10),
@@ -298,8 +299,7 @@ void main() {
         ratePeriod: InterestRatePeriod.monthly,
         ratePpm: 5000,
       );
-      final sum =
-          allocs.fold<int>(0, (acc, a) => acc + a.principal.minorUnits);
+      final sum = allocs.fold<int>(0, (acc, a) => acc + a.principal.minorUnits);
       expect(sum, 600000);
       expect(allocs, hasLength(3));
     });
@@ -307,7 +307,7 @@ void main() {
     test('pendingDates 为空抛错', () {
       expect(
         () => generator.allocate(
-          remainingPrincipal: const Money(minorUnits: 1000, currency: cny),
+          remainingPrincipal: const Money(minorUnits: 1000),
           anchorDate: DateTime(2026, 1, 1),
           pendingDates: const [],
           method: InstallmentRepaymentMethod.equalPrincipal,
@@ -330,7 +330,7 @@ void main() {
       // Period 3 (last): principal = 10000 - 3267 - 3350 = 3383
       //                  interest = round(3383·0.01·30/30) = 34
       final allocs = generator.allocate(
-        remainingPrincipal: const Money(minorUnits: 10000, currency: cny),
+        remainingPrincipal: const Money(minorUnits: 10000),
         anchorDate: DateTime(2026, 1, 1),
         pendingDates: [
           DateTime(2026, 2, 15), // +45 days
@@ -347,8 +347,10 @@ void main() {
       expect(allocs[1].interest.minorUnits, 67);
       expect(allocs[1].principal.minorUnits, 3350);
       expect(allocs[2].principal.minorUnits, 3383);
-      final principalSum =
-          allocs.fold<int>(0, (a, x) => a + x.principal.minorUnits);
+      final principalSum = allocs.fold<int>(
+        0,
+        (a, x) => a + x.principal.minorUnits,
+      );
       expect(principalSum, 10000);
     });
 
@@ -358,7 +360,7 @@ void main() {
         for (var i = 1; i <= 12; i++) anchor.add(Duration(days: 30 * i)),
       ];
       final dailyAllocs = generator.allocate(
-        remainingPrincipal: const Money(minorUnits: 1200000, currency: cny),
+        remainingPrincipal: const Money(minorUnits: 1200000),
         anchorDate: anchor,
         pendingDates: dates,
         method: InstallmentRepaymentMethod.equalInstallment,
@@ -367,7 +369,7 @@ void main() {
         ratePpm: 10000,
       );
       final monthlyAllocs = generator.allocate(
-        remainingPrincipal: const Money(minorUnits: 1200000, currency: cny),
+        remainingPrincipal: const Money(minorUnits: 1200000),
         anchorDate: anchor,
         pendingDates: dates,
         method: InstallmentRepaymentMethod.equalInstallment,

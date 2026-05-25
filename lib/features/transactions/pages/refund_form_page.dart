@@ -11,7 +11,7 @@ import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_page_header.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_submit_button.dart';
-import '../../../domain/accounting/accounting_api.dart';
+import '../../../application/accounting/accounting_api.dart';
 import '../../../widgets/business/money_text.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 
@@ -60,9 +60,7 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
 
     final remaining = detailAsync.value?.let((detail) {
       final amount = detail.transaction.primaryAmount;
-      final refunded =
-          detail.refundedTotal ??
-          Money(minorUnits: 0, currency: amount.currency);
+      final refunded = detail.refundedTotal ?? const Money(minorUnits: 0);
       return amount - refunded;
     });
     final refundToAccount = _findAccount(refundToAccountId, accounts);

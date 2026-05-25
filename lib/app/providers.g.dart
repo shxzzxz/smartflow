@@ -442,6 +442,54 @@ final class TransactionRunnerProvider
 
 String _$transactionRunnerHash() => r'ac2e79f7455255f3338788cfe57587c4e97b9fe4';
 
+@ProviderFor(updateChannelStore)
+final updateChannelStoreProvider = UpdateChannelStoreProvider._();
+
+final class UpdateChannelStoreProvider
+    extends
+        $FunctionalProvider<
+          UpdateChannelStore,
+          UpdateChannelStore,
+          UpdateChannelStore
+        >
+    with $Provider<UpdateChannelStore> {
+  UpdateChannelStoreProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'updateChannelStoreProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$updateChannelStoreHash();
+
+  @$internal
+  @override
+  $ProviderElement<UpdateChannelStore> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  UpdateChannelStore create(Ref ref) {
+    return updateChannelStore(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(UpdateChannelStore value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<UpdateChannelStore>(value),
+    );
+  }
+}
+
+String _$updateChannelStoreHash() =>
+    r'c796ea2e6828c56f68155adc5f4f8ea1e59de7be';
+
 @ProviderFor(accountService)
 final accountServiceProvider = AccountServiceProvider._();
 
@@ -652,7 +700,7 @@ final class TransactionServiceProvider
 }
 
 String _$transactionServiceHash() =>
-    r'890168051da1760ebb84a0bafea7093ffc7fe2d0';
+    r'c0c23051282216f08019915f7d3d761d11fee66b';
 
 @ProviderFor(transactionQueryService)
 final transactionQueryServiceProvider = TransactionQueryServiceProvider._();
@@ -2141,7 +2189,7 @@ final class InstallmentRepaymentCashflowsProvider
 }
 
 String _$installmentRepaymentCashflowsHash() =>
-    r'3c54d6edcad292ea5f5ec4a2fd98c94203b0f74c';
+    r'41f6a05327dd7d719a9475031539ce29a3cd51d9';
 
 /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
 /// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。

@@ -64,21 +64,6 @@ class $AccountsTable extends Accounts
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
-    'currencyCode',
-  );
-  @override
-  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
-    'currency_code',
-    aliasedName,
-    false,
-    additionalChecks: GeneratedColumn.checkTextLength(
-      minTextLength: 3,
-      maxTextLength: 3,
-    ),
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
   static const VerificationMeta _balanceMinorMeta = const VerificationMeta(
     'balanceMinor',
   );
@@ -232,7 +217,6 @@ class $AccountsTable extends Accounts
     accountType,
     accountSubtype,
     parentId,
-    currencyCode,
     balanceMinor,
     iconKey,
     note,
@@ -275,17 +259,6 @@ class $AccountsTable extends Accounts
         _parentIdMeta,
         parentId.isAcceptableOrUnknown(data['parent_id']!, _parentIdMeta),
       );
-    }
-    if (data.containsKey('currency_code')) {
-      context.handle(
-        _currencyCodeMeta,
-        currencyCode.isAcceptableOrUnknown(
-          data['currency_code']!,
-          _currencyCodeMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_currencyCodeMeta);
     }
     if (data.containsKey('balance_minor')) {
       context.handle(
@@ -397,11 +370,6 @@ class $AccountsTable extends Accounts
         DriftSqlType.int,
         data['${effectivePrefix}parent_id'],
       ),
-      currencyCode:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}currency_code'],
-          )!,
       balanceMinor:
           attachedDatabase.typeMapping.read(
             DriftSqlType.int,
@@ -495,7 +463,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   final AccountType accountType;
   final AccountSubtype? accountSubtype;
   final int? parentId;
-  final String currencyCode;
   final int balanceMinor;
   final String? iconKey;
   final String? note;
@@ -515,7 +482,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.accountType,
     this.accountSubtype,
     this.parentId,
-    required this.currencyCode,
     required this.balanceMinor,
     this.iconKey,
     this.note,
@@ -548,7 +514,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     if (!nullToAbsent || parentId != null) {
       map['parent_id'] = Variable<int>(parentId);
     }
-    map['currency_code'] = Variable<String>(currencyCode);
     map['balance_minor'] = Variable<int>(balanceMinor);
     if (!nullToAbsent || iconKey != null) {
       map['icon_key'] = Variable<String>(iconKey);
@@ -598,7 +563,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           parentId == null && nullToAbsent
               ? const Value.absent()
               : Value(parentId),
-      currencyCode: Value(currencyCode),
       balanceMinor: Value(balanceMinor),
       iconKey:
           iconKey == null && nullToAbsent
@@ -648,7 +612,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
         serializer.fromJson<String?>(json['accountSubtype']),
       ),
       parentId: serializer.fromJson<int?>(json['parentId']),
-      currencyCode: serializer.fromJson<String>(json['currencyCode']),
       balanceMinor: serializer.fromJson<int>(json['balanceMinor']),
       iconKey: serializer.fromJson<String?>(json['iconKey']),
       note: serializer.fromJson<String?>(json['note']),
@@ -681,7 +644,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
         $AccountsTable.$converteraccountSubtypen.toJson(accountSubtype),
       ),
       'parentId': serializer.toJson<int?>(parentId),
-      'currencyCode': serializer.toJson<String>(currencyCode),
       'balanceMinor': serializer.toJson<int>(balanceMinor),
       'iconKey': serializer.toJson<String?>(iconKey),
       'note': serializer.toJson<String?>(note),
@@ -708,7 +670,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     AccountType? accountType,
     Value<AccountSubtype?> accountSubtype = const Value.absent(),
     Value<int?> parentId = const Value.absent(),
-    String? currencyCode,
     int? balanceMinor,
     Value<String?> iconKey = const Value.absent(),
     Value<String?> note = const Value.absent(),
@@ -729,7 +690,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     accountSubtype:
         accountSubtype.present ? accountSubtype.value : this.accountSubtype,
     parentId: parentId.present ? parentId.value : this.parentId,
-    currencyCode: currencyCode ?? this.currencyCode,
     balanceMinor: balanceMinor ?? this.balanceMinor,
     iconKey: iconKey.present ? iconKey.value : this.iconKey,
     note: note.present ? note.value : this.note,
@@ -758,10 +718,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
               ? data.accountSubtype.value
               : this.accountSubtype,
       parentId: data.parentId.present ? data.parentId.value : this.parentId,
-      currencyCode:
-          data.currencyCode.present
-              ? data.currencyCode.value
-              : this.currencyCode,
       balanceMinor:
           data.balanceMinor.present
               ? data.balanceMinor.value
@@ -797,7 +753,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('accountType: $accountType, ')
           ..write('accountSubtype: $accountSubtype, ')
           ..write('parentId: $parentId, ')
-          ..write('currencyCode: $currencyCode, ')
           ..write('balanceMinor: $balanceMinor, ')
           ..write('iconKey: $iconKey, ')
           ..write('note: $note, ')
@@ -822,7 +777,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     accountType,
     accountSubtype,
     parentId,
-    currencyCode,
     balanceMinor,
     iconKey,
     note,
@@ -846,7 +800,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.accountType == this.accountType &&
           other.accountSubtype == this.accountSubtype &&
           other.parentId == this.parentId &&
-          other.currencyCode == this.currencyCode &&
           other.balanceMinor == this.balanceMinor &&
           other.iconKey == this.iconKey &&
           other.note == this.note &&
@@ -868,7 +821,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<AccountType> accountType;
   final Value<AccountSubtype?> accountSubtype;
   final Value<int?> parentId;
-  final Value<String> currencyCode;
   final Value<int> balanceMinor;
   final Value<String?> iconKey;
   final Value<String?> note;
@@ -888,7 +840,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.accountType = const Value.absent(),
     this.accountSubtype = const Value.absent(),
     this.parentId = const Value.absent(),
-    this.currencyCode = const Value.absent(),
     this.balanceMinor = const Value.absent(),
     this.iconKey = const Value.absent(),
     this.note = const Value.absent(),
@@ -909,7 +860,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     required AccountType accountType,
     this.accountSubtype = const Value.absent(),
     this.parentId = const Value.absent(),
-    required String currencyCode,
     this.balanceMinor = const Value.absent(),
     this.iconKey = const Value.absent(),
     this.note = const Value.absent(),
@@ -924,15 +874,13 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : name = Value(name),
-       accountType = Value(accountType),
-       currencyCode = Value(currencyCode);
+       accountType = Value(accountType);
   static Insertable<AccountRow> custom({
     Expression<int>? id,
     Expression<String>? name,
     Expression<String>? accountType,
     Expression<String>? accountSubtype,
     Expression<int>? parentId,
-    Expression<String>? currencyCode,
     Expression<int>? balanceMinor,
     Expression<String>? iconKey,
     Expression<String>? note,
@@ -953,7 +901,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (accountType != null) 'account_type': accountType,
       if (accountSubtype != null) 'account_subtype': accountSubtype,
       if (parentId != null) 'parent_id': parentId,
-      if (currencyCode != null) 'currency_code': currencyCode,
       if (balanceMinor != null) 'balance_minor': balanceMinor,
       if (iconKey != null) 'icon_key': iconKey,
       if (note != null) 'note': note,
@@ -976,7 +923,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<AccountType>? accountType,
     Value<AccountSubtype?>? accountSubtype,
     Value<int?>? parentId,
-    Value<String>? currencyCode,
     Value<int>? balanceMinor,
     Value<String?>? iconKey,
     Value<String?>? note,
@@ -997,7 +943,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       accountType: accountType ?? this.accountType,
       accountSubtype: accountSubtype ?? this.accountSubtype,
       parentId: parentId ?? this.parentId,
-      currencyCode: currencyCode ?? this.currencyCode,
       balanceMinor: balanceMinor ?? this.balanceMinor,
       iconKey: iconKey ?? this.iconKey,
       note: note ?? this.note,
@@ -1035,9 +980,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     }
     if (parentId.present) {
       map['parent_id'] = Variable<int>(parentId.value);
-    }
-    if (currencyCode.present) {
-      map['currency_code'] = Variable<String>(currencyCode.value);
     }
     if (balanceMinor.present) {
       map['balance_minor'] = Variable<int>(balanceMinor.value);
@@ -1093,7 +1035,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('accountType: $accountType, ')
           ..write('accountSubtype: $accountSubtype, ')
           ..write('parentId: $parentId, ')
-          ..write('currencyCode: $currencyCode, ')
           ..write('balanceMinor: $balanceMinor, ')
           ..write('iconKey: $iconKey, ')
           ..write('note: $note, ')
@@ -1431,21 +1372,6 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
-    'currencyCode',
-  );
-  @override
-  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
-    'currency_code',
-    aliasedName,
-    false,
-    additionalChecks: GeneratedColumn.checkTextLength(
-      minTextLength: 3,
-      maxTextLength: 3,
-    ),
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
   static const VerificationMeta _primaryAmountMinorMeta =
       const VerificationMeta('primaryAmountMinor');
   @override
@@ -1637,7 +1563,6 @@ class $TransactionsTable extends Transactions
     rootTransactionId,
     businessPurpose,
     occurredAt,
-    currencyCode,
     primaryAmountMinor,
     counterpartyName,
     note,
@@ -1687,17 +1612,6 @@ class $TransactionsTable extends Transactions
       );
     } else if (isInserting) {
       context.missing(_occurredAtMeta);
-    }
-    if (data.containsKey('currency_code')) {
-      context.handle(
-        _currencyCodeMeta,
-        currencyCode.isAcceptableOrUnknown(
-          data['currency_code']!,
-          _currencyCodeMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_currencyCodeMeta);
     }
     if (data.containsKey('primary_amount_minor')) {
       context.handle(
@@ -1829,11 +1743,6 @@ class $TransactionsTable extends Transactions
             DriftSqlType.dateTime,
             data['${effectivePrefix}occurred_at'],
           )!,
-      currencyCode:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}currency_code'],
-          )!,
       primaryAmountMinor:
           attachedDatabase.typeMapping.read(
             DriftSqlType.int,
@@ -1952,7 +1861,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final int? rootTransactionId;
   final BusinessPurpose businessPurpose;
   final DateTime occurredAt;
-  final String currencyCode;
   final int primaryAmountMinor;
   final String? counterpartyName;
   final String? note;
@@ -1975,7 +1883,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     this.rootTransactionId,
     required this.businessPurpose,
     required this.occurredAt,
-    required this.currencyCode,
     required this.primaryAmountMinor,
     this.counterpartyName,
     this.note,
@@ -2007,7 +1914,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       );
     }
     map['occurred_at'] = Variable<DateTime>(occurredAt);
-    map['currency_code'] = Variable<String>(currencyCode);
     map['primary_amount_minor'] = Variable<int>(primaryAmountMinor);
     if (!nullToAbsent || counterpartyName != null) {
       map['counterparty_name'] = Variable<String>(counterpartyName);
@@ -2073,7 +1979,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
               : Value(rootTransactionId),
       businessPurpose: Value(businessPurpose),
       occurredAt: Value(occurredAt),
-      currencyCode: Value(currencyCode),
       primaryAmountMinor: Value(primaryAmountMinor),
       counterpartyName:
           counterpartyName == null && nullToAbsent
@@ -2130,7 +2035,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
         serializer.fromJson<String>(json['businessPurpose']),
       ),
       occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
-      currencyCode: serializer.fromJson<String>(json['currencyCode']),
       primaryAmountMinor: serializer.fromJson<int>(json['primaryAmountMinor']),
       counterpartyName: serializer.fromJson<String?>(json['counterpartyName']),
       note: serializer.fromJson<String?>(json['note']),
@@ -2178,7 +2082,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
         $TransactionsTable.$converterbusinessPurpose.toJson(businessPurpose),
       ),
       'occurredAt': serializer.toJson<DateTime>(occurredAt),
-      'currencyCode': serializer.toJson<String>(currencyCode),
       'primaryAmountMinor': serializer.toJson<int>(primaryAmountMinor),
       'counterpartyName': serializer.toJson<String?>(counterpartyName),
       'note': serializer.toJson<String?>(note),
@@ -2216,7 +2119,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     Value<int?> rootTransactionId = const Value.absent(),
     BusinessPurpose? businessPurpose,
     DateTime? occurredAt,
-    String? currencyCode,
     int? primaryAmountMinor,
     Value<String?> counterpartyName = const Value.absent(),
     Value<String?> note = const Value.absent(),
@@ -2242,7 +2144,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
             : this.rootTransactionId,
     businessPurpose: businessPurpose ?? this.businessPurpose,
     occurredAt: occurredAt ?? this.occurredAt,
-    currencyCode: currencyCode ?? this.currencyCode,
     primaryAmountMinor: primaryAmountMinor ?? this.primaryAmountMinor,
     counterpartyName:
         counterpartyName.present
@@ -2287,10 +2188,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
               : this.businessPurpose,
       occurredAt:
           data.occurredAt.present ? data.occurredAt.value : this.occurredAt,
-      currencyCode:
-          data.currencyCode.present
-              ? data.currencyCode.value
-              : this.currencyCode,
       primaryAmountMinor:
           data.primaryAmountMinor.present
               ? data.primaryAmountMinor.value
@@ -2349,7 +2246,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('rootTransactionId: $rootTransactionId, ')
           ..write('businessPurpose: $businessPurpose, ')
           ..write('occurredAt: $occurredAt, ')
-          ..write('currencyCode: $currencyCode, ')
           ..write('primaryAmountMinor: $primaryAmountMinor, ')
           ..write('counterpartyName: $counterpartyName, ')
           ..write('note: $note, ')
@@ -2381,7 +2277,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     rootTransactionId,
     businessPurpose,
     occurredAt,
-    currencyCode,
     primaryAmountMinor,
     counterpartyName,
     note,
@@ -2408,7 +2303,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.rootTransactionId == this.rootTransactionId &&
           other.businessPurpose == this.businessPurpose &&
           other.occurredAt == this.occurredAt &&
-          other.currencyCode == this.currencyCode &&
           other.primaryAmountMinor == this.primaryAmountMinor &&
           other.counterpartyName == this.counterpartyName &&
           other.note == this.note &&
@@ -2435,7 +2329,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<int?> rootTransactionId;
   final Value<BusinessPurpose> businessPurpose;
   final Value<DateTime> occurredAt;
-  final Value<String> currencyCode;
   final Value<int> primaryAmountMinor;
   final Value<String?> counterpartyName;
   final Value<String?> note;
@@ -2458,7 +2351,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.rootTransactionId = const Value.absent(),
     this.businessPurpose = const Value.absent(),
     this.occurredAt = const Value.absent(),
-    this.currencyCode = const Value.absent(),
     this.primaryAmountMinor = const Value.absent(),
     this.counterpartyName = const Value.absent(),
     this.note = const Value.absent(),
@@ -2482,7 +2374,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.rootTransactionId = const Value.absent(),
     required BusinessPurpose businessPurpose,
     required DateTime occurredAt,
-    required String currencyCode,
     required int primaryAmountMinor,
     this.counterpartyName = const Value.absent(),
     this.note = const Value.absent(),
@@ -2502,7 +2393,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.updatedAt = const Value.absent(),
   }) : businessPurpose = Value(businessPurpose),
        occurredAt = Value(occurredAt),
-       currencyCode = Value(currencyCode),
        primaryAmountMinor = Value(primaryAmountMinor),
        mutationKind = Value(mutationKind),
        businessState = Value(businessState),
@@ -2512,7 +2402,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<int>? rootTransactionId,
     Expression<String>? businessPurpose,
     Expression<DateTime>? occurredAt,
-    Expression<String>? currencyCode,
     Expression<int>? primaryAmountMinor,
     Expression<String>? counterpartyName,
     Expression<String>? note,
@@ -2536,7 +2425,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (rootTransactionId != null) 'root_transaction_id': rootTransactionId,
       if (businessPurpose != null) 'business_purpose': businessPurpose,
       if (occurredAt != null) 'occurred_at': occurredAt,
-      if (currencyCode != null) 'currency_code': currencyCode,
       if (primaryAmountMinor != null)
         'primary_amount_minor': primaryAmountMinor,
       if (counterpartyName != null) 'counterparty_name': counterpartyName,
@@ -2568,7 +2456,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<int?>? rootTransactionId,
     Value<BusinessPurpose>? businessPurpose,
     Value<DateTime>? occurredAt,
-    Value<String>? currencyCode,
     Value<int>? primaryAmountMinor,
     Value<String?>? counterpartyName,
     Value<String?>? note,
@@ -2592,7 +2479,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       rootTransactionId: rootTransactionId ?? this.rootTransactionId,
       businessPurpose: businessPurpose ?? this.businessPurpose,
       occurredAt: occurredAt ?? this.occurredAt,
-      currencyCode: currencyCode ?? this.currencyCode,
       primaryAmountMinor: primaryAmountMinor ?? this.primaryAmountMinor,
       counterpartyName: counterpartyName ?? this.counterpartyName,
       note: note ?? this.note,
@@ -2633,9 +2519,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     }
     if (occurredAt.present) {
       map['occurred_at'] = Variable<DateTime>(occurredAt.value);
-    }
-    if (currencyCode.present) {
-      map['currency_code'] = Variable<String>(currencyCode.value);
     }
     if (primaryAmountMinor.present) {
       map['primary_amount_minor'] = Variable<int>(primaryAmountMinor.value);
@@ -2714,7 +2597,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('rootTransactionId: $rootTransactionId, ')
           ..write('businessPurpose: $businessPurpose, ')
           ..write('occurredAt: $occurredAt, ')
-          ..write('currencyCode: $currencyCode, ')
           ..write('primaryAmountMinor: $primaryAmountMinor, ')
           ..write('counterpartyName: $counterpartyName, ')
           ..write('note: $note, ')
@@ -3740,21 +3622,6 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
-    'currencyCode',
-  );
-  @override
-  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
-    'currency_code',
-    aliasedName,
-    false,
-    additionalChecks: GeneratedColumn.checkTextLength(
-      minTextLength: 3,
-      maxTextLength: 3,
-    ),
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -3785,7 +3652,6 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     monthKey,
     accountId,
     amountMinor,
-    currencyCode,
     createdAt,
     updatedAt,
   ];
@@ -3829,17 +3695,6 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     } else if (isInserting) {
       context.missing(_amountMinorMeta);
     }
-    if (data.containsKey('currency_code')) {
-      context.handle(
-        _currencyCodeMeta,
-        currencyCode.isAcceptableOrUnknown(
-          data['currency_code']!,
-          _currencyCodeMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_currencyCodeMeta);
-    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -3880,11 +3735,6 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
             DriftSqlType.int,
             data['${effectivePrefix}amount_minor'],
           )!,
-      currencyCode:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}currency_code'],
-          )!,
       createdAt:
           attachedDatabase.typeMapping.read(
             DriftSqlType.dateTime,
@@ -3909,7 +3759,6 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
   final int monthKey;
   final int? accountId;
   final int amountMinor;
-  final String currencyCode;
   final DateTime createdAt;
   final DateTime updatedAt;
   const BudgetRow({
@@ -3917,7 +3766,6 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     required this.monthKey,
     this.accountId,
     required this.amountMinor,
-    required this.currencyCode,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -3930,7 +3778,6 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       map['account_id'] = Variable<int>(accountId);
     }
     map['amount_minor'] = Variable<int>(amountMinor);
-    map['currency_code'] = Variable<String>(currencyCode);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -3945,7 +3792,6 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
               ? const Value.absent()
               : Value(accountId),
       amountMinor: Value(amountMinor),
-      currencyCode: Value(currencyCode),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -3961,7 +3807,6 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       monthKey: serializer.fromJson<int>(json['monthKey']),
       accountId: serializer.fromJson<int?>(json['accountId']),
       amountMinor: serializer.fromJson<int>(json['amountMinor']),
-      currencyCode: serializer.fromJson<String>(json['currencyCode']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -3974,7 +3819,6 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       'monthKey': serializer.toJson<int>(monthKey),
       'accountId': serializer.toJson<int?>(accountId),
       'amountMinor': serializer.toJson<int>(amountMinor),
-      'currencyCode': serializer.toJson<String>(currencyCode),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -3985,7 +3829,6 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     int? monthKey,
     Value<int?> accountId = const Value.absent(),
     int? amountMinor,
-    String? currencyCode,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => BudgetRow(
@@ -3993,7 +3836,6 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     monthKey: monthKey ?? this.monthKey,
     accountId: accountId.present ? accountId.value : this.accountId,
     amountMinor: amountMinor ?? this.amountMinor,
-    currencyCode: currencyCode ?? this.currencyCode,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -4004,10 +3846,6 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       accountId: data.accountId.present ? data.accountId.value : this.accountId,
       amountMinor:
           data.amountMinor.present ? data.amountMinor.value : this.amountMinor,
-      currencyCode:
-          data.currencyCode.present
-              ? data.currencyCode.value
-              : this.currencyCode,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -4020,7 +3858,6 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
           ..write('monthKey: $monthKey, ')
           ..write('accountId: $accountId, ')
           ..write('amountMinor: $amountMinor, ')
-          ..write('currencyCode: $currencyCode, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -4028,15 +3865,8 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
   }
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    monthKey,
-    accountId,
-    amountMinor,
-    currencyCode,
-    createdAt,
-    updatedAt,
-  );
+  int get hashCode =>
+      Object.hash(id, monthKey, accountId, amountMinor, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4045,7 +3875,6 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
           other.monthKey == this.monthKey &&
           other.accountId == this.accountId &&
           other.amountMinor == this.amountMinor &&
-          other.currencyCode == this.currencyCode &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -4055,7 +3884,6 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
   final Value<int> monthKey;
   final Value<int?> accountId;
   final Value<int> amountMinor;
-  final Value<String> currencyCode;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const BudgetsCompanion({
@@ -4063,7 +3891,6 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     this.monthKey = const Value.absent(),
     this.accountId = const Value.absent(),
     this.amountMinor = const Value.absent(),
-    this.currencyCode = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -4072,18 +3899,15 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     required int monthKey,
     this.accountId = const Value.absent(),
     required int amountMinor,
-    required String currencyCode,
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : monthKey = Value(monthKey),
-       amountMinor = Value(amountMinor),
-       currencyCode = Value(currencyCode);
+       amountMinor = Value(amountMinor);
   static Insertable<BudgetRow> custom({
     Expression<int>? id,
     Expression<int>? monthKey,
     Expression<int>? accountId,
     Expression<int>? amountMinor,
-    Expression<String>? currencyCode,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -4092,7 +3916,6 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
       if (monthKey != null) 'month_key': monthKey,
       if (accountId != null) 'account_id': accountId,
       if (amountMinor != null) 'amount_minor': amountMinor,
-      if (currencyCode != null) 'currency_code': currencyCode,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -4103,7 +3926,6 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     Value<int>? monthKey,
     Value<int?>? accountId,
     Value<int>? amountMinor,
-    Value<String>? currencyCode,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -4112,7 +3934,6 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
       monthKey: monthKey ?? this.monthKey,
       accountId: accountId ?? this.accountId,
       amountMinor: amountMinor ?? this.amountMinor,
-      currencyCode: currencyCode ?? this.currencyCode,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -4133,9 +3954,6 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     if (amountMinor.present) {
       map['amount_minor'] = Variable<int>(amountMinor.value);
     }
-    if (currencyCode.present) {
-      map['currency_code'] = Variable<String>(currencyCode.value);
-    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -4152,7 +3970,6 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
           ..write('monthKey: $monthKey, ')
           ..write('accountId: $accountId, ')
           ..write('amountMinor: $amountMinor, ')
-          ..write('currencyCode: $currencyCode, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -4338,21 +4155,6 @@ class $InstallmentContractsTable extends InstallmentContracts
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
-  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
-    'currencyCode',
-  );
-  @override
-  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
-    'currency_code',
-    aliasedName,
-    false,
-    additionalChecks: GeneratedColumn.checkTextLength(
-      minTextLength: 3,
-      maxTextLength: 3,
-    ),
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
   @override
   late final GeneratedColumnWithTypeConverter<InstallmentContractStatus, String>
   status = GeneratedColumn<String>(
@@ -4414,7 +4216,6 @@ class $InstallmentContractsTable extends InstallmentContracts
     interestRatePpm,
     interestAccrualMethod,
     totalFeeMinor,
-    currencyCode,
     status,
     note,
     createdAt,
@@ -4537,17 +4338,6 @@ class $InstallmentContractsTable extends InstallmentContracts
         ),
       );
     }
-    if (data.containsKey('currency_code')) {
-      context.handle(
-        _currencyCodeMeta,
-        currencyCode.isAcceptableOrUnknown(
-          data['currency_code']!,
-          _currencyCodeMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_currencyCodeMeta);
-    }
     if (data.containsKey('note')) {
       context.handle(
         _noteMeta,
@@ -4656,11 +4446,6 @@ class $InstallmentContractsTable extends InstallmentContracts
             DriftSqlType.int,
             data['${effectivePrefix}total_fee_minor'],
           )!,
-      currencyCode:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}currency_code'],
-          )!,
       status: $InstallmentContractsTable.$converterstatus.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -4744,7 +4529,6 @@ class InstallmentContractRow extends DataClass
 
   /// 合同总手续费，用于编辑时按 method 重新分配。
   final int totalFeeMinor;
-  final String currencyCode;
   final InstallmentContractStatus status;
   final String? note;
   final DateTime createdAt;
@@ -4765,7 +4549,6 @@ class InstallmentContractRow extends DataClass
     this.interestRatePpm,
     required this.interestAccrualMethod,
     required this.totalFeeMinor,
-    required this.currencyCode,
     required this.status,
     this.note,
     required this.createdAt,
@@ -4819,7 +4602,6 @@ class InstallmentContractRow extends DataClass
       );
     }
     map['total_fee_minor'] = Variable<int>(totalFeeMinor);
-    map['currency_code'] = Variable<String>(currencyCode);
     {
       map['status'] = Variable<String>(
         $InstallmentContractsTable.$converterstatus.toSql(status),
@@ -4862,7 +4644,6 @@ class InstallmentContractRow extends DataClass
               : Value(interestRatePpm),
       interestAccrualMethod: Value(interestAccrualMethod),
       totalFeeMinor: Value(totalFeeMinor),
-      currencyCode: Value(currencyCode),
       status: Value(status),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       createdAt: Value(createdAt),
@@ -4906,7 +4687,6 @@ class InstallmentContractRow extends DataClass
           .$converterinterestAccrualMethod
           .fromJson(serializer.fromJson<String>(json['interestAccrualMethod'])),
       totalFeeMinor: serializer.fromJson<int>(json['totalFeeMinor']),
-      currencyCode: serializer.fromJson<String>(json['currencyCode']),
       status: $InstallmentContractsTable.$converterstatus.fromJson(
         serializer.fromJson<String>(json['status']),
       ),
@@ -4950,7 +4730,6 @@ class InstallmentContractRow extends DataClass
         ),
       ),
       'totalFeeMinor': serializer.toJson<int>(totalFeeMinor),
-      'currencyCode': serializer.toJson<String>(currencyCode),
       'status': serializer.toJson<String>(
         $InstallmentContractsTable.$converterstatus.toJson(status),
       ),
@@ -4976,7 +4755,6 @@ class InstallmentContractRow extends DataClass
     Value<int?> interestRatePpm = const Value.absent(),
     InterestAccrualMethod? interestAccrualMethod,
     int? totalFeeMinor,
-    String? currencyCode,
     InstallmentContractStatus? status,
     Value<String?> note = const Value.absent(),
     DateTime? createdAt,
@@ -5007,7 +4785,6 @@ class InstallmentContractRow extends DataClass
         interestRatePpm.present ? interestRatePpm.value : this.interestRatePpm,
     interestAccrualMethod: interestAccrualMethod ?? this.interestAccrualMethod,
     totalFeeMinor: totalFeeMinor ?? this.totalFeeMinor,
-    currencyCode: currencyCode ?? this.currencyCode,
     status: status ?? this.status,
     note: note.present ? note.value : this.note,
     createdAt: createdAt ?? this.createdAt,
@@ -5070,10 +4847,6 @@ class InstallmentContractRow extends DataClass
           data.totalFeeMinor.present
               ? data.totalFeeMinor.value
               : this.totalFeeMinor,
-      currencyCode:
-          data.currencyCode.present
-              ? data.currencyCode.value
-              : this.currencyCode,
       status: data.status.present ? data.status.value : this.status,
       note: data.note.present ? data.note.value : this.note,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -5099,7 +4872,6 @@ class InstallmentContractRow extends DataClass
           ..write('interestRatePpm: $interestRatePpm, ')
           ..write('interestAccrualMethod: $interestAccrualMethod, ')
           ..write('totalFeeMinor: $totalFeeMinor, ')
-          ..write('currencyCode: $currencyCode, ')
           ..write('status: $status, ')
           ..write('note: $note, ')
           ..write('createdAt: $createdAt, ')
@@ -5125,7 +4897,6 @@ class InstallmentContractRow extends DataClass
     interestRatePpm,
     interestAccrualMethod,
     totalFeeMinor,
-    currencyCode,
     status,
     note,
     createdAt,
@@ -5150,7 +4921,6 @@ class InstallmentContractRow extends DataClass
           other.interestRatePpm == this.interestRatePpm &&
           other.interestAccrualMethod == this.interestAccrualMethod &&
           other.totalFeeMinor == this.totalFeeMinor &&
-          other.currencyCode == this.currencyCode &&
           other.status == this.status &&
           other.note == this.note &&
           other.createdAt == this.createdAt &&
@@ -5174,7 +4944,6 @@ class InstallmentContractsCompanion
   final Value<int?> interestRatePpm;
   final Value<InterestAccrualMethod> interestAccrualMethod;
   final Value<int> totalFeeMinor;
-  final Value<String> currencyCode;
   final Value<InstallmentContractStatus> status;
   final Value<String?> note;
   final Value<DateTime> createdAt;
@@ -5195,7 +4964,6 @@ class InstallmentContractsCompanion
     this.interestRatePpm = const Value.absent(),
     this.interestAccrualMethod = const Value.absent(),
     this.totalFeeMinor = const Value.absent(),
-    this.currencyCode = const Value.absent(),
     this.status = const Value.absent(),
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -5217,7 +4985,6 @@ class InstallmentContractsCompanion
     this.interestRatePpm = const Value.absent(),
     this.interestAccrualMethod = const Value.absent(),
     this.totalFeeMinor = const Value.absent(),
-    required String currencyCode,
     required InstallmentContractStatus status,
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -5230,7 +4997,6 @@ class InstallmentContractsCompanion
        firstRepaymentDate = Value(firstRepaymentDate),
        lastRepaymentDate = Value(lastRepaymentDate),
        repaymentMethod = Value(repaymentMethod),
-       currencyCode = Value(currencyCode),
        status = Value(status);
   static Insertable<InstallmentContractRow> custom({
     Expression<int>? id,
@@ -5248,7 +5014,6 @@ class InstallmentContractsCompanion
     Expression<int>? interestRatePpm,
     Expression<String>? interestAccrualMethod,
     Expression<int>? totalFeeMinor,
-    Expression<String>? currencyCode,
     Expression<String>? status,
     Expression<String>? note,
     Expression<DateTime>? createdAt,
@@ -5276,7 +5041,6 @@ class InstallmentContractsCompanion
       if (interestAccrualMethod != null)
         'interest_accrual_method': interestAccrualMethod,
       if (totalFeeMinor != null) 'total_fee_minor': totalFeeMinor,
-      if (currencyCode != null) 'currency_code': currencyCode,
       if (status != null) 'status': status,
       if (note != null) 'note': note,
       if (createdAt != null) 'created_at': createdAt,
@@ -5300,7 +5064,6 @@ class InstallmentContractsCompanion
     Value<int?>? interestRatePpm,
     Value<InterestAccrualMethod>? interestAccrualMethod,
     Value<int>? totalFeeMinor,
-    Value<String>? currencyCode,
     Value<InstallmentContractStatus>? status,
     Value<String?>? note,
     Value<DateTime>? createdAt,
@@ -5325,7 +5088,6 @@ class InstallmentContractsCompanion
       interestAccrualMethod:
           interestAccrualMethod ?? this.interestAccrualMethod,
       totalFeeMinor: totalFeeMinor ?? this.totalFeeMinor,
-      currencyCode: currencyCode ?? this.currencyCode,
       status: status ?? this.status,
       note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
@@ -5401,9 +5163,6 @@ class InstallmentContractsCompanion
     if (totalFeeMinor.present) {
       map['total_fee_minor'] = Variable<int>(totalFeeMinor.value);
     }
-    if (currencyCode.present) {
-      map['currency_code'] = Variable<String>(currencyCode.value);
-    }
     if (status.present) {
       map['status'] = Variable<String>(
         $InstallmentContractsTable.$converterstatus.toSql(status.value),
@@ -5439,7 +5198,6 @@ class InstallmentContractsCompanion
           ..write('interestRatePpm: $interestRatePpm, ')
           ..write('interestAccrualMethod: $interestAccrualMethod, ')
           ..write('totalFeeMinor: $totalFeeMinor, ')
-          ..write('currencyCode: $currencyCode, ')
           ..write('status: $status, ')
           ..write('note: $note, ')
           ..write('createdAt: $createdAt, ')
@@ -6676,7 +6434,6 @@ typedef $$AccountsTableCreateCompanionBuilder =
       required AccountType accountType,
       Value<AccountSubtype?> accountSubtype,
       Value<int?> parentId,
-      required String currencyCode,
       Value<int> balanceMinor,
       Value<String?> iconKey,
       Value<String?> note,
@@ -6698,7 +6455,6 @@ typedef $$AccountsTableUpdateCompanionBuilder =
       Value<AccountType> accountType,
       Value<AccountSubtype?> accountSubtype,
       Value<int?> parentId,
-      Value<String> currencyCode,
       Value<int> balanceMinor,
       Value<String?> iconKey,
       Value<String?> note,
@@ -6747,11 +6503,6 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<int> get parentId => $composableBuilder(
     column: $table.parentId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get currencyCode => $composableBuilder(
-    column: $table.currencyCode,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6857,11 +6608,6 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get currencyCode => $composableBuilder(
-    column: $table.currencyCode,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<int> get balanceMinor => $composableBuilder(
     column: $table.balanceMinor,
     builder: (column) => ColumnOrderings(column),
@@ -6958,11 +6704,6 @@ class $$AccountsTableAnnotationComposer
   GeneratedColumn<int> get parentId =>
       $composableBuilder(column: $table.parentId, builder: (column) => column);
 
-  GeneratedColumn<String> get currencyCode => $composableBuilder(
-    column: $table.currencyCode,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<int> get balanceMinor => $composableBuilder(
     column: $table.balanceMinor,
     builder: (column) => column,
@@ -7049,7 +6790,6 @@ class $$AccountsTableTableManager
                 Value<AccountType> accountType = const Value.absent(),
                 Value<AccountSubtype?> accountSubtype = const Value.absent(),
                 Value<int?> parentId = const Value.absent(),
-                Value<String> currencyCode = const Value.absent(),
                 Value<int> balanceMinor = const Value.absent(),
                 Value<String?> iconKey = const Value.absent(),
                 Value<String?> note = const Value.absent(),
@@ -7069,7 +6809,6 @@ class $$AccountsTableTableManager
                 accountType: accountType,
                 accountSubtype: accountSubtype,
                 parentId: parentId,
-                currencyCode: currencyCode,
                 balanceMinor: balanceMinor,
                 iconKey: iconKey,
                 note: note,
@@ -7091,7 +6830,6 @@ class $$AccountsTableTableManager
                 required AccountType accountType,
                 Value<AccountSubtype?> accountSubtype = const Value.absent(),
                 Value<int?> parentId = const Value.absent(),
-                required String currencyCode,
                 Value<int> balanceMinor = const Value.absent(),
                 Value<String?> iconKey = const Value.absent(),
                 Value<String?> note = const Value.absent(),
@@ -7111,7 +6849,6 @@ class $$AccountsTableTableManager
                 accountType: accountType,
                 accountSubtype: accountSubtype,
                 parentId: parentId,
-                currencyCode: currencyCode,
                 balanceMinor: balanceMinor,
                 iconKey: iconKey,
                 note: note,
@@ -7331,7 +7068,6 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<int?> rootTransactionId,
       required BusinessPurpose businessPurpose,
       required DateTime occurredAt,
-      required String currencyCode,
       required int primaryAmountMinor,
       Value<String?> counterpartyName,
       Value<String?> note,
@@ -7356,7 +7092,6 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<int?> rootTransactionId,
       Value<BusinessPurpose> businessPurpose,
       Value<DateTime> occurredAt,
-      Value<String> currencyCode,
       Value<int> primaryAmountMinor,
       Value<String?> counterpartyName,
       Value<String?> note,
@@ -7403,11 +7138,6 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<DateTime> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get currencyCode => $composableBuilder(
-    column: $table.currencyCode,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7530,11 +7260,6 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get currencyCode => $composableBuilder(
-    column: $table.currencyCode,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<int> get primaryAmountMinor => $composableBuilder(
     column: $table.primaryAmountMinor,
     builder: (column) => ColumnOrderings(column),
@@ -7646,11 +7371,6 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get currencyCode => $composableBuilder(
-    column: $table.currencyCode,
     builder: (column) => column,
   );
 
@@ -7768,7 +7488,6 @@ class $$TransactionsTableTableManager
                 Value<int?> rootTransactionId = const Value.absent(),
                 Value<BusinessPurpose> businessPurpose = const Value.absent(),
                 Value<DateTime> occurredAt = const Value.absent(),
-                Value<String> currencyCode = const Value.absent(),
                 Value<int> primaryAmountMinor = const Value.absent(),
                 Value<String?> counterpartyName = const Value.absent(),
                 Value<String?> note = const Value.absent(),
@@ -7793,7 +7512,6 @@ class $$TransactionsTableTableManager
                 rootTransactionId: rootTransactionId,
                 businessPurpose: businessPurpose,
                 occurredAt: occurredAt,
-                currencyCode: currencyCode,
                 primaryAmountMinor: primaryAmountMinor,
                 counterpartyName: counterpartyName,
                 note: note,
@@ -7818,7 +7536,6 @@ class $$TransactionsTableTableManager
                 Value<int?> rootTransactionId = const Value.absent(),
                 required BusinessPurpose businessPurpose,
                 required DateTime occurredAt,
-                required String currencyCode,
                 required int primaryAmountMinor,
                 Value<String?> counterpartyName = const Value.absent(),
                 Value<String?> note = const Value.absent(),
@@ -7843,7 +7560,6 @@ class $$TransactionsTableTableManager
                 rootTransactionId: rootTransactionId,
                 businessPurpose: businessPurpose,
                 occurredAt: occurredAt,
-                currencyCode: currencyCode,
                 primaryAmountMinor: primaryAmountMinor,
                 counterpartyName: counterpartyName,
                 note: note,
@@ -8408,7 +8124,6 @@ typedef $$BudgetsTableCreateCompanionBuilder =
       required int monthKey,
       Value<int?> accountId,
       required int amountMinor,
-      required String currencyCode,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -8418,7 +8133,6 @@ typedef $$BudgetsTableUpdateCompanionBuilder =
       Value<int> monthKey,
       Value<int?> accountId,
       Value<int> amountMinor,
-      Value<String> currencyCode,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -8449,11 +8163,6 @@ class $$BudgetsTableFilterComposer
 
   ColumnFilters<int> get amountMinor => $composableBuilder(
     column: $table.amountMinor,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get currencyCode => $composableBuilder(
-    column: $table.currencyCode,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8497,11 +8206,6 @@ class $$BudgetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get currencyCode => $composableBuilder(
-    column: $table.currencyCode,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -8533,11 +8237,6 @@ class $$BudgetsTableAnnotationComposer
 
   GeneratedColumn<int> get amountMinor => $composableBuilder(
     column: $table.amountMinor,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get currencyCode => $composableBuilder(
-    column: $table.currencyCode,
     builder: (column) => column,
   );
 
@@ -8580,7 +8279,6 @@ class $$BudgetsTableTableManager
                 Value<int> monthKey = const Value.absent(),
                 Value<int?> accountId = const Value.absent(),
                 Value<int> amountMinor = const Value.absent(),
-                Value<String> currencyCode = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => BudgetsCompanion(
@@ -8588,7 +8286,6 @@ class $$BudgetsTableTableManager
                 monthKey: monthKey,
                 accountId: accountId,
                 amountMinor: amountMinor,
-                currencyCode: currencyCode,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -8598,7 +8295,6 @@ class $$BudgetsTableTableManager
                 required int monthKey,
                 Value<int?> accountId = const Value.absent(),
                 required int amountMinor,
-                required String currencyCode,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => BudgetsCompanion.insert(
@@ -8606,7 +8302,6 @@ class $$BudgetsTableTableManager
                 monthKey: monthKey,
                 accountId: accountId,
                 amountMinor: amountMinor,
-                currencyCode: currencyCode,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -8656,7 +8351,6 @@ typedef $$InstallmentContractsTableCreateCompanionBuilder =
       Value<int?> interestRatePpm,
       Value<InterestAccrualMethod> interestAccrualMethod,
       Value<int> totalFeeMinor,
-      required String currencyCode,
       required InstallmentContractStatus status,
       Value<String?> note,
       Value<DateTime> createdAt,
@@ -8679,7 +8373,6 @@ typedef $$InstallmentContractsTableUpdateCompanionBuilder =
       Value<int?> interestRatePpm,
       Value<InterestAccrualMethod> interestAccrualMethod,
       Value<int> totalFeeMinor,
-      Value<String> currencyCode,
       Value<InstallmentContractStatus> status,
       Value<String?> note,
       Value<DateTime> createdAt,
@@ -8787,11 +8480,6 @@ class $$InstallmentContractsTableFilterComposer
 
   ColumnFilters<int> get totalFeeMinor => $composableBuilder(
     column: $table.totalFeeMinor,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get currencyCode => $composableBuilder(
-    column: $table.currencyCode,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8905,11 +8593,6 @@ class $$InstallmentContractsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get currencyCode => $composableBuilder(
-    column: $table.currencyCode,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -9017,11 +8700,6 @@ class $$InstallmentContractsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get currencyCode => $composableBuilder(
-    column: $table.currencyCode,
-    builder: (column) => column,
-  );
-
   GeneratedColumnWithTypeConverter<InstallmentContractStatus, String>
   get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
@@ -9100,7 +8778,6 @@ class $$InstallmentContractsTableTableManager
                 Value<InterestAccrualMethod> interestAccrualMethod =
                     const Value.absent(),
                 Value<int> totalFeeMinor = const Value.absent(),
-                Value<String> currencyCode = const Value.absent(),
                 Value<InstallmentContractStatus> status = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -9121,7 +8798,6 @@ class $$InstallmentContractsTableTableManager
                 interestRatePpm: interestRatePpm,
                 interestAccrualMethod: interestAccrualMethod,
                 totalFeeMinor: totalFeeMinor,
-                currencyCode: currencyCode,
                 status: status,
                 note: note,
                 createdAt: createdAt,
@@ -9146,7 +8822,6 @@ class $$InstallmentContractsTableTableManager
                 Value<InterestAccrualMethod> interestAccrualMethod =
                     const Value.absent(),
                 Value<int> totalFeeMinor = const Value.absent(),
-                required String currencyCode,
                 required InstallmentContractStatus status,
                 Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -9167,7 +8842,6 @@ class $$InstallmentContractsTableTableManager
                 interestRatePpm: interestRatePpm,
                 interestAccrualMethod: interestAccrualMethod,
                 totalFeeMinor: totalFeeMinor,
-                currencyCode: currencyCode,
                 status: status,
                 note: note,
                 createdAt: createdAt,

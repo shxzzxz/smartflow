@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
-import 'package:smartflow/domain/accounting/accounting_api.dart';
+import 'package:smartflow/application/accounting/accounting_api.dart';
 import 'package:smartflow/features/home/widgets/transaction_progress_badges.dart';
 
 void main() {
@@ -120,7 +120,6 @@ TransactionListItem _item({
     businessPurpose: BusinessPurpose.dailyExpense,
     businessState: BusinessState.current,
     occurredAt: DateTime(2026, 5, 12, 8, 30),
-    currencyCode: Money.defaultCurrency,
     primaryAmount: const Money(minorUnits: 1000),
     entries: const [],
     details: details,

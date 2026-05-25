@@ -1,33 +1,30 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../data/database_provider.dart';
-import '../data/accounting/repositories/drift_account_repository.dart';
-import '../data/accounting/repositories/drift_balance_aggregate_repository.dart';
-import '../data/accounting/repositories/drift_entry_read_repository.dart';
+import '../infrastructure/accounting/repositories/drift_account_repository.dart';
+import '../infrastructure/accounting/repositories/drift_balance_aggregate_repository.dart';
+import '../infrastructure/accounting/repositories/drift_entry_read_repository.dart';
 import '../data/credit/repositories/drift_installment_repository.dart';
-import '../data/accounting/repositories/drift_posting_repository.dart';
-import '../data/accounting/repositories/drift_system_account_resolver.dart';
-import '../data/accounting/repositories/drift_transaction_detail_read_repository.dart';
-import '../data/accounting/repositories/drift_transaction_read_repository.dart';
-import '../data/transaction/drift_transaction_runner.dart';
-import '../domain/accounting/accounting_api.dart';
-import '../domain/credit/entities/installment_contract.dart';
-import '../domain/credit/entities/installment_repayment.dart';
-import '../domain/credit/entities/installment_schedule.dart';
-import '../domain/accounting/repositories/account_repository.dart';
-import '../domain/accounting/repositories/balance_aggregate_repository.dart';
-import '../domain/accounting/repositories/entry_read_repository.dart';
+import '../infrastructure/accounting/repositories/drift_posting_repository.dart';
+import '../infrastructure/accounting/repositories/drift_system_account_resolver.dart';
+import '../infrastructure/accounting/repositories/drift_transaction_detail_read_repository.dart';
+import '../infrastructure/accounting/repositories/drift_transaction_read_repository.dart';
+import '../infrastructure/database/drift_transaction_runner.dart';
+import '../infrastructure/database/drift_update_channel_store.dart';
+import '../application/accounting/accounting_api.dart';
+import 'package:smartflow/application/credit/credit_api.dart';
+import '../domain/accounting/ports/account_repository.dart';
+import '../application/accounting/queries/balance_aggregate_repository.dart';
+import '../application/accounting/queries/entry_read_repository.dart';
 import '../domain/credit/repositories/installment_repository.dart';
-import '../domain/accounting/repositories/posting_repository.dart';
-import '../domain/accounting/repositories/system_account_resolver.dart';
-import '../domain/accounting/repositories/transaction_detail_read_repository.dart';
-import '../domain/accounting/repositories/transaction_read_repository.dart';
-import '../core/transaction/transaction_runner.dart';
-import '../domain/credit/services/credit_service.dart';
-import '../domain/credit/services/installment_metrics.dart';
-import '../domain/credit/services/installment_service.dart';
+import '../domain/accounting/ports/posting_repository.dart';
+import '../domain/accounting/ports/system_account_resolver.dart';
+import '../application/accounting/queries/transaction_detail_read_repository.dart';
+import '../application/accounting/queries/transaction_read_repository.dart';
+import '../application/shared/transaction_runner.dart';
+import '../application/shared/update_channel_store.dart';
 import '../domain/accounting/ledger/poster.dart';
-import '../domain/accounting/ledger/receipt_builder.dart';
+import '../application/accounting/use_cases/receipt_builder.dart';
 import '../core/time/month_key.dart';
 import '../core/money/money.dart';
 
@@ -79,6 +76,11 @@ TransactionRunner transactionRunner(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+UpdateChannelStore updateChannelStore(Ref ref) {
+  return DriftUpdateChannelStore(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
 AccountService accountService(Ref ref) {
   return AccountServiceImpl(
     ref.watch(accountRepositoryProvider),
@@ -114,6 +116,7 @@ TransactionService transactionService(Ref ref) {
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
     accountRepository: ref.watch(accountRepositoryProvider),
     postingRepository: ref.watch(postingRepositoryProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
   );
 }
 
@@ -136,9 +139,10 @@ FinancialMetricsService financialMetricsService(Ref ref) {
 
 @riverpod
 Stream<List<Account>> accountList(Ref ref) {
-  return ref
-      .watch(accountServiceProvider)
-      .watchAccounts({AccountType.asset, AccountType.liability});
+  return ref.watch(accountServiceProvider).watchAccounts({
+    AccountType.asset,
+    AccountType.liability,
+  });
 }
 
 /// 全量账户索引。覆盖 5 种 account_type,供 UI 层把 entries 的 accountId
@@ -353,7 +357,6 @@ Future<List<RepaymentCashflow>> installmentRepaymentCashflows(
   for (final r in repayments) {
     final view = await queryService.findTransactionDetail(r.transactionId);
     if (view == null) continue;
-    final currency = view.transaction.currencyCode;
     var principalMinor = 0;
     var interestMinor = 0;
     var feeMinor = 0;
@@ -379,9 +382,9 @@ Future<List<RepaymentCashflow>> installmentRepaymentCashflows(
         repaymentType: r.repaymentType,
         scheduleId: r.scheduleId,
         occurredAt: view.transaction.occurredAt,
-        principal: Money(minorUnits: principalMinor, currency: currency),
-        interest: Money(minorUnits: interestMinor, currency: currency),
-        fee: Money(minorUnits: feeMinor, currency: currency),
+        principal: Money(minorUnits: principalMinor),
+        interest: Money(minorUnits: interestMinor),
+        fee: Money(minorUnits: feeMinor),
       ),
     );
   }

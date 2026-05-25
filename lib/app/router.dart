@@ -1,8 +1,8 @@
 import 'package:go_router/go_router.dart';
 
 import 'app_shell.dart';
-import '../domain/accounting/accounting_api.dart';
-import '../domain/credit/enums/installment_enums.dart';
+import '../application/accounting/accounting_api.dart';
+import 'package:smartflow/application/credit/credit_api.dart';
 import '../features/accounts/pages/account_detail_page.dart';
 import '../features/accounts/pages/account_form_page.dart';
 import '../features/accounts/pages/accounts_page.dart';

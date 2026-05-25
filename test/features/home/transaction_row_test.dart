@@ -7,7 +7,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/data/database_provider.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
-import 'package:smartflow/domain/accounting/accounting_api.dart';
+import 'package:smartflow/application/accounting/accounting_api.dart';
 import 'package:smartflow/features/home/widgets/transaction_row.dart' as home;
 import 'package:smartflow/widgets/business/business_icon.dart';
 
@@ -119,21 +119,20 @@ void main() {
       routes: [
         GoRoute(
           path: '/',
-          builder: (context, state) => Scaffold(
-            body: home.TransactionRow(
-              item: _bareTransferItem(id: 3),
-            ),
-          ),
+          builder:
+              (context, state) => Scaffold(
+                body: home.TransactionRow(item: _bareTransferItem(id: 3)),
+              ),
         ),
         GoRoute(
           path: '/transactions/:id',
-          builder: (context, state) =>
-              Text("detail ${state.pathParameters['id']}"),
+          builder:
+              (context, state) => Text("detail ${state.pathParameters['id']}"),
         ),
         GoRoute(
           path: '/transactions/:id/edit',
-          builder: (context, state) =>
-              Text("edit ${state.pathParameters['id']}"),
+          builder:
+              (context, state) => Text("edit ${state.pathParameters['id']}"),
         ),
       ],
     );
@@ -164,9 +163,7 @@ void main() {
     final database = createTestDatabase();
     addTearDown(database.close);
 
-    final router = _buildTransactionRowRouter(
-      item: _bareTransferItem(id: 4),
-    );
+    final router = _buildTransactionRowRouter(item: _bareTransferItem(id: 4));
     addTearDown(router.dispose);
 
     await tester.pumpWidget(
@@ -194,9 +191,7 @@ void main() {
     final database = createTestDatabase();
     addTearDown(database.close);
 
-    final router = _buildTransactionRowRouter(
-      item: _bareTransferItem(id: 5),
-    );
+    final router = _buildTransactionRowRouter(item: _bareTransferItem(id: 5));
     addTearDown(router.dispose);
 
     await tester.pumpWidget(
@@ -231,13 +226,13 @@ GoRouter _buildTransactionRowRouter({required TransactionListItem item}) {
     routes: [
       GoRoute(
         path: '/',
-        builder: (context, state) =>
-            Scaffold(body: home.TransactionRow(item: item)),
+        builder:
+            (context, state) => Scaffold(body: home.TransactionRow(item: item)),
       ),
       GoRoute(
         path: '/transactions/:id',
-        builder: (context, state) =>
-            Text("detail ${state.pathParameters['id']}"),
+        builder:
+            (context, state) => Text("detail ${state.pathParameters['id']}"),
       ),
       GoRoute(
         path: '/transactions/:id/edit',
@@ -258,7 +253,6 @@ Future<int> _insertAccount(
         AccountsCompanion.insert(
           name: name,
           accountType: AccountType.asset,
-          currencyCode: 'CNY',
           iconKey: Value(iconKey),
         ),
       );
@@ -275,7 +269,6 @@ TransactionListItem _transferItem({
     businessPurpose: BusinessPurpose.transfer,
     businessState: BusinessState.current,
     occurredAt: DateTime(2026, 5, 12, 8, 30),
-    currencyCode: Money.defaultCurrency,
     primaryAmount: const Money(minorUnits: 1000),
     entries: [
       Entry(
@@ -310,7 +303,6 @@ TransactionListItem _reimbursementAdvanceItem({
     businessPurpose: BusinessPurpose.reimbursementAdvance,
     businessState: BusinessState.current,
     occurredAt: DateTime(2026, 5, 12, 8, 30),
-    currencyCode: Money.defaultCurrency,
     primaryAmount: const Money(minorUnits: 1000),
     entries: [
       Entry(
@@ -342,7 +334,6 @@ TransactionListItem _bareTransferItem({required int id}) {
     businessPurpose: BusinessPurpose.transfer,
     businessState: BusinessState.current,
     occurredAt: DateTime(2026, 5, 12, 8, 30),
-    currencyCode: Money.defaultCurrency,
     primaryAmount: const Money(minorUnits: 1000),
     entries: const [],
     details: const [],

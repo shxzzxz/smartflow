@@ -8,7 +8,7 @@ import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/tokens/spacing.dart';
-import '../../../domain/accounting/accounting_api.dart';
+import '../../../application/accounting/accounting_api.dart';
 import '../../../widgets/business/account_endpoint_view.dart';
 import '../../../widgets/business/account_lookup.dart';
 import '../../../widgets/business/category_avatar.dart';
@@ -38,24 +38,26 @@ class TransactionRow extends ConsumerWidget {
     final colors = Theme.of(context).colorScheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
     final textStyles = context.appTextStyles;
-    final balanceDelta = viewAccountId == null
-        ? null
-        : balanceDeltaForAccount(
-            accountId: viewAccountId!,
-            entries: item.entries,
-            accountsById: accountsById,
-            currencyCode: item.currencyCode,
-          );
+    final balanceDelta =
+        viewAccountId == null
+            ? null
+            : balanceDeltaForAccount(
+              accountId: viewAccountId!,
+              entries: item.entries,
+              accountsById: accountsById,
+            );
     final isAccountLedger = balanceDelta != null;
-    final color = isAccountLedger
-        ? colors.onSurface
-        : amountColor(colors, financeColors, item.businessPurpose);
+    final color =
+        isAccountLedger
+            ? colors.onSurface
+            : amountColor(colors, financeColors, item.businessPurpose);
     final title = transactionPrimaryLabel(item, accountsById);
     final note = item.note?.trim();
     final hasNote = note != null && note.isNotEmpty;
-    final subtitle = hasNote
-        ? '${formatTime(item.occurredAt)}  $note'
-        : formatTime(item.occurredAt);
+    final subtitle =
+        hasNote
+            ? '${formatTime(item.occurredAt)}  $note'
+            : formatTime(item.occurredAt);
     final hasBadges = _hasBadges(item);
 
     final row = InkWell(

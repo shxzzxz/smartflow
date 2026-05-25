@@ -1,8 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/providers.dart';
-import '../../../domain/accounting/accounting_api.dart';
-import '../../../domain/credit/enums/installment_enums.dart';
+import '../../../application/accounting/accounting_api.dart';
+import 'package:smartflow/application/credit/credit_api.dart';
 import '../action_policy/default_transaction_action_policy.dart';
 import '../action_policy/installment_transaction_action_policy.dart';
 import '../action_policy/transaction_action_policy.dart';

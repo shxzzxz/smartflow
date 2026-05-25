@@ -1,13 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/credit/entities/installment_contract.dart';
-import 'package:smartflow/domain/credit/entities/installment_schedule.dart';
-import 'package:smartflow/domain/credit/enums/installment_enums.dart';
-import 'package:smartflow/domain/credit/services/installment_metrics.dart';
+import 'package:smartflow/application/credit/credit_api.dart';
 
 void main() {
   const calc = InstallmentMetricsCalculator();
-  const cny = 'CNY';
 
   InstallmentContract makeContract({
     int principalMinor = 1200000,
@@ -25,7 +21,7 @@ void main() {
       id: 1,
       liabilityAccountId: 1,
       sourceType: InstallmentSourceType.disbursement,
-      principal: Money(minorUnits: principalMinor, currency: cny),
+      principal: Money(minorUnits: principalMinor),
       totalPeriods: totalPeriods,
       borrowingDate: borrowingDate ?? DateTime(2026, 5, 10),
       firstRepaymentDate: firstDate ?? DateTime(2026, 6, 10),
@@ -54,9 +50,9 @@ void main() {
       contractId: 1,
       periodNo: periodNo,
       expectedRepaymentDate: date,
-      expectedPrincipal: Money(minorUnits: principal, currency: cny),
-      expectedInterest: Money(minorUnits: interest, currency: cny),
-      expectedFee: Money(minorUnits: fee, currency: cny),
+      expectedPrincipal: Money(minorUnits: principal),
+      expectedInterest: Money(minorUnits: interest),
+      expectedFee: Money(minorUnits: fee),
       status: status,
       createdAt: DateTime(2026, 5, 10),
     );
@@ -64,18 +60,17 @@ void main() {
 
   group('InstallmentMetricsCalculator', () {
     test('零利率合同：IRR ≈ 0，总利息 = 0', () {
-      final contract = makeContract(
-        principalMinor: 1200000,
-        totalPeriods: 12,
-      );
+      final contract = makeContract(principalMinor: 1200000, totalPeriods: 12);
       final schedules = [
         for (var i = 1; i <= 12; i++)
           makeSchedule(
             id: i,
             periodNo: i,
-            date: DateTime(2026, 6 + ((i - 1) ~/ 12), 10 + 0).add(
-              Duration(days: 30 * (i - 1)),
-            ),
+            date: DateTime(
+              2026,
+              6 + ((i - 1) ~/ 12),
+              10 + 0,
+            ).add(Duration(days: 30 * (i - 1))),
             principal: 100000,
           ),
       ];
@@ -120,8 +115,7 @@ void main() {
       // nominalApr = 月IRR × 12
       expect(m.nominalApr, closeTo(m.monthlyIrr * 12, 1e-9));
       // effective ≈ (1+月)^12 -1
-      expect(m.effectiveApr,
-          closeTo(_pow(1 + m.monthlyIrr, 12) - 1, 1e-6));
+      expect(m.effectiveApr, closeTo(_pow(1 + m.monthlyIrr, 12) - 1, 1e-6));
     });
 
     test('提前还本计入 designed IRR，本金合计守恒', () {
@@ -161,9 +155,9 @@ void main() {
           transactionId: 0,
           repaymentType: InstallmentRepaymentType.extraPrincipal,
           occurredAt: DateTime(2026, 8, 1),
-          principal: const Money(minorUnits: 400000, currency: cny),
-          interest: const Money(minorUnits: 0, currency: cny),
-          fee: const Money(minorUnits: 0, currency: cny),
+          principal: const Money(minorUnits: 400000),
+          interest: const Money(minorUnits: 0),
+          fee: const Money(minorUnits: 0),
         ),
       ];
 
@@ -206,9 +200,9 @@ void main() {
           repaymentType: InstallmentRepaymentType.scheduled,
           scheduleId: 1,
           occurredAt: DateTime(2026, 6, 10),
-          principal: const Money(minorUnits: 50000, currency: cny),
-          interest: const Money(minorUnits: 500, currency: cny),
-          fee: const Money(minorUnits: 0, currency: cny),
+          principal: const Money(minorUnits: 50000),
+          interest: const Money(minorUnits: 500),
+          fee: const Money(minorUnits: 0),
         ),
       ];
 
@@ -223,8 +217,10 @@ void main() {
         repayments: repayments,
         view: ContractMetricsView.actual,
       );
-      expect(designed.totalRepayment.minorUnits,
-          actual.totalRepayment.minorUnits);
+      expect(
+        designed.totalRepayment.minorUnits,
+        actual.totalRepayment.minorUnits,
+      );
       expect(designed.monthlyIrr, closeTo(actual.monthlyIrr, 1e-9));
     });
   });

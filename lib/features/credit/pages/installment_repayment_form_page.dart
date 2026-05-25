@@ -9,10 +9,8 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_submit_button.dart';
-import '../../../domain/accounting/accounting_api.dart';
-import '../../../domain/credit/entities/installment_contract.dart';
-import '../../../domain/credit/entities/installment_schedule.dart';
-import '../../../domain/credit/services/installment_service.dart';
+import '../../../application/accounting/accounting_api.dart';
+import 'package:smartflow/application/credit/credit_api.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 
 enum InstallmentRepaymentMode { scheduled, extraPrincipal, earlySettlement }
@@ -60,12 +58,15 @@ class _InstallmentRepaymentFormPageState
 
   @override
   Widget build(BuildContext context) {
-    final contractAsync =
-        ref.watch(installmentContractProvider(widget.contractId));
-    final schedulesAsync =
-        ref.watch(installmentSchedulesProvider(widget.contractId));
-    final fundAccountsAsync =
-        ref.watch(accountsForUsageProvider(AccountUsage.repaymentSource));
+    final contractAsync = ref.watch(
+      installmentContractProvider(widget.contractId),
+    );
+    final schedulesAsync = ref.watch(
+      installmentSchedulesProvider(widget.contractId),
+    );
+    final fundAccountsAsync = ref.watch(
+      accountsForUsageProvider(AccountUsage.repaymentSource),
+    );
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -81,8 +82,7 @@ class _InstallmentRepaymentFormPageState
               : _buildForm(context, contract, schedules, accounts),
         (AsyncError(:final error), _, _) ||
         (_, AsyncError(:final error), _) ||
-        (_, _, AsyncError(:final error)) =>
-          Center(child: Text('加载失败：$error')),
+        (_, _, AsyncError(:final error)) => Center(child: Text('加载失败：$error')),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
@@ -94,17 +94,17 @@ class _InstallmentRepaymentFormPageState
     List<InstallmentSchedule> schedules,
     List<Account> fundAccounts,
   ) {
-    final schedule = widget.mode == InstallmentRepaymentMode.scheduled
-        ? _findSchedule(schedules, widget.scheduleId)
-        : null;
+    final schedule =
+        widget.mode == InstallmentRepaymentMode.scheduled
+            ? _findSchedule(schedules, widget.scheduleId)
+            : null;
 
     if (!_initialized) {
       _initialized = true;
       if (schedule != null) {
         _principalController.text = schedule.expectedPrincipal.major.toString();
         if (schedule.expectedInterest.minorUnits > 0) {
-          _interestController.text =
-              schedule.expectedInterest.major.toString();
+          _interestController.text = schedule.expectedInterest.major.toString();
         }
         if (schedule.expectedFee.minorUnits > 0) {
           _feeController.text = schedule.expectedFee.major.toString();
@@ -114,12 +114,9 @@ class _InstallmentRepaymentFormPageState
         final paidPrincipalSum = schedules
             .where((s) => s.status.name == 'paid')
             .fold<int>(0, (acc, s) => acc + s.expectedPrincipal.minorUnits);
-        final remaining =
-            contract.principal.minorUnits - paidPrincipalSum;
-        _principalController.text = Money(
-          minorUnits: remaining < 0 ? 0 : remaining,
-          currency: contract.principal.currency,
-        ).major.toString();
+        final remaining = contract.principal.minorUnits - paidPrincipalSum;
+        _principalController.text =
+            Money(minorUnits: remaining < 0 ? 0 : remaining).major.toString();
       }
       final disbursementId = contract.disbursementAccountId;
       if (disbursementId != null &&
@@ -176,12 +173,13 @@ class _InstallmentRepaymentFormPageState
                 account: _findAccount(fundAccounts, _paidFromAccountId),
                 selectedId: _paidFromAccountId,
                 placeholder: '请选择还款账户',
-                onTap: fundAccounts.isEmpty
-                    ? null
-                    : () => _pickAccount(
+                onTap:
+                    fundAccounts.isEmpty
+                        ? null
+                        : () => _pickAccount(
                           accounts: fundAccounts,
-                          onSelected: (id) =>
-                              setState(() => _paidFromAccountId = id),
+                          onSelected:
+                              (id) => setState(() => _paidFromAccountId = id),
                         ),
               ),
               NotePlainFormRow(controller: _noteController),
@@ -260,9 +258,11 @@ class _InstallmentRepaymentFormPageState
             contractId: contract.id,
             scheduleId: schedule.id,
             principal: principal,
-            interest: interest != null && interest.minorUnits > 0 ? interest : null,
+            interest:
+                interest != null && interest.minorUnits > 0 ? interest : null,
             fee: fee != null && fee.minorUnits > 0 ? fee : null,
-            discount: discount != null && discount.minorUnits > 0 ? discount : null,
+            discount:
+                discount != null && discount.minorUnits > 0 ? discount : null,
             paidFromAccountId: _paidFromAccountId!,
             occurredAt: _occurredAt,
             note: note,
@@ -284,7 +284,8 @@ class _InstallmentRepaymentFormPageState
           CreateEarlySettlementCommand(
             contractId: contract.id,
             principal: principal,
-            interest: interest != null && interest.minorUnits > 0 ? interest : null,
+            interest:
+                interest != null && interest.minorUnits > 0 ? interest : null,
             fee: fee != null && fee.minorUnits > 0 ? fee : null,
             paidFromAccountId: _paidFromAccountId!,
             occurredAt: _occurredAt,
@@ -382,7 +383,8 @@ String? _blankToNull(String value) {
 }
 
 String _formatDateTime(DateTime date) {
-  final time = '${date.hour.toString().padLeft(2, '0')}:'
+  final time =
+      '${date.hour.toString().padLeft(2, '0')}:'
       '${date.minute.toString().padLeft(2, '0')}';
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')} $time';

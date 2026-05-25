@@ -1,4 +1,4 @@
-import '../../../domain/accounting/accounting_api.dart';
+import '../../../application/accounting/accounting_api.dart';
 import '../../home/view_models/home_transaction_group.dart';
 import '../../home/view_models/transaction_row_presentation.dart';
 import 'lunar_label_resolver.dart';

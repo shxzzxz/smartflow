@@ -19,8 +19,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
   Future<InstallmentContract?> findContract(int id) async {
     final row =
         await (_database.select(_database.installmentContracts)
-              ..where((c) => c.id.equals(id)))
-            .getSingleOrNull();
+          ..where((c) => c.id.equals(id))).getSingleOrNull();
     return row == null ? null : _mapContract(row);
   }
 
@@ -53,8 +52,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
   Future<InstallmentSchedule?> findSchedule(int scheduleId) async {
     final row =
         await (_database.select(_database.installmentSchedules)
-              ..where((s) => s.id.equals(scheduleId)))
-            .getSingleOrNull();
+          ..where((s) => s.id.equals(scheduleId))).getSingleOrNull();
     return row == null ? null : _mapSchedule(row);
   }
 
@@ -73,9 +71,9 @@ class DriftInstallmentRepository implements InstallmentRepository {
     int transactionId,
   ) async {
     final row =
-        await (_database.select(_database.installmentRepayments)
-              ..where((r) => r.transactionId.equals(transactionId)))
-            .getSingleOrNull();
+        await (_database.select(_database.installmentRepayments)..where(
+          (r) => r.transactionId.equals(transactionId),
+        )).getSingleOrNull();
     return row == null ? null : _mapRepayment(row);
   }
 
@@ -84,18 +82,18 @@ class DriftInstallmentRepository implements InstallmentRepository {
     int transactionId,
   ) async {
     final row =
-        await (_database.select(_database.installmentContracts)
-              ..where(
-                (c) => c.disbursementTransactionId.equals(transactionId),
-              ))
-            .getSingleOrNull();
+        await (_database.select(_database.installmentContracts)..where(
+          (c) => c.disbursementTransactionId.equals(transactionId),
+        )).getSingleOrNull();
     return row == null ? null : _mapContract(row);
   }
 
   @override
   Future<int> insertContract(InstallmentContractDraft draft) {
     final now = DateTime.now();
-    return _database.into(_database.installmentContracts).insert(
+    return _database
+        .into(_database.installmentContracts)
+        .insert(
           InstallmentContractsCompanion.insert(
             liabilityAccountId: draft.liabilityAccountId,
             sourceType: draft.sourceType,
@@ -111,7 +109,6 @@ class DriftInstallmentRepository implements InstallmentRepository {
             interestRatePpm: Value(draft.interestRatePpm),
             interestAccrualMethod: Value(draft.interestAccrualMethod),
             totalFeeMinor: Value(draft.totalFeeMinor),
-            currencyCode: draft.principal.currency,
             status: draft.status,
             note: Value(draft.note),
             createdAt: Value(now),
@@ -126,38 +123,45 @@ class DriftInstallmentRepository implements InstallmentRepository {
     InstallmentContractPatch patch,
   ) async {
     final companion = InstallmentContractsCompanion(
-      totalPeriods: patch.totalPeriods == null
-          ? const Value.absent()
-          : Value(patch.totalPeriods!),
-      firstRepaymentDate: patch.firstRepaymentDate == null
-          ? const Value.absent()
-          : Value(patch.firstRepaymentDate!),
-      lastRepaymentDate: patch.lastRepaymentDate == null
-          ? const Value.absent()
-          : Value(patch.lastRepaymentDate!),
-      borrowingDate: patch.borrowingDate == null
-          ? const Value.absent()
-          : Value(patch.borrowingDate!),
-      repaymentMethod: patch.repaymentMethod == null
-          ? const Value.absent()
-          : Value(patch.repaymentMethod!),
+      totalPeriods:
+          patch.totalPeriods == null
+              ? const Value.absent()
+              : Value(patch.totalPeriods!),
+      firstRepaymentDate:
+          patch.firstRepaymentDate == null
+              ? const Value.absent()
+              : Value(patch.firstRepaymentDate!),
+      lastRepaymentDate:
+          patch.lastRepaymentDate == null
+              ? const Value.absent()
+              : Value(patch.lastRepaymentDate!),
+      borrowingDate:
+          patch.borrowingDate == null
+              ? const Value.absent()
+              : Value(patch.borrowingDate!),
+      repaymentMethod:
+          patch.repaymentMethod == null
+              ? const Value.absent()
+              : Value(patch.repaymentMethod!),
       interestRatePeriod: patch.interestRatePeriod.toValue(),
       interestRatePpm: patch.interestRatePpm.toValue(),
-      interestAccrualMethod: patch.interestAccrualMethod == null
-          ? const Value.absent()
-          : Value(patch.interestAccrualMethod!),
-      totalFeeMinor: patch.totalFeeMinor == null
-          ? const Value.absent()
-          : Value(patch.totalFeeMinor!),
+      interestAccrualMethod:
+          patch.interestAccrualMethod == null
+              ? const Value.absent()
+              : Value(patch.interestAccrualMethod!),
+      totalFeeMinor:
+          patch.totalFeeMinor == null
+              ? const Value.absent()
+              : Value(patch.totalFeeMinor!),
       note: patch.note.toValue(),
-      disbursementAccountId: patch.disbursementAccountId == null
-          ? const Value.absent()
-          : Value(patch.disbursementAccountId!),
+      disbursementAccountId:
+          patch.disbursementAccountId == null
+              ? const Value.absent()
+              : Value(patch.disbursementAccountId!),
       updatedAt: Value(DateTime.now()),
     );
     await (_database.update(_database.installmentContracts)
-          ..where((c) => c.id.equals(contractId)))
-        .write(companion);
+      ..where((c) => c.id.equals(contractId))).write(companion);
   }
 
   @override
@@ -167,8 +171,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
   ) async {
     await _database.transaction(() async {
       await (_database.delete(_database.installmentSchedules)
-            ..where((s) => s.contractId.equals(contractId)))
-          .go();
+        ..where((s) => s.contractId.equals(contractId))).go();
       final now = DateTime.now();
       await _database.batch((batch) {
         for (final draft in drafts) {
@@ -224,31 +227,37 @@ class DriftInstallmentRepository implements InstallmentRepository {
     InstallmentSchedulePatch patch,
   ) async {
     final companion = InstallmentSchedulesCompanion(
-      expectedRepaymentDate: patch.expectedRepaymentDate == null
-          ? const Value.absent()
-          : Value(patch.expectedRepaymentDate!),
-      expectedPrincipalMinor: patch.expectedPrincipal == null
-          ? const Value.absent()
-          : Value(patch.expectedPrincipal!.minorUnits),
-      expectedInterestMinor: patch.expectedInterest == null
-          ? const Value.absent()
-          : Value(patch.expectedInterest!.minorUnits),
-      expectedFeeMinor: patch.expectedFee == null
-          ? const Value.absent()
-          : Value(patch.expectedFee!.minorUnits),
-      status: patch.status == null ? const Value.absent() : Value(patch.status!),
+      expectedRepaymentDate:
+          patch.expectedRepaymentDate == null
+              ? const Value.absent()
+              : Value(patch.expectedRepaymentDate!),
+      expectedPrincipalMinor:
+          patch.expectedPrincipal == null
+              ? const Value.absent()
+              : Value(patch.expectedPrincipal!.minorUnits),
+      expectedInterestMinor:
+          patch.expectedInterest == null
+              ? const Value.absent()
+              : Value(patch.expectedInterest!.minorUnits),
+      expectedFeeMinor:
+          patch.expectedFee == null
+              ? const Value.absent()
+              : Value(patch.expectedFee!.minorUnits),
+      status:
+          patch.status == null ? const Value.absent() : Value(patch.status!),
       note: patch.note.toValue(),
       updatedAt: Value(DateTime.now()),
     );
     await (_database.update(_database.installmentSchedules)
-          ..where((s) => s.id.equals(scheduleId)))
-        .write(companion);
+      ..where((s) => s.id.equals(scheduleId))).write(companion);
   }
 
   @override
   Future<int> insertRepayment(InstallmentRepaymentDraft draft) {
     final now = DateTime.now();
-    return _database.into(_database.installmentRepayments).insert(
+    return _database
+        .into(_database.installmentRepayments)
+        .insert(
           InstallmentRepaymentsCompanion.insert(
             contractId: draft.contractId,
             repaymentType: draft.repaymentType,
@@ -263,8 +272,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
   @override
   Future<void> deleteRepayment(int repaymentId) async {
     await (_database.delete(_database.installmentRepayments)
-          ..where((r) => r.id.equals(repaymentId)))
-        .go();
+      ..where((r) => r.id.equals(repaymentId))).go();
   }
 
   @override
@@ -273,8 +281,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
     InstallmentContractStatus status,
   ) async {
     await (_database.update(_database.installmentContracts)
-          ..where((c) => c.id.equals(contractId)))
-        .write(
+      ..where((c) => c.id.equals(contractId))).write(
       InstallmentContractsCompanion(
         status: Value(status),
         updatedAt: Value(DateTime.now()),
@@ -286,14 +293,11 @@ class DriftInstallmentRepository implements InstallmentRepository {
   Future<void> deleteContract(int contractId) async {
     await _database.transaction(() async {
       await (_database.delete(_database.installmentRepayments)
-            ..where((r) => r.contractId.equals(contractId)))
-          .go();
+        ..where((r) => r.contractId.equals(contractId))).go();
       await (_database.delete(_database.installmentSchedules)
-            ..where((s) => s.contractId.equals(contractId)))
-          .go();
+        ..where((s) => s.contractId.equals(contractId))).go();
       await (_database.delete(_database.installmentContracts)
-            ..where((c) => c.id.equals(contractId)))
-          .go();
+        ..where((c) => c.id.equals(contractId))).go();
     });
   }
 
@@ -304,10 +308,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
       sourceType: row.sourceType,
       disbursementAccountId: row.disbursementAccountId,
       disbursementTransactionId: row.disbursementTransactionId,
-      principal: Money(
-        minorUnits: row.principalMinor,
-        currency: row.currencyCode,
-      ),
+      principal: Money(minorUnits: row.principalMinor),
       totalPeriods: row.totalPeriods,
       borrowingDate: row.borrowingDate,
       firstRepaymentDate: row.firstRepaymentDate,
@@ -324,26 +325,14 @@ class DriftInstallmentRepository implements InstallmentRepository {
   }
 
   InstallmentSchedule _mapSchedule(InstallmentScheduleRow row) {
-    // Schedule 表不存 currency；从契约信息推断需要额外查询。这里使用默认 CNY，
-    // 调用方需要精确币种时应携带 contract 一并加载并替换。
-    const currency = Money.defaultCurrency;
     return InstallmentSchedule(
       id: row.id,
       contractId: row.contractId,
       periodNo: row.periodNo,
       expectedRepaymentDate: row.expectedRepaymentDate,
-      expectedPrincipal: Money(
-        minorUnits: row.expectedPrincipalMinor,
-        currency: currency,
-      ),
-      expectedInterest: Money(
-        minorUnits: row.expectedInterestMinor,
-        currency: currency,
-      ),
-      expectedFee: Money(
-        minorUnits: row.expectedFeeMinor,
-        currency: currency,
-      ),
+      expectedPrincipal: Money(minorUnits: row.expectedPrincipalMinor),
+      expectedInterest: Money(minorUnits: row.expectedInterestMinor),
+      expectedFee: Money(minorUnits: row.expectedFeeMinor),
       status: row.status,
       note: row.note,
       createdAt: row.createdAt,

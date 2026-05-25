@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
-import '../../../domain/accounting/accounting_api.dart';
+import '../../../application/accounting/accounting_api.dart';
 import '../../../widgets/business/account_lookup.dart';
 import '../../../widgets/business/finance_labels.dart';
 
@@ -20,18 +20,16 @@ Account? categoryAccount(
   Map<int, Account> accountsById,
 ) {
   return switch (item.businessPurpose) {
-    BusinessPurpose.dailyExpense || BusinessPurpose.refund =>
-      firstEntryByType(
-        item.entries,
-        accountsById: accountsById,
-        accountType: AccountType.expense,
-      )?.resolveAccount(accountsById),
-    BusinessPurpose.dailyIncome =>
-      firstEntryByType(
-        item.entries,
-        accountsById: accountsById,
-        accountType: AccountType.income,
-      )?.resolveAccount(accountsById),
+    BusinessPurpose.dailyExpense || BusinessPurpose.refund => firstEntryByType(
+      item.entries,
+      accountsById: accountsById,
+      accountType: AccountType.expense,
+    )?.resolveAccount(accountsById),
+    BusinessPurpose.dailyIncome => firstEntryByType(
+      item.entries,
+      accountsById: accountsById,
+      accountType: AccountType.income,
+    )?.resolveAccount(accountsById),
     BusinessPurpose.reimbursementAdvance =>
       item.reimbursementExpenseAccountId == null
           ? null
@@ -71,8 +69,8 @@ String? resolveCategoryIconKey(
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense ||
     BusinessPurpose.dailyIncome ||
-    BusinessPurpose.reimbursementAdvance =>
-      categoryAccount(item, accountsById)?.iconKey,
+    BusinessPurpose
+        .reimbursementAdvance => categoryAccount(item, accountsById)?.iconKey,
     BusinessPurpose.transfer => 'transfer',
     BusinessPurpose.debtRepayment => 'loan',
     BusinessPurpose.borrowing => 'hand-coin-line',

@@ -13,7 +13,7 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_surface.dart';
-import '../../../domain/accounting/accounting_api.dart';
+import '../../../application/accounting/accounting_api.dart';
 import '../action_policy/transaction_action_policy.dart';
 import '../providers/transaction_action_policy_provider.dart';
 import '../../../widgets/business/account_endpoint_view.dart';
@@ -453,10 +453,11 @@ class _RefundReimbursementCard extends StatelessWidget {
     BuildContext context,
     List<TransactionListItem> children,
   ) {
-    final refunds = children
-        .where((c) => c.businessPurpose == BusinessPurpose.refund)
-        .map(_listItemToSheet)
-        .toList();
+    final refunds =
+        children
+            .where((c) => c.businessPurpose == BusinessPurpose.refund)
+            .map(_listItemToSheet)
+            .toList();
     _showChildrenSheet(context, title: '退款记录', items: refunds);
   }
 
@@ -464,14 +465,15 @@ class _RefundReimbursementCard extends StatelessWidget {
     BuildContext context,
     List<TransactionListItem> children,
   ) {
-    final receipts = children
-        .where(
-          (c) =>
-              c.businessPurpose == BusinessPurpose.reimbursementReceipt ||
-              c.businessPurpose == BusinessPurpose.reimbursementClose,
-        )
-        .map(_listItemToSheet)
-        .toList();
+    final receipts =
+        children
+            .where(
+              (c) =>
+                  c.businessPurpose == BusinessPurpose.reimbursementReceipt ||
+                  c.businessPurpose == BusinessPurpose.reimbursementClose,
+            )
+            .map(_listItemToSheet)
+            .toList();
     _showChildrenSheet(context, title: '报销记录', items: receipts);
   }
 
@@ -551,19 +553,20 @@ class _HistoryCard extends StatelessWidget {
         AppPlainValueRow(
           label: '历史链路',
           value: '${detail.history.length} 条记录',
-          onTap: () => _showChildrenSheet(
-            context,
-            title: '历史链路',
-            items: [
-              for (final h in detail.history)
-                _SheetItem(
-                  id: h.id,
-                  purpose: h.businessPurpose,
-                  occurredAt: h.occurredAt,
-                  primaryAmount: h.primaryAmount,
-                ),
-            ],
-          ),
+          onTap:
+              () => _showChildrenSheet(
+                context,
+                title: '历史链路',
+                items: [
+                  for (final h in detail.history)
+                    _SheetItem(
+                      id: h.id,
+                      purpose: h.businessPurpose,
+                      occurredAt: h.occurredAt,
+                      primaryAmount: h.primaryAmount,
+                    ),
+                ],
+              ),
         ),
       ],
     );
@@ -1228,10 +1231,11 @@ List<_AccountRowInfo> _resolveAccountRows(
 ) {
   final purpose = detail.transaction.businessPurpose;
   final entries = detail.entries;
-  final asset = entries.where((e) {
-    final type = accountsById[e.accountId]?.type;
-    return type == AccountType.asset || type == AccountType.liability;
-  }).toList();
+  final asset =
+      entries.where((e) {
+        final type = accountsById[e.accountId]?.type;
+        return type == AccountType.asset || type == AccountType.liability;
+      }).toList();
 
   _AccountRowInfo info(
     String label,
@@ -1276,9 +1280,9 @@ List<_AccountRowInfo> _resolveAccountRows(
     case BusinessPurpose.borrowing:
       final editKind =
           purpose == BusinessPurpose.dailyIncome ||
-              purpose == BusinessPurpose.borrowing
-          ? _AccountEditKind.settlement
-          : null;
+                  purpose == BusinessPurpose.borrowing
+              ? _AccountEditKind.settlement
+              : null;
       if (asset.isEmpty) {
         return [placeholderRow('收支账户', editKind: editKind)];
       }
@@ -1328,7 +1332,10 @@ List<_AccountRowInfo> _resolveAccountRows(
   }
 }
 
-AccountEndpoint _endpointFromEntry(Entry entry, Map<int, Account> accountsById) {
+AccountEndpoint _endpointFromEntry(
+  Entry entry,
+  Map<int, Account> accountsById,
+) {
   final account = accountsById[entry.accountId];
   return AccountEndpoint(
     label: account?.name ?? '—',
@@ -1502,7 +1509,7 @@ MoneySemantic _semanticForPurpose(BusinessPurpose purpose) {
 
 Money _signedAmount(Money money, MoneySemantic semantic) {
   if (semantic == MoneySemantic.expense) {
-    return Money(minorUnits: -money.minorUnits, currency: money.currency);
+    return Money(minorUnits: -money.minorUnits);
   }
   return money;
 }

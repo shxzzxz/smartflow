@@ -1,7 +1,6 @@
 import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
-import '../../../domain/credit/enums/installment_enums.dart';
-import '../../../domain/credit/services/installment_service.dart';
+import 'package:smartflow/application/credit/credit_api.dart';
 import 'transaction_action_policy.dart';
 
 /// 分期业务域针对单笔交易的 action policy。
@@ -20,10 +19,10 @@ class InstallmentTransactionActionPolicy implements TransactionActionPolicy {
     required int contractId,
     required InstallmentOwnerRole ownerRole,
     required int transactionId,
-  })  : _installment = installment,
-        _contractId = contractId,
-        _ownerRole = ownerRole,
-        _transactionId = transactionId;
+  }) : _installment = installment,
+       _contractId = contractId,
+       _ownerRole = ownerRole,
+       _transactionId = transactionId;
 
   final InstallmentService _installment;
   final int _contractId;
@@ -72,10 +71,7 @@ class InstallmentTransactionActionPolicy implements TransactionActionPolicy {
   Future<Result<void>> changeOccurredAt(DateTime newTime) {
     return switch (_ownerRole) {
       InstallmentOwnerRole.disbursement => _installment.updateContract(
-        UpdateContractCommand(
-          contractId: _contractId,
-          borrowingDate: newTime,
-        ),
+        UpdateContractCommand(contractId: _contractId, borrowingDate: newTime),
       ),
       InstallmentOwnerRole.scheduledRepayment ||
       InstallmentOwnerRole.extraPrincipal ||

@@ -6,7 +6,7 @@ import 'package:remixicon/remixicon.dart';
 import '../../../app/providers.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_month_picker.dart';
-import '../../../domain/accounting/accounting_api.dart';
+import '../../../application/accounting/accounting_api.dart';
 import '../view_models/home_transaction_group.dart';
 import '../widgets/empty_transaction_card.dart';
 import '../widgets/home_header.dart';

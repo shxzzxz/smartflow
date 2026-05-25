@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/data/app_database.dart';
-import 'package:smartflow/domain/accounting/accounting_api.dart';
+import 'package:smartflow/application/accounting/accounting_api.dart';
 
 import '../helpers/test_app_database.dart';
 
@@ -63,6 +63,21 @@ void main() {
       );
     });
 
+    test('does not expose currency columns in core tables', () async {
+      for (final tableName in [
+        'accounts',
+        'transactions',
+        'budgets',
+        'installment_contracts',
+      ]) {
+        final columns =
+            await database.customSelect('PRAGMA table_info($tableName)').get();
+        final columnNames = columns.map((row) => row.read<String>('name'));
+
+        expect(columnNames, isNot(contains('currency_code')));
+      }
+    });
+
     test('enforces total and category budget uniqueness', () async {
       final accountId = await database
           .into(database.accounts)
@@ -70,7 +85,6 @@ void main() {
             AccountsCompanion.insert(
               name: 'Food',
               accountType: AccountType.expense,
-              currencyCode: 'CNY',
             ),
           );
 
@@ -81,7 +95,6 @@ void main() {
               monthKey: 202605,
               accountId: Value(null),
               amountMinor: 100000,
-              currencyCode: 'CNY',
             ),
           );
       await database
@@ -91,7 +104,6 @@ void main() {
               monthKey: 202605,
               accountId: Value(accountId),
               amountMinor: 50000,
-              currencyCode: 'CNY',
             ),
           );
 
@@ -103,7 +115,6 @@ void main() {
                 monthKey: 202605,
                 accountId: Value(null),
                 amountMinor: 120000,
-                currencyCode: 'CNY',
               ),
             ),
         throwsA(isA<Exception>()),
@@ -116,7 +127,6 @@ void main() {
                 monthKey: 202605,
                 accountId: Value(accountId),
                 amountMinor: 80000,
-                currencyCode: 'CNY',
               ),
             ),
         throwsA(isA<Exception>()),

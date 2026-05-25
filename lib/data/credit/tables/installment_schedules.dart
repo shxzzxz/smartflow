@@ -10,9 +10,13 @@ class InstallmentSchedules extends Table {
   DateTimeColumn get expectedRepaymentDate =>
       dateTime().named('expected_repayment_date')();
   IntColumn get expectedPrincipalMinor =>
-      integer().named('expected_principal_minor').withDefault(const Constant(0))();
+      integer()
+          .named('expected_principal_minor')
+          .withDefault(const Constant(0))();
   IntColumn get expectedInterestMinor =>
-      integer().named('expected_interest_minor').withDefault(const Constant(0))();
+      integer()
+          .named('expected_interest_minor')
+          .withDefault(const Constant(0))();
   IntColumn get expectedFeeMinor =>
       integer().named('expected_fee_minor').withDefault(const Constant(0))();
   TextColumn get status =>

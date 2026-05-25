@@ -14,7 +14,7 @@ import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_surface.dart';
-import '../../../domain/accounting/accounting_api.dart';
+import '../../../application/accounting/accounting_api.dart';
 import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/category_grid_picker.dart';
 import '../../../widgets/business/money_text.dart';

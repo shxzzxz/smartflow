@@ -21,12 +21,13 @@ Future<DateTime?> showAppDatePicker({
 }) {
   return showDialog<DateTime>(
     context: context,
-    builder: (context) => AppDatePickerDialog(
-      initialDate: initialDate,
-      firstYear: firstYear,
-      lastYear: lastYear,
-      title: title,
-    ),
+    builder:
+        (context) => AppDatePickerDialog(
+          initialDate: initialDate,
+          firstYear: firstYear,
+          lastYear: lastYear,
+          title: title,
+        ),
   );
 }
 
@@ -38,8 +39,9 @@ Future<TimeOfDay?> showAppTimePicker({
 }) {
   return showDialog<TimeOfDay>(
     context: context,
-    builder: (context) =>
-        AppTimePickerDialog(initialTime: initialTime, title: title),
+    builder:
+        (context) =>
+            AppTimePickerDialog(initialTime: initialTime, title: title),
   );
 }
 
@@ -53,12 +55,13 @@ Future<DateTime?> showAppDateTimePicker({
 }) {
   return showDialog<DateTime>(
     context: context,
-    builder: (context) => AppDateTimePickerDialog(
-      initialDateTime: initialDateTime,
-      firstYear: firstYear,
-      lastYear: lastYear,
-      title: title,
-    ),
+    builder:
+        (context) => AppDateTimePickerDialog(
+          initialDateTime: initialDateTime,
+          firstYear: firstYear,
+          lastYear: lastYear,
+          title: title,
+        ),
   );
 }
 
@@ -69,8 +72,9 @@ Future<int?> showAppDayOfMonthPicker({
 }) async {
   final picked = await showDialog<int>(
     context: context,
-    builder: (context) =>
-        AppDayOfMonthPickerDialog(selectedDay: selectedDay, title: title),
+    builder:
+        (context) =>
+            AppDayOfMonthPickerDialog(selectedDay: selectedDay, title: title),
   );
   if (picked == null) {
     return selectedDay;
@@ -118,9 +122,14 @@ class _AppDatePickerDialogState extends State<AppDatePickerDialog> {
   Widget build(BuildContext context) {
     return _PickerDialogShell(
       onCancel: () => Navigator.of(context).pop(),
-      onConfirm: () => Navigator.of(context).pop(
-        DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day),
-      ),
+      onConfirm:
+          () => Navigator.of(context).pop(
+            DateTime(
+              _selectedDate.year,
+              _selectedDate.month,
+              _selectedDate.day,
+            ),
+          ),
       children: [
         _CalendarPanel(
           visibleMonth: _visibleMonth,
@@ -216,9 +225,10 @@ class _AppTimePickerDialogState extends State<AppTimePickerDialog> {
   Widget build(BuildContext context) {
     return _PickerDialogShell(
       onCancel: () => Navigator.of(context).pop(),
-      onConfirm: () => Navigator.of(context).pop(
-        TimeOfDay(hour: _selectedHour, minute: _selectedMinute),
-      ),
+      onConfirm:
+          () => Navigator.of(
+            context,
+          ).pop(TimeOfDay(hour: _selectedHour, minute: _selectedMinute)),
       children: [
         _TitleBar(title: widget.title),
         const SizedBox(height: AppSpacing.space6),
@@ -296,15 +306,16 @@ class _AppDateTimePickerDialogState extends State<AppDateTimePickerDialog> {
   Widget build(BuildContext context) {
     return _PickerDialogShell(
       onCancel: () => Navigator.of(context).pop(),
-      onConfirm: () => Navigator.of(context).pop(
-        DateTime(
-          _selectedDate.year,
-          _selectedDate.month,
-          _selectedDate.day,
-          _selectedHour,
-          _selectedMinute,
-        ),
-      ),
+      onConfirm:
+          () => Navigator.of(context).pop(
+            DateTime(
+              _selectedDate.year,
+              _selectedDate.month,
+              _selectedDate.day,
+              _selectedHour,
+              _selectedMinute,
+            ),
+          ),
       children: [
         _CalendarPanel(
           visibleMonth: _visibleMonth,
@@ -408,15 +419,9 @@ class _PickerDialogShell extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextButton(
-                      onPressed: onCancel,
-                      child: const Text('取消'),
-                    ),
+                    TextButton(onPressed: onCancel, child: const Text('取消')),
                     const SizedBox(width: AppSpacing.space8),
-                    FilledButton(
-                      onPressed: onConfirm,
-                      child: const Text('确定'),
-                    ),
+                    FilledButton(onPressed: onConfirm, child: const Text('确定')),
                   ],
                 ),
               ],
@@ -686,9 +691,10 @@ class _TimeWheel extends StatelessWidget {
                 style: context.appTextStyles
                     .segmentedControlLabel(selected: index == selectedIndex)
                     .copyWith(
-                      color: index == selectedIndex
-                          ? colors.onSurface
-                          : colors.onSurfaceVariant,
+                      color:
+                          index == selectedIndex
+                              ? colors.onSurface
+                              : colors.onSurfaceVariant,
                     ),
               ),
             ),

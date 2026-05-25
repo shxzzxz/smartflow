@@ -5,7 +5,7 @@ import '../../design_system/theme/app_text_styles.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/widgets/app_form_field.dart';
 import '../../design_system/widgets/app_plain_form_row.dart';
-import '../../domain/accounting/accounting_api.dart';
+import '../../application/accounting/accounting_api.dart';
 import 'business_icon.dart';
 
 final moneyInputFormatter = FilteringTextInputFormatter.allow(
@@ -145,11 +145,12 @@ class DropdownPlainFormRow<T> extends StatelessWidget {
         ),
         underline: const SizedBox.shrink(),
         items: items,
-        onChanged: cb == null
-            ? null
-            : (v) {
-                if (v != null) cb(v);
-              },
+        onChanged:
+            cb == null
+                ? null
+                : (v) {
+                  if (v != null) cb(v);
+                },
       ),
     );
   }

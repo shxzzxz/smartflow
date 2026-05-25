@@ -1,16 +1,14 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
+import '../../../app/providers.dart';
 import '../../../core/update/app_update_channel.dart';
 import '../../../core/update/app_update_info.dart';
 import '../../../core/update/app_update_platform.dart';
 import '../../../core/update/app_update_service.dart';
-import '../../../data/app_database.dart';
-import '../../../data/database_provider.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
@@ -25,7 +23,6 @@ class SoftwareVersionPage extends ConsumerStatefulWidget {
 }
 
 class _SoftwareVersionPageState extends ConsumerState<SoftwareVersionPage> {
-  static const _updateChannelKey = 'update.channel';
   static const _manifestUrlOverride = String.fromEnvironment(
     'SMARTFLOW_UPDATE_URL',
     defaultValue: '',
@@ -78,15 +75,12 @@ class _SoftwareVersionPageState extends ConsumerState<SoftwareVersionPage> {
 
   Future<void> _loadUpdateChannel() async {
     try {
-      final database = ref.read(appDatabaseProvider);
-      final row =
-          await (database.select(database.appMetadata)..where(
-            (table) => table.key.equals(_updateChannelKey),
-          )).getSingleOrNull();
-      if (!mounted || row == null) {
+      final code =
+          await ref.read(updateChannelStoreProvider).readUpdateChannel();
+      if (!mounted || code == null) {
         return;
       }
-      setState(() => _updateChannel = AppUpdateChannel.fromCode(row.value));
+      setState(() => _updateChannel = AppUpdateChannel.fromCode(code));
     } catch (_) {
       // Keep the compile-time default channel when local metadata is unreadable.
     }
@@ -101,16 +95,7 @@ class _SoftwareVersionPageState extends ConsumerState<SoftwareVersionPage> {
       _updateChannel = channel;
       _hasCheckedLatest = false;
     });
-    final database = ref.read(appDatabaseProvider);
-    await database
-        .into(database.appMetadata)
-        .insertOnConflictUpdate(
-          AppMetadataCompanion.insert(
-            key: _updateChannelKey,
-            value: channel.code,
-            updatedAt: Value(DateTime.now()),
-          ),
-        );
+    await ref.read(updateChannelStoreProvider).saveUpdateChannel(channel.code);
   }
 
   Future<void> _checkForUpdate() async {

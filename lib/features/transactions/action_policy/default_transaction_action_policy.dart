@@ -1,7 +1,7 @@
 import '../../../core/errors/failure.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
-import '../../../domain/accounting/accounting_api.dart';
+import '../../../application/accounting/accounting_api.dart';
 import 'transaction_action_policy.dart';
 
 /// 普通交易的默认 policy：所有 universal 动作直接走 [TransactionService]。
@@ -59,9 +59,8 @@ class DefaultTransactionActionPolicy implements TransactionActionPolicy {
     return _service.updateTransactionMetadata(
       UpdateTransactionMetadataCommand(
         transactionId: _transactionId,
-        note: newNote == null
-            ? const Patch<String>.clear()
-            : Patch.set(newNote),
+        note:
+            newNote == null ? const Patch<String>.clear() : Patch.set(newNote),
       ),
     );
   }
@@ -120,9 +119,8 @@ class UnknownOwnedTransactionActionPolicy implements TransactionActionPolicy {
     return _service.updateTransactionMetadata(
       UpdateTransactionMetadataCommand(
         transactionId: _transactionId,
-        note: newNote == null
-            ? const Patch<String>.clear()
-            : Patch.set(newNote),
+        note:
+            newNote == null ? const Patch<String>.clear() : Patch.set(newNote),
       ),
     );
   }

@@ -9,9 +9,9 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_submit_button.dart';
-import '../../../domain/accounting/accounting_api.dart'
+import '../../../application/accounting/accounting_api.dart'
     hide CreateRepaymentCommand, CorrectRepaymentCommand;
-import '../../../domain/credit/services/credit_service.dart';
+import '../../../application/credit/use_cases/credit_service.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 
 class RepaymentFormPage extends ConsumerStatefulWidget {
@@ -69,11 +69,13 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
     final repaymentAccountsAsync = ref.watch(
       accountsForUsageProvider(AccountUsage.repaymentSource),
     );
-    final detailAsync = isEdit
-        ? ref.watch(transactionDetailProvider(widget.editTransactionId!))
-        : null;
+    final detailAsync =
+        isEdit
+            ? ref.watch(transactionDetailProvider(widget.editTransactionId!))
+            : null;
 
-    final loadError = liabilityAccountsAsync.error ??
+    final loadError =
+        liabilityAccountsAsync.error ??
         repaymentAccountsAsync.error ??
         detailAsync?.error;
     if (loadError != null) {
@@ -89,11 +91,12 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
       final detail = detailAsync!.value;
       final accountsById =
           ref.read(accountsByIdProvider).value ?? const <int, Account>{};
-      final view = detail == null
-          ? null
-          : ref
-              .read(creditServiceProvider)
-              .parseRepaymentEditView(detail, accountsById: accountsById);
+      final view =
+          detail == null
+              ? null
+              : ref
+                  .read(creditServiceProvider)
+                  .parseRepaymentEditView(detail, accountsById: accountsById);
       if (view == null) {
         return _scaffold(const Center(child: Text('该还款记录不可编辑')));
       }
@@ -108,14 +111,18 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
       _liabilityAccountId,
       liabilityAccounts,
     );
-    final repaymentAccounts = allRepaymentAccounts
-        .where((account) => account.id != liabilityAccountId)
-        .toList();
+    final repaymentAccounts =
+        allRepaymentAccounts
+            .where((account) => account.id != liabilityAccountId)
+            .toList();
     final paidFromAccountId = _selectedId(
       _paidFromAccountId,
       repaymentAccounts,
     );
-    final liabilityAccount = _findAccount(liabilityAccounts, liabilityAccountId);
+    final liabilityAccount = _findAccount(
+      liabilityAccounts,
+      liabilityAccountId,
+    );
     final paidFromAccount = _findAccount(repaymentAccounts, paidFromAccountId);
 
     return _scaffold(
@@ -137,18 +144,20 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
                   selectedId: liabilityAccountId,
                   placeholder: '请选择债务账户',
                   // 编辑态禁止改债务账户：金额校验依赖原账户余额，改了语义就乱了。
-                  onTap: (isEdit || liabilityAccounts.isEmpty)
-                      ? null
-                      : () => _pickAccount(
+                  onTap:
+                      (isEdit || liabilityAccounts.isEmpty)
+                          ? null
+                          : () => _pickAccount(
                             title: '选择债务账户',
                             accounts: liabilityAccounts,
                             selectedId: liabilityAccountId,
-                            onSelected: (value) => setState(() {
-                              _liabilityAccountId = value;
-                              if (_paidFromAccountId == value) {
-                                _paidFromAccountId = null;
-                              }
-                            }),
+                            onSelected:
+                                (value) => setState(() {
+                                  _liabilityAccountId = value;
+                                  if (_paidFromAccountId == value) {
+                                    _paidFromAccountId = null;
+                                  }
+                                }),
                           ),
                 ),
                 MoneyPlainFormRow(
@@ -185,14 +194,16 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
                   account: paidFromAccount,
                   selectedId: paidFromAccountId,
                   placeholder: '请选择还款账户',
-                  onTap: repaymentAccounts.isEmpty
-                      ? null
-                      : () => _pickAccount(
+                  onTap:
+                      repaymentAccounts.isEmpty
+                          ? null
+                          : () => _pickAccount(
                             title: '选择还款账户',
                             accounts: repaymentAccounts,
                             selectedId: paidFromAccountId,
-                            onSelected: (value) =>
-                                setState(() => _paidFromAccountId = value),
+                            onSelected:
+                                (value) =>
+                                    setState(() => _paidFromAccountId = value),
                           ),
                 ),
                 NotePlainFormRow(controller: _noteController),
@@ -258,21 +269,28 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final liabilityAccounts = ref
+    final liabilityAccounts =
+        ref
             .read(accountsForUsageProvider(AccountUsage.repaymentTarget))
             .value ??
         const <Account>[];
-    final liabilityAccountId =
-        _selectedId(_liabilityAccountId, liabilityAccounts);
-    final allRepaymentAccounts = ref
+    final liabilityAccountId = _selectedId(
+      _liabilityAccountId,
+      liabilityAccounts,
+    );
+    final allRepaymentAccounts =
+        ref
             .read(accountsForUsageProvider(AccountUsage.repaymentSource))
             .value ??
         const <Account>[];
-    final repaymentAccounts = allRepaymentAccounts
-        .where((account) => account.id != liabilityAccountId)
-        .toList();
-    final paidFromAccountId =
-        _selectedId(_paidFromAccountId, repaymentAccounts);
+    final repaymentAccounts =
+        allRepaymentAccounts
+            .where((account) => account.id != liabilityAccountId)
+            .toList();
+    final paidFromAccountId = _selectedId(
+      _paidFromAccountId,
+      repaymentAccounts,
+    );
     if (liabilityAccountId == null) {
       _showError('请选择债务账户');
       return;
@@ -395,7 +413,8 @@ String? _blankToNull(String value) {
 }
 
 String _formatDateTime(DateTime date) {
-  final time = '${date.hour.toString().padLeft(2, '0')}:'
+  final time =
+      '${date.hour.toString().padLeft(2, '0')}:'
       '${date.minute.toString().padLeft(2, '0')}';
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')} $time';

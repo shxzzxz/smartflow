@@ -8,11 +8,7 @@ import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_surface.dart';
-import '../../../domain/credit/entities/installment_contract.dart';
-import '../../../domain/credit/entities/installment_schedule.dart';
-import '../../../domain/credit/enums/installment_enums.dart';
-import '../../../domain/credit/services/installment_metrics.dart';
-import '../../../domain/credit/services/installment_service.dart';
+import 'package:smartflow/application/credit/credit_api.dart';
 
 class InstallmentDetailPage extends ConsumerWidget {
   const InstallmentDetailPage({required this.contractId, super.key});
@@ -23,8 +19,9 @@ class InstallmentDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final contractAsync = ref.watch(installmentContractProvider(contractId));
     final schedulesAsync = ref.watch(installmentSchedulesProvider(contractId));
-    final cashflowsAsync =
-        ref.watch(installmentRepaymentCashflowsProvider(contractId));
+    final cashflowsAsync = ref.watch(
+      installmentRepaymentCashflowsProvider(contractId),
+    );
 
     final loadedContract = switch (contractAsync) {
       AsyncData(value: final c) => c,
@@ -52,14 +49,13 @@ class InstallmentDetailPage extends ConsumerWidget {
           contract == null
               ? const Center(child: Text('合同不存在'))
               : _Body(
-                  contract: contract,
-                  schedules: schedules,
-                  cashflows: cashflows,
-                ),
+                contract: contract,
+                schedules: schedules,
+                cashflows: cashflows,
+              ),
         (AsyncError(:final error), _, _) ||
         (_, AsyncError(:final error), _) ||
-        (_, _, AsyncError(:final error)) =>
-          Center(child: Text('加载失败：$error')),
+        (_, _, AsyncError(:final error)) => Center(child: Text('加载失败：$error')),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
@@ -72,25 +68,26 @@ class InstallmentDetailPage extends ConsumerWidget {
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('删除分期合同'),
-        content: const Text('将撤回所有还款交易与放款交易，并清除合同与还款计划。此操作不可撤销。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('删除分期合同'),
+            content: const Text('将撤回所有还款交易与放款交易，并清除合同与还款计划。此操作不可撤销。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('删除'),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
     );
     if (confirmed != true) return;
-    final result = await ref.read(installmentServiceProvider).deleteContract(
-          DeleteContractCommand(contractId: contract.id),
-        );
+    final result = await ref
+        .read(installmentServiceProvider)
+        .deleteContract(DeleteContractCommand(contractId: contract.id));
     if (!context.mounted) return;
     result.when(
       success: (_) {
@@ -99,9 +96,10 @@ class InstallmentDetailPage extends ConsumerWidget {
         );
         context.pop();
       },
-      failure: (failure) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('删除失败：${failure.message}')),
-      ),
+      failure:
+          (failure) => ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('删除失败：${failure.message}'))),
     );
   }
 }
@@ -156,10 +154,7 @@ class _Body extends ConsumerWidget {
           child: Column(
             children: [
               for (var i = 0; i < schedules.length; i++) ...[
-                _ScheduleRow(
-                  contract: contract,
-                  schedule: schedules[i],
-                ),
+                _ScheduleRow(contract: contract, schedule: schedules[i]),
                 if (i < schedules.length - 1)
                   const Divider(height: 1, indent: AppSpacing.space12),
               ],
@@ -181,10 +176,7 @@ class _Body extends ConsumerWidget {
             child: Column(
               children: [
                 for (var i = 0; i < cashflows.length; i++) ...[
-                  _RepaymentRow(
-                    cashflow: cashflows[i],
-                    contract: contract,
-                  ),
+                  _RepaymentRow(cashflow: cashflows[i], contract: contract),
                   if (i < cashflows.length - 1)
                     const Divider(height: 1, indent: AppSpacing.space12),
                 ],
@@ -213,7 +205,6 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
-    final currency = contract.principal.currency;
     return AppSurface(
       border: true,
       child: Padding(
@@ -235,20 +226,14 @@ class _Header extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.space10),
             Text('本金', style: styles.detailLabel),
-            Text(
-              contract.principal.format(),
-              style: styles.amountPrimary,
-            ),
+            Text(contract.principal.format(), style: styles.amountPrimary),
             const SizedBox(height: AppSpacing.space8),
             Row(
               children: [
                 Expanded(
                   child: _LabelValue(
                     label: '剩余本金',
-                    value: Money(
-                      minorUnits: remainingPrincipalMinor,
-                      currency: currency,
-                    ).format(),
+                    value: Money(minorUnits: remainingPrincipalMinor).format(),
                   ),
                 ),
                 Expanded(
@@ -285,19 +270,13 @@ class _Header extends StatelessWidget {
                 Expanded(
                   child: _LabelValue(
                     label: '已还利息',
-                    value: Money(
-                      minorUnits: paidInterestMinor,
-                      currency: currency,
-                    ).format(),
+                    value: Money(minorUnits: paidInterestMinor).format(),
                   ),
                 ),
                 Expanded(
                   child: _LabelValue(
                     label: '已还手续费',
-                    value: Money(
-                      minorUnits: paidFeeMinor,
-                      currency: currency,
-                    ).format(),
+                    value: Money(minorUnits: paidFeeMinor).format(),
                   ),
                 ),
               ],
@@ -346,12 +325,18 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color) = switch (status) {
-      InstallmentContractStatus.active =>
-        ('进行中', Theme.of(context).colorScheme.primary),
-      InstallmentContractStatus.settled =>
-        ('已结清', Theme.of(context).colorScheme.tertiary),
-      InstallmentContractStatus.closed =>
-        ('已关闭', Theme.of(context).colorScheme.outline),
+      InstallmentContractStatus.active => (
+        '进行中',
+        Theme.of(context).colorScheme.primary,
+      ),
+      InstallmentContractStatus.settled => (
+        '已结清',
+        Theme.of(context).colorScheme.tertiary,
+      ),
+      InstallmentContractStatus.closed => (
+        '已关闭',
+        Theme.of(context).colorScheme.outline,
+      ),
     };
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -390,24 +375,26 @@ class _ActionBar extends StatelessWidget {
           children: [
             Expanded(
               child: TextButton(
-                onPressed: () => context.push(
-                  '/installments/${contract.id}/repay?mode=extra',
-                ),
+                onPressed:
+                    () => context.push(
+                      '/installments/${contract.id}/repay?mode=extra',
+                    ),
                 child: const Text('提前还本'),
               ),
             ),
             Expanded(
               child: TextButton(
-                onPressed: () => context.push(
-                  '/installments/${contract.id}/repay?mode=settle',
-                ),
+                onPressed:
+                    () => context.push(
+                      '/installments/${contract.id}/repay?mode=settle',
+                    ),
                 child: const Text('提前结清'),
               ),
             ),
             Expanded(
               child: TextButton(
-                onPressed: () =>
-                    context.push('/installments/${contract.id}/edit'),
+                onPressed:
+                    () => context.push('/installments/${contract.id}/edit'),
                 child: const Text('编辑合同'),
               ),
             ),
@@ -428,18 +415,21 @@ class _ScheduleRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
-    final total = schedule.expectedPrincipal +
+    final total =
+        schedule.expectedPrincipal +
         schedule.expectedInterest +
         schedule.expectedFee;
-    final canRepay = schedule.status == InstallmentScheduleStatus.pending &&
+    final canRepay =
+        schedule.status == InstallmentScheduleStatus.pending &&
         contract.status == InstallmentContractStatus.active;
 
     return InkWell(
-      onTap: canRepay
-          ? () => context.push(
+      onTap:
+          canRepay
+              ? () => context.push(
                 '/installments/${contract.id}/repay?mode=regular&scheduleId=${schedule.id}',
               )
-          : null,
+              : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space12,
@@ -449,10 +439,7 @@ class _ScheduleRow extends StatelessWidget {
           children: [
             SizedBox(
               width: 48,
-              child: Text(
-                '第${schedule.periodNo}期',
-                style: styles.formLabel,
-              ),
+              child: Text('第${schedule.periodNo}期', style: styles.formLabel),
             ),
             Expanded(
               child: Column(
@@ -561,23 +548,26 @@ class _RepaymentRow extends ConsumerWidget {
     final typeLabel = _repaymentTypeLabel(cashflow.repaymentType);
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('撤销$typeLabel'),
-        content: const Text('将删除该笔还款交易，并把对应期次状态还原为待还。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+      builder:
+          (ctx) => AlertDialog(
+            title: Text('撤销$typeLabel'),
+            content: const Text('将删除该笔还款交易，并把对应期次状态还原为待还。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('撤销'),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('撤销'),
-          ),
-        ],
-      ),
     );
     if (confirmed != true) return;
-    final result = await ref.read(installmentServiceProvider).revertRepayment(
+    final result = await ref
+        .read(installmentServiceProvider)
+        .revertRepayment(
           RevertRepaymentCommand(transactionId: cashflow.transactionId),
         );
     if (!context.mounted) return;
@@ -591,9 +581,10 @@ class _RepaymentRow extends ConsumerWidget {
           installmentContractsByAccountProvider(contract.liabilityAccountId),
         );
       },
-      failure: (failure) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('撤销失败：${failure.message}')),
-      ),
+      failure:
+          (failure) => ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('撤销失败：${failure.message}'))),
     );
   }
 }
@@ -635,10 +626,7 @@ String _repaymentTypeLabel(InstallmentRepaymentType type) {
   };
 }
 
-Color _repaymentTypeColor(
-  InstallmentRepaymentType type,
-  ColorScheme colors,
-) {
+Color _repaymentTypeColor(InstallmentRepaymentType type, ColorScheme colors) {
   return switch (type) {
     InstallmentRepaymentType.scheduled => colors.tertiary,
     InstallmentRepaymentType.extraPrincipal => colors.primary,

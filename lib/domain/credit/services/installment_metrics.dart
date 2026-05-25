@@ -77,7 +77,6 @@ class InstallmentMetricsCalculator {
     required List<RepaymentCashflow> repayments,
     ContractMetricsView view = ContractMetricsView.designed,
   }) {
-    final currency = contract.principal.currency;
     final flows = _buildCashflows(
       contract: contract,
       schedules: schedules,
@@ -116,9 +115,9 @@ class InstallmentMetricsCalculator {
       monthlyIrr: monthlyIrr.toDouble(),
       nominalApr: nominalApr.toDouble(),
       effectiveApr: ear,
-      totalRepayment: Money(minorUnits: totalRepayMinor, currency: currency),
-      totalInterest: Money(minorUnits: totalInterestMinor, currency: currency),
-      totalFee: Money(minorUnits: totalFeeMinor, currency: currency),
+      totalRepayment: Money(minorUnits: totalRepayMinor),
+      totalInterest: Money(minorUnits: totalInterestMinor),
+      totalFee: Money(minorUnits: totalFeeMinor),
       converged: xirrResult.converged,
     );
   }

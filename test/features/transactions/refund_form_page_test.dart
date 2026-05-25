@@ -7,7 +7,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/data/database_provider.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
-import 'package:smartflow/domain/accounting/accounting_api.dart';
+import 'package:smartflow/application/accounting/accounting_api.dart';
 import 'package:smartflow/features/transactions/pages/refund_form_page.dart';
 
 import '../../helpers/test_app_database.dart';
@@ -42,7 +42,6 @@ void main() {
                   rootTransactionId: 1,
                   businessPurpose: BusinessPurpose.dailyExpense,
                   occurredAt: DateTime(2026, 5, 16),
-                  currencyCode: 'CNY',
                   primaryAmount: const Money(minorUnits: 1200),
                   mutationKind: MutationKind.original,
                   businessState: BusinessState.current,
@@ -100,7 +99,6 @@ Future<int> _insertAccount(
           name: name,
           accountType: type,
           accountSubtype: Value(subtype),
-          currencyCode: 'CNY',
         ),
       );
 }

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/accounting/accounting_api.dart';
+import 'package:smartflow/application/accounting/accounting_api.dart';
 import 'package:smartflow/domain/accounting/ledger/ledger_rules.dart';
 import 'package:smartflow/domain/accounting/ledger/post_receipt.dart';
 

@@ -14,7 +14,7 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_form_field.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
-import '../../../domain/accounting/accounting_api.dart';
+import '../../../application/accounting/accounting_api.dart';
 import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/icon_choice_grid.dart';
 
@@ -36,7 +36,6 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
   final _creditLimitController = TextEditingController();
   final _noteController = TextEditingController();
   _AccountKind _kind = _AccountKind.fund;
-  String _currencyCode = Money.defaultCurrency;
   String _iconKey = _defaultAccountIconKey(_AccountKind.fund);
   int? _billingDay;
   int? _repaymentDay;
@@ -140,36 +139,16 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                           kind: _kind,
                           isEdit: _isEditMode,
                         ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: AppPlainTextFormField(
-                                controller: _openingBalanceController,
-                                hintText: _manualBalanceHint(
-                                  kind: _kind,
-                                  isEdit: _isEditMode,
-                                ),
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    ),
-                                validator: _validateMoney,
-                              ),
-                            ),
-                            InkWell(
-                              onTap: _isEditMode ? null : _showCurrencySheet,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.space8,
-                                  vertical: AppSpacing.space12,
-                                ),
-                                child: Text(
-                                  _currencyLabel(_currencyCode),
-                                  style: context.appTextStyles.formPlainValue,
-                                ),
-                              ),
-                            ),
-                          ],
+                        child: AppPlainTextFormField(
+                          controller: _openingBalanceController,
+                          hintText: _manualBalanceHint(
+                            kind: _kind,
+                            isEdit: _isEditMode,
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          validator: _validateMoney,
                         ),
                       ),
                       const Divider(height: 1),
@@ -258,7 +237,6 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
     _openingBalanceController.text = account.balance.format();
     _creditLimitController.text = account.creditLimit?.format() ?? '';
     _noteController.text = account.note ?? '';
-    _currencyCode = account.currencyCode;
     _iconKey = account.iconKey ?? _defaultAccountIconKey(kind);
     _billingDay = account.billingDay;
     _repaymentDay = account.repaymentDay;
@@ -294,7 +272,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
     if (!_showsManualBalanceField(_kind)) {
       return const Money(minorUnits: 0);
     }
-    return Money.parse(_openingBalanceController.text, currency: _currencyCode);
+    return Money.parse(_openingBalanceController.text);
   }
 
   Money? _creditLimitForKind() {
@@ -302,35 +280,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
       return null;
     }
     final text = _creditLimitController.text.trim();
-    return text.isEmpty ? null : Money.parse(text, currency: _currencyCode);
-  }
-
-  Future<void> _showCurrencySheet() async {
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              for (final option in _currencyOptions)
-                ListTile(
-                  leading: Icon(
-                    _currencyCode == option.code
-                        ? RemixIcons.checkbox_circle_fill
-                        : RemixIcons.checkbox_blank_circle_line,
-                  ),
-                  title: Text(option.label),
-                  onTap: () => Navigator.of(context).pop(option.code),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-    if (!mounted || selected == null) return;
-    setState(() => _currencyCode = selected);
+    return text.isEmpty ? null : Money.parse(text);
   }
 
   Future<void> _pickMonthlyDay({
@@ -368,10 +318,8 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
       }
       final noteText = _noteController.text.trim();
       final creditLimit = _creditLimitForKind();
-      final billingDayValue =
-          _kind == _AccountKind.credit ? _billingDay : null;
-      final repaymentDayValue =
-          _isLiabilityKind(_kind) ? _repaymentDay : null;
+      final billingDayValue = _kind == _AccountKind.credit ? _billingDay : null;
+      final repaymentDayValue = _isLiabilityKind(_kind) ? _repaymentDay : null;
 
       final result = await ref
           .read(accountServiceProvider)
@@ -413,7 +361,6 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
           CreateAccountCommand(
             name: _nameController.text,
             type: type,
-            currencyCode: _currencyCode,
             subtype: _accountSubtypeForKind(_kind),
             iconKey: _iconKey,
             openingBalance: _openingBalanceForKind(),
@@ -712,23 +659,3 @@ final List<IconChoiceGridItem> _accountIconGridItems = [
           (context, size) => BusinessIcon(iconKey: spec.iconKey, size: size),
     ),
 ];
-
-const List<_CurrencyOption> _currencyOptions = [
-  _CurrencyOption(code: Money.defaultCurrency, label: 'CNY-人民币'),
-];
-
-String _currencyLabel(String code) {
-  return _currencyOptions
-      .firstWhere(
-        (option) => option.code == code,
-        orElse: () => _CurrencyOption(code: code, label: code),
-      )
-      .label;
-}
-
-class _CurrencyOption {
-  const _CurrencyOption({required this.code, required this.label});
-
-  final String code;
-  final String label;
-}

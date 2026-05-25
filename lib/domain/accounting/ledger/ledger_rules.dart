@@ -1,4 +1,3 @@
-import '../../../core/money/money.dart';
 import '../enums/accounting_enums.dart';
 import 'post_receipt.dart';
 
@@ -90,8 +89,4 @@ bool detailTypeAllowedForPurpose({
 }) {
   return _allowedPurposeByDetail[detailType]?.contains(businessPurpose) ??
       false;
-}
-
-bool moneyMatchesCurrency(Money money, String currencyCode) {
-  return money.currency == currencyCode;
 }

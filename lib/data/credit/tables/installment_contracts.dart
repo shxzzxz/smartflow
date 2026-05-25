@@ -5,8 +5,7 @@ import '../../../domain/credit/enums/installment_enums.dart';
 @DataClassName('InstallmentContractRow')
 class InstallmentContracts extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get liabilityAccountId =>
-      integer().named('liability_account_id')();
+  IntColumn get liabilityAccountId => integer().named('liability_account_id')();
   TextColumn get sourceType =>
       textEnum<InstallmentSourceType>().named('source_type')();
   IntColumn get disbursementAccountId =>
@@ -44,8 +43,6 @@ class InstallmentContracts extends Table {
   IntColumn get totalFeeMinor =>
       integer().named('total_fee_minor').withDefault(const Constant(0))();
 
-  TextColumn get currencyCode =>
-      text().named('currency_code').withLength(min: 3, max: 3)();
   TextColumn get status =>
       textEnum<InstallmentContractStatus>().named('status')();
   TextColumn get note => text().nullable()();

@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/data/builtin_data.dart';
-import 'package:smartflow/domain/accounting/accounting_api.dart';
+import 'package:smartflow/application/accounting/accounting_api.dart';
 
 import '../helpers/test_app_database.dart';
 
@@ -110,7 +110,7 @@ void main() {
       expect(
         rows.where(
           (row) =>
-              row.name == '系统期初余额(CNY)' &&
+              row.name == '系统期初余额' &&
               row.systemKey == SystemKey.openingBalance &&
               row.source == AccountSource.builtin,
         ),

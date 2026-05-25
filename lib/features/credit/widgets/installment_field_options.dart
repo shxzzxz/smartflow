@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../domain/credit/enums/installment_enums.dart';
+import 'package:smartflow/application/credit/credit_api.dart';
 
 const List<DropdownMenuItem<InstallmentRepaymentMethod>>
-    installmentRepaymentMethodItems = [
+installmentRepaymentMethodItems = [
   DropdownMenuItem(
     value: InstallmentRepaymentMethod.equalInstallment,
     child: Text('等额本息'),
@@ -32,14 +32,11 @@ const List<DropdownMenuItem<InterestRatePeriod>> interestRatePeriodItems = [
   DropdownMenuItem(value: InterestRatePeriod.daily, child: Text('日')),
 ];
 
-const List<DropdownMenuItem<InterestAccrualMethod>>
-    interestAccrualMethodItems = [
-  DropdownMenuItem(
-    value: InterestAccrualMethod.daily,
-    child: Text('按日计息'),
-  ),
-  DropdownMenuItem(
-    value: InterestAccrualMethod.monthly,
-    child: Text('按月计息'),
-  ),
-];
+const List<DropdownMenuItem<InterestAccrualMethod>> interestAccrualMethodItems =
+    [
+      DropdownMenuItem(value: InterestAccrualMethod.daily, child: Text('按日计息')),
+      DropdownMenuItem(
+        value: InterestAccrualMethod.monthly,
+        child: Text('按月计息'),
+      ),
+    ];

@@ -1,4 +1,4 @@
-import '../../domain/accounting/accounting_api.dart';
+import '../../application/accounting/accounting_api.dart';
 
 String accountTypeLabel(AccountType type) {
   return switch (type) {

@@ -6,8 +6,6 @@ class Budgets extends Table {
   IntColumn get monthKey => integer().named('month_key')();
   IntColumn get accountId => integer().named('account_id').nullable()();
   IntColumn get amountMinor => integer().named('amount_minor')();
-  TextColumn get currencyCode =>
-      text().named('currency_code').withLength(min: 3, max: 3)();
   DateTimeColumn get createdAt =>
       dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt =>

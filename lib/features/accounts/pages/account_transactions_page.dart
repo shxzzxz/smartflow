@@ -29,8 +29,8 @@ class AccountTransactionsPage extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.space16),
             itemCount: items.length,
-            separatorBuilder: (_, _) =>
-                const SizedBox(height: AppSpacing.space8),
+            separatorBuilder:
+                (_, _) => const SizedBox(height: AppSpacing.space8),
             itemBuilder: (context, index) {
               return TransactionRow(
                 item: items[index],

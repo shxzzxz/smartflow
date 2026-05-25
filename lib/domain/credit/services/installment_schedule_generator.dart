@@ -97,7 +97,11 @@ class InstallmentScheduleGenerator {
     int? equalInstallmentOverrideMinor,
   }) {
     if (pendingDates.isEmpty) {
-      throw ArgumentError.value(pendingDates, 'pendingDates', 'Must not be empty');
+      throw ArgumentError.value(
+        pendingDates,
+        'pendingDates',
+        'Must not be empty',
+      );
     }
     if (remainingPrincipal.minorUnits < 0) {
       throw ArgumentError.value(
@@ -140,10 +144,7 @@ class InstallmentScheduleGenerator {
           remainingFeeMinor: remainingFeeMinor,
         );
       case InstallmentRepaymentMethod.custom:
-        return _custom(
-          currency: remainingPrincipal.currency,
-          periods: pendingDates.length,
-        );
+        return _custom(periods: pendingDates.length);
     }
   }
 
@@ -258,15 +259,9 @@ class InstallmentScheduleGenerator {
       }
       allocations.add(
         InstallmentAmountAllocation(
-          principal: Money(
-            minorUnits: principalMinor,
-            currency: principal.currency,
-          ),
-          interest: Money(
-            minorUnits: interestMinor,
-            currency: principal.currency,
-          ),
-          fee: Money.zero(currency: principal.currency),
+          principal: Money(minorUnits: principalMinor),
+          interest: Money(minorUnits: interestMinor),
+          fee: Money.zero(),
         ),
       );
       remaining -= principalMinor;
@@ -301,15 +296,9 @@ class InstallmentScheduleGenerator {
       );
       allocations.add(
         InstallmentAmountAllocation(
-          principal: Money(
-            minorUnits: principalMinor,
-            currency: principal.currency,
-          ),
-          interest: Money(
-            minorUnits: interestMinor,
-            currency: principal.currency,
-          ),
-          fee: Money.zero(currency: principal.currency),
+          principal: Money(minorUnits: principalMinor),
+          interest: Money(minorUnits: interestMinor),
+          fee: Money.zero(),
         ),
       );
       remaining -= principalMinor;
@@ -338,15 +327,9 @@ class InstallmentScheduleGenerator {
       );
       allocations.add(
         InstallmentAmountAllocation(
-          principal: Money(
-            minorUnits: isLast ? principal.minorUnits : 0,
-            currency: principal.currency,
-          ),
-          interest: Money(
-            minorUnits: interestMinor,
-            currency: principal.currency,
-          ),
-          fee: Money.zero(currency: principal.currency),
+          principal: Money(minorUnits: isLast ? principal.minorUnits : 0),
+          interest: Money(minorUnits: interestMinor),
+          fee: Money.zero(),
         ),
       );
     }
@@ -372,15 +355,9 @@ class InstallmentScheduleGenerator {
       }
       allocations.add(
         InstallmentAmountAllocation(
-          principal: Money(
-            minorUnits: principalMinor,
-            currency: principal.currency,
-          ),
-          interest: Money.zero(currency: principal.currency),
-          fee: Money(
-            minorUnits: feeMinor,
-            currency: principal.currency,
-          ),
+          principal: Money(minorUnits: principalMinor),
+          interest: Money.zero(),
+          fee: Money(minorUnits: feeMinor),
         ),
       );
       principalAccum += principalMinor;
@@ -389,11 +366,8 @@ class InstallmentScheduleGenerator {
     return allocations;
   }
 
-  List<InstallmentAmountAllocation> _custom({
-    required String currency,
-    required int periods,
-  }) {
-    final zero = Money.zero(currency: currency);
+  List<InstallmentAmountAllocation> _custom({required int periods}) {
+    final zero = Money.zero();
     return [
       for (var i = 0; i < periods; i++)
         InstallmentAmountAllocation(principal: zero, interest: zero, fee: zero),

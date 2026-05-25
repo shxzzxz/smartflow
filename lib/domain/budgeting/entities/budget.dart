@@ -6,7 +6,6 @@ class Budget {
     required this.id,
     required this.monthKey,
     required this.amount,
-    required this.currencyCode,
     this.accountId,
   });
 
@@ -14,5 +13,4 @@ class Budget {
   final MonthKey monthKey;
   final int? accountId;
   final Money amount;
-  final String currencyCode;
 }

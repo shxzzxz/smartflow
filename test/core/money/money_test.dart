@@ -10,7 +10,7 @@ void main() {
       expect(money.major.toString(), '12.34');
     });
 
-    test('supports arithmetic for the same currency', () {
+    test('supports arithmetic', () {
       final first = Money.parse('10.00');
       final second = Money.parse('2.35');
 
@@ -23,12 +23,11 @@ void main() {
       expect(() => Money.parse('1.234'), throwsFormatException);
     });
 
-    test('rejects mixed currencies', () {
-      final cny = Money.parse('1.00');
-      final usd = Money.parse('1.00', currency: 'USD');
+    test('compares by minor units', () {
+      final first = Money.parse('1.00');
+      final second = Money.parse('2.00');
 
-      expect(() => cny + usd, throwsArgumentError);
-      expect(() => cny.compareTo(usd), throwsArgumentError);
+      expect(first.compareTo(second), lessThan(0));
     });
   });
 }

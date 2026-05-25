@@ -1,4 +1,4 @@
-import '../../../domain/accounting/accounting_api.dart';
+import '../../../application/accounting/accounting_api.dart';
 
 /// 同一日的主交易聚合，用于按日分组卡片。
 class HomeTransactionDayGroup {

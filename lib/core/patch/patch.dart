@@ -22,4 +22,3 @@ final class PatchSet<T> extends Patch<T> {
 final class PatchClear<T> extends Patch<T> {
   const PatchClear();
 }
-

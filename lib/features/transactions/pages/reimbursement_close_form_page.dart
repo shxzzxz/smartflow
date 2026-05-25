@@ -10,7 +10,7 @@ import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_page_header.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_submit_button.dart';
-import '../../../domain/accounting/accounting_api.dart';
+import '../../../application/accounting/accounting_api.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 
 class ReimbursementCloseFormPage extends ConsumerStatefulWidget {
@@ -64,10 +64,7 @@ class _ReimbursementCloseFormPageState
     final actualMinor = _parseMinorOrNull(_amountController.text);
     final gap =
         (outstanding != null && actualMinor != null)
-            ? Money(
-              minorUnits: actualMinor - outstanding.minorUnits,
-              currency: outstanding.currency,
-            )
+            ? Money(minorUnits: actualMinor - outstanding.minorUnits)
             : null;
 
     return Scaffold(

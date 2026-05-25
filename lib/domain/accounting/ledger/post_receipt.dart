@@ -1,6 +1,6 @@
-import '../../../core/money/money.dart';
 import '../entities/transaction_ownership.dart';
 import '../enums/accounting_enums.dart';
+import '../../../core/money/money.dart';
 
 /// 入账凭证:对一笔交易"长什么样"的完整描述。
 ///
@@ -15,7 +15,6 @@ class PostReceipt {
     required this.primaryAmount,
     required this.details,
     required this.entries,
-    this.currencyCode = Money.defaultCurrency,
     this.rootTransactionId,
     this.parentTransactionId,
     this.reimbursementExpenseAccountId,
@@ -29,7 +28,6 @@ class PostReceipt {
 
   final BusinessPurpose businessPurpose;
   final DateTime occurredAt;
-  final String currencyCode;
   final Money primaryAmount;
   final List<ReceiptDetail> details;
   final List<ReceiptEntry> entries;
@@ -46,7 +44,6 @@ class PostReceipt {
   PostReceipt copyWith({
     BusinessPurpose? businessPurpose,
     DateTime? occurredAt,
-    String? currencyCode,
     Money? primaryAmount,
     List<ReceiptDetail>? details,
     List<ReceiptEntry>? entries,
@@ -63,7 +60,6 @@ class PostReceipt {
     return PostReceipt(
       businessPurpose: businessPurpose ?? this.businessPurpose,
       occurredAt: occurredAt ?? this.occurredAt,
-      currencyCode: currencyCode ?? this.currencyCode,
       primaryAmount: primaryAmount ?? this.primaryAmount,
       details: details ?? this.details,
       entries: entries ?? this.entries,

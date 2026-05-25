@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../design_system/theme/app_theme_extension.dart';
-import '../../domain/accounting/accounting_api.dart';
+import '../../application/accounting/accounting_api.dart';
 import 'finance_labels.dart';
 
 class AccountTypeTag extends StatelessWidget {

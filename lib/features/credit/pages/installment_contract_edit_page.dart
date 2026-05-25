@@ -13,12 +13,7 @@ import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_submit_button.dart';
 import '../../../design_system/widgets/app_surface.dart';
-import '../../../domain/credit/entities/installment_contract.dart';
-import '../../../domain/credit/entities/installment_schedule.dart';
-import '../../../domain/credit/enums/installment_enums.dart';
-import '../../../domain/credit/services/installment_metrics.dart';
-import '../../../domain/credit/services/installment_schedule_generator.dart';
-import '../../../domain/credit/services/installment_service.dart';
+import 'package:smartflow/application/credit/credit_api.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 import '../widgets/installment_field_options.dart';
 
@@ -55,7 +50,6 @@ class _InstallmentContractEditPageState
 
   InstallmentContract? _contract;
   int _paidCount = 0;
-  String _currency = Money.defaultCurrency;
   bool _initialized = false;
   bool _submitting = false;
 
@@ -70,12 +64,15 @@ class _InstallmentContractEditPageState
 
   @override
   Widget build(BuildContext context) {
-    final contractAsync =
-        ref.watch(installmentContractProvider(widget.contractId));
-    final schedulesAsync =
-        ref.watch(installmentSchedulesProvider(widget.contractId));
-    final metricsAsync =
-        ref.watch(installmentMetricsProvider(widget.contractId));
+    final contractAsync = ref.watch(
+      installmentContractProvider(widget.contractId),
+    );
+    final schedulesAsync = ref.watch(
+      installmentSchedulesProvider(widget.contractId),
+    );
+    final metricsAsync = ref.watch(
+      installmentMetricsProvider(widget.contractId),
+    );
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -86,8 +83,7 @@ class _InstallmentContractEditPageState
               ? const Center(child: Text('合同不存在'))
               : _buildBody(contract, schedules, metricsAsync),
         (AsyncError(:final error), _) ||
-        (_, AsyncError(:final error)) =>
-          Center(child: Text('加载失败：$error')),
+        (_, AsyncError(:final error)) => Center(child: Text('加载失败：$error')),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
@@ -97,7 +93,7 @@ class _InstallmentContractEditPageState
     InstallmentContract contract,
     List<InstallmentSchedule> schedules,
     AsyncValue<({ContractMetrics designed, ContractMetrics actual})>
-        metricsAsync,
+    metricsAsync,
   ) {
     if (!_initialized) {
       _initialize(contract, schedules);
@@ -134,15 +130,15 @@ class _InstallmentContractEditPageState
             onPickLastDate: _pickLastDate,
             onMethodChanged: (v) => setState(() => _method = v),
             onRatePeriodChanged: (v) => setState(() => _ratePeriod = v),
-            onAccrualMethodChanged: _paidCount > 0
-                ? null
-                : (v) => setState(() => _accrualMethod = v),
+            onAccrualMethodChanged:
+                _paidCount > 0
+                    ? null
+                    : (v) => setState(() => _accrualMethod = v),
             onRecalculate: _recalculate,
           ),
           const SizedBox(height: AppSpacing.space12),
           _ScheduleSection(
             draft: _draft,
-            currency: _currency,
             manualPatched: _manualPatched,
             onApplyAmount: _applyAmount,
             onEditDate: _editScheduleDate,
@@ -164,10 +160,10 @@ class _InstallmentContractEditPageState
   ) {
     _initialized = true;
     _contract = contract;
-    _currency = contract.principal.currency;
-    _paidCount = schedules
-        .where((s) => s.status == InstallmentScheduleStatus.paid)
-        .length;
+    _paidCount =
+        schedules
+            .where((s) => s.status == InstallmentScheduleStatus.paid)
+            .length;
     _firstRepaymentDate = contract.firstRepaymentDate;
     _lastRepaymentDate = contract.lastRepaymentDate;
     _method = contract.repaymentMethod;
@@ -180,10 +176,8 @@ class _InstallmentContractEditPageState
       _rateController.text = _trimTrailingZeros(percent.toStringAsFixed(4));
     }
     if (contract.totalFeeMinor > 0) {
-      _feeController.text = Money(
-        minorUnits: contract.totalFeeMinor,
-        currency: _currency,
-      ).major.toString();
+      _feeController.text =
+          Money(minorUnits: contract.totalFeeMinor).major.toString();
     }
     // 还款固定额是瞬态输入，不从合同读取（也不落库）。
     _overrideInstallmentController.text = '';
@@ -234,8 +228,7 @@ class _InstallmentContractEditPageState
       _showError('期数必须不小于已还期数 + 1');
       return;
     }
-    if (totalPeriods > 1 &&
-        !_lastRepaymentDate.isAfter(_firstRepaymentDate)) {
+    if (totalPeriods > 1 && !_lastRepaymentDate.isAfter(_firstRepaymentDate)) {
       _showError('末期还款日必须晚于首期还款日');
       return;
     }
@@ -255,19 +248,19 @@ class _InstallmentContractEditPageState
     );
     final pendingDates = allDates.sublist(_paidCount);
 
-    final paidRows = _draft
-        .where((r) => r.status == InstallmentScheduleStatus.paid)
-        .toList()
-      ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
+    final paidRows =
+        _draft.where((r) => r.status == InstallmentScheduleStatus.paid).toList()
+          ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
 
     final paidPrincipalMinor = paidRows.fold<int>(
       0,
       (acc, r) => acc + r.principal.minorUnits,
     );
-    final paidFeeMinor =
-        paidRows.fold<int>(0, (acc, r) => acc + r.fee.minorUnits);
-    final remainingMinor =
-        contract.principal.minorUnits - paidPrincipalMinor;
+    final paidFeeMinor = paidRows.fold<int>(
+      0,
+      (acc, r) => acc + r.fee.minorUnits,
+    );
+    final remainingMinor = contract.principal.minorUnits - paidPrincipalMinor;
     if (remainingMinor < 0) {
       _showError('剩余本金为负，无法重算');
       return;
@@ -277,10 +270,7 @@ class _InstallmentContractEditPageState
 
     final remainingFeeMinor = feeMinor - paidFeeMinor;
     final allocations = _generator.allocate(
-      remainingPrincipal: Money(
-        minorUnits: remainingMinor,
-        currency: _currency,
-      ),
+      remainingPrincipal: Money(minorUnits: remainingMinor),
       anchorDate: anchorDate,
       pendingDates: pendingDates,
       method: _method,
@@ -296,11 +286,14 @@ class _InstallmentContractEditPageState
       newDraft.add(paidRows[i]);
     }
     for (var i = 0; i < pendingDates.length; i++) {
-      final existing = _draft
-          .where((r) =>
-              r.status != InstallmentScheduleStatus.paid &&
-              r.periodNo == paidRows.length + i + 1)
-          .firstOrNull;
+      final existing =
+          _draft
+              .where(
+                (r) =>
+                    r.status != InstallmentScheduleStatus.paid &&
+                    r.periodNo == paidRows.length + i + 1,
+              )
+              .firstOrNull;
       newDraft.add(
         _DraftRow(
           scheduleId: existing?.scheduleId,
@@ -328,7 +321,8 @@ class _InstallmentContractEditPageState
     };
     setState(() {
       _draft = [
-        for (final r in _draft) if (r.periodNo == row.periodNo) newRow else r,
+        for (final r in _draft)
+          if (r.periodNo == row.periodNo) newRow else r,
       ];
       _manualPatched.add(row.periodNo);
     });
@@ -345,7 +339,8 @@ class _InstallmentContractEditPageState
     final newRow = row.copyWith(date: picked);
     setState(() {
       _draft = [
-        for (final r in _draft) if (r.periodNo == row.periodNo) newRow else r,
+        for (final r in _draft)
+          if (r.periodNo == row.periodNo) newRow else r,
       ];
       _manualPatched.add(row.periodNo);
     });
@@ -397,12 +392,12 @@ class _InstallmentContractEditPageState
         firstRepaymentDate: _firstRepaymentDate,
         lastRepaymentDate: _lastRepaymentDate,
         repaymentMethod: _method,
-        interestRatePeriod: ratePpm == null
-            ? const Patch<InterestRatePeriod>.clear()
-            : Patch.set(_ratePeriod),
-        interestRatePpm: ratePpm == null
-            ? const Patch<int>.clear()
-            : Patch.set(ratePpm),
+        interestRatePeriod:
+            ratePpm == null
+                ? const Patch<InterestRatePeriod>.clear()
+                : Patch.set(_ratePeriod),
+        interestRatePpm:
+            ratePpm == null ? const Patch<int>.clear() : Patch.set(ratePpm),
         interestAccrualMethod: _accrualMethod,
         totalFeeMinor: feeMinor,
         equalInstallmentOverrideMinor: overrideMinor,
@@ -419,9 +414,9 @@ class _InstallmentContractEditPageState
         ref.invalidate(installmentSchedulesProvider(widget.contractId));
         ref.invalidate(installmentRepaymentsProvider(widget.contractId));
         ref.invalidate(installmentMetricsProvider(widget.contractId));
-        ref.invalidate(installmentContractsByAccountProvider(
-          contract.liabilityAccountId,
-        ));
+        ref.invalidate(
+          installmentContractsByAccountProvider(contract.liabilityAccountId),
+        );
         context.pop();
       case FailureResult(:final failure):
         _showError(failure.message);
@@ -444,11 +439,11 @@ class _InstallmentContractEditPageState
 
   Money _parseOptionalMoney(String value) {
     final trimmed = value.trim();
-    if (trimmed.isEmpty) return Money.zero(currency: _currency);
+    if (trimmed.isEmpty) return Money.zero();
     try {
       return Money.parse(trimmed);
     } on FormatException {
-      return Money.zero(currency: _currency);
+      return Money.zero();
     }
   }
 
@@ -457,7 +452,7 @@ class _InstallmentContractEditPageState
     final trimmed = value.trim();
     if (trimmed.isEmpty) return null;
     try {
-      final money = Money.parse(trimmed, currency: _currency);
+      final money = Money.parse(trimmed);
       return money.minorUnits > 0 ? money.minorUnits : null;
     } on FormatException {
       return null;
@@ -702,31 +697,27 @@ class _ConfigSection extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Text(
       text,
-      style: context.appTextStyles.formPlainValue
-          .copyWith(color: colors.onSurface),
+      style: context.appTextStyles.formPlainValue.copyWith(
+        color: colors.onSurface,
+      ),
     );
   }
 }
 
 enum _AmountField { principal, interest, fee }
 
-typedef _ApplyAmount = void Function(
-  _DraftRow row,
-  _AmountField field,
-  Money value,
-);
+typedef _ApplyAmount =
+    void Function(_DraftRow row, _AmountField field, Money value);
 
 class _ScheduleSection extends StatelessWidget {
   const _ScheduleSection({
     required this.draft,
-    required this.currency,
     required this.manualPatched,
     required this.onApplyAmount,
     required this.onEditDate,
   });
 
   final List<_DraftRow> draft;
-  final String currency;
   final Set<int> manualPatched;
   final _ApplyAmount onApplyAmount;
   final ValueChanged<_DraftRow> onEditDate;
@@ -763,7 +754,6 @@ class _ScheduleSection extends StatelessWidget {
                 for (var i = 0; i < draft.length; i++) ...[
                   _ScheduleRow(
                     row: draft[i],
-                    currency: currency,
                     edited: manualPatched.contains(draft[i].periodNo),
                     onApplyAmount: onApplyAmount,
                     onEditDate: onEditDate,
@@ -802,10 +792,7 @@ class _ScheduleHeader extends StatelessWidget {
             width: _periodCellWidth,
             child: Text('期', style: labelStyle),
           ),
-          SizedBox(
-            width: _dateCellWidth,
-            child: Text('时间', style: labelStyle),
-          ),
+          SizedBox(width: _dateCellWidth, child: Text('时间', style: labelStyle)),
           Expanded(
             child: Text('本', style: labelStyle, textAlign: TextAlign.right),
           ),
@@ -835,14 +822,12 @@ const double _statusCellWidth = 36;
 class _ScheduleRow extends StatelessWidget {
   const _ScheduleRow({
     required this.row,
-    required this.currency,
     required this.edited,
     required this.onApplyAmount,
     required this.onEditDate,
   });
 
   final _DraftRow row;
-  final String currency;
   final bool edited;
   final _ApplyAmount onApplyAmount;
   final ValueChanged<_DraftRow> onEditDate;
@@ -896,7 +881,6 @@ class _ScheduleRow extends StatelessWidget {
               style: cellStyle,
               canEdit: pending,
               allowZero: false,
-              currency: currency,
               onCommit: (m) => onApplyAmount(row, _AmountField.principal, m),
             ),
           ),
@@ -907,7 +891,6 @@ class _ScheduleRow extends StatelessWidget {
               style: cellStyle,
               canEdit: pending,
               allowZero: true,
-              currency: currency,
               onCommit: (m) => onApplyAmount(row, _AmountField.interest, m),
             ),
           ),
@@ -918,7 +901,6 @@ class _ScheduleRow extends StatelessWidget {
               style: cellStyle,
               canEdit: pending,
               allowZero: true,
-              currency: currency,
               onCommit: (m) => onApplyAmount(row, _AmountField.fee, m),
             ),
           ),
@@ -952,7 +934,6 @@ class _EditableMoneyCell extends StatefulWidget {
     required this.style,
     required this.canEdit,
     required this.allowZero,
-    required this.currency,
     required this.onCommit,
     super.key,
   });
@@ -961,7 +942,6 @@ class _EditableMoneyCell extends StatefulWidget {
   final TextStyle style;
   final bool canEdit;
   final bool allowZero;
-  final String currency;
   final ValueChanged<Money> onCommit;
 
   @override
@@ -1015,12 +995,11 @@ class _EditableMoneyCellState extends State<_EditableMoneyCell> {
     final text = _controller.text.trim();
     Money? next;
     if (text.isEmpty) {
-      if (widget.allowZero) next = Money.zero(currency: widget.currency);
+      if (widget.allowZero) next = Money.zero();
     } else {
       try {
-        final m = Money.parse(text, currency: widget.currency);
-        if (m.minorUnits >= 0 &&
-            (widget.allowZero || m.minorUnits > 0)) {
+        final m = Money.parse(text);
+        if (m.minorUnits >= 0 && (widget.allowZero || m.minorUnits > 0)) {
           next = m;
         }
       } on FormatException {
@@ -1112,13 +1091,10 @@ class _Cell extends StatelessWidget {
 }
 
 class _MetricsSection extends StatelessWidget {
-  const _MetricsSection({
-    required this.metricsAsync,
-    required this.principal,
-  });
+  const _MetricsSection({required this.metricsAsync, required this.principal});
 
   final AsyncValue<({ContractMetrics designed, ContractMetrics actual})>
-      metricsAsync;
+  metricsAsync;
   final Money principal;
 
   @override
@@ -1134,24 +1110,23 @@ class _MetricsSection extends StatelessWidget {
             AppSpacing.space4,
             AppSpacing.space4,
           ),
-          child: Text(
-            '汇总信息（合同 / 履约）',
-            style: styles.dateSectionTitle,
-          ),
+          child: Text('汇总信息（合同 / 履约）', style: styles.dateSectionTitle),
         ),
         switch (metricsAsync) {
-          AsyncData(value: final pair) =>
-            _MetricsPair(pair: pair, principal: principal),
+          AsyncData(value: final pair) => _MetricsPair(
+            pair: pair,
+            principal: principal,
+          ),
           AsyncError(:final error) => AppSurface(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.space12),
-                child: Text('指标加载失败：$error'),
-              ),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.space12),
+              child: Text('指标加载失败：$error'),
             ),
+          ),
           _ => const Padding(
-              padding: EdgeInsets.all(AppSpacing.space12),
-              child: Center(child: CircularProgressIndicator()),
-            ),
+            padding: EdgeInsets.all(AppSpacing.space12),
+            child: Center(child: CircularProgressIndicator()),
+          ),
         },
       ],
     );
@@ -1223,10 +1198,7 @@ class _MetricGrid extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _MetricCell.single(
-                label: '本金',
-                value: principal.format(),
-              ),
+              child: _MetricCell.single(label: '本金', value: principal.format()),
             ),
             Expanded(
               child: _MetricCell(
@@ -1256,12 +1228,10 @@ class _MetricCell extends StatelessWidget {
     required String this.actual,
   }) : single = null;
 
-  const _MetricCell.single({
-    required this.label,
-    required String value,
-  })  : designed = null,
-        actual = null,
-        single = value;
+  const _MetricCell.single({required this.label, required String value})
+    : designed = null,
+      actual = null,
+      single = value;
 
   final String label;
   final String? designed;

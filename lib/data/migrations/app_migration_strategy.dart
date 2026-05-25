@@ -1,3 +1,5 @@
+// ignore_for_file: experimental_member_use
+
 import 'package:drift/drift.dart';
 
 import '../app_database.dart';
@@ -9,12 +11,12 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
       await migrator.createAll();
       await database.customStatement(
         'CREATE UNIQUE INDEX budgets_total_unique '
-        'ON budgets (month_key, currency_code) '
+        'ON budgets (month_key) '
         'WHERE account_id IS NULL',
       );
       await database.customStatement(
         'CREATE UNIQUE INDEX budgets_account_unique '
-        'ON budgets (month_key, account_id, currency_code) '
+        'ON budgets (month_key, account_id) '
         'WHERE account_id IS NOT NULL',
       );
       await database.customStatement(
@@ -198,6 +200,30 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         await database.customStatement(
           "UPDATE accounts SET system_key = 'ghostAccount' "
           "WHERE system_key = 'importFallback'",
+        );
+      }
+      if (from < 9) {
+        await database.customStatement(
+          'DROP INDEX IF EXISTS budgets_total_unique',
+        );
+        await database.customStatement(
+          'DROP INDEX IF EXISTS budgets_account_unique',
+        );
+        await migrator.alterTable(TableMigration(database.accounts));
+        await migrator.alterTable(TableMigration(database.transactions));
+        await migrator.alterTable(TableMigration(database.budgets));
+        await migrator.alterTable(
+          TableMigration(database.installmentContracts),
+        );
+        await database.customStatement(
+          'CREATE UNIQUE INDEX budgets_total_unique '
+          'ON budgets (month_key) '
+          'WHERE account_id IS NULL',
+        );
+        await database.customStatement(
+          'CREATE UNIQUE INDEX budgets_account_unique '
+          'ON budgets (month_key, account_id) '
+          'WHERE account_id IS NOT NULL',
         );
       }
     },

@@ -7,7 +7,7 @@ import 'package:smartflow/core/errors/failure.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/data/database_provider.dart';
-import 'package:smartflow/domain/accounting/accounting_api.dart';
+import 'package:smartflow/application/accounting/accounting_api.dart';
 import 'package:smartflow/features/transactions/pages/transaction_form_page.dart';
 
 import '../../helpers/test_app_database.dart';
@@ -208,7 +208,6 @@ Future<int> _insertAccount(
           name: name,
           accountType: type,
           accountSubtype: Value(subtype),
-          currencyCode: 'CNY',
         ),
       );
 }

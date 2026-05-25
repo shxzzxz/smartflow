@@ -1,8 +1,10 @@
 import '../../../core/errors/failure.dart';
 import '../../../core/result/result.dart';
 import '../entities/account.dart';
-import '../read_models/transaction_read_models.dart';
-import '../repositories/posting_repository.dart';
+import '../entities/transaction.dart';
+import '../entities/transaction_fact.dart';
+import '../enums/accounting_enums.dart';
+import '../ports/posting_repository.dart';
 import 'ledger_rules.dart';
 import 'post_receipt.dart';
 
@@ -21,13 +23,13 @@ abstract interface class Poster {
   Future<Result<PostReceiptResult>> create(PostReceipt receipt);
 
   Future<Result<PostReceiptResult>> replace({
-    required TransactionDetail original,
+    required TransactionFact original,
     required PostReceipt newReceipt,
   });
 
-  Future<Result<void>> cancel(TransactionDetail original);
+  Future<Result<void>> cancel(TransactionFact original);
 
-  Future<Result<void>> cancelMany({required List<TransactionDetail> originals});
+  Future<Result<void>> cancelMany({required List<TransactionFact> originals});
 }
 
 class PosterImpl implements Poster {
@@ -46,11 +48,12 @@ class PosterImpl implements Poster {
         allowNegativeAmounts: false,
       );
       if (receiptFailure != null) return Result.failure(receiptFailure);
-      final deltas = _computeBalanceDeltas(receipt, accounts);
-      final result = await _repository.insertReceipt(
-        receipt: receipt,
-        balanceDeltasMinor: deltas,
-      );
+      final transaction = Transaction.fromReceipt(receipt);
+      final updatedAccounts = _applyTransactionsToAccounts(accounts, [
+        transaction,
+      ]);
+      final result = await _repository.saveTransaction(transaction);
+      await _repository.saveAccounts(updatedAccounts);
       return Result.success(result);
     } on Object catch (error) {
       return Result.failure(
@@ -65,7 +68,7 @@ class PosterImpl implements Poster {
 
   @override
   Future<Result<PostReceiptResult>> replace({
-    required TransactionDetail original,
+    required TransactionFact original,
     required PostReceipt newReceipt,
   }) async {
     try {
@@ -88,23 +91,40 @@ class PosterImpl implements Poster {
       );
       if (reversalFailure != null) return Result.failure(reversalFailure);
 
-      final reversalAccounts = await _loadAccounts(reversalReceipt);
-      final reversalDeltas = _computeBalanceDeltas(
+      final reversalTransaction = Transaction.fromReceipt(
         reversalReceipt,
-        reversalAccounts,
+        mutationKind: MutationKind.reversal,
+        businessState: BusinessState.compensation,
+        mutationReason: MutationReason.correction,
+        mutationPreviousTransactionId: original.transaction.id,
+        allowNegativeAmounts: true,
       );
-      final correctionDeltas = _computeBalanceDeltas(
-        correctionReceipt,
-        accounts,
+      var accountsForWrite = Map<int, Account>.of(accounts);
+      accountsForWrite.addAll(await _loadAccounts(reversalReceipt));
+      final afterReversal = _applyTransactionsToAccounts(accountsForWrite, [
+        reversalTransaction,
+      ]);
+
+      await _repository.updateTransactionState(
+        transactionId: original.transaction.id,
+        businessState: BusinessState.replaced,
+      );
+      final reversalResult = await _repository.saveTransaction(
+        reversalTransaction,
       );
 
-      final result = await _repository.replaceTransaction(
-        originalTransactionId: original.transaction.id,
-        reversalReceipt: reversalReceipt,
-        correctionReceipt: correctionReceipt,
-        reversalBalanceDeltasMinor: reversalDeltas,
-        correctionBalanceDeltasMinor: correctionDeltas,
+      final correctionTransaction = Transaction.fromReceipt(
+        correctionReceipt,
+        mutationKind: MutationKind.correction,
+        businessState: BusinessState.current,
+        mutationPreviousTransactionId: reversalResult.transactionId,
       );
+      final afterCorrection = _applyTransactionsToAccounts(
+        {for (final account in afterReversal) account.id: account},
+        [correctionTransaction],
+      );
+      final result = await _repository.saveTransaction(correctionTransaction);
+      await _repository.saveAccounts(afterCorrection);
       return Result.success(result);
     } on Object catch (error) {
       return Result.failure(
@@ -118,15 +138,16 @@ class PosterImpl implements Poster {
   }
 
   @override
-  Future<Result<void>> cancel(TransactionDetail original) =>
+  Future<Result<void>> cancel(TransactionFact original) =>
       cancelMany(originals: [original]);
 
   @override
   Future<Result<void>> cancelMany({
-    required List<TransactionDetail> originals,
+    required List<TransactionFact> originals,
   }) async {
     try {
-      final cancellations = <CancelInstruction>[];
+      final reversalTransactions = <Transaction>[];
+      final accountMap = <int, Account>{};
       for (final original in originals) {
         final reversal = _deriveReversal(original);
         final reversalFailure = _validateReceipt(
@@ -135,16 +156,30 @@ class PosterImpl implements Poster {
         );
         if (reversalFailure != null) return Result.failure(reversalFailure);
         final accounts = await _loadAccounts(reversal);
-        final deltas = _computeBalanceDeltas(reversal, accounts);
-        cancellations.add(
-          CancelInstruction(
-            originalTransactionId: original.transaction.id,
-            reversalReceipt: reversal,
-            balanceDeltasMinor: deltas,
+        accountMap.addAll(accounts);
+        reversalTransactions.add(
+          Transaction.fromReceipt(
+            reversal,
+            mutationKind: MutationKind.reversal,
+            businessState: BusinessState.compensation,
+            mutationReason: MutationReason.delete,
+            mutationPreviousTransactionId: original.transaction.id,
+            allowNegativeAmounts: true,
           ),
         );
       }
-      await _repository.cancelTransactions(cancellations: cancellations);
+      final updatedAccounts = _applyTransactionsToAccounts(
+        accountMap,
+        reversalTransactions,
+      );
+      for (var i = 0; i < originals.length; i++) {
+        await _repository.updateTransactionState(
+          transactionId: originals[i].transaction.id,
+          businessState: BusinessState.canceled,
+        );
+        await _repository.saveTransaction(reversalTransactions[i]);
+      }
+      await _repository.saveAccounts(updatedAccounts);
       return const Result.success(null);
     } on Object catch (error) {
       return Result.failure(
@@ -163,10 +198,7 @@ class PosterImpl implements Poster {
     return {for (final a in accounts) a.id: a};
   }
 
-  Failure? _validateAccounts(
-    PostReceipt receipt,
-    Map<int, Account> accounts,
-  ) {
+  Failure? _validateAccounts(PostReceipt receipt, Map<int, Account> accounts) {
     for (final entry in receipt.entries) {
       final account = accounts[entry.accountId];
       if (account == null) {
@@ -179,14 +211,6 @@ class PosterImpl implements Poster {
         return Failure(
           code: 'account_archived',
           message: 'Account ${entry.accountId} is archived.',
-        );
-      }
-      if (account.currencyCode != receipt.currencyCode) {
-        return Failure(
-          code: 'account_currency_mismatch',
-          message:
-              'Account ${entry.accountId} uses ${account.currencyCode}, '
-              'not ${receipt.currencyCode}.',
         );
       }
     }
@@ -209,12 +233,6 @@ class PosterImpl implements Poster {
         message: 'A transaction must have at least two entries.',
       );
     }
-    if (!moneyMatchesCurrency(receipt.primaryAmount, receipt.currencyCode)) {
-      return const Failure(
-        code: 'primary_amount_currency_mismatch',
-        message: 'Primary amount currency does not match transaction currency.',
-      );
-    }
     if ((!allowNegativeAmounts && receipt.primaryAmount.minorUnits <= 0) ||
         (allowNegativeAmounts && receipt.primaryAmount.minorUnits == 0)) {
       return const Failure(
@@ -223,13 +241,6 @@ class PosterImpl implements Poster {
       );
     }
     for (final detail in receipt.details) {
-      if (!moneyMatchesCurrency(detail.amount, receipt.currencyCode)) {
-        return const Failure(
-          code: 'detail_currency_mismatch',
-          message:
-              'Detail amount currency does not match transaction currency.',
-        );
-      }
       if (!_amountSignIsValid(
         amountMinor: detail.amount.minorUnits,
         expectsNegative: allowNegativeAmounts,
@@ -254,12 +265,6 @@ class PosterImpl implements Poster {
       }
     }
     for (final entry in receipt.entries) {
-      if (!moneyMatchesCurrency(entry.amount, receipt.currencyCode)) {
-        return const Failure(
-          code: 'entry_currency_mismatch',
-          message: 'Entry amount currency does not match transaction currency.',
-        );
-      }
       if (!_amountSignIsValid(
         amountMinor: entry.amount.minorUnits,
         expectsNegative: allowNegativeAmounts,
@@ -288,25 +293,21 @@ class PosterImpl implements Poster {
     return expectsNegative ? amountMinor < 0 : amountMinor > 0;
   }
 
-  Map<int, int> _computeBalanceDeltas(
-    PostReceipt receipt,
+  List<Account> _applyTransactionsToAccounts(
     Map<int, Account> accounts,
+    List<Transaction> transactions,
   ) {
-    final deltas = <int, int>{};
-    for (final entry in receipt.entries) {
-      final account = accounts[entry.accountId]!;
-      final delta = balanceDeltaMinor(
-        accountType: account.type,
-        direction: entry.direction,
-        amountMinor: entry.amount.minorUnits,
-      );
-      deltas.update(
-        entry.accountId,
-        (value) => value + delta,
-        ifAbsent: () => delta,
-      );
+    final updated = Map<int, Account>.of(accounts);
+    for (final transaction in transactions) {
+      for (final accountId in transaction.accountIds) {
+        final account = updated[accountId];
+        if (account == null) {
+          throw StateError('Account $accountId does not exist.');
+        }
+        updated[accountId] = account.applyTransaction(transaction);
+      }
     }
-    return deltas;
+    return updated.values.toList();
   }
 
   /// 把 builder 生成的"纯净蓝字"包装为 correction:从 original 继承
@@ -314,13 +315,14 @@ class PosterImpl implements Poster {
   /// 其它字段沿用 newReceipt。
   PostReceipt _inheritFromOriginal(
     PostReceipt newReceipt,
-    TransactionDetail original,
+    TransactionFact original,
   ) {
     final t = original.transaction;
     return newReceipt.copyWith(
       rootTransactionId: t.rootTransactionId,
       parentTransactionId: t.parentTransactionId,
-      reimbursementExpenseAccountId: newReceipt.reimbursementExpenseAccountId ??
+      reimbursementExpenseAccountId:
+          newReceipt.reimbursementExpenseAccountId ??
           t.reimbursementExpenseAccountId,
       sourceKind: t.sourceKind,
       ownership: t.ownership,
@@ -328,12 +330,11 @@ class PosterImpl implements Poster {
   }
 
   /// 从 [original] 派生红字凭证:金额取负、方向不变、occurredAt 沿用原交易。
-  PostReceipt _deriveReversal(TransactionDetail original) {
+  PostReceipt _deriveReversal(TransactionFact original) {
     final t = original.transaction;
     return PostReceipt(
       businessPurpose: t.businessPurpose,
       occurredAt: t.occurredAt,
-      currencyCode: t.currencyCode,
       primaryAmount: -t.primaryAmount,
       counterpartyName: t.counterpartyName,
       note: t.note,

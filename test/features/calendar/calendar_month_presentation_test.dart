@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/accounting/accounting_api.dart';
+import 'package:smartflow/application/accounting/accounting_api.dart';
 import 'package:smartflow/features/calendar/view_models/calendar_month_presentation.dart';
 import 'package:smartflow/features/calendar/view_models/lunar_label_resolver.dart';
 
@@ -157,7 +157,6 @@ TransactionListItem _item({
     businessPurpose: purpose,
     businessState: BusinessState.current,
     occurredAt: occurredAt,
-    currencyCode: Money.defaultCurrency,
     primaryAmount: Money(minorUnits: amountMinor),
     entries: const [],
     details: const [],
