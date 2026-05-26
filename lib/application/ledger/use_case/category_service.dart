@@ -58,8 +58,7 @@ class CategoryServiceImpl implements CategoryService {
         message: 'Category name is required.',
       );
     }
-    if (command.type != AccountType.income &&
-        command.type != AccountType.expense) {
+    if (!command.type.isCategory) {
       return const Failure(
         code: 'category_type_invalid',
         message: 'Only income and expense category can be created.',
@@ -78,26 +77,7 @@ class CategoryServiceImpl implements CategoryService {
         message: 'Parent category does not exist.',
       );
     }
-    if (parent.archivedAt != null) {
-      return const Failure(
-        code: 'category_parent_archived',
-        message: 'Archived category cannot be used as parents.',
-      );
-    }
-    if (parent.type != command.type) {
-      return const Failure(
-        code: 'category_parent_type_mismatch',
-        message: 'Parent category type must match child category type.',
-      );
-    }
-    if (parent.parentId != null) {
-      return const Failure(
-        code: 'category_depth_exceeded',
-        message: 'Categories support one child level in this stage.',
-      );
-    }
-
-    return null;
+    return parent.checkValidCategoryParent(command.type);
   }
 
   List<CategoryNode> _buildTree(List<Account> categories) {

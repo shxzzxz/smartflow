@@ -77,6 +77,10 @@ extension AccountTypeBehavior on AccountType {
   bool get isUserAccount =>
       this == AccountType.asset || this == AccountType.liability;
 
+  /// 收入 / 支出分类账户的统称(CategoryService 操作对象)。
+  bool get isCategory =>
+      this == AccountType.income || this == AccountType.expense;
+
   /// 是否支持手动调整余额。
   /// 报销子类型的 asset 走报销三段式原语,余额不可手动覆写。
   bool supportsManualBalance(AccountSubtype? subtype) {

@@ -120,6 +120,30 @@ class Account {
     return Result.success(Money(minorUnits: deltaMinor));
   }
 
+  /// 校验当前账户能否作为新分类的父节点。
+  /// 当前实现限制分类树为二层(顶层 + 子节点),所以 parent 自己不能再有 parent。
+  Failure? checkValidCategoryParent(AccountType expectedType) {
+    if (isArchived) {
+      return const Failure(
+        code: 'category_parent_archived',
+        message: 'Archived category cannot be used as parents.',
+      );
+    }
+    if (type != expectedType) {
+      return const Failure(
+        code: 'category_parent_type_mismatch',
+        message: 'Parent category type must match child category type.',
+      );
+    }
+    if (parentId != null) {
+      return const Failure(
+        code: 'category_depth_exceeded',
+        message: 'Categories support one child level in this stage.',
+      );
+    }
+    return null;
+  }
+
   Account applyTransaction(Transaction transaction) {
     var account = this;
     for (final entry in transaction.entries) {
