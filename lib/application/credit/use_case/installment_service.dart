@@ -8,7 +8,7 @@ import 'package:smartflow/domain/credit/entity/installment_repayment.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import '../../ledger/ledger_api.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
-import 'package:smartflow/domain/credit/repository/installment_repository.dart';
+import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/service/installment_schedule_generator.dart';
 
 class CreateDisbursementContractCommand {

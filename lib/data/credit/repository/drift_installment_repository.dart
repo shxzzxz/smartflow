@@ -5,7 +5,7 @@ import '../../../domain/credit/entity/installment_contract.dart';
 import '../../../domain/credit/entity/installment_repayment.dart';
 import '../../../domain/credit/entity/installment_schedule.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
-import '../../../domain/credit/repository/installment_repository.dart';
+import '../../../domain/credit/port/installment_repository.dart';
 import '../../../domain/credit/service/installment_schedule_generator.dart';
 import '../../app_database.dart';
 import '../../patch_value.dart';

@@ -16,7 +16,7 @@ import 'package:smartflow/application/credit/credit_api.dart';
 import '../domain/ledger/port/account_repository.dart';
 import '../application/ledger/query/balance_aggregate_repository.dart';
 import '../application/ledger/query/entry_read_repository.dart';
-import '../domain/credit/repository/installment_repository.dart';
+import '../domain/credit/port/installment_repository.dart';
 import '../domain/ledger/port/posting_repository.dart';
 import '../domain/ledger/port/system_account_resolver.dart';
 import '../application/ledger/query/transaction_detail_read_repository.dart';
