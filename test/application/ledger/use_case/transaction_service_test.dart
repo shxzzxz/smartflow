@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
-import 'package:smartflow/application/share/transaction_runner.dart';
+import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/application/ledger/ledger_api.dart';
 import 'package:smartflow/domain/ledger/ledger/post_receipt.dart';
 import 'package:smartflow/domain/ledger/ledger/poster.dart';

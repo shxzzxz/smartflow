@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart' show Value;
 
-import 'package:smartflow/application/share/update_channel_store.dart';
+import 'package:smartflow/application/shared/update_channel_store.dart';
 import 'package:smartflow/data/app_database.dart';
 
 class DriftUpdateChannelStore implements UpdateChannelStore {

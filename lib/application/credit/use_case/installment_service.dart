@@ -2,7 +2,7 @@ import '../../../core/error/failure.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
-import '../../../application/share/transaction_runner.dart';
+import '../../../application/shared/transaction_runner.dart';
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/installment_repayment.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';

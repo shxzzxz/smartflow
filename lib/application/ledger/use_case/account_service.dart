@@ -2,7 +2,7 @@ import '../../../core/error/failure.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
-import '../../../application/share/transaction_runner.dart';
+import '../../../application/shared/transaction_runner.dart';
 import '../command/account_command.dart';
 import '../command/transaction_command.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
