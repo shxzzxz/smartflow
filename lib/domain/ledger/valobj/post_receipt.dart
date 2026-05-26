@@ -1,13 +1,16 @@
-import '../valobj/transaction_ownership.dart';
-import '../valobj/ledger_enum.dart';
+import 'transaction_ownership.dart';
+import 'ledger_enum.dart';
+import '../../../core/error/failure.dart';
 import '../../../core/money/money.dart';
+import '../service/ledger_rule.dart';
 
 /// 入账凭证:对一笔交易"长什么样"的完整描述。
 ///
-/// 由 ReceiptBuilder 从 user command 派生,经 Poster 校验后落库。
-/// 不携带 mutation 元数据(mutationKind / mutationPreviousTransactionId 等) —
-/// 这些字段在 [Poster.replace] / [Poster.cancel] 内部从 original 派生注入,
-/// builder 永远只造"独立合法"的蓝字凭证。
+/// 由 ReceiptBuilder 从 user command 派生,经 [validate] 校验后由
+/// PostingAppService 落库。不携带 mutation 元数据(mutationKind /
+/// mutationPreviousTransactionId 等) — 这些字段在 PostingAppService 的
+/// replace / cancel 路径上从 original 派生注入,builder 永远只造"独立合法"
+/// 的蓝字凭证。
 class PostReceipt {
   const PostReceipt({
     required this.businessPurpose,
@@ -74,6 +77,85 @@ class PostReceipt {
       sourceKind: sourceKind ?? this.sourceKind,
       ownership: ownership ?? this.ownership,
     );
+  }
+
+  /// 凭证级合法性自校验。
+  ///
+  /// - 蓝字路径(create / correction-blue):金额一律 > 0
+  /// - 红字路径(reversal):金额一律 < 0,由 caller 传 `allowNegativeAmounts: true`
+  ///
+  /// 返回 `null` 表示合法。
+  Failure? validate({bool allowNegativeAmounts = false}) {
+    if (details.isEmpty) {
+      return const Failure(
+        code: 'details_required',
+        message: 'A transaction must have at least one detail.',
+      );
+    }
+    if (entries.length < 2) {
+      return const Failure(
+        code: 'entries_required',
+        message: 'A transaction must have at least two entries.',
+      );
+    }
+    if ((!allowNegativeAmounts && primaryAmount.minorUnits <= 0) ||
+        (allowNegativeAmounts && primaryAmount.minorUnits == 0)) {
+      return const Failure(
+        code: 'primary_amount_not_positive',
+        message: 'Primary amount has an invalid sign.',
+      );
+    }
+    for (final detail in details) {
+      if (!_amountSignIsValid(
+        amountMinor: detail.amount.minorUnits,
+        expectsNegative: allowNegativeAmounts,
+      )) {
+        return Failure(
+          code: 'detail_amount_sign_invalid',
+          message:
+              'Detail amount must be '
+              '${allowNegativeAmounts ? 'negative' : 'positive'}.',
+        );
+      }
+      if (!detailTypeAllowedForPurpose(
+        detailType: detail.type,
+        businessPurpose: businessPurpose,
+      )) {
+        return Failure(
+          code: 'detail_type_not_allowed',
+          message:
+              '${detail.type.name} is not allowed for '
+              '${businessPurpose.name}.',
+        );
+      }
+    }
+    for (final entry in entries) {
+      if (!_amountSignIsValid(
+        amountMinor: entry.amount.minorUnits,
+        expectsNegative: allowNegativeAmounts,
+      )) {
+        return Failure(
+          code: 'entry_amount_sign_invalid',
+          message:
+              'Entry amount must be '
+              '${allowNegativeAmounts ? 'negative' : 'positive'}.',
+        );
+      }
+    }
+    if (!entriesAreBalanced(entries)) {
+      return const Failure(
+        code: 'entries_not_balanced',
+        message: 'Debit and credit entries must be balanced.',
+      );
+    }
+    return null;
+  }
+
+  static bool _amountSignIsValid({
+    required int amountMinor,
+    required bool expectsNegative,
+  }) {
+    return expectsNegative ? amountMinor < 0 : amountMinor > 0;
   }
 }
 

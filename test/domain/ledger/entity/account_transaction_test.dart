@@ -3,12 +3,12 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
-import 'package:smartflow/domain/ledger/ledger/post_receipt.dart';
+import 'package:smartflow/domain/ledger/valobj/post_receipt.dart';
 
 void main() {
-  group('Transaction aggregate', () {
-    test('creates a balanced transaction with details and entries', () {
-      final transaction = Transaction.create(
+  group('PostReceipt.validate', () {
+    test('accepts a balanced receipt', () {
+      final receipt = PostReceipt(
         businessPurpose: BusinessPurpose.dailyExpense,
         occurredAt: DateTime(2026, 5, 26),
         primaryAmount: const Money(minorUnits: 2000),
@@ -32,39 +32,67 @@ void main() {
           ),
         ],
       );
-
-      expect(transaction.persistedId, isNull);
-      expect(transaction.accountIds, {1, 2});
+      expect(receipt.validate(), isNull);
     });
 
     test('rejects unbalanced entries', () {
-      expect(
-        () => Transaction.create(
-          businessPurpose: BusinessPurpose.dailyExpense,
-          occurredAt: DateTime(2026, 5, 26),
-          primaryAmount: const Money(minorUnits: 2000),
-          details: const [
-            ReceiptDetail(
-              lineNo: 1,
-              type: TransactionDetailType.primaryExpense,
-              amount: Money(minorUnits: 2000),
-            ),
-          ],
-          entries: const [
-            ReceiptEntry(
-              accountId: 1,
-              direction: EntryDirection.debit,
-              amount: Money(minorUnits: 2000),
-            ),
-            ReceiptEntry(
-              accountId: 2,
-              direction: EntryDirection.credit,
-              amount: Money(minorUnits: 1000),
-            ),
-          ],
-        ),
-        throwsFormatException,
+      final receipt = PostReceipt(
+        businessPurpose: BusinessPurpose.dailyExpense,
+        occurredAt: DateTime(2026, 5, 26),
+        primaryAmount: const Money(minorUnits: 2000),
+        details: const [
+          ReceiptDetail(
+            lineNo: 1,
+            type: TransactionDetailType.primaryExpense,
+            amount: Money(minorUnits: 2000),
+          ),
+        ],
+        entries: const [
+          ReceiptEntry(
+            accountId: 1,
+            direction: EntryDirection.debit,
+            amount: Money(minorUnits: 2000),
+          ),
+          ReceiptEntry(
+            accountId: 2,
+            direction: EntryDirection.credit,
+            amount: Money(minorUnits: 1000),
+          ),
+        ],
       );
+      expect(receipt.validate()?.code, 'entries_not_balanced');
+    });
+  });
+
+  group('Transaction.fromReceipt', () {
+    test('builds an unpersisted transaction from a receipt', () {
+      final receipt = PostReceipt(
+        businessPurpose: BusinessPurpose.dailyExpense,
+        occurredAt: DateTime(2026, 5, 26),
+        primaryAmount: const Money(minorUnits: 2000),
+        details: const [
+          ReceiptDetail(
+            lineNo: 1,
+            type: TransactionDetailType.primaryExpense,
+            amount: Money(minorUnits: 2000),
+          ),
+        ],
+        entries: const [
+          ReceiptEntry(
+            accountId: 1,
+            direction: EntryDirection.debit,
+            amount: Money(minorUnits: 2000),
+          ),
+          ReceiptEntry(
+            accountId: 2,
+            direction: EntryDirection.credit,
+            amount: Money(minorUnits: 2000),
+          ),
+        ],
+      );
+      final transaction = Transaction.fromReceipt(receipt);
+      expect(transaction.persistedId, isNull);
+      expect(transaction.accountIds, {1, 2});
     });
   });
 
@@ -82,7 +110,7 @@ void main() {
         type: AccountType.asset,
         balance: Money(minorUnits: 10000),
       );
-      final transaction = Transaction.create(
+      final receipt = PostReceipt(
         businessPurpose: BusinessPurpose.dailyExpense,
         occurredAt: DateTime(2026, 5, 26),
         primaryAmount: const Money(minorUnits: 2000),
@@ -106,6 +134,7 @@ void main() {
           ),
         ],
       );
+      final transaction = Transaction.fromReceipt(receipt);
 
       expect(
         expense.applyTransaction(transaction).balance,

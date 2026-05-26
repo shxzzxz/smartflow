@@ -3,7 +3,7 @@ import '../entity/account.dart';
 import '../entity/transaction.dart';
 import '../valobj/transaction_ownership.dart';
 import '../valobj/ledger_enum.dart';
-import '../ledger/post_receipt.dart';
+import '../valobj/post_receipt.dart';
 
 /// 账务核心的写入端口。
 ///

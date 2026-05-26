@@ -8,7 +8,7 @@ import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/system_account_resolver.dart';
-import 'package:smartflow/domain/ledger/ledger/post_receipt.dart';
+import 'package:smartflow/domain/ledger/valobj/post_receipt.dart';
 import 'package:smartflow/domain/ledger/service/account_capability_policy.dart';
 import 'package:smartflow/domain/ledger/service/receipt_assembler.dart';
 import '../query/transaction_query_service.dart';

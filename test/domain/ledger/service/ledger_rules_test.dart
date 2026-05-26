@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/application/ledger/ledger_api.dart';
-import 'package:smartflow/domain/ledger/ledger/ledger_rule.dart';
-import 'package:smartflow/domain/ledger/ledger/post_receipt.dart';
+import 'package:smartflow/domain/ledger/service/ledger_rule.dart';
+import 'package:smartflow/domain/ledger/valobj/post_receipt.dart';
 
 void main() {
   group('ledger rules', () {

@@ -7,7 +7,7 @@ import 'transaction_action_policy.dart';
 ///
 /// 职责限定为"按 `ownerRole` 把通用 UI 的 universal 动作路由到 `InstallmentService`
 /// 的领域入口"——所有写入与一致性逻辑都在 service 内部，policy 不再持有
-/// fallback 也不直接调 TransactionService。
+/// fallback 也不直接调 PostingAppService。
 ///
 /// 路由表：
 /// - 删除：disbursement 走 `deleteContract`；其余走 `revertRepayment`。

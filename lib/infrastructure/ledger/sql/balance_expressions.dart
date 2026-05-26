@@ -7,7 +7,7 @@ import 'package:smartflow/data/app_database.dart';
 /// 余额变化金额累计表达式（按账户类型决定借/贷方向的符号）。
 ///
 /// 等价 Dart 公式见 [balanceDeltaMinor]
-/// (`lib/domain/ledger/ledger/ledger_rule.dart`):
+/// (`lib/domain/ledger/service/ledger_rule.dart`):
 /// - 资产 / 费用账户:debit 为正,credit 为负
 /// - 负债 / 收入账户:credit 为正,debit 为负
 ///

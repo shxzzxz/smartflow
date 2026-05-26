@@ -11,15 +11,14 @@ import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_det
 import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import 'package:smartflow/application/ledger/ledger_api.dart';
-import 'package:smartflow/domain/ledger/ledger/poster.dart';
 import 'package:smartflow/application/ledger/use_case/receipt_builder.dart';
 
 import '../../../helper/test_app_database.dart';
 
 void main() {
-  group('TransactionService stage 4', () {
+  group('PostingAppService stage 4', () {
     late AppDatabase database;
-    late TransactionService service;
+    late PostingAppService service;
     late TransactionQueryService queryService;
     late AccountService accountService;
     late CategoryService categoryService;
@@ -35,8 +34,7 @@ void main() {
         balanceAggregate: DriftBalanceAggregateRepository(database),
       );
       final postingRepository = DriftPostingRepository(database);
-      service = TransactionServiceImpl(
-        poster: PosterImpl(postingRepository),
+      service = PostingAppServiceImpl(
         receiptBuilder: ReceiptBuilder(
           accounts: accountRepository,
           query: queryService,

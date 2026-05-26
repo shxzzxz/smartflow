@@ -23,7 +23,6 @@ import '../application/ledger/query/transaction_detail_read_repository.dart';
 import '../application/ledger/query/transaction_read_repository.dart';
 import '../application/shared/transaction_runner.dart';
 import '../application/shared/update_channel_store.dart';
-import '../domain/ledger/ledger/poster.dart';
 import '../application/ledger/use_case/receipt_builder.dart';
 import '../core/time/month_key.dart';
 import '../core/money/money.dart';
@@ -85,18 +84,13 @@ AccountService accountService(Ref ref) {
   return AccountServiceImpl(
     ref.watch(accountRepositoryProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
-    transactions: ref.watch(transactionServiceProvider),
+    transactions: ref.watch(postingAppServiceProvider),
   );
 }
 
 @Riverpod(keepAlive: true)
 CategoryService categoryService(Ref ref) {
   return CategoryServiceImpl(ref.watch(categoryRepositoryProvider));
-}
-
-@Riverpod(keepAlive: true)
-Poster poster(Ref ref) {
-  return PosterImpl(ref.watch(postingRepositoryProvider));
 }
 
 @Riverpod(keepAlive: true)
@@ -109,9 +103,8 @@ ReceiptBuilder receiptBuilder(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-TransactionService transactionService(Ref ref) {
-  return TransactionServiceImpl(
-    poster: ref.watch(posterProvider),
+PostingAppService postingAppService(Ref ref) {
+  return PostingAppServiceImpl(
     receiptBuilder: ref.watch(receiptBuilderProvider),
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
     accountRepository: ref.watch(accountRepositoryProvider),
@@ -295,7 +288,7 @@ InstallmentRepository installmentRepository(Ref ref) {
 InstallmentService installmentService(Ref ref) {
   return InstallmentServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),
-    transactionService: ref.watch(transactionServiceProvider),
+    transactionService: ref.watch(postingAppServiceProvider),
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
   );
@@ -305,7 +298,7 @@ InstallmentService installmentService(Ref ref) {
 CreditService creditService(Ref ref) {
   return CreditServiceImpl(
     installmentService: ref.watch(installmentServiceProvider),
-    transactionService: ref.watch(transactionServiceProvider),
+    transactionService: ref.watch(postingAppServiceProvider),
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
     accountService: ref.watch(accountServiceProvider),
   );

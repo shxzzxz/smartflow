@@ -4,20 +4,21 @@ import '../../../core/result/result.dart';
 import '../../../application/shared/transaction_runner.dart';
 import '../command/transaction_command.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
+import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/valobj/account_usage.dart';
 import 'package:smartflow/domain/ledger/valobj/transaction_fact.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
-import 'package:smartflow/domain/ledger/ledger/post_receipt.dart';
-import 'package:smartflow/domain/ledger/ledger/poster.dart';
+import 'package:smartflow/domain/ledger/valobj/post_receipt.dart';
 import 'receipt_builder.dart';
 import '../read_model/transaction_read_models.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/posting_repository.dart';
 import 'package:smartflow/domain/ledger/service/account_capability_policy.dart';
 import 'package:smartflow/domain/ledger/service/entry_reassignment_service.dart';
+import 'package:smartflow/domain/ledger/service/receipt_mutator.dart';
 import '../query/transaction_query_service.dart';
 
-abstract interface class TransactionService {
+abstract interface class PostingAppService {
   Future<Result<CreatedTransactionResult>> createExpense(
     CreateExpenseCommand command,
   );
@@ -113,32 +114,32 @@ abstract interface class TransactionService {
   );
 }
 
-class TransactionServiceImpl implements TransactionService {
-  TransactionServiceImpl({
-    required Poster poster,
+class PostingAppServiceImpl implements PostingAppService {
+  PostingAppServiceImpl({
     required ReceiptBuilder receiptBuilder,
     required TransactionQueryService transactionQueryService,
     required AccountRepository accountRepository,
     required PostingRepository postingRepository,
     required TransactionRunner transactionRunner,
+    ReceiptMutator receiptMutator = const ReceiptMutator(),
     AccountCapabilityPolicy capabilityPolicy = const AccountCapabilityPolicy(),
     EntryReassignmentService reassignmentService =
         const EntryReassignmentService(),
-  }) : _poster = poster,
-       _receipts = receiptBuilder,
+  }) : _receipts = receiptBuilder,
        _query = transactionQueryService,
        _accountRepository = accountRepository,
        _postingRepository = postingRepository,
        _transactionRunner = transactionRunner,
+       _receiptMutator = receiptMutator,
        _capabilityPolicy = capabilityPolicy,
        _reassignmentService = reassignmentService;
 
-  final Poster _poster;
   final ReceiptBuilder _receipts;
   final TransactionQueryService _query;
   final AccountRepository _accountRepository;
   final PostingRepository _postingRepository;
   final TransactionRunner _transactionRunner;
+  final ReceiptMutator _receiptMutator;
   final AccountCapabilityPolicy _capabilityPolicy;
   final EntryReassignmentService _reassignmentService;
 
@@ -491,7 +492,7 @@ class TransactionServiceImpl implements TransactionService {
         );
       }
 
-      return _poster.cancelMany(originals: originals);
+      return _executeCancelMany(originals: originals);
     });
   }
 
@@ -715,7 +716,7 @@ class TransactionServiceImpl implements TransactionService {
         case FailureResult(:final failure):
           return Result.failure(failure);
         case Success(:final value):
-          final post = await _poster.create(value);
+          final post = await _executeCreate(value);
           return post.when(
             success:
                 (r) => Result.success(
@@ -778,7 +779,7 @@ class TransactionServiceImpl implements TransactionService {
         case FailureResult(:final failure):
           return Result.failure(failure);
         case Success(:final value):
-          final post = await _poster.replace(
+          final post = await _executeReplace(
             original: _toFact(original),
             newReceipt: value,
           );
@@ -852,5 +853,197 @@ class TransactionServiceImpl implements TransactionService {
       ],
       reassignments: reassignments,
     );
+  }
+
+  Future<Result<PostReceiptResult>> _executeCreate(PostReceipt receipt) async {
+    try {
+      final receiptFailure = receipt.validate();
+      if (receiptFailure != null) return Result.failure(receiptFailure);
+
+      final accounts = await _loadAccountsForReceipt(receipt);
+      final accountFailure = _validateAccountsLoaded(receipt, accounts);
+      if (accountFailure != null) return Result.failure(accountFailure);
+
+      final transaction = Transaction.fromReceipt(receipt);
+      final updatedAccounts = _applyTransactionsToAccounts(accounts, [
+        transaction,
+      ]);
+      final result = await _postingRepository.saveTransaction(transaction);
+      await _postingRepository.saveAccounts(updatedAccounts);
+      return Result.success(result);
+    } on Object catch (error) {
+      return Result.failure(
+        Failure(
+          code: 'posting_failed',
+          message: 'Failed to post transaction.',
+          cause: error,
+        ),
+      );
+    }
+  }
+
+  Future<Result<PostReceiptResult>> _executeReplace({
+    required TransactionFact original,
+    required PostReceipt newReceipt,
+  }) async {
+    try {
+      final correctionReceipt = _receiptMutator.inheritFromOriginal(
+        newReceipt,
+        original,
+      );
+      final reversalReceipt = _receiptMutator.deriveReversal(original);
+
+      final correctionFailure = correctionReceipt.validate();
+      if (correctionFailure != null) return Result.failure(correctionFailure);
+      final reversalFailure = reversalReceipt.validate(
+        allowNegativeAmounts: true,
+      );
+      if (reversalFailure != null) return Result.failure(reversalFailure);
+
+      final accountsForCorrection = await _loadAccountsForReceipt(
+        correctionReceipt,
+      );
+      final accountFailure = _validateAccountsLoaded(
+        correctionReceipt,
+        accountsForCorrection,
+      );
+      if (accountFailure != null) return Result.failure(accountFailure);
+
+      final reversalTransaction = Transaction.fromReceipt(
+        reversalReceipt,
+        mutationKind: MutationKind.reversal,
+        businessState: BusinessState.compensation,
+        mutationReason: MutationReason.correction,
+        mutationPreviousTransactionId: original.transaction.id,
+      );
+      final accountsForWrite = Map<int, Account>.of(accountsForCorrection);
+      accountsForWrite.addAll(await _loadAccountsForReceipt(reversalReceipt));
+      final afterReversal = _applyTransactionsToAccounts(accountsForWrite, [
+        reversalTransaction,
+      ]);
+
+      await _postingRepository.updateTransactionState(
+        transactionId: original.transaction.id,
+        businessState: BusinessState.replaced,
+      );
+      final reversalResult = await _postingRepository.saveTransaction(
+        reversalTransaction,
+      );
+
+      final correctionTransaction = Transaction.fromReceipt(
+        correctionReceipt,
+        mutationKind: MutationKind.correction,
+        businessState: BusinessState.current,
+        mutationPreviousTransactionId: reversalResult.transactionId,
+      );
+      final afterCorrection = _applyTransactionsToAccounts(
+        {for (final account in afterReversal) account.id: account},
+        [correctionTransaction],
+      );
+      final result = await _postingRepository.saveTransaction(
+        correctionTransaction,
+      );
+      await _postingRepository.saveAccounts(afterCorrection);
+      return Result.success(result);
+    } on Object catch (error) {
+      return Result.failure(
+        Failure(
+          code: 'posting_mutation_failed',
+          message: 'Failed to mutate transaction.',
+          cause: error,
+        ),
+      );
+    }
+  }
+
+  Future<Result<void>> _executeCancelMany({
+    required List<TransactionFact> originals,
+  }) async {
+    try {
+      final reversalTransactions = <Transaction>[];
+      final accountMap = <int, Account>{};
+      for (final original in originals) {
+        final reversal = _receiptMutator.deriveReversal(original);
+        final reversalFailure = reversal.validate(allowNegativeAmounts: true);
+        if (reversalFailure != null) return Result.failure(reversalFailure);
+        final accounts = await _loadAccountsForReceipt(reversal);
+        accountMap.addAll(accounts);
+        reversalTransactions.add(
+          Transaction.fromReceipt(
+            reversal,
+            mutationKind: MutationKind.reversal,
+            businessState: BusinessState.compensation,
+            mutationReason: MutationReason.delete,
+            mutationPreviousTransactionId: original.transaction.id,
+          ),
+        );
+      }
+      final updatedAccounts = _applyTransactionsToAccounts(
+        accountMap,
+        reversalTransactions,
+      );
+      for (var i = 0; i < originals.length; i++) {
+        await _postingRepository.updateTransactionState(
+          transactionId: originals[i].transaction.id,
+          businessState: BusinessState.canceled,
+        );
+        await _postingRepository.saveTransaction(reversalTransactions[i]);
+      }
+      await _postingRepository.saveAccounts(updatedAccounts);
+      return const Result.success(null);
+    } on Object catch (error) {
+      return Result.failure(
+        Failure(
+          code: 'posting_mutation_failed',
+          message: 'Failed to cancel transaction.',
+          cause: error,
+        ),
+      );
+    }
+  }
+
+  Future<Map<int, Account>> _loadAccountsForReceipt(PostReceipt receipt) async {
+    final ids = receipt.entries.map((e) => e.accountId).toSet();
+    final accounts = await _accountRepository.findAccountsByIds(ids);
+    return {for (final a in accounts) a.id: a};
+  }
+
+  Failure? _validateAccountsLoaded(
+    PostReceipt receipt,
+    Map<int, Account> accounts,
+  ) {
+    for (final entry in receipt.entries) {
+      final account = accounts[entry.accountId];
+      if (account == null) {
+        return Failure(
+          code: 'account_not_found',
+          message: 'Account ${entry.accountId} does not exist.',
+        );
+      }
+      if (account.archivedAt != null) {
+        return Failure(
+          code: 'account_archived',
+          message: 'Account ${entry.accountId} is archived.',
+        );
+      }
+    }
+    return null;
+  }
+
+  List<Account> _applyTransactionsToAccounts(
+    Map<int, Account> accounts,
+    List<Transaction> transactions,
+  ) {
+    final updated = Map<int, Account>.of(accounts);
+    for (final transaction in transactions) {
+      for (final accountId in transaction.accountIds) {
+        final account = updated[accountId];
+        if (account == null) {
+          throw StateError('Account $accountId does not exist.');
+        }
+        updated[accountId] = account.applyTransaction(transaction);
+      }
+    }
+    return updated.values.toList();
   }
 }

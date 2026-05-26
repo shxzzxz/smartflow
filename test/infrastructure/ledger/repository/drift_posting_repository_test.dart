@@ -1,25 +1,48 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/core/error/failure.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_posting_repository.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import 'package:smartflow/application/ledger/ledger_api.dart';
-import 'package:smartflow/domain/ledger/ledger/ledger_rule.dart';
-import 'package:smartflow/domain/ledger/ledger/post_receipt.dart';
-import 'package:smartflow/domain/ledger/ledger/poster.dart';
+import 'package:smartflow/domain/ledger/service/ledger_rule.dart';
+import 'package:smartflow/domain/ledger/valobj/post_receipt.dart';
 
 import '../../../helper/test_app_database.dart';
 
 void main() {
   group('DriftPostingRepository', () {
     late AppDatabase database;
-    late Poster poster;
+    late DriftPostingRepository repo;
+
+    Future<Result<PostReceiptResult>> postReceipt(PostReceipt receipt) async {
+      final validation = receipt.validate();
+      if (validation != null) return Result.failure(validation);
+      try {
+        final ids = receipt.entries.map((e) => e.accountId).toSet();
+        final loaded = await repo.findAccountsByIds(ids);
+        final accounts = {for (final a in loaded) a.id: a};
+        final transaction = Transaction.fromReceipt(receipt);
+        final updated = <int, Account>{};
+        for (final accountId in transaction.accountIds) {
+          updated[accountId] =
+              accounts[accountId]!.applyTransaction(transaction);
+        }
+        final result = await repo.saveTransaction(transaction);
+        await repo.saveAccounts(updated.values);
+        return Result.success(result);
+      } on Object catch (error) {
+        return Result.failure(
+          Failure(code: 'posting_failed', message: '$error'),
+        );
+      }
+    }
 
     setUp(() {
       database = createTestDatabase();
-      poster = PosterImpl(DriftPostingRepository(database));
+      repo = DriftPostingRepository(database);
     });
 
     tearDown(() async {
@@ -38,7 +61,7 @@ void main() {
         type: AccountType.expense,
       );
 
-      final result = await poster.create(
+      final result = await postReceipt(
         PostReceipt(
           businessPurpose: BusinessPurpose.dailyExpense,
           occurredAt: DateTime(2026, 5),
@@ -85,7 +108,7 @@ void main() {
         type: AccountType.income,
       );
 
-      final result = await poster.create(
+      final result = await postReceipt(
         PostReceipt(
           businessPurpose: BusinessPurpose.dailyIncome,
           occurredAt: DateTime(2026, 5),
@@ -130,7 +153,7 @@ void main() {
         type: AccountType.liability,
       );
 
-      final result = await poster.create(
+      final result = await postReceipt(
         PostReceipt(
           businessPurpose: BusinessPurpose.borrowing,
           occurredAt: DateTime(2026, 5),
@@ -183,7 +206,7 @@ void main() {
         type: AccountType.liability,
       );
 
-      final result = await poster.create(
+      final result = await postReceipt(
         PostReceipt(
           businessPurpose: BusinessPurpose.transfer,
           occurredAt: DateTime(2026, 5),
@@ -228,7 +251,7 @@ void main() {
         type: AccountType.expense,
       );
 
-      final result = await poster.create(
+      final result = await postReceipt(
         PostReceipt(
           businessPurpose: BusinessPurpose.dailyExpense,
           occurredAt: DateTime(2026, 5),
@@ -275,7 +298,7 @@ void main() {
         type: AccountType.expense,
       );
 
-      final result = await poster.create(
+      final result = await postReceipt(
         PostReceipt(
           businessPurpose: BusinessPurpose.dailyExpense,
           occurredAt: DateTime(2026, 5),
@@ -320,7 +343,7 @@ void main() {
         type: AccountType.expense,
       );
 
-      final result = await poster.create(
+      final result = await postReceipt(
         PostReceipt(
           businessPurpose: BusinessPurpose.dailyExpense,
           occurredAt: DateTime(2026, 5),
@@ -369,7 +392,7 @@ void main() {
       );
 
       final result = await DriftTransactionRunner(database).run(
-        () => poster.create(
+        () => postReceipt(
           PostReceipt(
             businessPurpose: BusinessPurpose.dailyExpense,
             occurredAt: DateTime(2026, 5),

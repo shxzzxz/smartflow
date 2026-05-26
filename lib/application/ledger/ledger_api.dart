@@ -25,4 +25,4 @@ export 'query/financial_metrics_service.dart';
 export 'query/transaction_query_service.dart';
 export 'use_case/account_service.dart';
 export 'use_case/category_service.dart';
-export 'use_case/transaction_service.dart';
+export 'use_case/posting_app_service.dart';

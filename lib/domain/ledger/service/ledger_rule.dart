@@ -1,5 +1,5 @@
 import '../valobj/ledger_enum.dart';
-import 'post_receipt.dart';
+import '../valobj/post_receipt.dart';
 
 /// 账户余额按借贷的净增量。
 ///

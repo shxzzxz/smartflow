@@ -202,7 +202,7 @@ class _ReimbursementCloseFormPageState
     }
     final amount = Money.parse(_amountController.text);
     setState(() => _submitting = true);
-    final service = ref.read(transactionServiceProvider);
+    final service = ref.read(postingAppServiceProvider);
     final result = await service.closeReimbursement(
       CloseReimbursementCommand(
         actualReceivedAmount: amount,

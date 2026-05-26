@@ -257,7 +257,7 @@ class UpdateContractCommand {
 /// 受分期管理的还款交易（scheduled / extraPrincipal / earlySettlement）的编辑命令。
 ///
 /// 用于把通用 UI 对还款交易的"改账户 / 改时间 / 改备注"统一收口到分期 service。
-/// service 内部负责校验该 transaction 确实是分期还款，再委托 [TransactionService]
+/// service 内部负责校验该 transaction 确实是分期还款，再委托 [PostingAppService]
 /// 完成 basics / metadata 更新；后续若需要联动合同状态可在此处加。
 class EditRepaymentCommand {
   const EditRepaymentCommand({
@@ -301,7 +301,7 @@ abstract interface class InstallmentService {
 
   /// 编辑受分期管理的还款交易（scheduled / extraPrincipal / earlySettlement）。
   /// 通用 UI 在还款交易上的 universal 编辑入口；service 内部校验归属、
-  /// 再委托 [TransactionService] 完成 transaction 表的写入。
+  /// 再委托 [PostingAppService] 完成 transaction 表的写入。
   Future<Result<void>> editRepayment(EditRepaymentCommand command);
 
   Future<Result<CreatedTransactionResult>> createScheduledRepayment(
@@ -364,7 +364,7 @@ class InstallmentRepaymentLink extends InstallmentLink {
 class InstallmentServiceImpl implements InstallmentService {
   InstallmentServiceImpl({
     required InstallmentRepository repository,
-    required TransactionService transactionService,
+    required PostingAppService transactionService,
     required TransactionQueryService transactionQueryService,
     required TransactionRunner transactionRunner,
     InstallmentScheduleGenerator generator =
@@ -376,7 +376,7 @@ class InstallmentServiceImpl implements InstallmentService {
        _generator = generator;
 
   final InstallmentRepository _repository;
-  final TransactionService _transactionService;
+  final PostingAppService _transactionService;
   final TransactionQueryService _transactionQueryService;
   final TransactionRunner _runner;
   final InstallmentScheduleGenerator _generator;

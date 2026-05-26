@@ -5,8 +5,8 @@ import '../entity/account.dart';
 import '../entity/transaction.dart';
 import '../valobj/transaction_ownership.dart';
 import '../valobj/ledger_enum.dart';
-import '../ledger/ledger_rule.dart';
-import '../ledger/post_receipt.dart';
+import 'ledger_rule.dart';
+import '../valobj/post_receipt.dart';
 
 /// 把已加载好的领域事实 + 用户指令的领域字段组装为 [PostReceipt]。
 ///

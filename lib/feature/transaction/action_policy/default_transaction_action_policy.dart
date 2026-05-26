@@ -4,17 +4,17 @@ import '../../../core/result/result.dart';
 import '../../../application/ledger/ledger_api.dart';
 import 'transaction_action_policy.dart';
 
-/// 普通交易的默认 policy：所有 universal 动作直接走 [TransactionService]。
+/// 普通交易的默认 policy：所有 universal 动作直接走 [PostingAppService]。
 class DefaultTransactionActionPolicy implements TransactionActionPolicy {
   const DefaultTransactionActionPolicy({
-    required TransactionService service,
+    required PostingAppService service,
     required int transactionId,
     required BusinessPurpose businessPurpose,
   }) : _service = service,
        _transactionId = transactionId,
        _businessPurpose = businessPurpose;
 
-  final TransactionService _service;
+  final PostingAppService _service;
   final int _transactionId;
   final BusinessPurpose _businessPurpose;
 
@@ -74,14 +74,14 @@ class DefaultTransactionActionPolicy implements TransactionActionPolicy {
 
 class UnknownOwnedTransactionActionPolicy implements TransactionActionPolicy {
   const UnknownOwnedTransactionActionPolicy({
-    required TransactionService service,
+    required PostingAppService service,
     required int transactionId,
     required String ownerType,
   }) : _service = service,
        _transactionId = transactionId,
        _ownerType = ownerType;
 
-  final TransactionService _service;
+  final PostingAppService _service;
   final int _transactionId;
   final String _ownerType;
 

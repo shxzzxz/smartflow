@@ -2,10 +2,10 @@ import '../../../core/error/failure.dart';
 import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
 import '../../ledger/ledger_api.dart'
-    hide TransactionService, CreateRepaymentCommand, CorrectRepaymentCommand;
+    hide PostingAppService, CreateRepaymentCommand, CorrectRepaymentCommand;
 import '../../ledger/ledger_api.dart'
     as tx
-    show TransactionService, CreateRepaymentCommand, CorrectRepaymentCommand;
+    show PostingAppService, CreateRepaymentCommand, CorrectRepaymentCommand;
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'installment_service.dart';
 
@@ -104,7 +104,7 @@ class RepaymentEditView {
 class CreditServiceImpl implements CreditService {
   CreditServiceImpl({
     required InstallmentService installmentService,
-    required tx.TransactionService transactionService,
+    required tx.PostingAppService transactionService,
     required TransactionQueryService transactionQueryService,
     required AccountService accountService,
   }) : _installmentService = installmentService,
@@ -113,7 +113,7 @@ class CreditServiceImpl implements CreditService {
        _accountService = accountService;
 
   final InstallmentService _installmentService;
-  final tx.TransactionService _transactionService;
+  final tx.PostingAppService _transactionService;
   final TransactionQueryService _transactionQueryService;
   final AccountService _accountService;
 

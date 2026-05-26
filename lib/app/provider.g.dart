@@ -529,7 +529,7 @@ final class AccountServiceProvider
   }
 }
 
-String _$accountServiceHash() => r'0412a347ba153a1373636ab99695fc69f3480b7c';
+String _$accountServiceHash() => r'5eb160c4a9df5f3ebcea922527383f512940e35d';
 
 @ProviderFor(categoryService)
 final categoryServiceProvider = CategoryServiceProvider._();
@@ -573,46 +573,6 @@ final class CategoryServiceProvider
 
 String _$categoryServiceHash() => r'c576c3f8ce0d2d70485652aedfa43551f60ebdba';
 
-@ProviderFor(poster)
-final posterProvider = PosterProvider._();
-
-final class PosterProvider extends $FunctionalProvider<Poster, Poster, Poster>
-    with $Provider<Poster> {
-  PosterProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'posterProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$posterHash();
-
-  @$internal
-  @override
-  $ProviderElement<Poster> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
-
-  @override
-  Poster create(Ref ref) {
-    return poster(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(Poster value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<Poster>(value),
-    );
-  }
-}
-
-String _$posterHash() => r'bc6dc19e1749fa6516971dd1e49a9399fd89119b';
-
 @ProviderFor(receiptBuilder)
 final receiptBuilderProvider = ReceiptBuilderProvider._();
 
@@ -654,53 +614,52 @@ final class ReceiptBuilderProvider
 
 String _$receiptBuilderHash() => r'84b1e95cfaf76355ce7f1b7313adba6ed03e2d53';
 
-@ProviderFor(transactionService)
-final transactionServiceProvider = TransactionServiceProvider._();
+@ProviderFor(postingAppService)
+final postingAppServiceProvider = PostingAppServiceProvider._();
 
-final class TransactionServiceProvider
+final class PostingAppServiceProvider
     extends
         $FunctionalProvider<
-          TransactionService,
-          TransactionService,
-          TransactionService
+          PostingAppService,
+          PostingAppService,
+          PostingAppService
         >
-    with $Provider<TransactionService> {
-  TransactionServiceProvider._()
+    with $Provider<PostingAppService> {
+  PostingAppServiceProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'transactionServiceProvider',
+        name: r'postingAppServiceProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$transactionServiceHash();
+  String debugGetCreateSourceHash() => _$postingAppServiceHash();
 
   @$internal
   @override
-  $ProviderElement<TransactionService> $createElement(
+  $ProviderElement<PostingAppService> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  TransactionService create(Ref ref) {
-    return transactionService(ref);
+  PostingAppService create(Ref ref) {
+    return postingAppService(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(TransactionService value) {
+  Override overrideWithValue(PostingAppService value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<TransactionService>(value),
+      providerOverride: $SyncValueProvider<PostingAppService>(value),
     );
   }
 }
 
-String _$transactionServiceHash() =>
-    r'c0c23051282216f08019915f7d3d761d11fee66b';
+String _$postingAppServiceHash() => r'2103bdd2596f4b252af96fc52a1d36a8b30fe490';
 
 @ProviderFor(transactionQueryService)
 final transactionQueryServiceProvider = TransactionQueryServiceProvider._();
@@ -1764,7 +1723,7 @@ final class InstallmentServiceProvider
 }
 
 String _$installmentServiceHash() =>
-    r'952139b70f4fef8a029623fffd3b275383a030f6';
+    r'673394643f3a100ebde703471977ff651cf18155';
 
 @ProviderFor(creditService)
 final creditServiceProvider = CreditServiceProvider._();
@@ -1805,7 +1764,7 @@ final class CreditServiceProvider
   }
 }
 
-String _$creditServiceHash() => r'61dd7d65ac78e64427c2733e0f09705b8f9f0890';
+String _$creditServiceHash() => r'c3e20ba9c76a6a4f274de10f0e94d08885dd6925';
 
 @ProviderFor(installmentContractsByAccount)
 final installmentContractsByAccountProvider =

@@ -5,7 +5,7 @@ import '../../../domain/ledger/entity/account.dart';
 import '../../../domain/ledger/entity/transaction.dart';
 import '../../../domain/ledger/valobj/transaction_ownership.dart';
 import '../../../domain/ledger/valobj/ledger_enum.dart';
-import '../../../domain/ledger/ledger/post_receipt.dart';
+import '../../../domain/ledger/valobj/post_receipt.dart';
 import '../../../domain/ledger/port/posting_repository.dart';
 import 'package:smartflow/data/app_database.dart';
 import '../mapper/account_mapper.dart';

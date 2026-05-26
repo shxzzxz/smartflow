@@ -167,7 +167,7 @@ void main() {
 Future<void> _pumpTransactionForm(
   WidgetTester tester, {
   AppDatabase? database,
-  TransactionService? transactionService,
+  PostingAppService? transactionService,
   int? initialFromAccountId,
   int? initialToAccountId,
 }) async {
@@ -181,7 +181,7 @@ Future<void> _pumpTransactionForm(
       overrides: [
         appDatabaseProvider.overrideWithValue(appDatabase),
         if (transactionService != null)
-          transactionServiceProvider.overrideWithValue(transactionService),
+          postingAppServiceProvider.overrideWithValue(transactionService),
       ],
       child: MaterialApp(
         home: TransactionFormPage(
@@ -212,7 +212,7 @@ Future<int> _insertAccount(
       );
 }
 
-class _CapturingTransactionService implements TransactionService {
+class _CapturingTransactionService implements PostingAppService {
   CreateExpenseCommand? expenseCommand;
   CreateReimbursementAdvanceCommand? reimbursementAdvanceCommand;
 

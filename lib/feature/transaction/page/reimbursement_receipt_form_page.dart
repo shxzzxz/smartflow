@@ -166,7 +166,7 @@ class _ReimbursementReceiptFormPageState
       return;
     }
     setState(() => _submitting = true);
-    final service = ref.read(transactionServiceProvider);
+    final service = ref.read(postingAppServiceProvider);
     final result = await service.createReimbursementReceipt(
       CreateReimbursementReceiptCommand(
         amount: Money.parse(_amountController.text),

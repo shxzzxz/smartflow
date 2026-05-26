@@ -503,7 +503,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
         ref.read(accountsForUsageProvider(AccountUsage.reimbursement)).value ??
         const <Account>[];
 
-    final service = ref.read(transactionServiceProvider);
+    final service = ref.read(postingAppServiceProvider);
     final note = _blankToNull(_noteController.text);
 
     setState(() => _submitting = true);
@@ -656,7 +656,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   }
 
   Future<Result<CreatedTransactionResult>> _submitCorrection({
-    required TransactionService service,
+    required PostingAppService service,
     required int transactionId,
     required Money amount,
     required String? note,
@@ -855,7 +855,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
 
     setState(() => _submitting = true);
     final result = await ref
-        .read(transactionServiceProvider)
+        .read(postingAppServiceProvider)
         .deleteTransaction(
           DeleteTransactionCommand(transactionId: transactionId),
         );

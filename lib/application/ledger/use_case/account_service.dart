@@ -8,7 +8,7 @@ import '../command/transaction_command.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
-import 'transaction_service.dart';
+import 'posting_app_service.dart';
 
 abstract interface class AccountService {
   Stream<List<Account>> watchAccounts(Set<AccountType> types);
@@ -26,12 +26,12 @@ class AccountServiceImpl implements AccountService {
   const AccountServiceImpl(
     this._repository, {
     required TransactionRunner transactionRunner,
-    required TransactionService transactions,
+    required PostingAppService transactions,
   }) : _runner = transactionRunner,
        _transactions = transactions;
 
   final AccountRepository _repository;
-  final TransactionService _transactions;
+  final PostingAppService _transactions;
   final TransactionRunner _runner;
 
   @override

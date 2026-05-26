@@ -3,24 +3,22 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/application/ledger/ledger_api.dart';
-import 'package:smartflow/domain/ledger/ledger/post_receipt.dart';
-import 'package:smartflow/domain/ledger/ledger/poster.dart';
+import 'package:smartflow/domain/ledger/valobj/post_receipt.dart';
 import 'package:smartflow/application/ledger/use_case/receipt_builder.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/posting_repository.dart';
 import 'package:smartflow/domain/ledger/port/system_account_resolver.dart';
 
 void main() {
-  group('TransactionService', () {
-    late _RecordingPoster postingService;
-    late TransactionService service;
+  group('PostingAppService', () {
+    late _RecordingPostingRepository postingRepository;
+    late PostingAppService service;
 
-    TransactionServiceImpl buildService({
+    PostingAppServiceImpl buildService({
       AccountRepository? accountRepository,
     }) {
       final accounts = accountRepository ?? _defaultAccounts();
-      return TransactionServiceImpl(
-        poster: postingService,
+      return PostingAppServiceImpl(
         receiptBuilder: ReceiptBuilder(
           accounts: accounts,
           query: _StubQueryService(),
@@ -28,13 +26,13 @@ void main() {
         ),
         transactionQueryService: _StubQueryService(),
         accountRepository: accounts,
-        postingRepository: _StubPostingRepository(),
+        postingRepository: postingRepository,
         transactionRunner: const _InlineTransactionRunner(),
       );
     }
 
     setUp(() {
-      postingService = _RecordingPoster();
+      postingRepository = _RecordingPostingRepository();
       service = buildService();
     });
 
@@ -53,24 +51,27 @@ void main() {
         );
 
         expect(result, isA<Success<CreatedTransactionResult>>());
-        final receipt = postingService.lastReceipt!;
-        expect(receipt.businessPurpose, BusinessPurpose.dailyExpense);
-        expect(receipt.primaryAmount, const Money(minorUnits: 2000));
-        expect(receipt.counterpartyName, 'Coffee shop');
-        expect(receipt.note, 'Latte');
-        expect(receipt.details, hasLength(1));
+        final transaction = postingRepository.lastTransaction!;
+        expect(transaction.businessPurpose, BusinessPurpose.dailyExpense);
+        expect(transaction.primaryAmount, const Money(minorUnits: 2000));
+        expect(transaction.counterpartyName, 'Coffee shop');
+        expect(transaction.note, 'Latte');
+        expect(transaction.details, hasLength(1));
         expect(
-          receipt.details.single.type,
+          transaction.details.single.type,
           TransactionDetailType.primaryExpense,
         );
-        expect(receipt.details.single.amount, const Money(minorUnits: 2000));
-        expect(receipt.entries, hasLength(2));
-        expect(receipt.entries[0].accountId, 101);
-        expect(receipt.entries[0].direction, EntryDirection.debit);
-        expect(receipt.entries[0].amount, const Money(minorUnits: 2000));
-        expect(receipt.entries[1].accountId, 1);
-        expect(receipt.entries[1].direction, EntryDirection.credit);
-        expect(receipt.entries[1].amount, const Money(minorUnits: 2000));
+        expect(
+          transaction.details.single.amount,
+          const Money(minorUnits: 2000),
+        );
+        expect(transaction.entries, hasLength(2));
+        expect(transaction.entries[0].accountId, 101);
+        expect(transaction.entries[0].direction, EntryDirection.debit);
+        expect(transaction.entries[0].amount, const Money(minorUnits: 2000));
+        expect(transaction.entries[1].accountId, 1);
+        expect(transaction.entries[1].direction, EntryDirection.credit);
+        expect(transaction.entries[1].amount, const Money(minorUnits: 2000));
       },
     );
 
@@ -87,17 +88,17 @@ void main() {
         );
 
         expect(result, isA<Success<CreatedTransactionResult>>());
-        final receipt = postingService.lastReceipt!;
-        expect(receipt.businessPurpose, BusinessPurpose.dailyIncome);
+        final transaction = postingRepository.lastTransaction!;
+        expect(transaction.businessPurpose, BusinessPurpose.dailyIncome);
         expect(
-          receipt.details.single.type,
+          transaction.details.single.type,
           TransactionDetailType.primaryIncome,
         );
-        expect(receipt.entries, hasLength(2));
-        expect(receipt.entries[0].accountId, 2);
-        expect(receipt.entries[0].direction, EntryDirection.debit);
-        expect(receipt.entries[1].accountId, 201);
-        expect(receipt.entries[1].direction, EntryDirection.credit);
+        expect(transaction.entries, hasLength(2));
+        expect(transaction.entries[0].accountId, 2);
+        expect(transaction.entries[0].direction, EntryDirection.debit);
+        expect(transaction.entries[1].accountId, 201);
+        expect(transaction.entries[1].direction, EntryDirection.credit);
       },
     );
 
@@ -116,23 +117,23 @@ void main() {
         );
 
         expect(result, isA<Success<CreatedTransactionResult>>());
-        final receipt = postingService.lastReceipt!;
-        expect(receipt.businessPurpose, BusinessPurpose.transfer);
-        expect(receipt.primaryAmount, const Money(minorUnits: 100000));
-        expect(receipt.details.map((detail) => detail.type), [
+        final transaction = postingRepository.lastTransaction!;
+        expect(transaction.businessPurpose, BusinessPurpose.transfer);
+        expect(transaction.primaryAmount, const Money(minorUnits: 100000));
+        expect(transaction.details.map((detail) => detail.type), [
           TransactionDetailType.transferMain,
           TransactionDetailType.transferFee,
         ]);
-        expect(receipt.entries, hasLength(3));
-        expect(receipt.entries[0].accountId, 1);
-        expect(receipt.entries[0].direction, EntryDirection.debit);
-        expect(receipt.entries[0].amount, const Money(minorUnits: 100000));
-        expect(receipt.entries[1].accountId, 103);
-        expect(receipt.entries[1].direction, EntryDirection.debit);
-        expect(receipt.entries[1].amount, const Money(minorUnits: 200));
-        expect(receipt.entries[2].accountId, 2);
-        expect(receipt.entries[2].direction, EntryDirection.credit);
-        expect(receipt.entries[2].amount, const Money(minorUnits: 100200));
+        expect(transaction.entries, hasLength(3));
+        expect(transaction.entries[0].accountId, 1);
+        expect(transaction.entries[0].direction, EntryDirection.debit);
+        expect(transaction.entries[0].amount, const Money(minorUnits: 100000));
+        expect(transaction.entries[1].accountId, 103);
+        expect(transaction.entries[1].direction, EntryDirection.debit);
+        expect(transaction.entries[1].amount, const Money(minorUnits: 200));
+        expect(transaction.entries[2].accountId, 2);
+        expect(transaction.entries[2].direction, EntryDirection.credit);
+        expect(transaction.entries[2].amount, const Money(minorUnits: 100200));
       },
     );
 
@@ -148,7 +149,7 @@ void main() {
       );
 
       expect(result, isA<FailureResult<CreatedTransactionResult>>());
-      expect(postingService.lastReceipt, isNull);
+      expect(postingRepository.lastTransaction, isNull);
     });
 
     test('rejects account used in the wrong transaction role', () async {
@@ -169,7 +170,7 @@ void main() {
       );
 
       expect(result, isA<FailureResult<CreatedTransactionResult>>());
-      expect(postingService.lastReceipt, isNull);
+      expect(postingRepository.lastTransaction, isNull);
     });
 
     test('rejects loan account as expense settlement account', () async {
@@ -194,7 +195,7 @@ void main() {
       );
 
       expect(result, isA<FailureResult<CreatedTransactionResult>>());
-      expect(postingService.lastReceipt, isNull);
+      expect(postingRepository.lastTransaction, isNull);
     });
 
     test('rejects loan account as income receive account', () async {
@@ -219,7 +220,7 @@ void main() {
       );
 
       expect(result, isA<FailureResult<CreatedTransactionResult>>());
-      expect(postingService.lastReceipt, isNull);
+      expect(postingRepository.lastTransaction, isNull);
     });
 
     test('rejects loan account in transfers', () async {
@@ -244,43 +245,28 @@ void main() {
       );
 
       expect(result, isA<FailureResult<CreatedTransactionResult>>());
-      expect(postingService.lastReceipt, isNull);
+      expect(postingRepository.lastTransaction, isNull);
     });
   });
 }
 
-class _RecordingPoster implements Poster {
-  PostReceipt? lastReceipt;
+class _RecordingPostingRepository implements PostingRepository {
+  Transaction? lastTransaction;
 
   @override
-  Future<Result<PostReceiptResult>> create(PostReceipt receipt) async {
-    lastReceipt = receipt;
-    return const Result.success(
-      PostReceiptResult(transactionId: 1, rootTransactionId: 1),
+  Future<PostReceiptResult> saveTransaction(Transaction transaction) async {
+    lastTransaction = transaction;
+    return const PostReceiptResult(transactionId: 1, rootTransactionId: 1);
+  }
+
+  @override
+  Future<void> saveAccounts(Iterable<Account> accounts) async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    throw UnimplementedError(
+      '${invocation.memberName} is not stubbed in _RecordingPostingRepository.',
     );
-  }
-
-  @override
-  Future<Result<PostReceiptResult>> replace({
-    required TransactionFact original,
-    required PostReceipt newReceipt,
-  }) async {
-    lastReceipt = newReceipt;
-    return const Result.success(
-      PostReceiptResult(transactionId: 1, rootTransactionId: 1),
-    );
-  }
-
-  @override
-  Future<Result<void>> cancel(TransactionFact original) async {
-    return const Result.success(null);
-  }
-
-  @override
-  Future<Result<void>> cancelMany({
-    required List<TransactionFact> originals,
-  }) async {
-    return const Result.success(null);
   }
 }
 
@@ -356,15 +342,6 @@ class _StubSystemAccountResolver implements SystemAccountResolver {
   dynamic noSuchMethod(Invocation invocation) {
     throw UnimplementedError(
       '${invocation.memberName} is not stubbed in _StubSystemAccountResolver.',
-    );
-  }
-}
-
-class _StubPostingRepository implements PostingRepository {
-  @override
-  dynamic noSuchMethod(Invocation invocation) {
-    throw UnimplementedError(
-      '${invocation.memberName} is not stubbed in _StubPostingRepository.',
     );
   }
 }

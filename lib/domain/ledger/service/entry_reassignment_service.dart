@@ -1,7 +1,7 @@
 import '../entity/account.dart';
 import '../entity/entry.dart';
 import '../valobj/ledger_enum.dart';
-import '../ledger/post_receipt.dart';
+import '../valobj/post_receipt.dart';
 
 /// `updateTransactionBasics` 路径所需的领域服务:
 /// 1. 在一笔交易的 entries 中识别"结算账户" / "报销应收账户" 这两类 entry,

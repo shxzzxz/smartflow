@@ -1,7 +1,7 @@
 import '../../../core/money/money.dart';
 import '../valobj/ledger_enum.dart';
-import '../ledger/ledger_rule.dart';
-import '../ledger/post_receipt.dart';
+import '../service/ledger_rule.dart';
+import '../valobj/post_receipt.dart';
 import 'transaction.dart';
 
 class Account {
