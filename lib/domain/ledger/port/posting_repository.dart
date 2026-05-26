@@ -1,7 +1,5 @@
-import '../../../core/patch/patch.dart';
 import '../entity/account.dart';
 import '../entity/transaction.dart';
-import '../valobj/transaction_ownership.dart';
 import '../valobj/ledger_enum.dart';
 import '../valobj/post_receipt.dart';
 
@@ -23,22 +21,12 @@ abstract interface class PostingRepository {
     required BusinessState businessState,
   });
 
-  Future<void> updateTransactionMetadata({
-    required int transactionId,
-    Patch<String>? note,
-    bool? isExcludedFromStats,
-    bool? isExcludedFromBudget,
-  });
+  /// 按 [Transaction] 聚合当前状态整行 update(WHERE id = transaction.id)。
+  /// caller(application 用例)先 load → 实体行为 → 调用本方法保存。
+  Future<void> updateTransaction(Transaction transaction);
 
-  Future<void> updateTransactionOwnership({
-    required int transactionId,
-    required TransactionOwnership ownership,
-  });
-
-  Future<void> updateTransactionBasics({
-    required int transactionId,
-    DateTime? occurredAt,
-    List<EntryAccountReassignment> entryAccountReassignments = const [],
-    List<Account> updatedAccounts = const [],
-  });
+  /// 把一条 entry 的 accountId 从 [EntryAccountReassignment.fromAccountId]
+  /// 改到 toAccountId;受影响 account 的余额由 caller 另行通过 [saveAccounts]
+  /// 写回。
+  Future<void> reassignEntryAccount(EntryAccountReassignment reassignment);
 }

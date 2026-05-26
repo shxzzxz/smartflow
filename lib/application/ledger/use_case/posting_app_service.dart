@@ -471,13 +471,8 @@ class PostingAppServiceImpl implements PostingAppService {
           ),
         );
       }
-      if (target.transaction.businessState != BusinessState.current) {
-        return const Result.failure(
-          Failure(
-            code: 'transaction_not_current',
-            message: 'Only current transaction can be deleted.',
-          ),
-        );
+      if (target.transaction.assertCanBeDeleted() case final failure?) {
+        return Result.failure(failure);
       }
 
       final activeChildIds = <int>{
@@ -518,11 +513,12 @@ class PostingAppServiceImpl implements PostingAppService {
         );
       }
       try {
-        await _postingRepository.updateTransactionMetadata(
-          transactionId: command.transactionId,
-          note: command.note,
-          isExcludedFromStats: command.isExcludedFromStats,
-          isExcludedFromBudget: command.isExcludedFromBudget,
+        await _postingRepository.updateTransaction(
+          transaction.updatedMetadata(
+            note: command.note,
+            isExcludedFromStats: command.isExcludedFromStats,
+            isExcludedFromBudget: command.isExcludedFromBudget,
+          ),
         );
         return const Result.success(null);
       } on Object catch (error) {
@@ -557,13 +553,8 @@ class PostingAppServiceImpl implements PostingAppService {
           ),
         );
       }
-      if (detail.transaction.businessState != BusinessState.current) {
-        return const Result.failure(
-          Failure(
-            code: 'transaction_not_current',
-            message: 'Only current transaction can be updated.',
-          ),
-        );
+      if (detail.transaction.assertCanBeBasicsUpdated() case final failure?) {
+        return Result.failure(failure);
       }
 
       final reassignments = <EntryAccountReassignment>[];
@@ -651,14 +642,16 @@ class PostingAppServiceImpl implements PostingAppService {
       }
 
       try {
-        await _postingRepository.updateTransactionBasics(
-          transactionId: command.transactionId,
-          occurredAt: command.occurredAt,
-          entryAccountReassignments: reassignments,
-          updatedAccounts: await _updatedAccountsForReassignments(
-            detail,
-            reassignments,
-          ),
+        if (command.occurredAt != null) {
+          await _postingRepository.updateTransaction(
+            detail.transaction.withOccurredAt(command.occurredAt!),
+          );
+        }
+        for (final reassignment in reassignments) {
+          await _postingRepository.reassignEntryAccount(reassignment);
+        }
+        await _postingRepository.saveAccounts(
+          await _updatedAccountsForReassignments(detail, reassignments),
         );
         return const Result.success(null);
       } on Object catch (error) {
@@ -690,9 +683,8 @@ class PostingAppServiceImpl implements PostingAppService {
         );
       }
       try {
-        await _postingRepository.updateTransactionOwnership(
-          transactionId: command.transactionId,
-          ownership: command.ownership,
+        await _postingRepository.updateTransaction(
+          transaction.updatedOwnership(command.ownership),
         );
         return const Result.success(null);
       } on Object catch (error) {
@@ -747,31 +739,12 @@ class PostingAppServiceImpl implements PostingAppService {
           ),
         );
       }
-      if (original.transaction.businessState != BusinessState.current) {
-        return const Result.failure(
-          Failure(
-            code: 'transaction_not_current',
-            message: 'Only current transaction can be corrected.',
-          ),
-        );
-      }
-      if (original.transaction.businessPurpose != expectedPurpose) {
-        return const Result.failure(
-          Failure(
-            code: 'transaction_correction_purpose_mismatch',
-            message: 'Correction command purpose must match the transaction.',
-          ),
-        );
-      }
-      if (original.children.isNotEmpty) {
-        return const Result.failure(
-          Failure(
-            code: 'transaction_has_children',
-            message:
-                'Transactions with child records cannot be corrected; '
-                'use updateTransactionMetadata to change note / exclusion flags.',
-          ),
-        );
+      if (original.transaction.assertCanBeCorrectedAs(
+            expectedPurpose,
+            hasActiveChildren: original.children.isNotEmpty,
+          )
+          case final failure?) {
+        return Result.failure(failure);
       }
 
       final receiptResult = await build(original);

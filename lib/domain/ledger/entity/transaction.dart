@@ -1,4 +1,6 @@
+import '../../../core/error/failure.dart';
 import '../../../core/money/money.dart';
+import '../../../core/patch/patch.dart';
 import '../valobj/post_receipt.dart';
 import '../valobj/ledger_enum.dart';
 import '../valobj/transaction_ownership.dart';
@@ -131,6 +133,57 @@ class Transaction {
 
   Set<int> get accountIds => entries.map((entry) => entry.accountId).toSet();
 
+  /// 删除路径:仅 current 可删,replaced / canceled / compensation 拒绝。
+  Failure? assertCanBeDeleted() {
+    if (businessState != BusinessState.current) {
+      return const Failure(
+        code: 'transaction_not_current',
+        message: 'Only current transaction can be deleted.',
+      );
+    }
+    return null;
+  }
+
+  /// 更正路径:current + purpose 匹配 + 无 active children。
+  /// [hasActiveChildren] 由 application 层基于 TransactionDetail.children 派生。
+  Failure? assertCanBeCorrectedAs(
+    BusinessPurpose expected, {
+    required bool hasActiveChildren,
+  }) {
+    if (businessState != BusinessState.current) {
+      return const Failure(
+        code: 'transaction_not_current',
+        message: 'Only current transaction can be corrected.',
+      );
+    }
+    if (businessPurpose != expected) {
+      return const Failure(
+        code: 'transaction_correction_purpose_mismatch',
+        message: 'Correction command purpose must match the transaction.',
+      );
+    }
+    if (hasActiveChildren) {
+      return const Failure(
+        code: 'transaction_has_children',
+        message:
+            'Transactions with child records cannot be corrected; '
+            'use updateTransactionMetadata to change note / exclusion flags.',
+      );
+    }
+    return null;
+  }
+
+  /// 基础信息(occurredAt / settlement / reimbursement account)更新路径。
+  Failure? assertCanBeBasicsUpdated() {
+    if (businessState != BusinessState.current) {
+      return const Failure(
+        code: 'transaction_not_current',
+        message: 'Only current transaction can be updated.',
+      );
+    }
+    return null;
+  }
+
   Transaction withPersistedIdentity({
     required int id,
     required int rootTransactionId,
@@ -146,6 +199,28 @@ class Transaction {
     return _copyWith(businessState: BusinessState.canceled);
   }
 
+  /// 更新元数据(note 三态 + 排除统计 / 排除预算)。
+  /// note 用 [Patch] 表达三态;两个 bool 用 `null` 表示不改。
+  Transaction updatedMetadata({
+    Patch<String>? note,
+    bool? isExcludedFromStats,
+    bool? isExcludedFromBudget,
+  }) {
+    return _copyWith(
+      notePatch: note,
+      isExcludedFromStats: isExcludedFromStats,
+      isExcludedFromBudget: isExcludedFromBudget,
+    );
+  }
+
+  Transaction updatedOwnership(TransactionOwnership ownership) {
+    return _copyWith(ownership: ownership);
+  }
+
+  Transaction withOccurredAt(DateTime occurredAt) {
+    return _copyWith(occurredAt: occurredAt);
+  }
+
   Transaction _copyWith({
     int? id,
     int? rootTransactionId,
@@ -153,7 +228,7 @@ class Transaction {
     DateTime? occurredAt,
     Money? primaryAmount,
     String? counterpartyName,
-    String? note,
+    Patch<String>? notePatch,
     int? parentTransactionId,
     int? reimbursementExpenseAccountId,
     MutationKind? mutationKind,
@@ -175,7 +250,11 @@ class Transaction {
       occurredAt: occurredAt ?? this.occurredAt,
       primaryAmount: primaryAmount ?? this.primaryAmount,
       counterpartyName: counterpartyName ?? this.counterpartyName,
-      note: note ?? this.note,
+      note: switch (notePatch) {
+        null => note,
+        PatchSet<String>(:final value) => value.isEmpty ? null : value,
+        PatchClear<String>() => null,
+      },
       parentTransactionId: parentTransactionId ?? this.parentTransactionId,
       reimbursementExpenseAccountId:
           reimbursementExpenseAccountId ?? this.reimbursementExpenseAccountId,

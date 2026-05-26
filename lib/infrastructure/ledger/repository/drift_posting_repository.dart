@@ -1,9 +1,7 @@
 import 'package:drift/drift.dart';
 
-import '../../../core/patch/patch.dart';
 import '../../../domain/ledger/entity/account.dart';
 import '../../../domain/ledger/entity/transaction.dart';
-import '../../../domain/ledger/valobj/transaction_ownership.dart';
 import '../../../domain/ledger/valobj/ledger_enum.dart';
 import '../../../domain/ledger/valobj/post_receipt.dart';
 import '../../../domain/ledger/port/posting_repository.dart';
@@ -129,90 +127,46 @@ class DriftPostingRepository implements PostingRepository {
   }
 
   @override
-  Future<void> updateTransactionMetadata({
-    required int transactionId,
-    Patch<String>? note,
-    bool? isExcludedFromStats,
-    bool? isExcludedFromBudget,
-  }) async {
-    if (note == null &&
-        isExcludedFromStats == null &&
-        isExcludedFromBudget == null) {
-      return;
-    }
-    final noteValue = switch (note) {
-      null => const Value<String?>.absent(),
-      // 沿用现有约定：空字符串视作清除，避免存储"空字符串备注"这种半残状态。
-      PatchSet<String>(:final value) => Value<String?>(
-        value.isEmpty ? null : value,
-      ),
-      PatchClear<String>() => const Value<String?>(null),
-    };
-    await (_database.update(_database.transactions)
-      ..where((t) => t.id.equals(transactionId))).write(
-      TransactionsCompanion(
-        note: noteValue,
-        isExcludedFromStats:
-            isExcludedFromStats == null
-                ? const Value.absent()
-                : Value(isExcludedFromStats),
-        isExcludedFromBudget:
-            isExcludedFromBudget == null
-                ? const Value.absent()
-                : Value(isExcludedFromBudget),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
-  }
-
-  @override
-  Future<void> updateTransactionOwnership({
-    required int transactionId,
-    required TransactionOwnership ownership,
-  }) async {
-    await (_database.update(_database.transactions)
-      ..where((t) => t.id.equals(transactionId))).write(
-      TransactionsCompanion(
-        ownerType: Value(ownership.ownerType),
-        ownerId: Value(ownership.ownerId),
-        ownerRole: Value(ownership.ownerRole),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
-  }
-
-  @override
-  Future<void> updateTransactionBasics({
-    required int transactionId,
-    DateTime? occurredAt,
-    List<EntryAccountReassignment> entryAccountReassignments = const [],
-    List<Account> updatedAccounts = const [],
-  }) async {
+  Future<void> updateTransaction(Transaction transaction) async {
     final now = DateTime.now();
-    if (occurredAt != null) {
-      await (_database.update(_database.transactions)
-        ..where((t) => t.id.equals(transactionId))).write(
-        TransactionsCompanion(
-          occurredAt: Value(occurredAt),
-          updatedAt: Value(now),
+    await (_database.update(_database.transactions)
+      ..where((t) => t.id.equals(transaction.id))).write(
+      TransactionsCompanion(
+        businessPurpose: Value(transaction.businessPurpose),
+        occurredAt: Value(transaction.occurredAt),
+        primaryAmountMinor: Value(transaction.primaryAmount.minorUnits),
+        mutationKind: Value(transaction.mutationKind),
+        businessState: Value(transaction.businessState),
+        sourceKind: Value(transaction.sourceKind),
+        ownerType: Value(transaction.ownership?.ownerType),
+        ownerId: Value(transaction.ownership?.ownerId),
+        ownerRole: Value(transaction.ownership?.ownerRole),
+        counterpartyName: Value(transaction.counterpartyName),
+        note: Value(transaction.note),
+        parentTransactionId: Value(transaction.parentTransactionId),
+        reimbursementExpenseAccountId: Value(
+          transaction.reimbursementExpenseAccountId,
         ),
-      );
-    }
-
-    for (final reassignment in entryAccountReassignments) {
-      await _reassignEntryAccount(reassignment, now: now);
-    }
-    await _saveAccounts(updatedAccounts, now: now);
+        mutationPreviousTransactionId: Value(
+          transaction.mutationPreviousTransactionId,
+        ),
+        mutationReason: Value(transaction.mutationReason),
+        isExcludedFromStats: Value(transaction.isExcludedFromStats),
+        isExcludedFromBudget: Value(transaction.isExcludedFromBudget),
+        updatedAt: Value(now),
+      ),
+    );
   }
 
-  Future<void> _reassignEntryAccount(
-    EntryAccountReassignment reassignment, {
-    required DateTime now,
-  }) async {
+  @override
+  Future<void> reassignEntryAccount(
+    EntryAccountReassignment reassignment,
+  ) async {
     if (reassignment.fromAccountId == reassignment.toAccountId) {
       return;
     }
 
+    final now = DateTime.now();
     final accountRows =
         await (_database.select(_database.accounts)..where(
           (a) =>
