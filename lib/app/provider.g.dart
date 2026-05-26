@@ -573,47 +573,6 @@ final class CategoryServiceProvider
 
 String _$categoryServiceHash() => r'c576c3f8ce0d2d70485652aedfa43551f60ebdba';
 
-@ProviderFor(receiptBuilder)
-final receiptBuilderProvider = ReceiptBuilderProvider._();
-
-final class ReceiptBuilderProvider
-    extends $FunctionalProvider<ReceiptBuilder, ReceiptBuilder, ReceiptBuilder>
-    with $Provider<ReceiptBuilder> {
-  ReceiptBuilderProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'receiptBuilderProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$receiptBuilderHash();
-
-  @$internal
-  @override
-  $ProviderElement<ReceiptBuilder> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
-
-  @override
-  ReceiptBuilder create(Ref ref) {
-    return receiptBuilder(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(ReceiptBuilder value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<ReceiptBuilder>(value),
-    );
-  }
-}
-
-String _$receiptBuilderHash() => r'84b1e95cfaf76355ce7f1b7313adba6ed03e2d53';
-
 @ProviderFor(postingAppService)
 final postingAppServiceProvider = PostingAppServiceProvider._();
 
@@ -659,7 +618,7 @@ final class PostingAppServiceProvider
   }
 }
 
-String _$postingAppServiceHash() => r'2103bdd2596f4b252af96fc52a1d36a8b30fe490';
+String _$postingAppServiceHash() => r'5a8c4367f365546c6c6d766b55da0442769ed0c3';
 
 @ProviderFor(transactionQueryService)
 final transactionQueryServiceProvider = TransactionQueryServiceProvider._();

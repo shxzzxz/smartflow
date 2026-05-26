@@ -15,7 +15,6 @@ import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_rea
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import 'package:smartflow/application/ledger/ledger_api.dart';
 import 'package:smartflow/application/credit/credit_api.dart';
-import 'package:smartflow/application/ledger/use_case/receipt_builder.dart';
 
 import '../../../helper/test_app_database.dart';
 
@@ -38,14 +37,10 @@ void main() {
         balanceAggregate: DriftBalanceAggregateRepository(database),
       );
       final transactionService = PostingAppServiceImpl(
-        receiptBuilder: ReceiptBuilder(
-          accounts: accountRepository,
-          query: queryService,
-          systemAccounts: systemAccounts,
-        ),
         accountRepository: accountRepository,
         transactionQueryService: queryService,
         postingRepository: postingRepository,
+        systemAccountResolver: systemAccounts,
         transactionRunner: DriftTransactionRunner(database),
       );
       service = InstallmentServiceImpl(
@@ -861,14 +856,10 @@ void main() {
           balanceAggregate: DriftBalanceAggregateRepository(database),
         );
         final transactionService = PostingAppServiceImpl(
-          receiptBuilder: ReceiptBuilder(
-            accounts: accountRepository,
-            query: queryService,
-            systemAccounts: systemAccounts,
-          ),
           accountRepository: accountRepository,
           transactionQueryService: queryService,
           postingRepository: postingRepository,
+          systemAccountResolver: systemAccounts,
           transactionRunner: DriftTransactionRunner(database),
         );
         final incomeAccountId = await _insertAccount(

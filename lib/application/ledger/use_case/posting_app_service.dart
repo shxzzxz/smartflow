@@ -9,12 +9,13 @@ import 'package:smartflow/domain/ledger/valobj/account_usage.dart';
 import 'package:smartflow/domain/ledger/valobj/transaction_fact.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/post_receipt.dart';
-import 'receipt_builder.dart';
 import '../read_model/transaction_read_models.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/posting_repository.dart';
+import 'package:smartflow/domain/ledger/port/system_account_resolver.dart';
 import 'package:smartflow/domain/ledger/service/account_capability_policy.dart';
 import 'package:smartflow/domain/ledger/service/entry_reassignment_service.dart';
+import 'package:smartflow/domain/ledger/service/receipt_assembler.dart';
 import 'package:smartflow/domain/ledger/service/receipt_mutator.dart';
 import '../query/transaction_query_service.dart';
 
@@ -116,87 +117,90 @@ abstract interface class PostingAppService {
 
 class PostingAppServiceImpl implements PostingAppService {
   PostingAppServiceImpl({
-    required ReceiptBuilder receiptBuilder,
     required TransactionQueryService transactionQueryService,
     required AccountRepository accountRepository,
     required PostingRepository postingRepository,
+    required SystemAccountResolver systemAccountResolver,
     required TransactionRunner transactionRunner,
     ReceiptMutator receiptMutator = const ReceiptMutator(),
     AccountCapabilityPolicy capabilityPolicy = const AccountCapabilityPolicy(),
     EntryReassignmentService reassignmentService =
         const EntryReassignmentService(),
-  }) : _receipts = receiptBuilder,
-       _query = transactionQueryService,
+    ReceiptAssembler receiptAssembler = const ReceiptAssembler(),
+  }) : _query = transactionQueryService,
        _accountRepository = accountRepository,
        _postingRepository = postingRepository,
+       _systemAccounts = systemAccountResolver,
        _transactionRunner = transactionRunner,
        _receiptMutator = receiptMutator,
        _capabilityPolicy = capabilityPolicy,
-       _reassignmentService = reassignmentService;
+       _reassignmentService = reassignmentService,
+       _assembler = receiptAssembler;
 
-  final ReceiptBuilder _receipts;
   final TransactionQueryService _query;
   final AccountRepository _accountRepository;
   final PostingRepository _postingRepository;
+  final SystemAccountResolver _systemAccounts;
   final TransactionRunner _transactionRunner;
   final ReceiptMutator _receiptMutator;
   final AccountCapabilityPolicy _capabilityPolicy;
   final EntryReassignmentService _reassignmentService;
+  final ReceiptAssembler _assembler;
 
   @override
   Future<Result<CreatedTransactionResult>> createExpense(
     CreateExpenseCommand command,
-  ) => _runCreate(() => _receipts.buildExpense(command));
+  ) => _runCreate(() => _buildExpense(command));
 
   @override
   Future<Result<CreatedTransactionResult>> createIncome(
     CreateIncomeCommand command,
-  ) => _runCreate(() => _receipts.buildIncome(command));
+  ) => _runCreate(() => _buildIncome(command));
 
   @override
   Future<Result<CreatedTransactionResult>> createTransfer(
     CreateTransferCommand command,
-  ) => _runCreate(() => _receipts.buildTransfer(command));
+  ) => _runCreate(() => _buildTransfer(command));
 
   @override
   Future<Result<CreatedTransactionResult>> createRefund(
     CreateRefundCommand command,
-  ) => _runCreate(() => _receipts.buildRefund(command));
+  ) => _runCreate(() => _buildRefund(command));
 
   @override
   Future<Result<CreatedTransactionResult>> createReimbursementAdvance(
     CreateReimbursementAdvanceCommand command,
-  ) => _runCreate(() => _receipts.buildReimbursementAdvance(command));
+  ) => _runCreate(() => _buildReimbursementAdvance(command));
 
   @override
   Future<Result<CreatedTransactionResult>> createReimbursementReceipt(
     CreateReimbursementReceiptCommand command,
-  ) => _runCreate(() => _receipts.buildReimbursementReceipt(command));
+  ) => _runCreate(() => _buildReimbursementReceipt(command));
 
   @override
   Future<Result<CreatedTransactionResult>> closeReimbursement(
     CloseReimbursementCommand command,
-  ) => _runCreate(() => _receipts.buildReimbursementClose(command));
+  ) => _runCreate(() => _buildReimbursementClose(command));
 
   @override
   Future<Result<CreatedTransactionResult>> createRepayment(
     CreateRepaymentCommand command,
-  ) => _runCreate(() => _receipts.buildRepayment(command));
+  ) => _runCreate(() => _buildRepayment(command));
 
   @override
   Future<Result<CreatedTransactionResult>> createBorrowing(
     CreateBorrowingCommand command,
-  ) => _runCreate(() => _receipts.buildBorrowing(command));
+  ) => _runCreate(() => _buildBorrowing(command));
 
   @override
   Future<Result<CreatedTransactionResult>> createOpeningBalance(
     CreateOpeningBalanceCommand command,
-  ) => _runCreate(() => _receipts.buildOpeningBalance(command));
+  ) => _runCreate(() => _buildOpeningBalance(command));
 
   @override
   Future<Result<CreatedTransactionResult>> adjustBalance(
     AdjustBalanceCommand command,
-  ) => _runCreate(() => _receipts.buildBalanceAdjustment(command));
+  ) => _runCreate(() => _buildBalanceAdjustment(command));
 
   @override
   Future<Result<CreatedTransactionResult>> correctExpense(
@@ -206,7 +210,7 @@ class PostingAppServiceImpl implements PostingAppService {
       transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.dailyExpense,
       build:
-          (original) => _receipts.buildExpense(
+          (original) => _buildExpense(
             CreateExpenseCommand(
               amount: cmd.amount,
               paidFromAccountId: cmd.paidFromAccountId,
@@ -233,7 +237,7 @@ class PostingAppServiceImpl implements PostingAppService {
       transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.dailyIncome,
       build:
-          (original) => _receipts.buildIncome(
+          (original) => _buildIncome(
             CreateIncomeCommand(
               amount: cmd.amount,
               receiveAccountId: cmd.receiveAccountId,
@@ -260,7 +264,7 @@ class PostingAppServiceImpl implements PostingAppService {
       transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.transfer,
       build:
-          (original) => _receipts.buildTransfer(
+          (original) => _buildTransfer(
             CreateTransferCommand(
               amount: cmd.amount,
               fromAccountId: cmd.fromAccountId,
@@ -287,7 +291,7 @@ class PostingAppServiceImpl implements PostingAppService {
       transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.reimbursementAdvance,
       build:
-          (original) => _receipts.buildReimbursementAdvance(
+          (original) => _buildReimbursementAdvance(
             CreateReimbursementAdvanceCommand(
               amount: cmd.amount,
               receivableAccountId: cmd.receivableAccountId,
@@ -315,7 +319,7 @@ class PostingAppServiceImpl implements PostingAppService {
       transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.refund,
       build:
-          (original) => _receipts.buildRefund(
+          (original) => _buildRefund(
             CreateRefundCommand(
               amount: cmd.amount,
               parentTransactionId: original.transaction.parentTransactionId!,
@@ -343,7 +347,7 @@ class PostingAppServiceImpl implements PostingAppService {
       transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.reimbursementReceipt,
       build:
-          (original) => _receipts.buildReimbursementReceipt(
+          (original) => _buildReimbursementReceipt(
             CreateReimbursementReceiptCommand(
               amount: cmd.amount,
               advanceTransactionId:
@@ -374,7 +378,7 @@ class PostingAppServiceImpl implements PostingAppService {
       transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.reimbursementClose,
       build:
-          (original) => _receipts.buildReimbursementClose(
+          (original) => _buildReimbursementClose(
             CloseReimbursementCommand(
               actualReceivedAmount: cmd.actualReceivedAmount,
               advanceTransactionId:
@@ -408,7 +412,7 @@ class PostingAppServiceImpl implements PostingAppService {
       transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.borrowing,
       build:
-          (original) => _receipts.buildBorrowing(
+          (original) => _buildBorrowing(
             CreateBorrowingCommand(
               amount: cmd.amount,
               liabilityAccountId: cmd.liabilityAccountId,
@@ -436,7 +440,7 @@ class PostingAppServiceImpl implements PostingAppService {
       transactionId: cmd.transactionId,
       expectedPurpose: BusinessPurpose.debtRepayment,
       build:
-          (original) => _receipts.buildRepayment(
+          (original) => _buildRepayment(
             CreateRepaymentCommand(
               principal: cmd.principal,
               interest: cmd.interest,
@@ -1018,5 +1022,483 @@ class PostingAppServiceImpl implements PostingAppService {
       }
     }
     return updated.values.toList();
+  }
+
+  // ============================================================
+  //  Receipt 构造:Command → 领域事实 → 校验 → 调 assembler → PostReceipt
+  // ============================================================
+
+  Future<Result<PostReceipt>> _buildExpense(CreateExpenseCommand cmd) async {
+    final roleFailure = await _validateAccountConstraints(
+      usages: {cmd.paidFromAccountId: AccountUsage.settlement},
+      types: {
+        cmd.expenseAccountId: {AccountType.expense},
+      },
+    );
+    if (roleFailure != null) return Result.failure(roleFailure);
+
+    return _assembler.assembleExpense(
+      amount: cmd.amount,
+      paidFromAccountId: cmd.paidFromAccountId,
+      expenseAccountId: cmd.expenseAccountId,
+      occurredAt: cmd.occurredAt,
+      counterpartyName: cmd.counterpartyName,
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
+    );
+  }
+
+  Future<Result<PostReceipt>> _buildIncome(CreateIncomeCommand cmd) async {
+    final roleFailure = await _validateAccountConstraints(
+      usages: {cmd.receiveAccountId: AccountUsage.settlement},
+      types: {
+        cmd.incomeAccountId: {AccountType.income},
+      },
+    );
+    if (roleFailure != null) return Result.failure(roleFailure);
+
+    return _assembler.assembleIncome(
+      amount: cmd.amount,
+      receiveAccountId: cmd.receiveAccountId,
+      incomeAccountId: cmd.incomeAccountId,
+      occurredAt: cmd.occurredAt,
+      counterpartyName: cmd.counterpartyName,
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
+    );
+  }
+
+  Future<Result<PostReceipt>> _buildTransfer(CreateTransferCommand cmd) async {
+    final fee = cmd.feeAmount;
+    final feeAccountId = cmd.feeExpenseAccountId;
+    final hasFeeAccount =
+        fee != null && fee.minorUnits > 0 && feeAccountId != null;
+    final roleFailure = await _validateAccountConstraints(
+      usages: {
+        cmd.fromAccountId: AccountUsage.settlement,
+        cmd.toAccountId: AccountUsage.settlement,
+      },
+      types: {
+        if (hasFeeAccount) feeAccountId: {AccountType.expense},
+      },
+    );
+    if (roleFailure != null) return Result.failure(roleFailure);
+
+    return _assembler.assembleTransfer(
+      amount: cmd.amount,
+      fromAccountId: cmd.fromAccountId,
+      toAccountId: cmd.toAccountId,
+      occurredAt: cmd.occurredAt,
+      feeAmount: cmd.feeAmount,
+      feeExpenseAccountId: cmd.feeExpenseAccountId,
+      counterpartyName: cmd.counterpartyName,
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
+    );
+  }
+
+  Future<Result<PostReceipt>> _buildRefund(
+    CreateRefundCommand cmd, {
+    Money? selfPrimaryAddback,
+  }) async {
+    final parent = await _query.findTransactionById(cmd.parentTransactionId);
+    if (parent == null) {
+      return const Result.failure(
+        Failure(
+          code: 'refund_parent_not_found',
+          message: 'Original expense not found.',
+        ),
+      );
+    }
+    if (parent.businessPurpose != BusinessPurpose.dailyExpense &&
+        parent.businessPurpose != BusinessPurpose.reimbursementAdvance) {
+      return const Result.failure(
+        Failure(
+          code: 'refund_parent_not_expense',
+          message: 'Refund can only be applied to an expense transaction.',
+        ),
+      );
+    }
+    if (parent.businessPurpose == BusinessPurpose.reimbursementAdvance) {
+      final summary = await _query.getReimbursementSummary(
+        parent.rootTransactionId,
+      );
+      if (summary?.isClosed ?? false) {
+        return const Result.failure(
+          Failure(
+            code: 'refund_parent_reimbursement_closed',
+            message: 'Refund is not supported after reimbursement is closed.',
+          ),
+        );
+      }
+    }
+    if (parent.businessState != BusinessState.current) {
+      return const Result.failure(
+        Failure(
+          code: 'refund_parent_not_current',
+          message: 'Refund can only be applied to a current expense.',
+        ),
+      );
+    }
+    final refunded = await _query.getRefundedTotal(parent.rootTransactionId);
+    final creditAccountId = await _resolveRefundCreditAccount(
+      parentId: parent.id,
+      parentPurpose: parent.businessPurpose,
+    );
+    if (creditAccountId == null) {
+      return const Result.failure(
+        Failure(
+          code: 'refund_expense_account_not_found',
+          message: 'Original refund target account cannot be located.',
+        ),
+      );
+    }
+
+    final roleFailure = await _validateAccountConstraints(
+      usages: {cmd.refundToAccountId: AccountUsage.settlement},
+    );
+    if (roleFailure != null) return Result.failure(roleFailure);
+
+    return _assembler.assembleRefund(
+      amount: cmd.amount,
+      refundToAccountId: cmd.refundToAccountId,
+      parent: parent,
+      refundedSoFar: refunded,
+      creditAccountId: creditAccountId,
+      occurredAt: cmd.occurredAt,
+      selfPrimaryAddback: selfPrimaryAddback,
+      counterpartyName: cmd.counterpartyName,
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
+    );
+  }
+
+  Future<Result<PostReceipt>> _buildReimbursementAdvance(
+    CreateReimbursementAdvanceCommand cmd,
+  ) async {
+    final roleFailure = await _validateAccountConstraints(
+      usages: {
+        cmd.receivableAccountId: AccountUsage.reimbursement,
+        cmd.paidFromAccountId: AccountUsage.settlement,
+      },
+      types: {
+        cmd.expenseCategoryId: {AccountType.expense},
+      },
+    );
+    if (roleFailure != null) return Result.failure(roleFailure);
+
+    return _assembler.assembleReimbursementAdvance(
+      amount: cmd.amount,
+      receivableAccountId: cmd.receivableAccountId,
+      paidFromAccountId: cmd.paidFromAccountId,
+      expenseCategoryId: cmd.expenseCategoryId,
+      occurredAt: cmd.occurredAt,
+      counterpartyName: cmd.counterpartyName,
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
+    );
+  }
+
+  Future<Result<PostReceipt>> _buildReimbursementReceipt(
+    CreateReimbursementReceiptCommand cmd, {
+    Money? selfPrimaryAddback,
+  }) async {
+    final advance = await _query.findTransactionById(cmd.advanceTransactionId);
+    final advanceFailure = _validateAdvance(advance);
+    if (advanceFailure != null) return Result.failure(advanceFailure);
+
+    final summary = await _query.getReimbursementSummary(advance!.id);
+    if (summary == null) {
+      return const Result.failure(
+        Failure(
+          code: 'reimbursement_summary_unavailable',
+          message: 'Cannot resolve reimbursement state.',
+        ),
+      );
+    }
+    if (summary.isClosed) {
+      return const Result.failure(
+        Failure(
+          code: 'reimbursement_already_closed',
+          message: 'This reimbursement chain is already closed.',
+        ),
+      );
+    }
+
+    final roleFailure = await _validateAccountConstraints(
+      usages: {
+        cmd.receiveAccountId: AccountUsage.settlement,
+        cmd.receivableAccountId: AccountUsage.reimbursement,
+      },
+    );
+    if (roleFailure != null) return Result.failure(roleFailure);
+
+    return _assembler.assembleReimbursementReceipt(
+      amount: cmd.amount,
+      advance: advance,
+      outstanding: summary.outstanding,
+      receivableAccountId: cmd.receivableAccountId,
+      receiveAccountId: cmd.receiveAccountId,
+      occurredAt: cmd.occurredAt,
+      selfPrimaryAddback: selfPrimaryAddback,
+      counterpartyName: cmd.counterpartyName,
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
+    );
+  }
+
+  Future<Result<PostReceipt>> _buildReimbursementClose(
+    CloseReimbursementCommand cmd, {
+    Money? outstandingOverride,
+  }) async {
+    final advance = await _query.findTransactionById(cmd.advanceTransactionId);
+    final advanceFailure = _validateAdvance(advance);
+    if (advanceFailure != null) return Result.failure(advanceFailure);
+
+    Money outstanding;
+    if (outstandingOverride != null) {
+      outstanding = outstandingOverride;
+    } else {
+      final summary = await _query.getReimbursementSummary(advance!.id);
+      if (summary == null || summary.isClosed) {
+        return const Result.failure(
+          Failure(
+            code: 'reimbursement_already_closed',
+            message: 'This reimbursement chain is already closed.',
+          ),
+        );
+      }
+      outstanding = summary.outstanding;
+    }
+
+    final actual = cmd.actualReceivedAmount;
+    final hasOverGap = (actual - outstanding).minorUnits > 0;
+    final gapIncomeAccountId =
+        hasOverGap
+            ? await _systemAccounts.resolveReimbursementGapIncome()
+            : null;
+
+    final roleFailure = await _validateAccountConstraints(
+      usages: {
+        if (actual.minorUnits > 0)
+          cmd.receiveAccountId: AccountUsage.settlement,
+        cmd.receivableAccountId: AccountUsage.reimbursement,
+      },
+    );
+    if (roleFailure != null) return Result.failure(roleFailure);
+
+    return _assembler.assembleReimbursementClose(
+      actualReceivedAmount: actual,
+      advance: advance!,
+      outstanding: outstanding,
+      receivableAccountId: cmd.receivableAccountId,
+      receiveAccountId: cmd.receiveAccountId,
+      occurredAt: cmd.occurredAt,
+      gapIncomeAccountId: gapIncomeAccountId,
+      counterpartyName: cmd.counterpartyName,
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
+    );
+  }
+
+  Future<Result<PostReceipt>> _buildRepayment(
+    CreateRepaymentCommand cmd,
+  ) async {
+    final hasInterest = cmd.interest != null && cmd.interest!.minorUnits > 0;
+    final hasFee = cmd.fee != null && cmd.fee!.minorUnits > 0;
+    final hasDiscount = cmd.discount != null && cmd.discount!.minorUnits > 0;
+
+    final interestExpenseAccountId =
+        hasInterest ? await _systemAccounts.resolveDebtInterestExpense() : null;
+    final feeExpenseAccountId =
+        hasFee ? await _systemAccounts.resolveDebtFeeExpense() : null;
+    final discountIncomeAccountId =
+        hasDiscount ? await _systemAccounts.resolveDiscountIncome() : null;
+
+    final roleFailure = await _validateAccountConstraints(
+      usages: {
+        cmd.liabilityAccountId: AccountUsage.repaymentTarget,
+        cmd.paidFromAccountId: AccountUsage.repaymentSource,
+      },
+    );
+    if (roleFailure != null) return Result.failure(roleFailure);
+
+    return _assembler.assembleRepayment(
+      principal: cmd.principal,
+      liabilityAccountId: cmd.liabilityAccountId,
+      paidFromAccountId: cmd.paidFromAccountId,
+      occurredAt: cmd.occurredAt,
+      interest: cmd.interest,
+      fee: cmd.fee,
+      discount: cmd.discount,
+      interestExpenseAccountId: interestExpenseAccountId,
+      feeExpenseAccountId: feeExpenseAccountId,
+      discountIncomeAccountId: discountIncomeAccountId,
+      ownership: cmd.ownership,
+      counterpartyName: cmd.counterpartyName,
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
+    );
+  }
+
+  Future<Result<PostReceipt>> _buildBorrowing(
+    CreateBorrowingCommand cmd,
+  ) async {
+    final roleFailure = await _validateAccountConstraints(
+      usages: {
+        cmd.liabilityAccountId: AccountUsage.borrowingLiability,
+        cmd.receiveAccountId: AccountUsage.fund,
+      },
+    );
+    if (roleFailure != null) return Result.failure(roleFailure);
+
+    return _assembler.assembleBorrowing(
+      amount: cmd.amount,
+      liabilityAccountId: cmd.liabilityAccountId,
+      receiveAccountId: cmd.receiveAccountId,
+      occurredAt: cmd.occurredAt,
+      ownership: cmd.ownership,
+      counterpartyName: cmd.counterpartyName,
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
+    );
+  }
+
+  Future<Result<PostReceipt>> _buildOpeningBalance(
+    CreateOpeningBalanceCommand cmd,
+  ) async {
+    final account = await _accountRepository.findAccountById(cmd.accountId);
+    if (account == null) {
+      return const Result.failure(
+        Failure(code: 'account_not_found', message: 'Account does not exist.'),
+      );
+    }
+    final equityAccountId = await _systemAccounts.resolveOpeningBalance();
+    return _assembler.assembleOpeningBalance(
+      account: account,
+      signedAmount: cmd.amount,
+      equityAccountId: equityAccountId,
+      occurredAt: cmd.occurredAt,
+      counterpartyName: cmd.counterpartyName,
+      note: cmd.note,
+      isExcludedFromStats: cmd.isExcludedFromStats,
+      isExcludedFromBudget: cmd.isExcludedFromBudget,
+    );
+  }
+
+  Future<Result<PostReceipt>> _buildBalanceAdjustment(
+    AdjustBalanceCommand cmd,
+  ) async {
+    final account = await _accountRepository.findAccountById(cmd.accountId);
+    if (account == null) {
+      return const Result.failure(
+        Failure(code: 'account_not_found', message: 'Account does not exist.'),
+      );
+    }
+    final deltaResult = account.targetBalanceDeltaTo(cmd.targetBalance);
+    switch (deltaResult) {
+      case FailureResult(:final failure):
+        return Result.failure(failure);
+      case Success(:final value):
+        final equityAccountId = await _systemAccounts.resolveOpeningBalance();
+        return _assembler.assembleBalanceAdjustment(
+          account: account,
+          signedDelta: value,
+          equityAccountId: equityAccountId,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
+          isExcludedFromStats: cmd.isExcludedFromStats,
+          isExcludedFromBudget: cmd.isExcludedFromBudget,
+        );
+    }
+  }
+
+  /// 批量加载账户后,逐个委托 [AccountCapabilityPolicy] 校验角色 / usage。
+  /// `types` / `usages` 可分别给出;同一账户在两个 map 中出现时,两项都会校验。
+  Future<Failure?> _validateAccountConstraints({
+    Map<int, Set<AccountType>> types = const {},
+    Map<int, AccountUsage> usages = const {},
+  }) async {
+    final ids = <int>{...types.keys, ...usages.keys};
+    if (ids.isEmpty) return null;
+    final accounts = await _accountRepository.findAccountsByIds(ids);
+    final accountsById = <int, Account>{
+      for (final account in accounts) account.id: account,
+    };
+    for (final entry in types.entries) {
+      final failure = _capabilityPolicy.validate(
+        accountsById[entry.key],
+        accountId: entry.key,
+        expectedTypes: entry.value,
+      );
+      if (failure != null) return failure;
+    }
+    for (final entry in usages.entries) {
+      final failure = _capabilityPolicy.validate(
+        accountsById[entry.key],
+        accountId: entry.key,
+        requiredUsage: entry.value,
+      );
+      if (failure != null) return failure;
+    }
+    return null;
+  }
+
+  Future<int?> _resolveRefundCreditAccount({
+    required int parentId,
+    required BusinessPurpose parentPurpose,
+  }) async {
+    final detail = await _query.findTransactionDetail(parentId);
+    if (detail == null) return null;
+    final accountTypes = await _loadAccountTypes(
+      detail.entries.map((e) => e.accountId),
+    );
+    for (final entry in detail.entries) {
+      final accountType = accountTypes[entry.accountId];
+      final isDailyExpenseTarget =
+          parentPurpose == BusinessPurpose.dailyExpense &&
+          accountType == AccountType.expense &&
+          entry.direction == EntryDirection.debit;
+      final isAdvanceTarget =
+          parentPurpose == BusinessPurpose.reimbursementAdvance &&
+          accountType == AccountType.asset &&
+          entry.direction == EntryDirection.debit;
+      if (isDailyExpenseTarget || isAdvanceTarget) {
+        return entry.accountId;
+      }
+    }
+    return null;
+  }
+
+  Failure? _validateAdvance(Transaction? advance) {
+    if (advance == null) {
+      return const Failure(
+        code: 'reimbursement_advance_not_found',
+        message: 'Reimbursement advance not found.',
+      );
+    }
+    if (advance.businessPurpose != BusinessPurpose.reimbursementAdvance) {
+      return const Failure(
+        code: 'reimbursement_parent_not_advance',
+        message: 'Parent transaction is not a reimbursement advance.',
+      );
+    }
+    if (advance.businessState != BusinessState.current) {
+      return const Failure(
+        code: 'reimbursement_advance_not_current',
+        message: 'Reimbursement advance is not current.',
+      );
+    }
+    return null;
   }
 }

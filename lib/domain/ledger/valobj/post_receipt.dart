@@ -6,11 +6,11 @@ import '../service/ledger_rule.dart';
 
 /// 入账凭证:对一笔交易"长什么样"的完整描述。
 ///
-/// 由 ReceiptBuilder 从 user command 派生,经 [validate] 校验后由
-/// PostingAppService 落库。不携带 mutation 元数据(mutationKind /
-/// mutationPreviousTransactionId 等) — 这些字段在 PostingAppService 的
-/// replace / cancel 路径上从 original 派生注入,builder 永远只造"独立合法"
-/// 的蓝字凭证。
+/// 由 PostingAppService 内部的 receipt 构造方法从 user command 派生,经
+/// [validate] 校验后由 PostingAppService 落库。不携带 mutation 元数据
+/// (mutationKind / mutationPreviousTransactionId 等) — 这些字段在
+/// PostingAppService 的 replace / cancel 路径上从 original 派生注入,
+/// 构造路径永远只造"独立合法"的蓝字凭证。
 class PostReceipt {
   const PostReceipt({
     required this.businessPurpose,

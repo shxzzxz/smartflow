@@ -11,7 +11,7 @@ import '../valobj/post_receipt.dart';
 /// 把已加载好的领域事实 + 用户指令的领域字段组装为 [PostReceipt]。
 ///
 /// 11 个 `assemble*` 纯函数,无 I/O、无 port 调用、无事务边界,
-/// caller(application 层 ReceiptBuilder)负责:
+/// caller(application 层 PostingAppService 的 `_buildXxx` 路径)负责:
 /// - 通过 query / ports 加载父交易、advance summary、refundedTotal、
 ///   Account 实体、系统科目 id 等事实
 /// - 用 [AccountCapabilityPolicy] 校验账户类型 / usage

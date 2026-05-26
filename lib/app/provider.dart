@@ -23,7 +23,6 @@ import '../application/ledger/query/transaction_detail_read_repository.dart';
 import '../application/ledger/query/transaction_read_repository.dart';
 import '../application/shared/transaction_runner.dart';
 import '../application/shared/update_channel_store.dart';
-import '../application/ledger/use_case/receipt_builder.dart';
 import '../core/time/month_key.dart';
 import '../core/money/money.dart';
 
@@ -94,21 +93,12 @@ CategoryService categoryService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-ReceiptBuilder receiptBuilder(Ref ref) {
-  return ReceiptBuilder(
-    accounts: ref.watch(accountRepositoryProvider),
-    query: ref.watch(transactionQueryServiceProvider),
-    systemAccounts: ref.watch(systemAccountResolverProvider),
-  );
-}
-
-@Riverpod(keepAlive: true)
 PostingAppService postingAppService(Ref ref) {
   return PostingAppServiceImpl(
-    receiptBuilder: ref.watch(receiptBuilderProvider),
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
     accountRepository: ref.watch(accountRepositoryProvider),
     postingRepository: ref.watch(postingRepositoryProvider),
+    systemAccountResolver: ref.watch(systemAccountResolverProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
   );
 }

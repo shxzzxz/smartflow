@@ -4,7 +4,6 @@ import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/application/ledger/ledger_api.dart';
 import 'package:smartflow/domain/ledger/valobj/post_receipt.dart';
-import 'package:smartflow/application/ledger/use_case/receipt_builder.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/posting_repository.dart';
 import 'package:smartflow/domain/ledger/port/system_account_resolver.dart';
@@ -19,14 +18,10 @@ void main() {
     }) {
       final accounts = accountRepository ?? _defaultAccounts();
       return PostingAppServiceImpl(
-        receiptBuilder: ReceiptBuilder(
-          accounts: accounts,
-          query: _StubQueryService(),
-          systemAccounts: _StubSystemAccountResolver(),
-        ),
         transactionQueryService: _StubQueryService(),
         accountRepository: accounts,
         postingRepository: postingRepository,
+        systemAccountResolver: _StubSystemAccountResolver(),
         transactionRunner: const _InlineTransactionRunner(),
       );
     }
