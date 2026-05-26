@@ -1,29 +1,29 @@
 import 'package:go_router/go_router.dart';
 
 import 'app_shell.dart';
-import '../application/accounting/accounting_api.dart';
+import '../application/ledger/ledger_api.dart';
 import 'package:smartflow/application/credit/credit_api.dart';
-import '../features/accounts/pages/account_detail_page.dart';
-import '../features/accounts/pages/account_form_page.dart';
-import '../features/accounts/pages/accounts_page.dart';
-import '../features/categories/pages/categories_page.dart';
-import '../features/categories/pages/category_form_page.dart';
-import '../features/calendar/pages/calendar_page.dart';
-import '../features/home/pages/home_page.dart';
-import '../features/credit/pages/installment_contract_edit_page.dart';
-import '../features/credit/pages/installment_detail_page.dart';
-import '../features/credit/pages/installment_form_page.dart';
-import '../features/credit/pages/installment_repayment_form_page.dart';
-import '../features/credit/pages/repayment_form_page.dart';
-import '../features/placeholder/pages/placeholder_page.dart';
-import '../features/profile/pages/installment_guide_page.dart';
-import '../features/profile/pages/profile_page.dart';
-import '../features/profile/pages/software_version_page.dart';
-import '../features/transactions/pages/refund_form_page.dart';
-import '../features/transactions/pages/reimbursement_close_form_page.dart';
-import '../features/transactions/pages/reimbursement_receipt_form_page.dart';
-import '../features/transactions/pages/transaction_detail_page.dart';
-import '../features/transactions/pages/transaction_form_page.dart';
+import '../feature/account/page/account_detail_page.dart';
+import '../feature/account/page/account_form_page.dart';
+import '../feature/account/page/accounts_page.dart';
+import '../feature/category/page/categories_page.dart';
+import '../feature/category/page/category_form_page.dart';
+import '../feature/calendar/page/calendar_page.dart';
+import '../feature/home/page/home_page.dart';
+import '../feature/credit/page/installment_contract_edit_page.dart';
+import '../feature/credit/page/installment_detail_page.dart';
+import '../feature/credit/page/installment_form_page.dart';
+import '../feature/credit/page/installment_repayment_form_page.dart';
+import '../feature/credit/page/repayment_form_page.dart';
+import '../feature/placeholder/page/placeholder_page.dart';
+import '../feature/profile/page/installment_guide_page.dart';
+import '../feature/profile/page/profile_page.dart';
+import '../feature/profile/page/software_version_page.dart';
+import '../feature/transaction/page/refund_form_page.dart';
+import '../feature/transaction/page/reimbursement_close_form_page.dart';
+import '../feature/transaction/page/reimbursement_receipt_form_page.dart';
+import '../feature/transaction/page/transaction_detail_page.dart';
+import '../feature/transaction/page/transaction_form_page.dart';
 
 final appRouter = GoRouter(
   routes: [
@@ -32,7 +32,7 @@ final appRouter = GoRouter(
       routes: [
         GoRoute(path: '/', builder: (context, state) => const HomePage()),
         GoRoute(
-          path: '/accounts',
+          path: '/account',
           builder: (context, state) => const AccountsPage(),
         ),
         GoRoute(
@@ -50,7 +50,7 @@ final appRouter = GoRouter(
       ],
     ),
     GoRoute(
-      path: '/transactions/new',
+      path: '/transaction/new',
       builder: (context, state) {
         final mode = switch (state.uri.queryParameters['mode']) {
           'income' => TransactionFormInitialMode.income,
@@ -70,74 +70,74 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(
-      path: '/transactions/:id',
+      path: '/transaction/:id',
       builder:
           (context, state) => TransactionDetailPage(
             transactionId: int.parse(state.pathParameters['id']!),
           ),
     ),
     GoRoute(
-      path: '/transactions/:id/edit',
+      path: '/transaction/:id/edit',
       builder:
           (context, state) => TransactionFormPage(
             editTransactionId: int.parse(state.pathParameters['id']!),
           ),
     ),
     GoRoute(
-      path: '/transactions/:id/repayment/edit',
+      path: '/transaction/:id/repayment/edit',
       builder:
           (context, state) => RepaymentFormPage.edit(
             editTransactionId: int.parse(state.pathParameters['id']!),
           ),
     ),
     GoRoute(
-      path: '/transactions/:id/refund',
+      path: '/transaction/:id/refund',
       builder:
           (context, state) => RefundFormPage(
             parentTransactionId: int.parse(state.pathParameters['id']!),
           ),
     ),
     GoRoute(
-      path: '/transactions/:id/reimburse-receipt',
+      path: '/transaction/:id/reimburse-receipt',
       builder:
           (context, state) => ReimbursementReceiptFormPage(
             advanceTransactionId: int.parse(state.pathParameters['id']!),
           ),
     ),
     GoRoute(
-      path: '/transactions/:id/reimburse-close',
+      path: '/transaction/:id/reimburse-close',
       builder:
           (context, state) => ReimbursementCloseFormPage(
             advanceTransactionId: int.parse(state.pathParameters['id']!),
           ),
     ),
     GoRoute(
-      path: '/accounts/new',
+      path: '/account/new',
       builder: (context, state) => const AccountFormPage(),
     ),
     GoRoute(
-      path: '/accounts/:id',
+      path: '/account/:id',
       builder:
           (context, state) => AccountDetailPage(
             accountId: int.parse(state.pathParameters['id']!),
           ),
     ),
     GoRoute(
-      path: '/accounts/:id/edit',
+      path: '/account/:id/edit',
       builder:
           (context, state) => AccountFormPage(
             accountId: int.parse(state.pathParameters['id']!),
           ),
     ),
     GoRoute(
-      path: '/accounts/:id/repayment',
+      path: '/account/:id/repayment',
       builder:
           (context, state) => RepaymentFormPage(
             liabilityAccountId: int.parse(state.pathParameters['id']!),
           ),
     ),
     GoRoute(
-      path: '/accounts/:id/installments/new',
+      path: '/account/:id/installments/new',
       builder: (context, state) {
         final lockedSourceType = switch (state.uri.queryParameters['source']) {
           'disbursement' => InstallmentSourceType.disbursement,
@@ -184,7 +184,7 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(
-      path: '/categories',
+      path: '/category',
       builder: (context, state) => const CategoriesPage(),
     ),
     GoRoute(
@@ -196,7 +196,7 @@ final appRouter = GoRouter(
       builder: (context, state) => const InstallmentGuidePage(),
     ),
     GoRoute(
-      path: '/categories/new',
+      path: '/category/new',
       builder: (context, state) {
         final type = switch (state.uri.queryParameters['type']) {
           'income' => AccountType.income,

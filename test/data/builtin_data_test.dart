@@ -2,9 +2,9 @@ import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/data/builtin_data.dart';
-import 'package:smartflow/application/accounting/accounting_api.dart';
+import 'package:smartflow/application/ledger/ledger_api.dart';
 
-import '../helpers/test_app_database.dart';
+import '../helper/test_app_database.dart';
 
 void main() {
   group('builtin data', () {
@@ -101,7 +101,7 @@ void main() {
       );
     });
 
-    test('creates system-keyed builtin accounts and categories', () async {
+    test('creates system-keyed builtin account and category', () async {
       final database = createTestDatabase();
       addTearDown(database.close);
 

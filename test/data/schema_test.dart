@@ -1,9 +1,9 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/data/app_database.dart';
-import 'package:smartflow/application/accounting/accounting_api.dart';
+import 'package:smartflow/application/ledger/ledger_api.dart';
 
-import '../helpers/test_app_database.dart';
+import '../helper/test_app_database.dart';
 
 void main() {
   group('stage 1 database schema', () {
@@ -17,7 +17,7 @@ void main() {
       await database.close();
     });
 
-    test('creates core accounting tables', () async {
+    test('creates core ledger table', () async {
       final rows =
           await database
               .customSelect(
@@ -63,7 +63,7 @@ void main() {
       );
     });
 
-    test('does not expose currency columns in core tables', () async {
+    test('does not expose currency columns in core table', () async {
       for (final tableName in [
         'accounts',
         'transactions',

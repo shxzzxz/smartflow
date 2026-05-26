@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../tokens/typography.dart';
+import '../token/typography.dart';
 
 abstract final class AppTextThemes {
   static TextTheme textTheme(ColorScheme colors) {

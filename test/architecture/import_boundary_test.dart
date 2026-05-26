@@ -1,11 +1,11 @@
 // 顶层分层 import 边界守护测试。
 //
 // 约束目标：
-// - domain 不依赖 application / infrastructure / features / app / data / Flutter UI / Drift / Riverpod。
-// - application 可依赖 domain 和 core，不依赖 infrastructure / features / app / data。
-// - infrastructure 可依赖 application、domain、core、data，不依赖 features / app。
-// - features 和 widgets 不直接依赖 domain / infrastructure / data，只通过 application / app providers。
-// - accounting domain 不依赖 credit domain。
+// - domain 不依赖 application / infrastructure / feature / app / data / Flutter UI / Drift / Riverpod。
+// - application 可依赖 domain 和 core，不依赖 infrastructure / feature / app / data。
+// - infrastructure 可依赖 application、domain、core、data，不依赖 feature / app。
+// - feature 和 widget 不直接依赖 domain / infrastructure / data，只通过 application / app provider。
+// - ledger domain 不依赖 credit domain。
 
 import 'dart:io';
 
@@ -18,10 +18,10 @@ void main() {
       const forbiddenRoots = <String>[
         'application/',
         'infrastructure/',
-        'features/',
+        'feature/',
         'app/',
         'data/',
-        'widgets/',
+        'widget/',
         'design_system/',
       ];
       const forbiddenPackages = <String>[
@@ -59,10 +59,10 @@ void main() {
       final violations = <_Violation>[];
       const forbiddenRoots = <String>[
         'infrastructure/',
-        'features/',
+        'feature/',
         'app/',
         'data/',
-        'widgets/',
+        'widget/',
         'design_system/',
       ];
       const forbiddenPackages = <String>[
@@ -99,9 +99,9 @@ void main() {
     test('infrastructure 不依赖 UI/app 层', () {
       final violations = <_Violation>[];
       const forbiddenRoots = <String>[
-        'features/',
+        'feature/',
         'app/',
-        'widgets/',
+        'widget/',
         'design_system/',
       ];
 
@@ -121,11 +121,11 @@ void main() {
       _assertClean(violations);
     });
 
-    test('features/widgets 不直接依赖 domain/infrastructure/data', () {
+    test('feature/widget 不直接依赖 domain/infrastructure/data', () {
       final violations = <_Violation>[];
       const forbiddenRoots = <String>['domain/', 'infrastructure/', 'data/'];
 
-      for (final rootPath in ['lib/features', 'lib/widgets']) {
+      for (final rootPath in ['lib/feature', 'lib/widget']) {
         for (final file in _dartFiles(rootPath)) {
           for (final importPath in _importPaths(file)) {
             final target = _libPathForImport(file, importPath);
@@ -143,15 +143,13 @@ void main() {
       _assertClean(violations);
     });
 
-    test('accounting domain 不依赖 credit domain', () {
+    test('ledger domain 不依赖 credit domain', () {
       final violations = <_Violation>[];
-      for (final file in _dartFiles('lib/domain/accounting')) {
+      for (final file in _dartFiles('lib/domain/ledger')) {
         for (final importPath in _importPaths(file)) {
           final target = _libPathForImport(file, importPath) ?? importPath;
           if (target.contains('domain/credit/')) {
-            violations.add(
-              _Violation(file, importPath, 'accounting 不能依赖 credit'),
-            );
+            violations.add(_Violation(file, importPath, 'ledger 不能依赖 credit'));
           }
         }
       }

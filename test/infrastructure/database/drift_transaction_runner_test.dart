@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:smartflow/core/errors/failure.dart';
+import 'package:smartflow/core/error/failure.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
-import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
-import '../../helpers/test_app_database.dart';
+import '../../helper/test_app_database.dart';
 
 void main() {
   group('DriftTransactionRunner', () {

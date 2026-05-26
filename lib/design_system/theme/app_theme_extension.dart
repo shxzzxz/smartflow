@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../tokens/colors.dart';
+import '../token/colors.dart';
 
 @immutable
 class AppThemeExtension extends ThemeExtension<AppThemeExtension> {

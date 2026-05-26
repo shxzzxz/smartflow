@@ -1,6 +1,6 @@
-import '../../core/errors/failure.dart';
+import '../../core/error/failure.dart';
 import '../../core/result/result.dart';
-import 'package:smartflow/application/shared/transaction_runner.dart';
+import 'package:smartflow/application/share/transaction_runner.dart';
 import 'package:smartflow/data/app_database.dart';
 
 class DriftTransactionRunner implements TransactionRunner {

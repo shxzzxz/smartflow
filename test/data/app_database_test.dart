@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import '../helpers/test_app_database.dart';
+import '../helper/test_app_database.dart';
 
 void main() {
   group('AppDatabase', () {
