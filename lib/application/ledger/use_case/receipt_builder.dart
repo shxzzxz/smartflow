@@ -483,17 +483,23 @@ class ReceiptBuilder {
         Failure(code: 'account_not_found', message: 'Account does not exist.'),
       );
     }
-    final equityAccountId = await _systemAccounts.resolveOpeningBalance();
-    return _assembler.assembleBalanceAdjustment(
-      account: account,
-      targetBalance: cmd.targetBalance,
-      equityAccountId: equityAccountId,
-      occurredAt: cmd.occurredAt,
-      counterpartyName: cmd.counterpartyName,
-      note: cmd.note,
-      isExcludedFromStats: cmd.isExcludedFromStats,
-      isExcludedFromBudget: cmd.isExcludedFromBudget,
-    );
+    final deltaResult = account.targetBalanceDeltaTo(cmd.targetBalance);
+    switch (deltaResult) {
+      case FailureResult(:final failure):
+        return Result.failure(failure);
+      case Success(:final value):
+        final equityAccountId = await _systemAccounts.resolveOpeningBalance();
+        return _assembler.assembleBalanceAdjustment(
+          account: account,
+          signedDelta: value,
+          equityAccountId: equityAccountId,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
+          isExcludedFromStats: cmd.isExcludedFromStats,
+          isExcludedFromBudget: cmd.isExcludedFromBudget,
+        );
+    }
   }
 
   // ============================================================

@@ -103,20 +103,6 @@ class AccountServiceImpl implements AccountService {
 
   @override
   Future<Result<void>> editAccount(EditAccountCommand command) async {
-    final nameFailure = _validateEditName(command.name);
-    if (nameFailure != null) {
-      return Result.failure(nameFailure);
-    }
-    final targetBalance = command.targetBalance;
-    if (targetBalance != null && targetBalance.minorUnits < 0) {
-      return const Result.failure(
-        Failure(
-          code: 'account_target_balance_negative',
-          message: 'Target balance cannot be negative.',
-        ),
-      );
-    }
-
     try {
       final account = await _repository.findAccountById(command.id);
       if (account == null) {
@@ -127,31 +113,15 @@ class AccountServiceImpl implements AccountService {
           ),
         );
       }
-      if (account.archivedAt != null) {
-        return const Result.failure(
-          Failure(
-            code: 'account_archived',
-            message: 'Archived account cannot be edited.',
-          ),
-        );
+      final editFailure = account.checkEditable();
+      if (editFailure != null) {
+        return Result.failure(editFailure);
       }
-      if (!_isUserAccountType(account.type)) {
-        return const Result.failure(
-          Failure(
-            code: 'account_type_not_editable',
-            message: 'Only asset and liability account can be edited here.',
-          ),
-        );
+      final renameResult = account.renamed(command.name);
+      if (renameResult case FailureResult(:final failure)) {
+        return Result.failure(failure);
       }
-      if (targetBalance != null &&
-          !_supportsManualBalance(account.type, account.subtype)) {
-        return const Result.failure(
-          Failure(
-            code: 'account_target_balance_not_supported',
-            message: 'This account type does not support balance adjustment.',
-          ),
-        );
-      }
+      final targetBalance = command.targetBalance;
 
       final spec = AccountUpdateSpec(
         name: command.name?.trim(),
@@ -204,14 +174,14 @@ class AccountServiceImpl implements AccountService {
         message: 'Account name is required.',
       );
     }
-    if (!_isUserAccountType(command.type)) {
+    if (!command.type.isUserAccount) {
       return const Failure(
         code: 'account_type_invalid',
         message: 'Only asset and liability account can be created here.',
       );
     }
     if (command.openingBalance.minorUnits != 0 &&
-        !_supportsManualBalance(command.type, command.subtype)) {
+        !command.type.supportsManualBalance(command.subtype)) {
       return const Failure(
         code: 'opening_balance_not_supported',
         message: 'This account type does not support opening balance.',
@@ -219,30 +189,6 @@ class AccountServiceImpl implements AccountService {
     }
 
     return null;
-  }
-
-  Failure? _validateEditName(String? name) {
-    if (name == null) {
-      return null;
-    }
-    if (name.trim().isEmpty) {
-      return const Failure(
-        code: 'account_name_required',
-        message: 'Account name is required.',
-      );
-    }
-    return null;
-  }
-
-  bool _isUserAccountType(AccountType type) {
-    return type == AccountType.asset || type == AccountType.liability;
-  }
-
-  bool _supportsManualBalance(AccountType type, AccountSubtype? subtype) {
-    if (type == AccountType.asset) {
-      return subtype != AccountSubtype.reimbursement;
-    }
-    return type == AccountType.liability;
   }
 
   String? _blankToNull(String? value) {

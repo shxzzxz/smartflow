@@ -838,11 +838,14 @@ class ReceiptAssembler {
     );
   }
 
-  /// 余额调整(仅资产 / 负债):账户 ±(按差额方向)/ 系统期初权益 ∓,
-  /// 金额 = 目标余额与当前余额的差额绝对值。
+  /// 余额调整(仅资产 / 负债):账户 ±(按 [signedDelta] 方向)/ 系统期初权益 ∓。
+  ///
+  /// [signedDelta] 是 `target - current` 的有符号差值,由 caller(通常是
+  /// [Account.targetBalanceDeltaTo])预先算好并完成 archived / 类型 / 负数 /
+  /// delta=0 等校验,assembler 只负责拼凭证与决定借贷方向。
   Result<PostReceipt> assembleBalanceAdjustment({
     required Account account,
-    required Money targetBalance,
+    required Money signedDelta,
     required int equityAccountId,
     required DateTime occurredAt,
     String? counterpartyName,
@@ -850,38 +853,10 @@ class ReceiptAssembler {
     bool isExcludedFromStats = false,
     bool isExcludedFromBudget = false,
   }) {
-    if (account.archivedAt != null) {
-      return const Result.failure(
-        Failure(
-          code: 'account_archived',
-          message: 'Cannot adjust archived account.',
-        ),
-      );
-    }
-    if (account.type != AccountType.asset &&
-        account.type != AccountType.liability) {
-      return const Result.failure(
-        Failure(
-          code: 'account_not_adjustable',
-          message:
-              'Only asset and liability account support balance adjustment.',
-        ),
-      );
-    }
-    final deltaMinor = targetBalance.minorUnits - account.balance.minorUnits;
-    if (deltaMinor == 0) {
-      return const Result.failure(
-        Failure(
-          code: 'balance_adjustment_zero_delta',
-          message: 'Balance is already at the target value.',
-        ),
-      );
-    }
-
-    final amount = Money(minorUnits: deltaMinor.abs());
+    final amount = Money(minorUnits: signedDelta.minorUnits.abs());
     final accountDirection = directionForBalanceDelta(
       accountType: account.type,
-      deltaMinor: deltaMinor,
+      deltaMinor: signedDelta.minorUnits,
     );
     final equityDirection =
         accountDirection == EntryDirection.debit

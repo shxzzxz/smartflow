@@ -71,3 +71,18 @@ enum SystemKey {
 }
 
 enum AccountSource { builtin, user, import }
+
+extension AccountTypeBehavior on AccountType {
+  /// 用户可手动创建 / 编辑的账户类型;income / expense / equity 由系统管理。
+  bool get isUserAccount =>
+      this == AccountType.asset || this == AccountType.liability;
+
+  /// 是否支持手动调整余额。
+  /// 报销子类型的 asset 走报销三段式原语,余额不可手动覆写。
+  bool supportsManualBalance(AccountSubtype? subtype) {
+    if (this == AccountType.asset) {
+      return subtype != AccountSubtype.reimbursement;
+    }
+    return this == AccountType.liability;
+  }
+}

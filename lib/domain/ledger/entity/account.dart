@@ -1,4 +1,6 @@
+import '../../../core/error/failure.dart';
 import '../../../core/money/money.dart';
+import '../../../core/result/result.dart';
 import '../valobj/ledger_enum.dart';
 import '../service/ledger_rule.dart';
 import '../valobj/post_receipt.dart';
@@ -40,6 +42,83 @@ class Account {
   final DateTime? archivedAt;
   final SystemKey? systemKey;
   final AccountSource source;
+
+  bool get isArchived => archivedAt != null;
+
+  bool get supportsManualBalance => type.supportsManualBalance(subtype);
+
+  /// 是否可以作为"用户账户"被编辑(通过 EditAccountCommand 修改属性)。
+  /// 系统类账户(income / expense / equity)走 CategoryService 或其它路径。
+  Failure? checkEditable() {
+    if (isArchived) {
+      return const Failure(
+        code: 'account_archived',
+        message: 'Archived account cannot be edited.',
+      );
+    }
+    if (!type.isUserAccount) {
+      return const Failure(
+        code: 'account_type_not_editable',
+        message: 'Only asset and liability account can be edited here.',
+      );
+    }
+    return null;
+  }
+
+  /// 重命名。null 表示不改;trim 后非空才更新。
+  Result<Account> renamed(String? name) {
+    if (name == null) return Result.success(this);
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return const Result.failure(
+        Failure(
+          code: 'account_name_required',
+          message: 'Account name is required.',
+        ),
+      );
+    }
+    if (trimmed == this.name) return Result.success(this);
+    return Result.success(copyWith(name: trimmed));
+  }
+
+  /// 计算把余额调整到 [target] 所需的 signed delta(可负)。
+  /// archived / 不支持手动调整 / 目标负数 / delta == 0 均视为失败。
+  Result<Money> targetBalanceDeltaTo(Money target) {
+    if (isArchived) {
+      return const Result.failure(
+        Failure(
+          code: 'account_archived',
+          message: 'Cannot adjust archived account.',
+        ),
+      );
+    }
+    if (!supportsManualBalance) {
+      return const Result.failure(
+        Failure(
+          code: 'account_target_balance_not_supported',
+          message: 'This account type does not support balance adjustment.',
+        ),
+      );
+    }
+    if (target.minorUnits < 0) {
+      return const Result.failure(
+        Failure(
+          code: 'account_target_balance_negative',
+          message: 'Target balance cannot be negative.',
+        ),
+      );
+    }
+    final deltaMinor = target.minorUnits - balance.minorUnits;
+    if (deltaMinor == 0) {
+      return const Result.failure(
+        Failure(
+          code: 'balance_adjustment_zero_delta',
+          message: 'Balance is already at the target value.',
+        ),
+      );
+    }
+    return Result.success(Money(minorUnits: deltaMinor));
+  }
 
   Account applyTransaction(Transaction transaction) {
     var account = this;
