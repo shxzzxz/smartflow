@@ -60,12 +60,8 @@ final appRouter = GoRouter(
         };
         return TransactionFormPage(
           initialMode: mode,
-          initialFromAccountId: int.tryParse(
-            state.uri.queryParameters['fromAccountId'] ?? '',
-          ),
-          initialToAccountId: int.tryParse(
-            state.uri.queryParameters['toAccountId'] ?? '',
-          ),
+          initialFromAccountId: state.uri.queryParameters['fromAccountId'],
+          initialToAccountId: state.uri.queryParameters['toAccountId'],
         );
       },
     ),
@@ -73,42 +69,42 @@ final appRouter = GoRouter(
       path: '/transaction/:id',
       builder:
           (context, state) => TransactionDetailPage(
-            transactionId: int.parse(state.pathParameters['id']!),
+            transactionId: state.pathParameters['id']!,
           ),
     ),
     GoRoute(
       path: '/transaction/:id/edit',
       builder:
           (context, state) => TransactionFormPage(
-            editTransactionId: int.parse(state.pathParameters['id']!),
+            editTransactionId: state.pathParameters['id']!,
           ),
     ),
     GoRoute(
       path: '/transaction/:id/repayment/edit',
       builder:
           (context, state) => RepaymentFormPage.edit(
-            editTransactionId: int.parse(state.pathParameters['id']!),
+            editTransactionId: state.pathParameters['id']!,
           ),
     ),
     GoRoute(
       path: '/transaction/:id/refund',
       builder:
           (context, state) => RefundFormPage(
-            parentTransactionId: int.parse(state.pathParameters['id']!),
+            parentTransactionId: state.pathParameters['id']!,
           ),
     ),
     GoRoute(
       path: '/transaction/:id/reimburse-receipt',
       builder:
           (context, state) => ReimbursementReceiptFormPage(
-            advanceTransactionId: int.parse(state.pathParameters['id']!),
+            advanceTransactionId: state.pathParameters['id']!,
           ),
     ),
     GoRoute(
       path: '/transaction/:id/reimburse-close',
       builder:
           (context, state) => ReimbursementCloseFormPage(
-            advanceTransactionId: int.parse(state.pathParameters['id']!),
+            advanceTransactionId: state.pathParameters['id']!,
           ),
     ),
     GoRoute(
@@ -119,21 +115,21 @@ final appRouter = GoRouter(
       path: '/account/:id',
       builder:
           (context, state) => AccountDetailPage(
-            accountId: int.parse(state.pathParameters['id']!),
+            accountId: state.pathParameters['id']!,
           ),
     ),
     GoRoute(
       path: '/account/:id/edit',
       builder:
           (context, state) => AccountFormPage(
-            accountId: int.parse(state.pathParameters['id']!),
+            accountId: state.pathParameters['id']!,
           ),
     ),
     GoRoute(
       path: '/account/:id/repayment',
       builder:
           (context, state) => RepaymentFormPage(
-            liabilityAccountId: int.parse(state.pathParameters['id']!),
+            liabilityAccountId: state.pathParameters['id']!,
           ),
     ),
     GoRoute(
@@ -145,7 +141,7 @@ final appRouter = GoRouter(
           _ => null,
         };
         return InstallmentFormPage(
-          liabilityAccountId: int.parse(state.pathParameters['id']!),
+          liabilityAccountId: state.pathParameters['id']!,
           lockedSourceType: lockedSourceType,
         );
       },
@@ -154,28 +150,26 @@ final appRouter = GoRouter(
       path: '/installments/:contractId',
       builder:
           (context, state) => InstallmentDetailPage(
-            contractId: int.parse(state.pathParameters['contractId']!),
+            contractId: state.pathParameters['contractId']!,
           ),
     ),
     GoRoute(
       path: '/installments/:contractId/edit',
       builder:
           (context, state) => InstallmentContractEditPage(
-            contractId: int.parse(state.pathParameters['contractId']!),
+            contractId: state.pathParameters['contractId']!,
           ),
     ),
     GoRoute(
       path: '/installments/:contractId/repay',
       builder: (context, state) {
-        final contractId = int.parse(state.pathParameters['contractId']!);
+        final contractId = state.pathParameters['contractId']!;
         final mode = switch (state.uri.queryParameters['mode']) {
           'extra' => InstallmentRepaymentMode.extraPrincipal,
           'settle' => InstallmentRepaymentMode.earlySettlement,
           _ => InstallmentRepaymentMode.scheduled,
         };
-        final scheduleId = int.tryParse(
-          state.uri.queryParameters['scheduleId'] ?? '',
-        );
+        final scheduleId = state.uri.queryParameters['scheduleId'];
         return InstallmentRepaymentFormPage(
           contractId: contractId,
           mode: mode,
@@ -203,9 +197,7 @@ final appRouter = GoRouter(
           'expense' => AccountType.expense,
           _ => AccountType.expense,
         };
-        final parentId = int.tryParse(
-          state.uri.queryParameters['parentId'] ?? '',
-        );
+        final parentId = state.uri.queryParameters['parentId'];
         return CategoryFormPage(initialType: type, initialParentId: parentId);
       },
     ),

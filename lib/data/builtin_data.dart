@@ -1,10 +1,13 @@
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import '../domain/ledger/valobj/ledger_enum.dart';
 import 'app_database.dart';
 
 const builtinDataVersionKey = 'builtin_data_version';
 const currentBuiltinDataVersion = 7;
+
+const _uuid = Uuid();
 
 Future<void> ensureBuiltinData(AppDatabase database) async {
   await database.transaction(() async {
@@ -334,7 +337,7 @@ Future<void> _updateCategoryIcon(
   );
 }
 
-Future<int?> _findParentId(
+Future<String?> _findParentId(
   AppDatabase database, {
   required String name,
   required AccountType type,
@@ -379,7 +382,7 @@ Future<void> _ensureCategoryTree(
   }
 }
 
-Future<int> _ensureCategory(
+Future<String> _ensureCategory(
   AppDatabase database,
   _BuiltinCategory category,
 ) async {
@@ -395,11 +398,13 @@ Future<int> _ensureCategory(
     return existing.id;
   }
 
+  final id = _uuid.v7();
   final now = DateTime.now();
-  return database
+  await database
       .into(database.accounts)
       .insert(
         AccountsCompanion.insert(
+          id: id,
           name: category.name,
           accountType: category.type!,
           parentId: Value(category.parentId),
@@ -411,6 +416,7 @@ Future<int> _ensureCategory(
           updatedAt: Value(now),
         ),
       );
+  return id;
 }
 
 Future<void> _ensureSystemAccount(
@@ -433,6 +439,7 @@ Future<void> _ensureSystemAccount(
       .into(database.accounts)
       .insert(
         AccountsCompanion.insert(
+          id: _uuid.v7(),
           name: account.name,
           accountType: account.type,
           iconKey: Value(account.iconKey),
@@ -448,7 +455,7 @@ Future<AccountRow?> _findBuiltinAccount(
   AppDatabase database, {
   required String name,
   required AccountType type,
-  int? parentId,
+  String? parentId,
   SystemKey? systemKey,
 }) {
   return (database.select(database.accounts)..where((account) {
@@ -463,7 +470,7 @@ Future<AccountRow?> _findBuiltinAccount(
   })).getSingleOrNull();
 }
 
-Future<void> _markBuiltinSource(AppDatabase database, int accountId) async {
+Future<void> _markBuiltinSource(AppDatabase database, String accountId) async {
   await (database.update(database.accounts)
     ..where((account) => account.id.equals(accountId))).write(
     AccountsCompanion(
@@ -500,13 +507,13 @@ class _BuiltinCategory {
 
   final String name;
   final AccountType? type;
-  final int? parentId;
+  final String? parentId;
   final String? iconKey;
   final int sortOrder;
   final SystemKey? systemKey;
   final List<_BuiltinCategory> children;
 
-  _BuiltinCategory copyWith({AccountType? type, int? parentId}) {
+  _BuiltinCategory copyWith({AccountType? type, String? parentId}) {
     return _BuiltinCategory(
       name: name,
       type: type ?? this.type,

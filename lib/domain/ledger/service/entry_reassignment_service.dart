@@ -20,7 +20,7 @@ class EntryReassignmentService {
   Entry? findSettlementEntry({
     required BusinessPurpose businessPurpose,
     required List<Entry> entries,
-    required Map<int, AccountType> accountTypes,
+    required Map<String, AccountType> accountTypes,
   }) {
     final direction = switch (businessPurpose) {
       BusinessPurpose.dailyExpense ||
@@ -55,7 +55,7 @@ class EntryReassignmentService {
   /// 在 reimbursementAdvance 的 entries 中识别 receivable(asset+debit) entry。
   Entry? findReimbursementReceivableEntry({
     required List<Entry> entries,
-    required Map<int, AccountType> accountTypes,
+    required Map<String, AccountType> accountTypes,
   }) {
     for (final entry in entries) {
       if (accountTypes[entry.accountId] == AccountType.asset &&
@@ -72,12 +72,12 @@ class EntryReassignmentService {
   /// [scopes] 描述哪些 entry 受 reassignment 影响 — 通常包含主交易及其
   /// `state == current` 的 child 交易,各以一个 scope 出现。
   List<Account> recomputeAccountsForReassignments({
-    required Map<int, Account> accounts,
+    required Map<String, Account> accounts,
     required List<EntryReassignmentScope> scopes,
     required List<EntryAccountReassignment> reassignments,
   }) {
     if (reassignments.isEmpty) return const [];
-    final updated = Map<int, Account>.of(accounts);
+    final updated = Map<String, Account>.of(accounts);
 
     for (final reassignment in reassignments) {
       final oldAccount = updated[reassignment.fromAccountId];
@@ -146,8 +146,8 @@ class EntryReassignmentScope {
     required this.entries,
   });
 
-  final int transactionId;
-  final int rootTransactionId;
+  final String transactionId;
+  final String rootTransactionId;
   final BusinessState businessState;
   final List<Entry> entries;
 }

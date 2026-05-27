@@ -110,8 +110,8 @@ class _CategoryGridPage extends StatefulWidget {
 }
 
 class _CategoryGridPageState extends State<_CategoryGridPage> {
-  int? _selectedRootId;
-  int? _selectedCategoryId;
+  String? _selectedRootId;
+  String? _selectedCategoryId;
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +177,7 @@ class _CategoryErrorView extends StatelessWidget {
 void _openCategoryForm(
   BuildContext context,
   AccountType type, {
-  int? parentId,
+  String? parentId,
 }) {
   final uri = Uri(
     path: '/category/new',

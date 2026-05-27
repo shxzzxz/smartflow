@@ -6,6 +6,6 @@ class TransactionOwnership {
   });
 
   final String ownerType;
-  final int? ownerId;
+  final String? ownerId;
   final String? ownerRole;
 }

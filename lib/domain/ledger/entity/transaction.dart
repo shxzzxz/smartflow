@@ -7,8 +7,8 @@ import '../valobj/transaction_ownership.dart';
 
 class Transaction {
   const Transaction({
-    required int id,
-    required int rootTransactionId,
+    required this.id,
+    required this.rootTransactionId,
     required this.businessPurpose,
     required this.occurredAt,
     required this.primaryAmount,
@@ -25,49 +25,27 @@ class Transaction {
     this.reimbursementExpenseAccountId,
     this.mutationPreviousTransactionId,
     this.mutationReason,
-  }) : _id = id,
-       _rootTransactionId = rootTransactionId,
-       details = const [],
-       entries = const [];
-
-  const Transaction._({
-    required int? id,
-    required int? rootTransactionId,
-    required this.businessPurpose,
-    required this.occurredAt,
-    required this.primaryAmount,
-    required this.mutationKind,
-    required this.businessState,
-    required this.isExcludedFromStats,
-    required this.isExcludedFromBudget,
-    required this.sourceKind,
-    required this.createdAt,
-    required this.details,
-    required this.entries,
-    this.ownership,
-    this.counterpartyName,
-    this.note,
-    this.parentTransactionId,
-    this.reimbursementExpenseAccountId,
-    this.mutationPreviousTransactionId,
-    this.mutationReason,
-  }) : _id = id,
-       _rootTransactionId = rootTransactionId;
+    this.details = const [],
+    this.entries = const [],
+  });
 
   /// 由已校验的 [PostReceipt] 派生的工厂。
   ///
   /// 凭证级合法性由 caller(`PostingAppService`)通过 [PostReceipt.validate]
   /// 在调用本工厂之前完成,本工厂只承担"组装持久化形态"。
+  /// caller 负责生成 [id]; 独立主记录的 rootTransactionId 取自身 id,
+  /// 子记录 / 更正 / 冲销取 receipt.rootTransactionId。
   factory Transaction.fromReceipt(
     PostReceipt receipt, {
+    required String id,
     MutationKind mutationKind = MutationKind.original,
     BusinessState businessState = BusinessState.current,
     MutationReason? mutationReason,
-    int? mutationPreviousTransactionId,
+    String? mutationPreviousTransactionId,
   }) {
-    return Transaction._(
-      id: null,
-      rootTransactionId: receipt.rootTransactionId,
+    return Transaction(
+      id: id,
+      rootTransactionId: receipt.rootTransactionId ?? id,
       businessPurpose: receipt.businessPurpose,
       occurredAt: receipt.occurredAt,
       primaryAmount: receipt.primaryAmount,
@@ -89,38 +67,17 @@ class Transaction {
     );
   }
 
-  final int? _id;
-  final int? _rootTransactionId;
-
-  int get id {
-    final value = _id;
-    if (value == null) {
-      throw StateError('Transaction has not been persisted yet.');
-    }
-    return value;
-  }
-
-  int get rootTransactionId {
-    final value = _rootTransactionId;
-    if (value == null) {
-      throw StateError('Transaction root has not been persisted yet.');
-    }
-    return value;
-  }
-
-  int? get persistedId => _id;
-
-  int? get persistedRootTransactionId => _rootTransactionId;
-
+  final String id;
+  final String rootTransactionId;
   final BusinessPurpose businessPurpose;
   final DateTime occurredAt;
   final Money primaryAmount;
   final String? counterpartyName;
   final String? note;
-  final int? parentTransactionId;
-  final int? reimbursementExpenseAccountId;
+  final String? parentTransactionId;
+  final String? reimbursementExpenseAccountId;
   final MutationKind mutationKind;
-  final int? mutationPreviousTransactionId;
+  final String? mutationPreviousTransactionId;
   final MutationReason? mutationReason;
   final BusinessState businessState;
   final bool isExcludedFromStats;
@@ -131,7 +88,7 @@ class Transaction {
   final List<ReceiptDetail> details;
   final List<ReceiptEntry> entries;
 
-  Set<int> get accountIds => entries.map((entry) => entry.accountId).toSet();
+  Set<String> get accountIds => entries.map((entry) => entry.accountId).toSet();
 
   /// 删除路径:仅 current 可删,replaced / canceled / compensation 拒绝。
   Failure? assertCanBeDeleted() {
@@ -184,13 +141,6 @@ class Transaction {
     return null;
   }
 
-  Transaction withPersistedIdentity({
-    required int id,
-    required int rootTransactionId,
-  }) {
-    return _copyWith(id: id, rootTransactionId: rootTransactionId);
-  }
-
   Transaction markReplaced() {
     return _copyWith(businessState: BusinessState.replaced);
   }
@@ -222,17 +172,15 @@ class Transaction {
   }
 
   Transaction _copyWith({
-    int? id,
-    int? rootTransactionId,
     BusinessPurpose? businessPurpose,
     DateTime? occurredAt,
     Money? primaryAmount,
     String? counterpartyName,
     Patch<String>? notePatch,
-    int? parentTransactionId,
-    int? reimbursementExpenseAccountId,
+    String? parentTransactionId,
+    String? reimbursementExpenseAccountId,
     MutationKind? mutationKind,
-    int? mutationPreviousTransactionId,
+    String? mutationPreviousTransactionId,
     MutationReason? mutationReason,
     BusinessState? businessState,
     bool? isExcludedFromStats,
@@ -243,9 +191,9 @@ class Transaction {
     List<ReceiptDetail>? details,
     List<ReceiptEntry>? entries,
   }) {
-    return Transaction._(
-      id: id ?? _id,
-      rootTransactionId: rootTransactionId ?? _rootTransactionId,
+    return Transaction(
+      id: id,
+      rootTransactionId: rootTransactionId,
       businessPurpose: businessPurpose ?? this.businessPurpose,
       occurredAt: occurredAt ?? this.occurredAt,
       primaryAmount: primaryAmount ?? this.primaryAmount,

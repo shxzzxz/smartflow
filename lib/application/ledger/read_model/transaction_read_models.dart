@@ -44,9 +44,9 @@ class TransactionListItem {
   });
 
   // transaction 字段
-  final int id;
-  final int rootTransactionId;
-  final int? parentTransactionId;
+  final String id;
+  final String rootTransactionId;
+  final String? parentTransactionId;
   final BusinessPurpose businessPurpose;
   final BusinessState businessState;
   final DateTime occurredAt;
@@ -55,7 +55,7 @@ class TransactionListItem {
   final String? note;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
-  final int? reimbursementExpenseAccountId;
+  final String? reimbursementExpenseAccountId;
 
   // 会计事实
   final List<Entry> entries;
@@ -94,9 +94,9 @@ class TransactionHistorySnapshot {
     this.mutationPreviousTransactionId,
   });
 
-  final int id;
-  final int rootTransactionId;
-  final int? parentTransactionId;
+  final String id;
+  final String rootTransactionId;
+  final String? parentTransactionId;
   final BusinessPurpose businessPurpose;
   final BusinessState businessState;
   final DateTime occurredAt;
@@ -107,7 +107,7 @@ class TransactionHistorySnapshot {
   // 更正链元数据
   final MutationKind mutationKind;
   final MutationReason? mutationReason;
-  final int? mutationPreviousTransactionId;
+  final String? mutationPreviousTransactionId;
 
   /// 操作时间(用于历史链按操作顺序排序)。
   final DateTime createdAt;

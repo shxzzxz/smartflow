@@ -11,7 +11,7 @@ class TransactionListQuery {
     this.scope = TransactionScopeFilter.assetLiability,
   });
 
-  final int? accountId;
+  final String? accountId;
   final DateTime? occurredFrom;
   final DateTime? occurredUntil;
   final bool topLevelOnly;

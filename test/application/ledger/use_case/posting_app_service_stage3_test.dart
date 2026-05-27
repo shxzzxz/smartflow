@@ -531,7 +531,7 @@ Future<dynamic> _createCategory(
   return (result as Success).value;
 }
 
-Future<int> _balance(AppDatabase database, int accountId) async {
+Future<int> _balance(AppDatabase database, String accountId) async {
   final row =
       await (database.select(database.accounts)
         ..where((account) => account.id.equals(accountId))).getSingle();

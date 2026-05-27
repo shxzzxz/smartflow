@@ -23,11 +23,11 @@ class InstallmentContract {
     this.note,
   });
 
-  final int id;
-  final int liabilityAccountId;
+  final String id;
+  final String liabilityAccountId;
   final InstallmentSourceType sourceType;
-  final int? disbursementAccountId;
-  final int? disbursementTransactionId;
+  final String? disbursementAccountId;
+  final String? disbursementTransactionId;
   final Money principal;
   final int totalPeriods;
 

@@ -14,19 +14,19 @@ class DriftAccountRepository
   final AppDatabase _database;
 
   @override
-  Future<Account?> findById(int id) => findAccountById(id);
+  Future<Account?> findById(String id) => findAccountById(id);
 
   @override
-  Future<List<Account>> findByIds(Set<int> ids) => findAccountsByIds(ids);
+  Future<List<Account>> findByIds(Set<String> ids) => findAccountsByIds(ids);
 
-  Future<Account?> findAccountById(int id) async {
+  Future<Account?> findAccountById(String id) async {
     final row =
         await (_database.select(_database.accounts)
           ..where((account) => account.id.equals(id))).getSingleOrNull();
     return row == null ? null : mapAccount(row);
   }
 
-  Future<List<Account>> findAccountsByIds(Set<int> ids) async {
+  Future<List<Account>> findAccountsByIds(Set<String> ids) async {
     if (ids.isEmpty) {
       return const [];
     }
@@ -58,10 +58,11 @@ class DriftAccountRepository
   Future<Account> create(Account account) {
     return _database.transaction(() async {
       final now = DateTime.now();
-      final accountId = await _database
+      await _database
           .into(_database.accounts)
           .insert(
             AccountsCompanion.insert(
+              id: account.id,
               name: account.name,
               accountType: account.type,
               accountSubtype: Value(account.subtype),
@@ -83,7 +84,7 @@ class DriftAccountRepository
 
       final row =
           await (_database.select(_database.accounts)
-            ..where((account) => account.id.equals(accountId))).getSingle();
+            ..where((row) => row.id.equals(account.id))).getSingle();
       return mapAccount(row);
     });
   }
@@ -112,7 +113,7 @@ class DriftAccountRepository
     });
   }
 
-  Future<Account?> findCategoryById(int id) async {
+  Future<Account?> findCategoryById(String id) async {
     final row =
         await (_database.select(_database.accounts)..where(
           (account) =>

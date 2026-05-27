@@ -160,7 +160,7 @@ void main() {
           primaryAmount: const Money(minorUnits: 100000),
           ownership: const TransactionOwnership(
             ownerType: 'installment',
-            ownerId: 42,
+            ownerId: '42',
             ownerRole: 'disbursement',
           ),
           details: const [
@@ -435,7 +435,7 @@ void main() {
   });
 }
 
-Future<int> _insertAccount(
+Future<String> _insertAccount(
   AppDatabase database, {
   required String name,
   required AccountType type,
@@ -452,14 +452,14 @@ Future<int> _insertAccount(
       );
 }
 
-Future<int> _balanceOf(AppDatabase database, int accountId) async {
+Future<int> _balanceOf(AppDatabase database, String accountId) async {
   final row =
       await (database.select(database.accounts)
         ..where((account) => account.id.equals(accountId))).getSingle();
   return row.balanceMinor;
 }
 
-Future<int> _countRows(AppDatabase database, String tableName) async {
+Future<String> _countRows(AppDatabase database, String tableName) async {
   final row =
       await database
           .customSelect('SELECT COUNT(*) AS count FROM $tableName')

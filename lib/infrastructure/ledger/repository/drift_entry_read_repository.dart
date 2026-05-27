@@ -11,8 +11,8 @@ class DriftEntryReadRepository implements EntryReadRepository {
   final AppDatabase _db;
 
   @override
-  Future<Map<int, List<Entry>>> findByTransactionIds(
-    Set<int> transactionIds,
+  Future<Map<String, List<Entry>>> findByTransactionIds(
+    Set<String> transactionIds,
   ) async {
     if (transactionIds.isEmpty) return const {};
 
@@ -22,7 +22,7 @@ class DriftEntryReadRepository implements EntryReadRepository {
               ..orderBy([(entry) => OrderingTerm.asc(entry.id)]))
             .get();
 
-    final result = <int, List<Entry>>{};
+    final result = <String, List<Entry>>{};
     for (final entryRow in rows) {
       result
           .putIfAbsent(entryRow.transactionId, () => <Entry>[])

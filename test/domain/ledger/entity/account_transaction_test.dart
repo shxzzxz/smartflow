@@ -21,12 +21,12 @@ void main() {
         ],
         entries: const [
           ReceiptEntry(
-            accountId: 1,
+            accountId: '1',
             direction: EntryDirection.debit,
             amount: Money(minorUnits: 2000),
           ),
           ReceiptEntry(
-            accountId: 2,
+            accountId: '2',
             direction: EntryDirection.credit,
             amount: Money(minorUnits: 2000),
           ),
@@ -49,12 +49,12 @@ void main() {
         ],
         entries: const [
           ReceiptEntry(
-            accountId: 1,
+            accountId: '1',
             direction: EntryDirection.debit,
             amount: Money(minorUnits: 2000),
           ),
           ReceiptEntry(
-            accountId: 2,
+            accountId: '2',
             direction: EntryDirection.credit,
             amount: Money(minorUnits: 1000),
           ),
@@ -79,12 +79,12 @@ void main() {
         ],
         entries: const [
           ReceiptEntry(
-            accountId: 1,
+            accountId: '1',
             direction: EntryDirection.debit,
             amount: Money(minorUnits: 2000),
           ),
           ReceiptEntry(
-            accountId: 2,
+            accountId: '2',
             direction: EntryDirection.credit,
             amount: Money(minorUnits: 2000),
           ),
@@ -99,13 +99,13 @@ void main() {
   group('Account aggregate', () {
     test('applies transaction entries according to account type', () {
       const expense = Account(
-        id: 1,
+        id: '1',
         name: 'Food',
         type: AccountType.expense,
         balance: Money(minorUnits: 0),
       );
       const wallet = Account(
-        id: 2,
+        id: '2',
         name: 'Wallet',
         type: AccountType.asset,
         balance: Money(minorUnits: 10000),
@@ -123,12 +123,12 @@ void main() {
         ],
         entries: const [
           ReceiptEntry(
-            accountId: 1,
+            accountId: '1',
             direction: EntryDirection.debit,
             amount: Money(minorUnits: 2000),
           ),
           ReceiptEntry(
-            accountId: 2,
+            accountId: '2',
             direction: EntryDirection.credit,
             amount: Money(minorUnits: 2000),
           ),

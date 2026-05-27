@@ -34,13 +34,13 @@ void main() {
           today: DateTime(2024, 5, 1),
           transactions: [
             _item(
-              id: 1,
+              id: '1',
               purpose: BusinessPurpose.dailyIncome,
               occurredAt: DateTime(2024, 5, 3, 8, 30),
               amountMinor: 30000,
             ),
             _item(
-              id: 2,
+              id: '2',
               purpose: BusinessPurpose.dailyExpense,
               occurredAt: DateTime(2024, 5, 3, 9, 16),
               amountMinor: 19800,
@@ -74,13 +74,13 @@ void main() {
         date: DateTime(2024, 5, 3),
         transactions: [
           _item(
-            id: 1,
+            id: '1',
             purpose: BusinessPurpose.dailyIncome,
             occurredAt: DateTime(2024, 5, 3, 8, 30),
             amountMinor: 30000,
           ),
           _item(
-            id: 2,
+            id: '2',
             purpose: BusinessPurpose.dailyExpense,
             occurredAt: DateTime(2024, 5, 4, 9, 16),
             amountMinor: 19800,

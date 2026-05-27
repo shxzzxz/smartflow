@@ -95,7 +95,7 @@ TransactionListItem _item({
     details.add(
       TransactionDetailRecord(
         id: lineNo,
-        transactionId: 1,
+        transactionId: '1',
         lineNo: lineNo++,
         type: TransactionDetailType.repaymentInterest,
         amount: repaymentInterest,
@@ -106,7 +106,7 @@ TransactionListItem _item({
     details.add(
       TransactionDetailRecord(
         id: lineNo,
-        transactionId: 1,
+        transactionId: '1',
         lineNo: lineNo++,
         type: TransactionDetailType.repaymentFee,
         amount: repaymentFee,
@@ -115,8 +115,8 @@ TransactionListItem _item({
   }
 
   return TransactionListItem(
-    id: 1,
-    rootTransactionId: 1,
+    id: '1',
+    rootTransactionId: '1',
     businessPurpose: BusinessPurpose.dailyExpense,
     businessState: BusinessState.current,
     occurredAt: DateTime(2026, 5, 12, 8, 30),

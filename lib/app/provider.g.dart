@@ -9,6 +9,47 @@ part of 'provider.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
+@ProviderFor(idGenerator)
+final idGeneratorProvider = IdGeneratorProvider._();
+
+final class IdGeneratorProvider
+    extends $FunctionalProvider<IdGenerator, IdGenerator, IdGenerator>
+    with $Provider<IdGenerator> {
+  IdGeneratorProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'idGeneratorProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$idGeneratorHash();
+
+  @$internal
+  @override
+  $ProviderElement<IdGenerator> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  IdGenerator create(Ref ref) {
+    return idGenerator(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(IdGenerator value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<IdGenerator>(value),
+    );
+  }
+}
+
+String _$idGeneratorHash() => r'624ed3af1e5159a035175298293b9e8f5b616cd9';
+
 @ProviderFor(systemAccountResolver)
 final systemAccountResolverProvider = SystemAccountResolverProvider._();
 
@@ -535,7 +576,7 @@ final class AccountAppServiceProvider
   }
 }
 
-String _$accountAppServiceHash() => r'd33d90ea4667f451835a0c757a0ce65f0a8a9316';
+String _$accountAppServiceHash() => r'b1b6c8c5b13ba58e9227e25468e7aae8efbae974';
 
 @ProviderFor(categoryService)
 final categoryServiceProvider = CategoryServiceProvider._();
@@ -577,7 +618,7 @@ final class CategoryServiceProvider
   }
 }
 
-String _$categoryServiceHash() => r'671e51d6779e4d2671b600620682e8d46f4d06a6';
+String _$categoryServiceHash() => r'2c968f340b7b19b9547e97677a4b8a9095a9379c';
 
 @ProviderFor(postingAppService)
 final postingAppServiceProvider = PostingAppServiceProvider._();
@@ -624,7 +665,7 @@ final class PostingAppServiceProvider
   }
 }
 
-String _$postingAppServiceHash() => r'5a8c4367f365546c6c6d766b55da0442769ed0c3';
+String _$postingAppServiceHash() => r'96b816a89b16b859a59d654bab948b9863970d1c';
 
 @ProviderFor(transactionQueryService)
 final transactionQueryServiceProvider = TransactionQueryServiceProvider._();
@@ -779,13 +820,13 @@ final accountsByIdProvider = AccountsByIdProvider._();
 final class AccountsByIdProvider
     extends
         $FunctionalProvider<
-          AsyncValue<Map<int, Account>>,
-          Map<int, Account>,
-          Stream<Map<int, Account>>
+          AsyncValue<Map<String, Account>>,
+          Map<String, Account>,
+          Stream<Map<String, Account>>
         >
     with
-        $FutureModifier<Map<int, Account>>,
-        $StreamProvider<Map<int, Account>> {
+        $FutureModifier<Map<String, Account>>,
+        $StreamProvider<Map<String, Account>> {
   /// 全量账户索引。覆盖 5 种 account_type,供 UI 层把 entries 的 accountId
   /// 解析为 Account 元数据(type / name / iconKey 等)。
   ///
@@ -807,17 +848,17 @@ final class AccountsByIdProvider
 
   @$internal
   @override
-  $StreamProviderElement<Map<int, Account>> $createElement(
+  $StreamProviderElement<Map<String, Account>> $createElement(
     $ProviderPointer pointer,
   ) => $StreamProviderElement(pointer);
 
   @override
-  Stream<Map<int, Account>> create(Ref ref) {
+  Stream<Map<String, Account>> create(Ref ref) {
     return accountsById(ref);
   }
 }
 
-String _$accountsByIdHash() => r'ac3524ce6cd788de4a352ff4e4fd25643ab55068';
+String _$accountsByIdHash() => r'aa7c27bbe42037123523871ea8dadbf089865b46';
 
 @ProviderFor(accountsForUsage)
 final accountsForUsageProvider = AccountsForUsageFamily._();
@@ -1061,7 +1102,7 @@ final class TransactionListProvider
         $StreamProvider<List<TransactionListItem>> {
   TransactionListProvider._({
     required TransactionListFamily super.from,
-    required int? super.argument,
+    required String? super.argument,
   }) : super(
          retry: null,
          name: r'transactionListProvider',
@@ -1088,7 +1129,7 @@ final class TransactionListProvider
 
   @override
   Stream<List<TransactionListItem>> create(Ref ref) {
-    final argument = this.argument as int?;
+    final argument = this.argument as String?;
     return transactionList(ref, accountId: argument);
   }
 
@@ -1103,10 +1144,10 @@ final class TransactionListProvider
   }
 }
 
-String _$transactionListHash() => r'9992d1fe01690b6280430b6e986f890d17cfba19';
+String _$transactionListHash() => r'eb89425a5fdc8ae3b1f66699bd1586aa17f9019f';
 
 final class TransactionListFamily extends $Family
-    with $FunctionalFamilyOverride<Stream<List<TransactionListItem>>, int?> {
+    with $FunctionalFamilyOverride<Stream<List<TransactionListItem>>, String?> {
   TransactionListFamily._()
     : super(
         retry: null,
@@ -1116,7 +1157,7 @@ final class TransactionListFamily extends $Family
         isAutoDispose: true,
       );
 
-  TransactionListProvider call({int? accountId}) =>
+  TransactionListProvider call({String? accountId}) =>
       TransactionListProvider._(argument: accountId, from: this);
 
   @override
@@ -1532,7 +1573,7 @@ final class TransactionDetailProvider
         $StreamProvider<TransactionDetail?> {
   TransactionDetailProvider._({
     required TransactionDetailFamily super.from,
-    required int super.argument,
+    required String super.argument,
   }) : super(
          retry: null,
          name: r'transactionDetailProvider',
@@ -1559,7 +1600,7 @@ final class TransactionDetailProvider
 
   @override
   Stream<TransactionDetail?> create(Ref ref) {
-    final argument = this.argument as int;
+    final argument = this.argument as String;
     return transactionDetail(ref, argument);
   }
 
@@ -1574,10 +1615,10 @@ final class TransactionDetailProvider
   }
 }
 
-String _$transactionDetailHash() => r'ae87614248159594a11caa30804b5359c84ba7d1';
+String _$transactionDetailHash() => r'c6b06c2af1c8312d6717f557cc52bb646d9a6c21';
 
 final class TransactionDetailFamily extends $Family
-    with $FunctionalFamilyOverride<Stream<TransactionDetail?>, int> {
+    with $FunctionalFamilyOverride<Stream<TransactionDetail?>, String> {
   TransactionDetailFamily._()
     : super(
         retry: null,
@@ -1587,7 +1628,7 @@ final class TransactionDetailFamily extends $Family
         isAutoDispose: true,
       );
 
-  TransactionDetailProvider call(int transactionId) =>
+  TransactionDetailProvider call(String transactionId) =>
       TransactionDetailProvider._(argument: transactionId, from: this);
 
   @override
@@ -1747,7 +1788,7 @@ final class InstallmentContractsByAccountProvider
         $FutureProvider<List<InstallmentContract>> {
   InstallmentContractsByAccountProvider._({
     required InstallmentContractsByAccountFamily super.from,
-    required int super.argument,
+    required String super.argument,
   }) : super(
          retry: null,
          name: r'installmentContractsByAccountProvider',
@@ -1774,7 +1815,7 @@ final class InstallmentContractsByAccountProvider
 
   @override
   FutureOr<List<InstallmentContract>> create(Ref ref) {
-    final argument = this.argument as int;
+    final argument = this.argument as String;
     return installmentContractsByAccount(ref, argument);
   }
 
@@ -1791,10 +1832,11 @@ final class InstallmentContractsByAccountProvider
 }
 
 String _$installmentContractsByAccountHash() =>
-    r'873da373f4ac7eed800487aeb87bd8112d5079c2';
+    r'3afe718039fe3e6c6fabc854b1884c2da11fdea0';
 
 final class InstallmentContractsByAccountFamily extends $Family
-    with $FunctionalFamilyOverride<FutureOr<List<InstallmentContract>>, int> {
+    with
+        $FunctionalFamilyOverride<FutureOr<List<InstallmentContract>>, String> {
   InstallmentContractsByAccountFamily._()
     : super(
         retry: null,
@@ -1804,7 +1846,7 @@ final class InstallmentContractsByAccountFamily extends $Family
         isAutoDispose: true,
       );
 
-  InstallmentContractsByAccountProvider call(int accountId) =>
+  InstallmentContractsByAccountProvider call(String accountId) =>
       InstallmentContractsByAccountProvider._(argument: accountId, from: this);
 
   @override
@@ -1826,7 +1868,7 @@ final class InstallmentContractProvider
         $FutureProvider<InstallmentContract?> {
   InstallmentContractProvider._({
     required InstallmentContractFamily super.from,
-    required int super.argument,
+    required String super.argument,
   }) : super(
          retry: null,
          name: r'installmentContractProvider',
@@ -1853,7 +1895,7 @@ final class InstallmentContractProvider
 
   @override
   FutureOr<InstallmentContract?> create(Ref ref) {
-    final argument = this.argument as int;
+    final argument = this.argument as String;
     return installmentContract(ref, argument);
   }
 
@@ -1869,10 +1911,10 @@ final class InstallmentContractProvider
 }
 
 String _$installmentContractHash() =>
-    r'd8d415003dc8b5289c66dcd45267e240fabea022';
+    r'd039b7b60391cd2d58638a6c1bd0d333d88926ee';
 
 final class InstallmentContractFamily extends $Family
-    with $FunctionalFamilyOverride<FutureOr<InstallmentContract?>, int> {
+    with $FunctionalFamilyOverride<FutureOr<InstallmentContract?>, String> {
   InstallmentContractFamily._()
     : super(
         retry: null,
@@ -1882,7 +1924,7 @@ final class InstallmentContractFamily extends $Family
         isAutoDispose: true,
       );
 
-  InstallmentContractProvider call(int contractId) =>
+  InstallmentContractProvider call(String contractId) =>
       InstallmentContractProvider._(argument: contractId, from: this);
 
   @override
@@ -1904,7 +1946,7 @@ final class InstallmentSchedulesProvider
         $FutureProvider<List<InstallmentSchedule>> {
   InstallmentSchedulesProvider._({
     required InstallmentSchedulesFamily super.from,
-    required int super.argument,
+    required String super.argument,
   }) : super(
          retry: null,
          name: r'installmentSchedulesProvider',
@@ -1931,7 +1973,7 @@ final class InstallmentSchedulesProvider
 
   @override
   FutureOr<List<InstallmentSchedule>> create(Ref ref) {
-    final argument = this.argument as int;
+    final argument = this.argument as String;
     return installmentSchedules(ref, argument);
   }
 
@@ -1947,10 +1989,11 @@ final class InstallmentSchedulesProvider
 }
 
 String _$installmentSchedulesHash() =>
-    r'd027a3a362b7ec9f6afe773b04997176ce923b40';
+    r'61f83193fc39e7008f1b3def2e73063fc880c724';
 
 final class InstallmentSchedulesFamily extends $Family
-    with $FunctionalFamilyOverride<FutureOr<List<InstallmentSchedule>>, int> {
+    with
+        $FunctionalFamilyOverride<FutureOr<List<InstallmentSchedule>>, String> {
   InstallmentSchedulesFamily._()
     : super(
         retry: null,
@@ -1960,7 +2003,7 @@ final class InstallmentSchedulesFamily extends $Family
         isAutoDispose: true,
       );
 
-  InstallmentSchedulesProvider call(int contractId) =>
+  InstallmentSchedulesProvider call(String contractId) =>
       InstallmentSchedulesProvider._(argument: contractId, from: this);
 
   @override
@@ -1982,7 +2025,7 @@ final class InstallmentRepaymentsProvider
         $FutureProvider<List<InstallmentRepayment>> {
   InstallmentRepaymentsProvider._({
     required InstallmentRepaymentsFamily super.from,
-    required int super.argument,
+    required String super.argument,
   }) : super(
          retry: null,
          name: r'installmentRepaymentsProvider',
@@ -2009,7 +2052,7 @@ final class InstallmentRepaymentsProvider
 
   @override
   FutureOr<List<InstallmentRepayment>> create(Ref ref) {
-    final argument = this.argument as int;
+    final argument = this.argument as String;
     return installmentRepayments(ref, argument);
   }
 
@@ -2025,10 +2068,14 @@ final class InstallmentRepaymentsProvider
 }
 
 String _$installmentRepaymentsHash() =>
-    r'6e8182ab2cd105fd88931662cecca5f3cc0a8284';
+    r'a57cbb38a572a6afccd7ef44c150d12c862a508c';
 
 final class InstallmentRepaymentsFamily extends $Family
-    with $FunctionalFamilyOverride<FutureOr<List<InstallmentRepayment>>, int> {
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<List<InstallmentRepayment>>,
+          String
+        > {
   InstallmentRepaymentsFamily._()
     : super(
         retry: null,
@@ -2038,7 +2085,7 @@ final class InstallmentRepaymentsFamily extends $Family
         isAutoDispose: true,
       );
 
-  InstallmentRepaymentsProvider call(int contractId) =>
+  InstallmentRepaymentsProvider call(String contractId) =>
       InstallmentRepaymentsProvider._(argument: contractId, from: this);
 
   @override
@@ -2069,7 +2116,7 @@ final class InstallmentRepaymentCashflowsProvider
   /// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。
   InstallmentRepaymentCashflowsProvider._({
     required InstallmentRepaymentCashflowsFamily super.from,
-    required int super.argument,
+    required String super.argument,
   }) : super(
          retry: null,
          name: r'installmentRepaymentCashflowsProvider',
@@ -2096,7 +2143,7 @@ final class InstallmentRepaymentCashflowsProvider
 
   @override
   FutureOr<List<RepaymentCashflow>> create(Ref ref) {
-    final argument = this.argument as int;
+    final argument = this.argument as String;
     return installmentRepaymentCashflows(ref, argument);
   }
 
@@ -2113,13 +2160,13 @@ final class InstallmentRepaymentCashflowsProvider
 }
 
 String _$installmentRepaymentCashflowsHash() =>
-    r'41f6a05327dd7d719a9475031539ce29a3cd51d9';
+    r'189dd4b95f0f40ff4c340ea729b443e2add79603';
 
 /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
 /// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。
 
 final class InstallmentRepaymentCashflowsFamily extends $Family
-    with $FunctionalFamilyOverride<FutureOr<List<RepaymentCashflow>>, int> {
+    with $FunctionalFamilyOverride<FutureOr<List<RepaymentCashflow>>, String> {
   InstallmentRepaymentCashflowsFamily._()
     : super(
         retry: null,
@@ -2132,7 +2179,7 @@ final class InstallmentRepaymentCashflowsFamily extends $Family
   /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
   /// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。
 
-  InstallmentRepaymentCashflowsProvider call(int contractId) =>
+  InstallmentRepaymentCashflowsProvider call(String contractId) =>
       InstallmentRepaymentCashflowsProvider._(argument: contractId, from: this);
 
   @override
@@ -2159,7 +2206,7 @@ final class InstallmentMetricsProvider
   /// 计算 designed / actual 两个视图的 metrics 一并返回，UI 选择展示。
   InstallmentMetricsProvider._({
     required InstallmentMetricsFamily super.from,
-    required int super.argument,
+    required String super.argument,
   }) : super(
          retry: null,
          name: r'installmentMetricsProvider',
@@ -2187,7 +2234,7 @@ final class InstallmentMetricsProvider
   FutureOr<({ContractMetrics actual, ContractMetrics designed})> create(
     Ref ref,
   ) {
-    final argument = this.argument as int;
+    final argument = this.argument as String;
     return installmentMetrics(ref, argument);
   }
 
@@ -2203,7 +2250,7 @@ final class InstallmentMetricsProvider
 }
 
 String _$installmentMetricsHash() =>
-    r'219380daeeca75d7fcac740a0dcc9ff49a27bc51';
+    r'48808f61bd5fe5d4386bf8fe50e2335fd8c557a7';
 
 /// 计算 designed / actual 两个视图的 metrics 一并返回，UI 选择展示。
 
@@ -2211,7 +2258,7 @@ final class InstallmentMetricsFamily extends $Family
     with
         $FunctionalFamilyOverride<
           FutureOr<({ContractMetrics actual, ContractMetrics designed})>,
-          int
+          String
         > {
   InstallmentMetricsFamily._()
     : super(
@@ -2224,7 +2271,7 @@ final class InstallmentMetricsFamily extends $Family
 
   /// 计算 designed / actual 两个视图的 metrics 一并返回，UI 选择展示。
 
-  InstallmentMetricsProvider call(int contractId) =>
+  InstallmentMetricsProvider call(String contractId) =>
       InstallmentMetricsProvider._(argument: contractId, from: this);
 
   @override

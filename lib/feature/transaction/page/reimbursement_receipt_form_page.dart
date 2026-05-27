@@ -19,7 +19,7 @@ class ReimbursementReceiptFormPage extends ConsumerStatefulWidget {
     super.key,
   });
 
-  final int advanceTransactionId;
+  final String advanceTransactionId;
 
   @override
   ConsumerState<ReimbursementReceiptFormPage> createState() =>
@@ -32,7 +32,7 @@ class _ReimbursementReceiptFormPageState
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
   DateTime _occurredAt = DateTime.now();
-  int? _receiveAccountId;
+  String? _receiveAccountId;
   bool _submitting = false;
 
   @override
@@ -48,7 +48,7 @@ class _ReimbursementReceiptFormPageState
         ref.watch(accountsForUsageProvider(AccountUsage.settlement)).value ??
         const <Account>[];
     final accountsById =
-        ref.watch(accountsByIdProvider).value ?? const <int, Account>{};
+        ref.watch(accountsByIdProvider).value ?? const <String, Account>{};
     final receiveAccount = _findAccount(_receiveAccountId, accounts);
     final detail =
         ref.watch(transactionDetailProvider(widget.advanceTransactionId)).value;
@@ -126,9 +126,9 @@ class _ReimbursementReceiptFormPageState
     }
   }
 
-  int? _resolveReceivable(
+  String? _resolveReceivable(
     TransactionDetail? detail,
-    Map<int, Account> accountsById,
+    Map<String, Account> accountsById,
   ) {
     if (detail == null) return null;
     for (final entry in detail.entries) {
@@ -161,7 +161,7 @@ class _ReimbursementReceiptFormPageState
     setState(() => _occurredAt = picked);
   }
 
-  Future<void> _submit(int receivableAccountId) async {
+  Future<void> _submit(String receivableAccountId) async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -193,7 +193,7 @@ class _ReimbursementReceiptFormPageState
   }
 }
 
-Account? _findAccount(int? accountId, List<Account> accounts) {
+Account? _findAccount(String? accountId, List<Account> accounts) {
   if (accountId == null) return null;
   for (final account in accounts) {
     if (account.id == accountId) return account;

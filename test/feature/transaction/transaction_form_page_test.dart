@@ -168,8 +168,8 @@ Future<void> _pumpTransactionForm(
   WidgetTester tester, {
   AppDatabase? database,
   PostingAppService? transactionService,
-  int? initialFromAccountId,
-  int? initialToAccountId,
+  String? initialFromAccountId,
+  String? initialToAccountId,
 }) async {
   final appDatabase = database ?? createTestDatabase();
   if (database == null) {
@@ -195,7 +195,7 @@ Future<void> _pumpTransactionForm(
   await tester.pump();
 }
 
-Future<int> _insertAccount(
+Future<String> _insertAccount(
   AppDatabase database, {
   required String name,
   required AccountType type,

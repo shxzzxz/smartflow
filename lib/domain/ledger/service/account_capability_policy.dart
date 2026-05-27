@@ -12,7 +12,7 @@ class AccountCapabilityPolicy {
 
   Failure? validate(
     Account? account, {
-    required int accountId,
+    required String accountId,
     Set<AccountType> expectedTypes = const {},
     AccountSubtype? requiredSubtype,
     AccountUsage? requiredUsage,

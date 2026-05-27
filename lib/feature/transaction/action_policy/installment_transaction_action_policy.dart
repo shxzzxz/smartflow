@@ -16,18 +16,18 @@ import 'transaction_action_policy.dart';
 class InstallmentTransactionActionPolicy implements TransactionActionPolicy {
   const InstallmentTransactionActionPolicy({
     required InstallmentService installment,
-    required int contractId,
+    required String contractId,
     required InstallmentOwnerRole ownerRole,
-    required int transactionId,
+    required String transactionId,
   }) : _installment = installment,
        _contractId = contractId,
        _ownerRole = ownerRole,
        _transactionId = transactionId;
 
   final InstallmentService _installment;
-  final int _contractId;
+  final String _contractId;
   final InstallmentOwnerRole _ownerRole;
-  final int _transactionId;
+  final String _transactionId;
 
   @override
   Future<Result<void>> delete() {
@@ -47,7 +47,7 @@ class InstallmentTransactionActionPolicy implements TransactionActionPolicy {
   String editRoutePath() => '/installments/$_contractId';
 
   @override
-  Future<Result<void>> changeSettlementAccount(int newAccountId) {
+  Future<Result<void>> changeSettlementAccount(String newAccountId) {
     return switch (_ownerRole) {
       InstallmentOwnerRole.disbursement => _installment.updateContract(
         UpdateContractCommand(

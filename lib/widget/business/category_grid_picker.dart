@@ -22,13 +22,13 @@ class CategoryGridPicker extends StatelessWidget {
   });
 
   final List<CategoryNode> nodes;
-  final int? selectedRootId;
-  final int? selectedCategoryId;
+  final String? selectedRootId;
+  final String? selectedCategoryId;
   final String emptyLabel;
   final ValueChanged<Account> onRootSelected;
   final void Function(Account root, Account child) onChildSelected;
   final VoidCallback onAddRoot;
-  final ValueChanged<int> onAddChild;
+  final ValueChanged<String> onAddChild;
 
   @override
   Widget build(BuildContext context) {
@@ -102,8 +102,8 @@ class _CategoryRow extends StatelessWidget {
   });
 
   final List<CategoryNode> nodes;
-  final int? selectedRootId;
-  final int? selectedCategoryId;
+  final String? selectedRootId;
+  final String? selectedCategoryId;
   final ValueChanged<Account> onRootSelected;
   final bool showAddRoot;
   final VoidCallback onAddRoot;
@@ -141,9 +141,9 @@ class _SubcategoryPanel extends StatelessWidget {
   });
 
   final CategoryNode node;
-  final int? selectedCategoryId;
+  final String? selectedCategoryId;
   final void Function(Account root, Account child) onChildSelected;
-  final ValueChanged<int> onAddChild;
+  final ValueChanged<String> onAddChild;
 
   @override
   Widget build(BuildContext context) {

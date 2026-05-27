@@ -22,8 +22,8 @@ void main() {
   group('InstallmentService integration', () {
     late AppDatabase database;
     late InstallmentService service;
-    late int assetAccountId;
-    late int liabilityAccountId;
+    late String assetAccountId;
+    late String liabilityAccountId;
 
     setUp(() async {
       database = createTestDatabase();
@@ -69,7 +69,7 @@ void main() {
       await database.close();
     });
 
-    Future<int> createSimpleContract() async {
+    Future<String> createSimpleContract() async {
       final result = await service.createDisbursementContract(
         CreateDisbursementContractCommand(
           liabilityAccountId: liabilityAccountId,
@@ -892,7 +892,7 @@ void main() {
   });
 }
 
-Future<int> _insertAccount(
+Future<String> _insertAccount(
   AppDatabase database, {
   required String name,
   required AccountType type,
@@ -911,7 +911,7 @@ Future<int> _insertAccount(
       );
 }
 
-Future<int> _balanceOf(AppDatabase database, int accountId) async {
+Future<int> _balanceOf(AppDatabase database, String accountId) async {
   final row =
       await (database.select(database.accounts)
         ..where((a) => a.id.equals(accountId))).getSingle();
@@ -920,8 +920,8 @@ Future<int> _balanceOf(AppDatabase database, int accountId) async {
 
 Future<void> _expectOwnership(
   AppDatabase database, {
-  required int transactionId,
-  required int ownerId,
+  required String transactionId,
+  required String ownerId,
   required String ownerRole,
 }) async {
   final row =
@@ -934,7 +934,7 @@ Future<void> _expectOwnership(
 
 Future<TransactionRow> _readTransaction(
   AppDatabase database,
-  int transactionId,
+  String transactionId,
 ) {
   return (database.select(database.transactions)
     ..where((t) => t.id.equals(transactionId))).getSingle();
@@ -942,9 +942,9 @@ Future<TransactionRow> _readTransaction(
 
 /// 反查交易的"结算账户"对应 entry 的 accountId。
 /// 约定：disbursement 与 repayment 的 settlement entry 都唯一指向一笔 asset 账户。
-Future<int> _settlementAccountIdOf(
+Future<String> _settlementAccountIdOf(
   AppDatabase database,
-  int transactionId,
+  String transactionId,
 ) async {
   final query = database.select(database.entries).join([
     leftOuterJoin(

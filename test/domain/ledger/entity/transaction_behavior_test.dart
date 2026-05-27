@@ -163,7 +163,7 @@ void main() {
     test('replaces ownership', () {
       const newOwnership = TransactionOwnership(
         ownerType: 'credit_installment',
-        ownerId: 7,
+        ownerId: '7',
         ownerRole: 'schedule_repayment',
       );
       final updated = _build().updatedOwnership(newOwnership);

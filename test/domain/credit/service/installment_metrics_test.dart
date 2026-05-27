@@ -18,8 +18,8 @@ void main() {
         InstallmentRepaymentMethod.equalInstallment,
   }) {
     return InstallmentContract(
-      id: 1,
-      liabilityAccountId: 1,
+      id: '1',
+      liabilityAccountId: '1',
       sourceType: InstallmentSourceType.disbursement,
       principal: Money(minorUnits: principalMinor),
       totalPeriods: totalPeriods,
@@ -47,7 +47,7 @@ void main() {
   }) {
     return InstallmentSchedule(
       id: id,
-      contractId: 1,
+      contractId: '1',
       periodNo: periodNo,
       expectedRepaymentDate: date,
       expectedPrincipal: Money(minorUnits: principal),
@@ -95,7 +95,7 @@ void main() {
       );
       final schedules = [
         makeSchedule(
-          id: 1,
+          id: '1',
           periodNo: 1,
           date: DateTime(2026, 6, 10),
           principal: 120000,
@@ -126,14 +126,14 @@ void main() {
       final schedules = [
         // 前 2 期 paid
         makeSchedule(
-          id: 1,
+          id: '1',
           periodNo: 1,
           date: DateTime(2026, 6, 10),
           principal: 100000,
           status: InstallmentScheduleStatus.paid,
         ),
         makeSchedule(
-          id: 2,
+          id: '2',
           periodNo: 2,
           date: DateTime(2026, 7, 10),
           principal: 100000,
@@ -151,8 +151,8 @@ void main() {
       final repayments = [
         // 提前还本 400000，日期在第 2 期还款之后
         RepaymentCashflow(
-          id: 1,
-          transactionId: 0,
+          id: '1',
+          transactionId: '0',
           repaymentType: InstallmentRepaymentType.extraPrincipal,
           occurredAt: DateTime(2026, 8, 1),
           principal: const Money(minorUnits: 400000),
@@ -177,7 +177,7 @@ void main() {
       final contract = makeContract(principalMinor: 100000, totalPeriods: 2);
       final schedules = [
         makeSchedule(
-          id: 1,
+          id: '1',
           periodNo: 1,
           date: DateTime(2026, 6, 10),
           principal: 50000,
@@ -185,7 +185,7 @@ void main() {
           status: InstallmentScheduleStatus.paid,
         ),
         makeSchedule(
-          id: 2,
+          id: '2',
           periodNo: 2,
           date: DateTime(2026, 7, 10),
           principal: 50000,
@@ -195,10 +195,10 @@ void main() {
       // actual 数据完全等于 expected
       final repayments = [
         RepaymentCashflow(
-          id: 10,
-          transactionId: 0,
+          id: '10',
+          transactionId: '0',
           repaymentType: InstallmentRepaymentType.scheduled,
-          scheduleId: 1,
+          scheduleId: '1',
           occurredAt: DateTime(2026, 6, 10),
           principal: const Money(minorUnits: 50000),
           interest: const Money(minorUnits: 500),

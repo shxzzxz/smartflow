@@ -218,13 +218,13 @@ void main() {
   });
 }
 
-Future<int> _post(
+Future<String> _post(
   AppDatabase database, {
   required BusinessPurpose purpose,
   required int amount,
   DateTime? occurredAt,
-  int? rootTransactionId,
-  int? parentTransactionId,
+  String? rootTransactionId,
+  String? parentTransactionId,
   BusinessState businessState = BusinessState.current,
   bool isExcludedFromStats = false,
 }) async {

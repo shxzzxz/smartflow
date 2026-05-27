@@ -240,14 +240,14 @@ class AccountPlainFormRow extends StatelessWidget {
   final String label;
   final Account? account;
   final String placeholder;
-  final int? selectedId;
+  final String? selectedId;
   final VoidCallback? onTap;
-  final FormFieldValidator<int>? validator;
+  final FormFieldValidator<String>? validator;
   final AppPlainRowValueAlignment valueAlignment;
 
   @override
   Widget build(BuildContext context) {
-    return FormField<int>(
+    return FormField<String>(
       key: ValueKey(selectedId),
       initialValue: selectedId,
       validator: validator,
@@ -336,13 +336,13 @@ class AccountPlainValue extends StatelessWidget {
   }
 }
 
-Future<int?> showAccountPickerSheet({
+Future<String?> showAccountPickerSheet({
   required BuildContext context,
   required String title,
   required List<Account> accounts,
-  required int? selectedId,
+  required String? selectedId,
 }) {
-  return showModalBottomSheet<int>(
+  return showModalBottomSheet<String>(
     context: context,
     showDragHandle: true,
     builder: (context) {
@@ -359,14 +359,14 @@ Future<int?> showAccountPickerSheet({
 class AccountPickerSheetSelection {
   const AccountPickerSheetSelection(this.accountId);
 
-  final int? accountId;
+  final String? accountId;
 }
 
 Future<AccountPickerSheetSelection?> showOptionalAccountPickerSheet({
   required BuildContext context,
   required String title,
   required List<Account> accounts,
-  required int? selectedId,
+  required String? selectedId,
   required String noneLabel,
 }) {
   return showModalBottomSheet<AccountPickerSheetSelection>(
@@ -403,7 +403,7 @@ class _AccountPickerSheet extends StatelessWidget {
 
   final String title;
   final List<Account> accounts;
-  final int? selectedId;
+  final String? selectedId;
   final String? noneLabel;
   final VoidCallback? onNoneTap;
   final ValueChanged<Account> onAccountTap;

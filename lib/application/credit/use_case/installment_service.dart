@@ -30,8 +30,8 @@ class CreateDisbursementContractCommand {
     this.counterpartyName,
   });
 
-  final int liabilityAccountId;
-  final int disbursementAccountId;
+  final String liabilityAccountId;
+  final String disbursementAccountId;
   final Money principal;
   final int totalPeriods;
 
@@ -73,7 +73,7 @@ class CreateBillConversionContractCommand {
     this.note,
   });
 
-  final int liabilityAccountId;
+  final String liabilityAccountId;
   final Money principal;
   final int totalPeriods;
   final DateTime borrowingDate;
@@ -105,13 +105,13 @@ class CreateScheduledRepaymentCommand {
     this.counterpartyName,
   });
 
-  final int contractId;
-  final int scheduleId;
+  final String contractId;
+  final String scheduleId;
   final Money principal;
   final Money? interest;
   final Money? fee;
   final Money? discount;
-  final int paidFromAccountId;
+  final String paidFromAccountId;
   final DateTime occurredAt;
   final String? note;
   final String? counterpartyName;
@@ -129,7 +129,7 @@ class CreatePrincipalPrepaymentCommand {
     this.counterpartyName,
   });
 
-  final int contractId;
+  final String contractId;
   final Money principal;
 
   /// 提前还本时一并支付的利息（含截至本日的应计利息）。
@@ -138,7 +138,7 @@ class CreatePrincipalPrepaymentCommand {
   /// 提前还本手续费。
   final Money? fee;
 
-  final int paidFromAccountId;
+  final String paidFromAccountId;
   final DateTime occurredAt;
   final String? note;
   final String? counterpartyName;
@@ -156,11 +156,11 @@ class CreateEarlySettlementCommand {
     this.counterpartyName,
   });
 
-  final int contractId;
+  final String contractId;
   final Money principal;
   final Money? interest;
   final Money? fee;
-  final int paidFromAccountId;
+  final String paidFromAccountId;
   final DateTime occurredAt;
   final String? note;
   final String? counterpartyName;
@@ -169,13 +169,13 @@ class CreateEarlySettlementCommand {
 class RevertRepaymentCommand {
   const RevertRepaymentCommand({required this.transactionId});
 
-  final int transactionId;
+  final String transactionId;
 }
 
 class DeleteContractCommand {
   const DeleteContractCommand({required this.contractId});
 
-  final int contractId;
+  final String contractId;
 }
 
 /// pending 期次的单行手工编辑值（不会改 paid / skipped 行）。
@@ -232,7 +232,7 @@ class UpdateContractCommand {
     this.schedulePatches = const [],
   });
 
-  final int contractId;
+  final String contractId;
   final int? totalPeriods;
   final DateTime? firstRepaymentDate;
   final DateTime? lastRepaymentDate;
@@ -248,7 +248,7 @@ class UpdateContractCommand {
 
   /// 放款合同的放款账户。仅对 sourceType=disbursement 的合同有效。
   /// 业务上禁止清除（账单分期合同永远 null，放款合同永远有值）。
-  final int? disbursementAccountId;
+  final String? disbursementAccountId;
 
   final Patch<String>? note;
   final List<SchedulePendingPatch> schedulePatches;
@@ -268,12 +268,12 @@ class EditRepaymentCommand {
     this.note,
   });
 
-  final int transactionId;
+  final String transactionId;
 
   /// 可选——调用方已知合同 id 时传入可省一次反查。
-  final int? contractId;
+  final String? contractId;
 
-  final int? paidFromAccountId;
+  final String? paidFromAccountId;
   final DateTime? occurredAt;
   final Patch<String>? note;
 }
@@ -284,8 +284,8 @@ class CreateContractResult {
     this.disbursementTransactionId,
   });
 
-  final int contractId;
-  final int? disbursementTransactionId;
+  final String contractId;
+  final String? disbursementTransactionId;
 }
 
 abstract interface class InstallmentService {
@@ -321,31 +321,31 @@ abstract interface class InstallmentService {
   /// 该负债账户上所有 active 分期合同的"未还本金合计"（minor units）。
   /// 计算依据：Σ(contract.principal − 已 paid 期次本金 − extraPrincipal 还本) over active contracts。
   /// credit 域据此推算"非分期合同还款"的可用额度。
-  Future<int> unpaidInstallmentPrincipalMinor(int liabilityAccountId);
+  Future<int> unpaidInstallmentPrincipalMinor(String liabilityAccountId);
 
   /// 删除合同：先回滚已发生的还款交易与放款交易，再级联删除 schedules / repayments / contract。
   Future<Result<void>> deleteContract(DeleteContractCommand command);
 
   Future<List<InstallmentContract>> listContractsByLiabilityAccount(
-    int liabilityAccountId,
+    String liabilityAccountId,
   );
 
-  Future<InstallmentContract?> findContract(int contractId);
+  Future<InstallmentContract?> findContract(String contractId);
 
-  Future<List<InstallmentSchedule>> listSchedules(int contractId);
+  Future<List<InstallmentSchedule>> listSchedules(String contractId);
 
-  Future<List<InstallmentRepayment>> listRepayments(int contractId);
+  Future<List<InstallmentRepayment>> listRepayments(String contractId);
 
   /// 反查交易是否被分期模块持有。
   /// 命中放款侧返回 disbursement；命中还款侧返回 repayment；否则 null。
-  Future<InstallmentLink?> findLinkByTransaction(int transactionId);
+  Future<InstallmentLink?> findLinkByTransaction(String transactionId);
 }
 
 /// 分期模块对某 transaction 的"所有权"指针。
 sealed class InstallmentLink {
   const InstallmentLink({required this.contractId});
 
-  final int contractId;
+  final String contractId;
 }
 
 class InstallmentDisbursementLink extends InstallmentLink {
@@ -1160,7 +1160,7 @@ class InstallmentServiceImpl implements InstallmentService {
   }
 
   @override
-  Future<int> unpaidInstallmentPrincipalMinor(int liabilityAccountId) async {
+  Future<int> unpaidInstallmentPrincipalMinor(String liabilityAccountId) async {
     final contracts = await _repository.listContractsByLiabilityAccount(
       liabilityAccountId,
     );
@@ -1174,7 +1174,7 @@ class InstallmentServiceImpl implements InstallmentService {
     return sum;
   }
 
-  Future<int> _paidPrincipalForContract(int contractId) async {
+  Future<int> _paidPrincipalForContract(String contractId) async {
     final repayments = await _repository.listRepayments(contractId);
     return _transactionQueryService.getDetailAmountSum(
       transactionIds: repayments.map((r) => r.transactionId),
@@ -1228,28 +1228,28 @@ class InstallmentServiceImpl implements InstallmentService {
 
   @override
   Future<List<InstallmentContract>> listContractsByLiabilityAccount(
-    int liabilityAccountId,
+    String liabilityAccountId,
   ) {
     return _repository.listContractsByLiabilityAccount(liabilityAccountId);
   }
 
   @override
-  Future<InstallmentContract?> findContract(int contractId) {
+  Future<InstallmentContract?> findContract(String contractId) {
     return _repository.findContract(contractId);
   }
 
   @override
-  Future<List<InstallmentSchedule>> listSchedules(int contractId) {
+  Future<List<InstallmentSchedule>> listSchedules(String contractId) {
     return _repository.listSchedules(contractId);
   }
 
   @override
-  Future<List<InstallmentRepayment>> listRepayments(int contractId) {
+  Future<List<InstallmentRepayment>> listRepayments(String contractId) {
     return _repository.listRepayments(contractId);
   }
 
   @override
-  Future<InstallmentLink?> findLinkByTransaction(int transactionId) async {
+  Future<InstallmentLink?> findLinkByTransaction(String transactionId) async {
     final repayment = await _repository.findRepaymentByTransaction(
       transactionId,
     );
@@ -1268,7 +1268,7 @@ class InstallmentServiceImpl implements InstallmentService {
     return null;
   }
 
-  Future<void> _maybeMarkContractSettled(int contractId) async {
+  Future<void> _maybeMarkContractSettled(String contractId) async {
     final schedules = await _repository.listSchedules(contractId);
     final allDone = schedules.every(
       (s) =>
@@ -1283,7 +1283,7 @@ class InstallmentServiceImpl implements InstallmentService {
     }
   }
 
-  Future<void> _maybeUnmarkContractSettled(int contractId) async {
+  Future<void> _maybeUnmarkContractSettled(String contractId) async {
     final contract = await _repository.findContract(contractId);
     if (contract == null) return;
     if (contract.status == InstallmentContractStatus.settled) {
@@ -1295,7 +1295,7 @@ class InstallmentServiceImpl implements InstallmentService {
   }
 
   /// 重算 pending 期次的金额（日期保持不变）。提前还本 / 撤销提前还本时调用。
-  Future<void> _recalculatePendingSchedules(int contractId) async {
+  Future<void> _recalculatePendingSchedules(String contractId) async {
     final contract = await _repository.findContract(contractId);
     if (contract == null) return;
 
@@ -1373,7 +1373,7 @@ class InstallmentServiceImpl implements InstallmentService {
   /// 当 totalPeriods 增加导致 pending 行不足时，按 paid 不变 + pending 全新分配
   /// 来重建 schedule 表。
   Future<void> _rebuildSchedulesPreservingPaid({
-    required int contractId,
+    required String contractId,
     required InstallmentContract contract,
     required List<InstallmentSchedule> paid,
     required List<DateTime> pendingDates,
@@ -1440,7 +1440,7 @@ class InstallmentServiceImpl implements InstallmentService {
     await _repository.appendSchedules(contractId, newDrafts);
   }
 
-  Future<int> _extraPrincipalSumMinor(int contractId) async {
+  Future<int> _extraPrincipalSumMinor(String contractId) async {
     final repayments = await _repository.listRepayments(contractId);
     return _transactionQueryService.getDetailAmountSum(
       transactionIds: repayments
@@ -1490,7 +1490,7 @@ class InstallmentServiceImpl implements InstallmentService {
   }
 
   TransactionOwnership _installmentOwnership(
-    int contractId,
+    String contractId,
     InstallmentOwnerRole role,
   ) {
     return TransactionOwnership(

@@ -38,8 +38,8 @@ void main() {
             _FakeTransactionQueryService(
               TransactionDetail(
                 transaction: Transaction(
-                  id: 1,
-                  rootTransactionId: 1,
+                  id: '1',
+                  rootTransactionId: '1',
                   businessPurpose: BusinessPurpose.dailyExpense,
                   occurredAt: DateTime(2026, 5, 16),
                   primaryAmount: const Money(minorUnits: 1200),
@@ -53,15 +53,15 @@ void main() {
                 details: const [],
                 entries: [
                   Entry(
-                    id: 1,
-                    transactionId: 1,
+                    id: '1',
+                    transactionId: '1',
                     accountId: categoryId,
                     direction: EntryDirection.debit,
                     amount: const Money(minorUnits: 1200),
                   ),
                   Entry(
-                    id: 2,
-                    transactionId: 1,
+                    id: '2',
+                    transactionId: '1',
                     accountId: walletId,
                     direction: EntryDirection.credit,
                     amount: const Money(minorUnits: 1200),
@@ -73,7 +73,7 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
-          home: const RefundFormPage(parentTransactionId: 1),
+          home: const RefundFormPage(parentTransactionId: '1'),
         ),
       ),
     );
@@ -86,7 +86,7 @@ void main() {
   });
 }
 
-Future<int> _insertAccount(
+Future<String> _insertAccount(
   AppDatabase database, {
   required String name,
   required AccountType type,
@@ -109,7 +109,7 @@ class _FakeTransactionQueryService implements TransactionQueryService {
   final TransactionDetail detail;
 
   @override
-  Stream<TransactionDetail?> watchTransactionDetail(int transactionId) {
+  Stream<TransactionDetail?> watchTransactionDetail(String transactionId) {
     return Stream.value(detail);
   }
 

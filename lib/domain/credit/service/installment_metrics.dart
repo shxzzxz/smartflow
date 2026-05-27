@@ -19,8 +19,8 @@ class RepaymentCashflow {
     this.scheduleId,
   });
 
-  final int id;
-  final int transactionId;
+  final String id;
+  final String transactionId;
   final InstallmentRepaymentType repaymentType;
   final DateTime occurredAt;
   final Money principal;
@@ -28,7 +28,7 @@ class RepaymentCashflow {
   final Money fee;
 
   /// 若为正常还款（regular），关联的 schedule id。
-  final int? scheduleId;
+  final String? scheduleId;
 }
 
 /// 计算视图：
@@ -162,7 +162,7 @@ class InstallmentMetricsCalculator {
     final out = <_Breakdown>[];
 
     // 索引：scheduleId -> 实际 repayment（scheduled）
-    final actualByScheduleId = <int, RepaymentCashflow>{
+    final actualByScheduleId = <String, RepaymentCashflow>{
       for (final r in repayments)
         if (r.repaymentType == InstallmentRepaymentType.scheduled &&
             r.scheduleId != null)

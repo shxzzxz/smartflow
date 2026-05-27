@@ -20,7 +20,7 @@ import '../widget/installment_field_options.dart';
 class InstallmentContractEditPage extends ConsumerStatefulWidget {
   const InstallmentContractEditPage({required this.contractId, super.key});
 
-  final int contractId;
+  final String contractId;
 
   @override
   ConsumerState<InstallmentContractEditPage> createState() =>
@@ -484,7 +484,7 @@ class _DraftRow {
     this.scheduleId,
   });
 
-  final int? scheduleId;
+  final String? scheduleId;
   final int periodNo;
   final DateTime date;
   final Money principal;

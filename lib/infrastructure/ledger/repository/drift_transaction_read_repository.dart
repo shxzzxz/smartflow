@@ -14,7 +14,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
   final AppDatabase _db;
 
   @override
-  Future<Transaction?> findById(int id) async {
+  Future<Transaction?> findById(String id) async {
     final row =
         await (_db.select(_db.transactions)
           ..where((t) => t.id.equals(id))).getSingleOrNull();
@@ -22,7 +22,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
   }
 
   @override
-  Future<List<Transaction>> findByIds(Set<int> ids) async {
+  Future<List<Transaction>> findByIds(Set<String> ids) async {
     if (ids.isEmpty) return const [];
     final rows =
         await (_db.select(_db.transactions)
@@ -72,7 +72,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
 
   @override
   Future<List<Transaction>> findChildren({
-    required int parentId,
+    required String parentId,
     Set<BusinessState>? states,
   }) async {
     final select = _db.select(_db.transactions)
@@ -90,8 +90,8 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
 
   @override
   Future<List<Transaction>> findRootDescendants({
-    required int rootId,
-    int? excludeId,
+    required String rootId,
+    String? excludeId,
     ({BusinessState state, MutationKind mutationKind})? excludeStateMutation,
   }) async {
     final select = _db.select(_db.transactions)
@@ -116,8 +116,8 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
   }
 
   @override
-  Future<Map<int, TransactionChildAggregate>> aggregateChildren({
-    required Set<int> rootIds,
+  Future<Map<String, TransactionChildAggregate>> aggregateChildren({
+    required Set<String> rootIds,
     required Set<BusinessPurpose> purposes,
     required Set<BusinessState> states,
   }) async {
@@ -138,7 +138,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
           ..groupBy([rootIdCol]);
 
     final rows = await select.get();
-    final result = <int, TransactionChildAggregate>{};
+    final result = <String, TransactionChildAggregate>{};
     for (final row in rows) {
       final rootId = row.read(rootIdCol);
       if (rootId == null) continue;
@@ -151,9 +151,9 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
   }
 
   @override
-  Future<Map<int, Map<TransactionDetailType, int>>>
+  Future<Map<String, Map<TransactionDetailType, int>>>
   aggregateChildDetailAmounts({
-    required Set<int> rootIds,
+    required Set<String> rootIds,
     required Set<TransactionDetailType> detailTypes,
     required Set<BusinessState> states,
   }) async {
@@ -181,7 +181,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
           ..groupBy([rootIdCol, detailTypeCol]);
 
     final rows = await select.get();
-    final result = <int, Map<TransactionDetailType, int>>{};
+    final result = <String, Map<TransactionDetailType, int>>{};
     for (final row in rows) {
       final rootId = row.read(rootIdCol);
       final typeName = row.read(detailTypeCol);
@@ -195,9 +195,9 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
   }
 
   @override
-  Future<Map<int, Map<BusinessPurpose, TransactionChildAggregate>>>
+  Future<Map<String, Map<BusinessPurpose, TransactionChildAggregate>>>
   aggregateChildrenByPurpose({
-    required Set<int> rootIds,
+    required Set<String> rootIds,
     required Set<BusinessPurpose> purposes,
     required Set<BusinessState> states,
   }) async {
@@ -219,7 +219,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
           ..groupBy([rootIdCol, purposeCol]);
 
     final rows = await select.get();
-    final result = <int, Map<BusinessPurpose, TransactionChildAggregate>>{};
+    final result = <String, Map<BusinessPurpose, TransactionChildAggregate>>{};
     for (final row in rows) {
       final rootId = row.read(rootIdCol);
       final purposeName = row.read(purposeCol);

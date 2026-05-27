@@ -13,7 +13,7 @@ class AccountRoleRequirement {
     this.allowReimbursementSubtype = true,
   });
 
-  final int accountId;
+  final String accountId;
   final Set<AccountType> expectedTypes;
   final AccountSubtype? requiredSubtype;
   final AccountUsage? requiredUsage;
@@ -26,8 +26,8 @@ class AccountRoleContext {
   final List<AccountRoleRequirement> requirements;
 
   factory AccountRoleContext.expense({
-    required int paidFromAccountId,
-    required int expenseAccountId,
+    required String paidFromAccountId,
+    required String expenseAccountId,
   }) {
     return AccountRoleContext([
       AccountRoleRequirement(
@@ -42,8 +42,8 @@ class AccountRoleContext {
   }
 
   factory AccountRoleContext.income({
-    required int receiveAccountId,
-    required int incomeAccountId,
+    required String receiveAccountId,
+    required String incomeAccountId,
   }) {
     return AccountRoleContext([
       AccountRoleRequirement(
@@ -58,9 +58,9 @@ class AccountRoleContext {
   }
 
   factory AccountRoleContext.transfer({
-    required int fromAccountId,
-    required int toAccountId,
-    int? feeExpenseAccountId,
+    required String fromAccountId,
+    required String toAccountId,
+    String? feeExpenseAccountId,
   }) {
     return AccountRoleContext([
       AccountRoleRequirement(
@@ -79,7 +79,7 @@ class AccountRoleContext {
     ]);
   }
 
-  factory AccountRoleContext.refund({required int refundToAccountId}) {
+  factory AccountRoleContext.refund({required String refundToAccountId}) {
     return AccountRoleContext([
       AccountRoleRequirement(
         accountId: refundToAccountId,
@@ -89,9 +89,9 @@ class AccountRoleContext {
   }
 
   factory AccountRoleContext.reimbursementAdvance({
-    required int receivableAccountId,
-    required int paidFromAccountId,
-    required int expenseCategoryId,
+    required String receivableAccountId,
+    required String paidFromAccountId,
+    required String expenseCategoryId,
   }) {
     return AccountRoleContext([
       AccountRoleRequirement(
@@ -110,8 +110,8 @@ class AccountRoleContext {
   }
 
   factory AccountRoleContext.reimbursementReceipt({
-    required int receivableAccountId,
-    required int receiveAccountId,
+    required String receivableAccountId,
+    required String receiveAccountId,
   }) {
     return AccountRoleContext([
       AccountRoleRequirement(
@@ -126,8 +126,8 @@ class AccountRoleContext {
   }
 
   factory AccountRoleContext.reimbursementClose({
-    required int receivableAccountId,
-    required int receiveAccountId,
+    required String receivableAccountId,
+    required String receiveAccountId,
     required bool receivesCash,
   }) {
     return AccountRoleContext([
@@ -144,8 +144,8 @@ class AccountRoleContext {
   }
 
   factory AccountRoleContext.repayment({
-    required int liabilityAccountId,
-    required int paidFromAccountId,
+    required String liabilityAccountId,
+    required String paidFromAccountId,
   }) {
     return AccountRoleContext([
       AccountRoleRequirement(
@@ -160,8 +160,8 @@ class AccountRoleContext {
   }
 
   factory AccountRoleContext.borrowing({
-    required int liabilityAccountId,
-    required int receiveAccountId,
+    required String liabilityAccountId,
+    required String receiveAccountId,
   }) {
     return AccountRoleContext([
       AccountRoleRequirement(

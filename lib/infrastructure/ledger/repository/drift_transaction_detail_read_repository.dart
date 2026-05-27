@@ -13,8 +13,8 @@ class DriftTransactionDetailReadRepository
   final AppDatabase _db;
 
   @override
-  Future<Map<int, List<TransactionDetailRecord>>> findByTransactionIds(
-    Set<int> transactionIds,
+  Future<Map<String, List<TransactionDetailRecord>>> findByTransactionIds(
+    Set<String> transactionIds,
   ) async {
     if (transactionIds.isEmpty) return const {};
 
@@ -24,7 +24,7 @@ class DriftTransactionDetailReadRepository
               ..orderBy([(detail) => OrderingTerm.asc(detail.lineNo)]))
             .get();
 
-    final result = <int, List<TransactionDetailRecord>>{};
+    final result = <String, List<TransactionDetailRecord>>{};
     for (final detailRow in rows) {
       result
           .putIfAbsent(
@@ -45,8 +45,8 @@ class DriftTransactionDetailReadRepository
   }
 
   @override
-  Future<Map<int, Map<TransactionDetailType, int>>> sumOwnByType({
-    required Set<int> transactionIds,
+  Future<Map<String, Map<TransactionDetailType, int>>> sumOwnByType({
+    required Set<String> transactionIds,
     required Set<TransactionDetailType> detailTypes,
   }) async {
     if (transactionIds.isEmpty || detailTypes.isEmpty) return const {};
@@ -63,7 +63,7 @@ class DriftTransactionDetailReadRepository
           ..groupBy([txCol, typeCol]);
 
     final rows = await select.get();
-    final result = <int, Map<TransactionDetailType, int>>{};
+    final result = <String, Map<TransactionDetailType, int>>{};
     for (final row in rows) {
       final txId = row.read(txCol);
       final typeName = row.read(typeCol);

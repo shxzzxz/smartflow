@@ -4,8 +4,8 @@ import '../../../domain/ledger/valobj/ledger_enum.dart';
 
 @DataClassName('TransactionDetailRow')
 class TransactionDetails extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  IntColumn get transactionId => integer().named('transaction_id')();
+  TextColumn get id => text()();
+  TextColumn get transactionId => text().named('transaction_id')();
   IntColumn get lineNo => integer().named('line_no')();
   TextColumn get detailType =>
       textEnum<TransactionDetailType>().named('detail_type')();
@@ -14,6 +14,9 @@ class TransactionDetails extends Table {
       dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt =>
       dateTime().named('updated_at').withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
 
   @override
   List<String> get customConstraints => ['UNIQUE (transaction_id, line_no)'];

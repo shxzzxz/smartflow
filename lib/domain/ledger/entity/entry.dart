@@ -10,9 +10,9 @@ class Entry {
     required this.amount,
   });
 
-  final int id;
-  final int transactionId;
-  final int accountId;
+  final String id;
+  final String transactionId;
+  final String accountId;
   final EntryDirection direction;
   final Money amount;
 }

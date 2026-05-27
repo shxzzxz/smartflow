@@ -18,28 +18,32 @@ abstract interface class TransactionQueryService {
 
   Stream<CashflowSummary> watchCashflowSummary(CashflowSummaryQuery query);
 
-  Stream<TransactionDetail?> watchTransactionDetail(int transactionId);
+  Stream<TransactionDetail?> watchTransactionDetail(String transactionId);
 
   /// 一次性取一笔的聚合视图(transaction + entries + details + 子树 + 历史)。
   /// 写路径(correct / delete / updateBasics)取 original 快照用,无需 stream 订阅。
-  Future<TransactionDetail?> findTransactionDetail(int transactionId);
+  Future<TransactionDetail?> findTransactionDetail(String transactionId);
 
   /// 批量取一组交易的会计事实(transaction + entries + details),不含子树 / 历史。
   /// 用于批量取消等只关心账本事实的场景。
-  Future<List<TransactionDetail>> findTransactionFacts(Set<int> transactionIds);
-
-  Stream<List<TransactionHistorySnapshot>> watchTransactionHistory(
-    int rootTransactionId,
+  Future<List<TransactionDetail>> findTransactionFacts(
+    Set<String> transactionIds,
   );
 
-  Future<Transaction?> findTransactionById(int transactionId);
+  Stream<List<TransactionHistorySnapshot>> watchTransactionHistory(
+    String rootTransactionId,
+  );
 
-  Future<Money> getRefundedTotal(int rootTransactionId);
+  Future<Transaction?> findTransactionById(String transactionId);
 
-  Future<ReimbursementSummary?> getReimbursementSummary(int rootTransactionId);
+  Future<Money> getRefundedTotal(String rootTransactionId);
+
+  Future<ReimbursementSummary?> getReimbursementSummary(
+    String rootTransactionId,
+  );
 
   Future<int> getDetailAmountSum({
-    required Iterable<int> transactionIds,
+    required Iterable<String> transactionIds,
     required TransactionDetailType detailType,
   });
 }
@@ -114,11 +118,11 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
       _detailRead.findByTransactionIds(pageTxIds),
     ]);
 
-    final refundAgg = results[0] as Map<int, TransactionChildAggregate>;
-    final reimbAgg = results[1] as Map<int, TransactionChildAggregate>;
-    final gapAgg = results[2] as Map<int, Map<TransactionDetailType, int>>;
-    final entriesByTx = results[3] as Map<int, List<dynamic>>;
-    final detailsByTx = results[4] as Map<int, List<dynamic>>;
+    final refundAgg = results[0] as Map<String, TransactionChildAggregate>;
+    final reimbAgg = results[1] as Map<String, TransactionChildAggregate>;
+    final gapAgg = results[2] as Map<String, Map<TransactionDetailType, int>>;
+    final entriesByTx = results[3] as Map<String, List<dynamic>>;
+    final detailsByTx = results[4] as Map<String, List<dynamic>>;
 
     return [
       for (final t in page)
@@ -157,7 +161,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
 
   Money? _refundedTotalFor(
     Transaction t,
-    Map<int, TransactionChildAggregate> agg,
+    Map<String, TransactionChildAggregate> agg,
   ) {
     if (t.parentTransactionId != null) return null;
     if (t.businessPurpose != BusinessPurpose.dailyExpense) return null;
@@ -166,7 +170,10 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     return Money(minorUnits: entry.sumMinor);
   }
 
-  int _refundCountFor(Transaction t, Map<int, TransactionChildAggregate> agg) {
+  int _refundCountFor(
+    Transaction t,
+    Map<String, TransactionChildAggregate> agg,
+  ) {
     if (t.parentTransactionId != null) return 0;
     if (t.businessPurpose != BusinessPurpose.dailyExpense) return 0;
     return agg[t.rootTransactionId]?.count ?? 0;
@@ -174,7 +181,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
 
   Money? _reimbReceivedFor(
     Transaction t,
-    Map<int, TransactionChildAggregate> agg,
+    Map<String, TransactionChildAggregate> agg,
   ) {
     if (t.parentTransactionId != null) return null;
     if (t.businessPurpose != BusinessPurpose.reimbursementAdvance) return null;
@@ -183,7 +190,10 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     return Money(minorUnits: entry.sumMinor);
   }
 
-  int _reimbCountFor(Transaction t, Map<int, TransactionChildAggregate> agg) {
+  int _reimbCountFor(
+    Transaction t,
+    Map<String, TransactionChildAggregate> agg,
+  ) {
     if (t.parentTransactionId != null) return 0;
     if (t.businessPurpose != BusinessPurpose.reimbursementAdvance) return 0;
     return agg[t.rootTransactionId]?.count ?? 0;
@@ -191,7 +201,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
 
   Money? _gapMoneyFor(
     Transaction t,
-    Map<int, Map<TransactionDetailType, int>> agg,
+    Map<String, Map<TransactionDetailType, int>> agg,
     TransactionDetailType type,
   ) {
     if (t.parentTransactionId != null) return null;
@@ -230,17 +240,17 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   // ---------- 详情场景 ----------
 
   @override
-  Stream<TransactionDetail?> watchTransactionDetail(int transactionId) {
+  Stream<TransactionDetail?> watchTransactionDetail(String transactionId) {
     return _txRead.watchChanges().asyncMap((_) => _loadDetail(transactionId));
   }
 
   @override
-  Future<TransactionDetail?> findTransactionDetail(int transactionId) =>
+  Future<TransactionDetail?> findTransactionDetail(String transactionId) =>
       _loadDetail(transactionId);
 
   @override
   Future<List<TransactionDetail>> findTransactionFacts(
-    Set<int> transactionIds,
+    Set<String> transactionIds,
   ) async {
     if (transactionIds.isEmpty) return const [];
     final transactions = await _txRead.findByIds(transactionIds);
@@ -265,7 +275,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     ];
   }
 
-  Future<TransactionDetail?> _loadDetail(int transactionId) async {
+  Future<TransactionDetail?> _loadDetail(String transactionId) async {
     final transaction = await _txRead.findById(transactionId);
     if (transaction == null) return null;
 
@@ -288,9 +298,9 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     ]);
 
     final entries =
-        (results[0] as Map<int, List<dynamic>>)[transactionId] ?? const [];
+        (results[0] as Map<String, List<dynamic>>)[transactionId] ?? const [];
     final details =
-        (results[1] as Map<int, List<dynamic>>)[transactionId] ?? const [];
+        (results[1] as Map<String, List<dynamic>>)[transactionId] ?? const [];
     final childrenTxs = results[2] as List<Transaction>;
     final historyTxs = results[3] as List<Transaction>;
 
@@ -321,7 +331,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
 
   @override
   Stream<List<TransactionHistorySnapshot>> watchTransactionHistory(
-    int rootTransactionId,
+    String rootTransactionId,
   ) {
     return _txRead.watchChanges().asyncMap((_) async {
       final txs = await _txRead.findRootDescendants(
@@ -345,8 +355,8 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
       _entryRead.findByTransactionIds(txIds),
       _detailRead.findByTransactionIds(txIds),
     ]);
-    final entriesByTx = results[0] as Map<int, List<dynamic>>;
-    final detailsByTx = results[1] as Map<int, List<dynamic>>;
+    final entriesByTx = results[0] as Map<String, List<dynamic>>;
+    final detailsByTx = results[1] as Map<String, List<dynamic>>;
 
     return [
       for (final t in txs)
@@ -373,12 +383,12 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   // ---------- 标量查询(便捷方法) ----------
 
   @override
-  Future<Transaction?> findTransactionById(int transactionId) {
+  Future<Transaction?> findTransactionById(String transactionId) {
     return _txRead.findById(transactionId);
   }
 
   @override
-  Future<Money> getRefundedTotal(int rootTransactionId) async {
+  Future<Money> getRefundedTotal(String rootTransactionId) async {
     final result = await _txRead.aggregateChildren(
       rootIds: {rootTransactionId},
       purposes: const {BusinessPurpose.refund},
@@ -389,7 +399,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
 
   @override
   Future<ReimbursementSummary?> getReimbursementSummary(
-    int rootTransactionId,
+    String rootTransactionId,
   ) async {
     final advance = await _txRead.findById(rootTransactionId);
     if (advance == null ||
@@ -430,7 +440,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
 
   @override
   Future<int> getDetailAmountSum({
-    required Iterable<int> transactionIds,
+    required Iterable<String> transactionIds,
     required TransactionDetailType detailType,
   }) async {
     final ids = transactionIds.toSet();

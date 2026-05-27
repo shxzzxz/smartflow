@@ -23,9 +23,9 @@ class InstallmentRepaymentFormPage extends ConsumerStatefulWidget {
     super.key,
   });
 
-  final int contractId;
+  final String contractId;
   final InstallmentRepaymentMode mode;
-  final int? scheduleId;
+  final String? scheduleId;
 
   @override
   ConsumerState<InstallmentRepaymentFormPage> createState() =>
@@ -42,7 +42,7 @@ class _InstallmentRepaymentFormPageState
   final _noteController = TextEditingController();
 
   DateTime _occurredAt = DateTime.now();
-  int? _paidFromAccountId;
+  String? _paidFromAccountId;
   bool _submitting = false;
   bool _initialized = false;
 
@@ -216,7 +216,7 @@ class _InstallmentRepaymentFormPageState
 
   Future<void> _pickAccount({
     required List<Account> accounts,
-    required ValueChanged<int> onSelected,
+    required ValueChanged<String> onSelected,
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,
@@ -360,7 +360,7 @@ String _submitLabel(InstallmentRepaymentMode mode) {
 
 InstallmentSchedule? _findSchedule(
   List<InstallmentSchedule> schedules,
-  int? id,
+  String? id,
 ) {
   if (id == null) return null;
   for (final s in schedules) {
@@ -369,7 +369,7 @@ InstallmentSchedule? _findSchedule(
   return null;
 }
 
-Account? _findAccount(List<Account> accounts, int? id) {
+Account? _findAccount(List<Account> accounts, String? id) {
   if (id == null) return null;
   for (final a in accounts) {
     if (a.id == id) return a;

@@ -5,10 +5,10 @@ class AccountBook {
   const AccountBook();
 
   List<Account> applyTransactions(
-    Map<int, Account> accounts,
+    Map<String, Account> accounts,
     Iterable<Transaction> transactions,
   ) {
-    final updated = Map<int, Account>.of(accounts);
+    final updated = Map<String, Account>.of(accounts);
     for (final transaction in transactions) {
       for (final accountId in transaction.accountIds) {
         final account = updated[accountId];

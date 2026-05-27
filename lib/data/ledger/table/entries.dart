@@ -7,13 +7,16 @@ class Entries extends Table {
   @override
   String get tableName => 'entries';
 
-  IntColumn get id => integer().autoIncrement()();
-  IntColumn get transactionId => integer().named('transaction_id')();
-  IntColumn get accountId => integer().named('account_id')();
+  TextColumn get id => text()();
+  TextColumn get transactionId => text().named('transaction_id')();
+  TextColumn get accountId => text().named('account_id')();
   TextColumn get direction => textEnum<EntryDirection>()();
   IntColumn get amountMinor => integer().named('amount_minor')();
   DateTimeColumn get createdAt =>
       dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt =>
       dateTime().named('updated_at').withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
 }

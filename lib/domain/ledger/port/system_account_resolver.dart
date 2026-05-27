@@ -1,14 +1,14 @@
 abstract interface class SystemAccountResolver {
-  Future<int> resolveOpeningBalance();
+  Future<String> resolveOpeningBalance();
 
-  Future<int> resolveReimbursementGapIncome();
+  Future<String> resolveReimbursementGapIncome();
 
-  Future<int> resolveDebtInterestExpense();
+  Future<String> resolveDebtInterestExpense();
 
-  Future<int> resolveDebtFeeExpense();
+  Future<String> resolveDebtFeeExpense();
 
-  Future<int> resolveDiscountIncome();
+  Future<String> resolveDiscountIncome();
 
   /// 幽灵账户:用于导入 / 修复等场景下"暂时挂在某个语义账户"的占位入口。
-  Future<int> resolveGhostAccount();
+  Future<String> resolveGhostAccount();
 }

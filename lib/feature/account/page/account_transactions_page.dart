@@ -8,7 +8,7 @@ import '../../home/widget/transaction_row.dart';
 class AccountTransactionsPage extends ConsumerWidget {
   const AccountTransactionsPage({required this.accountId, super.key});
 
-  final int accountId;
+  final String accountId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

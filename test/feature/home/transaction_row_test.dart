@@ -36,7 +36,7 @@ void main() {
           home: Scaffold(
             body: home.TransactionRow(
               item: _transferItem(
-                id: 1,
+                id: '1',
                 outAccountId: outAccountId,
                 inAccountId: inAccountId,
               ),
@@ -82,7 +82,7 @@ void main() {
           home: Scaffold(
             body: home.TransactionRow(
               item: _reimbursementAdvanceItem(
-                id: 2,
+                id: '2',
                 outAccountId: outAccountId,
                 inAccountId: inAccountId,
               ),
@@ -121,7 +121,7 @@ void main() {
           path: '/',
           builder:
               (context, state) => Scaffold(
-                body: home.TransactionRow(item: _bareTransferItem(id: 3)),
+                body: home.TransactionRow(item: _bareTransferItem(id: '3')),
               ),
         ),
         GoRoute(
@@ -163,7 +163,7 @@ void main() {
     final database = createTestDatabase();
     addTearDown(database.close);
 
-    final router = _buildTransactionRowRouter(item: _bareTransferItem(id: 4));
+    final router = _buildTransactionRowRouter(item: _bareTransferItem(id: '4'));
     addTearDown(router.dispose);
 
     await tester.pumpWidget(
@@ -191,7 +191,7 @@ void main() {
     final database = createTestDatabase();
     addTearDown(database.close);
 
-    final router = _buildTransactionRowRouter(item: _bareTransferItem(id: 5));
+    final router = _buildTransactionRowRouter(item: _bareTransferItem(id: '5'));
     addTearDown(router.dispose);
 
     await tester.pumpWidget(
@@ -242,7 +242,7 @@ GoRouter _buildTransactionRowRouter({required TransactionListItem item}) {
   );
 }
 
-Future<int> _insertAccount(
+Future<String> _insertAccount(
   AppDatabase database, {
   required String name,
   required String iconKey,
@@ -260,8 +260,8 @@ Future<int> _insertAccount(
 
 TransactionListItem _transferItem({
   required int id,
-  required int outAccountId,
-  required int inAccountId,
+  required String outAccountId,
+  required String inAccountId,
 }) {
   return TransactionListItem(
     id: id,
@@ -272,14 +272,14 @@ TransactionListItem _transferItem({
     primaryAmount: const Money(minorUnits: 1000),
     entries: [
       Entry(
-        id: 1,
+        id: '1',
         transactionId: id,
         accountId: inAccountId,
         direction: EntryDirection.debit,
         amount: const Money(minorUnits: 1000),
       ),
       Entry(
-        id: 2,
+        id: '2',
         transactionId: id,
         accountId: outAccountId,
         direction: EntryDirection.credit,
@@ -294,8 +294,8 @@ TransactionListItem _transferItem({
 
 TransactionListItem _reimbursementAdvanceItem({
   required int id,
-  required int outAccountId,
-  required int inAccountId,
+  required String outAccountId,
+  required String inAccountId,
 }) {
   return TransactionListItem(
     id: id,
@@ -306,14 +306,14 @@ TransactionListItem _reimbursementAdvanceItem({
     primaryAmount: const Money(minorUnits: 1000),
     entries: [
       Entry(
-        id: 1,
+        id: '1',
         transactionId: id,
         accountId: inAccountId,
         direction: EntryDirection.debit,
         amount: const Money(minorUnits: 1000),
       ),
       Entry(
-        id: 2,
+        id: '2',
         transactionId: id,
         accountId: outAccountId,
         direction: EntryDirection.credit,

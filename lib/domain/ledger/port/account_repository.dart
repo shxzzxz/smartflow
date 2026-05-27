@@ -1,9 +1,9 @@
 import '../entity/account.dart';
 
 abstract interface class AccountRepository {
-  Future<Account?> findById(int id);
+  Future<Account?> findById(String id);
 
-  Future<List<Account>> findByIds(Set<int> ids);
+  Future<List<Account>> findByIds(Set<String> ids);
 
   Future<Account> create(Account account);
 

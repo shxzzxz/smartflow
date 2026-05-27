@@ -1,4 +1,5 @@
 import '../../../core/error/failure.dart';
+import '../../../core/id/id_generator.dart';
 import '../../../core/result/result.dart';
 import '../command/category_command.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
@@ -17,11 +18,14 @@ class CategoryServiceImpl implements CategoryService {
   const CategoryServiceImpl({
     required AccountRepository repository,
     required AccountQueryRepository queries,
+    required IdGenerator idGenerator,
   }) : _repository = repository,
-       _queries = queries;
+       _queries = queries,
+       _idGenerator = idGenerator;
 
   final AccountRepository _repository;
   final AccountQueryRepository _queries;
+  final IdGenerator _idGenerator;
 
   @override
   Stream<List<CategoryNode>> watchCategoryTree(AccountType type) {
@@ -44,6 +48,7 @@ class CategoryServiceImpl implements CategoryService {
       }
     }
     final draftResult = Account.createCategory(
+      id: _idGenerator.newId(),
       name: command.name,
       type: command.type,
       parent: parent,
@@ -74,7 +79,7 @@ class CategoryServiceImpl implements CategoryService {
   }
 
   List<CategoryNode> _buildTree(List<Account> categories) {
-    final childrenByParent = <int, List<Account>>{};
+    final childrenByParent = <String, List<Account>>{};
     final roots = <Account>[];
 
     for (final category in categories) {

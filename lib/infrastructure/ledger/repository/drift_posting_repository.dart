@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../domain/ledger/entity/account.dart';
 import '../../../domain/ledger/entity/transaction.dart';
@@ -13,7 +14,9 @@ class DriftPostingRepository implements PostingRepository {
 
   final AppDatabase _database;
 
-  Future<List<Account>> findAccountsByIds(Set<int> ids) async {
+  static const _uuid = Uuid();
+
+  Future<List<Account>> findAccountsByIds(Set<String> ids) async {
     if (ids.isEmpty) {
       return const [];
     }
@@ -28,10 +31,14 @@ class DriftPostingRepository implements PostingRepository {
   @override
   Future<PostReceiptResult> saveTransaction(Transaction transaction) async {
     final now = DateTime.now();
-    final transactionId = await _database
+    final transactionId = transaction.id;
+    final rootTransactionId = transaction.rootTransactionId;
+
+    await _database
         .into(_database.transactions)
         .insert(
           TransactionsCompanion.insert(
+            id: transactionId,
             businessPurpose: transaction.businessPurpose,
             occurredAt: transaction.occurredAt,
             primaryAmountMinor: transaction.primaryAmount.minorUnits,
@@ -41,7 +48,7 @@ class DriftPostingRepository implements PostingRepository {
             ownerType: Value(transaction.ownership?.ownerType),
             ownerId: Value(transaction.ownership?.ownerId),
             ownerRole: Value(transaction.ownership?.ownerRole),
-            rootTransactionId: Value(transaction.persistedRootTransactionId),
+            rootTransactionId: Value(rootTransactionId),
             counterpartyName: Value(transaction.counterpartyName),
             note: Value(transaction.note),
             parentTransactionId: Value(transaction.parentTransactionId),
@@ -59,23 +66,12 @@ class DriftPostingRepository implements PostingRepository {
           ),
         );
 
-    final rootTransactionId =
-        transaction.persistedRootTransactionId ?? transactionId;
-    if (transaction.persistedRootTransactionId == null) {
-      await (_database.update(_database.transactions)
-        ..where((transaction) => transaction.id.equals(transactionId))).write(
-        TransactionsCompanion(
-          rootTransactionId: Value(rootTransactionId),
-          updatedAt: Value(now),
-        ),
-      );
-    }
-
     await _database.batch((batch) {
       batch.insertAll(
         _database.transactionDetails,
         transaction.details.map(
           (detail) => TransactionDetailsCompanion.insert(
+            id: _uuid.v7(),
             transactionId: transactionId,
             lineNo: detail.lineNo,
             detailType: detail.type,
@@ -89,6 +85,7 @@ class DriftPostingRepository implements PostingRepository {
         _database.entries,
         transaction.entries.map(
           (entry) => EntriesCompanion.insert(
+            id: _uuid.v7(),
             transactionId: transactionId,
             accountId: entry.accountId,
             direction: entry.direction,
@@ -113,7 +110,7 @@ class DriftPostingRepository implements PostingRepository {
 
   @override
   Future<void> updateTransactionState({
-    required int transactionId,
+    required String transactionId,
     required BusinessState businessState,
   }) async {
     await (_database.update(_database.transactions)

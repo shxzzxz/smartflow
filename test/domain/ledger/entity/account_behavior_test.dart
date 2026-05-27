@@ -5,14 +5,14 @@ import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 const _asset = Account(
-  id: 1,
+  id: '1',
   name: 'Cash',
   type: AccountType.asset,
   balance: Money(minorUnits: 10000),
 );
 
 const _liability = Account(
-  id: 2,
+  id: '2',
   name: 'CreditCard',
   type: AccountType.liability,
   subtype: AccountSubtype.creditCard,
@@ -20,7 +20,7 @@ const _liability = Account(
 );
 
 const _expense = Account(
-  id: 3,
+  id: '3',
   name: 'Food',
   type: AccountType.expense,
   balance: Money(minorUnits: 0),
@@ -135,7 +135,7 @@ void main() {
 
     test('reimbursement asset is rejected', () {
       const reimbursement = Account(
-        id: 5,
+        id: '5',
         name: 'Reimbursable',
         type: AccountType.asset,
         subtype: AccountSubtype.reimbursement,
@@ -183,7 +183,7 @@ void main() {
 
   group('Account.checkValidCategoryParent', () {
     const parent = Account(
-      id: 10,
+      id: '10',
       name: 'Food',
       type: AccountType.expense,
       balance: Money(minorUnits: 0),
@@ -209,7 +209,7 @@ void main() {
     });
 
     test('rejects when parent itself has a parent (depth limit)', () {
-      final nested = parent.copyWith(parentId: 99);
+      final nested = parent.copyWith(parentId: '99');
       expect(
         nested.checkValidCategoryParent(AccountType.expense)?.code,
         'category_depth_exceeded',

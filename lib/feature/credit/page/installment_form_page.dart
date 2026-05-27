@@ -21,7 +21,7 @@ class InstallmentFormPage extends ConsumerStatefulWidget {
     super.key,
   });
 
-  final int liabilityAccountId;
+  final String liabilityAccountId;
   final InstallmentSourceType? lockedSourceType;
 
   @override
@@ -51,7 +51,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
   InterestRatePeriod _ratePeriod = InterestRatePeriod.monthly;
   InterestAccrualMethod _accrualMethod = InterestAccrualMethod.daily;
   InstallmentSourceType? _sourceType;
-  int? _disbursementAccountId;
+  String? _disbursementAccountId;
   bool _submitting = false;
 
   @override
@@ -260,8 +260,8 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
   Future<void> _pickAccount({
     required String title,
     required List<Account> accounts,
-    required int? selectedId,
-    required ValueChanged<int> onSelected,
+    required String? selectedId,
+    required ValueChanged<String> onSelected,
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,
@@ -470,7 +470,7 @@ class _IntegerPlainFormRow extends StatelessWidget {
   }
 }
 
-Account? _findAccount(List<Account> accounts, int? id) {
+Account? _findAccount(List<Account> accounts, String? id) {
   if (id == null) return null;
   for (final a in accounts) {
     if (a.id == id) return a;

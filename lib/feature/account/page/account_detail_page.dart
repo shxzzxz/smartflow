@@ -16,7 +16,7 @@ import '../../../feature/home/widget/transaction_row.dart';
 class AccountDetailPage extends ConsumerWidget {
   const AccountDetailPage({required this.accountId, super.key});
 
-  final int accountId;
+  final String accountId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -60,7 +60,7 @@ class _AccountDetailContent extends ConsumerWidget {
 
   final Account? account;
   final List<TransactionListItem> transactions;
-  final int accountId;
+  final String accountId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -718,7 +718,7 @@ List<_AccountTransactionDayGroup> _groupTransactionsByDay(
   ];
 }
 
-Account? _findAccount(List<Account> accounts, int id) {
+Account? _findAccount(List<Account> accounts, String id) {
   for (final account in accounts) {
     if (account.id == id) {
       return account;

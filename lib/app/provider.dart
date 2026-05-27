@@ -11,6 +11,7 @@ import '../infrastructure/ledger/repository/drift_transaction_detail_read_reposi
 import '../infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 import '../infrastructure/database/drift_transaction_runner.dart';
 import '../infrastructure/database/drift_update_channel_store.dart';
+import '../infrastructure/shared/uuid_id_generator.dart';
 import '../application/ledger/ledger_api.dart';
 import 'package:smartflow/application/credit/credit_api.dart';
 import '../domain/ledger/port/account_repository.dart';
@@ -23,10 +24,16 @@ import '../application/ledger/query/transaction_detail_read_repository.dart';
 import '../application/ledger/query/transaction_read_repository.dart';
 import '../application/shared/transaction_runner.dart';
 import '../application/shared/update_channel_store.dart';
+import '../core/id/id_generator.dart';
 import '../core/time/month_key.dart';
 import '../core/money/money.dart';
 
 part 'provider.g.dart';
+
+@Riverpod(keepAlive: true)
+IdGenerator idGenerator(Ref ref) {
+  return const UuidIdGenerator();
+}
 
 @Riverpod(keepAlive: true)
 SystemAccountResolver systemAccountResolver(Ref ref) {
@@ -84,6 +91,7 @@ AccountAppService accountAppService(Ref ref) {
     ref.watch(accountRepositoryProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
     transactions: ref.watch(postingAppServiceProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
   );
 }
 
@@ -92,6 +100,7 @@ CategoryService categoryService(Ref ref) {
   return CategoryServiceImpl(
     repository: ref.watch(accountRepositoryProvider),
     queries: ref.watch(accountQueryRepositoryProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
   );
 }
 
@@ -103,6 +112,7 @@ PostingAppService postingAppService(Ref ref) {
     postingRepository: ref.watch(postingRepositoryProvider),
     systemAccountResolver: ref.watch(systemAccountResolverProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
   );
 }
 
@@ -137,7 +147,7 @@ Stream<List<Account>> accountList(Ref ref) {
 /// 用法:在 widget 内 `ref.watch(accountsByIdProvider).value ?? const {}`,
 /// 配合 `widget/business/account_lookup.dart` 的 extension 使用。
 @riverpod
-Stream<Map<int, Account>> accountsById(Ref ref) {
+Stream<Map<String, Account>> accountsById(Ref ref) {
   return ref
       .watch(accountQueryRepositoryProvider)
       .watchAccounts({
@@ -174,7 +184,7 @@ Stream<List<CategoryNode>> categoryTree(Ref ref, AccountType type) {
 }
 
 @riverpod
-Stream<List<TransactionListItem>> transactionList(Ref ref, {int? accountId}) {
+Stream<List<TransactionListItem>> transactionList(Ref ref, {String? accountId}) {
   return ref
       .watch(transactionQueryServiceProvider)
       .watchTransactions(
@@ -266,7 +276,7 @@ Stream<List<NetAssetTrendPoint>> netAssetTrend(Ref ref, {int months = 6}) {
 }
 
 @riverpod
-Stream<TransactionDetail?> transactionDetail(Ref ref, int transactionId) {
+Stream<TransactionDetail?> transactionDetail(Ref ref, String transactionId) {
   return ref
       .watch(transactionQueryServiceProvider)
       .watchTransactionDetail(transactionId);
@@ -300,7 +310,7 @@ CreditService creditService(Ref ref) {
 @riverpod
 Future<List<InstallmentContract>> installmentContractsByAccount(
   Ref ref,
-  int accountId,
+  String accountId,
 ) {
   return ref
       .watch(installmentServiceProvider)
@@ -308,14 +318,14 @@ Future<List<InstallmentContract>> installmentContractsByAccount(
 }
 
 @riverpod
-Future<InstallmentContract?> installmentContract(Ref ref, int contractId) {
+Future<InstallmentContract?> installmentContract(Ref ref, String contractId) {
   return ref.watch(installmentServiceProvider).findContract(contractId);
 }
 
 @riverpod
 Future<List<InstallmentSchedule>> installmentSchedules(
   Ref ref,
-  int contractId,
+  String contractId,
 ) {
   return ref.watch(installmentServiceProvider).listSchedules(contractId);
 }
@@ -323,7 +333,7 @@ Future<List<InstallmentSchedule>> installmentSchedules(
 @riverpod
 Future<List<InstallmentRepayment>> installmentRepayments(
   Ref ref,
-  int contractId,
+  String contractId,
 ) {
   return ref.watch(installmentServiceProvider).listRepayments(contractId);
 }
@@ -333,7 +343,7 @@ Future<List<InstallmentRepayment>> installmentRepayments(
 @riverpod
 Future<List<RepaymentCashflow>> installmentRepaymentCashflows(
   Ref ref,
-  int contractId,
+  String contractId,
 ) async {
   final repayments = await ref.watch(
     installmentRepaymentsProvider(contractId).future,
@@ -381,7 +391,7 @@ Future<List<RepaymentCashflow>> installmentRepaymentCashflows(
 @riverpod
 Future<({ContractMetrics designed, ContractMetrics actual})> installmentMetrics(
   Ref ref,
-  int contractId,
+  String contractId,
 ) async {
   final contract = await ref.watch(
     installmentContractProvider(contractId).future,

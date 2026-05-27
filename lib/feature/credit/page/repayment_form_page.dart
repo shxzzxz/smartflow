@@ -23,8 +23,8 @@ class RepaymentFormPage extends ConsumerStatefulWidget {
     : liabilityAccountId = null,
       assert(editTransactionId != null);
 
-  final int? liabilityAccountId;
-  final int? editTransactionId;
+  final String? liabilityAccountId;
+  final String? editTransactionId;
 
   @override
   ConsumerState<RepaymentFormPage> createState() => _RepaymentFormPageState();
@@ -39,8 +39,8 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
   final _noteController = TextEditingController();
 
   DateTime _occurredAt = DateTime.now();
-  int? _liabilityAccountId;
-  int? _paidFromAccountId;
+  String? _liabilityAccountId;
+  String? _paidFromAccountId;
   bool _submitting = false;
   bool _editInitialized = false;
 
@@ -90,7 +90,7 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
     if (isEdit && !_editInitialized) {
       final detail = detailAsync!.value;
       final accountsById =
-          ref.read(accountsByIdProvider).value ?? const <int, Account>{};
+          ref.read(accountsByIdProvider).value ?? const <String, Account>{};
       final view =
           detail == null
               ? null
@@ -253,8 +253,8 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
   Future<void> _pickAccount({
     required String title,
     required List<Account> accounts,
-    required int? selectedId,
-    required ValueChanged<int> onSelected,
+    required String? selectedId,
+    required ValueChanged<String> onSelected,
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,
@@ -391,7 +391,7 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
   }
 }
 
-Account? _findAccount(List<Account> accounts, int? id) {
+Account? _findAccount(List<Account> accounts, String? id) {
   if (id == null) return null;
   for (final account in accounts) {
     if (account.id == id) return account;
@@ -399,7 +399,7 @@ Account? _findAccount(List<Account> accounts, int? id) {
   return null;
 }
 
-int? _selectedId(int? id, List<Account> accounts) {
+String? _selectedId(String? id, List<Account> accounts) {
   if (id == null) return null;
   for (final account in accounts) {
     if (account.id == id) return id;

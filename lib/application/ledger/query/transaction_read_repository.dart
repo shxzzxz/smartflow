@@ -23,9 +23,9 @@ class TransactionChildAggregate {
 /// 接口面向会计概念,业务字面量(具体的 `BusinessPurpose` / `BusinessState` 值)
 /// 通过参数 Set 传入,repo 不知道这些参数对应的业务流程语义。
 abstract interface class TransactionReadRepository {
-  Future<Transaction?> findById(int id);
+  Future<Transaction?> findById(String id);
 
-  Future<List<Transaction>> findByIds(Set<int> ids);
+  Future<List<Transaction>> findByIds(Set<String> ids);
 
   /// 监听一页交易行。响应式跟随 transaction 表变更触发。
   Stream<List<Transaction>> watchPage(TransactionListQuery query);
@@ -33,7 +33,7 @@ abstract interface class TransactionReadRepository {
   /// 取以 `parentId` 为直接父交易的子交易列表。
   /// `states` 为 null 表示不过滤 state。
   Future<List<Transaction>> findChildren({
-    required int parentId,
+    required String parentId,
     Set<BusinessState>? states,
   });
 
@@ -41,8 +41,8 @@ abstract interface class TransactionReadRepository {
   /// `excludeStateMutation` 排除指定 (state, mutationKind) 组合的行(用于
   /// 「排除当前激活的 original」这种 history view 语义)。
   Future<List<Transaction>> findRootDescendants({
-    required int rootId,
-    int? excludeId,
+    required String rootId,
+    String? excludeId,
     ({BusinessState state, MutationKind mutationKind})? excludeStateMutation,
   });
 
@@ -51,26 +51,26 @@ abstract interface class TransactionReadRepository {
   ///
   /// 业务字面量(refund / receipt / close 等)通过 `purposes` 集合传入,
   /// repo 仅按值做 IN 过滤,不知道这些 purpose 对应的业务流程。
-  Future<Map<int, TransactionChildAggregate>> aggregateChildren({
-    required Set<int> rootIds,
+  Future<Map<String, TransactionChildAggregate>> aggregateChildren({
+    required Set<String> rootIds,
     required Set<BusinessPurpose> purposes,
     required Set<BusinessState> states,
   });
 
   /// 按 rootId 维度,对子交易关联的 transaction_details 中
   /// (detail.type ∈ detailTypes ∧ child.state ∈ states) 的行,按 type 分桶求和。
-  Future<Map<int, Map<TransactionDetailType, int>>>
+  Future<Map<String, Map<TransactionDetailType, int>>>
   aggregateChildDetailAmounts({
-    required Set<int> rootIds,
+    required Set<String> rootIds,
     required Set<TransactionDetailType> detailTypes,
     required Set<BusinessState> states,
   });
 
   /// 按 (rootId, purpose) 双维度分桶,对子交易 (state ∈ states) 求 primary_amount 和 + count。
   /// 用于一次查询拿到"每个 root 下每种 purpose 的累计 + 计数"。
-  Future<Map<int, Map<BusinessPurpose, TransactionChildAggregate>>>
+  Future<Map<String, Map<BusinessPurpose, TransactionChildAggregate>>>
   aggregateChildrenByPurpose({
-    required Set<int> rootIds,
+    required Set<String> rootIds,
     required Set<BusinessPurpose> purposes,
     required Set<BusinessState> states,
   });

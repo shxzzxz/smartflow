@@ -106,7 +106,7 @@ class _Fixture {
   const _Fixture({required this.item, required this.accountsById});
 
   final TransactionListItem item;
-  final Map<int, Account> accountsById;
+  final Map<String, Account> accountsById;
 }
 
 /// 构造一个 list item + 全套 accountsById,用于驱动新签名的 presentation 函数。
@@ -144,7 +144,7 @@ _Fixture _buildFixture(
     return account;
   }
 
-  int? reimbursementExpenseAccountId;
+  String? reimbursementExpenseAccountId;
   switch (purpose) {
     case BusinessPurpose.dailyExpense:
       makeAccount(
@@ -156,18 +156,18 @@ _Fixture _buildFixture(
       makeAccount(20, flowOutName ?? '钱包', AccountType.asset);
       entries.add(
         Entry(
-          id: 1,
-          transactionId: 1,
-          accountId: 10,
+          id: '1',
+          transactionId: '1',
+          accountId: '10',
           direction: EntryDirection.debit,
           amount: amount,
         ),
       );
       entries.add(
         Entry(
-          id: 2,
-          transactionId: 1,
-          accountId: 20,
+          id: '2',
+          transactionId: '1',
+          accountId: '20',
           direction: EntryDirection.credit,
           amount: amount,
         ),
@@ -182,18 +182,18 @@ _Fixture _buildFixture(
       makeAccount(21, flowInName ?? '银行卡', AccountType.asset);
       entries.add(
         Entry(
-          id: 1,
-          transactionId: 1,
-          accountId: 21,
+          id: '1',
+          transactionId: '1',
+          accountId: '21',
           direction: EntryDirection.debit,
           amount: amount,
         ),
       );
       entries.add(
         Entry(
-          id: 2,
-          transactionId: 1,
-          accountId: 11,
+          id: '2',
+          transactionId: '1',
+          accountId: '11',
           direction: EntryDirection.credit,
           amount: amount,
         ),
@@ -210,18 +210,18 @@ _Fixture _buildFixture(
       reimbursementExpenseAccountId = 12;
       entries.add(
         Entry(
-          id: 1,
-          transactionId: 1,
-          accountId: 23,
+          id: '1',
+          transactionId: '1',
+          accountId: '23',
           direction: EntryDirection.debit,
           amount: amount,
         ),
       );
       entries.add(
         Entry(
-          id: 2,
-          transactionId: 1,
-          accountId: 22,
+          id: '2',
+          transactionId: '1',
+          accountId: '22',
           direction: EntryDirection.credit,
           amount: amount,
         ),

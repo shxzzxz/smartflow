@@ -25,7 +25,7 @@ abstract interface class CreditService {
   /// 用于把 entries 的 accountId 解析为 AccountType。
   RepaymentEditView? parseRepaymentEditView(
     TransactionDetail detail, {
-    required Map<int, Account> accountsById,
+    required Map<String, Account> accountsById,
   });
 }
 
@@ -41,8 +41,8 @@ class CreateRepaymentCommand {
     this.note,
   });
 
-  final int liabilityAccountId;
-  final int paidFromAccountId;
+  final String liabilityAccountId;
+  final String paidFromAccountId;
   final Money principal;
   final Money? interest;
   final Money? fee;
@@ -66,9 +66,9 @@ class CorrectRepaymentCommand {
     this.note,
   });
 
-  final int transactionId;
-  final int liabilityAccountId;
-  final int paidFromAccountId;
+  final String transactionId;
+  final String liabilityAccountId;
+  final String paidFromAccountId;
   final Money principal;
   final Money? interest;
   final Money? fee;
@@ -95,8 +95,8 @@ class RepaymentEditView {
   final Money? interest;
   final Money? fee;
   final Money? discount;
-  final int liabilityAccountId;
-  final int paidFromAccountId;
+  final String liabilityAccountId;
+  final String paidFromAccountId;
   final DateTime occurredAt;
   final String? note;
 }
@@ -194,7 +194,7 @@ class CreditServiceImpl implements CreditService {
   @override
   RepaymentEditView? parseRepaymentEditView(
     TransactionDetail detail, {
-    required Map<int, Account> accountsById,
+    required Map<String, Account> accountsById,
   }) {
     if (detail.transaction.businessPurpose != BusinessPurpose.debtRepayment) {
       return null;
@@ -249,7 +249,7 @@ class CreditServiceImpl implements CreditService {
   ///   - 若原交易挂在分期合同上（owner_type=installment），跳过校验（分期通路自管金额）。
   ///   - 否则把原交易的 REPAYMENT_PRINCIPAL 加回到 debt，避免"原地编辑同金额"被自己挤掉。
   Future<Failure?> _validatePrincipal({
-    required int liabilityAccountId,
+    required String liabilityAccountId,
     required Money principal,
     TransactionDetail? editingTransactionDetail,
   }) async {
@@ -289,9 +289,9 @@ class CreditServiceImpl implements CreditService {
     return null;
   }
 
-  int? _firstAccountId(
+  String? _firstAccountId(
     TransactionDetail detail, {
-    required Map<int, Account> accountsById,
+    required Map<String, Account> accountsById,
     required AccountType accountType,
     required EntryDirection direction,
   }) {
@@ -304,9 +304,9 @@ class CreditServiceImpl implements CreditService {
     return null;
   }
 
-  int? _firstSettlementAccountId(
+  String? _firstSettlementAccountId(
     TransactionDetail detail, {
-    required Map<int, Account> accountsById,
+    required Map<String, Account> accountsById,
   }) {
     for (final entry in detail.entries) {
       if (entry.direction != EntryDirection.credit) continue;

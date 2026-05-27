@@ -27,7 +27,7 @@ import '../../../widget/business/plain_transaction_fields.dart';
 class TransactionDetailPage extends ConsumerWidget {
   const TransactionDetailPage({required this.transactionId, super.key});
 
-  final int transactionId;
+  final String transactionId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -113,7 +113,7 @@ class _DetailBody extends ConsumerWidget {
     final purpose = transaction.businessPurpose;
     final semantic = _semanticForPurpose(purpose);
     final accountsById =
-        ref.watch(accountsByIdProvider).value ?? const <int, Account>{};
+        ref.watch(accountsByIdProvider).value ?? const <String, Account>{};
     final accountRows = _resolveAccountRows(detail, accountsById);
     final settlementAccounts =
         ref.watch(accountsForUsageProvider(AccountUsage.settlement)).value ??
@@ -334,7 +334,7 @@ class _HeroCard extends ConsumerWidget {
     final transaction = detail.transaction;
     final textStyles = context.appTextStyles;
     final accountsById =
-        ref.watch(accountsByIdProvider).value ?? const <int, Account>{};
+        ref.watch(accountsByIdProvider).value ?? const <String, Account>{};
     final categoryName = _resolveCategoryName(detail, accountsById);
     final iconKey = _resolveCategoryIconKey(detail, accountsById);
     final subtitle = _resolveHeroSubtitle(detail);
@@ -734,7 +734,7 @@ class _ActionBar extends StatelessWidget {
   }
 
   Future<void> _openEdit(BuildContext context, String editPath) async {
-    final result = await context.push<int>(editPath);
+    final result = await context.push<String>(editPath);
     if (!context.mounted || result == null) {
       return;
     }
@@ -769,7 +769,7 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
 
   bool _closeReimbursement = true;
   bool _submitting = false;
-  int? _receiveAccountId;
+  String? _receiveAccountId;
   late DateTime _occurredAt;
 
   @override
@@ -827,7 +827,7 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
                           style: context.appTextStyles.detailValue,
                         ),
                       ),
-                    FormField<int>(
+                    FormField<String>(
                       initialValue: selectedAccountId,
                       validator: (_) {
                         final amount = _parseAmountOrNull();
@@ -1005,12 +1005,12 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
     });
   }
 
-  Future<void> _submit(int? selectedAccountId) async {
+  Future<void> _submit(String? selectedAccountId) async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
     final accountsById =
-        ref.read(accountsByIdProvider).value ?? const <int, Account>{};
+        ref.read(accountsByIdProvider).value ?? const <String, Account>{};
     final receivableAccountId = _resolveReceivableAccountId(
       widget.detail,
       accountsById,
@@ -1218,7 +1218,7 @@ class _AccountRowInfo {
   });
 
   final String label;
-  final int accountId;
+  final String accountId;
   final AccountEndpoint endpoint;
   final _AccountEditKind? editKind;
 }
@@ -1227,7 +1227,7 @@ enum _AccountEditKind { settlement, reimbursement }
 
 List<_AccountRowInfo> _resolveAccountRows(
   TransactionDetail detail,
-  Map<int, Account> accountsById,
+  Map<String, Account> accountsById,
 ) {
   final purpose = detail.transaction.businessPurpose;
   final entries = detail.entries;
@@ -1253,7 +1253,7 @@ List<_AccountRowInfo> _resolveAccountRows(
   _AccountRowInfo placeholderRow(String label, {_AccountEditKind? editKind}) {
     return _AccountRowInfo(
       label: label,
-      accountId: 0,
+      accountId: '',
       endpoint: const AccountEndpoint(label: '—', iconKey: null),
       editKind: editKind,
     );
@@ -1334,7 +1334,7 @@ List<_AccountRowInfo> _resolveAccountRows(
 
 AccountEndpoint _endpointFromEntry(
   Entry entry,
-  Map<int, Account> accountsById,
+  Map<String, Account> accountsById,
 ) {
   final account = accountsById[entry.accountId];
   return AccountEndpoint(
@@ -1343,9 +1343,9 @@ AccountEndpoint _endpointFromEntry(
   );
 }
 
-int? _resolveReceivableAccountId(
+String? _resolveReceivableAccountId(
   TransactionDetail detail,
-  Map<int, Account> accountsById,
+  Map<String, Account> accountsById,
 ) {
   for (final entry in detail.entries) {
     if (accountsById[entry.accountId]?.type == AccountType.asset &&
@@ -1356,7 +1356,7 @@ int? _resolveReceivableAccountId(
   return null;
 }
 
-int? _effectiveAccountId(int? selectedId, List<Account> options) {
+String? _effectiveAccountId(String? selectedId, List<Account> options) {
   if (selectedId != null &&
       options.any((account) => account.id == selectedId)) {
     return selectedId;
@@ -1364,7 +1364,7 @@ int? _effectiveAccountId(int? selectedId, List<Account> options) {
   return options.isEmpty ? null : options.first.id;
 }
 
-Account? _findAccount(int? accountId, List<Account> accounts) {
+Account? _findAccount(String? accountId, List<Account> accounts) {
   if (accountId == null) return null;
   for (final account in accounts) {
     if (account.id == accountId) return account;
@@ -1399,7 +1399,7 @@ InputDecoration _dialogInlineInputDecoration(
 
 String? _resolveCategoryName(
   TransactionDetail detail,
-  Map<int, Account> accountsById,
+  Map<String, Account> accountsById,
 ) {
   final purpose = detail.transaction.businessPurpose;
   Account? categoryAccount;
@@ -1429,7 +1429,7 @@ String? _resolveCategoryName(
 
 String? _resolveCategoryIconKey(
   TransactionDetail detail,
-  Map<int, Account> accountsById,
+  Map<String, Account> accountsById,
 ) {
   final purpose = detail.transaction.businessPurpose;
   Account? categoryAccount;
@@ -1533,7 +1533,7 @@ class _SheetItem {
     required this.primaryAmount,
   });
 
-  final int id;
+  final String id;
   final BusinessPurpose purpose;
   final DateTime occurredAt;
   final Money primaryAmount;

@@ -34,9 +34,9 @@ class PostReceipt {
   final Money primaryAmount;
   final List<ReceiptDetail> details;
   final List<ReceiptEntry> entries;
-  final int? rootTransactionId;
-  final int? parentTransactionId;
-  final int? reimbursementExpenseAccountId;
+  final String? rootTransactionId;
+  final String? parentTransactionId;
+  final String? reimbursementExpenseAccountId;
   final String? counterpartyName;
   final String? note;
   final bool isExcludedFromStats;
@@ -50,9 +50,9 @@ class PostReceipt {
     Money? primaryAmount,
     List<ReceiptDetail>? details,
     List<ReceiptEntry>? entries,
-    int? rootTransactionId,
-    int? parentTransactionId,
-    int? reimbursementExpenseAccountId,
+    String? rootTransactionId,
+    String? parentTransactionId,
+    String? reimbursementExpenseAccountId,
     String? counterpartyName,
     String? note,
     bool? isExcludedFromStats,
@@ -178,7 +178,7 @@ class ReceiptEntry {
     required this.amount,
   });
 
-  final int accountId;
+  final String accountId;
   final EntryDirection direction;
   final Money amount;
 }
@@ -189,8 +189,8 @@ class PostReceiptResult {
     required this.rootTransactionId,
   });
 
-  final int transactionId;
-  final int rootTransactionId;
+  final String transactionId;
+  final String rootTransactionId;
 }
 
 /// `updateTransactionBasics` 用于改交易 settlement / reimbursement account
@@ -206,8 +206,8 @@ class EntryAccountReassignment {
          'Exactly one reassignment scope must be provided.',
        );
 
-  final int fromAccountId;
-  final int toAccountId;
-  final int? transactionId;
-  final int? rootTransactionId;
+  final String fromAccountId;
+  final String toAccountId;
+  final String? transactionId;
+  final String? rootTransactionId;
 }

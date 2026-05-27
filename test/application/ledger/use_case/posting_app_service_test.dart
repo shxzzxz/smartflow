@@ -35,8 +35,8 @@ void main() {
         final result = await service.createExpense(
           CreateExpenseCommand(
             amount: const Money(minorUnits: 2000),
-            paidFromAccountId: 1,
-            expenseAccountId: 101,
+            paidFromAccountId: '1',
+            expenseAccountId: '101',
             occurredAt: DateTime(2026, 5),
             counterpartyName: 'Coffee shop',
             note: 'Latte',
@@ -74,8 +74,8 @@ void main() {
         final result = await service.createIncome(
           CreateIncomeCommand(
             amount: const Money(minorUnits: 1000000),
-            receiveAccountId: 2,
-            incomeAccountId: 201,
+            receiveAccountId: '2',
+            incomeAccountId: '201',
             occurredAt: DateTime(2026, 5),
           ),
         );
@@ -101,10 +101,10 @@ void main() {
         final result = await service.createTransfer(
           CreateTransferCommand(
             amount: const Money(minorUnits: 100000),
-            fromAccountId: 2,
-            toAccountId: 1,
+            fromAccountId: '2',
+            toAccountId: '1',
             feeAmount: const Money(minorUnits: 200),
-            feeExpenseAccountId: 103,
+            feeExpenseAccountId: '103',
             occurredAt: DateTime(2026, 5),
           ),
         );
@@ -134,8 +134,8 @@ void main() {
       final result = await service.createTransfer(
         CreateTransferCommand(
           amount: const Money(minorUnits: 100000),
-          fromAccountId: 2,
-          toAccountId: 1,
+          fromAccountId: '2',
+          toAccountId: '1',
           feeAmount: const Money(minorUnits: 200),
           occurredAt: DateTime(2026, 5),
         ),
@@ -148,16 +148,16 @@ void main() {
     test('rejects account used in the wrong transaction role', () async {
       service = buildService(
         accountRepository: _FakeAccountRepository({
-          1: _account(id: 1, type: AccountType.expense),
-          101: _account(id: 101, type: AccountType.expense),
+          1: _account(id: '1', type: AccountType.expense),
+          101: _account(id: '101', type: AccountType.expense),
         }),
       );
 
       final result = await service.createExpense(
         CreateExpenseCommand(
           amount: const Money(minorUnits: 2000),
-          paidFromAccountId: 1,
-          expenseAccountId: 101,
+          paidFromAccountId: '1',
+          expenseAccountId: '101',
           occurredAt: DateTime(2026, 5),
         ),
       );
@@ -170,19 +170,19 @@ void main() {
       service = buildService(
         accountRepository: _FakeAccountRepository({
           1: _account(
-            id: 1,
+            id: '1',
             type: AccountType.liability,
             subtype: AccountSubtype.loan,
           ),
-          101: _account(id: 101, type: AccountType.expense),
+          101: _account(id: '101', type: AccountType.expense),
         }),
       );
 
       final result = await service.createExpense(
         CreateExpenseCommand(
           amount: const Money(minorUnits: 2000),
-          paidFromAccountId: 1,
-          expenseAccountId: 101,
+          paidFromAccountId: '1',
+          expenseAccountId: '101',
           occurredAt: DateTime(2026, 5),
         ),
       );
@@ -195,19 +195,19 @@ void main() {
       service = buildService(
         accountRepository: _FakeAccountRepository({
           1: _account(
-            id: 1,
+            id: '1',
             type: AccountType.liability,
             subtype: AccountSubtype.loan,
           ),
-          201: _account(id: 201, type: AccountType.income),
+          201: _account(id: '201', type: AccountType.income),
         }),
       );
 
       final result = await service.createIncome(
         CreateIncomeCommand(
           amount: const Money(minorUnits: 2000),
-          receiveAccountId: 1,
-          incomeAccountId: 201,
+          receiveAccountId: '1',
+          incomeAccountId: '201',
           occurredAt: DateTime(2026, 5),
         ),
       );
@@ -219,9 +219,9 @@ void main() {
     test('rejects loan account in transfers', () async {
       service = buildService(
         accountRepository: _FakeAccountRepository({
-          1: _account(id: 1, type: AccountType.asset),
+          1: _account(id: '1', type: AccountType.asset),
           2: _account(
-            id: 2,
+            id: '2',
             type: AccountType.liability,
             subtype: AccountSubtype.loan,
           ),
@@ -231,8 +231,8 @@ void main() {
       final result = await service.createTransfer(
         CreateTransferCommand(
           amount: const Money(minorUnits: 2000),
-          fromAccountId: 1,
-          toAccountId: 2,
+          fromAccountId: '1',
+          toAccountId: '2',
           occurredAt: DateTime(2026, 5),
         ),
       );
@@ -249,7 +249,7 @@ class _RecordingPostingRepository implements PostingRepository {
   @override
   Future<PostReceiptResult> saveTransaction(Transaction transaction) async {
     lastTransaction = transaction;
-    return const PostReceiptResult(transactionId: 1, rootTransactionId: 1);
+    return const PostReceiptResult(transactionId: '1', rootTransactionId: '1');
   }
 
   @override
@@ -266,10 +266,10 @@ class _RecordingPostingRepository implements PostingRepository {
 class _FakeAccountRepository implements AccountRepository {
   const _FakeAccountRepository(this.accounts);
 
-  final Map<int, Account> accounts;
+  final Map<String, Account> accounts;
 
   @override
-  Future<List<Account>> findByIds(Set<int> ids) async {
+  Future<List<Account>> findByIds(Set<String> ids) async {
     return [
       for (final id in ids)
         if (accounts[id] != null) accounts[id]!,
@@ -306,11 +306,11 @@ Account _account({
 
 _FakeAccountRepository _defaultAccounts() {
   return _FakeAccountRepository({
-    1: _account(id: 1, type: AccountType.asset),
-    2: _account(id: 2, type: AccountType.asset),
-    101: _account(id: 101, type: AccountType.expense),
-    103: _account(id: 103, type: AccountType.expense),
-    201: _account(id: 201, type: AccountType.income),
+    1: _account(id: '1', type: AccountType.asset),
+    2: _account(id: '2', type: AccountType.asset),
+    101: _account(id: '101', type: AccountType.expense),
+    103: _account(id: '103', type: AccountType.expense),
+    201: _account(id: '201', type: AccountType.income),
   });
 }
 

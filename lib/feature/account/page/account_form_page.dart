@@ -23,7 +23,7 @@ enum _AccountKind { fund, credit, loan, reimbursement }
 class AccountFormPage extends ConsumerStatefulWidget {
   const AccountFormPage({this.accountId, super.key});
 
-  final int? accountId;
+  final String? accountId;
 
   @override
   ConsumerState<AccountFormPage> createState() => _AccountFormPageState();
@@ -40,7 +40,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
   int? _billingDay;
   int? _repaymentDay;
   bool _submitting = false;
-  int? _loadedAccountId;
+  String? _loadedAccountId;
   Account? _loadedAccount;
 
   bool get _isEditMode => widget.accountId != null;
@@ -641,7 +641,7 @@ _AccountKind _accountKindForAccount(Account account) {
       : _AccountKind.fund;
 }
 
-Account? _findAccount(List<Account> accounts, int id) {
+Account? _findAccount(List<Account> accounts, String id) {
   for (final account in accounts) {
     if (account.id == id) {
       return account;

@@ -60,17 +60,17 @@ void main() {
     test('validates balanced entries', () {
       final balanced = [
         ReceiptEntry(
-          accountId: 1,
+          accountId: '1',
           direction: EntryDirection.debit,
           amount: const Money(minorUnits: 1200),
         ),
         ReceiptEntry(
-          accountId: 2,
+          accountId: '2',
           direction: EntryDirection.credit,
           amount: const Money(minorUnits: 1000),
         ),
         ReceiptEntry(
-          accountId: 3,
+          accountId: '3',
           direction: EntryDirection.credit,
           amount: const Money(minorUnits: 200),
         ),
@@ -78,12 +78,12 @@ void main() {
 
       final unbalanced = [
         ReceiptEntry(
-          accountId: 1,
+          accountId: '1',
           direction: EntryDirection.debit,
           amount: const Money(minorUnits: 1200),
         ),
         ReceiptEntry(
-          accountId: 2,
+          accountId: '2',
           direction: EntryDirection.credit,
           amount: const Money(minorUnits: 1000),
         ),

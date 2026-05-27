@@ -9,8 +9,8 @@ class Budget {
     this.accountId,
   });
 
-  final int id;
+  final String id;
   final MonthKey monthKey;
-  final int? accountId;
+  final String? accountId;
   final Money amount;
 }

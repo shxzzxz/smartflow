@@ -13,7 +13,7 @@ import 'package:smartflow/application/credit/credit_api.dart';
 class InstallmentDetailPage extends ConsumerWidget {
   const InstallmentDetailPage({required this.contractId, super.key});
 
-  final int contractId;
+  final String contractId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

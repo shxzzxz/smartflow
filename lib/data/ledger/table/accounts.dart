@@ -4,12 +4,12 @@ import '../../../domain/ledger/valobj/ledger_enum.dart';
 
 @DataClassName('AccountRow')
 class Accounts extends Table {
-  IntColumn get id => integer().autoIncrement()();
+  TextColumn get id => text()();
   TextColumn get name => text().withLength(min: 1, max: 120)();
   TextColumn get accountType => textEnum<AccountType>().named('account_type')();
   TextColumn get accountSubtype =>
       textEnum<AccountSubtype>().named('account_subtype').nullable()();
-  IntColumn get parentId => integer().named('parent_id').nullable()();
+  TextColumn get parentId => text().named('parent_id').nullable()();
   IntColumn get balanceMinor =>
       integer().named('balance_minor').withDefault(const Constant(0))();
   TextColumn get iconKey => text().named('icon_key').nullable()();
@@ -33,6 +33,9 @@ class Accounts extends Table {
       dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt =>
       dateTime().named('updated_at').withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
 
   @override
   List<String> get customConstraints => ['UNIQUE (system_key)'];

@@ -29,12 +29,12 @@ class TransactionRow extends ConsumerWidget {
   final VoidCallback? onQuickEdit;
 
   /// 「账户视角」下当前账户 id。提供时,显示对该账户的余额变动而非交易金额。
-  final int? viewAccountId;
+  final String? viewAccountId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accountsById =
-        ref.watch(accountsByIdProvider).value ?? const <int, Account>{};
+        ref.watch(accountsByIdProvider).value ?? const <String, Account>{};
     final colors = Theme.of(context).colorScheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
     final textStyles = context.appTextStyles;
@@ -294,7 +294,7 @@ class _AccountLine extends StatelessWidget {
   const _AccountLine({required this.item, required this.accountsById});
 
   final TransactionListItem item;
-  final Map<int, Account> accountsById;
+  final Map<String, Account> accountsById;
 
   @override
   Widget build(BuildContext context) {
@@ -349,7 +349,7 @@ class _AccountFlow {
 
 _AccountFlow _resolveAccountFlow(
   TransactionListItem item,
-  Map<int, Account> accountsById,
+  Map<String, Account> accountsById,
 ) {
   AccountEndpoint? endpointOf(Account? account) {
     if (account == null) return null;

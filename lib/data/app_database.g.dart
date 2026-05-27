@@ -11,16 +11,12 @@ class $AccountsTable extends Accounts
   $AccountsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
     aliasedName,
     false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
@@ -57,11 +53,11 @@ class $AccountsTable extends Accounts
     'parentId',
   );
   @override
-  late final GeneratedColumn<int> parentId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> parentId = GeneratedColumn<String>(
     'parent_id',
     aliasedName,
     true,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _balanceMinorMeta = const VerificationMeta(
@@ -245,6 +241,8 @@ class $AccountsTable extends Accounts
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -346,7 +344,7 @@ class $AccountsTable extends Accounts
     return AccountRow(
       id:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
+            DriftSqlType.string,
             data['${effectivePrefix}id'],
           )!,
       name:
@@ -367,7 +365,7 @@ class $AccountsTable extends Accounts
         ),
       ),
       parentId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}parent_id'],
       ),
       balanceMinor:
@@ -458,11 +456,11 @@ class $AccountsTable extends Accounts
 }
 
 class AccountRow extends DataClass implements Insertable<AccountRow> {
-  final int id;
+  final String id;
   final String name;
   final AccountType accountType;
   final AccountSubtype? accountSubtype;
-  final int? parentId;
+  final String? parentId;
   final int balanceMinor;
   final String? iconKey;
   final String? note;
@@ -499,7 +497,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
+    map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     {
       map['account_type'] = Variable<String>(
@@ -512,7 +510,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       );
     }
     if (!nullToAbsent || parentId != null) {
-      map['parent_id'] = Variable<int>(parentId);
+      map['parent_id'] = Variable<String>(parentId);
     }
     map['balance_minor'] = Variable<int>(balanceMinor);
     if (!nullToAbsent || iconKey != null) {
@@ -603,7 +601,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return AccountRow(
-      id: serializer.fromJson<int>(json['id']),
+      id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       accountType: $AccountsTable.$converteraccountType.fromJson(
         serializer.fromJson<String>(json['accountType']),
@@ -611,7 +609,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       accountSubtype: $AccountsTable.$converteraccountSubtypen.fromJson(
         serializer.fromJson<String?>(json['accountSubtype']),
       ),
-      parentId: serializer.fromJson<int?>(json['parentId']),
+      parentId: serializer.fromJson<String?>(json['parentId']),
       balanceMinor: serializer.fromJson<int>(json['balanceMinor']),
       iconKey: serializer.fromJson<String?>(json['iconKey']),
       note: serializer.fromJson<String?>(json['note']),
@@ -635,7 +633,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
+      'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'accountType': serializer.toJson<String>(
         $AccountsTable.$converteraccountType.toJson(accountType),
@@ -643,7 +641,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'accountSubtype': serializer.toJson<String?>(
         $AccountsTable.$converteraccountSubtypen.toJson(accountSubtype),
       ),
-      'parentId': serializer.toJson<int?>(parentId),
+      'parentId': serializer.toJson<String?>(parentId),
       'balanceMinor': serializer.toJson<int>(balanceMinor),
       'iconKey': serializer.toJson<String?>(iconKey),
       'note': serializer.toJson<String?>(note),
@@ -665,11 +663,11 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   }
 
   AccountRow copyWith({
-    int? id,
+    String? id,
     String? name,
     AccountType? accountType,
     Value<AccountSubtype?> accountSubtype = const Value.absent(),
-    Value<int?> parentId = const Value.absent(),
+    Value<String?> parentId = const Value.absent(),
     int? balanceMinor,
     Value<String?> iconKey = const Value.absent(),
     Value<String?> note = const Value.absent(),
@@ -816,11 +814,11 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
 }
 
 class AccountsCompanion extends UpdateCompanion<AccountRow> {
-  final Value<int> id;
+  final Value<String> id;
   final Value<String> name;
   final Value<AccountType> accountType;
   final Value<AccountSubtype?> accountSubtype;
-  final Value<int?> parentId;
+  final Value<String?> parentId;
   final Value<int> balanceMinor;
   final Value<String?> iconKey;
   final Value<String?> note;
@@ -834,6 +832,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<AccountSource> source;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<int> rowid;
   const AccountsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -853,9 +852,10 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.source = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   AccountsCompanion.insert({
-    this.id = const Value.absent(),
+    required String id,
     required String name,
     required AccountType accountType,
     this.accountSubtype = const Value.absent(),
@@ -873,14 +873,16 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.source = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
-  }) : name = Value(name),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
        accountType = Value(accountType);
   static Insertable<AccountRow> custom({
-    Expression<int>? id,
+    Expression<String>? id,
     Expression<String>? name,
     Expression<String>? accountType,
     Expression<String>? accountSubtype,
-    Expression<int>? parentId,
+    Expression<String>? parentId,
     Expression<int>? balanceMinor,
     Expression<String>? iconKey,
     Expression<String>? note,
@@ -894,6 +896,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<String>? source,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -914,15 +917,16 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (source != null) 'source': source,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   AccountsCompanion copyWith({
-    Value<int>? id,
+    Value<String>? id,
     Value<String>? name,
     Value<AccountType>? accountType,
     Value<AccountSubtype?>? accountSubtype,
-    Value<int?>? parentId,
+    Value<String?>? parentId,
     Value<int>? balanceMinor,
     Value<String?>? iconKey,
     Value<String?>? note,
@@ -936,6 +940,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<AccountSource>? source,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<int>? rowid,
   }) {
     return AccountsCompanion(
       id: id ?? this.id,
@@ -956,6 +961,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       source: source ?? this.source,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -963,7 +969,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
@@ -979,7 +985,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       );
     }
     if (parentId.present) {
-      map['parent_id'] = Variable<int>(parentId.value);
+      map['parent_id'] = Variable<String>(parentId.value);
     }
     if (balanceMinor.present) {
       map['balance_minor'] = Variable<int>(balanceMinor.value);
@@ -1024,6 +1030,9 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
     return map;
   }
 
@@ -1047,7 +1056,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('systemKey: $systemKey, ')
           ..write('source: $source, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -1328,28 +1338,25 @@ class $TransactionsTable extends Transactions
   $TransactionsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
     aliasedName,
     false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _rootTransactionIdMeta = const VerificationMeta(
     'rootTransactionId',
   );
   @override
-  late final GeneratedColumn<int> rootTransactionId = GeneratedColumn<int>(
-    'root_transaction_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
+  late final GeneratedColumn<String> rootTransactionId =
+      GeneratedColumn<String>(
+        'root_transaction_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   @override
   late final GeneratedColumnWithTypeConverter<BusinessPurpose, String>
   businessPurpose = GeneratedColumn<String>(
@@ -1405,22 +1412,23 @@ class $TransactionsTable extends Transactions
   static const VerificationMeta _parentTransactionIdMeta =
       const VerificationMeta('parentTransactionId');
   @override
-  late final GeneratedColumn<int> parentTransactionId = GeneratedColumn<int>(
-    'parent_transaction_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
+  late final GeneratedColumn<String> parentTransactionId =
+      GeneratedColumn<String>(
+        'parent_transaction_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _reimbursementExpenseAccountIdMeta =
       const VerificationMeta('reimbursementExpenseAccountId');
   @override
-  late final GeneratedColumn<int> reimbursementExpenseAccountId =
-      GeneratedColumn<int>(
+  late final GeneratedColumn<String> reimbursementExpenseAccountId =
+      GeneratedColumn<String>(
         'reimbursement_expense_account_id',
         aliasedName,
         true,
-        type: DriftSqlType.int,
+        type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
   @override
@@ -1435,12 +1443,12 @@ class $TransactionsTable extends Transactions
   static const VerificationMeta _mutationPreviousTransactionIdMeta =
       const VerificationMeta('mutationPreviousTransactionId');
   @override
-  late final GeneratedColumn<int> mutationPreviousTransactionId =
-      GeneratedColumn<int>(
+  late final GeneratedColumn<String> mutationPreviousTransactionId =
+      GeneratedColumn<String>(
         'mutation_previous_transaction_id',
         aliasedName,
         true,
-        type: DriftSqlType.int,
+        type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
   @override
@@ -1515,11 +1523,11 @@ class $TransactionsTable extends Transactions
     'ownerId',
   );
   @override
-  late final GeneratedColumn<int> ownerId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
     'owner_id',
     aliasedName,
     true,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _ownerRoleMeta = const VerificationMeta(
@@ -1595,6 +1603,8 @@ class $TransactionsTable extends Transactions
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
     }
     if (data.containsKey('root_transaction_id')) {
       context.handle(
@@ -1725,11 +1735,11 @@ class $TransactionsTable extends Transactions
     return TransactionRow(
       id:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
+            DriftSqlType.string,
             data['${effectivePrefix}id'],
           )!,
       rootTransactionId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}root_transaction_id'],
       ),
       businessPurpose: $TransactionsTable.$converterbusinessPurpose.fromSql(
@@ -1757,11 +1767,11 @@ class $TransactionsTable extends Transactions
         data['${effectivePrefix}note'],
       ),
       parentTransactionId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}parent_transaction_id'],
       ),
       reimbursementExpenseAccountId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}reimbursement_expense_account_id'],
       ),
       mutationKind: $TransactionsTable.$convertermutationKind.fromSql(
@@ -1771,7 +1781,7 @@ class $TransactionsTable extends Transactions
         )!,
       ),
       mutationPreviousTransactionId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}mutation_previous_transaction_id'],
       ),
       mutationReason: $TransactionsTable.$convertermutationReasonn.fromSql(
@@ -1807,7 +1817,7 @@ class $TransactionsTable extends Transactions
         data['${effectivePrefix}owner_type'],
       ),
       ownerId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}owner_id'],
       ),
       ownerRole: attachedDatabase.typeMapping.read(
@@ -1857,24 +1867,24 @@ class $TransactionsTable extends Transactions
 }
 
 class TransactionRow extends DataClass implements Insertable<TransactionRow> {
-  final int id;
-  final int? rootTransactionId;
+  final String id;
+  final String? rootTransactionId;
   final BusinessPurpose businessPurpose;
   final DateTime occurredAt;
   final int primaryAmountMinor;
   final String? counterpartyName;
   final String? note;
-  final int? parentTransactionId;
-  final int? reimbursementExpenseAccountId;
+  final String? parentTransactionId;
+  final String? reimbursementExpenseAccountId;
   final MutationKind mutationKind;
-  final int? mutationPreviousTransactionId;
+  final String? mutationPreviousTransactionId;
   final MutationReason? mutationReason;
   final BusinessState businessState;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
   final SourceKind sourceKind;
   final String? ownerType;
-  final int? ownerId;
+  final String? ownerId;
   final String? ownerRole;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -1904,9 +1914,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
+    map['id'] = Variable<String>(id);
     if (!nullToAbsent || rootTransactionId != null) {
-      map['root_transaction_id'] = Variable<int>(rootTransactionId);
+      map['root_transaction_id'] = Variable<String>(rootTransactionId);
     }
     {
       map['business_purpose'] = Variable<String>(
@@ -1922,10 +1932,10 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       map['note'] = Variable<String>(note);
     }
     if (!nullToAbsent || parentTransactionId != null) {
-      map['parent_transaction_id'] = Variable<int>(parentTransactionId);
+      map['parent_transaction_id'] = Variable<String>(parentTransactionId);
     }
     if (!nullToAbsent || reimbursementExpenseAccountId != null) {
-      map['reimbursement_expense_account_id'] = Variable<int>(
+      map['reimbursement_expense_account_id'] = Variable<String>(
         reimbursementExpenseAccountId,
       );
     }
@@ -1935,7 +1945,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       );
     }
     if (!nullToAbsent || mutationPreviousTransactionId != null) {
-      map['mutation_previous_transaction_id'] = Variable<int>(
+      map['mutation_previous_transaction_id'] = Variable<String>(
         mutationPreviousTransactionId,
       );
     }
@@ -1960,7 +1970,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       map['owner_type'] = Variable<String>(ownerType);
     }
     if (!nullToAbsent || ownerId != null) {
-      map['owner_id'] = Variable<int>(ownerId);
+      map['owner_id'] = Variable<String>(ownerId);
     }
     if (!nullToAbsent || ownerRole != null) {
       map['owner_role'] = Variable<String>(ownerRole);
@@ -2029,8 +2039,10 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return TransactionRow(
-      id: serializer.fromJson<int>(json['id']),
-      rootTransactionId: serializer.fromJson<int?>(json['rootTransactionId']),
+      id: serializer.fromJson<String>(json['id']),
+      rootTransactionId: serializer.fromJson<String?>(
+        json['rootTransactionId'],
+      ),
       businessPurpose: $TransactionsTable.$converterbusinessPurpose.fromJson(
         serializer.fromJson<String>(json['businessPurpose']),
       ),
@@ -2038,16 +2050,16 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       primaryAmountMinor: serializer.fromJson<int>(json['primaryAmountMinor']),
       counterpartyName: serializer.fromJson<String?>(json['counterpartyName']),
       note: serializer.fromJson<String?>(json['note']),
-      parentTransactionId: serializer.fromJson<int?>(
+      parentTransactionId: serializer.fromJson<String?>(
         json['parentTransactionId'],
       ),
-      reimbursementExpenseAccountId: serializer.fromJson<int?>(
+      reimbursementExpenseAccountId: serializer.fromJson<String?>(
         json['reimbursementExpenseAccountId'],
       ),
       mutationKind: $TransactionsTable.$convertermutationKind.fromJson(
         serializer.fromJson<String>(json['mutationKind']),
       ),
-      mutationPreviousTransactionId: serializer.fromJson<int?>(
+      mutationPreviousTransactionId: serializer.fromJson<String?>(
         json['mutationPreviousTransactionId'],
       ),
       mutationReason: $TransactionsTable.$convertermutationReasonn.fromJson(
@@ -2066,7 +2078,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
         serializer.fromJson<String>(json['sourceKind']),
       ),
       ownerType: serializer.fromJson<String?>(json['ownerType']),
-      ownerId: serializer.fromJson<int?>(json['ownerId']),
+      ownerId: serializer.fromJson<String?>(json['ownerId']),
       ownerRole: serializer.fromJson<String?>(json['ownerRole']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -2076,8 +2088,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'rootTransactionId': serializer.toJson<int?>(rootTransactionId),
+      'id': serializer.toJson<String>(id),
+      'rootTransactionId': serializer.toJson<String?>(rootTransactionId),
       'businessPurpose': serializer.toJson<String>(
         $TransactionsTable.$converterbusinessPurpose.toJson(businessPurpose),
       ),
@@ -2085,14 +2097,14 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'primaryAmountMinor': serializer.toJson<int>(primaryAmountMinor),
       'counterpartyName': serializer.toJson<String?>(counterpartyName),
       'note': serializer.toJson<String?>(note),
-      'parentTransactionId': serializer.toJson<int?>(parentTransactionId),
-      'reimbursementExpenseAccountId': serializer.toJson<int?>(
+      'parentTransactionId': serializer.toJson<String?>(parentTransactionId),
+      'reimbursementExpenseAccountId': serializer.toJson<String?>(
         reimbursementExpenseAccountId,
       ),
       'mutationKind': serializer.toJson<String>(
         $TransactionsTable.$convertermutationKind.toJson(mutationKind),
       ),
-      'mutationPreviousTransactionId': serializer.toJson<int?>(
+      'mutationPreviousTransactionId': serializer.toJson<String?>(
         mutationPreviousTransactionId,
       ),
       'mutationReason': serializer.toJson<String?>(
@@ -2107,7 +2119,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
         $TransactionsTable.$convertersourceKind.toJson(sourceKind),
       ),
       'ownerType': serializer.toJson<String?>(ownerType),
-      'ownerId': serializer.toJson<int?>(ownerId),
+      'ownerId': serializer.toJson<String?>(ownerId),
       'ownerRole': serializer.toJson<String?>(ownerRole),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -2115,24 +2127,24 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   }
 
   TransactionRow copyWith({
-    int? id,
-    Value<int?> rootTransactionId = const Value.absent(),
+    String? id,
+    Value<String?> rootTransactionId = const Value.absent(),
     BusinessPurpose? businessPurpose,
     DateTime? occurredAt,
     int? primaryAmountMinor,
     Value<String?> counterpartyName = const Value.absent(),
     Value<String?> note = const Value.absent(),
-    Value<int?> parentTransactionId = const Value.absent(),
-    Value<int?> reimbursementExpenseAccountId = const Value.absent(),
+    Value<String?> parentTransactionId = const Value.absent(),
+    Value<String?> reimbursementExpenseAccountId = const Value.absent(),
     MutationKind? mutationKind,
-    Value<int?> mutationPreviousTransactionId = const Value.absent(),
+    Value<String?> mutationPreviousTransactionId = const Value.absent(),
     Value<MutationReason?> mutationReason = const Value.absent(),
     BusinessState? businessState,
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
     SourceKind? sourceKind,
     Value<String?> ownerType = const Value.absent(),
-    Value<int?> ownerId = const Value.absent(),
+    Value<String?> ownerId = const Value.absent(),
     Value<String?> ownerRole = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -2325,27 +2337,28 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
 }
 
 class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
-  final Value<int> id;
-  final Value<int?> rootTransactionId;
+  final Value<String> id;
+  final Value<String?> rootTransactionId;
   final Value<BusinessPurpose> businessPurpose;
   final Value<DateTime> occurredAt;
   final Value<int> primaryAmountMinor;
   final Value<String?> counterpartyName;
   final Value<String?> note;
-  final Value<int?> parentTransactionId;
-  final Value<int?> reimbursementExpenseAccountId;
+  final Value<String?> parentTransactionId;
+  final Value<String?> reimbursementExpenseAccountId;
   final Value<MutationKind> mutationKind;
-  final Value<int?> mutationPreviousTransactionId;
+  final Value<String?> mutationPreviousTransactionId;
   final Value<MutationReason?> mutationReason;
   final Value<BusinessState> businessState;
   final Value<bool> isExcludedFromStats;
   final Value<bool> isExcludedFromBudget;
   final Value<SourceKind> sourceKind;
   final Value<String?> ownerType;
-  final Value<int?> ownerId;
+  final Value<String?> ownerId;
   final Value<String?> ownerRole;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<int> rowid;
   const TransactionsCompanion({
     this.id = const Value.absent(),
     this.rootTransactionId = const Value.absent(),
@@ -2368,9 +2381,10 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.ownerRole = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   TransactionsCompanion.insert({
-    this.id = const Value.absent(),
+    required String id,
     this.rootTransactionId = const Value.absent(),
     required BusinessPurpose businessPurpose,
     required DateTime occurredAt,
@@ -2391,34 +2405,37 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.ownerRole = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
-  }) : businessPurpose = Value(businessPurpose),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       businessPurpose = Value(businessPurpose),
        occurredAt = Value(occurredAt),
        primaryAmountMinor = Value(primaryAmountMinor),
        mutationKind = Value(mutationKind),
        businessState = Value(businessState),
        sourceKind = Value(sourceKind);
   static Insertable<TransactionRow> custom({
-    Expression<int>? id,
-    Expression<int>? rootTransactionId,
+    Expression<String>? id,
+    Expression<String>? rootTransactionId,
     Expression<String>? businessPurpose,
     Expression<DateTime>? occurredAt,
     Expression<int>? primaryAmountMinor,
     Expression<String>? counterpartyName,
     Expression<String>? note,
-    Expression<int>? parentTransactionId,
-    Expression<int>? reimbursementExpenseAccountId,
+    Expression<String>? parentTransactionId,
+    Expression<String>? reimbursementExpenseAccountId,
     Expression<String>? mutationKind,
-    Expression<int>? mutationPreviousTransactionId,
+    Expression<String>? mutationPreviousTransactionId,
     Expression<String>? mutationReason,
     Expression<String>? businessState,
     Expression<bool>? isExcludedFromStats,
     Expression<bool>? isExcludedFromBudget,
     Expression<String>? sourceKind,
     Expression<String>? ownerType,
-    Expression<int>? ownerId,
+    Expression<String>? ownerId,
     Expression<String>? ownerRole,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2448,31 +2465,33 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (ownerRole != null) 'owner_role': ownerRole,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   TransactionsCompanion copyWith({
-    Value<int>? id,
-    Value<int?>? rootTransactionId,
+    Value<String>? id,
+    Value<String?>? rootTransactionId,
     Value<BusinessPurpose>? businessPurpose,
     Value<DateTime>? occurredAt,
     Value<int>? primaryAmountMinor,
     Value<String?>? counterpartyName,
     Value<String?>? note,
-    Value<int?>? parentTransactionId,
-    Value<int?>? reimbursementExpenseAccountId,
+    Value<String?>? parentTransactionId,
+    Value<String?>? reimbursementExpenseAccountId,
     Value<MutationKind>? mutationKind,
-    Value<int?>? mutationPreviousTransactionId,
+    Value<String?>? mutationPreviousTransactionId,
     Value<MutationReason?>? mutationReason,
     Value<BusinessState>? businessState,
     Value<bool>? isExcludedFromStats,
     Value<bool>? isExcludedFromBudget,
     Value<SourceKind>? sourceKind,
     Value<String?>? ownerType,
-    Value<int?>? ownerId,
+    Value<String?>? ownerId,
     Value<String?>? ownerRole,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<int>? rowid,
   }) {
     return TransactionsCompanion(
       id: id ?? this.id,
@@ -2498,6 +2517,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       ownerRole: ownerRole ?? this.ownerRole,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -2505,10 +2525,10 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (rootTransactionId.present) {
-      map['root_transaction_id'] = Variable<int>(rootTransactionId.value);
+      map['root_transaction_id'] = Variable<String>(rootTransactionId.value);
     }
     if (businessPurpose.present) {
       map['business_purpose'] = Variable<String>(
@@ -2530,10 +2550,12 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       map['note'] = Variable<String>(note.value);
     }
     if (parentTransactionId.present) {
-      map['parent_transaction_id'] = Variable<int>(parentTransactionId.value);
+      map['parent_transaction_id'] = Variable<String>(
+        parentTransactionId.value,
+      );
     }
     if (reimbursementExpenseAccountId.present) {
-      map['reimbursement_expense_account_id'] = Variable<int>(
+      map['reimbursement_expense_account_id'] = Variable<String>(
         reimbursementExpenseAccountId.value,
       );
     }
@@ -2543,7 +2565,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       );
     }
     if (mutationPreviousTransactionId.present) {
-      map['mutation_previous_transaction_id'] = Variable<int>(
+      map['mutation_previous_transaction_id'] = Variable<String>(
         mutationPreviousTransactionId.value,
       );
     }
@@ -2576,7 +2598,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       map['owner_type'] = Variable<String>(ownerType.value);
     }
     if (ownerId.present) {
-      map['owner_id'] = Variable<int>(ownerId.value);
+      map['owner_id'] = Variable<String>(ownerId.value);
     }
     if (ownerRole.present) {
       map['owner_role'] = Variable<String>(ownerRole.value);
@@ -2586,6 +2608,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
     }
     return map;
   }
@@ -2617,7 +2642,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('ownerId: $ownerId, ')
           ..write('ownerRole: $ownerRole, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -2631,26 +2657,22 @@ class $TransactionDetailsTable extends TransactionDetails
   $TransactionDetailsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
     aliasedName,
     false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _transactionIdMeta = const VerificationMeta(
     'transactionId',
   );
   @override
-  late final GeneratedColumn<int> transactionId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> transactionId = GeneratedColumn<String>(
     'transaction_id',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _lineNoMeta = const VerificationMeta('lineNo');
@@ -2732,6 +2754,8 @@ class $TransactionDetailsTable extends TransactionDetails
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
     }
     if (data.containsKey('transaction_id')) {
       context.handle(
@@ -2786,12 +2810,12 @@ class $TransactionDetailsTable extends TransactionDetails
     return TransactionDetailRow(
       id:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
+            DriftSqlType.string,
             data['${effectivePrefix}id'],
           )!,
       transactionId:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
+            DriftSqlType.string,
             data['${effectivePrefix}transaction_id'],
           )!,
       lineNo:
@@ -2836,8 +2860,8 @@ class $TransactionDetailsTable extends TransactionDetails
 
 class TransactionDetailRow extends DataClass
     implements Insertable<TransactionDetailRow> {
-  final int id;
-  final int transactionId;
+  final String id;
+  final String transactionId;
   final int lineNo;
   final TransactionDetailType detailType;
   final int amountMinor;
@@ -2855,8 +2879,8 @@ class TransactionDetailRow extends DataClass
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['transaction_id'] = Variable<int>(transactionId);
+    map['id'] = Variable<String>(id);
+    map['transaction_id'] = Variable<String>(transactionId);
     map['line_no'] = Variable<int>(lineNo);
     {
       map['detail_type'] = Variable<String>(
@@ -2887,8 +2911,8 @@ class TransactionDetailRow extends DataClass
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return TransactionDetailRow(
-      id: serializer.fromJson<int>(json['id']),
-      transactionId: serializer.fromJson<int>(json['transactionId']),
+      id: serializer.fromJson<String>(json['id']),
+      transactionId: serializer.fromJson<String>(json['transactionId']),
       lineNo: serializer.fromJson<int>(json['lineNo']),
       detailType: $TransactionDetailsTable.$converterdetailType.fromJson(
         serializer.fromJson<String>(json['detailType']),
@@ -2902,8 +2926,8 @@ class TransactionDetailRow extends DataClass
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'transactionId': serializer.toJson<int>(transactionId),
+      'id': serializer.toJson<String>(id),
+      'transactionId': serializer.toJson<String>(transactionId),
       'lineNo': serializer.toJson<int>(lineNo),
       'detailType': serializer.toJson<String>(
         $TransactionDetailsTable.$converterdetailType.toJson(detailType),
@@ -2915,8 +2939,8 @@ class TransactionDetailRow extends DataClass
   }
 
   TransactionDetailRow copyWith({
-    int? id,
-    int? transactionId,
+    String? id,
+    String? transactionId,
     int? lineNo,
     TransactionDetailType? detailType,
     int? amountMinor,
@@ -2987,13 +3011,14 @@ class TransactionDetailRow extends DataClass
 
 class TransactionDetailsCompanion
     extends UpdateCompanion<TransactionDetailRow> {
-  final Value<int> id;
-  final Value<int> transactionId;
+  final Value<String> id;
+  final Value<String> transactionId;
   final Value<int> lineNo;
   final Value<TransactionDetailType> detailType;
   final Value<int> amountMinor;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<int> rowid;
   const TransactionDetailsCompanion({
     this.id = const Value.absent(),
     this.transactionId = const Value.absent(),
@@ -3002,27 +3027,31 @@ class TransactionDetailsCompanion
     this.amountMinor = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   TransactionDetailsCompanion.insert({
-    this.id = const Value.absent(),
-    required int transactionId,
+    required String id,
+    required String transactionId,
     required int lineNo,
     required TransactionDetailType detailType,
     required int amountMinor,
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
-  }) : transactionId = Value(transactionId),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       transactionId = Value(transactionId),
        lineNo = Value(lineNo),
        detailType = Value(detailType),
        amountMinor = Value(amountMinor);
   static Insertable<TransactionDetailRow> custom({
-    Expression<int>? id,
-    Expression<int>? transactionId,
+    Expression<String>? id,
+    Expression<String>? transactionId,
     Expression<int>? lineNo,
     Expression<String>? detailType,
     Expression<int>? amountMinor,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3032,17 +3061,19 @@ class TransactionDetailsCompanion
       if (amountMinor != null) 'amount_minor': amountMinor,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   TransactionDetailsCompanion copyWith({
-    Value<int>? id,
-    Value<int>? transactionId,
+    Value<String>? id,
+    Value<String>? transactionId,
     Value<int>? lineNo,
     Value<TransactionDetailType>? detailType,
     Value<int>? amountMinor,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<int>? rowid,
   }) {
     return TransactionDetailsCompanion(
       id: id ?? this.id,
@@ -3052,6 +3083,7 @@ class TransactionDetailsCompanion
       amountMinor: amountMinor ?? this.amountMinor,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -3059,10 +3091,10 @@ class TransactionDetailsCompanion
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (transactionId.present) {
-      map['transaction_id'] = Variable<int>(transactionId.value);
+      map['transaction_id'] = Variable<String>(transactionId.value);
     }
     if (lineNo.present) {
       map['line_no'] = Variable<int>(lineNo.value);
@@ -3081,6 +3113,9 @@ class TransactionDetailsCompanion
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
     return map;
   }
 
@@ -3093,7 +3128,8 @@ class TransactionDetailsCompanion
           ..write('detailType: $detailType, ')
           ..write('amountMinor: $amountMinor, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -3106,37 +3142,33 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, EntryRow> {
   $EntriesTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
     aliasedName,
     false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _transactionIdMeta = const VerificationMeta(
     'transactionId',
   );
   @override
-  late final GeneratedColumn<int> transactionId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> transactionId = GeneratedColumn<String>(
     'transaction_id',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _accountIdMeta = const VerificationMeta(
     'accountId',
   );
   @override
-  late final GeneratedColumn<int> accountId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
     'account_id',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
   @override
@@ -3207,6 +3239,8 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, EntryRow> {
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
     }
     if (data.containsKey('transaction_id')) {
       context.handle(
@@ -3261,17 +3295,17 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, EntryRow> {
     return EntryRow(
       id:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
+            DriftSqlType.string,
             data['${effectivePrefix}id'],
           )!,
       transactionId:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
+            DriftSqlType.string,
             data['${effectivePrefix}transaction_id'],
           )!,
       accountId:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
+            DriftSqlType.string,
             data['${effectivePrefix}account_id'],
           )!,
       direction: $EntriesTable.$converterdirection.fromSql(
@@ -3310,9 +3344,9 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, EntryRow> {
 }
 
 class EntryRow extends DataClass implements Insertable<EntryRow> {
-  final int id;
-  final int transactionId;
-  final int accountId;
+  final String id;
+  final String transactionId;
+  final String accountId;
   final EntryDirection direction;
   final int amountMinor;
   final DateTime createdAt;
@@ -3329,9 +3363,9 @@ class EntryRow extends DataClass implements Insertable<EntryRow> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['transaction_id'] = Variable<int>(transactionId);
-    map['account_id'] = Variable<int>(accountId);
+    map['id'] = Variable<String>(id);
+    map['transaction_id'] = Variable<String>(transactionId);
+    map['account_id'] = Variable<String>(accountId);
     {
       map['direction'] = Variable<String>(
         $EntriesTable.$converterdirection.toSql(direction),
@@ -3361,9 +3395,9 @@ class EntryRow extends DataClass implements Insertable<EntryRow> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return EntryRow(
-      id: serializer.fromJson<int>(json['id']),
-      transactionId: serializer.fromJson<int>(json['transactionId']),
-      accountId: serializer.fromJson<int>(json['accountId']),
+      id: serializer.fromJson<String>(json['id']),
+      transactionId: serializer.fromJson<String>(json['transactionId']),
+      accountId: serializer.fromJson<String>(json['accountId']),
       direction: $EntriesTable.$converterdirection.fromJson(
         serializer.fromJson<String>(json['direction']),
       ),
@@ -3376,9 +3410,9 @@ class EntryRow extends DataClass implements Insertable<EntryRow> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'transactionId': serializer.toJson<int>(transactionId),
-      'accountId': serializer.toJson<int>(accountId),
+      'id': serializer.toJson<String>(id),
+      'transactionId': serializer.toJson<String>(transactionId),
+      'accountId': serializer.toJson<String>(accountId),
       'direction': serializer.toJson<String>(
         $EntriesTable.$converterdirection.toJson(direction),
       ),
@@ -3389,9 +3423,9 @@ class EntryRow extends DataClass implements Insertable<EntryRow> {
   }
 
   EntryRow copyWith({
-    int? id,
-    int? transactionId,
-    int? accountId,
+    String? id,
+    String? transactionId,
+    String? accountId,
     EntryDirection? direction,
     int? amountMinor,
     DateTime? createdAt,
@@ -3459,13 +3493,14 @@ class EntryRow extends DataClass implements Insertable<EntryRow> {
 }
 
 class EntriesCompanion extends UpdateCompanion<EntryRow> {
-  final Value<int> id;
-  final Value<int> transactionId;
-  final Value<int> accountId;
+  final Value<String> id;
+  final Value<String> transactionId;
+  final Value<String> accountId;
   final Value<EntryDirection> direction;
   final Value<int> amountMinor;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<int> rowid;
   const EntriesCompanion({
     this.id = const Value.absent(),
     this.transactionId = const Value.absent(),
@@ -3474,27 +3509,31 @@ class EntriesCompanion extends UpdateCompanion<EntryRow> {
     this.amountMinor = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   EntriesCompanion.insert({
-    this.id = const Value.absent(),
-    required int transactionId,
-    required int accountId,
+    required String id,
+    required String transactionId,
+    required String accountId,
     required EntryDirection direction,
     required int amountMinor,
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
-  }) : transactionId = Value(transactionId),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       transactionId = Value(transactionId),
        accountId = Value(accountId),
        direction = Value(direction),
        amountMinor = Value(amountMinor);
   static Insertable<EntryRow> custom({
-    Expression<int>? id,
-    Expression<int>? transactionId,
-    Expression<int>? accountId,
+    Expression<String>? id,
+    Expression<String>? transactionId,
+    Expression<String>? accountId,
     Expression<String>? direction,
     Expression<int>? amountMinor,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3504,17 +3543,19 @@ class EntriesCompanion extends UpdateCompanion<EntryRow> {
       if (amountMinor != null) 'amount_minor': amountMinor,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   EntriesCompanion copyWith({
-    Value<int>? id,
-    Value<int>? transactionId,
-    Value<int>? accountId,
+    Value<String>? id,
+    Value<String>? transactionId,
+    Value<String>? accountId,
     Value<EntryDirection>? direction,
     Value<int>? amountMinor,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<int>? rowid,
   }) {
     return EntriesCompanion(
       id: id ?? this.id,
@@ -3524,6 +3565,7 @@ class EntriesCompanion extends UpdateCompanion<EntryRow> {
       amountMinor: amountMinor ?? this.amountMinor,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -3531,13 +3573,13 @@ class EntriesCompanion extends UpdateCompanion<EntryRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (transactionId.present) {
-      map['transaction_id'] = Variable<int>(transactionId.value);
+      map['transaction_id'] = Variable<String>(transactionId.value);
     }
     if (accountId.present) {
-      map['account_id'] = Variable<int>(accountId.value);
+      map['account_id'] = Variable<String>(accountId.value);
     }
     if (direction.present) {
       map['direction'] = Variable<String>(
@@ -3553,6 +3595,9 @@ class EntriesCompanion extends UpdateCompanion<EntryRow> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
     return map;
   }
 
@@ -3565,7 +3610,8 @@ class EntriesCompanion extends UpdateCompanion<EntryRow> {
           ..write('direction: $direction, ')
           ..write('amountMinor: $amountMinor, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -3578,16 +3624,12 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
   $BudgetsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
     aliasedName,
     false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _monthKeyMeta = const VerificationMeta(
     'monthKey',
@@ -3604,11 +3646,11 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     'accountId',
   );
   @override
-  late final GeneratedColumn<int> accountId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
     'account_id',
     aliasedName,
     true,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _amountMinorMeta = const VerificationMeta(
@@ -3669,6 +3711,8 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
     }
     if (data.containsKey('month_key')) {
       context.handle(
@@ -3718,7 +3762,7 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     return BudgetRow(
       id:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
+            DriftSqlType.string,
             data['${effectivePrefix}id'],
           )!,
       monthKey:
@@ -3727,7 +3771,7 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
             data['${effectivePrefix}month_key'],
           )!,
       accountId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}account_id'],
       ),
       amountMinor:
@@ -3755,9 +3799,9 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
 }
 
 class BudgetRow extends DataClass implements Insertable<BudgetRow> {
-  final int id;
+  final String id;
   final int monthKey;
-  final int? accountId;
+  final String? accountId;
   final int amountMinor;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -3772,10 +3816,10 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
+    map['id'] = Variable<String>(id);
     map['month_key'] = Variable<int>(monthKey);
     if (!nullToAbsent || accountId != null) {
-      map['account_id'] = Variable<int>(accountId);
+      map['account_id'] = Variable<String>(accountId);
     }
     map['amount_minor'] = Variable<int>(amountMinor);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -3803,9 +3847,9 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return BudgetRow(
-      id: serializer.fromJson<int>(json['id']),
+      id: serializer.fromJson<String>(json['id']),
       monthKey: serializer.fromJson<int>(json['monthKey']),
-      accountId: serializer.fromJson<int?>(json['accountId']),
+      accountId: serializer.fromJson<String?>(json['accountId']),
       amountMinor: serializer.fromJson<int>(json['amountMinor']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -3815,9 +3859,9 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
+      'id': serializer.toJson<String>(id),
       'monthKey': serializer.toJson<int>(monthKey),
-      'accountId': serializer.toJson<int?>(accountId),
+      'accountId': serializer.toJson<String?>(accountId),
       'amountMinor': serializer.toJson<int>(amountMinor),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -3825,9 +3869,9 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
   }
 
   BudgetRow copyWith({
-    int? id,
+    String? id,
     int? monthKey,
-    Value<int?> accountId = const Value.absent(),
+    Value<String?> accountId = const Value.absent(),
     int? amountMinor,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -3880,12 +3924,13 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
 }
 
 class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
-  final Value<int> id;
+  final Value<String> id;
   final Value<int> monthKey;
-  final Value<int?> accountId;
+  final Value<String?> accountId;
   final Value<int> amountMinor;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<int> rowid;
   const BudgetsCompanion({
     this.id = const Value.absent(),
     this.monthKey = const Value.absent(),
@@ -3893,23 +3938,27 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     this.amountMinor = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   BudgetsCompanion.insert({
-    this.id = const Value.absent(),
+    required String id,
     required int monthKey,
     this.accountId = const Value.absent(),
     required int amountMinor,
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
-  }) : monthKey = Value(monthKey),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       monthKey = Value(monthKey),
        amountMinor = Value(amountMinor);
   static Insertable<BudgetRow> custom({
-    Expression<int>? id,
+    Expression<String>? id,
     Expression<int>? monthKey,
-    Expression<int>? accountId,
+    Expression<String>? accountId,
     Expression<int>? amountMinor,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3918,16 +3967,18 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
       if (amountMinor != null) 'amount_minor': amountMinor,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   BudgetsCompanion copyWith({
-    Value<int>? id,
+    Value<String>? id,
     Value<int>? monthKey,
-    Value<int?>? accountId,
+    Value<String?>? accountId,
     Value<int>? amountMinor,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<int>? rowid,
   }) {
     return BudgetsCompanion(
       id: id ?? this.id,
@@ -3936,6 +3987,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
       amountMinor: amountMinor ?? this.amountMinor,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -3943,13 +3995,13 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (monthKey.present) {
       map['month_key'] = Variable<int>(monthKey.value);
     }
     if (accountId.present) {
-      map['account_id'] = Variable<int>(accountId.value);
+      map['account_id'] = Variable<String>(accountId.value);
     }
     if (amountMinor.present) {
       map['amount_minor'] = Variable<int>(amountMinor.value);
@@ -3959,6 +4011,9 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
     }
     return map;
   }
@@ -3971,7 +4026,8 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
           ..write('accountId: $accountId, ')
           ..write('amountMinor: $amountMinor, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -3985,27 +4041,24 @@ class $InstallmentContractsTable extends InstallmentContracts
   $InstallmentContractsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
     aliasedName,
     false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _liabilityAccountIdMeta =
       const VerificationMeta('liabilityAccountId');
   @override
-  late final GeneratedColumn<int> liabilityAccountId = GeneratedColumn<int>(
-    'liability_account_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
+  late final GeneratedColumn<String> liabilityAccountId =
+      GeneratedColumn<String>(
+        'liability_account_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
   @override
   late final GeneratedColumnWithTypeConverter<InstallmentSourceType, String>
   sourceType = GeneratedColumn<String>(
@@ -4020,22 +4073,23 @@ class $InstallmentContractsTable extends InstallmentContracts
   static const VerificationMeta _disbursementAccountIdMeta =
       const VerificationMeta('disbursementAccountId');
   @override
-  late final GeneratedColumn<int> disbursementAccountId = GeneratedColumn<int>(
-    'disbursement_account_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
+  late final GeneratedColumn<String> disbursementAccountId =
+      GeneratedColumn<String>(
+        'disbursement_account_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _disbursementTransactionIdMeta =
       const VerificationMeta('disbursementTransactionId');
   @override
-  late final GeneratedColumn<int> disbursementTransactionId =
-      GeneratedColumn<int>(
+  late final GeneratedColumn<String> disbursementTransactionId =
+      GeneratedColumn<String>(
         'disbursement_transaction_id',
         aliasedName,
         true,
-        type: DriftSqlType.int,
+        type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
   static const VerificationMeta _principalMinorMeta = const VerificationMeta(
@@ -4235,6 +4289,8 @@ class $InstallmentContractsTable extends InstallmentContracts
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
     }
     if (data.containsKey('liability_account_id')) {
       context.handle(
@@ -4367,12 +4423,12 @@ class $InstallmentContractsTable extends InstallmentContracts
     return InstallmentContractRow(
       id:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
+            DriftSqlType.string,
             data['${effectivePrefix}id'],
           )!,
       liabilityAccountId:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
+            DriftSqlType.string,
             data['${effectivePrefix}liability_account_id'],
           )!,
       sourceType: $InstallmentContractsTable.$convertersourceType.fromSql(
@@ -4382,11 +4438,11 @@ class $InstallmentContractsTable extends InstallmentContracts
         )!,
       ),
       disbursementAccountId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}disbursement_account_id'],
       ),
       disbursementTransactionId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}disbursement_transaction_id'],
       ),
       principalMinor:
@@ -4504,11 +4560,11 @@ class $InstallmentContractsTable extends InstallmentContracts
 
 class InstallmentContractRow extends DataClass
     implements Insertable<InstallmentContractRow> {
-  final int id;
-  final int liabilityAccountId;
+  final String id;
+  final String liabilityAccountId;
   final InstallmentSourceType sourceType;
-  final int? disbursementAccountId;
-  final int? disbursementTransactionId;
+  final String? disbursementAccountId;
+  final String? disbursementTransactionId;
   final int principalMinor;
   final int totalPeriods;
 
@@ -4557,18 +4613,18 @@ class InstallmentContractRow extends DataClass
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['liability_account_id'] = Variable<int>(liabilityAccountId);
+    map['id'] = Variable<String>(id);
+    map['liability_account_id'] = Variable<String>(liabilityAccountId);
     {
       map['source_type'] = Variable<String>(
         $InstallmentContractsTable.$convertersourceType.toSql(sourceType),
       );
     }
     if (!nullToAbsent || disbursementAccountId != null) {
-      map['disbursement_account_id'] = Variable<int>(disbursementAccountId);
+      map['disbursement_account_id'] = Variable<String>(disbursementAccountId);
     }
     if (!nullToAbsent || disbursementTransactionId != null) {
-      map['disbursement_transaction_id'] = Variable<int>(
+      map['disbursement_transaction_id'] = Variable<String>(
         disbursementTransactionId,
       );
     }
@@ -4657,15 +4713,17 @@ class InstallmentContractRow extends DataClass
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return InstallmentContractRow(
-      id: serializer.fromJson<int>(json['id']),
-      liabilityAccountId: serializer.fromJson<int>(json['liabilityAccountId']),
+      id: serializer.fromJson<String>(json['id']),
+      liabilityAccountId: serializer.fromJson<String>(
+        json['liabilityAccountId'],
+      ),
       sourceType: $InstallmentContractsTable.$convertersourceType.fromJson(
         serializer.fromJson<String>(json['sourceType']),
       ),
-      disbursementAccountId: serializer.fromJson<int?>(
+      disbursementAccountId: serializer.fromJson<String?>(
         json['disbursementAccountId'],
       ),
-      disbursementTransactionId: serializer.fromJson<int?>(
+      disbursementTransactionId: serializer.fromJson<String?>(
         json['disbursementTransactionId'],
       ),
       principalMinor: serializer.fromJson<int>(json['principalMinor']),
@@ -4699,13 +4757,15 @@ class InstallmentContractRow extends DataClass
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'liabilityAccountId': serializer.toJson<int>(liabilityAccountId),
+      'id': serializer.toJson<String>(id),
+      'liabilityAccountId': serializer.toJson<String>(liabilityAccountId),
       'sourceType': serializer.toJson<String>(
         $InstallmentContractsTable.$convertersourceType.toJson(sourceType),
       ),
-      'disbursementAccountId': serializer.toJson<int?>(disbursementAccountId),
-      'disbursementTransactionId': serializer.toJson<int?>(
+      'disbursementAccountId': serializer.toJson<String?>(
+        disbursementAccountId,
+      ),
+      'disbursementTransactionId': serializer.toJson<String?>(
         disbursementTransactionId,
       ),
       'principalMinor': serializer.toJson<int>(principalMinor),
@@ -4740,11 +4800,11 @@ class InstallmentContractRow extends DataClass
   }
 
   InstallmentContractRow copyWith({
-    int? id,
-    int? liabilityAccountId,
+    String? id,
+    String? liabilityAccountId,
     InstallmentSourceType? sourceType,
-    Value<int?> disbursementAccountId = const Value.absent(),
-    Value<int?> disbursementTransactionId = const Value.absent(),
+    Value<String?> disbursementAccountId = const Value.absent(),
+    Value<String?> disbursementTransactionId = const Value.absent(),
     int? principalMinor,
     int? totalPeriods,
     DateTime? borrowingDate,
@@ -4929,11 +4989,11 @@ class InstallmentContractRow extends DataClass
 
 class InstallmentContractsCompanion
     extends UpdateCompanion<InstallmentContractRow> {
-  final Value<int> id;
-  final Value<int> liabilityAccountId;
+  final Value<String> id;
+  final Value<String> liabilityAccountId;
   final Value<InstallmentSourceType> sourceType;
-  final Value<int?> disbursementAccountId;
-  final Value<int?> disbursementTransactionId;
+  final Value<String?> disbursementAccountId;
+  final Value<String?> disbursementTransactionId;
   final Value<int> principalMinor;
   final Value<int> totalPeriods;
   final Value<DateTime> borrowingDate;
@@ -4948,6 +5008,7 @@ class InstallmentContractsCompanion
   final Value<String?> note;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<int> rowid;
   const InstallmentContractsCompanion({
     this.id = const Value.absent(),
     this.liabilityAccountId = const Value.absent(),
@@ -4968,10 +5029,11 @@ class InstallmentContractsCompanion
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   InstallmentContractsCompanion.insert({
-    this.id = const Value.absent(),
-    required int liabilityAccountId,
+    required String id,
+    required String liabilityAccountId,
     required InstallmentSourceType sourceType,
     this.disbursementAccountId = const Value.absent(),
     this.disbursementTransactionId = const Value.absent(),
@@ -4989,7 +5051,9 @@ class InstallmentContractsCompanion
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
-  }) : liabilityAccountId = Value(liabilityAccountId),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       liabilityAccountId = Value(liabilityAccountId),
        sourceType = Value(sourceType),
        principalMinor = Value(principalMinor),
        totalPeriods = Value(totalPeriods),
@@ -4999,11 +5063,11 @@ class InstallmentContractsCompanion
        repaymentMethod = Value(repaymentMethod),
        status = Value(status);
   static Insertable<InstallmentContractRow> custom({
-    Expression<int>? id,
-    Expression<int>? liabilityAccountId,
+    Expression<String>? id,
+    Expression<String>? liabilityAccountId,
     Expression<String>? sourceType,
-    Expression<int>? disbursementAccountId,
-    Expression<int>? disbursementTransactionId,
+    Expression<String>? disbursementAccountId,
+    Expression<String>? disbursementTransactionId,
     Expression<int>? principalMinor,
     Expression<int>? totalPeriods,
     Expression<DateTime>? borrowingDate,
@@ -5018,6 +5082,7 @@ class InstallmentContractsCompanion
     Expression<String>? note,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -5045,15 +5110,16 @@ class InstallmentContractsCompanion
       if (note != null) 'note': note,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   InstallmentContractsCompanion copyWith({
-    Value<int>? id,
-    Value<int>? liabilityAccountId,
+    Value<String>? id,
+    Value<String>? liabilityAccountId,
     Value<InstallmentSourceType>? sourceType,
-    Value<int?>? disbursementAccountId,
-    Value<int?>? disbursementTransactionId,
+    Value<String?>? disbursementAccountId,
+    Value<String?>? disbursementTransactionId,
     Value<int>? principalMinor,
     Value<int>? totalPeriods,
     Value<DateTime>? borrowingDate,
@@ -5068,6 +5134,7 @@ class InstallmentContractsCompanion
     Value<String?>? note,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<int>? rowid,
   }) {
     return InstallmentContractsCompanion(
       id: id ?? this.id,
@@ -5092,6 +5159,7 @@ class InstallmentContractsCompanion
       note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -5099,10 +5167,10 @@ class InstallmentContractsCompanion
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (liabilityAccountId.present) {
-      map['liability_account_id'] = Variable<int>(liabilityAccountId.value);
+      map['liability_account_id'] = Variable<String>(liabilityAccountId.value);
     }
     if (sourceType.present) {
       map['source_type'] = Variable<String>(
@@ -5110,12 +5178,12 @@ class InstallmentContractsCompanion
       );
     }
     if (disbursementAccountId.present) {
-      map['disbursement_account_id'] = Variable<int>(
+      map['disbursement_account_id'] = Variable<String>(
         disbursementAccountId.value,
       );
     }
     if (disbursementTransactionId.present) {
-      map['disbursement_transaction_id'] = Variable<int>(
+      map['disbursement_transaction_id'] = Variable<String>(
         disbursementTransactionId.value,
       );
     }
@@ -5177,6 +5245,9 @@ class InstallmentContractsCompanion
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
     return map;
   }
 
@@ -5201,7 +5272,8 @@ class InstallmentContractsCompanion
           ..write('status: $status, ')
           ..write('note: $note, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -5215,26 +5287,22 @@ class $InstallmentSchedulesTable extends InstallmentSchedules
   $InstallmentSchedulesTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
     aliasedName,
     false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _contractIdMeta = const VerificationMeta(
     'contractId',
   );
   @override
-  late final GeneratedColumn<int> contractId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> contractId = GeneratedColumn<String>(
     'contract_id',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _periodNoMeta = const VerificationMeta(
@@ -5365,6 +5433,8 @@ class $InstallmentSchedulesTable extends InstallmentSchedules
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
     }
     if (data.containsKey('contract_id')) {
       context.handle(
@@ -5449,12 +5519,12 @@ class $InstallmentSchedulesTable extends InstallmentSchedules
     return InstallmentScheduleRow(
       id:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
+            DriftSqlType.string,
             data['${effectivePrefix}id'],
           )!,
       contractId:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
+            DriftSqlType.string,
             data['${effectivePrefix}contract_id'],
           )!,
       periodNo:
@@ -5518,8 +5588,8 @@ class $InstallmentSchedulesTable extends InstallmentSchedules
 
 class InstallmentScheduleRow extends DataClass
     implements Insertable<InstallmentScheduleRow> {
-  final int id;
-  final int contractId;
+  final String id;
+  final String contractId;
   final int periodNo;
   final DateTime expectedRepaymentDate;
   final int expectedPrincipalMinor;
@@ -5545,8 +5615,8 @@ class InstallmentScheduleRow extends DataClass
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['contract_id'] = Variable<int>(contractId);
+    map['id'] = Variable<String>(id);
+    map['contract_id'] = Variable<String>(contractId);
     map['period_no'] = Variable<int>(periodNo);
     map['expected_repayment_date'] = Variable<DateTime>(expectedRepaymentDate);
     map['expected_principal_minor'] = Variable<int>(expectedPrincipalMinor);
@@ -5587,8 +5657,8 @@ class InstallmentScheduleRow extends DataClass
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return InstallmentScheduleRow(
-      id: serializer.fromJson<int>(json['id']),
-      contractId: serializer.fromJson<int>(json['contractId']),
+      id: serializer.fromJson<String>(json['id']),
+      contractId: serializer.fromJson<String>(json['contractId']),
       periodNo: serializer.fromJson<int>(json['periodNo']),
       expectedRepaymentDate: serializer.fromJson<DateTime>(
         json['expectedRepaymentDate'],
@@ -5612,8 +5682,8 @@ class InstallmentScheduleRow extends DataClass
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'contractId': serializer.toJson<int>(contractId),
+      'id': serializer.toJson<String>(id),
+      'contractId': serializer.toJson<String>(contractId),
       'periodNo': serializer.toJson<int>(periodNo),
       'expectedRepaymentDate': serializer.toJson<DateTime>(
         expectedRepaymentDate,
@@ -5631,8 +5701,8 @@ class InstallmentScheduleRow extends DataClass
   }
 
   InstallmentScheduleRow copyWith({
-    int? id,
-    int? contractId,
+    String? id,
+    String? contractId,
     int? periodNo,
     DateTime? expectedRepaymentDate,
     int? expectedPrincipalMinor,
@@ -5736,8 +5806,8 @@ class InstallmentScheduleRow extends DataClass
 
 class InstallmentSchedulesCompanion
     extends UpdateCompanion<InstallmentScheduleRow> {
-  final Value<int> id;
-  final Value<int> contractId;
+  final Value<String> id;
+  final Value<String> contractId;
   final Value<int> periodNo;
   final Value<DateTime> expectedRepaymentDate;
   final Value<int> expectedPrincipalMinor;
@@ -5747,6 +5817,7 @@ class InstallmentSchedulesCompanion
   final Value<String?> note;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<int> rowid;
   const InstallmentSchedulesCompanion({
     this.id = const Value.absent(),
     this.contractId = const Value.absent(),
@@ -5759,10 +5830,11 @@ class InstallmentSchedulesCompanion
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   InstallmentSchedulesCompanion.insert({
-    this.id = const Value.absent(),
-    required int contractId,
+    required String id,
+    required String contractId,
     required int periodNo,
     required DateTime expectedRepaymentDate,
     this.expectedPrincipalMinor = const Value.absent(),
@@ -5772,13 +5844,15 @@ class InstallmentSchedulesCompanion
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
-  }) : contractId = Value(contractId),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       contractId = Value(contractId),
        periodNo = Value(periodNo),
        expectedRepaymentDate = Value(expectedRepaymentDate),
        status = Value(status);
   static Insertable<InstallmentScheduleRow> custom({
-    Expression<int>? id,
-    Expression<int>? contractId,
+    Expression<String>? id,
+    Expression<String>? contractId,
     Expression<int>? periodNo,
     Expression<DateTime>? expectedRepaymentDate,
     Expression<int>? expectedPrincipalMinor,
@@ -5788,6 +5862,7 @@ class InstallmentSchedulesCompanion
     Expression<String>? note,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -5804,12 +5879,13 @@ class InstallmentSchedulesCompanion
       if (note != null) 'note': note,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   InstallmentSchedulesCompanion copyWith({
-    Value<int>? id,
-    Value<int>? contractId,
+    Value<String>? id,
+    Value<String>? contractId,
     Value<int>? periodNo,
     Value<DateTime>? expectedRepaymentDate,
     Value<int>? expectedPrincipalMinor,
@@ -5819,6 +5895,7 @@ class InstallmentSchedulesCompanion
     Value<String?>? note,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<int>? rowid,
   }) {
     return InstallmentSchedulesCompanion(
       id: id ?? this.id,
@@ -5835,6 +5912,7 @@ class InstallmentSchedulesCompanion
       note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -5842,10 +5920,10 @@ class InstallmentSchedulesCompanion
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (contractId.present) {
-      map['contract_id'] = Variable<int>(contractId.value);
+      map['contract_id'] = Variable<String>(contractId.value);
     }
     if (periodNo.present) {
       map['period_no'] = Variable<int>(periodNo.value);
@@ -5882,6 +5960,9 @@ class InstallmentSchedulesCompanion
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
     return map;
   }
 
@@ -5898,7 +5979,8 @@ class InstallmentSchedulesCompanion
           ..write('status: $status, ')
           ..write('note: $note, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -5912,26 +5994,22 @@ class $InstallmentRepaymentsTable extends InstallmentRepayments
   $InstallmentRepaymentsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
     'id',
     aliasedName,
     false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _contractIdMeta = const VerificationMeta(
     'contractId',
   );
   @override
-  late final GeneratedColumn<int> contractId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> contractId = GeneratedColumn<String>(
     'contract_id',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
   @override
@@ -5949,22 +6027,22 @@ class $InstallmentRepaymentsTable extends InstallmentRepayments
     'scheduleId',
   );
   @override
-  late final GeneratedColumn<int> scheduleId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> scheduleId = GeneratedColumn<String>(
     'schedule_id',
     aliasedName,
     true,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _transactionIdMeta = const VerificationMeta(
     'transactionId',
   );
   @override
-  late final GeneratedColumn<int> transactionId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> transactionId = GeneratedColumn<String>(
     'transaction_id',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
@@ -6015,6 +6093,8 @@ class $InstallmentRepaymentsTable extends InstallmentRepayments
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
     }
     if (data.containsKey('contract_id')) {
       context.handle(
@@ -6067,12 +6147,12 @@ class $InstallmentRepaymentsTable extends InstallmentRepayments
     return InstallmentRepaymentRow(
       id:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
+            DriftSqlType.string,
             data['${effectivePrefix}id'],
           )!,
       contractId:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
+            DriftSqlType.string,
             data['${effectivePrefix}contract_id'],
           )!,
       repaymentType: $InstallmentRepaymentsTable.$converterrepaymentType
@@ -6083,12 +6163,12 @@ class $InstallmentRepaymentsTable extends InstallmentRepayments
             )!,
           ),
       scheduleId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}schedule_id'],
       ),
       transactionId:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
+            DriftSqlType.string,
             data['${effectivePrefix}transaction_id'],
           )!,
       createdAt:
@@ -6117,11 +6197,11 @@ class $InstallmentRepaymentsTable extends InstallmentRepayments
 
 class InstallmentRepaymentRow extends DataClass
     implements Insertable<InstallmentRepaymentRow> {
-  final int id;
-  final int contractId;
+  final String id;
+  final String contractId;
   final InstallmentRepaymentType repaymentType;
-  final int? scheduleId;
-  final int transactionId;
+  final String? scheduleId;
+  final String transactionId;
   final DateTime createdAt;
   final DateTime updatedAt;
   const InstallmentRepaymentRow({
@@ -6136,8 +6216,8 @@ class InstallmentRepaymentRow extends DataClass
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['contract_id'] = Variable<int>(contractId);
+    map['id'] = Variable<String>(id);
+    map['contract_id'] = Variable<String>(contractId);
     {
       map['repayment_type'] = Variable<String>(
         $InstallmentRepaymentsTable.$converterrepaymentType.toSql(
@@ -6146,9 +6226,9 @@ class InstallmentRepaymentRow extends DataClass
       );
     }
     if (!nullToAbsent || scheduleId != null) {
-      map['schedule_id'] = Variable<int>(scheduleId);
+      map['schedule_id'] = Variable<String>(scheduleId);
     }
-    map['transaction_id'] = Variable<int>(transactionId);
+    map['transaction_id'] = Variable<String>(transactionId);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -6175,12 +6255,12 @@ class InstallmentRepaymentRow extends DataClass
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return InstallmentRepaymentRow(
-      id: serializer.fromJson<int>(json['id']),
-      contractId: serializer.fromJson<int>(json['contractId']),
+      id: serializer.fromJson<String>(json['id']),
+      contractId: serializer.fromJson<String>(json['contractId']),
       repaymentType: $InstallmentRepaymentsTable.$converterrepaymentType
           .fromJson(serializer.fromJson<String>(json['repaymentType'])),
-      scheduleId: serializer.fromJson<int?>(json['scheduleId']),
-      transactionId: serializer.fromJson<int>(json['transactionId']),
+      scheduleId: serializer.fromJson<String?>(json['scheduleId']),
+      transactionId: serializer.fromJson<String>(json['transactionId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -6189,26 +6269,26 @@ class InstallmentRepaymentRow extends DataClass
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'contractId': serializer.toJson<int>(contractId),
+      'id': serializer.toJson<String>(id),
+      'contractId': serializer.toJson<String>(contractId),
       'repaymentType': serializer.toJson<String>(
         $InstallmentRepaymentsTable.$converterrepaymentType.toJson(
           repaymentType,
         ),
       ),
-      'scheduleId': serializer.toJson<int?>(scheduleId),
-      'transactionId': serializer.toJson<int>(transactionId),
+      'scheduleId': serializer.toJson<String?>(scheduleId),
+      'transactionId': serializer.toJson<String>(transactionId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
   InstallmentRepaymentRow copyWith({
-    int? id,
-    int? contractId,
+    String? id,
+    String? contractId,
     InstallmentRepaymentType? repaymentType,
-    Value<int?> scheduleId = const Value.absent(),
-    int? transactionId,
+    Value<String?> scheduleId = const Value.absent(),
+    String? transactionId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => InstallmentRepaymentRow(
@@ -6281,13 +6361,14 @@ class InstallmentRepaymentRow extends DataClass
 
 class InstallmentRepaymentsCompanion
     extends UpdateCompanion<InstallmentRepaymentRow> {
-  final Value<int> id;
-  final Value<int> contractId;
+  final Value<String> id;
+  final Value<String> contractId;
   final Value<InstallmentRepaymentType> repaymentType;
-  final Value<int?> scheduleId;
-  final Value<int> transactionId;
+  final Value<String?> scheduleId;
+  final Value<String> transactionId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<int> rowid;
   const InstallmentRepaymentsCompanion({
     this.id = const Value.absent(),
     this.contractId = const Value.absent(),
@@ -6296,26 +6377,30 @@ class InstallmentRepaymentsCompanion
     this.transactionId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   InstallmentRepaymentsCompanion.insert({
-    this.id = const Value.absent(),
-    required int contractId,
+    required String id,
+    required String contractId,
     required InstallmentRepaymentType repaymentType,
     this.scheduleId = const Value.absent(),
-    required int transactionId,
+    required String transactionId,
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
-  }) : contractId = Value(contractId),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       contractId = Value(contractId),
        repaymentType = Value(repaymentType),
        transactionId = Value(transactionId);
   static Insertable<InstallmentRepaymentRow> custom({
-    Expression<int>? id,
-    Expression<int>? contractId,
+    Expression<String>? id,
+    Expression<String>? contractId,
     Expression<String>? repaymentType,
-    Expression<int>? scheduleId,
-    Expression<int>? transactionId,
+    Expression<String>? scheduleId,
+    Expression<String>? transactionId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -6325,17 +6410,19 @@ class InstallmentRepaymentsCompanion
       if (transactionId != null) 'transaction_id': transactionId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   InstallmentRepaymentsCompanion copyWith({
-    Value<int>? id,
-    Value<int>? contractId,
+    Value<String>? id,
+    Value<String>? contractId,
     Value<InstallmentRepaymentType>? repaymentType,
-    Value<int?>? scheduleId,
-    Value<int>? transactionId,
+    Value<String?>? scheduleId,
+    Value<String>? transactionId,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<int>? rowid,
   }) {
     return InstallmentRepaymentsCompanion(
       id: id ?? this.id,
@@ -6345,6 +6432,7 @@ class InstallmentRepaymentsCompanion
       transactionId: transactionId ?? this.transactionId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -6352,10 +6440,10 @@ class InstallmentRepaymentsCompanion
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (contractId.present) {
-      map['contract_id'] = Variable<int>(contractId.value);
+      map['contract_id'] = Variable<String>(contractId.value);
     }
     if (repaymentType.present) {
       map['repayment_type'] = Variable<String>(
@@ -6365,16 +6453,19 @@ class InstallmentRepaymentsCompanion
       );
     }
     if (scheduleId.present) {
-      map['schedule_id'] = Variable<int>(scheduleId.value);
+      map['schedule_id'] = Variable<String>(scheduleId.value);
     }
     if (transactionId.present) {
-      map['transaction_id'] = Variable<int>(transactionId.value);
+      map['transaction_id'] = Variable<String>(transactionId.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
     }
     return map;
   }
@@ -6388,7 +6479,8 @@ class InstallmentRepaymentsCompanion
           ..write('scheduleId: $scheduleId, ')
           ..write('transactionId: $transactionId, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -6429,11 +6521,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 
 typedef $$AccountsTableCreateCompanionBuilder =
     AccountsCompanion Function({
-      Value<int> id,
+      required String id,
       required String name,
       required AccountType accountType,
       Value<AccountSubtype?> accountSubtype,
-      Value<int?> parentId,
+      Value<String?> parentId,
       Value<int> balanceMinor,
       Value<String?> iconKey,
       Value<String?> note,
@@ -6447,14 +6539,15 @@ typedef $$AccountsTableCreateCompanionBuilder =
       Value<AccountSource> source,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 typedef $$AccountsTableUpdateCompanionBuilder =
     AccountsCompanion Function({
-      Value<int> id,
+      Value<String> id,
       Value<String> name,
       Value<AccountType> accountType,
       Value<AccountSubtype?> accountSubtype,
-      Value<int?> parentId,
+      Value<String?> parentId,
       Value<int> balanceMinor,
       Value<String?> iconKey,
       Value<String?> note,
@@ -6468,6 +6561,7 @@ typedef $$AccountsTableUpdateCompanionBuilder =
       Value<AccountSource> source,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 
 class $$AccountsTableFilterComposer
@@ -6479,7 +6573,7 @@ class $$AccountsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
@@ -6501,7 +6595,7 @@ class $$AccountsTableFilterComposer
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
-  ColumnFilters<int> get parentId => $composableBuilder(
+  ColumnFilters<String> get parentId => $composableBuilder(
     column: $table.parentId,
     builder: (column) => ColumnFilters(column),
   );
@@ -6583,7 +6677,7 @@ class $$AccountsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
@@ -6603,7 +6697,7 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get parentId => $composableBuilder(
+  ColumnOrderings<String> get parentId => $composableBuilder(
     column: $table.parentId,
     builder: (column) => ColumnOrderings(column),
   );
@@ -6683,7 +6777,7 @@ class $$AccountsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<String> get name =>
@@ -6701,7 +6795,7 @@ class $$AccountsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get parentId =>
+  GeneratedColumn<String> get parentId =>
       $composableBuilder(column: $table.parentId, builder: (column) => column);
 
   GeneratedColumn<int> get balanceMinor => $composableBuilder(
@@ -6785,11 +6879,11 @@ class $$AccountsTableTableManager
               () => $$AccountsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
+                Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<AccountType> accountType = const Value.absent(),
                 Value<AccountSubtype?> accountSubtype = const Value.absent(),
-                Value<int?> parentId = const Value.absent(),
+                Value<String?> parentId = const Value.absent(),
                 Value<int> balanceMinor = const Value.absent(),
                 Value<String?> iconKey = const Value.absent(),
                 Value<String?> note = const Value.absent(),
@@ -6803,6 +6897,7 @@ class $$AccountsTableTableManager
                 Value<AccountSource> source = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => AccountsCompanion(
                 id: id,
                 name: name,
@@ -6822,14 +6917,15 @@ class $$AccountsTableTableManager
                 source: source,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
+                required String id,
                 required String name,
                 required AccountType accountType,
                 Value<AccountSubtype?> accountSubtype = const Value.absent(),
-                Value<int?> parentId = const Value.absent(),
+                Value<String?> parentId = const Value.absent(),
                 Value<int> balanceMinor = const Value.absent(),
                 Value<String?> iconKey = const Value.absent(),
                 Value<String?> note = const Value.absent(),
@@ -6843,6 +6939,7 @@ class $$AccountsTableTableManager
                 Value<AccountSource> source = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => AccountsCompanion.insert(
                 id: id,
                 name: name,
@@ -6862,6 +6959,7 @@ class $$AccountsTableTableManager
                 source: source,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           withReferenceMapper:
               (p0) =>
@@ -7064,51 +7162,53 @@ typedef $$AppMetadataTableProcessedTableManager =
     >;
 typedef $$TransactionsTableCreateCompanionBuilder =
     TransactionsCompanion Function({
-      Value<int> id,
-      Value<int?> rootTransactionId,
+      required String id,
+      Value<String?> rootTransactionId,
       required BusinessPurpose businessPurpose,
       required DateTime occurredAt,
       required int primaryAmountMinor,
       Value<String?> counterpartyName,
       Value<String?> note,
-      Value<int?> parentTransactionId,
-      Value<int?> reimbursementExpenseAccountId,
+      Value<String?> parentTransactionId,
+      Value<String?> reimbursementExpenseAccountId,
       required MutationKind mutationKind,
-      Value<int?> mutationPreviousTransactionId,
+      Value<String?> mutationPreviousTransactionId,
       Value<MutationReason?> mutationReason,
       required BusinessState businessState,
       Value<bool> isExcludedFromStats,
       Value<bool> isExcludedFromBudget,
       required SourceKind sourceKind,
       Value<String?> ownerType,
-      Value<int?> ownerId,
+      Value<String?> ownerId,
       Value<String?> ownerRole,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 typedef $$TransactionsTableUpdateCompanionBuilder =
     TransactionsCompanion Function({
-      Value<int> id,
-      Value<int?> rootTransactionId,
+      Value<String> id,
+      Value<String?> rootTransactionId,
       Value<BusinessPurpose> businessPurpose,
       Value<DateTime> occurredAt,
       Value<int> primaryAmountMinor,
       Value<String?> counterpartyName,
       Value<String?> note,
-      Value<int?> parentTransactionId,
-      Value<int?> reimbursementExpenseAccountId,
+      Value<String?> parentTransactionId,
+      Value<String?> reimbursementExpenseAccountId,
       Value<MutationKind> mutationKind,
-      Value<int?> mutationPreviousTransactionId,
+      Value<String?> mutationPreviousTransactionId,
       Value<MutationReason?> mutationReason,
       Value<BusinessState> businessState,
       Value<bool> isExcludedFromStats,
       Value<bool> isExcludedFromBudget,
       Value<SourceKind> sourceKind,
       Value<String?> ownerType,
-      Value<int?> ownerId,
+      Value<String?> ownerId,
       Value<String?> ownerRole,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 
 class $$TransactionsTableFilterComposer
@@ -7120,12 +7220,12 @@ class $$TransactionsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get rootTransactionId => $composableBuilder(
+  ColumnFilters<String> get rootTransactionId => $composableBuilder(
     column: $table.rootTransactionId,
     builder: (column) => ColumnFilters(column),
   );
@@ -7156,12 +7256,12 @@ class $$TransactionsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get parentTransactionId => $composableBuilder(
+  ColumnFilters<String> get parentTransactionId => $composableBuilder(
     column: $table.parentTransactionId,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get reimbursementExpenseAccountId => $composableBuilder(
+  ColumnFilters<String> get reimbursementExpenseAccountId => $composableBuilder(
     column: $table.reimbursementExpenseAccountId,
     builder: (column) => ColumnFilters(column),
   );
@@ -7172,7 +7272,7 @@ class $$TransactionsTableFilterComposer
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
-  ColumnFilters<int> get mutationPreviousTransactionId => $composableBuilder(
+  ColumnFilters<String> get mutationPreviousTransactionId => $composableBuilder(
     column: $table.mutationPreviousTransactionId,
     builder: (column) => ColumnFilters(column),
   );
@@ -7210,7 +7310,7 @@ class $$TransactionsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get ownerId => $composableBuilder(
+  ColumnFilters<String> get ownerId => $composableBuilder(
     column: $table.ownerId,
     builder: (column) => ColumnFilters(column),
   );
@@ -7240,12 +7340,12 @@ class $$TransactionsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get rootTransactionId => $composableBuilder(
+  ColumnOrderings<String> get rootTransactionId => $composableBuilder(
     column: $table.rootTransactionId,
     builder: (column) => ColumnOrderings(column),
   );
@@ -7275,25 +7375,27 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get parentTransactionId => $composableBuilder(
+  ColumnOrderings<String> get parentTransactionId => $composableBuilder(
     column: $table.parentTransactionId,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get reimbursementExpenseAccountId => $composableBuilder(
-    column: $table.reimbursementExpenseAccountId,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get reimbursementExpenseAccountId =>
+      $composableBuilder(
+        column: $table.reimbursementExpenseAccountId,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get mutationKind => $composableBuilder(
     column: $table.mutationKind,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get mutationPreviousTransactionId => $composableBuilder(
-    column: $table.mutationPreviousTransactionId,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get mutationPreviousTransactionId =>
+      $composableBuilder(
+        column: $table.mutationPreviousTransactionId,
+        builder: (column) => ColumnOrderings(column),
+      );
 
   ColumnOrderings<String> get mutationReason => $composableBuilder(
     column: $table.mutationReason,
@@ -7325,7 +7427,7 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get ownerId => $composableBuilder(
+  ColumnOrderings<String> get ownerId => $composableBuilder(
     column: $table.ownerId,
     builder: (column) => ColumnOrderings(column),
   );
@@ -7355,10 +7457,10 @@ class $$TransactionsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<int> get rootTransactionId => $composableBuilder(
+  GeneratedColumn<String> get rootTransactionId => $composableBuilder(
     column: $table.rootTransactionId,
     builder: (column) => column,
   );
@@ -7387,15 +7489,16 @@ class $$TransactionsTableAnnotationComposer
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
 
-  GeneratedColumn<int> get parentTransactionId => $composableBuilder(
+  GeneratedColumn<String> get parentTransactionId => $composableBuilder(
     column: $table.parentTransactionId,
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get reimbursementExpenseAccountId => $composableBuilder(
-    column: $table.reimbursementExpenseAccountId,
-    builder: (column) => column,
-  );
+  GeneratedColumn<String> get reimbursementExpenseAccountId =>
+      $composableBuilder(
+        column: $table.reimbursementExpenseAccountId,
+        builder: (column) => column,
+      );
 
   GeneratedColumnWithTypeConverter<MutationKind, String> get mutationKind =>
       $composableBuilder(
@@ -7403,10 +7506,11 @@ class $$TransactionsTableAnnotationComposer
         builder: (column) => column,
       );
 
-  GeneratedColumn<int> get mutationPreviousTransactionId => $composableBuilder(
-    column: $table.mutationPreviousTransactionId,
-    builder: (column) => column,
-  );
+  GeneratedColumn<String> get mutationPreviousTransactionId =>
+      $composableBuilder(
+        column: $table.mutationPreviousTransactionId,
+        builder: (column) => column,
+      );
 
   GeneratedColumnWithTypeConverter<MutationReason?, String>
   get mutationReason => $composableBuilder(
@@ -7439,7 +7543,7 @@ class $$TransactionsTableAnnotationComposer
   GeneratedColumn<String> get ownerType =>
       $composableBuilder(column: $table.ownerType, builder: (column) => column);
 
-  GeneratedColumn<int> get ownerId =>
+  GeneratedColumn<String> get ownerId =>
       $composableBuilder(column: $table.ownerId, builder: (column) => column);
 
   GeneratedColumn<String> get ownerRole =>
@@ -7484,18 +7588,18 @@ class $$TransactionsTableTableManager
                   $$TransactionsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                Value<int?> rootTransactionId = const Value.absent(),
+                Value<String> id = const Value.absent(),
+                Value<String?> rootTransactionId = const Value.absent(),
                 Value<BusinessPurpose> businessPurpose = const Value.absent(),
                 Value<DateTime> occurredAt = const Value.absent(),
                 Value<int> primaryAmountMinor = const Value.absent(),
                 Value<String?> counterpartyName = const Value.absent(),
                 Value<String?> note = const Value.absent(),
-                Value<int?> parentTransactionId = const Value.absent(),
-                Value<int?> reimbursementExpenseAccountId =
+                Value<String?> parentTransactionId = const Value.absent(),
+                Value<String?> reimbursementExpenseAccountId =
                     const Value.absent(),
                 Value<MutationKind> mutationKind = const Value.absent(),
-                Value<int?> mutationPreviousTransactionId =
+                Value<String?> mutationPreviousTransactionId =
                     const Value.absent(),
                 Value<MutationReason?> mutationReason = const Value.absent(),
                 Value<BusinessState> businessState = const Value.absent(),
@@ -7503,10 +7607,11 @@ class $$TransactionsTableTableManager
                 Value<bool> isExcludedFromBudget = const Value.absent(),
                 Value<SourceKind> sourceKind = const Value.absent(),
                 Value<String?> ownerType = const Value.absent(),
-                Value<int?> ownerId = const Value.absent(),
+                Value<String?> ownerId = const Value.absent(),
                 Value<String?> ownerRole = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
                 rootTransactionId: rootTransactionId,
@@ -7529,21 +7634,22 @@ class $$TransactionsTableTableManager
                 ownerRole: ownerRole,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                Value<int?> rootTransactionId = const Value.absent(),
+                required String id,
+                Value<String?> rootTransactionId = const Value.absent(),
                 required BusinessPurpose businessPurpose,
                 required DateTime occurredAt,
                 required int primaryAmountMinor,
                 Value<String?> counterpartyName = const Value.absent(),
                 Value<String?> note = const Value.absent(),
-                Value<int?> parentTransactionId = const Value.absent(),
-                Value<int?> reimbursementExpenseAccountId =
+                Value<String?> parentTransactionId = const Value.absent(),
+                Value<String?> reimbursementExpenseAccountId =
                     const Value.absent(),
                 required MutationKind mutationKind,
-                Value<int?> mutationPreviousTransactionId =
+                Value<String?> mutationPreviousTransactionId =
                     const Value.absent(),
                 Value<MutationReason?> mutationReason = const Value.absent(),
                 required BusinessState businessState,
@@ -7551,10 +7657,11 @@ class $$TransactionsTableTableManager
                 Value<bool> isExcludedFromBudget = const Value.absent(),
                 required SourceKind sourceKind,
                 Value<String?> ownerType = const Value.absent(),
-                Value<int?> ownerId = const Value.absent(),
+                Value<String?> ownerId = const Value.absent(),
                 Value<String?> ownerRole = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
                 rootTransactionId: rootTransactionId,
@@ -7577,6 +7684,7 @@ class $$TransactionsTableTableManager
                 ownerRole: ownerRole,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           withReferenceMapper:
               (p0) =>
@@ -7612,23 +7720,25 @@ typedef $$TransactionsTableProcessedTableManager =
     >;
 typedef $$TransactionDetailsTableCreateCompanionBuilder =
     TransactionDetailsCompanion Function({
-      Value<int> id,
-      required int transactionId,
+      required String id,
+      required String transactionId,
       required int lineNo,
       required TransactionDetailType detailType,
       required int amountMinor,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 typedef $$TransactionDetailsTableUpdateCompanionBuilder =
     TransactionDetailsCompanion Function({
-      Value<int> id,
-      Value<int> transactionId,
+      Value<String> id,
+      Value<String> transactionId,
       Value<int> lineNo,
       Value<TransactionDetailType> detailType,
       Value<int> amountMinor,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 
 class $$TransactionDetailsTableFilterComposer
@@ -7640,12 +7750,12 @@ class $$TransactionDetailsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get transactionId => $composableBuilder(
+  ColumnFilters<String> get transactionId => $composableBuilder(
     column: $table.transactionId,
     builder: (column) => ColumnFilters(column),
   );
@@ -7690,12 +7800,12 @@ class $$TransactionDetailsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get transactionId => $composableBuilder(
+  ColumnOrderings<String> get transactionId => $composableBuilder(
     column: $table.transactionId,
     builder: (column) => ColumnOrderings(column),
   );
@@ -7735,10 +7845,10 @@ class $$TransactionDetailsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<int> get transactionId => $composableBuilder(
+  GeneratedColumn<String> get transactionId => $composableBuilder(
     column: $table.transactionId,
     builder: (column) => column,
   );
@@ -7810,13 +7920,14 @@ class $$TransactionDetailsTableTableManager
               ),
           updateCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                Value<int> transactionId = const Value.absent(),
+                Value<String> id = const Value.absent(),
+                Value<String> transactionId = const Value.absent(),
                 Value<int> lineNo = const Value.absent(),
                 Value<TransactionDetailType> detailType = const Value.absent(),
                 Value<int> amountMinor = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => TransactionDetailsCompanion(
                 id: id,
                 transactionId: transactionId,
@@ -7825,16 +7936,18 @@ class $$TransactionDetailsTableTableManager
                 amountMinor: amountMinor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                required int transactionId,
+                required String id,
+                required String transactionId,
                 required int lineNo,
                 required TransactionDetailType detailType,
                 required int amountMinor,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => TransactionDetailsCompanion.insert(
                 id: id,
                 transactionId: transactionId,
@@ -7843,6 +7956,7 @@ class $$TransactionDetailsTableTableManager
                 amountMinor: amountMinor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           withReferenceMapper:
               (p0) =>
@@ -7882,23 +7996,25 @@ typedef $$TransactionDetailsTableProcessedTableManager =
     >;
 typedef $$EntriesTableCreateCompanionBuilder =
     EntriesCompanion Function({
-      Value<int> id,
-      required int transactionId,
-      required int accountId,
+      required String id,
+      required String transactionId,
+      required String accountId,
       required EntryDirection direction,
       required int amountMinor,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 typedef $$EntriesTableUpdateCompanionBuilder =
     EntriesCompanion Function({
-      Value<int> id,
-      Value<int> transactionId,
-      Value<int> accountId,
+      Value<String> id,
+      Value<String> transactionId,
+      Value<String> accountId,
       Value<EntryDirection> direction,
       Value<int> amountMinor,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 
 class $$EntriesTableFilterComposer
@@ -7910,17 +8026,17 @@ class $$EntriesTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get transactionId => $composableBuilder(
+  ColumnFilters<String> get transactionId => $composableBuilder(
     column: $table.transactionId,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get accountId => $composableBuilder(
+  ColumnFilters<String> get accountId => $composableBuilder(
     column: $table.accountId,
     builder: (column) => ColumnFilters(column),
   );
@@ -7956,17 +8072,17 @@ class $$EntriesTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get transactionId => $composableBuilder(
+  ColumnOrderings<String> get transactionId => $composableBuilder(
     column: $table.transactionId,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get accountId => $composableBuilder(
+  ColumnOrderings<String> get accountId => $composableBuilder(
     column: $table.accountId,
     builder: (column) => ColumnOrderings(column),
   );
@@ -8001,15 +8117,15 @@ class $$EntriesTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<int> get transactionId => $composableBuilder(
+  GeneratedColumn<String> get transactionId => $composableBuilder(
     column: $table.transactionId,
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get accountId =>
+  GeneratedColumn<String> get accountId =>
       $composableBuilder(column: $table.accountId, builder: (column) => column);
 
   GeneratedColumnWithTypeConverter<EntryDirection, String> get direction =>
@@ -8055,13 +8171,14 @@ class $$EntriesTableTableManager
               () => $$EntriesTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                Value<int> transactionId = const Value.absent(),
-                Value<int> accountId = const Value.absent(),
+                Value<String> id = const Value.absent(),
+                Value<String> transactionId = const Value.absent(),
+                Value<String> accountId = const Value.absent(),
                 Value<EntryDirection> direction = const Value.absent(),
                 Value<int> amountMinor = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => EntriesCompanion(
                 id: id,
                 transactionId: transactionId,
@@ -8070,16 +8187,18 @@ class $$EntriesTableTableManager
                 amountMinor: amountMinor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                required int transactionId,
-                required int accountId,
+                required String id,
+                required String transactionId,
+                required String accountId,
                 required EntryDirection direction,
                 required int amountMinor,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => EntriesCompanion.insert(
                 id: id,
                 transactionId: transactionId,
@@ -8088,6 +8207,7 @@ class $$EntriesTableTableManager
                 amountMinor: amountMinor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           withReferenceMapper:
               (p0) =>
@@ -8120,21 +8240,23 @@ typedef $$EntriesTableProcessedTableManager =
     >;
 typedef $$BudgetsTableCreateCompanionBuilder =
     BudgetsCompanion Function({
-      Value<int> id,
+      required String id,
       required int monthKey,
-      Value<int?> accountId,
+      Value<String?> accountId,
       required int amountMinor,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 typedef $$BudgetsTableUpdateCompanionBuilder =
     BudgetsCompanion Function({
-      Value<int> id,
+      Value<String> id,
       Value<int> monthKey,
-      Value<int?> accountId,
+      Value<String?> accountId,
       Value<int> amountMinor,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 
 class $$BudgetsTableFilterComposer
@@ -8146,7 +8268,7 @@ class $$BudgetsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
@@ -8156,7 +8278,7 @@ class $$BudgetsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get accountId => $composableBuilder(
+  ColumnFilters<String> get accountId => $composableBuilder(
     column: $table.accountId,
     builder: (column) => ColumnFilters(column),
   );
@@ -8186,7 +8308,7 @@ class $$BudgetsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
@@ -8196,7 +8318,7 @@ class $$BudgetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get accountId => $composableBuilder(
+  ColumnOrderings<String> get accountId => $composableBuilder(
     column: $table.accountId,
     builder: (column) => ColumnOrderings(column),
   );
@@ -8226,13 +8348,13 @@ class $$BudgetsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<int> get monthKey =>
       $composableBuilder(column: $table.monthKey, builder: (column) => column);
 
-  GeneratedColumn<int> get accountId =>
+  GeneratedColumn<String> get accountId =>
       $composableBuilder(column: $table.accountId, builder: (column) => column);
 
   GeneratedColumn<int> get amountMinor => $composableBuilder(
@@ -8275,12 +8397,13 @@ class $$BudgetsTableTableManager
               () => $$BudgetsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
+                Value<String> id = const Value.absent(),
                 Value<int> monthKey = const Value.absent(),
-                Value<int?> accountId = const Value.absent(),
+                Value<String?> accountId = const Value.absent(),
                 Value<int> amountMinor = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => BudgetsCompanion(
                 id: id,
                 monthKey: monthKey,
@@ -8288,15 +8411,17 @@ class $$BudgetsTableTableManager
                 amountMinor: amountMinor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
+                required String id,
                 required int monthKey,
-                Value<int?> accountId = const Value.absent(),
+                Value<String?> accountId = const Value.absent(),
                 required int amountMinor,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => BudgetsCompanion.insert(
                 id: id,
                 monthKey: monthKey,
@@ -8304,6 +8429,7 @@ class $$BudgetsTableTableManager
                 amountMinor: amountMinor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           withReferenceMapper:
               (p0) =>
@@ -8336,11 +8462,11 @@ typedef $$BudgetsTableProcessedTableManager =
     >;
 typedef $$InstallmentContractsTableCreateCompanionBuilder =
     InstallmentContractsCompanion Function({
-      Value<int> id,
-      required int liabilityAccountId,
+      required String id,
+      required String liabilityAccountId,
       required InstallmentSourceType sourceType,
-      Value<int?> disbursementAccountId,
-      Value<int?> disbursementTransactionId,
+      Value<String?> disbursementAccountId,
+      Value<String?> disbursementTransactionId,
       required int principalMinor,
       required int totalPeriods,
       required DateTime borrowingDate,
@@ -8355,14 +8481,15 @@ typedef $$InstallmentContractsTableCreateCompanionBuilder =
       Value<String?> note,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 typedef $$InstallmentContractsTableUpdateCompanionBuilder =
     InstallmentContractsCompanion Function({
-      Value<int> id,
-      Value<int> liabilityAccountId,
+      Value<String> id,
+      Value<String> liabilityAccountId,
       Value<InstallmentSourceType> sourceType,
-      Value<int?> disbursementAccountId,
-      Value<int?> disbursementTransactionId,
+      Value<String?> disbursementAccountId,
+      Value<String?> disbursementTransactionId,
       Value<int> principalMinor,
       Value<int> totalPeriods,
       Value<DateTime> borrowingDate,
@@ -8377,6 +8504,7 @@ typedef $$InstallmentContractsTableUpdateCompanionBuilder =
       Value<String?> note,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 
 class $$InstallmentContractsTableFilterComposer
@@ -8388,12 +8516,12 @@ class $$InstallmentContractsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get liabilityAccountId => $composableBuilder(
+  ColumnFilters<String> get liabilityAccountId => $composableBuilder(
     column: $table.liabilityAccountId,
     builder: (column) => ColumnFilters(column),
   );
@@ -8408,12 +8536,12 @@ class $$InstallmentContractsTableFilterComposer
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
-  ColumnFilters<int> get disbursementAccountId => $composableBuilder(
+  ColumnFilters<String> get disbursementAccountId => $composableBuilder(
     column: $table.disbursementAccountId,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get disbursementTransactionId => $composableBuilder(
+  ColumnFilters<String> get disbursementTransactionId => $composableBuilder(
     column: $table.disbursementTransactionId,
     builder: (column) => ColumnFilters(column),
   );
@@ -8518,12 +8646,12 @@ class $$InstallmentContractsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get liabilityAccountId => $composableBuilder(
+  ColumnOrderings<String> get liabilityAccountId => $composableBuilder(
     column: $table.liabilityAccountId,
     builder: (column) => ColumnOrderings(column),
   );
@@ -8533,12 +8661,12 @@ class $$InstallmentContractsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get disbursementAccountId => $composableBuilder(
+  ColumnOrderings<String> get disbursementAccountId => $composableBuilder(
     column: $table.disbursementAccountId,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get disbursementTransactionId => $composableBuilder(
+  ColumnOrderings<String> get disbursementTransactionId => $composableBuilder(
     column: $table.disbursementTransactionId,
     builder: (column) => ColumnOrderings(column),
   );
@@ -8623,10 +8751,10 @@ class $$InstallmentContractsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<int> get liabilityAccountId => $composableBuilder(
+  GeneratedColumn<String> get liabilityAccountId => $composableBuilder(
     column: $table.liabilityAccountId,
     builder: (column) => column,
   );
@@ -8637,12 +8765,12 @@ class $$InstallmentContractsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get disbursementAccountId => $composableBuilder(
+  GeneratedColumn<String> get disbursementAccountId => $composableBuilder(
     column: $table.disbursementAccountId,
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get disbursementTransactionId => $composableBuilder(
+  GeneratedColumn<String> get disbursementTransactionId => $composableBuilder(
     column: $table.disbursementTransactionId,
     builder: (column) => column,
   );
@@ -8760,11 +8888,11 @@ class $$InstallmentContractsTableTableManager
               ),
           updateCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                Value<int> liabilityAccountId = const Value.absent(),
+                Value<String> id = const Value.absent(),
+                Value<String> liabilityAccountId = const Value.absent(),
                 Value<InstallmentSourceType> sourceType = const Value.absent(),
-                Value<int?> disbursementAccountId = const Value.absent(),
-                Value<int?> disbursementTransactionId = const Value.absent(),
+                Value<String?> disbursementAccountId = const Value.absent(),
+                Value<String?> disbursementTransactionId = const Value.absent(),
                 Value<int> principalMinor = const Value.absent(),
                 Value<int> totalPeriods = const Value.absent(),
                 Value<DateTime> borrowingDate = const Value.absent(),
@@ -8782,6 +8910,7 @@ class $$InstallmentContractsTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => InstallmentContractsCompanion(
                 id: id,
                 liabilityAccountId: liabilityAccountId,
@@ -8802,14 +8931,15 @@ class $$InstallmentContractsTableTableManager
                 note: note,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                required int liabilityAccountId,
+                required String id,
+                required String liabilityAccountId,
                 required InstallmentSourceType sourceType,
-                Value<int?> disbursementAccountId = const Value.absent(),
-                Value<int?> disbursementTransactionId = const Value.absent(),
+                Value<String?> disbursementAccountId = const Value.absent(),
+                Value<String?> disbursementTransactionId = const Value.absent(),
                 required int principalMinor,
                 required int totalPeriods,
                 required DateTime borrowingDate,
@@ -8826,6 +8956,7 @@ class $$InstallmentContractsTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => InstallmentContractsCompanion.insert(
                 id: id,
                 liabilityAccountId: liabilityAccountId,
@@ -8846,6 +8977,7 @@ class $$InstallmentContractsTableTableManager
                 note: note,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           withReferenceMapper:
               (p0) =>
@@ -8885,8 +9017,8 @@ typedef $$InstallmentContractsTableProcessedTableManager =
     >;
 typedef $$InstallmentSchedulesTableCreateCompanionBuilder =
     InstallmentSchedulesCompanion Function({
-      Value<int> id,
-      required int contractId,
+      required String id,
+      required String contractId,
       required int periodNo,
       required DateTime expectedRepaymentDate,
       Value<int> expectedPrincipalMinor,
@@ -8896,11 +9028,12 @@ typedef $$InstallmentSchedulesTableCreateCompanionBuilder =
       Value<String?> note,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 typedef $$InstallmentSchedulesTableUpdateCompanionBuilder =
     InstallmentSchedulesCompanion Function({
-      Value<int> id,
-      Value<int> contractId,
+      Value<String> id,
+      Value<String> contractId,
       Value<int> periodNo,
       Value<DateTime> expectedRepaymentDate,
       Value<int> expectedPrincipalMinor,
@@ -8910,6 +9043,7 @@ typedef $$InstallmentSchedulesTableUpdateCompanionBuilder =
       Value<String?> note,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 
 class $$InstallmentSchedulesTableFilterComposer
@@ -8921,12 +9055,12 @@ class $$InstallmentSchedulesTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get contractId => $composableBuilder(
+  ColumnFilters<String> get contractId => $composableBuilder(
     column: $table.contractId,
     builder: (column) => ColumnFilters(column),
   );
@@ -8991,12 +9125,12 @@ class $$InstallmentSchedulesTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get contractId => $composableBuilder(
+  ColumnOrderings<String> get contractId => $composableBuilder(
     column: $table.contractId,
     builder: (column) => ColumnOrderings(column),
   );
@@ -9056,10 +9190,10 @@ class $$InstallmentSchedulesTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<int> get contractId => $composableBuilder(
+  GeneratedColumn<String> get contractId => $composableBuilder(
     column: $table.contractId,
     builder: (column) => column,
   );
@@ -9147,8 +9281,8 @@ class $$InstallmentSchedulesTableTableManager
               ),
           updateCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                Value<int> contractId = const Value.absent(),
+                Value<String> id = const Value.absent(),
+                Value<String> contractId = const Value.absent(),
                 Value<int> periodNo = const Value.absent(),
                 Value<DateTime> expectedRepaymentDate = const Value.absent(),
                 Value<int> expectedPrincipalMinor = const Value.absent(),
@@ -9158,6 +9292,7 @@ class $$InstallmentSchedulesTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => InstallmentSchedulesCompanion(
                 id: id,
                 contractId: contractId,
@@ -9170,11 +9305,12 @@ class $$InstallmentSchedulesTableTableManager
                 note: note,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                required int contractId,
+                required String id,
+                required String contractId,
                 required int periodNo,
                 required DateTime expectedRepaymentDate,
                 Value<int> expectedPrincipalMinor = const Value.absent(),
@@ -9184,6 +9320,7 @@ class $$InstallmentSchedulesTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => InstallmentSchedulesCompanion.insert(
                 id: id,
                 contractId: contractId,
@@ -9196,6 +9333,7 @@ class $$InstallmentSchedulesTableTableManager
                 note: note,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           withReferenceMapper:
               (p0) =>
@@ -9235,23 +9373,25 @@ typedef $$InstallmentSchedulesTableProcessedTableManager =
     >;
 typedef $$InstallmentRepaymentsTableCreateCompanionBuilder =
     InstallmentRepaymentsCompanion Function({
-      Value<int> id,
-      required int contractId,
+      required String id,
+      required String contractId,
       required InstallmentRepaymentType repaymentType,
-      Value<int?> scheduleId,
-      required int transactionId,
+      Value<String?> scheduleId,
+      required String transactionId,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 typedef $$InstallmentRepaymentsTableUpdateCompanionBuilder =
     InstallmentRepaymentsCompanion Function({
-      Value<int> id,
-      Value<int> contractId,
+      Value<String> id,
+      Value<String> contractId,
       Value<InstallmentRepaymentType> repaymentType,
-      Value<int?> scheduleId,
-      Value<int> transactionId,
+      Value<String?> scheduleId,
+      Value<String> transactionId,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 
 class $$InstallmentRepaymentsTableFilterComposer
@@ -9263,12 +9403,12 @@ class $$InstallmentRepaymentsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get contractId => $composableBuilder(
+  ColumnFilters<String> get contractId => $composableBuilder(
     column: $table.contractId,
     builder: (column) => ColumnFilters(column),
   );
@@ -9283,12 +9423,12 @@ class $$InstallmentRepaymentsTableFilterComposer
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
-  ColumnFilters<int> get scheduleId => $composableBuilder(
+  ColumnFilters<String> get scheduleId => $composableBuilder(
     column: $table.scheduleId,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get transactionId => $composableBuilder(
+  ColumnFilters<String> get transactionId => $composableBuilder(
     column: $table.transactionId,
     builder: (column) => ColumnFilters(column),
   );
@@ -9313,12 +9453,12 @@ class $$InstallmentRepaymentsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get contractId => $composableBuilder(
+  ColumnOrderings<String> get contractId => $composableBuilder(
     column: $table.contractId,
     builder: (column) => ColumnOrderings(column),
   );
@@ -9328,12 +9468,12 @@ class $$InstallmentRepaymentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get scheduleId => $composableBuilder(
+  ColumnOrderings<String> get scheduleId => $composableBuilder(
     column: $table.scheduleId,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get transactionId => $composableBuilder(
+  ColumnOrderings<String> get transactionId => $composableBuilder(
     column: $table.transactionId,
     builder: (column) => ColumnOrderings(column),
   );
@@ -9358,10 +9498,10 @@ class $$InstallmentRepaymentsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<int> get contractId => $composableBuilder(
+  GeneratedColumn<String> get contractId => $composableBuilder(
     column: $table.contractId,
     builder: (column) => column,
   );
@@ -9372,12 +9512,12 @@ class $$InstallmentRepaymentsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get scheduleId => $composableBuilder(
+  GeneratedColumn<String> get scheduleId => $composableBuilder(
     column: $table.scheduleId,
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get transactionId => $composableBuilder(
+  GeneratedColumn<String> get transactionId => $composableBuilder(
     column: $table.transactionId,
     builder: (column) => column,
   );
@@ -9435,14 +9575,15 @@ class $$InstallmentRepaymentsTableTableManager
               ),
           updateCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                Value<int> contractId = const Value.absent(),
+                Value<String> id = const Value.absent(),
+                Value<String> contractId = const Value.absent(),
                 Value<InstallmentRepaymentType> repaymentType =
                     const Value.absent(),
-                Value<int?> scheduleId = const Value.absent(),
-                Value<int> transactionId = const Value.absent(),
+                Value<String?> scheduleId = const Value.absent(),
+                Value<String> transactionId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => InstallmentRepaymentsCompanion(
                 id: id,
                 contractId: contractId,
@@ -9451,16 +9592,18 @@ class $$InstallmentRepaymentsTableTableManager
                 transactionId: transactionId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
-                required int contractId,
+                required String id,
+                required String contractId,
                 required InstallmentRepaymentType repaymentType,
-                Value<int?> scheduleId = const Value.absent(),
-                required int transactionId,
+                Value<String?> scheduleId = const Value.absent(),
+                required String transactionId,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => InstallmentRepaymentsCompanion.insert(
                 id: id,
                 contractId: contractId,
@@ -9469,6 +9612,7 @@ class $$InstallmentRepaymentsTableTableManager
                 transactionId: transactionId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           withReferenceMapper:
               (p0) =>

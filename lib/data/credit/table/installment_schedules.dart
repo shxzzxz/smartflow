@@ -4,8 +4,8 @@ import '../../../domain/credit/valobj/installment_enums.dart';
 
 @DataClassName('InstallmentScheduleRow')
 class InstallmentSchedules extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  IntColumn get contractId => integer().named('contract_id')();
+  TextColumn get id => text()();
+  TextColumn get contractId => text().named('contract_id')();
   IntColumn get periodNo => integer().named('period_no')();
   DateTimeColumn get expectedRepaymentDate =>
       dateTime().named('expected_repayment_date')();
@@ -26,6 +26,9 @@ class InstallmentSchedules extends Table {
       dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt =>
       dateTime().named('updated_at').withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
 
   @override
   List<String> get customConstraints => [

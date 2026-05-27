@@ -4,14 +4,15 @@ import '../../../domain/credit/valobj/installment_enums.dart';
 
 @DataClassName('InstallmentContractRow')
 class InstallmentContracts extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  IntColumn get liabilityAccountId => integer().named('liability_account_id')();
+  TextColumn get id => text()();
+  TextColumn get liabilityAccountId =>
+      text().named('liability_account_id')();
   TextColumn get sourceType =>
       textEnum<InstallmentSourceType>().named('source_type')();
-  IntColumn get disbursementAccountId =>
-      integer().named('disbursement_account_id').nullable()();
-  IntColumn get disbursementTransactionId =>
-      integer().named('disbursement_transaction_id').nullable()();
+  TextColumn get disbursementAccountId =>
+      text().named('disbursement_account_id').nullable()();
+  TextColumn get disbursementTransactionId =>
+      text().named('disbursement_transaction_id').nullable()();
   IntColumn get principalMinor => integer().named('principal_minor')();
   IntColumn get totalPeriods => integer().named('total_periods')();
 
@@ -50,6 +51,9 @@ class InstallmentContracts extends Table {
       dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt =>
       dateTime().named('updated_at').withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
 
   @override
   List<String> get customConstraints => [

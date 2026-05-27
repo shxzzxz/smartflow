@@ -230,7 +230,7 @@ void main() {
   });
 }
 
-Future<int> _insertAccount(
+Future<String> _insertAccount(
   AppDatabase database,
   String name,
   AccountType type,
@@ -280,7 +280,7 @@ Future<void> _post(
 class _Entry {
   const _Entry(this.accountId, this.direction, this.amountMinor);
 
-  final int accountId;
+  final String accountId;
   final EntryDirection direction;
   final int amountMinor;
 }

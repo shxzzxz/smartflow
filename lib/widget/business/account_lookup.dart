@@ -5,19 +5,19 @@ import '../../application/ledger/ledger_api.dart';
 ///
 /// 域实体 `Entry` 仅持有 `accountId`,UI 派生(如「找设算账户」「分流出/流入」)
 /// 需要 account 元数据(type / name / iconKey)。UI 层通过 accountsByIdProvider
-/// 拿到全量 `Map<int, Account>`,再借这些 extension 在 entries 上做投影。
+/// 拿到全量 `Map<String, Account>`,再借这些 extension 在 entries 上做投影。
 extension EntryAccountLookup on Entry {
-  AccountType? resolveType(Map<int, Account> accountsById) =>
+  AccountType? resolveType(Map<String, Account> accountsById) =>
       accountsById[accountId]?.type;
 
-  Account? resolveAccount(Map<int, Account> accountsById) =>
+  Account? resolveAccount(Map<String, Account> accountsById) =>
       accountsById[accountId];
 }
 
 /// 按账户类型从一组 entries 里挑第一条匹配项(direction 可空,空表示不限方向)。
 Entry? firstEntryByType(
   Iterable<Entry> entries, {
-  required Map<int, Account> accountsById,
+  required Map<String, Account> accountsById,
   required AccountType accountType,
   EntryDirection? direction,
 }) {
@@ -32,7 +32,7 @@ Entry? firstEntryByType(
 /// 从 entries 找第一条「结算账户」(asset / liability)。
 Entry? firstSettlementEntry(
   Iterable<Entry> entries, {
-  required Map<int, Account> accountsById,
+  required Map<String, Account> accountsById,
   EntryDirection? direction,
 }) {
   for (final entry in entries) {
@@ -52,9 +52,9 @@ Entry? firstSettlementEntry(
 /// 公式与 `balance_expressions.dart` 中 SQL 公式一致(asset/expense 借增贷减,
 /// liability/income 贷增借减,equity 同 liability 方向)。
 Money? balanceDeltaForAccount({
-  required int accountId,
+  required String accountId,
   required Iterable<Entry> entries,
-  required Map<int, Account> accountsById,
+  required Map<String, Account> accountsById,
 }) {
   final accountType = accountsById[accountId]?.type;
   if (accountType == null) return null;

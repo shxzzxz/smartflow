@@ -123,7 +123,7 @@ void main() {
   });
 }
 
-Future<int> _insertAccount(AppDatabase database, String name) {
+Future<String> _insertAccount(AppDatabase database, String name) {
   return database
       .into(database.accounts)
       .insert(
@@ -131,7 +131,7 @@ Future<int> _insertAccount(AppDatabase database, String name) {
       );
 }
 
-Future<int> _testAccountCount(AppDatabase database) async {
+Future<String> _testAccountCount(AppDatabase database) async {
   final names = await _accountNames(database);
   return names.length;
 }

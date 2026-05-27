@@ -1,4 +1,5 @@
 import '../../../core/error/failure.dart';
+import '../../../core/id/id_generator.dart';
 import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
 import '../../../application/shared/transaction_runner.dart';
@@ -123,6 +124,7 @@ class PostingAppServiceImpl implements PostingAppService {
     required PostingRepository postingRepository,
     required SystemAccountResolver systemAccountResolver,
     required TransactionRunner transactionRunner,
+    required IdGenerator idGenerator,
     ReceiptMutator receiptMutator = const ReceiptMutator(),
     EntryReassignmentService reassignmentService =
         const EntryReassignmentService(),
@@ -134,6 +136,7 @@ class PostingAppServiceImpl implements PostingAppService {
        _postingRepository = postingRepository,
        _systemAccounts = systemAccountResolver,
        _transactionRunner = transactionRunner,
+       _idGen = idGenerator,
        _receiptMutator = receiptMutator,
        _reassignmentService = reassignmentService,
        _assembler = receiptAssembler,
@@ -147,6 +150,7 @@ class PostingAppServiceImpl implements PostingAppService {
   final PostingRepository _postingRepository;
   final SystemAccountResolver _systemAccounts;
   final TransactionRunner _transactionRunner;
+  final IdGenerator _idGen;
   final ReceiptMutator _receiptMutator;
   final EntryReassignmentService _reassignmentService;
   final ReceiptAssembler _assembler;
@@ -485,7 +489,7 @@ class PostingAppServiceImpl implements PostingAppService {
         return Result.failure(failure);
       }
 
-      final activeChildIds = <int>{
+      final activeChildIds = <String>{
         for (final child in target.children)
           if (child.businessState == BusinessState.current) child.id,
       };
@@ -740,7 +744,7 @@ class PostingAppServiceImpl implements PostingAppService {
   }
 
   Future<Result<CreatedTransactionResult>> _runCorrection({
-    required int transactionId,
+    required String transactionId,
     required BusinessPurpose expectedPurpose,
     required Future<Result<PostReceipt>> Function(TransactionDetail original)
     build,
@@ -803,8 +807,8 @@ class PostingAppServiceImpl implements PostingAppService {
     );
   }
 
-  Future<Map<int, AccountType>> _loadAccountTypes(
-    Iterable<int> accountIds,
+  Future<Map<String, AccountType>> _loadAccountTypes(
+    Iterable<String> accountIds,
   ) async {
     final ids = accountIds.toSet();
     if (ids.isEmpty) return const {};
@@ -818,7 +822,7 @@ class PostingAppServiceImpl implements PostingAppService {
   ) async {
     if (reassignments.isEmpty) return const [];
 
-    final accountIds = <int>{
+    final accountIds = <String>{
       for (final reassignment in reassignments) reassignment.fromAccountId,
       for (final reassignment in reassignments) reassignment.toAccountId,
     };
@@ -853,7 +857,7 @@ class PostingAppServiceImpl implements PostingAppService {
       final accountFailure = _validateAccountsLoaded(receipt, accounts);
       if (accountFailure != null) return Result.failure(accountFailure);
 
-      final transaction = Transaction.fromReceipt(receipt);
+      final transaction = Transaction.fromReceipt(receipt, id: _idGen.newId());
       final updatedAccounts = _accountBook.applyTransactions(accounts, [
         transaction,
       ]);
@@ -900,12 +904,13 @@ class PostingAppServiceImpl implements PostingAppService {
 
       final reversalTransaction = Transaction.fromReceipt(
         reversalReceipt,
+        id: _idGen.newId(),
         mutationKind: MutationKind.reversal,
         businessState: BusinessState.compensation,
         mutationReason: MutationReason.correction,
         mutationPreviousTransactionId: original.transaction.id,
       );
-      final accountsForWrite = Map<int, Account>.of(accountsForCorrection);
+      final accountsForWrite = Map<String, Account>.of(accountsForCorrection);
       accountsForWrite.addAll(await _loadAccountsForReceipt(reversalReceipt));
       final afterReversal = _accountBook.applyTransactions(accountsForWrite, [
         reversalTransaction,
@@ -921,6 +926,7 @@ class PostingAppServiceImpl implements PostingAppService {
 
       final correctionTransaction = Transaction.fromReceipt(
         correctionReceipt,
+        id: _idGen.newId(),
         mutationKind: MutationKind.correction,
         businessState: BusinessState.current,
         mutationPreviousTransactionId: reversalResult.transactionId,
@@ -950,7 +956,7 @@ class PostingAppServiceImpl implements PostingAppService {
   }) async {
     try {
       final reversalTransactions = <Transaction>[];
-      final accountMap = <int, Account>{};
+      final accountMap = <String, Account>{};
       for (final original in originals) {
         final reversal = _receiptMutator.deriveReversal(original);
         final reversalFailure = reversal.validate(allowNegativeAmounts: true);
@@ -960,6 +966,7 @@ class PostingAppServiceImpl implements PostingAppService {
         reversalTransactions.add(
           Transaction.fromReceipt(
             reversal,
+            id: _idGen.newId(),
             mutationKind: MutationKind.reversal,
             businessState: BusinessState.compensation,
             mutationReason: MutationReason.delete,
@@ -991,7 +998,7 @@ class PostingAppServiceImpl implements PostingAppService {
     }
   }
 
-  Future<Map<int, Account>> _loadAccountsForReceipt(PostReceipt receipt) async {
+  Future<Map<String, Account>> _loadAccountsForReceipt(PostReceipt receipt) async {
     final ids = receipt.entries.map((e) => e.accountId).toSet();
     final accounts = await _accountRepository.findByIds(ids);
     return {for (final a in accounts) a.id: a};
@@ -999,7 +1006,7 @@ class PostingAppServiceImpl implements PostingAppService {
 
   Failure? _validateAccountsLoaded(
     PostReceipt receipt,
-    Map<int, Account> accounts,
+    Map<String, Account> accounts,
   ) {
     for (final entry in receipt.entries) {
       final account = accounts[entry.accountId];
@@ -1414,8 +1421,8 @@ class PostingAppServiceImpl implements PostingAppService {
     }
   }
 
-  Future<int?> _resolveRefundCreditAccount({
-    required int parentId,
+  Future<String?> _resolveRefundCreditAccount({
+    required String parentId,
     required BusinessPurpose parentPurpose,
   }) async {
     final detail = await _query.findTransactionDetail(parentId);

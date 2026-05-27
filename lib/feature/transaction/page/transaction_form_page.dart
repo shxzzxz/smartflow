@@ -33,10 +33,10 @@ class TransactionFormPage extends ConsumerStatefulWidget {
     super.key,
   });
 
-  final int? editTransactionId;
+  final String? editTransactionId;
   final TransactionFormInitialMode initialMode;
-  final int? initialFromAccountId;
-  final int? initialToAccountId;
+  final String? initialFromAccountId;
+  final String? initialToAccountId;
 
   @override
   ConsumerState<TransactionFormPage> createState() =>
@@ -54,14 +54,14 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   bool _excludeBudget = false;
   bool _editInitialized = false;
 
-  int? _expenseCategoryId;
-  int? _expenseRootId;
-  int? _incomeCategoryId;
-  int? _incomeRootId;
-  int? _fromAccountId;
-  int? _toAccountId;
-  int? _reimbursementAccountId;
-  int? _liabilityAccountId;
+  String? _expenseCategoryId;
+  String? _expenseRootId;
+  String? _incomeCategoryId;
+  String? _incomeRootId;
+  String? _fromAccountId;
+  String? _toAccountId;
+  String? _reimbursementAccountId;
+  String? _liabilityAccountId;
 
   @override
   void initState() {
@@ -82,7 +82,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     TransactionDetail detail,
     List<CategoryNode> expenseTree,
     List<CategoryNode> incomeTree,
-    Map<int, Account> accountsById,
+    Map<String, Account> accountsById,
   ) {
     final transaction = detail.transaction;
     _amountController.text = transaction.primaryAmount.format();
@@ -216,7 +216,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     }
     if (!_editInitialized && editDetail != null) {
       final accountsById =
-          ref.watch(accountsByIdProvider).value ?? const <int, Account>{};
+          ref.watch(accountsByIdProvider).value ?? const <String, Account>{};
       _applyEditData(editDetail, expenseTree, incomeTree, accountsById);
     }
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
@@ -432,7 +432,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     });
   }
 
-  void _openCategoryForm(AccountType type, {int? parentId}) {
+  void _openCategoryForm(AccountType type, {String? parentId}) {
     final query =
         Uri(
           path: '/category/new',
@@ -657,7 +657,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
 
   Future<Result<CreatedTransactionResult>> _submitCorrection({
     required PostingAppService service,
-    required int transactionId,
+    required String transactionId,
     required Money amount,
     required String? note,
     required List<Account> moneyAccounts,
@@ -790,7 +790,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     }
   }
 
-  int? _effectiveId(int? selectedId, List<Account> options) {
+  String? _effectiveId(String? selectedId, List<Account> options) {
     if (selectedId != null &&
         options.any((account) => account.id == selectedId)) {
       return selectedId;
@@ -798,7 +798,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     return options.isEmpty ? null : options.first.id;
   }
 
-  int? _selectedId(int? selectedId, List<Account> options) {
+  String? _selectedId(String? selectedId, List<Account> options) {
     if (selectedId != null &&
         options.any((account) => account.id == selectedId)) {
       return selectedId;
@@ -869,9 +869,9 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     );
   }
 
-  int? _firstAccountId(
+  String? _firstAccountId(
     TransactionDetail detail,
-    Map<int, Account> accountsById,
+    Map<String, Account> accountsById,
     AccountType type,
     EntryDirection direction,
   ) {
@@ -884,9 +884,9 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     return null;
   }
 
-  int? _firstSettlementId(
+  String? _firstSettlementId(
     TransactionDetail detail,
-    Map<int, Account> accountsById,
+    Map<String, Account> accountsById,
     EntryDirection direction,
   ) {
     for (final entry in detail.entries) {
@@ -899,7 +899,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     return null;
   }
 
-  int? _rootCategoryId(List<CategoryNode> tree, int? categoryId) {
+  String? _rootCategoryId(List<CategoryNode> tree, String? categoryId) {
     if (categoryId == null) return null;
     for (final node in tree) {
       if (node.account.id == categoryId) return node.account.id;
@@ -911,7 +911,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   }
 }
 
-Account? _effectiveAccount(int? selectedId, List<Account> options) {
+Account? _effectiveAccount(String? selectedId, List<Account> options) {
   if (selectedId != null) {
     for (final account in options) {
       if (account.id == selectedId) {
@@ -1079,8 +1079,8 @@ class _MainAccountPickerTile extends StatelessWidget {
 
   final String label;
   final List<Account> accounts;
-  final int? selectedId;
-  final ValueChanged<int?> onChanged;
+  final String? selectedId;
+  final ValueChanged<String?> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1241,15 +1241,15 @@ class _TransactionOptionsPanel extends StatelessWidget {
   final DateTime occurredAt;
   final List<Account> moneyAccounts;
   final List<Account> reimbursementAccounts;
-  final int? fromAccountId;
-  final int? toAccountId;
-  final int? reimbursementAccountId;
+  final String? fromAccountId;
+  final String? toAccountId;
+  final String? reimbursementAccountId;
   final bool excludeStats;
   final bool excludeBudget;
   final VoidCallback onPickDate;
-  final ValueChanged<int?> onFromAccountChanged;
-  final ValueChanged<int?> onToAccountChanged;
-  final ValueChanged<int?> onReimbursementAccountChanged;
+  final ValueChanged<String?> onFromAccountChanged;
+  final ValueChanged<String?> onToAccountChanged;
+  final ValueChanged<String?> onReimbursementAccountChanged;
   final ValueChanged<bool> onExcludeStatsChanged;
   final ValueChanged<bool> onExcludeBudgetChanged;
 
@@ -1328,8 +1328,8 @@ class _AccountSelectorChip extends StatelessWidget {
 
   final String label;
   final List<Account> accounts;
-  final int? selectedId;
-  final ValueChanged<int?> onChanged;
+  final String? selectedId;
+  final ValueChanged<String?> onChanged;
   final bool allowNone;
   final String noneLabel;
 

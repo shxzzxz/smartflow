@@ -45,7 +45,7 @@ class EditAccountCommand {
     this.targetBalance,
   });
 
-  final int id;
+  final String id;
   final String? name;
   final int? sortOrder;
   final bool? isHidden;

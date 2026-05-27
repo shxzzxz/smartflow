@@ -17,7 +17,7 @@ import '../../../widget/business/finance_labels.dart';
 /// 类目账户(expense / income / 报销垫付的 expense 账户)。
 Account? categoryAccount(
   TransactionListItem item,
-  Map<int, Account> accountsById,
+  Map<String, Account> accountsById,
 ) {
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense || BusinessPurpose.refund => firstEntryByType(
@@ -41,7 +41,7 @@ Account? categoryAccount(
 /// 资金「流出账户」:asset / liability 上的 credit 分录(付款方)。
 Account? flowOutAccount(
   TransactionListItem item,
-  Map<int, Account> accountsById,
+  Map<String, Account> accountsById,
 ) {
   return firstSettlementEntry(
     item.entries,
@@ -53,7 +53,7 @@ Account? flowOutAccount(
 /// 资金「流入账户」:asset / liability 上的 debit 分录(收款方)。
 Account? flowInAccount(
   TransactionListItem item,
-  Map<int, Account> accountsById,
+  Map<String, Account> accountsById,
 ) {
   return firstSettlementEntry(
     item.entries,
@@ -64,7 +64,7 @@ Account? flowInAccount(
 
 String? resolveCategoryIconKey(
   TransactionListItem item,
-  Map<int, Account> accountsById,
+  Map<String, Account> accountsById,
 ) {
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense ||
@@ -84,7 +84,7 @@ String? resolveCategoryIconKey(
 
 String transactionPrimaryLabel(
   TransactionListItem item,
-  Map<int, Account> accountsById,
+  Map<String, Account> accountsById,
 ) {
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense || BusinessPurpose.dailyIncome =>
@@ -98,7 +98,7 @@ String transactionPrimaryLabel(
 
 String transactionAccountLabel(
   TransactionListItem item,
-  Map<int, Account> accountsById,
+  Map<String, Account> accountsById,
 ) {
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense || BusinessPurpose.reimbursementAdvance =>
@@ -111,7 +111,7 @@ String transactionAccountLabel(
 
 String _flowAccountLabel(
   TransactionListItem item,
-  Map<int, Account> accountsById,
+  Map<String, Account> accountsById,
 ) {
   final out = _cleanText(flowOutAccount(item, accountsById)?.name);
   final in_ = _cleanText(flowInAccount(item, accountsById)?.name);

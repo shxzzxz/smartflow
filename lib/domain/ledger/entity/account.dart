@@ -57,11 +57,11 @@ class Account {
     this.source = AccountSource.user,
   });
 
-  final int id;
+  final String id;
   final String name;
   final AccountType type;
   final AccountSubtype? subtype;
-  final int? parentId;
+  final String? parentId;
   final Money balance;
   final String? iconKey;
   final String? note;
@@ -79,6 +79,7 @@ class Account {
   bool get supportsManualBalance => type.supportsManualBalance(subtype);
 
   static Result<Account> createUserAccount({
+    required String id,
     required String name,
     required AccountType type,
     AccountSubtype? subtype,
@@ -116,7 +117,7 @@ class Account {
 
     return Result.success(
       Account(
-        id: 0,
+        id: id,
         name: normalizedName,
         type: type,
         subtype: subtype,
@@ -133,6 +134,7 @@ class Account {
   }
 
   static Result<Account> createCategory({
+    required String id,
     required String name,
     required AccountType type,
     Account? parent,
@@ -164,7 +166,7 @@ class Account {
 
     return Result.success(
       Account(
-        id: 0,
+        id: id,
         name: normalizedName,
         type: type,
         parentId: parent?.id,
@@ -394,7 +396,7 @@ class Account {
     String? name,
     AccountType? type,
     AccountSubtype? subtype,
-    int? parentId,
+    String? parentId,
     Money? balance,
     String? iconKey,
     String? note,

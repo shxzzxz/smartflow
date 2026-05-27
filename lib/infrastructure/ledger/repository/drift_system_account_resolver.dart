@@ -8,7 +8,7 @@ class DriftSystemAccountResolver implements SystemAccountResolver {
   final AppDatabase _database;
 
   @override
-  Future<int> resolveOpeningBalance() {
+  Future<String> resolveOpeningBalance() {
     return _resolve(
       systemKey: SystemKey.openingBalance,
       accountType: AccountType.equity,
@@ -17,7 +17,7 @@ class DriftSystemAccountResolver implements SystemAccountResolver {
   }
 
   @override
-  Future<int> resolveReimbursementGapIncome() {
+  Future<String> resolveReimbursementGapIncome() {
     return _resolve(
       systemKey: SystemKey.reimbursementGapIncome,
       accountType: AccountType.income,
@@ -26,7 +26,7 @@ class DriftSystemAccountResolver implements SystemAccountResolver {
   }
 
   @override
-  Future<int> resolveDebtInterestExpense() {
+  Future<String> resolveDebtInterestExpense() {
     return _resolve(
       systemKey: SystemKey.debtInterestExpense,
       accountType: AccountType.expense,
@@ -35,7 +35,7 @@ class DriftSystemAccountResolver implements SystemAccountResolver {
   }
 
   @override
-  Future<int> resolveDebtFeeExpense() {
+  Future<String> resolveDebtFeeExpense() {
     return _resolve(
       systemKey: SystemKey.debtFeeExpense,
       accountType: AccountType.expense,
@@ -44,7 +44,7 @@ class DriftSystemAccountResolver implements SystemAccountResolver {
   }
 
   @override
-  Future<int> resolveDiscountIncome() {
+  Future<String> resolveDiscountIncome() {
     return _resolve(
       systemKey: SystemKey.discountIncome,
       accountType: AccountType.income,
@@ -53,7 +53,7 @@ class DriftSystemAccountResolver implements SystemAccountResolver {
   }
 
   @override
-  Future<int> resolveGhostAccount() {
+  Future<String> resolveGhostAccount() {
     return _resolve(
       systemKey: SystemKey.ghostAccount,
       accountType: AccountType.equity,
@@ -61,7 +61,7 @@ class DriftSystemAccountResolver implements SystemAccountResolver {
     );
   }
 
-  Future<int> _resolve({
+  Future<String> _resolve({
     required SystemKey systemKey,
     required AccountType accountType,
     required String defaultName,

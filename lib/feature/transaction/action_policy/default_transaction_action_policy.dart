@@ -8,14 +8,14 @@ import 'transaction_action_policy.dart';
 class DefaultTransactionActionPolicy implements TransactionActionPolicy {
   const DefaultTransactionActionPolicy({
     required PostingAppService service,
-    required int transactionId,
+    required String transactionId,
     required BusinessPurpose businessPurpose,
   }) : _service = service,
        _transactionId = transactionId,
        _businessPurpose = businessPurpose;
 
   final PostingAppService _service;
-  final int _transactionId;
+  final String _transactionId;
   final BusinessPurpose _businessPurpose;
 
   @override
@@ -35,7 +35,7 @@ class DefaultTransactionActionPolicy implements TransactionActionPolicy {
   }
 
   @override
-  Future<Result<void>> changeSettlementAccount(int newAccountId) {
+  Future<Result<void>> changeSettlementAccount(String newAccountId) {
     return _service.updateTransactionBasics(
       UpdateTransactionBasicsCommand(
         transactionId: _transactionId,
@@ -75,14 +75,14 @@ class DefaultTransactionActionPolicy implements TransactionActionPolicy {
 class UnknownOwnedTransactionActionPolicy implements TransactionActionPolicy {
   const UnknownOwnedTransactionActionPolicy({
     required PostingAppService service,
-    required int transactionId,
+    required String transactionId,
     required String ownerType,
   }) : _service = service,
        _transactionId = transactionId,
        _ownerType = ownerType;
 
   final PostingAppService _service;
-  final int _transactionId;
+  final String _transactionId;
   final String _ownerType;
 
   @override
@@ -97,7 +97,7 @@ class UnknownOwnedTransactionActionPolicy implements TransactionActionPolicy {
   String editRoutePath() => '';
 
   @override
-  Future<Result<void>> changeSettlementAccount(int newAccountId) async =>
+  Future<Result<void>> changeSettlementAccount(String newAccountId) async =>
       const Result.failure(
         Failure(
           code: 'transaction_owner_unknown',

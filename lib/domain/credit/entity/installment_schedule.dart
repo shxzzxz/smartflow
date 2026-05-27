@@ -15,8 +15,8 @@ class InstallmentSchedule {
     this.note,
   });
 
-  final int id;
-  final int contractId;
+  final String id;
+  final String contractId;
   final int periodNo;
   final DateTime expectedRepaymentDate;
   final Money expectedPrincipal;

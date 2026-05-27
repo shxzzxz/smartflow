@@ -26,10 +26,10 @@ class InstallmentContractDraft {
     this.note,
   });
 
-  final int liabilityAccountId;
+  final String liabilityAccountId;
   final InstallmentSourceType sourceType;
-  final int? disbursementAccountId;
-  final int? disbursementTransactionId;
+  final String? disbursementAccountId;
+  final String? disbursementTransactionId;
   final Money principal;
   final int totalPeriods;
   final DateTime borrowingDate;
@@ -49,7 +49,7 @@ class InstallmentContractDraft {
 ///
 /// - 普通可空字段使用 `T?`：`null` 表示"不改"。
 /// - `note` / 利率两组字段使用 [Patch]：业务允许从"有值"清除为"无值"。
-/// - `disbursementAccountId` 用 `int?`，业务上禁止从有值清除（不允许合同跨 sourceType）。
+/// - `disbursementAccountId` 用 `String?`，业务上禁止从有值清除（不允许合同跨 sourceType）。
 class InstallmentContractPatch {
   const InstallmentContractPatch({
     this.totalPeriods,
@@ -75,7 +75,7 @@ class InstallmentContractPatch {
   final InterestAccrualMethod? interestAccrualMethod;
   final int? totalFeeMinor;
   final Patch<String>? note;
-  final int? disbursementAccountId;
+  final String? disbursementAccountId;
 }
 
 class InstallmentSchedulePatch {
@@ -104,61 +104,61 @@ class InstallmentRepaymentDraft {
     this.scheduleId,
   });
 
-  final int contractId;
+  final String contractId;
   final InstallmentRepaymentType repaymentType;
-  final int? scheduleId;
-  final int transactionId;
+  final String? scheduleId;
+  final String transactionId;
 }
 
 abstract interface class InstallmentRepository {
-  Future<InstallmentContract?> findContract(int id);
+  Future<InstallmentContract?> findContract(String id);
 
   Future<List<InstallmentContract>> listContractsByLiabilityAccount(
-    int liabilityAccountId,
+    String liabilityAccountId,
   );
 
-  Future<List<InstallmentSchedule>> listSchedules(int contractId);
+  Future<List<InstallmentSchedule>> listSchedules(String contractId);
 
-  Future<InstallmentSchedule?> findSchedule(int scheduleId);
+  Future<InstallmentSchedule?> findSchedule(String scheduleId);
 
-  Future<List<InstallmentRepayment>> listRepayments(int contractId);
+  Future<List<InstallmentRepayment>> listRepayments(String contractId);
 
-  Future<InstallmentRepayment?> findRepaymentByTransaction(int transactionId);
+  Future<InstallmentRepayment?> findRepaymentByTransaction(String transactionId);
 
   /// 反查：transaction 是否为某合同的放款交易；若是返回该合同，否则返回 null。
   /// 仅 `sourceType == disbursement` 的合同会命中。
   Future<InstallmentContract?> findContractByDisbursementTransaction(
-    int transactionId,
+    String transactionId,
   );
 
-  Future<int> insertContract(InstallmentContractDraft draft);
+  Future<String> insertContract(InstallmentContractDraft draft);
 
-  Future<void> updateContract(int contractId, InstallmentContractPatch patch);
+  Future<void> updateContract(String contractId, InstallmentContractPatch patch);
 
   Future<void> replaceSchedules(
-    int contractId,
+    String contractId,
     List<InstallmentScheduleDraft> drafts,
   );
 
   /// 追加 pending 期次行（不动现有 schedule 行）。
   /// drafts 中的 periodNo 由调用方负责，保证全表 periodNo 唯一。
   Future<void> appendSchedules(
-    int contractId,
+    String contractId,
     List<InstallmentScheduleDraft> drafts,
   );
 
-  Future<void> updateSchedule(int scheduleId, InstallmentSchedulePatch patch);
+  Future<void> updateSchedule(String scheduleId, InstallmentSchedulePatch patch);
 
-  Future<int> insertRepayment(InstallmentRepaymentDraft draft);
+  Future<String> insertRepayment(InstallmentRepaymentDraft draft);
 
-  Future<void> deleteRepayment(int repaymentId);
+  Future<void> deleteRepayment(String repaymentId);
 
   Future<void> updateContractStatus(
-    int contractId,
+    String contractId,
     InstallmentContractStatus status,
   );
 
   /// 物理删除合同：连同 schedules 与 repayments 一并清理。
   /// 调用方负责先把对应的放款 / 还款交易撤回，本方法不动 transaction 表。
-  Future<void> deleteContract(int contractId);
+  Future<void> deleteContract(String contractId);
 }

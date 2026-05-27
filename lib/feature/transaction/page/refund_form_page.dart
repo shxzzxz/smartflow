@@ -18,7 +18,7 @@ import '../../../widget/business/plain_transaction_fields.dart';
 class RefundFormPage extends ConsumerStatefulWidget {
   const RefundFormPage({required this.parentTransactionId, super.key});
 
-  final int parentTransactionId;
+  final String parentTransactionId;
 
   @override
   ConsumerState<RefundFormPage> createState() => _RefundFormPageState();
@@ -29,7 +29,7 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
   DateTime _occurredAt = DateTime.now();
-  int? _refundToAccountId;
+  String? _refundToAccountId;
   bool _submitting = false;
 
   @override
@@ -45,7 +45,7 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
         ref.watch(accountsForUsageProvider(AccountUsage.settlement)).value ??
         const <Account>[];
     final accountsById =
-        ref.watch(accountsByIdProvider).value ?? const <int, Account>{};
+        ref.watch(accountsByIdProvider).value ?? const <String, Account>{};
     final detailAsync = ref.watch(
       transactionDetailProvider(widget.parentTransactionId),
     );
@@ -140,7 +140,7 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
 
   Future<void> _pickRefundAccount(
     List<Account> accounts, {
-    required int? selectedId,
+    required String? selectedId,
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,
@@ -170,7 +170,7 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
         ref.read(accountsForUsageProvider(AccountUsage.settlement)).value ??
         const <Account>[];
     final accountsById =
-        ref.read(accountsByIdProvider).value ?? const <int, Account>{};
+        ref.read(accountsByIdProvider).value ?? const <String, Account>{};
     final detail =
         ref.read(transactionDetailProvider(widget.parentTransactionId)).value;
     final refundToAccountId = _effectiveRefundToAccountId(
@@ -211,7 +211,7 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
   }
 }
 
-Account? _findAccount(int? accountId, List<Account> accounts) {
+Account? _findAccount(String? accountId, List<Account> accounts) {
   if (accountId == null) return null;
   for (final account in accounts) {
     if (account.id == accountId) return account;
@@ -219,9 +219,9 @@ Account? _findAccount(int? accountId, List<Account> accounts) {
   return null;
 }
 
-int? _effectiveRefundToAccountId({
-  required int? selectedId,
-  required int? parentSettlementAccountId,
+String? _effectiveRefundToAccountId({
+  required String? selectedId,
+  required String? parentSettlementAccountId,
   required List<Account> accounts,
 }) {
   if (_containsAccount(accounts, selectedId)) {
@@ -233,16 +233,16 @@ int? _effectiveRefundToAccountId({
   return null;
 }
 
-bool _containsAccount(List<Account> accounts, int? accountId) {
+bool _containsAccount(List<Account> accounts, String? accountId) {
   if (accountId == null) {
     return false;
   }
   return accounts.any((account) => account.id == accountId);
 }
 
-int? _resolveParentSettlementAccountId(
+String? _resolveParentSettlementAccountId(
   TransactionDetail? detail,
-  Map<int, Account> accountsById,
+  Map<String, Account> accountsById,
 ) {
   if (detail == null) {
     return null;

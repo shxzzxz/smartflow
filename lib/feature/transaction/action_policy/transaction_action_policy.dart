@@ -8,7 +8,7 @@ abstract interface class TransactionActionPolicy {
 
   String editRoutePath();
 
-  Future<Result<void>> changeSettlementAccount(int newAccountId);
+  Future<Result<void>> changeSettlementAccount(String newAccountId);
 
   Future<Result<void>> changeOccurredAt(DateTime newTime);
 

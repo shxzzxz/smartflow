@@ -22,7 +22,7 @@ class CategoryFormPage extends ConsumerStatefulWidget {
   });
 
   final AccountType initialType;
-  final int? initialParentId;
+  final String? initialParentId;
 
   @override
   ConsumerState<CategoryFormPage> createState() => _CategoryFormPageState();
@@ -33,7 +33,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
   final _nameController = TextEditingController();
   final _noteController = TextEditingController();
   AccountType _type = AccountType.expense;
-  int? _parentId;
+  String? _parentId;
   String? _iconKey;
   bool _submitting = false;
 
@@ -142,7 +142,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
   }
 
   Future<void> _showParentSheet(List<Account> parents) async {
-    final selected = await showModalBottomSheet<int>(
+    final selected = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
       builder: (context) {

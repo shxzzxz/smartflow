@@ -10,10 +10,10 @@ class InstallmentRepayment {
     this.scheduleId,
   });
 
-  final int id;
-  final int contractId;
+  final String id;
+  final String contractId;
   final InstallmentRepaymentType repaymentType;
-  final int? scheduleId;
-  final int transactionId;
+  final String? scheduleId;
+  final String transactionId;
   final DateTime createdAt;
 }

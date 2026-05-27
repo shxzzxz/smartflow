@@ -15,8 +15,8 @@ class CreateExpenseCommand {
   });
 
   final Money amount;
-  final int paidFromAccountId;
-  final int expenseAccountId;
+  final String paidFromAccountId;
+  final String expenseAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -37,8 +37,8 @@ class CreateIncomeCommand {
   });
 
   final Money amount;
-  final int receiveAccountId;
-  final int incomeAccountId;
+  final String receiveAccountId;
+  final String incomeAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -61,11 +61,11 @@ class CreateTransferCommand {
   });
 
   final Money amount;
-  final int fromAccountId;
-  final int toAccountId;
+  final String fromAccountId;
+  final String toAccountId;
   final DateTime occurredAt;
   final Money? feeAmount;
-  final int? feeExpenseAccountId;
+  final String? feeExpenseAccountId;
   final String? counterpartyName;
   final String? note;
   final bool isExcludedFromStats;
@@ -85,8 +85,8 @@ class CreateRefundCommand {
   });
 
   final Money amount;
-  final int parentTransactionId;
-  final int refundToAccountId;
+  final String parentTransactionId;
+  final String refundToAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -108,9 +108,9 @@ class CreateReimbursementAdvanceCommand {
   });
 
   final Money amount;
-  final int receivableAccountId;
-  final int paidFromAccountId;
-  final int expenseCategoryId;
+  final String receivableAccountId;
+  final String paidFromAccountId;
+  final String expenseCategoryId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -132,9 +132,9 @@ class CreateReimbursementReceiptCommand {
   });
 
   final Money amount;
-  final int advanceTransactionId;
-  final int receivableAccountId;
-  final int receiveAccountId;
+  final String advanceTransactionId;
+  final String receivableAccountId;
+  final String receiveAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -156,9 +156,9 @@ class CloseReimbursementCommand {
   });
 
   final Money actualReceivedAmount;
-  final int advanceTransactionId;
-  final int receivableAccountId;
-  final int receiveAccountId;
+  final String advanceTransactionId;
+  final String receivableAccountId;
+  final String receiveAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -186,8 +186,8 @@ class CreateRepaymentCommand {
   final Money? interest;
   final Money? fee;
   final Money? discount;
-  final int liabilityAccountId;
-  final int paidFromAccountId;
+  final String liabilityAccountId;
+  final String paidFromAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -210,8 +210,8 @@ class CreateBorrowingCommand {
   });
 
   final Money amount;
-  final int liabilityAccountId;
-  final int receiveAccountId;
+  final String liabilityAccountId;
+  final String receiveAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -231,7 +231,7 @@ class CreateOpeningBalanceCommand {
     this.isExcludedFromBudget = false,
   });
 
-  final int accountId;
+  final String accountId;
   final Money amount;
   final DateTime occurredAt;
   final String? counterpartyName;
@@ -251,7 +251,7 @@ class AdjustBalanceCommand {
     this.isExcludedFromBudget = false,
   });
 
-  final int accountId;
+  final String accountId;
   final Money targetBalance;
   final DateTime occurredAt;
   final String? counterpartyName;
@@ -273,10 +273,10 @@ class CorrectExpenseCommand {
     this.isExcludedFromBudget,
   });
 
-  final int transactionId;
+  final String transactionId;
   final Money amount;
-  final int paidFromAccountId;
-  final int expenseAccountId;
+  final String paidFromAccountId;
+  final String expenseAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -297,10 +297,10 @@ class CorrectIncomeCommand {
     this.isExcludedFromBudget,
   });
 
-  final int transactionId;
+  final String transactionId;
   final Money amount;
-  final int receiveAccountId;
-  final int incomeAccountId;
+  final String receiveAccountId;
+  final String incomeAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -321,10 +321,10 @@ class CorrectTransferCommand {
     this.isExcludedFromBudget,
   });
 
-  final int transactionId;
+  final String transactionId;
   final Money amount;
-  final int fromAccountId;
-  final int toAccountId;
+  final String fromAccountId;
+  final String toAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -346,11 +346,11 @@ class CorrectReimbursementAdvanceCommand {
     this.isExcludedFromBudget,
   });
 
-  final int transactionId;
+  final String transactionId;
   final Money amount;
-  final int receivableAccountId;
-  final int paidFromAccountId;
-  final int expenseCategoryId;
+  final String receivableAccountId;
+  final String paidFromAccountId;
+  final String expenseCategoryId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -370,9 +370,9 @@ class CorrectRefundCommand {
     this.isExcludedFromBudget,
   });
 
-  final int transactionId;
+  final String transactionId;
   final Money amount;
-  final int refundToAccountId;
+  final String refundToAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -393,10 +393,10 @@ class CorrectReimbursementReceiptCommand {
     this.isExcludedFromBudget,
   });
 
-  final int transactionId;
+  final String transactionId;
   final Money amount;
-  final int receivableAccountId;
-  final int receiveAccountId;
+  final String receivableAccountId;
+  final String receiveAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -417,10 +417,10 @@ class CorrectReimbursementCloseCommand {
     this.isExcludedFromBudget,
   });
 
-  final int transactionId;
+  final String transactionId;
   final Money actualReceivedAmount;
-  final int receivableAccountId;
-  final int receiveAccountId;
+  final String receivableAccountId;
+  final String receiveAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -441,10 +441,10 @@ class CorrectBorrowingCommand {
     this.isExcludedFromBudget,
   });
 
-  final int transactionId;
+  final String transactionId;
   final Money amount;
-  final int liabilityAccountId;
-  final int receiveAccountId;
+  final String liabilityAccountId;
+  final String receiveAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -468,13 +468,13 @@ class CorrectRepaymentCommand {
     this.isExcludedFromBudget,
   });
 
-  final int transactionId;
+  final String transactionId;
   final Money principal;
   final Money? interest;
   final Money? fee;
   final Money? discount;
-  final int liabilityAccountId;
-  final int paidFromAccountId;
+  final String liabilityAccountId;
+  final String paidFromAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -485,7 +485,7 @@ class CorrectRepaymentCommand {
 class DeleteTransactionCommand {
   const DeleteTransactionCommand({required this.transactionId});
 
-  final int transactionId;
+  final String transactionId;
 }
 
 class UpdateTransactionMetadataCommand {
@@ -496,7 +496,7 @@ class UpdateTransactionMetadataCommand {
     this.isExcludedFromBudget,
   });
 
-  final int transactionId;
+  final String transactionId;
 
   /// `null` 表示不改备注；`Patch.set(value)` 设置；`Patch.clear()` 清空。
   final Patch<String>? note;
@@ -512,10 +512,10 @@ class UpdateTransactionBasicsCommand {
     this.reimbursementAccountId,
   });
 
-  final int transactionId;
+  final String transactionId;
   final DateTime? occurredAt;
-  final int? settlementAccountId;
-  final int? reimbursementAccountId;
+  final String? settlementAccountId;
+  final String? reimbursementAccountId;
 }
 
 class UpdateTransactionOwnershipCommand {
@@ -524,7 +524,7 @@ class UpdateTransactionOwnershipCommand {
     required this.ownership,
   });
 
-  final int transactionId;
+  final String transactionId;
   final TransactionOwnership ownership;
 }
 
@@ -536,6 +536,6 @@ class CreatedTransactionResult {
     required this.rootTransactionId,
   });
 
-  final int transactionId;
-  final int rootTransactionId;
+  final String transactionId;
+  final String rootTransactionId;
 }

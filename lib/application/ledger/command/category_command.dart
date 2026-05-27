@@ -12,7 +12,7 @@ class CreateCategoryCommand {
 
   final String name;
   final AccountType type;
-  final int? parentId;
+  final String? parentId;
   final String? iconKey;
   final String? note;
   final int sortOrder;

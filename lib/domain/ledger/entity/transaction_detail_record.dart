@@ -14,8 +14,8 @@ class TransactionDetailRecord {
     required this.amount,
   });
 
-  final int id;
-  final int transactionId;
+  final String id;
+  final String transactionId;
   final int lineNo;
   final TransactionDetailType type;
   final Money amount;

@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/money/money.dart';
 import '../../../domain/credit/entity/installment_contract.dart';
@@ -15,8 +16,10 @@ class DriftInstallmentRepository implements InstallmentRepository {
 
   final AppDatabase _database;
 
+  static const _uuid = Uuid();
+
   @override
-  Future<InstallmentContract?> findContract(int id) async {
+  Future<InstallmentContract?> findContract(String id) async {
     final row =
         await (_database.select(_database.installmentContracts)
           ..where((c) => c.id.equals(id))).getSingleOrNull();
@@ -25,7 +28,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
 
   @override
   Future<List<InstallmentContract>> listContractsByLiabilityAccount(
-    int liabilityAccountId,
+    String liabilityAccountId,
   ) async {
     final rows =
         await (_database.select(_database.installmentContracts)
@@ -39,7 +42,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
   }
 
   @override
-  Future<List<InstallmentSchedule>> listSchedules(int contractId) async {
+  Future<List<InstallmentSchedule>> listSchedules(String contractId) async {
     final rows =
         await (_database.select(_database.installmentSchedules)
               ..where((s) => s.contractId.equals(contractId))
@@ -49,7 +52,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
   }
 
   @override
-  Future<InstallmentSchedule?> findSchedule(int scheduleId) async {
+  Future<InstallmentSchedule?> findSchedule(String scheduleId) async {
     final row =
         await (_database.select(_database.installmentSchedules)
           ..where((s) => s.id.equals(scheduleId))).getSingleOrNull();
@@ -57,7 +60,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
   }
 
   @override
-  Future<List<InstallmentRepayment>> listRepayments(int contractId) async {
+  Future<List<InstallmentRepayment>> listRepayments(String contractId) async {
     final rows =
         await (_database.select(_database.installmentRepayments)
               ..where((r) => r.contractId.equals(contractId))
@@ -68,7 +71,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
 
   @override
   Future<InstallmentRepayment?> findRepaymentByTransaction(
-    int transactionId,
+    String transactionId,
   ) async {
     final row =
         await (_database.select(_database.installmentRepayments)..where(
@@ -79,7 +82,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
 
   @override
   Future<InstallmentContract?> findContractByDisbursementTransaction(
-    int transactionId,
+    String transactionId,
   ) async {
     final row =
         await (_database.select(_database.installmentContracts)..where(
@@ -89,12 +92,14 @@ class DriftInstallmentRepository implements InstallmentRepository {
   }
 
   @override
-  Future<int> insertContract(InstallmentContractDraft draft) {
+  Future<String> insertContract(InstallmentContractDraft draft) async {
+    final id = _uuid.v7();
     final now = DateTime.now();
-    return _database
+    await _database
         .into(_database.installmentContracts)
         .insert(
           InstallmentContractsCompanion.insert(
+            id: id,
             liabilityAccountId: draft.liabilityAccountId,
             sourceType: draft.sourceType,
             disbursementAccountId: Value(draft.disbursementAccountId),
@@ -115,11 +120,12 @@ class DriftInstallmentRepository implements InstallmentRepository {
             updatedAt: Value(now),
           ),
         );
+    return id;
   }
 
   @override
   Future<void> updateContract(
-    int contractId,
+    String contractId,
     InstallmentContractPatch patch,
   ) async {
     final companion = InstallmentContractsCompanion(
@@ -166,7 +172,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
 
   @override
   Future<void> replaceSchedules(
-    int contractId,
+    String contractId,
     List<InstallmentScheduleDraft> drafts,
   ) async {
     await _database.transaction(() async {
@@ -178,6 +184,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
           batch.insert(
             _database.installmentSchedules,
             InstallmentSchedulesCompanion.insert(
+              id: _uuid.v7(),
               contractId: contractId,
               periodNo: draft.periodNo,
               expectedRepaymentDate: draft.expectedRepaymentDate,
@@ -196,7 +203,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
 
   @override
   Future<void> appendSchedules(
-    int contractId,
+    String contractId,
     List<InstallmentScheduleDraft> drafts,
   ) async {
     if (drafts.isEmpty) return;
@@ -206,6 +213,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
         batch.insert(
           _database.installmentSchedules,
           InstallmentSchedulesCompanion.insert(
+            id: _uuid.v7(),
             contractId: contractId,
             periodNo: draft.periodNo,
             expectedRepaymentDate: draft.expectedRepaymentDate,
@@ -223,7 +231,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
 
   @override
   Future<void> updateSchedule(
-    int scheduleId,
+    String scheduleId,
     InstallmentSchedulePatch patch,
   ) async {
     final companion = InstallmentSchedulesCompanion(
@@ -253,12 +261,14 @@ class DriftInstallmentRepository implements InstallmentRepository {
   }
 
   @override
-  Future<int> insertRepayment(InstallmentRepaymentDraft draft) {
+  Future<String> insertRepayment(InstallmentRepaymentDraft draft) async {
+    final id = _uuid.v7();
     final now = DateTime.now();
-    return _database
+    await _database
         .into(_database.installmentRepayments)
         .insert(
           InstallmentRepaymentsCompanion.insert(
+            id: id,
             contractId: draft.contractId,
             repaymentType: draft.repaymentType,
             scheduleId: Value(draft.scheduleId),
@@ -267,17 +277,18 @@ class DriftInstallmentRepository implements InstallmentRepository {
             updatedAt: Value(now),
           ),
         );
+    return id;
   }
 
   @override
-  Future<void> deleteRepayment(int repaymentId) async {
+  Future<void> deleteRepayment(String repaymentId) async {
     await (_database.delete(_database.installmentRepayments)
       ..where((r) => r.id.equals(repaymentId))).go();
   }
 
   @override
   Future<void> updateContractStatus(
-    int contractId,
+    String contractId,
     InstallmentContractStatus status,
   ) async {
     await (_database.update(_database.installmentContracts)
@@ -290,7 +301,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
   }
 
   @override
-  Future<void> deleteContract(int contractId) async {
+  Future<void> deleteContract(String contractId) async {
     await _database.transaction(() async {
       await (_database.delete(_database.installmentRepayments)
         ..where((r) => r.contractId.equals(contractId))).go();

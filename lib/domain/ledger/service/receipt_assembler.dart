@@ -34,8 +34,8 @@ class ReceiptAssembler {
   /// 日常支出:expense 借 / settlement 贷。
   Result<PostReceipt> assembleExpense({
     required Money amount,
-    required int paidFromAccountId,
-    required int expenseAccountId,
+    required String paidFromAccountId,
+    required String expenseAccountId,
     required DateTime occurredAt,
     String? counterpartyName,
     String? note,
@@ -77,8 +77,8 @@ class ReceiptAssembler {
   /// 日常收入:settlement 借 / income 贷。
   Result<PostReceipt> assembleIncome({
     required Money amount,
-    required int receiveAccountId,
-    required int incomeAccountId,
+    required String receiveAccountId,
+    required String incomeAccountId,
     required DateTime occurredAt,
     String? counterpartyName,
     String? note,
@@ -121,11 +121,11 @@ class ReceiptAssembler {
   /// - to 借 amount + [feeExpense 借 fee] + from 贷 (amount + fee)
   Result<PostReceipt> assembleTransfer({
     required Money amount,
-    required int fromAccountId,
-    required int toAccountId,
+    required String fromAccountId,
+    required String toAccountId,
     required DateTime occurredAt,
     Money? feeAmount,
-    int? feeExpenseAccountId,
+    String? feeExpenseAccountId,
     String? counterpartyName,
     String? note,
     bool isExcludedFromStats = false,
@@ -190,7 +190,7 @@ class ReceiptAssembler {
     );
   }
 
-  Failure? _validateTransferFee(Money? fee, int? feeAccountId) {
+  Failure? _validateTransferFee(Money? fee, String? feeAccountId) {
     if (fee == null) {
       return feeAccountId == null
           ? null
@@ -239,10 +239,10 @@ class ReceiptAssembler {
   /// [selfPrimaryAddback] 编辑场景下传入"原退款自身金额",对剩余可退额加回。
   Result<PostReceipt> assembleRefund({
     required Money amount,
-    required int refundToAccountId,
+    required String refundToAccountId,
     required Transaction parent,
     required Money refundedSoFar,
-    required int creditAccountId,
+    required String creditAccountId,
     required DateTime occurredAt,
     Money? selfPrimaryAddback,
     String? counterpartyName,
@@ -312,9 +312,9 @@ class ReceiptAssembler {
   /// 把用户选的支出分类记入 `reimbursement_expense_account_id`,close 时少收差额复用。
   Result<PostReceipt> assembleReimbursementAdvance({
     required Money amount,
-    required int receivableAccountId,
-    required int paidFromAccountId,
-    required int expenseCategoryId,
+    required String receivableAccountId,
+    required String paidFromAccountId,
+    required String expenseCategoryId,
     required DateTime occurredAt,
     String? counterpartyName,
     String? note,
@@ -370,8 +370,8 @@ class ReceiptAssembler {
     required Money amount,
     required Transaction advance,
     required Money outstanding,
-    required int receivableAccountId,
-    required int receiveAccountId,
+    required String receivableAccountId,
+    required String receiveAccountId,
     required DateTime occurredAt,
     Money? selfPrimaryAddback,
     String? counterpartyName,
@@ -445,10 +445,10 @@ class ReceiptAssembler {
     required Money actualReceivedAmount,
     required Transaction advance,
     required Money outstanding,
-    required int receivableAccountId,
-    required int receiveAccountId,
+    required String receivableAccountId,
+    required String receiveAccountId,
     required DateTime occurredAt,
-    int? gapIncomeAccountId,
+    String? gapIncomeAccountId,
     String? counterpartyName,
     String? note,
     bool isExcludedFromStats = false,
@@ -569,15 +569,15 @@ class ReceiptAssembler {
   /// / [discountIncomeAccountId] 三个系统科目 id(对应金额非零才需要)。
   Result<PostReceipt> assembleRepayment({
     required Money principal,
-    required int liabilityAccountId,
-    required int paidFromAccountId,
+    required String liabilityAccountId,
+    required String paidFromAccountId,
     required DateTime occurredAt,
     Money? interest,
     Money? fee,
     Money? discount,
-    int? interestExpenseAccountId,
-    int? feeExpenseAccountId,
-    int? discountIncomeAccountId,
+    String? interestExpenseAccountId,
+    String? feeExpenseAccountId,
+    String? discountIncomeAccountId,
     TransactionOwnership? ownership,
     String? counterpartyName,
     String? note,
@@ -711,8 +711,8 @@ class ReceiptAssembler {
   /// 借入:receive 借 / liability 贷。
   Result<PostReceipt> assembleBorrowing({
     required Money amount,
-    required int liabilityAccountId,
-    required int receiveAccountId,
+    required String liabilityAccountId,
+    required String receiveAccountId,
     required DateTime occurredAt,
     TransactionOwnership? ownership,
     String? counterpartyName,
@@ -772,7 +772,7 @@ class ReceiptAssembler {
   Result<PostReceipt> assembleOpeningBalance({
     required Account account,
     required Money signedAmount,
-    required int equityAccountId,
+    required String equityAccountId,
     required DateTime occurredAt,
     String? counterpartyName,
     String? note,
@@ -846,7 +846,7 @@ class ReceiptAssembler {
   Result<PostReceipt> assembleBalanceAdjustment({
     required Account account,
     required Money signedDelta,
-    required int equityAccountId,
+    required String equityAccountId,
     required DateTime occurredAt,
     String? counterpartyName,
     String? note,

@@ -1,4 +1,5 @@
 import '../../../core/error/failure.dart';
+import '../../../core/id/id_generator.dart';
 import '../../../core/result/result.dart';
 import '../../../application/shared/transaction_runner.dart';
 import '../command/account_command.dart';
@@ -9,9 +10,9 @@ import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'posting_app_service.dart';
 
 abstract interface class AccountAppService {
-  Future<Account?> findAccountById(int id);
+  Future<Account?> findAccountById(String id);
 
-  Future<List<Account>> findAccountsByIds(Set<int> ids);
+  Future<List<Account>> findAccountsByIds(Set<String> ids);
 
   Future<Result<Account>> createAccount(CreateAccountCommand command);
 
@@ -23,20 +24,23 @@ class AccountAppServiceImpl implements AccountAppService {
     this._repository, {
     required TransactionRunner transactionRunner,
     required PostingAppService transactions,
+    required IdGenerator idGenerator,
   }) : _runner = transactionRunner,
-       _transactions = transactions;
+       _transactions = transactions,
+       _idGenerator = idGenerator;
 
   final AccountRepository _repository;
   final PostingAppService _transactions;
   final TransactionRunner _runner;
+  final IdGenerator _idGenerator;
 
   @override
-  Future<Account?> findAccountById(int id) {
+  Future<Account?> findAccountById(String id) {
     return _repository.findById(id);
   }
 
   @override
-  Future<List<Account>> findAccountsByIds(Set<int> ids) {
+  Future<List<Account>> findAccountsByIds(Set<String> ids) {
     return _repository.findByIds(ids);
   }
 
@@ -52,6 +56,7 @@ class AccountAppServiceImpl implements AccountAppService {
       );
     }
     final draftResult = Account.createUserAccount(
+      id: _idGenerator.newId(),
       name: command.name.trim(),
       type: command.type,
       subtype: command.subtype,

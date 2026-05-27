@@ -15,7 +15,7 @@ abstract interface class PostingRepository {
   Future<void> saveAccounts(Iterable<Account> accounts);
 
   Future<void> updateTransactionState({
-    required int transactionId,
+    required String transactionId,
     required BusinessState businessState,
   });
 
