@@ -1,18 +1,14 @@
 import '../../../core/error/failure.dart';
-import '../../../core/money/money.dart';
-import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
 import '../../../application/shared/transaction_runner.dart';
 import '../command/account_command.dart';
 import '../command/transaction_command.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
-import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'posting_app_service.dart';
 
-abstract interface class AccountService {
-  Stream<List<Account>> watchAccounts(Set<AccountType> types);
-
+abstract interface class AccountAppService {
   Future<Account?> findAccountById(int id);
 
   Future<List<Account>> findAccountsByIds(Set<int> ids);
@@ -22,8 +18,8 @@ abstract interface class AccountService {
   Future<Result<void>> editAccount(EditAccountCommand command);
 }
 
-class AccountServiceImpl implements AccountService {
-  const AccountServiceImpl(
+class AccountAppServiceImpl implements AccountAppService {
+  const AccountAppServiceImpl(
     this._repository, {
     required TransactionRunner transactionRunner,
     required PostingAppService transactions,
@@ -35,43 +31,49 @@ class AccountServiceImpl implements AccountService {
   final TransactionRunner _runner;
 
   @override
-  Stream<List<Account>> watchAccounts(Set<AccountType> types) {
-    return _repository.watchAccounts(types);
-  }
-
-  @override
   Future<Account?> findAccountById(int id) {
-    return _repository.findAccountById(id);
+    return _repository.findById(id);
   }
 
   @override
   Future<List<Account>> findAccountsByIds(Set<int> ids) {
-    return _repository.findAccountsByIds(ids);
+    return _repository.findByIds(ids);
   }
 
   @override
   Future<Result<Account>> createAccount(CreateAccountCommand command) async {
-    final failure = _validateCreate(command);
-    if (failure != null) {
-      return Result.failure(failure);
+    if (command.openingBalance.minorUnits != 0 &&
+        !command.type.supportsManualBalance(command.subtype)) {
+      return const Result.failure(
+        Failure(
+          code: 'opening_balance_not_supported',
+          message: 'This account type does not support opening balance.',
+        ),
+      );
     }
-
-    final spec = AccountInsertSpec(
+    final draftResult = Account.createUserAccount(
       name: command.name.trim(),
       type: command.type,
       subtype: command.subtype,
-      iconKey: _blankToNull(command.iconKey),
-      note: _blankToNull(command.note),
-      creditLimitMinor: command.creditLimit?.minorUnits,
+      iconKey: command.iconKey,
+      note: command.note,
+      creditLimit: command.creditLimit,
       billingDay: command.billingDay,
       repaymentDay: command.repaymentDay,
       sortOrder: command.sortOrder,
       isHidden: command.isHidden,
     );
+    final Account draft;
+    switch (draftResult) {
+      case Success(:final value):
+        draft = value;
+      case FailureResult(:final failure):
+        return Result.failure(failure);
+    }
 
     try {
       return await _runner.run<Account>(() async {
-        final account = await _repository.createAccount(spec);
+        final account = await _repository.create(draft);
         if (command.openingBalance.minorUnits == 0) {
           return Result.success(account);
         }
@@ -84,7 +86,7 @@ class AccountServiceImpl implements AccountService {
         );
         switch (openingResult) {
           case Success():
-            final refreshed = await _repository.findAccountById(account.id);
+            final refreshed = await _repository.findById(account.id);
             return Result.success(refreshed ?? account);
           case FailureResult(:final failure):
             return Result.failure(failure);
@@ -104,7 +106,7 @@ class AccountServiceImpl implements AccountService {
   @override
   Future<Result<void>> editAccount(EditAccountCommand command) async {
     try {
-      final account = await _repository.findAccountById(command.id);
+      final account = await _repository.findById(command.id);
       if (account == null) {
         return const Result.failure(
           Failure(
@@ -113,30 +115,41 @@ class AccountServiceImpl implements AccountService {
           ),
         );
       }
-      final editFailure = account.checkEditable();
-      if (editFailure != null) {
-        return Result.failure(editFailure);
-      }
-      final renameResult = account.renamed(command.name);
-      if (renameResult case FailureResult(:final failure)) {
-        return Result.failure(failure);
-      }
       final targetBalance = command.targetBalance;
-
-      final spec = AccountUpdateSpec(
-        name: command.name?.trim(),
-        sortOrder: command.sortOrder,
-        isHidden: command.isHidden,
-        subtype: command.subtype,
-        iconKey: _normalizeStringPatch(command.iconKey),
-        note: _normalizeStringPatch(command.note),
-        creditLimitMinor: _moneyPatchToMinor(command.creditLimit),
-        billingDay: command.billingDay,
-        repaymentDay: command.repaymentDay,
+      final profileResult = account.changeProfile(
+        AccountProfilePatch(
+          name: command.name,
+          sortOrder: command.sortOrder,
+          isHidden: command.isHidden,
+          subtype: command.subtype,
+          iconKey: command.iconKey,
+          note: command.note,
+        ),
       );
+      final Account profile;
+      switch (profileResult) {
+        case Success(:final value):
+          profile = value;
+        case FailureResult(:final failure):
+          return Result.failure(failure);
+      }
+      final creditResult = profile.changeCreditProfile(
+        AccountCreditProfilePatch(
+          creditLimit: command.creditLimit,
+          billingDay: command.billingDay,
+          repaymentDay: command.repaymentDay,
+        ),
+      );
+      final Account edited;
+      switch (creditResult) {
+        case Success(:final value):
+          edited = value;
+        case FailureResult(:final failure):
+          return Result.failure(failure);
+      }
 
       return await _runner.run<void>(() async {
-        await _repository.updateAccount(command.id, spec);
+        await _repository.save(edited);
 
         if (targetBalance == null ||
             targetBalance.minorUnits == account.balance.minorUnits) {
@@ -165,53 +178,5 @@ class AccountServiceImpl implements AccountService {
         ),
       );
     }
-  }
-
-  Failure? _validateCreate(CreateAccountCommand command) {
-    if (command.name.trim().isEmpty) {
-      return const Failure(
-        code: 'account_name_required',
-        message: 'Account name is required.',
-      );
-    }
-    if (!command.type.isUserAccount) {
-      return const Failure(
-        code: 'account_type_invalid',
-        message: 'Only asset and liability account can be created here.',
-      );
-    }
-    if (command.openingBalance.minorUnits != 0 &&
-        !command.type.supportsManualBalance(command.subtype)) {
-      return const Failure(
-        code: 'opening_balance_not_supported',
-        message: 'This account type does not support opening balance.',
-      );
-    }
-
-    return null;
-  }
-
-  String? _blankToNull(String? value) {
-    final trimmed = value?.trim();
-    return trimmed == null || trimmed.isEmpty ? null : trimmed;
-  }
-
-  Patch<String>? _normalizeStringPatch(Patch<String>? patch) {
-    return switch (patch) {
-      null => null,
-      PatchClear<String>() => patch,
-      PatchSet<String>(:final value) =>
-        _blankToNull(value) == null
-            ? const Patch<String>.clear()
-            : Patch.set(value.trim()),
-    };
-  }
-
-  Patch<int>? _moneyPatchToMinor(Patch<Money>? patch) {
-    return switch (patch) {
-      null => null,
-      PatchClear<Money>() => const Patch<int>.clear(),
-      PatchSet<Money>(:final value) => Patch.set(value.minorUnits),
-    };
   }
 }

@@ -39,7 +39,7 @@ AccountRepository accountRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-CategoryRepository categoryRepository(Ref ref) {
+AccountQueryRepository accountQueryRepository(Ref ref) {
   return DriftAccountRepository(ref.watch(appDatabaseProvider));
 }
 
@@ -79,8 +79,8 @@ UpdateChannelStore updateChannelStore(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-AccountService accountService(Ref ref) {
-  return AccountServiceImpl(
+AccountAppService accountAppService(Ref ref) {
+  return AccountAppServiceImpl(
     ref.watch(accountRepositoryProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
     transactions: ref.watch(postingAppServiceProvider),
@@ -89,7 +89,10 @@ AccountService accountService(Ref ref) {
 
 @Riverpod(keepAlive: true)
 CategoryService categoryService(Ref ref) {
-  return CategoryServiceImpl(ref.watch(categoryRepositoryProvider));
+  return CategoryServiceImpl(
+    repository: ref.watch(accountRepositoryProvider),
+    queries: ref.watch(accountQueryRepositoryProvider),
+  );
 }
 
 @Riverpod(keepAlive: true)
@@ -122,7 +125,7 @@ FinancialMetricsService financialMetricsService(Ref ref) {
 
 @riverpod
 Stream<List<Account>> accountList(Ref ref) {
-  return ref.watch(accountServiceProvider).watchAccounts({
+  return ref.watch(accountQueryRepositoryProvider).watchAccounts({
     AccountType.asset,
     AccountType.liability,
   });
@@ -136,7 +139,7 @@ Stream<List<Account>> accountList(Ref ref) {
 @riverpod
 Stream<Map<int, Account>> accountsById(Ref ref) {
   return ref
-      .watch(accountServiceProvider)
+      .watch(accountQueryRepositoryProvider)
       .watchAccounts({
         AccountType.asset,
         AccountType.liability,
@@ -150,7 +153,7 @@ Stream<Map<int, Account>> accountsById(Ref ref) {
 @riverpod
 Stream<List<Account>> accountsForUsage(Ref ref, AccountUsage usage) {
   return ref
-      .watch(accountServiceProvider)
+      .watch(accountQueryRepositoryProvider)
       .watchAccounts({AccountType.asset, AccountType.liability})
       .map(
         (accounts) =>
@@ -162,7 +165,7 @@ Stream<List<Account>> accountsForUsage(Ref ref, AccountUsage usage) {
 
 @riverpod
 Stream<List<Account>> accountsByTypes(Ref ref, Set<AccountType> types) {
-  return ref.watch(accountServiceProvider).watchAccounts(types);
+  return ref.watch(accountQueryRepositoryProvider).watchAccounts(types);
 }
 
 @riverpod
@@ -290,7 +293,7 @@ CreditService creditService(Ref ref) {
     installmentService: ref.watch(installmentServiceProvider),
     transactionService: ref.watch(postingAppServiceProvider),
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
-    accountService: ref.watch(accountServiceProvider),
+    accountService: ref.watch(accountAppServiceProvider),
   );
 }
 

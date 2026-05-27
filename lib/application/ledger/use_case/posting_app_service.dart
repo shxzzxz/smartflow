@@ -13,7 +13,8 @@ import '../read_model/transaction_read_models.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/posting_repository.dart';
 import 'package:smartflow/domain/ledger/port/system_account_resolver.dart';
-import 'package:smartflow/domain/ledger/service/account_capability_policy.dart';
+import 'package:smartflow/domain/ledger/service/account_book.dart';
+import 'package:smartflow/domain/ledger/service/account_role_policy.dart';
 import 'package:smartflow/domain/ledger/service/entry_reassignment_service.dart';
 import 'package:smartflow/domain/ledger/service/receipt_assembler.dart';
 import 'package:smartflow/domain/ledger/service/receipt_mutator.dart';
@@ -123,19 +124,23 @@ class PostingAppServiceImpl implements PostingAppService {
     required SystemAccountResolver systemAccountResolver,
     required TransactionRunner transactionRunner,
     ReceiptMutator receiptMutator = const ReceiptMutator(),
-    AccountCapabilityPolicy capabilityPolicy = const AccountCapabilityPolicy(),
     EntryReassignmentService reassignmentService =
         const EntryReassignmentService(),
     ReceiptAssembler receiptAssembler = const ReceiptAssembler(),
+    AccountBook accountBook = const AccountBook(),
+    AccountRolePolicy? accountRolePolicy,
   }) : _query = transactionQueryService,
        _accountRepository = accountRepository,
        _postingRepository = postingRepository,
        _systemAccounts = systemAccountResolver,
        _transactionRunner = transactionRunner,
        _receiptMutator = receiptMutator,
-       _capabilityPolicy = capabilityPolicy,
        _reassignmentService = reassignmentService,
-       _assembler = receiptAssembler;
+       _assembler = receiptAssembler,
+       _accountBook = accountBook,
+       _rolePolicy =
+           accountRolePolicy ??
+           AccountRolePolicy(accountRepository: accountRepository);
 
   final TransactionQueryService _query;
   final AccountRepository _accountRepository;
@@ -143,9 +148,10 @@ class PostingAppServiceImpl implements PostingAppService {
   final SystemAccountResolver _systemAccounts;
   final TransactionRunner _transactionRunner;
   final ReceiptMutator _receiptMutator;
-  final AccountCapabilityPolicy _capabilityPolicy;
   final EntryReassignmentService _reassignmentService;
   final ReceiptAssembler _assembler;
+  final AccountBook _accountBook;
+  final AccountRolePolicy _rolePolicy;
 
   @override
   Future<Result<CreatedTransactionResult>> createExpense(
@@ -580,12 +586,15 @@ class PostingAppServiceImpl implements PostingAppService {
             ),
           );
         }
-        final failure = _capabilityPolicy.validate(
-          await _accountRepository.findAccountById(settlementAccountId),
-          accountId: settlementAccountId,
-          expectedTypes: {AccountType.asset, AccountType.liability},
-          requiredUsage: AccountUsage.settlement,
-          allowReimbursementSubtype: false,
+        final failure = await _rolePolicy.validate(
+          AccountRoleContext([
+            AccountRoleRequirement(
+              accountId: settlementAccountId,
+              expectedTypes: {AccountType.asset, AccountType.liability},
+              requiredUsage: AccountUsage.settlement,
+              allowReimbursementSubtype: false,
+            ),
+          ]),
         );
         if (failure != null) {
           return Result.failure(failure);
@@ -625,11 +634,14 @@ class PostingAppServiceImpl implements PostingAppService {
             ),
           );
         }
-        final failure = _capabilityPolicy.validate(
-          await _accountRepository.findAccountById(reimbursementAccountId),
-          accountId: reimbursementAccountId,
-          expectedTypes: {AccountType.asset},
-          requiredSubtype: AccountSubtype.reimbursement,
+        final failure = await _rolePolicy.validate(
+          AccountRoleContext([
+            AccountRoleRequirement(
+              accountId: reimbursementAccountId,
+              expectedTypes: {AccountType.asset},
+              requiredSubtype: AccountSubtype.reimbursement,
+            ),
+          ]),
         );
         if (failure != null) {
           return Result.failure(failure);
@@ -796,7 +808,7 @@ class PostingAppServiceImpl implements PostingAppService {
   ) async {
     final ids = accountIds.toSet();
     if (ids.isEmpty) return const {};
-    final accounts = await _accountRepository.findAccountsByIds(ids);
+    final accounts = await _accountRepository.findByIds(ids);
     return {for (final a in accounts) a.id: a.type};
   }
 
@@ -810,7 +822,7 @@ class PostingAppServiceImpl implements PostingAppService {
       for (final reassignment in reassignments) reassignment.fromAccountId,
       for (final reassignment in reassignments) reassignment.toAccountId,
     };
-    final accounts = await _accountRepository.findAccountsByIds(accountIds);
+    final accounts = await _accountRepository.findByIds(accountIds);
     return _reassignmentService.recomputeAccountsForReassignments(
       accounts: {for (final account in accounts) account.id: account},
       scopes: [
@@ -842,7 +854,7 @@ class PostingAppServiceImpl implements PostingAppService {
       if (accountFailure != null) return Result.failure(accountFailure);
 
       final transaction = Transaction.fromReceipt(receipt);
-      final updatedAccounts = _applyTransactionsToAccounts(accounts, [
+      final updatedAccounts = _accountBook.applyTransactions(accounts, [
         transaction,
       ]);
       final result = await _postingRepository.saveTransaction(transaction);
@@ -895,7 +907,7 @@ class PostingAppServiceImpl implements PostingAppService {
       );
       final accountsForWrite = Map<int, Account>.of(accountsForCorrection);
       accountsForWrite.addAll(await _loadAccountsForReceipt(reversalReceipt));
-      final afterReversal = _applyTransactionsToAccounts(accountsForWrite, [
+      final afterReversal = _accountBook.applyTransactions(accountsForWrite, [
         reversalTransaction,
       ]);
 
@@ -913,7 +925,7 @@ class PostingAppServiceImpl implements PostingAppService {
         businessState: BusinessState.current,
         mutationPreviousTransactionId: reversalResult.transactionId,
       );
-      final afterCorrection = _applyTransactionsToAccounts(
+      final afterCorrection = _accountBook.applyTransactions(
         {for (final account in afterReversal) account.id: account},
         [correctionTransaction],
       );
@@ -955,7 +967,7 @@ class PostingAppServiceImpl implements PostingAppService {
           ),
         );
       }
-      final updatedAccounts = _applyTransactionsToAccounts(
+      final updatedAccounts = _accountBook.applyTransactions(
         accountMap,
         reversalTransactions,
       );
@@ -981,7 +993,7 @@ class PostingAppServiceImpl implements PostingAppService {
 
   Future<Map<int, Account>> _loadAccountsForReceipt(PostReceipt receipt) async {
     final ids = receipt.entries.map((e) => e.accountId).toSet();
-    final accounts = await _accountRepository.findAccountsByIds(ids);
+    final accounts = await _accountRepository.findByIds(ids);
     return {for (final a in accounts) a.id: a};
   }
 
@@ -1007,33 +1019,16 @@ class PostingAppServiceImpl implements PostingAppService {
     return null;
   }
 
-  List<Account> _applyTransactionsToAccounts(
-    Map<int, Account> accounts,
-    List<Transaction> transactions,
-  ) {
-    final updated = Map<int, Account>.of(accounts);
-    for (final transaction in transactions) {
-      for (final accountId in transaction.accountIds) {
-        final account = updated[accountId];
-        if (account == null) {
-          throw StateError('Account $accountId does not exist.');
-        }
-        updated[accountId] = account.applyTransaction(transaction);
-      }
-    }
-    return updated.values.toList();
-  }
-
   // ============================================================
   //  Receipt 构造:Command → 领域事实 → 校验 → 调 assembler → PostReceipt
   // ============================================================
 
   Future<Result<PostReceipt>> _buildExpense(CreateExpenseCommand cmd) async {
-    final roleFailure = await _validateAccountConstraints(
-      usages: {cmd.paidFromAccountId: AccountUsage.settlement},
-      types: {
-        cmd.expenseAccountId: {AccountType.expense},
-      },
+    final roleFailure = await _rolePolicy.validate(
+      AccountRoleContext.expense(
+        paidFromAccountId: cmd.paidFromAccountId,
+        expenseAccountId: cmd.expenseAccountId,
+      ),
     );
     if (roleFailure != null) return Result.failure(roleFailure);
 
@@ -1050,11 +1045,11 @@ class PostingAppServiceImpl implements PostingAppService {
   }
 
   Future<Result<PostReceipt>> _buildIncome(CreateIncomeCommand cmd) async {
-    final roleFailure = await _validateAccountConstraints(
-      usages: {cmd.receiveAccountId: AccountUsage.settlement},
-      types: {
-        cmd.incomeAccountId: {AccountType.income},
-      },
+    final roleFailure = await _rolePolicy.validate(
+      AccountRoleContext.income(
+        receiveAccountId: cmd.receiveAccountId,
+        incomeAccountId: cmd.incomeAccountId,
+      ),
     );
     if (roleFailure != null) return Result.failure(roleFailure);
 
@@ -1075,14 +1070,12 @@ class PostingAppServiceImpl implements PostingAppService {
     final feeAccountId = cmd.feeExpenseAccountId;
     final hasFeeAccount =
         fee != null && fee.minorUnits > 0 && feeAccountId != null;
-    final roleFailure = await _validateAccountConstraints(
-      usages: {
-        cmd.fromAccountId: AccountUsage.settlement,
-        cmd.toAccountId: AccountUsage.settlement,
-      },
-      types: {
-        if (hasFeeAccount) feeAccountId: {AccountType.expense},
-      },
+    final roleFailure = await _rolePolicy.validate(
+      AccountRoleContext.transfer(
+        fromAccountId: cmd.fromAccountId,
+        toAccountId: cmd.toAccountId,
+        feeExpenseAccountId: hasFeeAccount ? feeAccountId : null,
+      ),
     );
     if (roleFailure != null) return Result.failure(roleFailure);
 
@@ -1157,8 +1150,8 @@ class PostingAppServiceImpl implements PostingAppService {
       );
     }
 
-    final roleFailure = await _validateAccountConstraints(
-      usages: {cmd.refundToAccountId: AccountUsage.settlement},
+    final roleFailure = await _rolePolicy.validate(
+      AccountRoleContext.refund(refundToAccountId: cmd.refundToAccountId),
     );
     if (roleFailure != null) return Result.failure(roleFailure);
 
@@ -1180,14 +1173,12 @@ class PostingAppServiceImpl implements PostingAppService {
   Future<Result<PostReceipt>> _buildReimbursementAdvance(
     CreateReimbursementAdvanceCommand cmd,
   ) async {
-    final roleFailure = await _validateAccountConstraints(
-      usages: {
-        cmd.receivableAccountId: AccountUsage.reimbursement,
-        cmd.paidFromAccountId: AccountUsage.settlement,
-      },
-      types: {
-        cmd.expenseCategoryId: {AccountType.expense},
-      },
+    final roleFailure = await _rolePolicy.validate(
+      AccountRoleContext.reimbursementAdvance(
+        receivableAccountId: cmd.receivableAccountId,
+        paidFromAccountId: cmd.paidFromAccountId,
+        expenseCategoryId: cmd.expenseCategoryId,
+      ),
     );
     if (roleFailure != null) return Result.failure(roleFailure);
 
@@ -1230,11 +1221,11 @@ class PostingAppServiceImpl implements PostingAppService {
       );
     }
 
-    final roleFailure = await _validateAccountConstraints(
-      usages: {
-        cmd.receiveAccountId: AccountUsage.settlement,
-        cmd.receivableAccountId: AccountUsage.reimbursement,
-      },
+    final roleFailure = await _rolePolicy.validate(
+      AccountRoleContext.reimbursementReceipt(
+        receivableAccountId: cmd.receivableAccountId,
+        receiveAccountId: cmd.receiveAccountId,
+      ),
     );
     if (roleFailure != null) return Result.failure(roleFailure);
 
@@ -1284,12 +1275,12 @@ class PostingAppServiceImpl implements PostingAppService {
             ? await _systemAccounts.resolveReimbursementGapIncome()
             : null;
 
-    final roleFailure = await _validateAccountConstraints(
-      usages: {
-        if (actual.minorUnits > 0)
-          cmd.receiveAccountId: AccountUsage.settlement,
-        cmd.receivableAccountId: AccountUsage.reimbursement,
-      },
+    final roleFailure = await _rolePolicy.validate(
+      AccountRoleContext.reimbursementClose(
+        receivableAccountId: cmd.receivableAccountId,
+        receiveAccountId: cmd.receiveAccountId,
+        receivesCash: actual.minorUnits > 0,
+      ),
     );
     if (roleFailure != null) return Result.failure(roleFailure);
 
@@ -1322,11 +1313,11 @@ class PostingAppServiceImpl implements PostingAppService {
     final discountIncomeAccountId =
         hasDiscount ? await _systemAccounts.resolveDiscountIncome() : null;
 
-    final roleFailure = await _validateAccountConstraints(
-      usages: {
-        cmd.liabilityAccountId: AccountUsage.repaymentTarget,
-        cmd.paidFromAccountId: AccountUsage.repaymentSource,
-      },
+    final roleFailure = await _rolePolicy.validate(
+      AccountRoleContext.repayment(
+        liabilityAccountId: cmd.liabilityAccountId,
+        paidFromAccountId: cmd.paidFromAccountId,
+      ),
     );
     if (roleFailure != null) return Result.failure(roleFailure);
 
@@ -1352,11 +1343,11 @@ class PostingAppServiceImpl implements PostingAppService {
   Future<Result<PostReceipt>> _buildBorrowing(
     CreateBorrowingCommand cmd,
   ) async {
-    final roleFailure = await _validateAccountConstraints(
-      usages: {
-        cmd.liabilityAccountId: AccountUsage.borrowingLiability,
-        cmd.receiveAccountId: AccountUsage.fund,
-      },
+    final roleFailure = await _rolePolicy.validate(
+      AccountRoleContext.borrowing(
+        liabilityAccountId: cmd.liabilityAccountId,
+        receiveAccountId: cmd.receiveAccountId,
+      ),
     );
     if (roleFailure != null) return Result.failure(roleFailure);
 
@@ -1376,7 +1367,7 @@ class PostingAppServiceImpl implements PostingAppService {
   Future<Result<PostReceipt>> _buildOpeningBalance(
     CreateOpeningBalanceCommand cmd,
   ) async {
-    final account = await _accountRepository.findAccountById(cmd.accountId);
+    final account = await _accountRepository.findById(cmd.accountId);
     if (account == null) {
       return const Result.failure(
         Failure(code: 'account_not_found', message: 'Account does not exist.'),
@@ -1398,7 +1389,7 @@ class PostingAppServiceImpl implements PostingAppService {
   Future<Result<PostReceipt>> _buildBalanceAdjustment(
     AdjustBalanceCommand cmd,
   ) async {
-    final account = await _accountRepository.findAccountById(cmd.accountId);
+    final account = await _accountRepository.findById(cmd.accountId);
     if (account == null) {
       return const Result.failure(
         Failure(code: 'account_not_found', message: 'Account does not exist.'),
@@ -1421,37 +1412,6 @@ class PostingAppServiceImpl implements PostingAppService {
           isExcludedFromBudget: cmd.isExcludedFromBudget,
         );
     }
-  }
-
-  /// 批量加载账户后,逐个委托 [AccountCapabilityPolicy] 校验角色 / usage。
-  /// `types` / `usages` 可分别给出;同一账户在两个 map 中出现时,两项都会校验。
-  Future<Failure?> _validateAccountConstraints({
-    Map<int, Set<AccountType>> types = const {},
-    Map<int, AccountUsage> usages = const {},
-  }) async {
-    final ids = <int>{...types.keys, ...usages.keys};
-    if (ids.isEmpty) return null;
-    final accounts = await _accountRepository.findAccountsByIds(ids);
-    final accountsById = <int, Account>{
-      for (final account in accounts) account.id: account,
-    };
-    for (final entry in types.entries) {
-      final failure = _capabilityPolicy.validate(
-        accountsById[entry.key],
-        accountId: entry.key,
-        expectedTypes: entry.value,
-      );
-      if (failure != null) return failure;
-    }
-    for (final entry in usages.entries) {
-      final failure = _capabilityPolicy.validate(
-        accountsById[entry.key],
-        accountId: entry.key,
-        requiredUsage: entry.value,
-      );
-      if (failure != null) return failure;
-    }
-    return null;
   }
 
   Future<int?> _resolveRefundCreditAccount({

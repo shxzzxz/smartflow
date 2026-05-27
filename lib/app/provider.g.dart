@@ -104,53 +104,53 @@ final class AccountRepositoryProvider
 
 String _$accountRepositoryHash() => r'd18c6b65455a5da1e8787472648c66c231ce9741';
 
-@ProviderFor(categoryRepository)
-final categoryRepositoryProvider = CategoryRepositoryProvider._();
+@ProviderFor(accountQueryRepository)
+final accountQueryRepositoryProvider = AccountQueryRepositoryProvider._();
 
-final class CategoryRepositoryProvider
+final class AccountQueryRepositoryProvider
     extends
         $FunctionalProvider<
-          CategoryRepository,
-          CategoryRepository,
-          CategoryRepository
+          AccountQueryRepository,
+          AccountQueryRepository,
+          AccountQueryRepository
         >
-    with $Provider<CategoryRepository> {
-  CategoryRepositoryProvider._()
+    with $Provider<AccountQueryRepository> {
+  AccountQueryRepositoryProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'categoryRepositoryProvider',
+        name: r'accountQueryRepositoryProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$categoryRepositoryHash();
+  String debugGetCreateSourceHash() => _$accountQueryRepositoryHash();
 
   @$internal
   @override
-  $ProviderElement<CategoryRepository> $createElement(
+  $ProviderElement<AccountQueryRepository> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  CategoryRepository create(Ref ref) {
-    return categoryRepository(ref);
+  AccountQueryRepository create(Ref ref) {
+    return accountQueryRepository(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(CategoryRepository value) {
+  Override overrideWithValue(AccountQueryRepository value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<CategoryRepository>(value),
+      providerOverride: $SyncValueProvider<AccountQueryRepository>(value),
     );
   }
 }
 
-String _$categoryRepositoryHash() =>
-    r'237ab55433bc628170e8a7fddf828014bc7141b5';
+String _$accountQueryRepositoryHash() =>
+    r'082f88ceaf4f0cf0f53a0eac3f6d2d462bc18df8';
 
 @ProviderFor(postingRepository)
 final postingRepositoryProvider = PostingRepositoryProvider._();
@@ -490,46 +490,52 @@ final class UpdateChannelStoreProvider
 String _$updateChannelStoreHash() =>
     r'c796ea2e6828c56f68155adc5f4f8ea1e59de7be';
 
-@ProviderFor(accountService)
-final accountServiceProvider = AccountServiceProvider._();
+@ProviderFor(accountAppService)
+final accountAppServiceProvider = AccountAppServiceProvider._();
 
-final class AccountServiceProvider
-    extends $FunctionalProvider<AccountService, AccountService, AccountService>
-    with $Provider<AccountService> {
-  AccountServiceProvider._()
+final class AccountAppServiceProvider
+    extends
+        $FunctionalProvider<
+          AccountAppService,
+          AccountAppService,
+          AccountAppService
+        >
+    with $Provider<AccountAppService> {
+  AccountAppServiceProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'accountServiceProvider',
+        name: r'accountAppServiceProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$accountServiceHash();
+  String debugGetCreateSourceHash() => _$accountAppServiceHash();
 
   @$internal
   @override
-  $ProviderElement<AccountService> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
+  $ProviderElement<AccountAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
 
   @override
-  AccountService create(Ref ref) {
-    return accountService(ref);
+  AccountAppService create(Ref ref) {
+    return accountAppService(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(AccountService value) {
+  Override overrideWithValue(AccountAppService value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<AccountService>(value),
+      providerOverride: $SyncValueProvider<AccountAppService>(value),
     );
   }
 }
 
-String _$accountServiceHash() => r'5eb160c4a9df5f3ebcea922527383f512940e35d';
+String _$accountAppServiceHash() => r'd33d90ea4667f451835a0c757a0ce65f0a8a9316';
 
 @ProviderFor(categoryService)
 final categoryServiceProvider = CategoryServiceProvider._();
@@ -571,7 +577,7 @@ final class CategoryServiceProvider
   }
 }
 
-String _$categoryServiceHash() => r'c576c3f8ce0d2d70485652aedfa43551f60ebdba';
+String _$categoryServiceHash() => r'671e51d6779e4d2671b600620682e8d46f4d06a6';
 
 @ProviderFor(postingAppService)
 final postingAppServiceProvider = PostingAppServiceProvider._();
@@ -753,7 +759,7 @@ final class AccountListProvider
   }
 }
 
-String _$accountListHash() => r'978dd44ed872fd543bfdd523b25ec9e0abb3b4c4';
+String _$accountListHash() => r'607894e78c7d34e5abdc3cb0395745090caf5fea';
 
 /// 全量账户索引。覆盖 5 种 account_type,供 UI 层把 entries 的 accountId
 /// 解析为 Account 元数据(type / name / iconKey 等)。
@@ -811,7 +817,7 @@ final class AccountsByIdProvider
   }
 }
 
-String _$accountsByIdHash() => r'cbda5b978c58f9606f51eaf8ba22be833f4899b7';
+String _$accountsByIdHash() => r'ac3524ce6cd788de4a352ff4e4fd25643ab55068';
 
 @ProviderFor(accountsForUsage)
 final accountsForUsageProvider = AccountsForUsageFamily._();
@@ -868,7 +874,7 @@ final class AccountsForUsageProvider
   }
 }
 
-String _$accountsForUsageHash() => r'e07fe379531b94b729cc8779355b11b9292cb7e6';
+String _$accountsForUsageHash() => r'9b12a137c3aa376fd54c40f02787f8ad98483f21';
 
 final class AccountsForUsageFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<Account>>, AccountUsage> {
@@ -943,7 +949,7 @@ final class AccountsByTypesProvider
   }
 }
 
-String _$accountsByTypesHash() => r'ae2b2101e8ac69bdf98ac83f64da4474b8f4bd80';
+String _$accountsByTypesHash() => r'eac9711c59b70bdc3742b1ad5073b4bd1498e158';
 
 final class AccountsByTypesFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<Account>>, Set<AccountType>> {
@@ -1723,7 +1729,7 @@ final class CreditServiceProvider
   }
 }
 
-String _$creditServiceHash() => r'c3e20ba9c76a6a4f274de10f0e94d08885dd6925';
+String _$creditServiceHash() => r'294ea4dba42503b4d6e995ca9d73cfac3c18b6e6';
 
 @ProviderFor(installmentContractsByAccount)
 final installmentContractsByAccountProvider =

@@ -21,7 +21,7 @@ void main() {
     late DriftSystemAccountResolver systemAccounts;
     late DriftAccountRepository repository;
     late PostingAppService transactionService;
-    late AccountServiceImpl service;
+    late AccountAppServiceImpl service;
 
     setUp(() {
       database = createTestDatabase();
@@ -41,7 +41,7 @@ void main() {
         systemAccountResolver: systemAccounts,
         transactionRunner: DriftTransactionRunner(database),
       );
-      service = AccountServiceImpl(
+      service = AccountAppServiceImpl(
         repository,
         transactionRunner: DriftTransactionRunner(database),
         transactions: transactionService,
@@ -221,7 +221,10 @@ void main() {
     });
 
     test('builds income and expense category trees', () async {
-      final categoryService = CategoryServiceImpl(repository);
+      final categoryService = CategoryServiceImpl(
+        repository: repository,
+        queries: repository,
+      );
       final parentResult = await categoryService.createCategory(
         const CreateCategoryCommand(name: '餐饮', type: AccountType.expense),
       );

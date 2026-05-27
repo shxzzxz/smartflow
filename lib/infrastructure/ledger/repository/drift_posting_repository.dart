@@ -13,7 +13,6 @@ class DriftPostingRepository implements PostingRepository {
 
   final AppDatabase _database;
 
-  @override
   Future<List<Account>> findAccountsByIds(Set<int> ids) async {
     if (ids.isEmpty) {
       return const [];

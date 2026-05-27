@@ -21,7 +21,7 @@ void main() {
     late DriftSystemAccountResolver systemAccounts;
     late PostingAppService service;
     late TransactionQueryService queryService;
-    late AccountService accountService;
+    late AccountAppService accountService;
     late CategoryService categoryService;
 
     setUp(() {
@@ -42,12 +42,15 @@ void main() {
         systemAccountResolver: systemAccounts,
         transactionRunner: DriftTransactionRunner(database),
       );
-      accountService = AccountServiceImpl(
+      accountService = AccountAppServiceImpl(
         accountRepository,
         transactionRunner: DriftTransactionRunner(database),
         transactions: service,
       );
-      categoryService = CategoryServiceImpl(accountRepository);
+      categoryService = CategoryServiceImpl(
+        repository: accountRepository,
+        queries: accountRepository,
+      );
     });
 
     tearDown(() async {
@@ -494,7 +497,7 @@ void main() {
 }
 
 Future<dynamic> _createAsset(
-  AccountService service,
+  AccountAppService service,
   String name, {
   Money opening = const Money(minorUnits: 0),
   AccountSubtype? subtype,
@@ -510,7 +513,7 @@ Future<dynamic> _createAsset(
   return (result as Success).value;
 }
 
-Future<dynamic> _createLiability(AccountService service, String name) async {
+Future<dynamic> _createLiability(AccountAppService service, String name) async {
   final result = await service.createAccount(
     CreateAccountCommand(name: name, type: AccountType.liability),
   );

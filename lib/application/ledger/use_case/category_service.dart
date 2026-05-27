@@ -4,6 +4,7 @@ import '../command/category_command.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
+import '../query/account_query_repository.dart';
 import '../read_model/category_read_models.dart';
 
 abstract interface class CategoryService {
@@ -13,32 +14,53 @@ abstract interface class CategoryService {
 }
 
 class CategoryServiceImpl implements CategoryService {
-  const CategoryServiceImpl(this._repository);
+  const CategoryServiceImpl({
+    required AccountRepository repository,
+    required AccountQueryRepository queries,
+  }) : _repository = repository,
+       _queries = queries;
 
-  final CategoryRepository _repository;
+  final AccountRepository _repository;
+  final AccountQueryRepository _queries;
 
   @override
   Stream<List<CategoryNode>> watchCategoryTree(AccountType type) {
-    return _repository.watchCategories(type).map(_buildTree);
+    return _queries.watchCategories(type).map(_buildTree);
   }
 
   @override
   Future<Result<Account>> createCategory(CreateCategoryCommand command) async {
-    final failure = await _validateCreate(command);
-    if (failure != null) {
-      return Result.failure(failure);
+    Account? parent;
+    final parentId = command.parentId;
+    if (parentId != null) {
+      parent = await _repository.findById(parentId);
+      if (parent == null) {
+        return const Result.failure(
+          Failure(
+            code: 'category_parent_not_found',
+            message: 'Parent category does not exist.',
+          ),
+        );
+      }
+    }
+    final draftResult = Account.createCategory(
+      name: command.name,
+      type: command.type,
+      parent: parent,
+      iconKey: command.iconKey,
+      note: command.note,
+      sortOrder: command.sortOrder,
+    );
+    final Account draft;
+    switch (draftResult) {
+      case Success(:final value):
+        draft = value;
+      case FailureResult(:final failure):
+        return Result.failure(failure);
     }
 
     try {
-      final spec = CategoryInsertSpec(
-        name: command.name.trim(),
-        type: command.type,
-        parentId: command.parentId,
-        iconKey: _blankToNull(command.iconKey),
-        note: _blankToNull(command.note),
-        sortOrder: command.sortOrder,
-      );
-      final account = await _repository.createCategory(spec);
+      final account = await _repository.create(draft);
       return Result.success(account);
     } on Object catch (error) {
       return Result.failure(
@@ -49,35 +71,6 @@ class CategoryServiceImpl implements CategoryService {
         ),
       );
     }
-  }
-
-  Future<Failure?> _validateCreate(CreateCategoryCommand command) async {
-    if (command.name.trim().isEmpty) {
-      return const Failure(
-        code: 'category_name_required',
-        message: 'Category name is required.',
-      );
-    }
-    if (!command.type.isCategory) {
-      return const Failure(
-        code: 'category_type_invalid',
-        message: 'Only income and expense category can be created.',
-      );
-    }
-
-    final parentId = command.parentId;
-    if (parentId == null) {
-      return null;
-    }
-
-    final parent = await _repository.findCategoryById(parentId);
-    if (parent == null) {
-      return const Failure(
-        code: 'category_parent_not_found',
-        message: 'Parent category does not exist.',
-      );
-    }
-    return parent.checkValidCategoryParent(command.type);
   }
 
   List<CategoryNode> _buildTree(List<Account> categories) {
@@ -100,10 +93,5 @@ class CategoryServiceImpl implements CategoryService {
           children: childrenByParent[root.id] ?? const [],
         ),
     ];
-  }
-
-  String? _blankToNull(String? value) {
-    final trimmed = value?.trim();
-    return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 }

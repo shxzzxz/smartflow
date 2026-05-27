@@ -1,18 +1,24 @@
 import 'package:drift/drift.dart';
 
+import '../../../application/ledger/query/account_query_repository.dart';
 import '../../../domain/ledger/entity/account.dart';
 import '../../../domain/ledger/valobj/ledger_enum.dart';
 import '../../../domain/ledger/port/account_repository.dart';
 import 'package:smartflow/data/app_database.dart';
-import 'package:smartflow/data/patch_value.dart';
 import '../mapper/account_mapper.dart';
 
-class DriftAccountRepository implements AccountRepository, CategoryRepository {
+class DriftAccountRepository
+    implements AccountRepository, AccountQueryRepository {
   DriftAccountRepository(this._database);
 
   final AppDatabase _database;
 
   @override
+  Future<Account?> findById(int id) => findAccountById(id);
+
+  @override
+  Future<List<Account>> findByIds(Set<int> ids) => findAccountsByIds(ids);
+
   Future<Account?> findAccountById(int id) async {
     final row =
         await (_database.select(_database.accounts)
@@ -20,7 +26,6 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
     return row == null ? null : mapAccount(row);
   }
 
-  @override
   Future<List<Account>> findAccountsByIds(Set<int> ids) async {
     if (ids.isEmpty) {
       return const [];
@@ -50,25 +55,27 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
   }
 
   @override
-  Future<Account> createAccount(AccountInsertSpec spec) {
+  Future<Account> create(Account account) {
     return _database.transaction(() async {
       final now = DateTime.now();
       final accountId = await _database
           .into(_database.accounts)
           .insert(
             AccountsCompanion.insert(
-              name: spec.name,
-              accountType: spec.type,
-              accountSubtype: Value(spec.subtype),
+              name: account.name,
+              accountType: account.type,
+              accountSubtype: Value(account.subtype),
+              parentId: Value(account.parentId),
               balanceMinor: const Value(0),
-              iconKey: Value(spec.iconKey),
-              note: Value(spec.note),
-              creditLimitMinor: Value(spec.creditLimitMinor),
-              billingDay: Value(spec.billingDay),
-              repaymentDay: Value(spec.repaymentDay),
-              sortOrder: Value(spec.sortOrder),
-              isHidden: Value(spec.isHidden),
-              source: const Value(AccountSource.user),
+              iconKey: Value(account.iconKey),
+              note: Value(account.note),
+              creditLimitMinor: Value(account.creditLimit?.minorUnits),
+              billingDay: Value(account.billingDay),
+              repaymentDay: Value(account.repaymentDay),
+              sortOrder: Value(account.sortOrder),
+              isHidden: Value(account.isHidden),
+              systemKey: Value(account.systemKey),
+              source: Value(account.source),
               createdAt: Value(now),
               updatedAt: Value(now),
             ),
@@ -82,34 +89,29 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
   }
 
   @override
-  Future<void> updateAccount(int id, AccountUpdateSpec spec) {
+  Future<void> save(Account account) {
     return _database.transaction(() async {
       final now = DateTime.now();
       await (_database.update(_database.accounts)
-        ..where((account) => account.id.equals(id))).write(
+        ..where((row) => row.id.equals(account.id))).write(
         AccountsCompanion(
-          name: spec.name == null ? const Value.absent() : Value(spec.name!),
-          accountSubtype: spec.subtype.toValue(),
-          iconKey: spec.iconKey.toValue(),
-          note: spec.note.toValue(),
-          creditLimitMinor: spec.creditLimitMinor.toValue(),
-          billingDay: spec.billingDay.toValue(),
-          repaymentDay: spec.repaymentDay.toValue(),
-          sortOrder:
-              spec.sortOrder == null
-                  ? const Value.absent()
-                  : Value(spec.sortOrder!),
-          isHidden:
-              spec.isHidden == null
-                  ? const Value.absent()
-                  : Value(spec.isHidden!),
+          name: Value(account.name),
+          accountSubtype: Value(account.subtype),
+          parentId: Value(account.parentId),
+          iconKey: Value(account.iconKey),
+          note: Value(account.note),
+          creditLimitMinor: Value(account.creditLimit?.minorUnits),
+          billingDay: Value(account.billingDay),
+          repaymentDay: Value(account.repaymentDay),
+          sortOrder: Value(account.sortOrder),
+          isHidden: Value(account.isHidden),
+          archivedAt: Value(account.archivedAt),
           updatedAt: Value(now),
         ),
       );
     });
   }
 
-  @override
   Future<Account?> findCategoryById(int id) async {
     final row =
         await (_database.select(_database.accounts)..where(
@@ -139,29 +141,5 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
           ]);
 
     return query.watch().map((rows) => rows.map(mapAccount).toList());
-  }
-
-  @override
-  Future<Account> createCategory(CategoryInsertSpec spec) async {
-    final now = DateTime.now();
-    final id = await _database
-        .into(_database.accounts)
-        .insert(
-          AccountsCompanion.insert(
-            name: spec.name,
-            accountType: spec.type,
-            parentId: Value(spec.parentId),
-            iconKey: Value(spec.iconKey),
-            note: Value(spec.note),
-            sortOrder: Value(spec.sortOrder),
-            source: const Value(AccountSource.user),
-            createdAt: Value(now),
-            updatedAt: Value(now),
-          ),
-        );
-    final row =
-        await (_database.select(_database.accounts)
-          ..where((account) => account.id.equals(id))).getSingle();
-    return mapAccount(row);
   }
 }

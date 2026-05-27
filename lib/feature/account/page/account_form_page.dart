@@ -322,7 +322,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
       final repaymentDayValue = _isLiabilityKind(_kind) ? _repaymentDay : null;
 
       final result = await ref
-          .read(accountServiceProvider)
+          .read(accountAppServiceProvider)
           .editAccount(
             EditAccountCommand(
               id: account.id,
@@ -356,7 +356,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
 
     final type = _accountTypeForKind(_kind);
     final result = await ref
-        .read(accountServiceProvider)
+        .read(accountAppServiceProvider)
         .createAccount(
           CreateAccountCommand(
             name: _nameController.text,

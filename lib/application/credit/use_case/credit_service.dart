@@ -106,7 +106,7 @@ class CreditServiceImpl implements CreditService {
     required InstallmentService installmentService,
     required tx.PostingAppService transactionService,
     required TransactionQueryService transactionQueryService,
-    required AccountService accountService,
+    required AccountAppService accountService,
   }) : _installmentService = installmentService,
        _transactionService = transactionService,
        _transactionQueryService = transactionQueryService,
@@ -115,7 +115,7 @@ class CreditServiceImpl implements CreditService {
   final InstallmentService _installmentService;
   final tx.PostingAppService _transactionService;
   final TransactionQueryService _transactionQueryService;
-  final AccountService _accountService;
+  final AccountAppService _accountService;
 
   @override
   Future<Result<CreatedTransactionResult>> createRepayment(

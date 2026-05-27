@@ -13,9 +13,7 @@ void main() {
     late _RecordingPostingRepository postingRepository;
     late PostingAppService service;
 
-    PostingAppServiceImpl buildService({
-      AccountRepository? accountRepository,
-    }) {
+    PostingAppServiceImpl buildService({AccountRepository? accountRepository}) {
       final accounts = accountRepository ?? _defaultAccounts();
       return PostingAppServiceImpl(
         transactionQueryService: _StubQueryService(),
@@ -271,7 +269,7 @@ class _FakeAccountRepository implements AccountRepository {
   final Map<int, Account> accounts;
 
   @override
-  Future<List<Account>> findAccountsByIds(Set<int> ids) async {
+  Future<List<Account>> findByIds(Set<int> ids) async {
     return [
       for (final id in ids)
         if (accounts[id] != null) accounts[id]!,
@@ -279,22 +277,15 @@ class _FakeAccountRepository implements AccountRepository {
   }
 
   @override
-  Future<Account?> findAccountById(int id) {
+  Future<Account?> findById(int id) async => accounts[id];
+
+  @override
+  Future<Account> create(Account account) {
     throw UnimplementedError();
   }
 
   @override
-  Stream<List<Account>> watchAccounts(Set<AccountType> types) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Account> createAccount(spec) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> updateAccount(id, spec) {
+  Future<void> save(Account account) {
     throw UnimplementedError();
   }
 }

@@ -90,15 +90,17 @@ void main() {
     });
   });
 
-  group('Account.renamed', () {
+  group('Account.changeProfile', () {
     test('null name keeps current instance', () {
-      final result = _asset.renamed(null);
+      final result = _asset.changeProfile(const AccountProfilePatch());
       expect(result, isA<Success<Account>>());
-      expect((result as Success<Account>).value, same(_asset));
+      expect((result as Success<Account>).value.name, _asset.name);
     });
 
     test('blank name fails', () {
-      final result = _asset.renamed('   ');
+      final result = _asset.changeProfile(
+        const AccountProfilePatch(name: '   '),
+      );
       expect(
         (result as FailureResult<Account>).failure.code,
         'account_name_required',
@@ -106,12 +108,16 @@ void main() {
     });
 
     test('same trimmed name keeps current instance', () {
-      final result = _asset.renamed('Cash');
-      expect((result as Success<Account>).value, same(_asset));
+      final result = _asset.changeProfile(
+        const AccountProfilePatch(name: 'Cash'),
+      );
+      expect((result as Success<Account>).value.name, _asset.name);
     });
 
     test('different trimmed name returns new instance with trimmed value', () {
-      final result = _asset.renamed(' Wallet ');
+      final result = _asset.changeProfile(
+        const AccountProfilePatch(name: ' Wallet '),
+      );
       final account = (result as Success<Account>).value;
       expect(account.name, 'Wallet');
       expect(account.id, _asset.id);
@@ -124,10 +130,7 @@ void main() {
       final result = archived.targetBalanceDeltaTo(
         const Money(minorUnits: 5000),
       );
-      expect(
-        (result as FailureResult<Money>).failure.code,
-        'account_archived',
-      );
+      expect((result as FailureResult<Money>).failure.code, 'account_archived');
     });
 
     test('reimbursement asset is rejected', () {
@@ -148,9 +151,7 @@ void main() {
     });
 
     test('negative target is rejected', () {
-      final result = _asset.targetBalanceDeltaTo(
-        const Money(minorUnits: -100),
-      );
+      final result = _asset.targetBalanceDeltaTo(const Money(minorUnits: -100));
       expect(
         (result as FailureResult<Money>).failure.code,
         'account_target_balance_negative',
@@ -171,20 +172,12 @@ void main() {
       final result = _asset.targetBalanceDeltaTo(
         const Money(minorUnits: 15000),
       );
-      expect(
-        (result as Success<Money>).value,
-        const Money(minorUnits: 5000),
-      );
+      expect((result as Success<Money>).value, const Money(minorUnits: 5000));
     });
 
     test('negative delta succeeds', () {
-      final result = _asset.targetBalanceDeltaTo(
-        const Money(minorUnits: 6000),
-      );
-      expect(
-        (result as Success<Money>).value,
-        const Money(minorUnits: -4000),
-      );
+      final result = _asset.targetBalanceDeltaTo(const Money(minorUnits: 6000));
+      expect((result as Success<Money>).value, const Money(minorUnits: -4000));
     });
   });
 

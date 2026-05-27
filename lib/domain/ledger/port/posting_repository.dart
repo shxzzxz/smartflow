@@ -10,8 +10,6 @@ import '../valobj/post_receipt.dart';
 /// - [Account] 聚合负责余额变化。
 /// - repository 不接收外部 balance delta,也不解释借贷余额规则。
 abstract interface class PostingRepository {
-  Future<List<Account>> findAccountsByIds(Set<int> ids);
-
   Future<PostReceiptResult> saveTransaction(Transaction transaction);
 
   Future<void> saveAccounts(Iterable<Account> accounts);
