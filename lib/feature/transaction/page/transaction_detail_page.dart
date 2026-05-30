@@ -300,7 +300,7 @@ class _DetailBody extends ConsumerWidget {
       context: context,
       title: '选择${row.label}',
       accounts: options,
-      selectedId: row.accountId == 0 ? null : row.accountId,
+      selectedId: row.accountId,
     );
     if (selectedId == null || selectedId == row.accountId) return;
     final Result<void> result;
@@ -513,10 +513,7 @@ class _PrimaryMetaCard extends StatelessWidget {
         value: _formatDateTime(transaction.occurredAt),
         onTap: onOccurredAtTap,
       ),
-      AppPlainValueRow(
-        label: '创建时间',
-        value: _formatDateTime(transaction.createdAt),
-      ),
+      AppPlainValueRow(label: '创建时间', value: _formatDateTime(detail.createdAt)),
       for (final accountRow in accountRows)
         AppPlainValueRow(
           label: accountRow.label,

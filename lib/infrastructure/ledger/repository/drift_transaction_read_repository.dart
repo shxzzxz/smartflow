@@ -22,6 +22,16 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
   }
 
   @override
+  Future<DateTime?> findCreatedAt(String id) async {
+    final row =
+        await (_db.selectOnly(_db.transactions)
+              ..addColumns([_db.transactions.createdAt])
+              ..where(_db.transactions.id.equals(id)))
+            .getSingleOrNull();
+    return row?.read(_db.transactions.createdAt);
+  }
+
+  @override
   Future<List<Transaction>> findByIds(Set<String> ids) async {
     if (ids.isEmpty) return const [];
     final rows =
@@ -94,6 +104,39 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
     String? excludeId,
     ({BusinessState state, MutationKind mutationKind})? excludeStateMutation,
   }) async {
+    final rows = await _findRootDescendantRows(
+      rootId: rootId,
+      excludeId: excludeId,
+      excludeStateMutation: excludeStateMutation,
+    );
+    return rows.map(mapTransaction).toList();
+  }
+
+  @override
+  Future<List<TransactionHistoryRow>> findRootDescendantHistory({
+    required String rootId,
+    String? excludeId,
+    ({BusinessState state, MutationKind mutationKind})? excludeStateMutation,
+  }) async {
+    final rows = await _findRootDescendantRows(
+      rootId: rootId,
+      excludeId: excludeId,
+      excludeStateMutation: excludeStateMutation,
+    );
+    return [
+      for (final row in rows)
+        TransactionHistoryRow(
+          transaction: mapTransaction(row),
+          createdAt: row.createdAt,
+        ),
+    ];
+  }
+
+  Future<List<TransactionRow>> _findRootDescendantRows({
+    required String rootId,
+    String? excludeId,
+    ({BusinessState state, MutationKind mutationKind})? excludeStateMutation,
+  }) async {
     final select = _db.select(_db.transactions)
       ..where((t) => t.rootTransactionId.equals(rootId));
     if (excludeId != null) {
@@ -111,8 +154,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
       (t) => OrderingTerm.desc(t.createdAt),
       (t) => OrderingTerm.desc(t.id),
     ]);
-    final rows = await select.get();
-    return rows.map(mapTransaction).toList();
+    return select.get();
   }
 
   @override

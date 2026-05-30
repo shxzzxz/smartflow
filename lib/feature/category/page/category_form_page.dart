@@ -157,7 +157,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
                       : RemixIcons.checkbox_blank_circle_line,
                 ),
                 title: const Text('无'),
-                onTap: () => Navigator.of(context).pop(-1),
+                onTap: () => Navigator.of(context).pop(''),
               ),
               for (final parent in parents)
                 ListTile(
@@ -175,7 +175,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
       },
     );
     if (!mounted || selected == null) return;
-    setState(() => _parentId = selected == -1 ? null : selected);
+    setState(() => _parentId = selected.isEmpty ? null : selected);
   }
 
   Future<void> _submit() async {

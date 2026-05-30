@@ -1,12 +1,14 @@
 import '../../../core/error/failure.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
-import '../valobj/post_receipt.dart';
+import '../service/ledger_rule.dart';
 import '../valobj/ledger_enum.dart';
 import '../valobj/transaction_ownership.dart';
+import 'entry.dart';
+import 'transaction_detail_record.dart';
 
 class Transaction {
-  const Transaction({
+  Transaction({
     required this.id,
     required this.rootTransactionId,
     required this.businessPurpose,
@@ -17,7 +19,6 @@ class Transaction {
     required this.isExcludedFromStats,
     required this.isExcludedFromBudget,
     required this.sourceKind,
-    required this.createdAt,
     this.ownership,
     this.counterpartyName,
     this.note,
@@ -29,64 +30,25 @@ class Transaction {
     this.entries = const [],
   });
 
-  /// 由已校验的 [PostReceipt] 派生的工厂。
-  ///
-  /// 凭证级合法性由 caller(`PostingAppService`)通过 [PostReceipt.validate]
-  /// 在调用本工厂之前完成,本工厂只承担"组装持久化形态"。
-  /// caller 负责生成 [id]; 独立主记录的 rootTransactionId 取自身 id,
-  /// 子记录 / 更正 / 冲销取 receipt.rootTransactionId。
-  factory Transaction.fromReceipt(
-    PostReceipt receipt, {
-    required String id,
-    MutationKind mutationKind = MutationKind.original,
-    BusinessState businessState = BusinessState.current,
-    MutationReason? mutationReason,
-    String? mutationPreviousTransactionId,
-  }) {
-    return Transaction(
-      id: id,
-      rootTransactionId: receipt.rootTransactionId ?? id,
-      businessPurpose: receipt.businessPurpose,
-      occurredAt: receipt.occurredAt,
-      primaryAmount: receipt.primaryAmount,
-      counterpartyName: receipt.counterpartyName,
-      note: receipt.note,
-      parentTransactionId: receipt.parentTransactionId,
-      reimbursementExpenseAccountId: receipt.reimbursementExpenseAccountId,
-      mutationKind: mutationKind,
-      mutationPreviousTransactionId: mutationPreviousTransactionId,
-      mutationReason: mutationReason,
-      businessState: businessState,
-      isExcludedFromStats: receipt.isExcludedFromStats,
-      isExcludedFromBudget: receipt.isExcludedFromBudget,
-      sourceKind: receipt.sourceKind,
-      ownership: receipt.ownership,
-      createdAt: DateTime.now(),
-      details: List.unmodifiable(receipt.details),
-      entries: List.unmodifiable(receipt.entries),
-    );
-  }
-
   final String id;
   final String rootTransactionId;
   final BusinessPurpose businessPurpose;
-  final DateTime occurredAt;
+  DateTime occurredAt;
   final Money primaryAmount;
-  final String? counterpartyName;
-  final String? note;
+  String? counterpartyName;
+  String? note;
   final String? parentTransactionId;
   final String? reimbursementExpenseAccountId;
   final MutationKind mutationKind;
   final String? mutationPreviousTransactionId;
   final MutationReason? mutationReason;
-  final BusinessState businessState;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
+  BusinessState businessState;
+  bool isExcludedFromStats;
+  bool isExcludedFromBudget;
   final SourceKind sourceKind;
   final TransactionOwnership? ownership;
-  final DateTime createdAt;
-  final List<ReceiptDetail> details;
-  final List<ReceiptEntry> entries;
+  final List<TransactionDetailRecord> details;
+  final List<Entry> entries;
 
   Set<String> get accountIds => entries.map((entry) => entry.accountId).toSet();
 
@@ -142,11 +104,121 @@ class Transaction {
   }
 
   Transaction markReplaced() {
-    return _copyWith(businessState: BusinessState.replaced);
+    businessState = BusinessState.replaced;
+    return this;
   }
 
   Transaction markCanceled() {
-    return _copyWith(businessState: BusinessState.canceled);
+    businessState = BusinessState.canceled;
+    return this;
+  }
+
+  void updateBasicInfo({
+    DateTime? occurredAt,
+    Patch<String?>? counterpartyName,
+    Patch<String?>? note,
+  }) {
+    if (occurredAt != null) this.occurredAt = occurredAt;
+    if (counterpartyName != null) {
+      this.counterpartyName = switch (counterpartyName) {
+        PatchSet<String?>(:final value) => _blankToNull(value),
+        PatchClear<String?>() => null,
+      };
+    }
+    if (note != null) {
+      this.note = switch (note) {
+        PatchSet<String?>(:final value) => _blankToNull(value),
+        PatchClear<String?>() => null,
+      };
+    }
+  }
+
+  void updateReportingFlags({
+    bool? isExcludedFromStats,
+    bool? isExcludedFromBudget,
+    required BusinessPurpose parentPurpose,
+  }) {
+    if (!parentPurpose.isIncomeOrExpense) {
+      this.isExcludedFromStats = false;
+      this.isExcludedFromBudget = false;
+      return;
+    }
+    if (isExcludedFromStats != null) {
+      this.isExcludedFromStats = isExcludedFromStats;
+    }
+    if (parentPurpose.isExpense) {
+      if (isExcludedFromBudget != null) {
+        this.isExcludedFromBudget = isExcludedFromBudget;
+      }
+    } else {
+      this.isExcludedFromBudget = false;
+    }
+  }
+
+  Failure? validateSelf({bool allowNegativeAmounts = false}) {
+    if (details.isEmpty) {
+      return const Failure(
+        code: 'details_required',
+        message: 'A transaction must have at least one detail.',
+      );
+    }
+    if (entries.length < 2) {
+      return const Failure(
+        code: 'entries_required',
+        message: 'A transaction must have at least two entries.',
+      );
+    }
+    if ((!allowNegativeAmounts && primaryAmount.minorUnits <= 0) ||
+        (allowNegativeAmounts && primaryAmount.minorUnits == 0)) {
+      return const Failure(
+        code: 'primary_amount_not_positive',
+        message: 'Primary amount has an invalid sign.',
+      );
+    }
+    for (final detail in details) {
+      if (!_amountSignIsValid(
+        amountMinor: detail.amount.minorUnits,
+        expectsNegative: allowNegativeAmounts,
+      )) {
+        return Failure(
+          code: 'detail_amount_sign_invalid',
+          message:
+              'Detail amount must be '
+              '${allowNegativeAmounts ? 'negative' : 'positive'}.',
+        );
+      }
+      if (!detailTypeAllowedForPurpose(
+        detailType: detail.type,
+        businessPurpose: businessPurpose,
+      )) {
+        return Failure(
+          code: 'detail_type_not_allowed',
+          message:
+              '${detail.type.name} is not allowed for '
+              '${businessPurpose.name}.',
+        );
+      }
+    }
+    for (final entry in entries) {
+      if (!_amountSignIsValid(
+        amountMinor: entry.amount.minorUnits,
+        expectsNegative: allowNegativeAmounts,
+      )) {
+        return Failure(
+          code: 'entry_amount_sign_invalid',
+          message:
+              'Entry amount must be '
+              '${allowNegativeAmounts ? 'negative' : 'positive'}.',
+        );
+      }
+    }
+    if (!entriesAreBalanced(entries)) {
+      return const Failure(
+        code: 'entries_not_balanced',
+        message: 'Debit and credit entries must be balanced.',
+      );
+    }
+    return null;
   }
 
   /// 更新元数据(note 三态 + 排除统计 / 排除预算)。
@@ -156,7 +228,7 @@ class Transaction {
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
   }) {
-    return _copyWith(
+    return copyWith(
       notePatch: note,
       isExcludedFromStats: isExcludedFromStats,
       isExcludedFromBudget: isExcludedFromBudget,
@@ -164,14 +236,16 @@ class Transaction {
   }
 
   Transaction updatedOwnership(TransactionOwnership ownership) {
-    return _copyWith(ownership: ownership);
+    return copyWith(ownership: ownership);
   }
 
   Transaction withOccurredAt(DateTime occurredAt) {
-    return _copyWith(occurredAt: occurredAt);
+    return copyWith(occurredAt: occurredAt);
   }
 
-  Transaction _copyWith({
+  Transaction copyWith({
+    String? id,
+    String? rootTransactionId,
     BusinessPurpose? businessPurpose,
     DateTime? occurredAt,
     Money? primaryAmount,
@@ -187,20 +261,20 @@ class Transaction {
     bool? isExcludedFromBudget,
     SourceKind? sourceKind,
     TransactionOwnership? ownership,
-    DateTime? createdAt,
-    List<ReceiptDetail>? details,
-    List<ReceiptEntry>? entries,
+    List<TransactionDetailRecord>? details,
+    List<Entry>? entries,
   }) {
+    final nextId = id ?? this.id;
     return Transaction(
-      id: id,
-      rootTransactionId: rootTransactionId,
+      id: nextId,
+      rootTransactionId: rootTransactionId ?? this.rootTransactionId,
       businessPurpose: businessPurpose ?? this.businessPurpose,
       occurredAt: occurredAt ?? this.occurredAt,
       primaryAmount: primaryAmount ?? this.primaryAmount,
       counterpartyName: counterpartyName ?? this.counterpartyName,
       note: switch (notePatch) {
         null => note,
-        PatchSet<String>(:final value) => value.isEmpty ? null : value,
+        PatchSet<String>(:final value) => _blankToNull(value),
         PatchClear<String>() => null,
       },
       parentTransactionId: parentTransactionId ?? this.parentTransactionId,
@@ -215,9 +289,58 @@ class Transaction {
       isExcludedFromBudget: isExcludedFromBudget ?? this.isExcludedFromBudget,
       sourceKind: sourceKind ?? this.sourceKind,
       ownership: ownership ?? this.ownership,
-      createdAt: createdAt ?? this.createdAt,
-      details: details ?? this.details,
-      entries: entries ?? this.entries,
+      details:
+          details ??
+          [
+            for (final detail in this.details)
+              TransactionDetailRecord(
+                id: detail.id,
+                transactionId:
+                    detail.transactionId == this.id
+                        ? nextId
+                        : detail.transactionId,
+                lineNo: detail.lineNo,
+                type: detail.type,
+                amount: detail.amount,
+              ),
+          ],
+      entries:
+          entries ??
+          [
+            for (final entry in this.entries)
+              Entry(
+                id: entry.id,
+                transactionId:
+                    entry.transactionId == this.id
+                        ? nextId
+                        : entry.transactionId,
+                accountId: entry.accountId,
+                direction: entry.direction,
+                amount: entry.amount,
+              ),
+          ],
     );
   }
+
+  static bool _amountSignIsValid({
+    required int amountMinor,
+    required bool expectsNegative,
+  }) {
+    return expectsNegative ? amountMinor < 0 : amountMinor > 0;
+  }
+
+  static String? _blankToNull(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+}
+
+extension BusinessPurposeBehavior on BusinessPurpose {
+  bool get isExpense =>
+      this == BusinessPurpose.dailyExpense ||
+      this == BusinessPurpose.reimbursementAdvance;
+
+  bool get isIncome => this == BusinessPurpose.dailyIncome;
+
+  bool get isIncomeOrExpense => isIncome || isExpense;
 }

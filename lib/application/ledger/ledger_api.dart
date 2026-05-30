@@ -12,7 +12,6 @@ export '../../domain/ledger/valobj/account_usage.dart';
 export '../../domain/ledger/entity/entry.dart';
 export '../../domain/ledger/entity/transaction.dart';
 export '../../domain/ledger/entity/transaction_detail_record.dart';
-export '../../domain/ledger/valobj/transaction_fact.dart';
 export '../../domain/ledger/valobj/transaction_ownership.dart';
 export '../../domain/ledger/valobj/ledger_enum.dart';
 export 'query/financial_metrics_queries.dart';

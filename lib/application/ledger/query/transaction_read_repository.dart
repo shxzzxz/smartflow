@@ -18,12 +18,24 @@ class TransactionChildAggregate {
   );
 }
 
+class TransactionHistoryRow {
+  const TransactionHistoryRow({
+    required this.transaction,
+    required this.createdAt,
+  });
+
+  final Transaction transaction;
+  final DateTime createdAt;
+}
+
 /// 交易表(transaction)的纯读能力。
 ///
 /// 接口面向会计概念,业务字面量(具体的 `BusinessPurpose` / `BusinessState` 值)
 /// 通过参数 Set 传入,repo 不知道这些参数对应的业务流程语义。
 abstract interface class TransactionReadRepository {
   Future<Transaction?> findById(String id);
+
+  Future<DateTime?> findCreatedAt(String id);
 
   Future<List<Transaction>> findByIds(Set<String> ids);
 
@@ -41,6 +53,12 @@ abstract interface class TransactionReadRepository {
   /// `excludeStateMutation` 排除指定 (state, mutationKind) 组合的行(用于
   /// 「排除当前激活的 original」这种 history view 语义)。
   Future<List<Transaction>> findRootDescendants({
+    required String rootId,
+    String? excludeId,
+    ({BusinessState state, MutationKind mutationKind})? excludeStateMutation,
+  });
+
+  Future<List<TransactionHistoryRow>> findRootDescendantHistory({
     required String rootId,
     String? excludeId,
     ({BusinessState state, MutationKind mutationKind})? excludeStateMutation,

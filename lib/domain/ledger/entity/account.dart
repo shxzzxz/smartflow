@@ -4,7 +4,7 @@ import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
 import '../valobj/ledger_enum.dart';
 import '../service/ledger_rule.dart';
-import '../valobj/post_receipt.dart';
+import 'entry.dart';
 import 'transaction.dart';
 
 class AccountProfilePatch {
@@ -374,7 +374,7 @@ class Account {
     return account;
   }
 
-  Account applyEntryImpact(ReceiptEntry entry) {
+  Account applyEntryImpact(Entry entry) {
     final delta = balanceDeltaMinor(
       accountType: type,
       direction: entry.direction,
@@ -383,7 +383,7 @@ class Account {
     return copyWith(balance: Money(minorUnits: balance.minorUnits + delta));
   }
 
-  Account removeEntryImpact(ReceiptEntry entry) {
+  Account removeEntryImpact(Entry entry) {
     final delta = balanceDeltaMinor(
       accountType: type,
       direction: entry.direction,

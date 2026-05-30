@@ -113,6 +113,22 @@ class DriftAccountRepository
     });
   }
 
+  @override
+  Future<void> saveAll(Iterable<Account> accounts) {
+    return _database.transaction(() async {
+      final now = DateTime.now();
+      for (final account in accounts) {
+        await (_database.update(_database.accounts)
+          ..where((row) => row.id.equals(account.id))).write(
+          AccountsCompanion(
+            balanceMinor: Value(account.balance.minorUnits),
+            updatedAt: Value(now),
+          ),
+        );
+      }
+    });
+  }
+
   Future<Account?> findCategoryById(String id) async {
     final row =
         await (_database.select(_database.accounts)..where(

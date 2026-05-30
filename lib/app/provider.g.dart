@@ -193,52 +193,52 @@ final class AccountQueryRepositoryProvider
 String _$accountQueryRepositoryHash() =>
     r'082f88ceaf4f0cf0f53a0eac3f6d2d462bc18df8';
 
-@ProviderFor(postingRepository)
-final postingRepositoryProvider = PostingRepositoryProvider._();
+@ProviderFor(ledgerRepository)
+final ledgerRepositoryProvider = LedgerRepositoryProvider._();
 
-final class PostingRepositoryProvider
+final class LedgerRepositoryProvider
     extends
         $FunctionalProvider<
-          PostingRepository,
-          PostingRepository,
-          PostingRepository
+          DriftPostingRepository,
+          DriftPostingRepository,
+          DriftPostingRepository
         >
-    with $Provider<PostingRepository> {
-  PostingRepositoryProvider._()
+    with $Provider<DriftPostingRepository> {
+  LedgerRepositoryProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'postingRepositoryProvider',
+        name: r'ledgerRepositoryProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$postingRepositoryHash();
+  String debugGetCreateSourceHash() => _$ledgerRepositoryHash();
 
   @$internal
   @override
-  $ProviderElement<PostingRepository> $createElement(
+  $ProviderElement<DriftPostingRepository> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  PostingRepository create(Ref ref) {
-    return postingRepository(ref);
+  DriftPostingRepository create(Ref ref) {
+    return ledgerRepository(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(PostingRepository value) {
+  Override overrideWithValue(DriftPostingRepository value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<PostingRepository>(value),
+      providerOverride: $SyncValueProvider<DriftPostingRepository>(value),
     );
   }
 }
 
-String _$postingRepositoryHash() => r'3f65f8d3cd45f7b9f70f5cb598b6d6e847518ad1';
+String _$ledgerRepositoryHash() => r'18965b95482a5f4fe039ea90243451edea89725d';
 
 @ProviderFor(transactionReadRepository)
 final transactionReadRepositoryProvider = TransactionReadRepositoryProvider._();
@@ -665,7 +665,7 @@ final class PostingAppServiceProvider
   }
 }
 
-String _$postingAppServiceHash() => r'96b816a89b16b859a59d654bab948b9863970d1c';
+String _$postingAppServiceHash() => r'ecff64f7cdd0767c0b871be036ab01713dfda99c';
 
 @ProviderFor(transactionQueryService)
 final transactionQueryServiceProvider = TransactionQueryServiceProvider._();

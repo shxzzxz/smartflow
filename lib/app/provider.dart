@@ -18,7 +18,6 @@ import '../domain/ledger/port/account_repository.dart';
 import '../application/ledger/query/balance_aggregate_repository.dart';
 import '../application/ledger/query/entry_read_repository.dart';
 import '../domain/credit/port/installment_repository.dart';
-import '../domain/ledger/port/posting_repository.dart';
 import '../domain/ledger/port/system_account_resolver.dart';
 import '../application/ledger/query/transaction_detail_read_repository.dart';
 import '../application/ledger/query/transaction_read_repository.dart';
@@ -51,7 +50,7 @@ AccountQueryRepository accountQueryRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-PostingRepository postingRepository(Ref ref) {
+DriftPostingRepository ledgerRepository(Ref ref) {
   return DriftPostingRepository(ref.watch(appDatabaseProvider));
 }
 
@@ -109,7 +108,8 @@ PostingAppService postingAppService(Ref ref) {
   return PostingAppServiceImpl(
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
     accountRepository: ref.watch(accountRepositoryProvider),
-    postingRepository: ref.watch(postingRepositoryProvider),
+    transactionRepository: ref.watch(ledgerRepositoryProvider),
+    rootGroupRepository: ref.watch(ledgerRepositoryProvider),
     systemAccountResolver: ref.watch(systemAccountResolverProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
     idGenerator: ref.watch(idGeneratorProvider),
@@ -184,7 +184,10 @@ Stream<List<CategoryNode>> categoryTree(Ref ref, AccountType type) {
 }
 
 @riverpod
-Stream<List<TransactionListItem>> transactionList(Ref ref, {String? accountId}) {
+Stream<List<TransactionListItem>> transactionList(
+  Ref ref, {
+  String? accountId,
+}) {
   return ref
       .watch(transactionQueryServiceProvider)
       .watchTransactions(

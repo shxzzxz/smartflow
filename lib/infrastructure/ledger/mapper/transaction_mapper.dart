@@ -29,6 +29,5 @@ Transaction mapTransaction(TransactionRow row) {
               ownerId: row.ownerId,
               ownerRole: row.ownerRole,
             ),
-    createdAt: row.createdAt,
   );
 }

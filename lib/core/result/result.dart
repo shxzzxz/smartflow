@@ -31,3 +31,13 @@ final class FailureResult<T> extends Result<T> {
 
   final Failure failure;
 }
+
+extension ResultValue<T> on Result<T> {
+  T get value {
+    return switch (this) {
+      Success<T>(:final value) => value,
+      FailureResult<T>(:final failure) =>
+        throw StateError('Cannot read value from failed result: $failure'),
+    };
+  }
+}

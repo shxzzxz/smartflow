@@ -265,6 +265,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
       for (final t in transactions)
         TransactionDetail(
           transaction: t,
+          createdAt: DateTime.fromMillisecondsSinceEpoch(0),
           entries: List<Entry>.unmodifiable(
             entriesByTx[t.id] ?? const <Entry>[],
           ),
@@ -287,7 +288,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
         parentId: transactionId,
         states: const {BusinessState.current},
       ),
-      _txRead.findRootDescendants(
+      _txRead.findRootDescendantHistory(
         rootId: rootId,
         excludeId: transactionId,
         excludeStateMutation: (
@@ -295,6 +296,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
           mutationKind: MutationKind.original,
         ),
       ),
+      _txRead.findCreatedAt(transactionId),
     ]);
 
     final entries =
@@ -302,7 +304,8 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     final details =
         (results[1] as Map<String, List<dynamic>>)[transactionId] ?? const [];
     final childrenTxs = results[2] as List<Transaction>;
-    final historyTxs = results[3] as List<Transaction>;
+    final historyTxs = results[3] as List<dynamic>;
+    final createdAt = results[4] as DateTime? ?? transaction.occurredAt;
 
     final childrenListItems = await _projectListItems(childrenTxs);
     final historySnapshots = await _projectHistorySnapshots(historyTxs);
@@ -318,6 +321,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
 
     return TransactionDetail(
       transaction: transaction,
+      createdAt: createdAt,
       entries: List.unmodifiable(entries),
       details: List.unmodifiable(details),
       children: childrenListItems,
@@ -334,7 +338,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     String rootTransactionId,
   ) {
     return _txRead.watchChanges().asyncMap((_) async {
-      final txs = await _txRead.findRootDescendants(
+      final txs = await _txRead.findRootDescendantHistory(
         rootId: rootTransactionId,
         excludeStateMutation: (
           state: BusinessState.current,
@@ -346,11 +350,26 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   }
 
   Future<List<TransactionHistorySnapshot>> _projectHistorySnapshots(
-    List<Transaction> txs,
+    List<dynamic> txs,
   ) async {
     if (txs.isEmpty) return const [];
 
-    final txIds = txs.map((t) => t.id).toSet();
+    final historyRows = [
+      for (final item in txs)
+        switch (item) {
+          TransactionHistoryRow(:final transaction, :final createdAt) => (
+            transaction: transaction,
+            createdAt: createdAt,
+          ),
+          Transaction t => (
+            transaction: t,
+            createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+          ),
+          _ => throw ArgumentError.value(item),
+        },
+    ];
+
+    final txIds = historyRows.map((row) => row.transaction.id).toSet();
     final results = await Future.wait([
       _entryRead.findByTransactionIds(txIds),
       _detailRead.findByTransactionIds(txIds),
@@ -359,23 +378,28 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     final detailsByTx = results[1] as Map<String, List<dynamic>>;
 
     return [
-      for (final t in txs)
+      for (final row in historyRows)
         TransactionHistorySnapshot(
-          id: t.id,
-          rootTransactionId: t.rootTransactionId,
-          parentTransactionId: t.parentTransactionId,
-          businessPurpose: t.businessPurpose,
-          businessState: t.businessState,
-          occurredAt: t.occurredAt,
-          primaryAmount: t.primaryAmount,
-          counterpartyName: t.counterpartyName,
-          note: t.note,
-          mutationKind: t.mutationKind,
-          mutationReason: t.mutationReason,
-          mutationPreviousTransactionId: t.mutationPreviousTransactionId,
-          createdAt: t.createdAt,
-          entries: List.unmodifiable(entriesByTx[t.id] ?? const []),
-          details: List.unmodifiable(detailsByTx[t.id] ?? const []),
+          id: row.transaction.id,
+          rootTransactionId: row.transaction.rootTransactionId,
+          parentTransactionId: row.transaction.parentTransactionId,
+          businessPurpose: row.transaction.businessPurpose,
+          businessState: row.transaction.businessState,
+          occurredAt: row.transaction.occurredAt,
+          primaryAmount: row.transaction.primaryAmount,
+          counterpartyName: row.transaction.counterpartyName,
+          note: row.transaction.note,
+          mutationKind: row.transaction.mutationKind,
+          mutationReason: row.transaction.mutationReason,
+          mutationPreviousTransactionId:
+              row.transaction.mutationPreviousTransactionId,
+          createdAt: row.createdAt,
+          entries: List.unmodifiable(
+            entriesByTx[row.transaction.id] ?? const [],
+          ),
+          details: List.unmodifiable(
+            detailsByTx[row.transaction.id] ?? const [],
+          ),
         ),
     ];
   }

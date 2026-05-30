@@ -1,7 +1,6 @@
 import '../entity/account.dart';
 import '../entity/entry.dart';
 import '../valobj/ledger_enum.dart';
-import '../valobj/post_receipt.dart';
 
 /// `updateTransactionBasics` 路径所需的领域服务:
 /// 1. 在一笔交易的 entries 中识别"结算账户" / "报销应收账户" 这两类 entry,
@@ -92,12 +91,16 @@ class EntryReassignmentService {
       }
       final affectedEntries = _entriesForReassignment(scopes, reassignment);
       for (final entry in affectedEntries) {
-        final oldImpact = ReceiptEntry(
+        final oldImpact = Entry(
+          id: entry.id,
+          transactionId: entry.transactionId,
           accountId: reassignment.fromAccountId,
           direction: entry.direction,
           amount: entry.amount,
         );
-        final newImpact = ReceiptEntry(
+        final newImpact = Entry(
+          id: entry.id,
+          transactionId: entry.transactionId,
           accountId: reassignment.toAccountId,
           direction: entry.direction,
           amount: entry.amount,
@@ -150,4 +153,21 @@ class EntryReassignmentScope {
   final String rootTransactionId;
   final BusinessState businessState;
   final List<Entry> entries;
+}
+
+class EntryAccountReassignment {
+  const EntryAccountReassignment({
+    required this.fromAccountId,
+    required this.toAccountId,
+    this.transactionId,
+    this.rootTransactionId,
+  }) : assert(
+         (transactionId == null) != (rootTransactionId == null),
+         'Exactly one reassignment scope must be provided.',
+       );
+
+  final String fromAccountId;
+  final String toAccountId;
+  final String? transactionId;
+  final String? rootTransactionId;
 }

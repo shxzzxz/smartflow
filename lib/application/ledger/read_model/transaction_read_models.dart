@@ -123,6 +123,7 @@ class TransactionHistorySnapshot {
 class TransactionDetail {
   const TransactionDetail({
     required this.transaction,
+    required this.createdAt,
     required this.details,
     required this.entries,
     this.children = const [],
@@ -132,6 +133,7 @@ class TransactionDetail {
   });
 
   final Transaction transaction;
+  final DateTime createdAt;
   final List<TransactionDetailRecord> details;
   final List<Entry> entries;
   final List<TransactionListItem> children;

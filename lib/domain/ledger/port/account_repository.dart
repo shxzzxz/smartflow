@@ -8,4 +8,6 @@ abstract interface class AccountRepository {
   Future<Account> create(Account account);
 
   Future<void> save(Account account);
+
+  Future<void> saveAll(Iterable<Account> accounts);
 }

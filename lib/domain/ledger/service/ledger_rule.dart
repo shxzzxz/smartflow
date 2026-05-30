@@ -1,5 +1,6 @@
+import '../entity/entry.dart';
+import '../entity/transaction_detail_record.dart';
 import '../valobj/ledger_enum.dart';
-import '../valobj/post_receipt.dart';
 
 /// 账户余额按借贷的净增量。
 ///
@@ -35,20 +36,82 @@ EntryDirection directionForBalanceDelta({
   return increase ? EntryDirection.credit : EntryDirection.debit;
 }
 
-bool entriesAreBalanced(Iterable<ReceiptEntry> entries) {
+bool entriesAreBalanced(Iterable<Object> entries) {
   var debitMinor = 0;
   var creditMinor = 0;
 
-  for (final entry in entries) {
-    switch (entry.direction) {
+  for (final item in entries) {
+    final (:direction, :amountMinor) = switch (item) {
+      Entry(:final direction, :final amount) => (
+        direction: direction,
+        amountMinor: amount.minorUnits,
+      ),
+      _ => throw ArgumentError.value(item, 'entries', 'Unsupported entry type'),
+    };
+    switch (direction) {
       case EntryDirection.debit:
-        debitMinor += entry.amount.minorUnits;
+        debitMinor += amountMinor;
       case EntryDirection.credit:
-        creditMinor += entry.amount.minorUnits;
+        creditMinor += amountMinor;
     }
   }
 
   return debitMinor == creditMinor;
+}
+
+bool sameDetails(Iterable<Object> left, Iterable<Object> right) {
+  final leftShape =
+      left.map(_detailShape).toList()..sort((a, b) => a.compareTo(b));
+  final rightShape =
+      right.map(_detailShape).toList()..sort((a, b) => a.compareTo(b));
+  if (leftShape.length != rightShape.length) return false;
+  for (var i = 0; i < leftShape.length; i++) {
+    if (leftShape[i] != rightShape[i]) return false;
+  }
+  return true;
+}
+
+bool sameEntries(Iterable<Object> left, Iterable<Object> right) {
+  final leftShape =
+      left.map(_entryShape).toList()..sort((a, b) => a.compareTo(b));
+  final rightShape =
+      right.map(_entryShape).toList()..sort((a, b) => a.compareTo(b));
+  if (leftShape.length != rightShape.length) return false;
+  for (var i = 0; i < leftShape.length; i++) {
+    if (leftShape[i] != rightShape[i]) return false;
+  }
+  return true;
+}
+
+bool hasSamePostingShape(dynamic left, dynamic right) {
+  return left.businessPurpose == right.businessPurpose &&
+      left.primaryAmount == right.primaryAmount &&
+      sameDetails(left.details, right.details) &&
+      sameEntries(left.entries, right.entries);
+}
+
+String _detailShape(Object item) {
+  final (:lineNo, :type, :amountMinor) = switch (item) {
+    TransactionDetailRecord(:final lineNo, :final type, :final amount) => (
+      lineNo: lineNo,
+      type: type,
+      amountMinor: amount.minorUnits,
+    ),
+    _ => throw ArgumentError.value(item, 'details', 'Unsupported detail type'),
+  };
+  return '$lineNo|${type.name}|$amountMinor';
+}
+
+String _entryShape(Object item) {
+  final (:accountId, :direction, :amountMinor) = switch (item) {
+    Entry(:final accountId, :final direction, :final amount) => (
+      accountId: accountId,
+      direction: direction,
+      amountMinor: amount.minorUnits,
+    ),
+    _ => throw ArgumentError.value(item, 'entries', 'Unsupported entry type'),
+  };
+  return '$accountId|${direction.name}|$amountMinor';
 }
 
 const _allowedPurposeByDetail = <TransactionDetailType, Set<BusinessPurpose>>{
