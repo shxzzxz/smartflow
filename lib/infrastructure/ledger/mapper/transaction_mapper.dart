@@ -1,7 +1,7 @@
 import '../../../core/money/money.dart';
 import '../../../domain/ledger/entity/transaction.dart';
 import '../../../domain/ledger/valobj/transaction_ownership.dart';
-import 'package:smartflow/data/app_database.dart';
+import '../../database/app_database.dart';
 
 Transaction mapTransaction(TransactionRow row) {
   return Transaction(

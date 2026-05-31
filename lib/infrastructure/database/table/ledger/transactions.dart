@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-import '../../../domain/ledger/valobj/ledger_enum.dart';
+import '../../../../domain/ledger/valobj/ledger_enum.dart';
 
 @DataClassName('TransactionRow')
 class Transactions extends Table {

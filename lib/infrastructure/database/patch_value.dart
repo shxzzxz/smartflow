@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-import '../core/patch/patch.dart';
+import '../../core/patch/patch.dart';
 
 extension PatchValue<T> on Patch<T>? {
   Value<T?> toValue() => switch (this) {

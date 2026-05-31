@@ -1,12 +1,11 @@
 import 'package:drift/drift.dart';
 
-import '../../../domain/credit/valobj/installment_enums.dart';
+import '../../../../domain/credit/valobj/installment_enums.dart';
 
 @DataClassName('InstallmentContractRow')
 class InstallmentContracts extends Table {
   TextColumn get id => text()();
-  TextColumn get liabilityAccountId =>
-      text().named('liability_account_id')();
+  TextColumn get liabilityAccountId => text().named('liability_account_id')();
   TextColumn get sourceType =>
       textEnum<InstallmentSourceType>().named('source_type')();
   TextColumn get disbursementAccountId =>

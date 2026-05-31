@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../domain/ledger/valobj/ledger_enum.dart';
 import '../../../application/ledger/query/transaction_scope.dart';
-import 'package:smartflow/data/app_database.dart';
+import '../../database/app_database.dart';
 
 /// 余额变化金额累计表达式（按账户类型决定借/贷方向的符号）。
 ///

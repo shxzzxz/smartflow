@@ -3,7 +3,7 @@ import 'package:drift/drift.dart';
 import '../../../domain/ledger/valobj/ledger_enum.dart';
 import '../../../application/ledger/query/transaction_scope.dart';
 import '../../../application/ledger/query/balance_aggregate_repository.dart';
-import 'package:smartflow/data/app_database.dart';
+import '../../database/app_database.dart';
 import '../sql/balance_expressions.dart';
 
 class DriftBalanceAggregateRepository implements BalanceAggregateRepository {

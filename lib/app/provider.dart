@@ -1,11 +1,11 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../data/database_provider.dart';
+import '../infrastructure/database/database_provider.dart';
 import '../infrastructure/ledger/repository/drift_account_query_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_repository.dart';
 import '../infrastructure/ledger/repository/drift_balance_aggregate_repository.dart';
 import '../infrastructure/ledger/repository/drift_entry_read_repository.dart';
-import '../data/credit/repository/drift_installment_repository.dart';
+import '../infrastructure/credit/repository/drift_installment_repository.dart';
 import '../infrastructure/ledger/repository/drift_posting_repository.dart';
 import '../infrastructure/ledger/repository/drift_system_account_resolver.dart';
 import '../infrastructure/ledger/repository/drift_transaction_detail_read_repository.dart';

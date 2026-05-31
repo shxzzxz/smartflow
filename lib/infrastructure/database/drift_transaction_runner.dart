@@ -1,7 +1,7 @@
 import '../../core/error/failure.dart';
 import '../../core/result/result.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
-import 'package:smartflow/data/app_database.dart';
+import 'package:smartflow/infrastructure/database/app_database.dart';
 
 class DriftTransactionRunner implements TransactionRunner {
   const DriftTransactionRunner(this._database);

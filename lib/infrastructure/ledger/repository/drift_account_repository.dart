@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../domain/ledger/entity/account.dart';
 import '../../../domain/ledger/port/account_repository.dart';
-import 'package:smartflow/data/app_database.dart';
+import '../../database/app_database.dart';
 import '../mapper/account_mapper.dart';
 
 class DriftAccountRepository implements AccountRepository {

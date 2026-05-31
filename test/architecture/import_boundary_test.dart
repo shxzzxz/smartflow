@@ -1,10 +1,10 @@
 // 顶层分层 import 边界守护测试。
 //
 // 约束目标：
-// - domain 不依赖 application / infrastructure / feature / app / data / Flutter UI / Drift / Riverpod。
-// - application 可依赖 domain 和 core，不依赖 infrastructure / feature / app / data。
-// - infrastructure 可依赖 application、domain、core、data，不依赖 feature / app。
-// - feature 和 widget 不直接依赖 domain / infrastructure / data，只通过 application / app provider。
+// - domain 不依赖 application / infrastructure / feature / app / Flutter UI / Drift / Riverpod。
+// - application 可依赖 domain 和 core，不依赖 infrastructure / feature / app。
+// - infrastructure 可依赖 application、domain、core，不依赖 feature / app。
+// - feature 和 widget 不直接依赖 domain / infrastructure，只通过 application / app provider。
 // - ledger domain 不依赖 credit domain。
 
 import 'dart:io';
@@ -20,7 +20,6 @@ void main() {
         'infrastructure/',
         'feature/',
         'app/',
-        'data/',
         'widget/',
         'design_system/',
       ];
@@ -61,7 +60,6 @@ void main() {
         'infrastructure/',
         'feature/',
         'app/',
-        'data/',
         'widget/',
         'design_system/',
       ];
@@ -121,9 +119,9 @@ void main() {
       _assertClean(violations);
     });
 
-    test('feature/widget 不直接依赖 domain/infrastructure/data', () {
+    test('feature/widget 不直接依赖 domain/infrastructure', () {
       final violations = <_Violation>[];
-      const forbiddenRoots = <String>['domain/', 'infrastructure/', 'data/'];
+      const forbiddenRoots = <String>['domain/', 'infrastructure/'];
 
       for (final rootPath in ['lib/feature', 'lib/widget']) {
         for (final file in _dartFiles(rootPath)) {

@@ -3,7 +3,7 @@ import 'package:drift/drift.dart';
 import '../../../application/ledger/query/account_query_repository.dart';
 import '../../../domain/ledger/entity/account.dart';
 import '../../../domain/ledger/valobj/ledger_enum.dart';
-import 'package:smartflow/data/app_database.dart';
+import '../../database/app_database.dart';
 import '../mapper/account_mapper.dart';
 
 class DriftAccountQueryRepository implements AccountQueryRepository {

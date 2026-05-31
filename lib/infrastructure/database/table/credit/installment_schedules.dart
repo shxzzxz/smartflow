@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-import '../../../domain/credit/valobj/installment_enums.dart';
+import '../../../../domain/credit/valobj/installment_enums.dart';
 
 @DataClassName('InstallmentScheduleRow')
 class InstallmentSchedules extends Table {

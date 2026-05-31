@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
-import '../domain/ledger/valobj/ledger_enum.dart';
+import '../../domain/ledger/valobj/ledger_enum.dart';
 import 'app_database.dart';
 
 const builtinDataVersionKey = 'builtin_data_version';

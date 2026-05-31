@@ -1,6 +1,6 @@
 import '../../../domain/ledger/valobj/ledger_enum.dart';
 import '../../../domain/ledger/port/system_account_resolver.dart';
-import 'package:smartflow/data/app_database.dart';
+import '../../database/app_database.dart';
 
 class DriftSystemAccountResolver implements SystemAccountResolver {
   const DriftSystemAccountResolver(this._database);

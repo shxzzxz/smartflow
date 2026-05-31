@@ -10,7 +10,7 @@ import '../../../domain/ledger/entity/transaction_detail_record.dart';
 import '../../../domain/ledger/valobj/ledger_enum.dart';
 import '../../../domain/ledger/port/root_transaction_group_repository.dart';
 import '../../../domain/ledger/port/transaction_repository.dart';
-import 'package:smartflow/data/app_database.dart';
+import '../../database/app_database.dart';
 import '../mapper/account_mapper.dart';
 import '../mapper/transaction_mapper.dart';
 

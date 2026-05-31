@@ -8,8 +8,8 @@ import '../../../domain/credit/entity/installment_schedule.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
 import '../../../domain/credit/port/installment_repository.dart';
 import '../../../domain/credit/service/installment_schedule_generator.dart';
-import '../../app_database.dart';
-import '../../patch_value.dart';
+import '../../database/app_database.dart';
+import '../../database/patch_value.dart';
 
 class DriftInstallmentRepository implements InstallmentRepository {
   DriftInstallmentRepository(this._database);

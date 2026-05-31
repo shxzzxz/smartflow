@@ -1,6 +1,6 @@
 import '../../../core/money/money.dart';
 import '../../../domain/ledger/entity/account.dart';
-import 'package:smartflow/data/app_database.dart';
+import '../../database/app_database.dart';
 
 Account mapAccount(AccountRow row) {
   return Account(
