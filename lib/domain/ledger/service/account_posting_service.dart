@@ -36,7 +36,7 @@ class DefaultAccountPostingService implements AccountPostingService {
         if (account == null) {
           throw StateError('Account $accountId does not exist.');
         }
-        updated[accountId] = account.applyTransaction(transaction);
+        account.applyEntryImpacts(transaction.entries);
       }
     }
     return updated.values.toList();

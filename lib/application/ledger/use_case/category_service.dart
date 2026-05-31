@@ -3,29 +3,33 @@ import '../../../core/id/id_generator.dart';
 import '../../../core/result/result.dart';
 import '../command/category_command.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
+import 'package:smartflow/domain/ledger/service/category_factory.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import '../query/account_query_repository.dart';
 import '../read_model/category_read_models.dart';
 
-abstract interface class CategoryService {
+abstract interface class CategoryAppService {
   Stream<List<CategoryNode>> watchCategoryTree(AccountType type);
 
   Future<Result<Account>> createCategory(CreateCategoryCommand command);
 }
 
-class CategoryServiceImpl implements CategoryService {
-  const CategoryServiceImpl({
+class CategoryAppServiceImpl implements CategoryAppService {
+  const CategoryAppServiceImpl({
     required AccountRepository repository,
     required AccountQueryRepository queries,
     required IdGenerator idGenerator,
+    CategoryFactory categoryFactory = const CategoryFactory(),
   }) : _repository = repository,
        _queries = queries,
-       _idGenerator = idGenerator;
+       _idGenerator = idGenerator,
+       _categoryFactory = categoryFactory;
 
   final AccountRepository _repository;
   final AccountQueryRepository _queries;
   final IdGenerator _idGenerator;
+  final CategoryFactory _categoryFactory;
 
   @override
   Stream<List<CategoryNode>> watchCategoryTree(AccountType type) {
@@ -47,7 +51,7 @@ class CategoryServiceImpl implements CategoryService {
         );
       }
     }
-    final draftResult = Account.createCategory(
+    final categoryResult = _categoryFactory.createCategory(
       id: _idGenerator.newId(),
       name: command.name,
       type: command.type,
@@ -56,17 +60,17 @@ class CategoryServiceImpl implements CategoryService {
       note: command.note,
       sortOrder: command.sortOrder,
     );
-    final Account draft;
-    switch (draftResult) {
+    final Account category;
+    switch (categoryResult) {
       case Success(:final value):
-        draft = value;
+        category = value;
       case FailureResult(:final failure):
         return Result.failure(failure);
     }
 
     try {
-      final account = await _repository.create(draft);
-      return Result.success(account);
+      await _repository.create(category);
+      return Result.success(category);
     } on Object catch (error) {
       return Result.failure(
         Failure(

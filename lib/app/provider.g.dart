@@ -576,49 +576,55 @@ final class AccountAppServiceProvider
   }
 }
 
-String _$accountAppServiceHash() => r'a9e611ab010bcba6b1166c64bd80955b47e551a6';
+String _$accountAppServiceHash() => r'bf58132d9e6d968383bc026f0f7c4aa60a349efa';
 
-@ProviderFor(categoryService)
-final categoryServiceProvider = CategoryServiceProvider._();
+@ProviderFor(categoryAppService)
+final categoryAppServiceProvider = CategoryAppServiceProvider._();
 
-final class CategoryServiceProvider
+final class CategoryAppServiceProvider
     extends
-        $FunctionalProvider<CategoryService, CategoryService, CategoryService>
-    with $Provider<CategoryService> {
-  CategoryServiceProvider._()
+        $FunctionalProvider<
+          CategoryAppService,
+          CategoryAppService,
+          CategoryAppService
+        >
+    with $Provider<CategoryAppService> {
+  CategoryAppServiceProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'categoryServiceProvider',
+        name: r'categoryAppServiceProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$categoryServiceHash();
+  String debugGetCreateSourceHash() => _$categoryAppServiceHash();
 
   @$internal
   @override
-  $ProviderElement<CategoryService> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
+  $ProviderElement<CategoryAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
 
   @override
-  CategoryService create(Ref ref) {
-    return categoryService(ref);
+  CategoryAppService create(Ref ref) {
+    return categoryAppService(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(CategoryService value) {
+  Override overrideWithValue(CategoryAppService value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<CategoryService>(value),
+      providerOverride: $SyncValueProvider<CategoryAppService>(value),
     );
   }
 }
 
-String _$categoryServiceHash() => r'2c968f340b7b19b9547e97677a4b8a9095a9379c';
+String _$categoryAppServiceHash() =>
+    r'dc9108bd5e17d5e85ec7d64d128d8d5c92a3d759';
 
 @ProviderFor(transactionLedgerWriter)
 final transactionLedgerWriterProvider = TransactionLedgerWriterProvider._();
@@ -668,6 +674,54 @@ final class TransactionLedgerWriterProvider
 String _$transactionLedgerWriterHash() =>
     r'113e9d83d6fc721e66f7fdd7032288d0de8cc853';
 
+@ProviderFor(ledgerPostingService)
+final ledgerPostingServiceProvider = LedgerPostingServiceProvider._();
+
+final class LedgerPostingServiceProvider
+    extends
+        $FunctionalProvider<
+          LedgerPostingService,
+          LedgerPostingService,
+          LedgerPostingService
+        >
+    with $Provider<LedgerPostingService> {
+  LedgerPostingServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'ledgerPostingServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$ledgerPostingServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<LedgerPostingService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  LedgerPostingService create(Ref ref) {
+    return ledgerPostingService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LedgerPostingService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LedgerPostingService>(value),
+    );
+  }
+}
+
+String _$ledgerPostingServiceHash() =>
+    r'c8bec6c762dbe8f90f901aacb95e54b6ad57fb39';
+
 @ProviderFor(transactionPostingAppService)
 final transactionPostingAppServiceProvider =
     TransactionPostingAppServiceProvider._();
@@ -715,7 +769,7 @@ final class TransactionPostingAppServiceProvider
 }
 
 String _$transactionPostingAppServiceHash() =>
-    r'7b384d0ac7cadf090b53ad1548a39d12b376fffd';
+    r'373f71c813c0b0500e1b0cd6d1ec64b38f45cc11';
 
 @ProviderFor(transactionCorrectionAppService)
 final transactionCorrectionAppServiceProvider =
@@ -1217,7 +1271,7 @@ final class CategoryTreeProvider
   }
 }
 
-String _$categoryTreeHash() => r'b36933c3f92afd9f64032f635700417c63b68347';
+String _$categoryTreeHash() => r'48181c28cf85dc7ce957c76dc0b71152cd97729d';
 
 final class CategoryTreeFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<CategoryNode>>, AccountType> {

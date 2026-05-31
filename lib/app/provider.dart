@@ -19,6 +19,10 @@ import '../application/ledger/query/balance_aggregate_repository.dart';
 import '../application/ledger/query/entry_read_repository.dart';
 import '../domain/credit/port/installment_repository.dart';
 import '../domain/ledger/port/system_account_resolver.dart';
+import '../domain/ledger/service/account_posting_service.dart';
+import '../domain/ledger/service/account_role_policy.dart';
+import '../domain/ledger/service/ledger_posting_service.dart';
+import '../domain/ledger/service/posting_engine.dart';
 import '../application/ledger/query/transaction_detail_read_repository.dart';
 import '../application/ledger/query/transaction_read_repository.dart';
 import '../application/shared/transaction_runner.dart';
@@ -90,14 +94,15 @@ AccountAppService accountAppService(Ref ref) {
   return AccountAppServiceImpl(
     ref.watch(accountRepositoryProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
-    transactions: ref.watch(transactionPostingAppServiceProvider),
+    ledgerPostingService: ref.watch(ledgerPostingServiceProvider),
+    transactionRepository: ref.watch(ledgerRepositoryProvider),
     idGenerator: ref.watch(idGeneratorProvider),
   );
 }
 
 @Riverpod(keepAlive: true)
-CategoryService categoryService(Ref ref) {
-  return CategoryServiceImpl(
+CategoryAppService categoryAppService(Ref ref) {
+  return CategoryAppServiceImpl(
     repository: ref.watch(accountRepositoryProvider),
     queries: ref.watch(accountQueryRepositoryProvider),
     idGenerator: ref.watch(idGeneratorProvider),
@@ -114,6 +119,19 @@ TransactionLedgerWriter transactionLedgerWriter(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+LedgerPostingService ledgerPostingService(Ref ref) {
+  return LedgerPostingService(
+    accountRepository: ref.watch(accountRepositoryProvider),
+    systemAccountResolver: ref.watch(systemAccountResolverProvider),
+    postingEngine: PostingEngine(idGenerator: ref.watch(idGeneratorProvider)),
+    accountPostingService: const DefaultAccountPostingService(),
+    accountRolePolicy: AccountRolePolicy(
+      accountRepository: ref.watch(accountRepositoryProvider),
+    ),
+  );
+}
+
+@Riverpod(keepAlive: true)
 TransactionPostingAppService transactionPostingAppService(Ref ref) {
   return TransactionPostingAppServiceImpl(
     accountRepository: ref.watch(accountRepositoryProvider),
@@ -121,6 +139,7 @@ TransactionPostingAppService transactionPostingAppService(Ref ref) {
     systemAccountResolver: ref.watch(systemAccountResolverProvider),
     ledgerWriter: ref.watch(transactionLedgerWriterProvider),
     idGenerator: ref.watch(idGeneratorProvider),
+    ledgerPostingService: ref.watch(ledgerPostingServiceProvider),
   );
 }
 
@@ -208,7 +227,7 @@ Stream<List<Account>> accountsByTypes(Ref ref, Set<AccountType> types) {
 
 @riverpod
 Stream<List<CategoryNode>> categoryTree(Ref ref, AccountType type) {
-  return ref.watch(categoryServiceProvider).watchCategoryTree(type);
+  return ref.watch(categoryAppServiceProvider).watchCategoryTree(type);
 }
 
 @riverpod

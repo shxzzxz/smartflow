@@ -182,6 +182,18 @@ class $AccountsTable extends Accounts
         requiredDuringInsert: false,
         defaultValue: Constant(AccountSource.user.name),
       ).withConverter<AccountSource>($AccountsTable.$convertersource);
+  static const VerificationMeta _versionMeta = const VerificationMeta(
+    'version',
+  );
+  @override
+  late final GeneratedColumn<int> version = GeneratedColumn<int>(
+    'version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -224,6 +236,7 @@ class $AccountsTable extends Accounts
     archivedAt,
     systemKey,
     source,
+    version,
     createdAt,
     updatedAt,
   ];
@@ -319,6 +332,12 @@ class $AccountsTable extends Accounts
       context.handle(
         _archivedAtMeta,
         archivedAt.isAcceptableOrUnknown(data['archived_at']!, _archivedAtMeta),
+      );
+    }
+    if (data.containsKey('version')) {
+      context.handle(
+        _versionMeta,
+        version.isAcceptableOrUnknown(data['version']!, _versionMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -419,6 +438,11 @@ class $AccountsTable extends Accounts
           data['${effectivePrefix}source'],
         )!,
       ),
+      version:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}version'],
+          )!,
       createdAt:
           attachedDatabase.typeMapping.read(
             DriftSqlType.dateTime,
@@ -472,6 +496,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   final DateTime? archivedAt;
   final SystemKey? systemKey;
   final AccountSource source;
+  final int version;
   final DateTime createdAt;
   final DateTime updatedAt;
   const AccountRow({
@@ -491,6 +516,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     this.archivedAt,
     this.systemKey,
     required this.source,
+    required this.version,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -543,6 +569,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
         $AccountsTable.$convertersource.toSql(source),
       );
     }
+    map['version'] = Variable<int>(version);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -590,6 +617,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
               ? const Value.absent()
               : Value(systemKey),
       source: Value(source),
+      version: Value(version),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -625,6 +653,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       source: $AccountsTable.$convertersource.fromJson(
         serializer.fromJson<String>(json['source']),
       ),
+      version: serializer.fromJson<int>(json['version']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -657,6 +686,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'source': serializer.toJson<String>(
         $AccountsTable.$convertersource.toJson(source),
       ),
+      'version': serializer.toJson<int>(version),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -679,6 +709,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     Value<DateTime?> archivedAt = const Value.absent(),
     Value<SystemKey?> systemKey = const Value.absent(),
     AccountSource? source,
+    int? version,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => AccountRow(
@@ -702,6 +733,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
     systemKey: systemKey.present ? systemKey.value : this.systemKey,
     source: source ?? this.source,
+    version: version ?? this.version,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -738,6 +770,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           data.archivedAt.present ? data.archivedAt.value : this.archivedAt,
       systemKey: data.systemKey.present ? data.systemKey.value : this.systemKey,
       source: data.source.present ? data.source.value : this.source,
+      version: data.version.present ? data.version.value : this.version,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -762,6 +795,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('archivedAt: $archivedAt, ')
           ..write('systemKey: $systemKey, ')
           ..write('source: $source, ')
+          ..write('version: $version, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -786,6 +820,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     archivedAt,
     systemKey,
     source,
+    version,
     createdAt,
     updatedAt,
   );
@@ -809,6 +844,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.archivedAt == this.archivedAt &&
           other.systemKey == this.systemKey &&
           other.source == this.source &&
+          other.version == this.version &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -830,6 +866,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<DateTime?> archivedAt;
   final Value<SystemKey?> systemKey;
   final Value<AccountSource> source;
+  final Value<int> version;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -850,6 +887,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.archivedAt = const Value.absent(),
     this.systemKey = const Value.absent(),
     this.source = const Value.absent(),
+    this.version = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -871,6 +909,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.archivedAt = const Value.absent(),
     this.systemKey = const Value.absent(),
     this.source = const Value.absent(),
+    this.version = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -894,6 +933,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<DateTime>? archivedAt,
     Expression<String>? systemKey,
     Expression<String>? source,
+    Expression<int>? version,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -915,6 +955,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (archivedAt != null) 'archived_at': archivedAt,
       if (systemKey != null) 'system_key': systemKey,
       if (source != null) 'source': source,
+      if (version != null) 'version': version,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -938,6 +979,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<DateTime?>? archivedAt,
     Value<SystemKey?>? systemKey,
     Value<AccountSource>? source,
+    Value<int>? version,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -959,6 +1001,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       archivedAt: archivedAt ?? this.archivedAt,
       systemKey: systemKey ?? this.systemKey,
       source: source ?? this.source,
+      version: version ?? this.version,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1024,6 +1067,9 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
         $AccountsTable.$convertersource.toSql(source.value),
       );
     }
+    if (version.present) {
+      map['version'] = Variable<int>(version.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1055,6 +1101,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('archivedAt: $archivedAt, ')
           ..write('systemKey: $systemKey, ')
           ..write('source: $source, ')
+          ..write('version: $version, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -6537,6 +6584,7 @@ typedef $$AccountsTableCreateCompanionBuilder =
       Value<DateTime?> archivedAt,
       Value<SystemKey?> systemKey,
       Value<AccountSource> source,
+      Value<int> version,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -6559,6 +6607,7 @@ typedef $$AccountsTableUpdateCompanionBuilder =
       Value<DateTime?> archivedAt,
       Value<SystemKey?> systemKey,
       Value<AccountSource> source,
+      Value<int> version,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -6655,6 +6704,11 @@ class $$AccountsTableFilterComposer
   get source => $composableBuilder(
     column: $table.source,
     builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
@@ -6757,6 +6811,11 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -6841,6 +6900,9 @@ class $$AccountsTableAnnotationComposer
   GeneratedColumnWithTypeConverter<AccountSource, String> get source =>
       $composableBuilder(column: $table.source, builder: (column) => column);
 
+  GeneratedColumn<int> get version =>
+      $composableBuilder(column: $table.version, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -6895,6 +6957,7 @@ class $$AccountsTableTableManager
                 Value<DateTime?> archivedAt = const Value.absent(),
                 Value<SystemKey?> systemKey = const Value.absent(),
                 Value<AccountSource> source = const Value.absent(),
+                Value<int> version = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -6915,6 +6978,7 @@ class $$AccountsTableTableManager
                 archivedAt: archivedAt,
                 systemKey: systemKey,
                 source: source,
+                version: version,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -6937,6 +7001,7 @@ class $$AccountsTableTableManager
                 Value<DateTime?> archivedAt = const Value.absent(),
                 Value<SystemKey?> systemKey = const Value.absent(),
                 Value<AccountSource> source = const Value.absent(),
+                Value<int> version = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -6957,6 +7022,7 @@ class $$AccountsTableTableManager
                 archivedAt: archivedAt,
                 systemKey: systemKey,
                 source: source,
+                version: version,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

@@ -55,7 +55,7 @@ class DriftAccountRepository
   }
 
   @override
-  Future<Account> create(Account account) {
+  Future<void> create(Account account) {
     final now = DateTime.now();
     return _database
         .into(_database.accounts)
@@ -76,51 +76,53 @@ class DriftAccountRepository
             isHidden: Value(account.isHidden),
             systemKey: Value(account.systemKey),
             source: Value(account.source),
+            version: Value(account.version),
             createdAt: Value(now),
             updatedAt: Value(now),
           ),
-        )
-        .then(
-          (_) => (_database.select(_database.accounts)
-            ..where((row) => row.id.equals(account.id))).getSingle(),
-        )
-        .then(mapAccount);
+        );
   }
 
   @override
   Future<void> save(Account account) {
-    final now = DateTime.now();
-    return (_database.update(_database.accounts)
-      ..where((row) => row.id.equals(account.id))).write(
-      AccountsCompanion(
-        name: Value(account.name),
-        accountSubtype: Value(account.subtype),
-        parentId: Value(account.parentId),
-        iconKey: Value(account.iconKey),
-        note: Value(account.note),
-        creditLimitMinor: Value(account.creditLimit?.minorUnits),
-        billingDay: Value(account.billingDay),
-        repaymentDay: Value(account.repaymentDay),
-        sortOrder: Value(account.sortOrder),
-        isHidden: Value(account.isHidden),
-        archivedAt: Value(account.archivedAt),
-        updatedAt: Value(now),
-      ),
-    );
+    return _updateAccount(account);
   }
 
   @override
   Future<void> saveAll(Iterable<Account> accounts) {
-    final now = DateTime.now();
     return Future.forEach<Account>(accounts, (account) {
-      return (_database.update(_database.accounts)
-        ..where((row) => row.id.equals(account.id))).write(
-        AccountsCompanion(
-          balanceMinor: Value(account.balance.minorUnits),
-          updatedAt: Value(now),
-        ),
-      );
+      return _updateAccount(account);
     });
+  }
+
+  Future<void> _updateAccount(Account account) async {
+    final now = DateTime.now();
+    final updatedCount =
+        await (_database.update(_database.accounts)
+              ..where((row) =>
+                  row.id.equals(account.id) & row.version.equals(account.version)))
+            .write(
+              AccountsCompanion(
+                name: Value(account.name),
+                accountSubtype: Value(account.subtype),
+                parentId: Value(account.parentId),
+                balanceMinor: Value(account.balance.minorUnits),
+                iconKey: Value(account.iconKey),
+                note: Value(account.note),
+                creditLimitMinor: Value(account.creditLimit?.minorUnits),
+                billingDay: Value(account.billingDay),
+                repaymentDay: Value(account.repaymentDay),
+                sortOrder: Value(account.sortOrder),
+                isHidden: Value(account.isHidden),
+                archivedAt: Value(account.archivedAt),
+                version: Value(account.version + 1),
+                updatedAt: Value(now),
+              ),
+            );
+    if (updatedCount != 1) {
+      throw const AccountVersionConflictException();
+    }
+    account.version += 1;
   }
 
   Future<Account?> findCategoryById(String id) async {

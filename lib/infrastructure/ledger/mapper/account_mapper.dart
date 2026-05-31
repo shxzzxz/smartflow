@@ -21,6 +21,7 @@ Account mapAccount(AccountRow row) {
     sortOrder: row.sortOrder,
     isHidden: row.isHidden,
     archivedAt: row.archivedAt,
+    version: row.version,
     systemKey: row.systemKey,
     source: row.source,
   );

@@ -29,6 +29,8 @@ class Accounts extends Table {
       textEnum<AccountSource>().withDefault(
         Constant(AccountSource.user.name),
       )();
+  IntColumn get version =>
+      integer().named('version').withDefault(const Constant(0))();
   DateTimeColumn get createdAt =>
       dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt =>

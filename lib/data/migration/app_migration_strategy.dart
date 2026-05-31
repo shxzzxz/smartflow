@@ -54,6 +54,11 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
     beforeOpen: (_) async {
       await ensureBuiltinData(database);
     },
+    onUpgrade: (migrator, from, to) async {
+      if (from < 10) {
+        await migrator.addColumn(database.accounts, database.accounts.version);
+      }
+    },
   );
 }
 

@@ -1,13 +1,14 @@
-import '../../../core/error/failure.dart';
 import '../../../core/id/id_generator.dart';
 import '../../../core/result/result.dart';
 import '../../../application/shared/transaction_runner.dart';
 import '../command/account_command.dart';
-import '../command/transaction_command.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
-import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
-import 'transaction_posting_app_service.dart';
+import 'package:smartflow/domain/ledger/port/transaction_repository.dart';
+import 'package:smartflow/domain/ledger/service/account_factory.dart';
+import 'package:smartflow/domain/ledger/service/ledger_posting_service.dart';
+import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
+import '../../../core/error/failure.dart';
 
 abstract interface class AccountAppService {
   Future<Account?> findAccountById(String id);
@@ -23,16 +24,22 @@ class AccountAppServiceImpl implements AccountAppService {
   const AccountAppServiceImpl(
     this._repository, {
     required TransactionRunner transactionRunner,
-    required TransactionPostingAppService transactions,
+    required LedgerPostingService ledgerPostingService,
+    required TransactionRepository transactionRepository,
     required IdGenerator idGenerator,
+    AccountFactory accountFactory = const AccountFactory(),
   }) : _runner = transactionRunner,
-       _transactions = transactions,
-       _idGenerator = idGenerator;
+       _ledgerPostingService = ledgerPostingService,
+       _transactionRepository = transactionRepository,
+       _idGenerator = idGenerator,
+       _accountFactory = accountFactory;
 
   final AccountRepository _repository;
-  final TransactionPostingAppService _transactions;
+  final LedgerPostingService _ledgerPostingService;
+  final TransactionRepository _transactionRepository;
   final TransactionRunner _runner;
   final IdGenerator _idGenerator;
+  final AccountFactory _accountFactory;
 
   @override
   Future<Account?> findAccountById(String id) {
@@ -46,18 +53,9 @@ class AccountAppServiceImpl implements AccountAppService {
 
   @override
   Future<Result<Account>> createAccount(CreateAccountCommand command) async {
-    if (command.openingBalance.minorUnits != 0 &&
-        !command.type.supportsManualBalance(command.subtype)) {
-      return const Result.failure(
-        Failure(
-          code: 'opening_balance_not_supported',
-          message: 'This account type does not support opening balance.',
-        ),
-      );
-    }
-    final draftResult = Account.createUserAccount(
+    final accountResult = _accountFactory.createUserAccount(
       id: _idGenerator.newId(),
-      name: command.name.trim(),
+      name: command.name,
       type: command.type,
       subtype: command.subtype,
       iconKey: command.iconKey,
@@ -68,44 +66,41 @@ class AccountAppServiceImpl implements AccountAppService {
       sortOrder: command.sortOrder,
       isHidden: command.isHidden,
     );
-    final Account draft;
-    switch (draftResult) {
+    final Account account;
+    switch (accountResult) {
       case Success(:final value):
-        draft = value;
+        account = value;
       case FailureResult(:final failure):
         return Result.failure(failure);
     }
 
-    try {
-      return await _runner.run<Account>(() async {
-        final account = await _repository.create(draft);
-        if (command.openingBalance.minorUnits == 0) {
-          return Result.success(account);
-        }
-        final openingResult = await _transactions.createOpeningBalance(
-          CreateOpeningBalanceCommand(
+    if (command.openingBalance.minorUnits == 0) {
+      return _runner.run<Account>(() async {
+        await _repository.create(account);
+        return Result.success(account);
+      });
+    }
+
+    final openingResult = await _ledgerPostingService
+        .postOpeningBalanceForAccount(
+          account: account,
+          instruction: OpeningBalanceInstruction(
             accountId: account.id,
             amount: command.openingBalance,
             occurredAt: DateTime.now(),
           ),
         );
-        switch (openingResult) {
-          case Success():
-            final refreshed = await _repository.findById(account.id);
-            return Result.success(refreshed ?? account);
-          case FailureResult(:final failure):
-            return Result.failure(failure);
-        }
-      });
-    } on Object catch (error) {
-      return Result.failure(
-        Failure(
-          code: 'account_create_failed',
-          message: 'Failed to create account.',
-          cause: error,
-        ),
-      );
+    if (openingResult case FailureResult(:final failure)) {
+      return Result.failure(failure);
     }
+    final posting = openingResult.value;
+
+    return _runner.run<Account>(() async {
+      await _repository.create(account);
+      await _transactionRepository.save(posting.transaction);
+      await _repository.saveAll(posting.accounts);
+      return Result.success(account);
+    });
   }
 
   @override
@@ -131,49 +126,52 @@ class AccountAppServiceImpl implements AccountAppService {
           note: command.note,
         ),
       );
-      final Account profile;
       switch (profileResult) {
-        case Success(:final value):
-          profile = value;
+        case Success():
+          break;
         case FailureResult(:final failure):
           return Result.failure(failure);
       }
-      final creditResult = profile.changeCreditProfile(
+      final creditResult = account.changeCreditProfile(
         AccountCreditProfilePatch(
           creditLimit: command.creditLimit,
           billingDay: command.billingDay,
           repaymentDay: command.repaymentDay,
         ),
       );
-      final Account edited;
       switch (creditResult) {
-        case Success(:final value):
-          edited = value;
+        case Success():
+          break;
         case FailureResult(:final failure):
           return Result.failure(failure);
       }
 
       return await _runner.run<void>(() async {
-        await _repository.save(edited);
-
         if (targetBalance == null ||
             targetBalance.minorUnits == account.balance.minorUnits) {
+          await _repository.save(account);
           return const Result.success(null);
         }
-        final adjustmentResult = await _transactions.adjustBalance(
-          AdjustBalanceCommand(
-            accountId: command.id,
-            targetBalance: targetBalance,
-            occurredAt: DateTime.now(),
-          ),
-        );
+        final adjustmentResult = await _ledgerPostingService
+            .postBalanceAdjustmentForAccount(
+              account: account,
+              instruction: BalanceAdjustmentInstruction(
+                accountId: command.id,
+                targetBalance: targetBalance,
+                occurredAt: DateTime.now(),
+              ),
+            );
         switch (adjustmentResult) {
-          case Success():
+          case Success(:final value):
+            await _transactionRepository.save(value.transaction);
+            await _repository.saveAll(value.accounts);
             return const Result.success(null);
           case FailureResult(:final failure):
             return Result.failure(failure);
         }
       });
+    } on AccountVersionConflictException {
+      rethrow;
     } on Object catch (error) {
       return Result.failure(
         Failure(

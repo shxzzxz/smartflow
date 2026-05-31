@@ -1,8 +1,8 @@
 import '../../../core/error/failure.dart';
+import '../entity/account.dart';
 import '../port/account_repository.dart';
 import '../valobj/account_usage.dart';
 import '../valobj/ledger_enum.dart';
-import 'account_capability_policy.dart';
 
 class AccountRoleRequirement {
   const AccountRoleRequirement({
@@ -10,14 +10,12 @@ class AccountRoleRequirement {
     this.expectedTypes = const {},
     this.requiredSubtype,
     this.requiredUsage,
-    this.allowReimbursementSubtype = true,
   });
 
   final String accountId;
   final Set<AccountType> expectedTypes;
   final AccountSubtype? requiredSubtype;
   final AccountUsage? requiredUsage;
-  final bool allowReimbursementSubtype;
 }
 
 class AccountRoleContext {
@@ -177,14 +175,10 @@ class AccountRoleContext {
 }
 
 class AccountRolePolicy {
-  const AccountRolePolicy({
-    required AccountRepository accountRepository,
-    AccountCapabilityPolicy capabilityPolicy = const AccountCapabilityPolicy(),
-  }) : _accountRepository = accountRepository,
-       _capabilityPolicy = capabilityPolicy;
+  const AccountRolePolicy({required AccountRepository accountRepository})
+    : _accountRepository = accountRepository;
 
   final AccountRepository _accountRepository;
-  final AccountCapabilityPolicy _capabilityPolicy;
 
   Future<Failure?> validate(AccountRoleContext context) async {
     final ids = {
@@ -195,15 +189,54 @@ class AccountRolePolicy {
     final accountsById = {for (final account in accounts) account.id: account};
 
     for (final requirement in context.requirements) {
-      final failure = _capabilityPolicy.validate(
+      final failure = _validateRequirement(
         accountsById[requirement.accountId],
-        accountId: requirement.accountId,
-        expectedTypes: requirement.expectedTypes,
-        requiredSubtype: requirement.requiredSubtype,
-        requiredUsage: requirement.requiredUsage,
-        allowReimbursementSubtype: requirement.allowReimbursementSubtype,
+        requirement,
       );
       if (failure != null) return failure;
+    }
+    return null;
+  }
+
+  Failure? _validateRequirement(
+    Account? account,
+    AccountRoleRequirement requirement,
+  ) {
+    if (account == null) {
+      return Failure(
+        code: 'account_not_found',
+        message: 'Account ${requirement.accountId} does not exist.',
+      );
+    }
+    if (account.archivedAt != null) {
+      return Failure(
+        code: 'account_archived',
+        message: 'Account ${requirement.accountId} is archived.',
+      );
+    }
+    if (requirement.expectedTypes.isNotEmpty &&
+        !requirement.expectedTypes.contains(account.type)) {
+      return Failure(
+        code: 'account_role_invalid',
+        message:
+            'Account ${requirement.accountId} cannot be used for this transaction.',
+      );
+    }
+    if (requirement.requiredSubtype != null &&
+        account.subtype != requirement.requiredSubtype) {
+      return Failure(
+        code: 'account_subtype_invalid',
+        message:
+            'Account ${requirement.accountId} cannot be used for this transaction.',
+      );
+    }
+    if (requirement.requiredUsage != null &&
+        !accountMatchesUsage(account, requirement.requiredUsage!)) {
+      return Failure(
+        code: 'account_role_invalid',
+        message:
+            'Account ${requirement.accountId} cannot be used for this transaction.',
+      );
     }
     return null;
   }

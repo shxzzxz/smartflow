@@ -2,10 +2,10 @@ import '../../../core/error/failure.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
+import '../../../core/text/text_normalizer.dart';
 import '../valobj/ledger_enum.dart';
 import '../service/ledger_rule.dart';
 import 'entry.dart';
-import 'transaction.dart';
 
 class AccountProfilePatch {
   const AccountProfilePatch({
@@ -38,7 +38,7 @@ class AccountCreditProfilePatch {
 }
 
 class Account {
-  const Account({
+  Account({
     required this.id,
     required this.name,
     required this.type,
@@ -53,130 +53,32 @@ class Account {
     this.sortOrder = 0,
     this.isHidden = false,
     this.archivedAt,
+    this.version = 0,
     this.systemKey,
     this.source = AccountSource.user,
   });
 
   final String id;
-  final String name;
   final AccountType type;
-  final AccountSubtype? subtype;
-  final String? parentId;
-  final Money balance;
-  final String? iconKey;
-  final String? note;
-  final Money? creditLimit;
-  final int? billingDay;
-  final int? repaymentDay;
-  final int sortOrder;
-  final bool isHidden;
-  final DateTime? archivedAt;
   final SystemKey? systemKey;
   final AccountSource source;
+  String name;
+  AccountSubtype? subtype;
+  String? parentId;
+  Money balance;
+  String? iconKey;
+  String? note;
+  Money? creditLimit;
+  int? billingDay;
+  int? repaymentDay;
+  int sortOrder;
+  bool isHidden;
+  DateTime? archivedAt;
+  int version;
 
   bool get isArchived => archivedAt != null;
 
   bool get supportsManualBalance => type.supportsManualBalance(subtype);
-
-  static Result<Account> createUserAccount({
-    required String id,
-    required String name,
-    required AccountType type,
-    AccountSubtype? subtype,
-    String? iconKey,
-    String? note,
-    Money? creditLimit,
-    int? billingDay,
-    int? repaymentDay,
-    int sortOrder = 0,
-    bool isHidden = false,
-  }) {
-    final normalizedName = _normalizeRequiredName(name);
-    if (normalizedName == null) {
-      return const Result.failure(
-        Failure(
-          code: 'account_name_required',
-          message: 'Account name is required.',
-        ),
-      );
-    }
-    if (!type.isUserAccount) {
-      return const Result.failure(
-        Failure(
-          code: 'account_type_invalid',
-          message: 'Only asset and liability account can be created here.',
-        ),
-      );
-    }
-    final creditFailure = _validateCreditFields(
-      creditLimit: creditLimit,
-      billingDay: billingDay,
-      repaymentDay: repaymentDay,
-    );
-    if (creditFailure != null) return Result.failure(creditFailure);
-
-    return Result.success(
-      Account(
-        id: id,
-        name: normalizedName,
-        type: type,
-        subtype: subtype,
-        balance: const Money(minorUnits: 0),
-        iconKey: _blankToNull(iconKey),
-        note: _blankToNull(note),
-        creditLimit: creditLimit,
-        billingDay: billingDay,
-        repaymentDay: repaymentDay,
-        sortOrder: sortOrder,
-        isHidden: isHidden,
-      ),
-    );
-  }
-
-  static Result<Account> createCategory({
-    required String id,
-    required String name,
-    required AccountType type,
-    Account? parent,
-    String? iconKey,
-    String? note,
-    int sortOrder = 0,
-  }) {
-    final normalizedName = _normalizeRequiredName(name);
-    if (normalizedName == null) {
-      return const Result.failure(
-        Failure(
-          code: 'category_name_required',
-          message: 'Category name is required.',
-        ),
-      );
-    }
-    if (!type.isCategory) {
-      return const Result.failure(
-        Failure(
-          code: 'category_type_invalid',
-          message: 'Only income and expense category can be created.',
-        ),
-      );
-    }
-    if (parent != null) {
-      final failure = parent.checkValidCategoryParent(type);
-      if (failure != null) return Result.failure(failure);
-    }
-
-    return Result.success(
-      Account(
-        id: id,
-        name: normalizedName,
-        type: type,
-        parentId: parent?.id,
-        balance: const Money(minorUnits: 0),
-        iconKey: _blankToNull(iconKey),
-        note: _blankToNull(note),
-        sortOrder: sortOrder,
-      ),
-    );
-  }
 
   /// 是否可以作为"用户账户"被编辑(通过 EditAccountCommand 修改属性)。
   /// 系统类账户(income / expense / equity)走 CategoryService 或其它路径。
@@ -196,11 +98,10 @@ class Account {
     return null;
   }
 
-  Result<Account> changeProfile(AccountProfilePatch patch) {
+  Result<void> changeProfile(AccountProfilePatch patch) {
     final editFailure = checkEditable();
     if (editFailure != null) return Result.failure(editFailure);
-    final normalizedName =
-        patch.name == null ? name : _normalizeRequiredName(patch.name!);
+    final normalizedName = patch.name == null ? name : trimToNull(patch.name);
     if (normalizedName == null) {
       return const Result.failure(
         Failure(
@@ -209,65 +110,43 @@ class Account {
         ),
       );
     }
-
-    return Result.success(
-      Account(
-        id: id,
-        name: normalizedName,
-        type: type,
-        subtype: _applyPatch(subtype, patch.subtype),
-        parentId: parentId,
-        balance: balance,
-        iconKey: _applyStringPatch(iconKey, patch.iconKey),
-        note: _applyStringPatch(note, patch.note),
-        creditLimit: creditLimit,
-        billingDay: billingDay,
-        repaymentDay: repaymentDay,
-        sortOrder: patch.sortOrder ?? sortOrder,
-        isHidden: patch.isHidden ?? isHidden,
-        archivedAt: archivedAt,
-        systemKey: systemKey,
-        source: source,
-      ),
+    final nextSubtype = patch.subtype.applyTo(subtype);
+    final subtypeFailure = validateSubtypeCompatibility(
+      type: type,
+      subtype: nextSubtype,
     );
+    if (subtypeFailure != null) return Result.failure(subtypeFailure);
+
+    name = normalizedName;
+    subtype = nextSubtype;
+    iconKey = patch.iconKey.applyMappedTo(iconKey, trimToNull);
+    note = patch.note.applyMappedTo(note, trimToNull);
+    sortOrder = patch.sortOrder ?? sortOrder;
+    isHidden = patch.isHidden ?? isHidden;
+    return const Result.success(null);
   }
 
-  Result<Account> changeCreditProfile(AccountCreditProfilePatch patch) {
+  Result<void> changeCreditProfile(AccountCreditProfilePatch patch) {
     final editFailure = checkEditable();
     if (editFailure != null) return Result.failure(editFailure);
-    final nextCreditLimit = _applyPatch(creditLimit, patch.creditLimit);
-    final nextBillingDay = _applyPatch(billingDay, patch.billingDay);
-    final nextRepaymentDay = _applyPatch(repaymentDay, patch.repaymentDay);
+    final nextCreditLimit = patch.creditLimit.applyTo(creditLimit);
+    final nextBillingDay = patch.billingDay.applyTo(billingDay);
+    final nextRepaymentDay = patch.repaymentDay.applyTo(repaymentDay);
     final failure = _validateCreditFields(
+      type: type,
       creditLimit: nextCreditLimit,
       billingDay: nextBillingDay,
       repaymentDay: nextRepaymentDay,
     );
     if (failure != null) return Result.failure(failure);
 
-    return Result.success(
-      Account(
-        id: id,
-        name: name,
-        type: type,
-        subtype: subtype,
-        parentId: parentId,
-        balance: balance,
-        iconKey: iconKey,
-        note: note,
-        creditLimit: nextCreditLimit,
-        billingDay: nextBillingDay,
-        repaymentDay: nextRepaymentDay,
-        sortOrder: sortOrder,
-        isHidden: isHidden,
-        archivedAt: archivedAt,
-        systemKey: systemKey,
-        source: source,
-      ),
-    );
+    creditLimit = nextCreditLimit;
+    billingDay = nextBillingDay;
+    repaymentDay = nextRepaymentDay;
+    return const Result.success(null);
   }
 
-  Result<Account> moveCategoryTo(Account? parent) {
+  Result<void> moveCategoryTo(Account? parent) {
     if (!type.isCategory) {
       return const Result.failure(
         Failure(
@@ -280,26 +159,8 @@ class Account {
       final failure = parent.checkValidCategoryParent(type);
       if (failure != null) return Result.failure(failure);
     }
-    return Result.success(
-      Account(
-        id: id,
-        name: name,
-        type: type,
-        subtype: subtype,
-        parentId: parent?.id,
-        balance: balance,
-        iconKey: iconKey,
-        note: note,
-        creditLimit: creditLimit,
-        billingDay: billingDay,
-        repaymentDay: repaymentDay,
-        sortOrder: sortOrder,
-        isHidden: isHidden,
-        archivedAt: archivedAt,
-        systemKey: systemKey,
-        source: source,
-      ),
-    );
+    parentId = parent?.id;
+    return const Result.success(null);
   }
 
   /// 计算把余额调整到 [target] 所需的 signed delta(可负)。
@@ -365,101 +226,70 @@ class Account {
     return null;
   }
 
-  Account applyTransaction(Transaction transaction) {
-    var account = this;
-    for (final entry in transaction.entries) {
-      if (entry.accountId != id) continue;
-      account = account.applyEntryImpact(entry);
+  void applyEntryImpact(Entry entry) {
+    final delta = balanceDeltaMinor(
+      accountType: type,
+      direction: entry.direction,
+      amountMinor: entry.amount.minorUnits,
+    );
+    balance = Money(minorUnits: balance.minorUnits + delta);
+  }
+
+  void applyEntryImpacts(Iterable<Entry> entries) {
+    for (final entry in entries) {
+      if (entry.accountId == id) {
+        applyEntryImpact(entry);
+      }
     }
-    return account;
   }
 
-  Account applyEntryImpact(Entry entry) {
+  void removeEntryImpact(Entry entry) {
     final delta = balanceDeltaMinor(
       accountType: type,
       direction: entry.direction,
       amountMinor: entry.amount.minorUnits,
     );
-    return copyWith(balance: Money(minorUnits: balance.minorUnits + delta));
+    balance = Money(minorUnits: balance.minorUnits - delta);
   }
 
-  Account removeEntryImpact(Entry entry) {
-    final delta = balanceDeltaMinor(
-      accountType: type,
-      direction: entry.direction,
-      amountMinor: entry.amount.minorUnits,
-    );
-    return copyWith(balance: Money(minorUnits: balance.minorUnits - delta));
-  }
-
-  Account copyWith({
-    String? name,
-    AccountType? type,
-    AccountSubtype? subtype,
-    String? parentId,
-    Money? balance,
-    String? iconKey,
-    String? note,
-    Money? creditLimit,
-    int? billingDay,
-    int? repaymentDay,
-    int? sortOrder,
-    bool? isHidden,
-    DateTime? archivedAt,
-    SystemKey? systemKey,
-    AccountSource? source,
+  static Failure? validateSubtypeCompatibility({
+    required AccountType type,
+    required AccountSubtype? subtype,
   }) {
-    return Account(
-      id: id,
-      name: name ?? this.name,
-      type: type ?? this.type,
-      subtype: subtype ?? this.subtype,
-      parentId: parentId ?? this.parentId,
-      balance: balance ?? this.balance,
-      iconKey: iconKey ?? this.iconKey,
-      note: note ?? this.note,
-      creditLimit: creditLimit ?? this.creditLimit,
-      billingDay: billingDay ?? this.billingDay,
-      repaymentDay: repaymentDay ?? this.repaymentDay,
-      sortOrder: sortOrder ?? this.sortOrder,
-      isHidden: isHidden ?? this.isHidden,
-      archivedAt: archivedAt ?? this.archivedAt,
-      systemKey: systemKey ?? this.systemKey,
-      source: source ?? this.source,
+    if (subtype == null) return null;
+    final compatible = switch (type) {
+      AccountType.asset =>
+        subtype == AccountSubtype.cash ||
+            subtype == AccountSubtype.bankCard ||
+            subtype == AccountSubtype.thirdParty ||
+            subtype == AccountSubtype.investment ||
+            subtype == AccountSubtype.reimbursement,
+      AccountType.liability =>
+        subtype == AccountSubtype.creditCard ||
+            subtype == AccountSubtype.loan ||
+            subtype == AccountSubtype.consumerCredit,
+      AccountType.equity || AccountType.income || AccountType.expense => false,
+    };
+    if (compatible) return null;
+    return const Failure(
+      code: 'account_subtype_type_mismatch',
+      message: 'Account subtype does not match account type.',
     );
-  }
-
-  static String? _normalizeRequiredName(String value) {
-    final trimmed = value.trim();
-    return trimmed.isEmpty ? null : trimmed;
-  }
-
-  static String? _blankToNull(String? value) {
-    final trimmed = value?.trim();
-    return trimmed == null || trimmed.isEmpty ? null : trimmed;
-  }
-
-  static T? _applyPatch<T>(T? current, Patch<T>? patch) {
-    return switch (patch) {
-      null => current,
-      PatchClear<T>() => null,
-      PatchSet<T>(:final value) => value,
-    };
-  }
-
-  static String? _applyStringPatch(String? current, Patch<String>? patch) {
-    return switch (patch) {
-      null => current,
-      PatchClear<String>() => null,
-      PatchSet<String>(:final value) => _blankToNull(value),
-    };
   }
 
   static Failure? _validateCreditFields({
+    required AccountType type,
     required Money? creditLimit,
     required int? billingDay,
     required int? repaymentDay,
   }) {
+    if (type != AccountType.liability &&
+        (creditLimit != null || billingDay != null || repaymentDay != null)) {
+      return const Failure(
+        code: 'credit_profile_not_supported',
+        message: 'Credit profile is only supported for liability accounts.',
+      );
+    }
     if (creditLimit != null && creditLimit.minorUnits < 0) {
       return const Failure(
         code: 'credit_limit_negative',

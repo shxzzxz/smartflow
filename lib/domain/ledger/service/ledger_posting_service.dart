@@ -156,6 +156,24 @@ class LedgerPostingService {
         Failure(code: 'account_not_found', message: 'Account does not exist.'),
       );
     }
+    return postOpeningBalanceForAccount(
+      account: account,
+      instruction: instruction,
+    );
+  }
+
+  Future<Result<PostingResult>> postOpeningBalanceForAccount({
+    required Account account,
+    required OpeningBalanceInstruction instruction,
+  }) async {
+    if (!account.supportsManualBalance) {
+      return const Result.failure(
+        Failure(
+          code: 'opening_balance_not_supported',
+          message: 'This account type does not support opening balance.',
+        ),
+      );
+    }
     final equityAccountId =
         await _systemAccountResolver.resolveOpeningBalance();
     final transactionResult = _postingEngine.createOpeningBalance(
@@ -166,7 +184,7 @@ class LedgerPostingService {
     if (transactionResult case FailureResult(:final failure)) {
       return Result.failure(failure);
     }
-    return _applyPosting(transactionResult.value);
+    return _applyPosting(transactionResult.value, loadedAccounts: [account]);
   }
 
   Future<Result<PostingResult>> postBalanceAdjustment(
@@ -178,6 +196,16 @@ class LedgerPostingService {
         Failure(code: 'account_not_found', message: 'Account does not exist.'),
       );
     }
+    return postBalanceAdjustmentForAccount(
+      account: account,
+      instruction: instruction,
+    );
+  }
+
+  Future<Result<PostingResult>> postBalanceAdjustmentForAccount({
+    required Account account,
+    required BalanceAdjustmentInstruction instruction,
+  }) async {
     final deltaResult = account.targetBalanceDeltaTo(instruction.targetBalance);
     if (deltaResult case FailureResult(:final failure)) {
       return Result.failure(failure);
@@ -193,15 +221,26 @@ class LedgerPostingService {
     if (transactionResult case FailureResult(:final failure)) {
       return Result.failure(failure);
     }
-    return _applyPosting(transactionResult.value);
+    return _applyPosting(transactionResult.value, loadedAccounts: [account]);
   }
 
-  Future<Result<PostingResult>> _applyPosting(Transaction transaction) async {
+  Future<Result<PostingResult>> _applyPosting(
+    Transaction transaction, {
+    Iterable<Account> loadedAccounts = const [],
+  }) async {
     try {
-      final accounts = await _accountRepository.findByIds(
-        transaction.accountIds,
+      final accountMap = {
+        for (final account in loadedAccounts) account.id: account,
+      };
+      final missingIds = transaction.accountIds.difference(
+        accountMap.keys.toSet(),
       );
-      final accountMap = {for (final account in accounts) account.id: account};
+      if (missingIds.isNotEmpty) {
+        final accounts = await _accountRepository.findByIds(missingIds);
+        accountMap.addEntries(
+          accounts.map((account) => MapEntry(account.id, account)),
+        );
+      }
       final missingFailure = _validateAccountsLoaded(
         transaction.accountIds,
         accountMap,

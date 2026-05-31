@@ -185,7 +185,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
 
     setState(() => _submitting = true);
     final result = await ref
-        .read(categoryServiceProvider)
+        .read(categoryAppServiceProvider)
         .createCategory(
           CreateCategoryCommand(
             name: _nameController.text,
