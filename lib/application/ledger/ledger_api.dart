@@ -16,6 +16,8 @@ export '../../domain/ledger/valobj/transaction_ownership.dart';
 export '../../domain/ledger/valobj/ledger_enum.dart';
 export 'query/financial_metrics_queries.dart';
 export 'query/account_query_repository.dart';
+export 'query/account_query_service.dart';
+export 'query/category_query_service.dart';
 export 'query/transaction_queries.dart';
 export 'query/transaction_scope.dart';
 export 'read_model/category_read_models.dart';

@@ -191,7 +191,55 @@ final class AccountQueryRepositoryProvider
 }
 
 String _$accountQueryRepositoryHash() =>
-    r'082f88ceaf4f0cf0f53a0eac3f6d2d462bc18df8';
+    r'579e101d67d3ba95065c2b6e897df1dd830f311f';
+
+@ProviderFor(accountQueryService)
+final accountQueryServiceProvider = AccountQueryServiceProvider._();
+
+final class AccountQueryServiceProvider
+    extends
+        $FunctionalProvider<
+          AccountQueryService,
+          AccountQueryService,
+          AccountQueryService
+        >
+    with $Provider<AccountQueryService> {
+  AccountQueryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'accountQueryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountQueryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<AccountQueryService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AccountQueryService create(Ref ref) {
+    return accountQueryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AccountQueryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AccountQueryService>(value),
+    );
+  }
+}
+
+String _$accountQueryServiceHash() =>
+    r'906e4ed354b09e6f55d4ad7c2c08e5f3418a7fb3';
 
 @ProviderFor(ledgerRepository)
 final ledgerRepositoryProvider = LedgerRepositoryProvider._();
@@ -624,7 +672,55 @@ final class CategoryAppServiceProvider
 }
 
 String _$categoryAppServiceHash() =>
-    r'dc9108bd5e17d5e85ec7d64d128d8d5c92a3d759';
+    r'8276e832859893662b833bd9d014f0abe5a70dda';
+
+@ProviderFor(categoryQueryService)
+final categoryQueryServiceProvider = CategoryQueryServiceProvider._();
+
+final class CategoryQueryServiceProvider
+    extends
+        $FunctionalProvider<
+          CategoryQueryService,
+          CategoryQueryService,
+          CategoryQueryService
+        >
+    with $Provider<CategoryQueryService> {
+  CategoryQueryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'categoryQueryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$categoryQueryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<CategoryQueryService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CategoryQueryService create(Ref ref) {
+    return categoryQueryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CategoryQueryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CategoryQueryService>(value),
+    );
+  }
+}
+
+String _$categoryQueryServiceHash() =>
+    r'357385357c2569a955070fc7261982084e868dc4';
 
 @ProviderFor(transactionLedgerWriter)
 final transactionLedgerWriterProvider = TransactionLedgerWriterProvider._();
@@ -1004,7 +1100,7 @@ final class AccountListProvider
   }
 }
 
-String _$accountListHash() => r'607894e78c7d34e5abdc3cb0395745090caf5fea';
+String _$accountListHash() => r'95dee3110f192c62457e962aca9bdbefc29c02c6';
 
 /// 全量账户索引。覆盖 5 种 account_type,供 UI 层把 entries 的 accountId
 /// 解析为 Account 元数据(type / name / iconKey 等)。
@@ -1062,7 +1158,7 @@ final class AccountsByIdProvider
   }
 }
 
-String _$accountsByIdHash() => r'aa7c27bbe42037123523871ea8dadbf089865b46';
+String _$accountsByIdHash() => r'0c0c7d4fc91a4f029ff3081a98c2a9d98b31ff20';
 
 @ProviderFor(accountsForUsage)
 final accountsForUsageProvider = AccountsForUsageFamily._();
@@ -1119,7 +1215,7 @@ final class AccountsForUsageProvider
   }
 }
 
-String _$accountsForUsageHash() => r'9b12a137c3aa376fd54c40f02787f8ad98483f21';
+String _$accountsForUsageHash() => r'e105ad9073c70372d99466d6eba1dcad997f6405';
 
 final class AccountsForUsageFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<Account>>, AccountUsage> {
@@ -1194,7 +1290,7 @@ final class AccountsByTypesProvider
   }
 }
 
-String _$accountsByTypesHash() => r'eac9711c59b70bdc3742b1ad5073b4bd1498e158';
+String _$accountsByTypesHash() => r'8484a3d8415250b3d610c912fbacb0bc00f94d38';
 
 final class AccountsByTypesFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<Account>>, Set<AccountType>> {
@@ -1271,7 +1367,7 @@ final class CategoryTreeProvider
   }
 }
 
-String _$categoryTreeHash() => r'48181c28cf85dc7ce957c76dc0b71152cd97729d';
+String _$categoryTreeHash() => r'7723f395e8ee6c05549c642617b4f3724b160242';
 
 final class CategoryTreeFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<CategoryNode>>, AccountType> {
@@ -1974,7 +2070,7 @@ final class CreditServiceProvider
   }
 }
 
-String _$creditServiceHash() => r'9f7642145f473f57dcbb2b84ddb299f56c072478';
+String _$creditServiceHash() => r'3ca0034211ec23dd1cf95b9341b75c37925ad64f';
 
 @ProviderFor(installmentContractsByAccount)
 final installmentContractsByAccountProvider =

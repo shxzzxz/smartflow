@@ -11,10 +11,6 @@ import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 import '../../../core/error/failure.dart';
 
 abstract interface class AccountAppService {
-  Future<Account?> findAccountById(String id);
-
-  Future<List<Account>> findAccountsByIds(Set<String> ids);
-
   Future<Result<Account>> createAccount(CreateAccountCommand command);
 
   Future<Result<void>> editAccount(EditAccountCommand command);
@@ -40,16 +36,6 @@ class AccountAppServiceImpl implements AccountAppService {
   final TransactionRunner _runner;
   final IdGenerator _idGenerator;
   final AccountFactory _accountFactory;
-
-  @override
-  Future<Account?> findAccountById(String id) {
-    return _repository.findById(id);
-  }
-
-  @override
-  Future<List<Account>> findAccountsByIds(Set<String> ids) {
-    return _repository.findByIds(ids);
-  }
 
   @override
   Future<Result<Account>> createAccount(CreateAccountCommand command) async {

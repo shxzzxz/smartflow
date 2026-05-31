@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../data/database_provider.dart';
+import '../infrastructure/ledger/repository/drift_account_query_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_repository.dart';
 import '../infrastructure/ledger/repository/drift_balance_aggregate_repository.dart';
 import '../infrastructure/ledger/repository/drift_entry_read_repository.dart';
@@ -51,7 +52,14 @@ AccountRepository accountRepository(Ref ref) {
 
 @Riverpod(keepAlive: true)
 AccountQueryRepository accountQueryRepository(Ref ref) {
-  return DriftAccountRepository(ref.watch(appDatabaseProvider));
+  return DriftAccountQueryRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+AccountQueryService accountQueryService(Ref ref) {
+  return AccountQueryServiceImpl(
+    accounts: ref.watch(accountQueryRepositoryProvider),
+  );
 }
 
 @Riverpod(keepAlive: true)
@@ -104,8 +112,14 @@ AccountAppService accountAppService(Ref ref) {
 CategoryAppService categoryAppService(Ref ref) {
   return CategoryAppServiceImpl(
     repository: ref.watch(accountRepositoryProvider),
-    queries: ref.watch(accountQueryRepositoryProvider),
     idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+CategoryQueryService categoryQueryService(Ref ref) {
+  return CategoryQueryServiceImpl(
+    accounts: ref.watch(accountQueryServiceProvider),
   );
 }
 
@@ -182,7 +196,7 @@ FinancialMetricsService financialMetricsService(Ref ref) {
 
 @riverpod
 Stream<List<Account>> accountList(Ref ref) {
-  return ref.watch(accountQueryRepositoryProvider).watchAccounts({
+  return ref.watch(accountQueryServiceProvider).watchAccounts({
     AccountType.asset,
     AccountType.liability,
   });
@@ -195,39 +209,22 @@ Stream<List<Account>> accountList(Ref ref) {
 /// 配合 `widget/business/account_lookup.dart` 的 extension 使用。
 @riverpod
 Stream<Map<String, Account>> accountsById(Ref ref) {
-  return ref
-      .watch(accountQueryRepositoryProvider)
-      .watchAccounts({
-        AccountType.asset,
-        AccountType.liability,
-        AccountType.equity,
-        AccountType.income,
-        AccountType.expense,
-      })
-      .map((accounts) => {for (final a in accounts) a.id: a});
+  return ref.watch(accountQueryServiceProvider).watchAccountsById();
 }
 
 @riverpod
 Stream<List<Account>> accountsForUsage(Ref ref, AccountUsage usage) {
-  return ref
-      .watch(accountQueryRepositoryProvider)
-      .watchAccounts({AccountType.asset, AccountType.liability})
-      .map(
-        (accounts) =>
-            accounts
-                .where((account) => accountMatchesUsage(account, usage))
-                .toList(),
-      );
+  return ref.watch(accountQueryServiceProvider).watchAccountsForUsage(usage);
 }
 
 @riverpod
 Stream<List<Account>> accountsByTypes(Ref ref, Set<AccountType> types) {
-  return ref.watch(accountQueryRepositoryProvider).watchAccounts(types);
+  return ref.watch(accountQueryServiceProvider).watchAccounts(types);
 }
 
 @riverpod
 Stream<List<CategoryNode>> categoryTree(Ref ref, AccountType type) {
-  return ref.watch(categoryAppServiceProvider).watchCategoryTree(type);
+  return ref.watch(categoryQueryServiceProvider).watchCategoryTree(type);
 }
 
 @riverpod
@@ -356,7 +353,7 @@ CreditService creditService(Ref ref) {
     postingService: ref.watch(transactionPostingAppServiceProvider),
     correctionService: ref.watch(transactionCorrectionAppServiceProvider),
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
-    accountService: ref.watch(accountAppServiceProvider),
+    accountQueryService: ref.watch(accountQueryServiceProvider),
   );
 }
 

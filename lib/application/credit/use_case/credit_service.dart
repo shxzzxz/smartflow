@@ -116,18 +116,18 @@ class CreditServiceImpl implements CreditService {
     required tx.TransactionPostingAppService postingService,
     required tx.TransactionCorrectionAppService correctionService,
     required TransactionQueryService transactionQueryService,
-    required AccountAppService accountService,
+    required AccountQueryService accountQueryService,
   }) : _installmentService = installmentService,
        _postingService = postingService,
        _correctionService = correctionService,
        _transactionQueryService = transactionQueryService,
-       _accountService = accountService;
+       _accountQueryService = accountQueryService;
 
   final InstallmentService _installmentService;
   final tx.TransactionPostingAppService _postingService;
   final tx.TransactionCorrectionAppService _correctionService;
   final TransactionQueryService _transactionQueryService;
-  final AccountAppService _accountService;
+  final AccountQueryService _accountQueryService;
 
   @override
   Future<Result<PostedTransactionResult>> createRepayment(
@@ -273,7 +273,9 @@ class CreditServiceImpl implements CreditService {
       return null;
     }
 
-    final account = await _accountService.findAccountById(liabilityAccountId);
+    final account = await _accountQueryService.findAccountById(
+      liabilityAccountId,
+    );
     if (account == null) return null;
 
     var oldPrincipalMinor = 0;
