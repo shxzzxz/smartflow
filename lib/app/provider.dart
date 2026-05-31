@@ -26,6 +26,7 @@ import '../application/shared/update_channel_store.dart';
 import '../core/id/id_generator.dart';
 import '../core/time/month_key.dart';
 import '../core/money/money.dart';
+import '../application/ledger/use_case/transaction_ledger_writer.dart';
 
 part 'provider.g.dart';
 
@@ -89,7 +90,7 @@ AccountAppService accountAppService(Ref ref) {
   return AccountAppServiceImpl(
     ref.watch(accountRepositoryProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
-    transactions: ref.watch(postingAppServiceProvider),
+    transactions: ref.watch(transactionPostingAppServiceProvider),
     idGenerator: ref.watch(idGeneratorProvider),
   );
 }
@@ -104,15 +105,42 @@ CategoryService categoryService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-PostingAppService postingAppService(Ref ref) {
-  return PostingAppServiceImpl(
-    transactionQueryService: ref.watch(transactionQueryServiceProvider),
-    accountRepository: ref.watch(accountRepositoryProvider),
+TransactionLedgerWriter transactionLedgerWriter(Ref ref) {
+  return TransactionLedgerWriter(
+    transactionRunner: ref.watch(transactionRunnerProvider),
     transactionRepository: ref.watch(ledgerRepositoryProvider),
+    accountRepository: ref.watch(accountRepositoryProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+TransactionPostingAppService transactionPostingAppService(Ref ref) {
+  return TransactionPostingAppServiceImpl(
+    accountRepository: ref.watch(accountRepositoryProvider),
     rootGroupRepository: ref.watch(ledgerRepositoryProvider),
     systemAccountResolver: ref.watch(systemAccountResolverProvider),
-    transactionRunner: ref.watch(transactionRunnerProvider),
+    ledgerWriter: ref.watch(transactionLedgerWriterProvider),
     idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+TransactionCorrectionAppService transactionCorrectionAppService(Ref ref) {
+  return TransactionCorrectionAppServiceImpl(
+    accountRepository: ref.watch(accountRepositoryProvider),
+    rootGroupRepository: ref.watch(ledgerRepositoryProvider),
+    systemAccountResolver: ref.watch(systemAccountResolverProvider),
+    ledgerWriter: ref.watch(transactionLedgerWriterProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+TransactionUpdateAppService transactionUpdateAppService(Ref ref) {
+  return TransactionUpdateAppServiceImpl(
+    transactionRepository: ref.watch(ledgerRepositoryProvider),
+    rootGroupRepository: ref.watch(ledgerRepositoryProvider),
+    ledgerWriter: ref.watch(transactionLedgerWriterProvider),
   );
 }
 
@@ -294,7 +322,9 @@ InstallmentRepository installmentRepository(Ref ref) {
 InstallmentService installmentService(Ref ref) {
   return InstallmentServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),
-    transactionService: ref.watch(postingAppServiceProvider),
+    postingService: ref.watch(transactionPostingAppServiceProvider),
+    correctionService: ref.watch(transactionCorrectionAppServiceProvider),
+    updateService: ref.watch(transactionUpdateAppServiceProvider),
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
   );
@@ -304,7 +334,8 @@ InstallmentService installmentService(Ref ref) {
 CreditService creditService(Ref ref) {
   return CreditServiceImpl(
     installmentService: ref.watch(installmentServiceProvider),
-    transactionService: ref.watch(postingAppServiceProvider),
+    postingService: ref.watch(transactionPostingAppServiceProvider),
+    correctionService: ref.watch(transactionCorrectionAppServiceProvider),
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
     accountService: ref.watch(accountAppServiceProvider),
   );

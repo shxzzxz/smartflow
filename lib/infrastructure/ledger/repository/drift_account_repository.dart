@@ -56,76 +56,70 @@ class DriftAccountRepository
 
   @override
   Future<Account> create(Account account) {
-    return _database.transaction(() async {
-      final now = DateTime.now();
-      await _database
-          .into(_database.accounts)
-          .insert(
-            AccountsCompanion.insert(
-              id: account.id,
-              name: account.name,
-              accountType: account.type,
-              accountSubtype: Value(account.subtype),
-              parentId: Value(account.parentId),
-              balanceMinor: const Value(0),
-              iconKey: Value(account.iconKey),
-              note: Value(account.note),
-              creditLimitMinor: Value(account.creditLimit?.minorUnits),
-              billingDay: Value(account.billingDay),
-              repaymentDay: Value(account.repaymentDay),
-              sortOrder: Value(account.sortOrder),
-              isHidden: Value(account.isHidden),
-              systemKey: Value(account.systemKey),
-              source: Value(account.source),
-              createdAt: Value(now),
-              updatedAt: Value(now),
-            ),
-          );
-
-      final row =
-          await (_database.select(_database.accounts)
-            ..where((row) => row.id.equals(account.id))).getSingle();
-      return mapAccount(row);
-    });
+    final now = DateTime.now();
+    return _database
+        .into(_database.accounts)
+        .insert(
+          AccountsCompanion.insert(
+            id: account.id,
+            name: account.name,
+            accountType: account.type,
+            accountSubtype: Value(account.subtype),
+            parentId: Value(account.parentId),
+            balanceMinor: const Value(0),
+            iconKey: Value(account.iconKey),
+            note: Value(account.note),
+            creditLimitMinor: Value(account.creditLimit?.minorUnits),
+            billingDay: Value(account.billingDay),
+            repaymentDay: Value(account.repaymentDay),
+            sortOrder: Value(account.sortOrder),
+            isHidden: Value(account.isHidden),
+            systemKey: Value(account.systemKey),
+            source: Value(account.source),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        )
+        .then(
+          (_) => (_database.select(_database.accounts)
+            ..where((row) => row.id.equals(account.id))).getSingle(),
+        )
+        .then(mapAccount);
   }
 
   @override
   Future<void> save(Account account) {
-    return _database.transaction(() async {
-      final now = DateTime.now();
-      await (_database.update(_database.accounts)
-        ..where((row) => row.id.equals(account.id))).write(
-        AccountsCompanion(
-          name: Value(account.name),
-          accountSubtype: Value(account.subtype),
-          parentId: Value(account.parentId),
-          iconKey: Value(account.iconKey),
-          note: Value(account.note),
-          creditLimitMinor: Value(account.creditLimit?.minorUnits),
-          billingDay: Value(account.billingDay),
-          repaymentDay: Value(account.repaymentDay),
-          sortOrder: Value(account.sortOrder),
-          isHidden: Value(account.isHidden),
-          archivedAt: Value(account.archivedAt),
-          updatedAt: Value(now),
-        ),
-      );
-    });
+    final now = DateTime.now();
+    return (_database.update(_database.accounts)
+      ..where((row) => row.id.equals(account.id))).write(
+      AccountsCompanion(
+        name: Value(account.name),
+        accountSubtype: Value(account.subtype),
+        parentId: Value(account.parentId),
+        iconKey: Value(account.iconKey),
+        note: Value(account.note),
+        creditLimitMinor: Value(account.creditLimit?.minorUnits),
+        billingDay: Value(account.billingDay),
+        repaymentDay: Value(account.repaymentDay),
+        sortOrder: Value(account.sortOrder),
+        isHidden: Value(account.isHidden),
+        archivedAt: Value(account.archivedAt),
+        updatedAt: Value(now),
+      ),
+    );
   }
 
   @override
   Future<void> saveAll(Iterable<Account> accounts) {
-    return _database.transaction(() async {
-      final now = DateTime.now();
-      for (final account in accounts) {
-        await (_database.update(_database.accounts)
-          ..where((row) => row.id.equals(account.id))).write(
-          AccountsCompanion(
-            balanceMinor: Value(account.balance.minorUnits),
-            updatedAt: Value(now),
-          ),
-        );
-      }
+    final now = DateTime.now();
+    return Future.forEach<Account>(accounts, (account) {
+      return (_database.update(_database.accounts)
+        ..where((row) => row.id.equals(account.id))).write(
+        AccountsCompanion(
+          balanceMinor: Value(account.balance.minorUnits),
+          updatedAt: Value(now),
+        ),
+      );
     });
   }
 

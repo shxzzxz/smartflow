@@ -3,10 +3,18 @@ import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
 import '../../ledger/ledger_api.dart'
-    hide PostingAppService, CreateRepaymentCommand, CorrectRepaymentCommand;
+    hide
+        TransactionPostingAppService,
+        TransactionCorrectionAppService,
+        CreateRepaymentCommand,
+        CorrectRepaymentCommand;
 import '../../ledger/ledger_api.dart'
     as tx
-    show PostingAppService, CreateRepaymentCommand, CorrectRepaymentCommand;
+    show
+        TransactionPostingAppService,
+        TransactionCorrectionAppService,
+        CreateRepaymentCommand,
+        CorrectRepaymentCommand;
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'installment_service.dart';
 
@@ -105,16 +113,19 @@ class RepaymentEditView {
 class CreditServiceImpl implements CreditService {
   CreditServiceImpl({
     required InstallmentService installmentService,
-    required tx.PostingAppService transactionService,
+    required tx.TransactionPostingAppService postingService,
+    required tx.TransactionCorrectionAppService correctionService,
     required TransactionQueryService transactionQueryService,
     required AccountAppService accountService,
   }) : _installmentService = installmentService,
-       _transactionService = transactionService,
+       _postingService = postingService,
+       _correctionService = correctionService,
        _transactionQueryService = transactionQueryService,
        _accountService = accountService;
 
   final InstallmentService _installmentService;
-  final tx.PostingAppService _transactionService;
+  final tx.TransactionPostingAppService _postingService;
+  final tx.TransactionCorrectionAppService _correctionService;
   final TransactionQueryService _transactionQueryService;
   final AccountAppService _accountService;
 
@@ -128,7 +139,7 @@ class CreditServiceImpl implements CreditService {
     );
     if (failure != null) return Result.failure(failure);
 
-    return _transactionService.createRepayment(
+    return _postingService.createRepayment(
       tx.CreateRepaymentCommand(
         principal: command.principal,
         interest: command.interest,
@@ -174,7 +185,7 @@ class CreditServiceImpl implements CreditService {
     );
     if (failure != null) return Result.failure(failure);
 
-    return _transactionService.correctRepayment(
+    return _correctionService.correctRepayment(
       tx.CorrectRepaymentCommand(
         transactionId: command.transactionId,
         principal: command.principal,

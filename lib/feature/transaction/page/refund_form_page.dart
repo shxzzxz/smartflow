@@ -185,7 +185,7 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
       return;
     }
     setState(() => _submitting = true);
-    final service = ref.read(postingAppServiceProvider);
+    final service = ref.read(transactionPostingAppServiceProvider);
     final result = await service.createRefund(
       CreateRefundCommand(
         amount: Money.parse(_amountController.text),

@@ -4,23 +4,26 @@ import '../../../core/result/result.dart';
 import '../../../application/ledger/ledger_api.dart';
 import 'transaction_action_policy.dart';
 
-/// 普通交易的默认 policy：所有 universal 动作直接走 [PostingAppService]。
+/// 普通交易的默认 policy：将 universal 动作路由到对应账务应用服务。
 class DefaultTransactionActionPolicy implements TransactionActionPolicy {
   const DefaultTransactionActionPolicy({
-    required PostingAppService service,
+    required TransactionCorrectionAppService correctionService,
+    required TransactionUpdateAppService updateService,
     required String transactionId,
     required BusinessPurpose businessPurpose,
-  }) : _service = service,
+  }) : _correctionService = correctionService,
+       _updateService = updateService,
        _transactionId = transactionId,
        _businessPurpose = businessPurpose;
 
-  final PostingAppService _service;
+  final TransactionCorrectionAppService _correctionService;
+  final TransactionUpdateAppService _updateService;
   final String _transactionId;
   final BusinessPurpose _businessPurpose;
 
   @override
   Future<Result<void>> delete() {
-    return _service.deleteTransaction(
+    return _correctionService.deleteTransaction(
       DeleteTransactionCommand(transactionId: _transactionId),
     );
   }
@@ -46,7 +49,7 @@ class DefaultTransactionActionPolicy implements TransactionActionPolicy {
 
   @override
   Future<Result<void>> changeOccurredAt(DateTime newTime) async {
-    final result = await _service.updateBasicInfo(
+    final result = await _updateService.updateBasicInfo(
       UpdateTransactionBasicInfoCommand(
         transactionId: _transactionId,
         occurredAt: newTime,
@@ -57,7 +60,7 @@ class DefaultTransactionActionPolicy implements TransactionActionPolicy {
 
   @override
   Future<Result<void>> changeNote(String? newNote) async {
-    final result = await _service.updateBasicInfo(
+    final result = await _updateService.updateBasicInfo(
       UpdateTransactionBasicInfoCommand(
         transactionId: _transactionId,
         note:
@@ -85,14 +88,14 @@ class DefaultTransactionActionPolicy implements TransactionActionPolicy {
 
 class UnknownOwnedTransactionActionPolicy implements TransactionActionPolicy {
   const UnknownOwnedTransactionActionPolicy({
-    required PostingAppService service,
+    required TransactionUpdateAppService updateService,
     required String transactionId,
     required String ownerType,
-  }) : _service = service,
+  }) : _updateService = updateService,
        _transactionId = transactionId,
        _ownerType = ownerType;
 
-  final PostingAppService _service;
+  final TransactionUpdateAppService _updateService;
   final String _transactionId;
   final String _ownerType;
 
@@ -127,7 +130,7 @@ class UnknownOwnedTransactionActionPolicy implements TransactionActionPolicy {
 
   @override
   Future<Result<void>> changeNote(String? newNote) async {
-    final result = await _service.updateBasicInfo(
+    final result = await _updateService.updateBasicInfo(
       UpdateTransactionBasicInfoCommand(
         transactionId: _transactionId,
         note:

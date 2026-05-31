@@ -22,7 +22,8 @@ TransactionActionPolicy transactionActionPolicy(
   final ownership = transaction.ownership;
   if (ownership == null) {
     return DefaultTransactionActionPolicy(
-      service: ref.watch(postingAppServiceProvider),
+      correctionService: ref.watch(transactionCorrectionAppServiceProvider),
+      updateService: ref.watch(transactionUpdateAppServiceProvider),
       transactionId: transaction.id,
       businessPurpose: transaction.businessPurpose,
     );
@@ -42,7 +43,7 @@ TransactionActionPolicy transactionActionPolicy(
   }
 
   return UnknownOwnedTransactionActionPolicy(
-    service: ref.watch(postingAppServiceProvider),
+    updateService: ref.watch(transactionUpdateAppServiceProvider),
     transactionId: transaction.id,
     ownerType: ownership.ownerType,
   );

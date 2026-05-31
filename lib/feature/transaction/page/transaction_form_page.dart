@@ -504,7 +504,8 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
         ref.read(accountsForUsageProvider(AccountUsage.reimbursement)).value ??
         const <Account>[];
 
-    final service = ref.read(postingAppServiceProvider);
+    final postingService = ref.read(transactionPostingAppServiceProvider);
+    final correctionService = ref.read(transactionCorrectionAppServiceProvider);
     final note = _blankToNull(_noteController.text);
 
     setState(() => _submitting = true);
@@ -512,7 +513,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     final editTransactionId = widget.editTransactionId;
     if (editTransactionId != null) {
       result = await _submitCorrection(
-        service: service,
+        service: correctionService,
         transactionId: editTransactionId,
         amount: amount,
         note: note,
@@ -541,7 +542,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
             reimbursementAccounts,
           );
           if (reimbursementAccountId == null) {
-            result = await service.createExpense(
+            result = await postingService.createExpense(
               CreateExpenseCommand(
                 amount: amount,
                 paidFromAccountId: paidFromAccountId,
@@ -553,7 +554,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
               ),
             );
           } else {
-            result = await service.createReimbursementAdvance(
+            result = await postingService.createReimbursementAdvance(
               CreateReimbursementAdvanceCommand(
                 amount: amount,
                 receivableAccountId: reimbursementAccountId,
@@ -579,7 +580,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
             _showError('请选择收入账户');
             return;
           }
-          result = await service.createIncome(
+          result = await postingService.createIncome(
             CreateIncomeCommand(
               amount: amount,
               receiveAccountId: receiveAccountId,
@@ -597,7 +598,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
             _showError('请选择转出和转入账户');
             return;
           }
-          result = await service.createTransfer(
+          result = await postingService.createTransfer(
             CreateTransferCommand(
               amount: amount,
               fromAccountId: fromAccountId,
@@ -622,7 +623,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
             _showError('请选择借入账户');
             return;
           }
-          result = await service.createBorrowing(
+          result = await postingService.createBorrowing(
             CreateBorrowingCommand(
               amount: amount,
               liabilityAccountId: liabilityAccountId,
@@ -652,7 +653,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   }
 
   Future<Result<PostedTransactionResult>> _submitCorrection({
-    required PostingAppService service,
+    required TransactionCorrectionAppService service,
     required String transactionId,
     required Money amount,
     required String? note,
@@ -850,7 +851,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
 
     setState(() => _submitting = true);
     final result = await ref
-        .read(postingAppServiceProvider)
+        .read(transactionCorrectionAppServiceProvider)
         .deleteTransaction(
           DeleteTransactionCommand(transactionId: transactionId),
         );

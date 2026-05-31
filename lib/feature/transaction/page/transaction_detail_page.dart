@@ -310,7 +310,7 @@ class _DetailBody extends ConsumerWidget {
       // reimbursement 账户变更属 reimbursementAdvance 流图原语自身的字段，
       // 不经 handler；直接走 transactionService（参见 docs/08.2 动作二分）。
       result = await ref
-          .read(postingAppServiceProvider)
+          .read(transactionCorrectionAppServiceProvider)
           .correctReimbursementAdvance(
             CorrectReimbursementAdvanceCommand(
               transactionId: detail.transaction.id,
@@ -602,7 +602,7 @@ class _ExclusionCard extends ConsumerWidget {
     bool next,
   ) async {
     final result = await ref
-        .read(postingAppServiceProvider)
+        .read(transactionUpdateAppServiceProvider)
         .updateReportingFlag(
           UpdateTransactionReportingFlagCommand(
             transactionId: detail.transaction.id,
@@ -619,7 +619,7 @@ class _ExclusionCard extends ConsumerWidget {
     bool next,
   ) async {
     final result = await ref
-        .read(postingAppServiceProvider)
+        .read(transactionUpdateAppServiceProvider)
         .updateReportingFlag(
           UpdateTransactionReportingFlagCommand(
             transactionId: detail.transaction.id,
@@ -1019,7 +1019,7 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
     final amount = Money.parse(_amountController.text);
     final receiveAccountId = selectedAccountId ?? receivableAccountId;
     setState(() => _submitting = true);
-    final service = ref.read(postingAppServiceProvider);
+    final service = ref.read(transactionPostingAppServiceProvider);
     final note = _blankToNull(_noteController.text);
     final Result<PostedTransactionResult> result =
         _closeReimbursement

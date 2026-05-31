@@ -90,16 +90,12 @@ class DriftPostingRepository
 
   @override
   Future<void> save(Transaction transaction) {
-    return _database.transaction(() => _saveTransaction(transaction));
+    return _saveTransaction(transaction);
   }
 
   @override
   Future<void> saveAll(Iterable<Transaction> transactions) {
-    return _database.transaction(() async {
-      for (final transaction in transactions) {
-        await _saveTransaction(transaction);
-      }
-    });
+    return Future.forEach<Transaction>(transactions, _saveTransaction);
   }
 
   Future<void> _saveTransaction(Transaction transaction) async {

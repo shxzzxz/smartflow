@@ -90,7 +90,7 @@ final class TransactionActionPolicyProvider
 }
 
 String _$transactionActionPolicyHash() =>
-    r'84303faa02f9e8f4810e728359d2ce2800ca8e2a';
+    r'38720c63c92aaea8c4da017912d78356dfad5cd5';
 
 /// 交易详情页据此获取该笔交易适用的 action policy。
 ///

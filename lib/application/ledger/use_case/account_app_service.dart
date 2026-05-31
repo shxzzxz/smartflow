@@ -7,7 +7,7 @@ import '../command/transaction_command.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
-import 'posting_app_service.dart';
+import 'transaction_posting_app_service.dart';
 
 abstract interface class AccountAppService {
   Future<Account?> findAccountById(String id);
@@ -23,14 +23,14 @@ class AccountAppServiceImpl implements AccountAppService {
   const AccountAppServiceImpl(
     this._repository, {
     required TransactionRunner transactionRunner,
-    required PostingAppService transactions,
+    required TransactionPostingAppService transactions,
     required IdGenerator idGenerator,
   }) : _runner = transactionRunner,
        _transactions = transactions,
        _idGenerator = idGenerator;
 
   final AccountRepository _repository;
-  final PostingAppService _transactions;
+  final TransactionPostingAppService _transactions;
   final TransactionRunner _runner;
   final IdGenerator _idGenerator;
 
