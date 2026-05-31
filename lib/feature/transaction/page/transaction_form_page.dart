@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/provider.dart';
 import '../../../core/error/failure.dart';
 import '../../../core/money/money.dart';
+import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
@@ -586,7 +587,6 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
               occurredAt: _occurredAt,
               note: note,
               isExcludedFromStats: _excludeStats,
-              isExcludedFromBudget: false,
             ),
           );
         case _TransactionFormMode.transfer:
@@ -604,8 +604,6 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
               toAccountId: toAccountId,
               occurredAt: _occurredAt,
               note: note,
-              isExcludedFromStats: false,
-              isExcludedFromBudget: false,
             ),
           );
         case _TransactionFormMode.borrowing:
@@ -631,8 +629,6 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
               receiveAccountId: receiveAccountId,
               occurredAt: _occurredAt,
               note: note,
-              isExcludedFromStats: false,
-              isExcludedFromBudget: false,
             ),
           );
       }
@@ -655,7 +651,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     }
   }
 
-  Future<Result<CreatedTransactionResult>> _submitCorrection({
+  Future<Result<PostedTransactionResult>> _submitCorrection({
     required PostingAppService service,
     required String transactionId,
     required Money amount,
@@ -691,7 +687,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
               paidFromAccountId: paidFromAccountId,
               expenseAccountId: expenseCategoryId,
               occurredAt: _occurredAt,
-              note: note,
+              note: _stringPatch(note),
               isExcludedFromStats: _excludeStats,
               isExcludedFromBudget: _excludeBudget,
             ),
@@ -705,7 +701,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
             paidFromAccountId: paidFromAccountId,
             expenseCategoryId: expenseCategoryId,
             occurredAt: _occurredAt,
-            note: note,
+            note: _stringPatch(note),
             isExcludedFromStats: _excludeStats,
             isExcludedFromBudget: _excludeBudget,
           ),
@@ -730,9 +726,8 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
             receiveAccountId: receiveAccountId,
             incomeAccountId: incomeCategoryId,
             occurredAt: _occurredAt,
-            note: note,
+            note: _stringPatch(note),
             isExcludedFromStats: _excludeStats,
-            isExcludedFromBudget: false,
           ),
         );
       case _TransactionFormMode.transfer:
@@ -750,9 +745,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
             fromAccountId: fromAccountId,
             toAccountId: toAccountId,
             occurredAt: _occurredAt,
-            note: note,
-            isExcludedFromStats: false,
-            isExcludedFromBudget: false,
+            note: _stringPatch(note),
           ),
         );
       case _TransactionFormMode.borrowing:
@@ -773,9 +766,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
             liabilityAccountId: liabilityAccountId,
             receiveAccountId: receiveAccountId,
             occurredAt: _occurredAt,
-            note: note,
-            isExcludedFromStats: false,
-            isExcludedFromBudget: false,
+            note: _stringPatch(note),
           ),
         );
     }
@@ -809,6 +800,10 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   String? _blankToNull(String value) {
     final trimmed = value.trim();
     return trimmed.isEmpty ? null : trimmed;
+  }
+
+  Patch<String?> _stringPatch(String? value) {
+    return value == null ? const Patch<String?>.clear() : Patch.set(value);
   }
 
   MoneySemantic _amountSemantic(_TransactionFormMode mode) {

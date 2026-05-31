@@ -46,7 +46,7 @@ class Transaction {
   bool isExcludedFromStats;
   bool isExcludedFromBudget;
   final SourceKind sourceKind;
-  final TransactionOwnership? ownership;
+  TransactionOwnership? ownership;
   final List<TransactionDetailRecord> details;
   final List<Entry> entries;
 
@@ -86,7 +86,7 @@ class Transaction {
         code: 'transaction_has_children',
         message:
             'Transactions with child records cannot be corrected; '
-            'use updateTransactionMetadata to change note / exclusion flags.',
+            'use updateBasicInfo / updateReportingFlag for editable fields.',
       );
     }
     return null;
@@ -153,6 +153,10 @@ class Transaction {
     } else {
       this.isExcludedFromBudget = false;
     }
+  }
+
+  void updateOwnership(TransactionOwnership ownership) {
+    this.ownership = ownership;
   }
 
   Failure? validateSelf({bool allowNegativeAmounts = false}) {

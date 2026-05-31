@@ -275,7 +275,7 @@ class EditRepaymentCommand {
 
   final String? paidFromAccountId;
   final DateTime? occurredAt;
-  final Patch<String>? note;
+  final Patch<String?>? note;
 }
 
 class CreateContractResult {
@@ -304,15 +304,15 @@ abstract interface class InstallmentService {
   /// 再委托 [PostingAppService] 完成 transaction 表的写入。
   Future<Result<void>> editRepayment(EditRepaymentCommand command);
 
-  Future<Result<CreatedTransactionResult>> createScheduledRepayment(
+  Future<Result<PostedTransactionResult>> createScheduledRepayment(
     CreateScheduledRepaymentCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> createPrincipalPrepayment(
+  Future<Result<PostedTransactionResult>> createPrincipalPrepayment(
     CreatePrincipalPrepaymentCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> createEarlySettlement(
+  Future<Result<PostedTransactionResult>> createEarlySettlement(
     CreateEarlySettlementCommand command,
   );
 
@@ -445,16 +445,15 @@ class InstallmentServiceImpl implements InstallmentService {
           note: command.note,
         ),
       );
-      final ownershipResult = await _transactionService
-          .updateTransactionOwnership(
-            UpdateTransactionOwnershipCommand(
-              transactionId: borrowing.transactionId,
-              ownership: _installmentOwnership(
-                contractId,
-                InstallmentOwnerRole.disbursement,
-              ),
-            ),
-          );
+      final ownershipResult = await _transactionService.updateOwnership(
+        UpdateTransactionOwnershipCommand(
+          transactionId: borrowing.transactionId,
+          ownership: _installmentOwnership(
+            contractId,
+            InstallmentOwnerRole.disbursement,
+          ),
+        ),
+      );
       if (ownershipResult case FailureResult(:final failure)) {
         return Result.failure(failure);
       }
@@ -634,26 +633,24 @@ class InstallmentServiceImpl implements InstallmentService {
         if (txId != null) {
           if (command.disbursementAccountId != null ||
               command.borrowingDate != null) {
-            final basicsResult = await _transactionService
-                .updateTransactionBasics(
-                  UpdateTransactionBasicsCommand(
-                    transactionId: txId,
-                    settlementAccountId: command.disbursementAccountId,
-                    occurredAt: command.borrowingDate,
-                  ),
-                );
+            final basicsResult = await _transactionService.correctBorrowing(
+              CorrectBorrowingCommand(
+                transactionId: txId,
+                receiveAccountId: command.disbursementAccountId,
+                occurredAt: command.borrowingDate,
+              ),
+            );
             if (basicsResult case FailureResult(:final failure)) {
               return Result.failure(failure);
             }
           }
           if (command.note != null) {
-            final metadataResult = await _transactionService
-                .updateTransactionMetadata(
-                  UpdateTransactionMetadataCommand(
-                    transactionId: txId,
-                    note: command.note,
-                  ),
-                );
+            final metadataResult = await _transactionService.updateBasicInfo(
+              UpdateTransactionBasicInfoCommand(
+                transactionId: txId,
+                note: _nullableStringPatch(command.note),
+              ),
+            );
             if (metadataResult case FailureResult(:final failure)) {
               return Result.failure(failure);
             }
@@ -870,10 +867,10 @@ class InstallmentServiceImpl implements InstallmentService {
 
     return _runner.run<void>(() async {
       if (command.paidFromAccountId != null || command.occurredAt != null) {
-        final basicsResult = await _transactionService.updateTransactionBasics(
-          UpdateTransactionBasicsCommand(
+        final basicsResult = await _transactionService.correctRepayment(
+          CorrectRepaymentCommand(
             transactionId: command.transactionId,
-            settlementAccountId: command.paidFromAccountId,
+            paidFromAccountId: command.paidFromAccountId,
             occurredAt: command.occurredAt,
           ),
         );
@@ -883,13 +880,12 @@ class InstallmentServiceImpl implements InstallmentService {
       }
 
       if (command.note != null) {
-        final metadataResult = await _transactionService
-            .updateTransactionMetadata(
-              UpdateTransactionMetadataCommand(
-                transactionId: command.transactionId,
-                note: command.note,
-              ),
-            );
+        final metadataResult = await _transactionService.updateBasicInfo(
+          UpdateTransactionBasicInfoCommand(
+            transactionId: command.transactionId,
+            note: command.note,
+          ),
+        );
         if (metadataResult case FailureResult(:final failure)) {
           return Result.failure(failure);
         }
@@ -907,8 +903,16 @@ class InstallmentServiceImpl implements InstallmentService {
     };
   }
 
+  Patch<String?>? _nullableStringPatch(Patch<String>? patch) {
+    return switch (patch) {
+      null => null,
+      PatchSet<String>(:final value) => Patch<String?>.set(value),
+      PatchClear<String>() => const Patch<String?>.clear(),
+    };
+  }
+
   @override
-  Future<Result<CreatedTransactionResult>> createScheduledRepayment(
+  Future<Result<PostedTransactionResult>> createScheduledRepayment(
     CreateScheduledRepaymentCommand command,
   ) async {
     final contract = await _repository.findContract(command.contractId);
@@ -938,7 +942,7 @@ class InstallmentServiceImpl implements InstallmentService {
       );
     }
 
-    return _runner.run<CreatedTransactionResult>(() async {
+    return _runner.run<PostedTransactionResult>(() async {
       final result = await _transactionService.createRepayment(
         CreateRepaymentCommand(
           principal: command.principal,
@@ -978,7 +982,7 @@ class InstallmentServiceImpl implements InstallmentService {
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> createPrincipalPrepayment(
+  Future<Result<PostedTransactionResult>> createPrincipalPrepayment(
     CreatePrincipalPrepaymentCommand command,
   ) async {
     final contract = await _repository.findContract(command.contractId);
@@ -999,7 +1003,7 @@ class InstallmentServiceImpl implements InstallmentService {
       );
     }
 
-    return _runner.run<CreatedTransactionResult>(() async {
+    return _runner.run<PostedTransactionResult>(() async {
       final result = await _transactionService.createRepayment(
         CreateRepaymentCommand(
           principal: command.principal,
@@ -1033,7 +1037,7 @@ class InstallmentServiceImpl implements InstallmentService {
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> createEarlySettlement(
+  Future<Result<PostedTransactionResult>> createEarlySettlement(
     CreateEarlySettlementCommand command,
   ) async {
     final contract = await _repository.findContract(command.contractId);
@@ -1054,7 +1058,7 @@ class InstallmentServiceImpl implements InstallmentService {
       );
     }
 
-    return _runner.run<CreatedTransactionResult>(() async {
+    return _runner.run<PostedTransactionResult>(() async {
       final result = await _transactionService.createRepayment(
         CreateRepaymentCommand(
           principal: command.principal,

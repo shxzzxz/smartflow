@@ -1,5 +1,6 @@
 import '../../../core/money/money.dart';
 import '../valobj/ledger_enum.dart';
+import '../valobj/transaction_ownership.dart';
 import 'transaction.dart';
 
 class RootTransactionGroup {
@@ -57,6 +58,12 @@ class RootTransactionGroup {
         isExcludedFromBudget: isExcludedFromBudget,
         parentPurpose: parentTransaction.businessPurpose,
       );
+    }
+  }
+
+  void updateOwnership(TransactionOwnership ownership) {
+    for (final transaction in transactions) {
+      transaction.updateOwnership(ownership);
     }
   }
 }

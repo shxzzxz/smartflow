@@ -1,5 +1,6 @@
 import '../../../core/error/failure.dart';
 import '../../../core/money/money.dart';
+import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
 import '../../ledger/ledger_api.dart'
     hide PostingAppService, CreateRepaymentCommand, CorrectRepaymentCommand;
@@ -12,11 +13,11 @@ import 'installment_service.dart';
 /// 信贷域对外的通用入口。承载"非分期合同关联的普通还款"的创建、更正与编辑视图反解；
 /// 内部委托账务核心写入，并强制走额度校验（debt − 未还分期本金）。
 abstract interface class CreditService {
-  Future<Result<CreatedTransactionResult>> createRepayment(
+  Future<Result<PostedTransactionResult>> createRepayment(
     CreateRepaymentCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> correctRepayment(
+  Future<Result<PostedTransactionResult>> correctRepayment(
     CorrectRepaymentCommand command,
   );
 
@@ -118,7 +119,7 @@ class CreditServiceImpl implements CreditService {
   final AccountAppService _accountService;
 
   @override
-  Future<Result<CreatedTransactionResult>> createRepayment(
+  Future<Result<PostedTransactionResult>> createRepayment(
     CreateRepaymentCommand command,
   ) async {
     final failure = await _validatePrincipal(
@@ -142,7 +143,7 @@ class CreditServiceImpl implements CreditService {
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> correctRepayment(
+  Future<Result<PostedTransactionResult>> correctRepayment(
     CorrectRepaymentCommand command,
   ) async {
     final detail = await _transactionQueryService.findTransactionDetail(
@@ -177,16 +178,16 @@ class CreditServiceImpl implements CreditService {
       tx.CorrectRepaymentCommand(
         transactionId: command.transactionId,
         principal: command.principal,
-        interest: command.interest,
-        fee: command.fee,
-        discount: command.discount,
+        interest: Patch<Money?>.set(command.interest),
+        fee: Patch<Money?>.set(command.fee),
+        discount: Patch<Money?>.set(command.discount),
         liabilityAccountId: command.liabilityAccountId,
         paidFromAccountId: command.paidFromAccountId,
         occurredAt: command.occurredAt,
-        note: command.note,
-        // 回填原交易的统计/预算排除标记，信贷域的编辑命令不暴露这两个账务口径。
-        isExcludedFromStats: detail.transaction.isExcludedFromStats,
-        isExcludedFromBudget: detail.transaction.isExcludedFromBudget,
+        note:
+            command.note == null
+                ? const Patch<String?>.clear()
+                : Patch<String?>.set(command.note),
       ),
     );
   }

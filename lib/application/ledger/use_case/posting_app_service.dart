@@ -1,10 +1,9 @@
-import '../../../core/error/failure.dart';
 import '../../../core/id/id_generator.dart';
-import '../../../core/money/money.dart';
-import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
 import '../../../application/shared/transaction_runner.dart';
 import '../command/transaction_command.dart';
+import 'package:smartflow/domain/ledger/entity/account.dart';
+import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/root_transaction_group_repository.dart';
@@ -13,7 +12,6 @@ import 'package:smartflow/domain/ledger/port/transaction_repository.dart';
 import 'package:smartflow/domain/ledger/service/account_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/account_role_policy.dart';
 import 'package:smartflow/domain/ledger/service/child_transaction_migration_policy.dart';
-import 'package:smartflow/domain/ledger/service/entry_reassignment_service.dart';
 import 'package:smartflow/domain/ledger/service/ledger_correction_service.dart';
 import 'package:smartflow/domain/ledger/service/ledger_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/ledger_update_service.dart';
@@ -26,97 +24,97 @@ import 'package:smartflow/domain/ledger/valobj/posting_result.dart';
 import '../query/transaction_query_service.dart';
 
 abstract interface class PostingAppService {
-  Future<Result<CreatedTransactionResult>> createExpense(
+  Future<Result<PostedTransactionResult>> createExpense(
     CreateExpenseCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> createIncome(
+  Future<Result<PostedTransactionResult>> createIncome(
     CreateIncomeCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> createTransfer(
+  Future<Result<PostedTransactionResult>> createTransfer(
     CreateTransferCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> createRefund(
+  Future<Result<PostedTransactionResult>> createRefund(
     CreateRefundCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> createReimbursementAdvance(
+  Future<Result<PostedTransactionResult>> createReimbursementAdvance(
     CreateReimbursementAdvanceCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> createReimbursementReceipt(
+  Future<Result<PostedTransactionResult>> createReimbursementReceipt(
     CreateReimbursementReceiptCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> closeReimbursement(
+  Future<Result<PostedTransactionResult>> closeReimbursement(
     CloseReimbursementCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> createRepayment(
+  Future<Result<PostedTransactionResult>> createRepayment(
     CreateRepaymentCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> createBorrowing(
+  Future<Result<PostedTransactionResult>> createBorrowing(
     CreateBorrowingCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> createOpeningBalance(
+  Future<Result<PostedTransactionResult>> createOpeningBalance(
     CreateOpeningBalanceCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> adjustBalance(
+  Future<Result<PostedTransactionResult>> adjustBalance(
     AdjustBalanceCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> correctExpense(
+  Future<Result<PostedTransactionResult>> correctExpense(
     CorrectExpenseCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> correctIncome(
+  Future<Result<PostedTransactionResult>> correctIncome(
     CorrectIncomeCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> correctTransfer(
+  Future<Result<PostedTransactionResult>> correctTransfer(
     CorrectTransferCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> correctReimbursementAdvance(
+  Future<Result<PostedTransactionResult>> correctReimbursementAdvance(
     CorrectReimbursementAdvanceCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> correctRefund(
+  Future<Result<PostedTransactionResult>> correctRefund(
     CorrectRefundCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> correctReimbursementReceipt(
+  Future<Result<PostedTransactionResult>> correctReimbursementReceipt(
     CorrectReimbursementReceiptCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> correctReimbursementClose(
+  Future<Result<PostedTransactionResult>> correctReimbursementClose(
     CorrectReimbursementCloseCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> correctBorrowing(
+  Future<Result<PostedTransactionResult>> correctBorrowing(
     CorrectBorrowingCommand command,
   );
 
-  Future<Result<CreatedTransactionResult>> correctRepayment(
+  Future<Result<PostedTransactionResult>> correctRepayment(
     CorrectRepaymentCommand command,
   );
 
   Future<Result<void>> deleteTransaction(DeleteTransactionCommand command);
 
-  Future<Result<void>> updateTransactionMetadata(
-    UpdateTransactionMetadataCommand command,
+  Future<Result<PostedTransactionResult>> updateBasicInfo(
+    UpdateTransactionBasicInfoCommand command,
   );
 
-  Future<Result<void>> updateTransactionBasics(
-    UpdateTransactionBasicsCommand command,
+  Future<Result<PostedTransactionResult>> updateReportingFlag(
+    UpdateTransactionReportingFlagCommand command,
   );
 
-  Future<Result<void>> updateTransactionOwnership(
+  Future<Result<PostedTransactionResult>> updateOwnership(
     UpdateTransactionOwnershipCommand command,
   );
 }
@@ -130,8 +128,6 @@ class PostingAppServiceImpl implements PostingAppService {
     required SystemAccountResolver systemAccountResolver,
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
-    EntryReassignmentService reassignmentService =
-        const EntryReassignmentService(),
     AccountRolePolicy? accountRolePolicy,
     PostingEngine? postingEngine,
     PostingInstructionResolver? postingInstructionResolver,
@@ -213,11 +209,6 @@ class PostingAppServiceImpl implements PostingAppService {
            LedgerUpdateService(
              transactionRepository: transactionRepository,
              rootGroupRepository: rootGroupRepository,
-             accountRepository: accountRepository,
-             accountRolePolicy:
-                 accountRolePolicy ??
-                 AccountRolePolicy(accountRepository: accountRepository),
-             reassignmentService: reassignmentService,
            );
 
   final AccountRepository _accountRepository;
@@ -230,39 +221,27 @@ class PostingAppServiceImpl implements PostingAppService {
   final LedgerUpdateService _ledgerUpdateService;
 
   @override
-  Future<Result<CreatedTransactionResult>> createExpense(
+  Future<Result<PostedTransactionResult>> createExpense(
     CreateExpenseCommand command,
   ) async {
-    final postingResult = await _ledgerPostingService.postExpense(
-      ExpenseInstruction(
-        amount: command.amount,
-        paidFromAccountId: command.paidFromAccountId,
-        expenseAccountId: command.expenseAccountId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
-        isExcludedFromStats: command.isExcludedFromStats,
-        isExcludedFromBudget: command.isExcludedFromBudget,
+    return _persistPosting(
+      await _ledgerPostingService.postExpense(
+        ExpenseInstruction(
+          amount: command.amount,
+          paidFromAccountId: command.paidFromAccountId,
+          expenseAccountId: command.expenseAccountId,
+          occurredAt: command.occurredAt,
+          counterpartyName: command.counterpartyName,
+          note: command.note,
+          isExcludedFromStats: command.isExcludedFromStats,
+          isExcludedFromBudget: command.isExcludedFromBudget,
+        ),
       ),
     );
-    if (postingResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    final posting = postingResult.value;
-    return _transactionRunner.run(() async {
-      await _transactionRepository.save(posting.transaction);
-      await _accountRepository.saveAll(posting.accounts);
-      return Result.success(
-        CreatedTransactionResult(
-          transactionId: posting.transaction.id,
-          rootTransactionId: posting.transaction.rootTransactionId,
-        ),
-      );
-    });
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> createIncome(
+  Future<Result<PostedTransactionResult>> createIncome(
     CreateIncomeCommand command,
   ) async {
     return _persistPosting(
@@ -281,7 +260,7 @@ class PostingAppServiceImpl implements PostingAppService {
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> createTransfer(
+  Future<Result<PostedTransactionResult>> createTransfer(
     CreateTransferCommand command,
   ) async {
     return _persistPosting(
@@ -301,37 +280,25 @@ class PostingAppServiceImpl implements PostingAppService {
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> createRefund(
+  Future<Result<PostedTransactionResult>> createRefund(
     CreateRefundCommand command,
   ) async {
-    final postingResult = await _refundPostingService.postRefund(
-      RefundInstruction(
-        parentTransactionId: command.parentTransactionId,
-        amount: command.amount,
-        refundToAccountId: command.refundToAccountId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
+    return _persistPosting(
+      await _refundPostingService.postRefund(
+        RefundInstruction(
+          parentTransactionId: command.parentTransactionId,
+          amount: command.amount,
+          refundToAccountId: command.refundToAccountId,
+          occurredAt: command.occurredAt,
+          counterpartyName: command.counterpartyName,
+          note: command.note,
+        ),
       ),
     );
-    if (postingResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    final posting = postingResult.value;
-    return _transactionRunner.run(() async {
-      await _transactionRepository.save(posting.transaction);
-      await _accountRepository.saveAll(posting.accounts);
-      return Result.success(
-        CreatedTransactionResult(
-          transactionId: posting.transaction.id,
-          rootTransactionId: posting.transaction.rootTransactionId,
-        ),
-      );
-    });
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> createReimbursementAdvance(
+  Future<Result<PostedTransactionResult>> createReimbursementAdvance(
     CreateReimbursementAdvanceCommand command,
   ) async {
     return _persistPosting(
@@ -350,7 +317,7 @@ class PostingAppServiceImpl implements PostingAppService {
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> createReimbursementReceipt(
+  Future<Result<PostedTransactionResult>> createReimbursementReceipt(
     CreateReimbursementReceiptCommand command,
   ) async {
     return _persistPosting(
@@ -369,38 +336,26 @@ class PostingAppServiceImpl implements PostingAppService {
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> closeReimbursement(
+  Future<Result<PostedTransactionResult>> closeReimbursement(
     CloseReimbursementCommand command,
   ) async {
-    final postingResult = await _reimbursementPostingService.close(
-      ReimbursementCloseInstruction(
-        advanceTransactionId: command.advanceTransactionId,
-        actualReceivedAmount: command.actualReceivedAmount,
-        receivableAccountId: command.receivableAccountId,
-        receiveAccountId: command.receiveAccountId,
-        occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
-        note: command.note,
+    return _persistPosting(
+      await _reimbursementPostingService.close(
+        ReimbursementCloseInstruction(
+          advanceTransactionId: command.advanceTransactionId,
+          actualReceivedAmount: command.actualReceivedAmount,
+          receivableAccountId: command.receivableAccountId,
+          receiveAccountId: command.receiveAccountId,
+          occurredAt: command.occurredAt,
+          counterpartyName: command.counterpartyName,
+          note: command.note,
+        ),
       ),
     );
-    if (postingResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    final posting = postingResult.value;
-    return _transactionRunner.run(() async {
-      await _transactionRepository.save(posting.transaction);
-      await _accountRepository.saveAll(posting.accounts);
-      return Result.success(
-        CreatedTransactionResult(
-          transactionId: posting.transaction.id,
-          rootTransactionId: posting.transaction.rootTransactionId,
-        ),
-      );
-    });
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> createRepayment(
+  Future<Result<PostedTransactionResult>> createRepayment(
     CreateRepaymentCommand command,
   ) async {
     return _persistPosting(
@@ -422,7 +377,7 @@ class PostingAppServiceImpl implements PostingAppService {
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> createBorrowing(
+  Future<Result<PostedTransactionResult>> createBorrowing(
     CreateBorrowingCommand command,
   ) async {
     return _persistPosting(
@@ -441,7 +396,7 @@ class PostingAppServiceImpl implements PostingAppService {
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> createOpeningBalance(
+  Future<Result<PostedTransactionResult>> createOpeningBalance(
     CreateOpeningBalanceCommand command,
   ) async {
     return _persistPosting(
@@ -458,7 +413,7 @@ class PostingAppServiceImpl implements PostingAppService {
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> adjustBalance(
+  Future<Result<PostedTransactionResult>> adjustBalance(
     AdjustBalanceCommand command,
   ) async {
     return _persistPosting(
@@ -475,7 +430,7 @@ class PostingAppServiceImpl implements PostingAppService {
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> correctExpense(
+  Future<Result<PostedTransactionResult>> correctExpense(
     CorrectExpenseCommand cmd,
   ) async {
     return _persistParentReplacement(
@@ -483,6 +438,11 @@ class PostingAppServiceImpl implements PostingAppService {
         ReplaceParentTransactionInstruction(
           transactionId: cmd.transactionId,
           expectedCurrentPurpose: BusinessPurpose.dailyExpense,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
+          isExcludedFromStats: cmd.isExcludedFromStats,
+          isExcludedFromBudget: cmd.isExcludedFromBudget,
           replacementPatch: ExpenseReplacementPatch(
             amount: cmd.amount,
             paidFromAccountId: cmd.paidFromAccountId,
@@ -490,16 +450,11 @@ class PostingAppServiceImpl implements PostingAppService {
           ),
         ),
       ),
-      occurredAt: cmd.occurredAt,
-      counterpartyName: cmd.counterpartyName,
-      note: cmd.note,
-      isExcludedFromStats: cmd.isExcludedFromStats,
-      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> correctIncome(
+  Future<Result<PostedTransactionResult>> correctIncome(
     CorrectIncomeCommand cmd,
   ) async {
     return _persistParentReplacement(
@@ -507,6 +462,10 @@ class PostingAppServiceImpl implements PostingAppService {
         ReplaceParentTransactionInstruction(
           transactionId: cmd.transactionId,
           expectedCurrentPurpose: BusinessPurpose.dailyIncome,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
+          isExcludedFromStats: cmd.isExcludedFromStats,
           replacementPatch: IncomeReplacementPatch(
             amount: cmd.amount,
             receiveAccountId: cmd.receiveAccountId,
@@ -514,16 +473,11 @@ class PostingAppServiceImpl implements PostingAppService {
           ),
         ),
       ),
-      occurredAt: cmd.occurredAt,
-      counterpartyName: cmd.counterpartyName,
-      note: cmd.note,
-      isExcludedFromStats: cmd.isExcludedFromStats,
-      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> correctTransfer(
+  Future<Result<PostedTransactionResult>> correctTransfer(
     CorrectTransferCommand cmd,
   ) async {
     return _persistParentReplacement(
@@ -531,25 +485,23 @@ class PostingAppServiceImpl implements PostingAppService {
         ReplaceParentTransactionInstruction(
           transactionId: cmd.transactionId,
           expectedCurrentPurpose: BusinessPurpose.transfer,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
           replacementPatch: TransferReplacementPatch(
             amount: cmd.amount,
             fromAccountId: cmd.fromAccountId,
             toAccountId: cmd.toAccountId,
-            feeAmount: Money.zero(),
-            feeExpenseAccountId: const Patch<String?>.set(null),
+            feeAmount: cmd.feeAmount,
+            feeExpenseAccountId: cmd.feeExpenseAccountId,
           ),
         ),
       ),
-      occurredAt: cmd.occurredAt,
-      counterpartyName: cmd.counterpartyName,
-      note: cmd.note,
-      isExcludedFromStats: cmd.isExcludedFromStats,
-      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> correctReimbursementAdvance(
+  Future<Result<PostedTransactionResult>> correctReimbursementAdvance(
     CorrectReimbursementAdvanceCommand cmd,
   ) async {
     return _persistParentReplacement(
@@ -557,6 +509,11 @@ class PostingAppServiceImpl implements PostingAppService {
         ReplaceParentTransactionInstruction(
           transactionId: cmd.transactionId,
           expectedCurrentPurpose: BusinessPurpose.reimbursementAdvance,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
+          isExcludedFromStats: cmd.isExcludedFromStats,
+          isExcludedFromBudget: cmd.isExcludedFromBudget,
           replacementPatch: ReimbursementAdvanceReplacementPatch(
             amount: cmd.amount,
             receivableAccountId: cmd.receivableAccountId,
@@ -565,36 +522,31 @@ class PostingAppServiceImpl implements PostingAppService {
           ),
         ),
       ),
-      occurredAt: cmd.occurredAt,
-      counterpartyName: cmd.counterpartyName,
-      note: cmd.note,
-      isExcludedFromStats: cmd.isExcludedFromStats,
-      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> correctRefund(
+  Future<Result<PostedTransactionResult>> correctRefund(
     CorrectRefundCommand cmd,
   ) async {
     return _persistChildReplacement(
       await _ledgerCorrectionService.replaceRefundTransaction(
         ReplaceRefundTransactionInstruction(
           transactionId: cmd.transactionId,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
           replacementPatch: RefundReplacementPatch(
             amount: cmd.amount,
             refundToAccountId: cmd.refundToAccountId,
           ),
         ),
       ),
-      occurredAt: cmd.occurredAt,
-      counterpartyName: cmd.counterpartyName,
-      note: cmd.note,
     );
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> correctReimbursementReceipt(
+  Future<Result<PostedTransactionResult>> correctReimbursementReceipt(
     CorrectReimbursementReceiptCommand cmd,
   ) async {
     return _persistChildReplacement(
@@ -604,16 +556,16 @@ class PostingAppServiceImpl implements PostingAppService {
           amount: cmd.amount,
           receivableAccountId: cmd.receivableAccountId,
           receiveAccountId: cmd.receiveAccountId,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
         ),
       ),
-      occurredAt: cmd.occurredAt,
-      counterpartyName: cmd.counterpartyName,
-      note: cmd.note,
     );
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> correctReimbursementClose(
+  Future<Result<PostedTransactionResult>> correctReimbursementClose(
     CorrectReimbursementCloseCommand cmd,
   ) async {
     return _persistChildReplacement(
@@ -623,16 +575,16 @@ class PostingAppServiceImpl implements PostingAppService {
           actualReceivedAmount: cmd.actualReceivedAmount,
           receivableAccountId: cmd.receivableAccountId,
           receiveAccountId: cmd.receiveAccountId,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
         ),
       ),
-      occurredAt: cmd.occurredAt,
-      counterpartyName: cmd.counterpartyName,
-      note: cmd.note,
     );
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> correctBorrowing(
+  Future<Result<PostedTransactionResult>> correctBorrowing(
     CorrectBorrowingCommand cmd,
   ) async {
     return _persistParentReplacement(
@@ -640,6 +592,9 @@ class PostingAppServiceImpl implements PostingAppService {
         ReplaceParentTransactionInstruction(
           transactionId: cmd.transactionId,
           expectedCurrentPurpose: BusinessPurpose.borrowing,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
           replacementPatch: BorrowingReplacementPatch(
             amount: cmd.amount,
             liabilityAccountId: cmd.liabilityAccountId,
@@ -647,16 +602,11 @@ class PostingAppServiceImpl implements PostingAppService {
           ),
         ),
       ),
-      occurredAt: cmd.occurredAt,
-      counterpartyName: cmd.counterpartyName,
-      note: cmd.note,
-      isExcludedFromStats: cmd.isExcludedFromStats,
-      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
   @override
-  Future<Result<CreatedTransactionResult>> correctRepayment(
+  Future<Result<PostedTransactionResult>> correctRepayment(
     CorrectRepaymentCommand cmd,
   ) async {
     return _persistParentReplacement(
@@ -664,21 +614,19 @@ class PostingAppServiceImpl implements PostingAppService {
         ReplaceParentTransactionInstruction(
           transactionId: cmd.transactionId,
           expectedCurrentPurpose: BusinessPurpose.debtRepayment,
+          occurredAt: cmd.occurredAt,
+          counterpartyName: cmd.counterpartyName,
+          note: cmd.note,
           replacementPatch: RepaymentReplacementPatch(
             principal: cmd.principal,
-            interest: Patch<Money?>.set(cmd.interest),
-            fee: Patch<Money?>.set(cmd.fee),
-            discount: Patch<Money?>.set(cmd.discount),
+            interest: cmd.interest,
+            fee: cmd.fee,
+            discount: cmd.discount,
             liabilityAccountId: cmd.liabilityAccountId,
             paidFromAccountId: cmd.paidFromAccountId,
           ),
         ),
       ),
-      occurredAt: cmd.occurredAt,
-      counterpartyName: cmd.counterpartyName,
-      note: cmd.note,
-      isExcludedFromStats: cmd.isExcludedFromStats,
-      isExcludedFromBudget: cmd.isExcludedFromBudget,
     );
   }
 
@@ -701,43 +649,38 @@ class PostingAppServiceImpl implements PostingAppService {
   }
 
   @override
-  Future<Result<void>> updateTransactionMetadata(
-    UpdateTransactionMetadataCommand command,
+  Future<Result<PostedTransactionResult>> updateBasicInfo(
+    UpdateTransactionBasicInfoCommand command,
   ) async {
     return _persistTransactionUpdate(
-      await _ledgerUpdateService.updateMetadata(
-        UpdateTransactionMetadataInstruction(
+      await _ledgerUpdateService.updateBasicInfo(
+        UpdateTransactionBasicInfoInstruction(
           transactionId: command.transactionId,
+          occurredAt: command.occurredAt,
+          counterpartyName: command.counterpartyName,
           note: command.note,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Future<Result<PostedTransactionResult>> updateReportingFlag(
+    UpdateTransactionReportingFlagCommand command,
+  ) async {
+    return _persistTransactionUpdate(
+      await _ledgerUpdateService.updateReportingFlag(
+        UpdateTransactionReportingFlagInstruction(
+          transactionId: command.transactionId,
           isExcludedFromStats: command.isExcludedFromStats,
           isExcludedFromBudget: command.isExcludedFromBudget,
         ),
       ),
-      failureCode: 'transaction_metadata_update_failed',
-      failureMessage: 'Failed to update transaction metadata.',
     );
   }
 
   @override
-  Future<Result<void>> updateTransactionBasics(
-    UpdateTransactionBasicsCommand command,
-  ) async {
-    return _persistTransactionUpdate(
-      await _ledgerUpdateService.updateBasics(
-        UpdateTransactionBasicsInstruction(
-          transactionId: command.transactionId,
-          occurredAt: command.occurredAt,
-          settlementAccountId: command.settlementAccountId,
-          reimbursementAccountId: command.reimbursementAccountId,
-        ),
-      ),
-      failureCode: 'transaction_basics_update_failed',
-      failureMessage: 'Failed to update transaction basics.',
-    );
-  }
-
-  @override
-  Future<Result<void>> updateTransactionOwnership(
+  Future<Result<PostedTransactionResult>> updateOwnership(
     UpdateTransactionOwnershipCommand command,
   ) async {
     return _persistTransactionUpdate(
@@ -747,12 +690,10 @@ class PostingAppServiceImpl implements PostingAppService {
           ownership: command.ownership,
         ),
       ),
-      failureCode: 'transaction_ownership_update_failed',
-      failureMessage: 'Failed to update transaction ownership.',
     );
   }
 
-  Future<Result<CreatedTransactionResult>> _persistPosting(
+  Future<Result<PostedTransactionResult>> _persistPosting(
     Result<PostingResult> postingResult,
   ) async {
     if (postingResult case FailureResult(:final failure)) {
@@ -763,7 +704,7 @@ class PostingAppServiceImpl implements PostingAppService {
       await _transactionRepository.save(posting.transaction);
       await _accountRepository.saveAll(posting.accounts);
       return Result.success(
-        CreatedTransactionResult(
+        PostedTransactionResult(
           transactionId: posting.transaction.id,
           rootTransactionId: posting.transaction.rootTransactionId,
         ),
@@ -771,87 +712,62 @@ class PostingAppServiceImpl implements PostingAppService {
     });
   }
 
-  Future<Result<CreatedTransactionResult>> _persistParentReplacement(
-    Result<ParentReplacementResult> replacementResult, {
-    required DateTime occurredAt,
-    required String? counterpartyName,
-    required String? note,
-    required bool? isExcludedFromStats,
-    required bool? isExcludedFromBudget,
-  }) async {
+  Future<Result<PostedTransactionResult>> _persistParentReplacement(
+    Result<ParentReplacementResult> replacementResult,
+  ) async {
     if (replacementResult case FailureResult(:final failure)) {
       return Result.failure(failure);
     }
     final mutation = replacementResult.value;
-    final group = mutation.currentGroup;
-    group.parentTransaction.updateBasicInfo(
-      occurredAt: occurredAt,
-      counterpartyName: Patch<String?>.set(counterpartyName),
-      note: Patch<String?>.set(note),
+    return _persistLedgerWrite(
+      transactions: mutation.transactions,
+      accounts: mutation.accounts,
+      currentTransaction: mutation.currentTransaction,
     );
-    group.updateReportingFlags(
-      isExcludedFromStats: isExcludedFromStats,
-      isExcludedFromBudget: isExcludedFromBudget,
-    );
-    return _transactionRunner.run(() async {
-      await _transactionRepository.saveAll(mutation.transactions);
-      await _accountRepository.saveAll(mutation.accounts);
-      return Result.success(
-        CreatedTransactionResult(
-          transactionId: group.parentTransaction.id,
-          rootTransactionId: group.rootTransactionId,
-        ),
-      );
-    });
   }
 
-  Future<Result<CreatedTransactionResult>> _persistChildReplacement(
-    Result<ChildReplacementResult> replacementResult, {
-    required DateTime occurredAt,
-    required String? counterpartyName,
-    required String? note,
-  }) async {
+  Future<Result<PostedTransactionResult>> _persistChildReplacement(
+    Result<ChildReplacementResult> replacementResult,
+  ) async {
     if (replacementResult case FailureResult(:final failure)) {
       return Result.failure(failure);
     }
     final mutation = replacementResult.value;
-    final transaction = mutation.currentTransaction;
-    transaction.updateBasicInfo(
-      occurredAt: occurredAt,
-      counterpartyName: Patch<String?>.set(counterpartyName),
-      note: Patch<String?>.set(note),
+    return _persistLedgerWrite(
+      transactions: mutation.transactions,
+      accounts: mutation.accounts,
+      currentTransaction: mutation.currentTransaction,
     );
-    return _transactionRunner.run(() async {
-      await _transactionRepository.saveAll(mutation.transactions);
-      await _accountRepository.saveAll(mutation.accounts);
-      return Result.success(
-        CreatedTransactionResult(
-          transactionId: transaction.id,
-          rootTransactionId: transaction.rootTransactionId,
-        ),
-      );
-    });
   }
 
-  Future<Result<void>> _persistTransactionUpdate(
-    Result<TransactionUpdateResult> updateResult, {
-    required String failureCode,
-    required String failureMessage,
-  }) async {
+  Future<Result<PostedTransactionResult>> _persistTransactionUpdate(
+    Result<TransactionUpdateResult> updateResult,
+  ) async {
     if (updateResult case FailureResult(:final failure)) {
       return Result.failure(failure);
     }
     final update = updateResult.value;
+    return _persistLedgerWrite(
+      transactions: update.transactions,
+      accounts: update.accounts,
+      currentTransaction: update.currentTransaction,
+    );
+  }
+
+  Future<Result<PostedTransactionResult>> _persistLedgerWrite({
+    required Iterable<Transaction> transactions,
+    required Iterable<Account> accounts,
+    required Transaction currentTransaction,
+  }) async {
     return _transactionRunner.run(() async {
-      try {
-        await _transactionRepository.saveAll(update.transactions);
-        await _accountRepository.saveAll(update.accounts);
-        return const Result.success(null);
-      } on Object catch (error) {
-        return Result.failure(
-          Failure(code: failureCode, message: failureMessage, cause: error),
-        );
-      }
+      await _transactionRepository.saveAll(transactions);
+      await _accountRepository.saveAll(accounts);
+      return Result.success(
+        PostedTransactionResult(
+          transactionId: currentTransaction.id,
+          rootTransactionId: currentTransaction.rootTransactionId,
+        ),
+      );
     });
   }
 }

@@ -309,7 +309,7 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
     setState(() => _submitting = true);
     final service = ref.read(creditServiceProvider);
     final editTransactionId = widget.editTransactionId;
-    final Result<CreatedTransactionResult> result;
+    final Result<PostedTransactionResult> result;
     if (editTransactionId == null) {
       result = await service.createRepayment(
         CreateRepaymentCommand(

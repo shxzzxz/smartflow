@@ -33,7 +33,6 @@ class CreateIncomeCommand {
     this.counterpartyName,
     this.note,
     this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
   });
 
   final Money amount;
@@ -43,7 +42,6 @@ class CreateIncomeCommand {
   final String? counterpartyName;
   final String? note;
   final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
 }
 
 class CreateTransferCommand {
@@ -56,8 +54,6 @@ class CreateTransferCommand {
     this.feeExpenseAccountId,
     this.counterpartyName,
     this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
   });
 
   final Money amount;
@@ -68,8 +64,6 @@ class CreateTransferCommand {
   final String? feeExpenseAccountId;
   final String? counterpartyName;
   final String? note;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
 }
 
 class CreateRefundCommand {
@@ -80,8 +74,6 @@ class CreateRefundCommand {
     required this.occurredAt,
     this.counterpartyName,
     this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
   });
 
   final Money amount;
@@ -90,8 +82,6 @@ class CreateRefundCommand {
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
 }
 
 class CreateReimbursementAdvanceCommand {
@@ -127,8 +117,6 @@ class CreateReimbursementReceiptCommand {
     required this.occurredAt,
     this.counterpartyName,
     this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
   });
 
   final Money amount;
@@ -138,8 +126,6 @@ class CreateReimbursementReceiptCommand {
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
 }
 
 class CloseReimbursementCommand {
@@ -151,8 +137,6 @@ class CloseReimbursementCommand {
     required this.occurredAt,
     this.counterpartyName,
     this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
   });
 
   final Money actualReceivedAmount;
@@ -162,8 +146,6 @@ class CloseReimbursementCommand {
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
 }
 
 class CreateRepaymentCommand {
@@ -178,8 +160,6 @@ class CreateRepaymentCommand {
     this.counterpartyName,
     this.note,
     this.ownership,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
   });
 
   final Money principal;
@@ -192,8 +172,6 @@ class CreateRepaymentCommand {
   final String? counterpartyName;
   final String? note;
   final TransactionOwnership? ownership;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
 }
 
 class CreateBorrowingCommand {
@@ -205,8 +183,6 @@ class CreateBorrowingCommand {
     this.counterpartyName,
     this.note,
     this.ownership,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
   });
 
   final Money amount;
@@ -216,8 +192,6 @@ class CreateBorrowingCommand {
   final String? counterpartyName;
   final String? note;
   final TransactionOwnership? ownership;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
 }
 
 class CreateOpeningBalanceCommand {
@@ -227,8 +201,6 @@ class CreateOpeningBalanceCommand {
     required this.occurredAt,
     this.counterpartyName,
     this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
   });
 
   final String accountId;
@@ -236,8 +208,6 @@ class CreateOpeningBalanceCommand {
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
 }
 
 class AdjustBalanceCommand {
@@ -247,8 +217,6 @@ class AdjustBalanceCommand {
     required this.occurredAt,
     this.counterpartyName,
     this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
   });
 
   final String accountId;
@@ -256,17 +224,15 @@ class AdjustBalanceCommand {
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
 }
 
 class CorrectExpenseCommand {
   const CorrectExpenseCommand({
     required this.transactionId,
-    required this.amount,
-    required this.paidFromAccountId,
-    required this.expenseAccountId,
-    required this.occurredAt,
+    this.amount,
+    this.paidFromAccountId,
+    this.expenseAccountId,
+    this.occurredAt,
     this.counterpartyName,
     this.note,
     this.isExcludedFromStats,
@@ -274,12 +240,12 @@ class CorrectExpenseCommand {
   });
 
   final String transactionId;
-  final Money amount;
-  final String paidFromAccountId;
-  final String expenseAccountId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
+  final Money? amount;
+  final String? paidFromAccountId;
+  final String? expenseAccountId;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
   final bool? isExcludedFromStats;
   final bool? isExcludedFromBudget;
 }
@@ -287,59 +253,57 @@ class CorrectExpenseCommand {
 class CorrectIncomeCommand {
   const CorrectIncomeCommand({
     required this.transactionId,
-    required this.amount,
-    required this.receiveAccountId,
-    required this.incomeAccountId,
-    required this.occurredAt,
+    this.amount,
+    this.receiveAccountId,
+    this.incomeAccountId,
+    this.occurredAt,
     this.counterpartyName,
     this.note,
     this.isExcludedFromStats,
-    this.isExcludedFromBudget,
   });
 
   final String transactionId;
-  final Money amount;
-  final String receiveAccountId;
-  final String incomeAccountId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
+  final Money? amount;
+  final String? receiveAccountId;
+  final String? incomeAccountId;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
   final bool? isExcludedFromStats;
-  final bool? isExcludedFromBudget;
 }
 
 class CorrectTransferCommand {
   const CorrectTransferCommand({
     required this.transactionId,
-    required this.amount,
-    required this.fromAccountId,
-    required this.toAccountId,
-    required this.occurredAt,
+    this.amount,
+    this.fromAccountId,
+    this.toAccountId,
+    this.occurredAt,
+    this.feeAmount,
+    this.feeExpenseAccountId,
     this.counterpartyName,
     this.note,
-    this.isExcludedFromStats,
-    this.isExcludedFromBudget,
   });
 
   final String transactionId;
-  final Money amount;
-  final String fromAccountId;
-  final String toAccountId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
-  final bool? isExcludedFromStats;
-  final bool? isExcludedFromBudget;
+  final Money? amount;
+  final String? fromAccountId;
+  final String? toAccountId;
+  final DateTime? occurredAt;
+  final Money? feeAmount;
+  final Patch<String?>? feeExpenseAccountId;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
 }
 
 class CorrectReimbursementAdvanceCommand {
   const CorrectReimbursementAdvanceCommand({
     required this.transactionId,
-    required this.amount,
-    required this.receivableAccountId,
-    required this.paidFromAccountId,
-    required this.expenseCategoryId,
-    required this.occurredAt,
+    this.amount,
+    this.receivableAccountId,
+    this.paidFromAccountId,
+    this.expenseCategoryId,
+    this.occurredAt,
     this.counterpartyName,
     this.note,
     this.isExcludedFromStats,
@@ -347,13 +311,13 @@ class CorrectReimbursementAdvanceCommand {
   });
 
   final String transactionId;
-  final Money amount;
-  final String receivableAccountId;
-  final String paidFromAccountId;
-  final String expenseCategoryId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
+  final Money? amount;
+  final String? receivableAccountId;
+  final String? paidFromAccountId;
+  final String? expenseCategoryId;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
   final bool? isExcludedFromStats;
   final bool? isExcludedFromBudget;
 }
@@ -361,125 +325,105 @@ class CorrectReimbursementAdvanceCommand {
 class CorrectRefundCommand {
   const CorrectRefundCommand({
     required this.transactionId,
-    required this.amount,
-    required this.refundToAccountId,
-    required this.occurredAt,
+    this.amount,
+    this.refundToAccountId,
+    this.occurredAt,
     this.counterpartyName,
     this.note,
-    this.isExcludedFromStats,
-    this.isExcludedFromBudget,
   });
 
   final String transactionId;
-  final Money amount;
-  final String refundToAccountId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
-  final bool? isExcludedFromStats;
-  final bool? isExcludedFromBudget;
+  final Money? amount;
+  final String? refundToAccountId;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
 }
 
 class CorrectReimbursementReceiptCommand {
   const CorrectReimbursementReceiptCommand({
     required this.transactionId,
-    required this.amount,
-    required this.receivableAccountId,
-    required this.receiveAccountId,
-    required this.occurredAt,
+    this.amount,
+    this.receivableAccountId,
+    this.receiveAccountId,
+    this.occurredAt,
     this.counterpartyName,
     this.note,
-    this.isExcludedFromStats,
-    this.isExcludedFromBudget,
   });
 
   final String transactionId;
-  final Money amount;
-  final String receivableAccountId;
-  final String receiveAccountId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
-  final bool? isExcludedFromStats;
-  final bool? isExcludedFromBudget;
+  final Money? amount;
+  final String? receivableAccountId;
+  final String? receiveAccountId;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
 }
 
 class CorrectReimbursementCloseCommand {
   const CorrectReimbursementCloseCommand({
     required this.transactionId,
-    required this.actualReceivedAmount,
-    required this.receivableAccountId,
-    required this.receiveAccountId,
-    required this.occurredAt,
+    this.actualReceivedAmount,
+    this.receivableAccountId,
+    this.receiveAccountId,
+    this.occurredAt,
     this.counterpartyName,
     this.note,
-    this.isExcludedFromStats,
-    this.isExcludedFromBudget,
   });
 
   final String transactionId;
-  final Money actualReceivedAmount;
-  final String receivableAccountId;
-  final String receiveAccountId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
-  final bool? isExcludedFromStats;
-  final bool? isExcludedFromBudget;
+  final Money? actualReceivedAmount;
+  final String? receivableAccountId;
+  final String? receiveAccountId;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
 }
 
 class CorrectBorrowingCommand {
   const CorrectBorrowingCommand({
     required this.transactionId,
-    required this.amount,
-    required this.liabilityAccountId,
-    required this.receiveAccountId,
-    required this.occurredAt,
+    this.amount,
+    this.liabilityAccountId,
+    this.receiveAccountId,
+    this.occurredAt,
     this.counterpartyName,
     this.note,
-    this.isExcludedFromStats,
-    this.isExcludedFromBudget,
   });
 
   final String transactionId;
-  final Money amount;
-  final String liabilityAccountId;
-  final String receiveAccountId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
-  final bool? isExcludedFromStats;
-  final bool? isExcludedFromBudget;
+  final Money? amount;
+  final String? liabilityAccountId;
+  final String? receiveAccountId;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
 }
 
 class CorrectRepaymentCommand {
   const CorrectRepaymentCommand({
     required this.transactionId,
-    required this.principal,
-    required this.liabilityAccountId,
-    required this.paidFromAccountId,
-    required this.occurredAt,
+    this.principal,
+    this.liabilityAccountId,
+    this.paidFromAccountId,
+    this.occurredAt,
     this.interest,
     this.fee,
     this.discount,
     this.counterpartyName,
     this.note,
-    this.isExcludedFromStats,
-    this.isExcludedFromBudget,
   });
 
   final String transactionId;
-  final Money principal;
-  final Money? interest;
-  final Money? fee;
-  final Money? discount;
-  final String liabilityAccountId;
-  final String paidFromAccountId;
-  final DateTime occurredAt;
-  final String? counterpartyName;
-  final String? note;
-  final bool? isExcludedFromStats;
-  final bool? isExcludedFromBudget;
+  final Money? principal;
+  final Patch<Money?>? interest;
+  final Patch<Money?>? fee;
+  final Patch<Money?>? discount;
+  final String? liabilityAccountId;
+  final String? paidFromAccountId;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
 }
 
 class DeleteTransactionCommand {
@@ -488,34 +432,30 @@ class DeleteTransactionCommand {
   final String transactionId;
 }
 
-class UpdateTransactionMetadataCommand {
-  const UpdateTransactionMetadataCommand({
+class UpdateTransactionBasicInfoCommand {
+  const UpdateTransactionBasicInfoCommand({
     required this.transactionId,
+    this.occurredAt,
+    this.counterpartyName,
     this.note,
+  });
+
+  final String transactionId;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
+}
+
+class UpdateTransactionReportingFlagCommand {
+  const UpdateTransactionReportingFlagCommand({
+    required this.transactionId,
     this.isExcludedFromStats,
     this.isExcludedFromBudget,
   });
 
   final String transactionId;
-
-  /// `null` 表示不改备注；`Patch.set(value)` 设置；`Patch.clear()` 清空。
-  final Patch<String>? note;
   final bool? isExcludedFromStats;
   final bool? isExcludedFromBudget;
-}
-
-class UpdateTransactionBasicsCommand {
-  const UpdateTransactionBasicsCommand({
-    required this.transactionId,
-    this.occurredAt,
-    this.settlementAccountId,
-    this.reimbursementAccountId,
-  });
-
-  final String transactionId;
-  final DateTime? occurredAt;
-  final String? settlementAccountId;
-  final String? reimbursementAccountId;
 }
 
 class UpdateTransactionOwnershipCommand {
@@ -528,10 +468,9 @@ class UpdateTransactionOwnershipCommand {
   final TransactionOwnership ownership;
 }
 
-/// transaction_service 的所有写入命令统一返回此结果。
-/// 内部 ledger 的 PostTransactionResult 不对外暴露；service 实现把它映射成本类型。
-class CreatedTransactionResult {
-  const CreatedTransactionResult({
+/// transaction_service 的所有入账写入命令统一返回此结果。
+class PostedTransactionResult {
+  const PostedTransactionResult({
     required this.transactionId,
     required this.rootTransactionId,
   });

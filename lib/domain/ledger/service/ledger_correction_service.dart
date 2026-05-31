@@ -1,5 +1,6 @@
 import '../../../core/error/failure.dart';
 import '../../../core/money/money.dart';
+import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
 import '../entity/account.dart';
 import '../entity/root_transaction_group.dart';
@@ -89,6 +90,7 @@ class LedgerCorrectionService {
     }
     final candidateParent = candidateParentResult.value;
     if (hasSamePostingShape(currentParent, candidateParent)) {
+      _applyParentCorrectionFields(group, instruction);
       return Result.success(
         ParentReplacementResult(
           transactions: group.transactions.toList(),
@@ -155,6 +157,7 @@ class LedgerCorrectionService {
           replacement.correctionTransaction,
       ],
     );
+    _applyParentCorrectionFields(currentGroup, instruction);
 
     return Result.success(
       ParentReplacementResult(
@@ -234,6 +237,7 @@ class LedgerCorrectionService {
     }
     final candidateRefund = candidateRefundResult.value;
     if (hasSamePostingShape(currentRefund, candidateRefund)) {
+      _applyChildCorrectionFields(currentRefund, instruction);
       return Result.success(
         ChildReplacementResult(
           transactions: [currentRefund],
@@ -260,6 +264,7 @@ class LedgerCorrectionService {
       accounts: accounts,
     );
     final correctedRefund = replacement.correctionTransaction;
+    _applyChildCorrectionFields(correctedRefund, instruction);
     final currentGroup = RootTransactionGroup(
       rootTransactionId: group.rootTransactionId,
       parentTransaction: parent,
@@ -305,14 +310,24 @@ class LedgerCorrectionService {
         group.parentTransaction.primaryAmount -
         group.reimbursementReceivedTotal() +
         currentReceipt.primaryAmount;
-    if (instruction.amount.minorUnits > remaining.minorUnits) {
+    final amount = instruction.amount ?? currentReceipt.primaryAmount;
+    final receiveAccountId =
+        instruction.receiveAccountId ??
+        _firstEntryAccount(currentReceipt, EntryDirection.debit);
+    final receivableAccountId =
+        instruction.receivableAccountId ??
+        _firstEntryAccount(currentReceipt, EntryDirection.credit);
+    if (receiveAccountId == null || receivableAccountId == null) {
+      return _failure('reimbursement_receipt_accounts_unresolved');
+    }
+    if (amount.minorUnits > remaining.minorUnits) {
       return _failure('reimbursement_receipt_exceeds_outstanding');
     }
 
     final roleFailure = await _accountRolePolicy.validate(
       AccountRoleContext.reimbursementReceipt(
-        receivableAccountId: instruction.receivableAccountId,
-        receiveAccountId: instruction.receiveAccountId,
+        receivableAccountId: receivableAccountId,
+        receiveAccountId: receiveAccountId,
       ),
     );
     if (roleFailure != null) return Result.failure(roleFailure);
@@ -320,9 +335,9 @@ class LedgerCorrectionService {
     final candidateResult = _postingEngine.createReimbursementReceipt(
       instruction: ReimbursementReceiptInstruction(
         advanceTransactionId: group.parentTransaction.id,
-        amount: instruction.amount,
-        receivableAccountId: instruction.receivableAccountId,
-        receiveAccountId: instruction.receiveAccountId,
+        amount: amount,
+        receivableAccountId: receivableAccountId,
+        receiveAccountId: receiveAccountId,
         occurredAt: currentReceipt.occurredAt,
         counterpartyName: currentReceipt.counterpartyName,
         note: currentReceipt.note,
@@ -336,6 +351,9 @@ class LedgerCorrectionService {
       group: group,
       currentChild: currentReceipt,
       candidateChild: candidateResult.value,
+      occurredAt: instruction.occurredAt,
+      counterpartyName: instruction.counterpartyName,
+      note: instruction.note,
     );
   }
 
@@ -364,15 +382,26 @@ class LedgerCorrectionService {
           TransactionDetailType.reimbursementCloseMain,
         ) ??
         Money.zero();
+    final actualReceivedAmount =
+        instruction.actualReceivedAmount ?? currentClose.primaryAmount;
+    final receiveAccountId =
+        instruction.receiveAccountId ??
+        _firstEntryAccount(currentClose, EntryDirection.debit);
+    final receivableAccountId =
+        instruction.receivableAccountId ??
+        _firstEntryAccount(currentClose, EntryDirection.credit);
+    if (receiveAccountId == null || receivableAccountId == null) {
+      return _failure('reimbursement_close_accounts_unresolved');
+    }
     final gapIncomeAccountId =
-        instruction.actualReceivedAmount.minorUnits > outstanding.minorUnits
+        actualReceivedAmount.minorUnits > outstanding.minorUnits
             ? await _systemAccountResolver.resolveReimbursementGapIncome()
             : null;
     final roleFailure = await _accountRolePolicy.validate(
       AccountRoleContext.reimbursementClose(
-        receivableAccountId: instruction.receivableAccountId,
-        receiveAccountId: instruction.receiveAccountId,
-        receivesCash: instruction.actualReceivedAmount.minorUnits > 0,
+        receivableAccountId: receivableAccountId,
+        receiveAccountId: receiveAccountId,
+        receivesCash: actualReceivedAmount.minorUnits > 0,
       ),
     );
     if (roleFailure != null) return Result.failure(roleFailure);
@@ -380,9 +409,9 @@ class LedgerCorrectionService {
     final candidateResult = _postingEngine.createReimbursementClose(
       instruction: ReimbursementCloseInstruction(
         advanceTransactionId: group.parentTransaction.id,
-        actualReceivedAmount: instruction.actualReceivedAmount,
-        receivableAccountId: instruction.receivableAccountId,
-        receiveAccountId: instruction.receiveAccountId,
+        actualReceivedAmount: actualReceivedAmount,
+        receivableAccountId: receivableAccountId,
+        receiveAccountId: receiveAccountId,
         occurredAt: currentClose.occurredAt,
         counterpartyName: currentClose.counterpartyName,
         note: currentClose.note,
@@ -398,6 +427,9 @@ class LedgerCorrectionService {
       group: group,
       currentChild: currentClose,
       candidateChild: candidateResult.value,
+      occurredAt: instruction.occurredAt,
+      counterpartyName: instruction.counterpartyName,
+      note: instruction.note,
     );
   }
 
@@ -464,8 +496,16 @@ class LedgerCorrectionService {
     required RootTransactionGroup group,
     required Transaction currentChild,
     required Transaction candidateChild,
+    DateTime? occurredAt,
+    Patch<String?>? counterpartyName,
+    Patch<String?>? note,
   }) async {
     if (hasSamePostingShape(currentChild, candidateChild)) {
+      currentChild.updateBasicInfo(
+        occurredAt: occurredAt,
+        counterpartyName: counterpartyName,
+        note: note,
+      );
       return Result.success(
         ChildReplacementResult(
           transactions: [currentChild],
@@ -492,6 +532,11 @@ class LedgerCorrectionService {
       accounts: accounts,
     );
     final correctedChild = replacement.correctionTransaction;
+    correctedChild.updateBasicInfo(
+      occurredAt: occurredAt,
+      counterpartyName: counterpartyName,
+      note: note,
+    );
     final currentGroup = RootTransactionGroup(
       rootTransactionId: group.rootTransactionId,
       parentTransaction: group.parentTransaction,
@@ -508,6 +553,42 @@ class LedgerCorrectionService {
         currentGroup: currentGroup,
       ),
     );
+  }
+
+  void _applyParentCorrectionFields(
+    RootTransactionGroup group,
+    ReplaceParentTransactionInstruction instruction,
+  ) {
+    group.parentTransaction.updateBasicInfo(
+      occurredAt: instruction.occurredAt,
+      counterpartyName: instruction.counterpartyName,
+      note: instruction.note,
+    );
+    group.updateReportingFlags(
+      isExcludedFromStats: instruction.isExcludedFromStats,
+      isExcludedFromBudget: instruction.isExcludedFromBudget,
+    );
+  }
+
+  void _applyChildCorrectionFields(
+    Transaction transaction,
+    ReplaceRefundTransactionInstruction instruction,
+  ) {
+    transaction.updateBasicInfo(
+      occurredAt: instruction.occurredAt,
+      counterpartyName: instruction.counterpartyName,
+      note: instruction.note,
+    );
+  }
+
+  String? _firstEntryAccount(
+    Transaction transaction,
+    EntryDirection direction,
+  ) {
+    for (final entry in transaction.entries) {
+      if (entry.direction == direction) return entry.accountId;
+    }
+    return null;
   }
 
   Failure? _validateReimbursementAdvance(RootTransactionGroup group) {

@@ -468,49 +468,77 @@ class ReplaceParentTransactionInstruction {
     required this.transactionId,
     required this.expectedCurrentPurpose,
     required this.replacementPatch,
+    this.occurredAt,
+    this.counterpartyName,
+    this.note,
+    this.isExcludedFromStats,
+    this.isExcludedFromBudget,
   });
 
   final String transactionId;
   final BusinessPurpose expectedCurrentPurpose;
   final PostingReplacementPatch replacementPatch;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
+  final bool? isExcludedFromStats;
+  final bool? isExcludedFromBudget;
 }
 
 class ReplaceRefundTransactionInstruction {
   const ReplaceRefundTransactionInstruction({
     required this.transactionId,
     required this.replacementPatch,
+    this.occurredAt,
+    this.counterpartyName,
+    this.note,
   });
 
   final String transactionId;
   final RefundReplacementPatch replacementPatch;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
 }
 
 class ReplaceReimbursementReceiptTransactionInstruction {
   const ReplaceReimbursementReceiptTransactionInstruction({
     required this.transactionId,
-    required this.amount,
-    required this.receivableAccountId,
-    required this.receiveAccountId,
+    this.amount,
+    this.receivableAccountId,
+    this.receiveAccountId,
+    this.occurredAt,
+    this.counterpartyName,
+    this.note,
   });
 
   final String transactionId;
-  final Money amount;
-  final String receivableAccountId;
-  final String receiveAccountId;
+  final Money? amount;
+  final String? receivableAccountId;
+  final String? receiveAccountId;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
 }
 
 class ReplaceReimbursementCloseTransactionInstruction {
   const ReplaceReimbursementCloseTransactionInstruction({
     required this.transactionId,
-    required this.actualReceivedAmount,
-    required this.receivableAccountId,
-    required this.receiveAccountId,
+    this.actualReceivedAmount,
+    this.receivableAccountId,
+    this.receiveAccountId,
+    this.occurredAt,
+    this.counterpartyName,
+    this.note,
   });
 
   final String transactionId;
-  final Money actualReceivedAmount;
-  final String receivableAccountId;
-  final String receiveAccountId;
+  final Money? actualReceivedAmount;
+  final String? receivableAccountId;
+  final String? receiveAccountId;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
 }
 
 class CancelTransactionInstruction {
@@ -519,32 +547,30 @@ class CancelTransactionInstruction {
   final String transactionId;
 }
 
-class UpdateTransactionMetadataInstruction {
-  const UpdateTransactionMetadataInstruction({
+class UpdateTransactionBasicInfoInstruction {
+  const UpdateTransactionBasicInfoInstruction({
     required this.transactionId,
+    this.occurredAt,
+    this.counterpartyName,
     this.note,
+  });
+
+  final String transactionId;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
+}
+
+class UpdateTransactionReportingFlagInstruction {
+  const UpdateTransactionReportingFlagInstruction({
+    required this.transactionId,
     this.isExcludedFromStats,
     this.isExcludedFromBudget,
   });
 
   final String transactionId;
-  final Patch<String>? note;
   final bool? isExcludedFromStats;
   final bool? isExcludedFromBudget;
-}
-
-class UpdateTransactionBasicsInstruction {
-  const UpdateTransactionBasicsInstruction({
-    required this.transactionId,
-    this.occurredAt,
-    this.settlementAccountId,
-    this.reimbursementAccountId,
-  });
-
-  final String transactionId;
-  final DateTime? occurredAt;
-  final String? settlementAccountId;
-  final String? reimbursementAccountId;
 }
 
 class UpdateTransactionOwnershipInstruction {

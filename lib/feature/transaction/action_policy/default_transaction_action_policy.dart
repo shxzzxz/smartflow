@@ -35,38 +35,49 @@ class DefaultTransactionActionPolicy implements TransactionActionPolicy {
   }
 
   @override
-  Future<Result<void>> changeSettlementAccount(String newAccountId) {
-    return _service.updateTransactionBasics(
-      UpdateTransactionBasicsCommand(
-        transactionId: _transactionId,
-        settlementAccountId: newAccountId,
+  Future<Result<void>> changeSettlementAccount(String newAccountId) async {
+    return const Result.failure(
+      Failure(
+        code: 'settlement_account_update_requires_correction',
+        message: 'Settlement account changes must use transaction correction.',
       ),
     );
   }
 
   @override
-  Future<Result<void>> changeOccurredAt(DateTime newTime) {
-    return _service.updateTransactionBasics(
-      UpdateTransactionBasicsCommand(
+  Future<Result<void>> changeOccurredAt(DateTime newTime) async {
+    final result = await _service.updateBasicInfo(
+      UpdateTransactionBasicInfoCommand(
         transactionId: _transactionId,
         occurredAt: newTime,
       ),
     );
+    return _voidResult(result);
   }
 
   @override
-  Future<Result<void>> changeNote(String? newNote) {
-    return _service.updateTransactionMetadata(
-      UpdateTransactionMetadataCommand(
+  Future<Result<void>> changeNote(String? newNote) async {
+    final result = await _service.updateBasicInfo(
+      UpdateTransactionBasicInfoCommand(
         transactionId: _transactionId,
         note:
-            newNote == null ? const Patch<String>.clear() : Patch.set(newNote),
+            newNote == null
+                ? const Patch<String?>.clear()
+                : Patch<String?>.set(newNote),
       ),
     );
+    return _voidResult(result);
   }
 
   @override
-  EditPermission canEdit(EditableField field) => const EditPermission.allowed();
+  EditPermission canEdit(EditableField field) {
+    return switch (field) {
+      EditableField.settlementAccount => const EditPermission.denied(
+        reason: '结算账户变更需要通过更正交易完成',
+      ),
+      _ => const EditPermission.allowed(),
+    };
+  }
 
   @override
   String? displayBanner() => null;
@@ -115,14 +126,17 @@ class UnknownOwnedTransactionActionPolicy implements TransactionActionPolicy {
       );
 
   @override
-  Future<Result<void>> changeNote(String? newNote) {
-    return _service.updateTransactionMetadata(
-      UpdateTransactionMetadataCommand(
+  Future<Result<void>> changeNote(String? newNote) async {
+    final result = await _service.updateBasicInfo(
+      UpdateTransactionBasicInfoCommand(
         transactionId: _transactionId,
         note:
-            newNote == null ? const Patch<String>.clear() : Patch.set(newNote),
+            newNote == null
+                ? const Patch<String?>.clear()
+                : Patch<String?>.set(newNote),
       ),
     );
+    return _voidResult(result);
   }
 
   @override
@@ -135,4 +149,11 @@ class UnknownOwnedTransactionActionPolicy implements TransactionActionPolicy {
 
   @override
   String? displayBanner() => '该交易属于当前版本未识别的业务来源：$_ownerType';
+}
+
+Result<void> _voidResult<T>(Result<T> result) {
+  return switch (result) {
+    Success<T>() => const Result.success(null),
+    FailureResult<T>(:final failure) => Result.failure(failure),
+  };
 }

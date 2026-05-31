@@ -303,7 +303,7 @@ class _DetailBody extends ConsumerWidget {
       selectedId: row.accountId,
     );
     if (selectedId == null || selectedId == row.accountId) return;
-    final Result<void> result;
+    final Result<dynamic> result;
     if (row.editKind == _AccountEditKind.settlement) {
       result = await policy.changeSettlementAccount(selectedId);
     } else {
@@ -311,10 +311,10 @@ class _DetailBody extends ConsumerWidget {
       // 不经 handler；直接走 transactionService（参见 docs/08.2 动作二分）。
       result = await ref
           .read(postingAppServiceProvider)
-          .updateTransactionBasics(
-            UpdateTransactionBasicsCommand(
+          .correctReimbursementAdvance(
+            CorrectReimbursementAdvanceCommand(
               transactionId: detail.transaction.id,
-              reimbursementAccountId: selectedId,
+              receivableAccountId: selectedId,
             ),
           );
     }
@@ -603,8 +603,8 @@ class _ExclusionCard extends ConsumerWidget {
   ) async {
     final result = await ref
         .read(postingAppServiceProvider)
-        .updateTransactionMetadata(
-          UpdateTransactionMetadataCommand(
+        .updateReportingFlag(
+          UpdateTransactionReportingFlagCommand(
             transactionId: detail.transaction.id,
             isExcludedFromStats: next,
           ),
@@ -620,8 +620,8 @@ class _ExclusionCard extends ConsumerWidget {
   ) async {
     final result = await ref
         .read(postingAppServiceProvider)
-        .updateTransactionMetadata(
-          UpdateTransactionMetadataCommand(
+        .updateReportingFlag(
+          UpdateTransactionReportingFlagCommand(
             transactionId: detail.transaction.id,
             isExcludedFromBudget: next,
           ),
@@ -1021,7 +1021,7 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
     setState(() => _submitting = true);
     final service = ref.read(postingAppServiceProvider);
     final note = _blankToNull(_noteController.text);
-    final Result<CreatedTransactionResult> result =
+    final Result<PostedTransactionResult> result =
         _closeReimbursement
             ? await service.closeReimbursement(
               CloseReimbursementCommand(
