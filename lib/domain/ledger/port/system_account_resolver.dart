@@ -3,9 +3,9 @@ abstract interface class SystemAccountResolver {
 
   Future<String> resolveReimbursementGapIncome();
 
-  Future<String> resolveDebtInterestExpense();
+  Future<String> resolveInterestExpense();
 
-  Future<String> resolveDebtFeeExpense();
+  Future<String> resolveFeeExpense();
 
   Future<String> resolveDiscountIncome();
 

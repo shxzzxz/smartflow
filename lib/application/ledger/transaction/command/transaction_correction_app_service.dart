@@ -161,7 +161,6 @@ class TransactionCorrectionAppServiceImpl
             fromAccountId: cmd.fromAccountId,
             toAccountId: cmd.toAccountId,
             feeAmount: cmd.feeAmount,
-            feeExpenseAccountId: cmd.feeExpenseAccountId,
           ),
         ),
       ),

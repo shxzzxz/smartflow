@@ -76,15 +76,15 @@ class LedgerCorrectionService {
     if (replacementInstructionResult case FailureResult(:final failure)) {
       return Result.failure(failure);
     }
-    final replacementInstruction = await _completeReplacementInstruction(
-      replacementInstructionResult.value,
-    );
+    final replacementInstruction = replacementInstructionResult.value;
     final roleFailure = await _validatePostingInstruction(
       replacementInstruction,
     );
     if (roleFailure != null) return Result.failure(roleFailure);
 
-    final candidateParentResult = _postingEngine.create(replacementInstruction);
+    final candidateParentResult = await _createPostingCandidate(
+      replacementInstruction,
+    );
     if (candidateParentResult case FailureResult(:final failure)) {
       return Result.failure(failure);
     }
@@ -640,10 +640,6 @@ class LedgerCorrectionService {
         AccountRoleContext.transfer(
           fromAccountId: i.fromAccountId,
           toAccountId: i.toAccountId,
-          feeExpenseAccountId:
-              i.feeAmount != null && i.feeAmount!.minorUnits > 0
-                  ? i.feeExpenseAccountId
-                  : null,
         ),
       ),
       RepaymentInstruction i => _accountRolePolicy.validate(
@@ -661,38 +657,40 @@ class LedgerCorrectionService {
     };
   }
 
-  Future<PostingInstruction> _completeReplacementInstruction(
+  Future<Result<Transaction>> _createPostingCandidate(
     PostingInstruction instruction,
   ) async {
-    if (instruction is! RepaymentInstruction) return instruction;
-    final hasInterest =
-        instruction.interest != null && instruction.interest!.minorUnits > 0;
-    final hasFee = instruction.fee != null && instruction.fee!.minorUnits > 0;
-    final hasDiscount =
-        instruction.discount != null && instruction.discount!.minorUnits > 0;
-    return RepaymentInstruction(
-      principal: instruction.principal,
-      interest: instruction.interest,
-      fee: instruction.fee,
-      discount: instruction.discount,
-      liabilityAccountId: instruction.liabilityAccountId,
-      paidFromAccountId: instruction.paidFromAccountId,
-      interestExpenseAccountId:
-          hasInterest
-              ? await _systemAccountResolver.resolveDebtInterestExpense()
-              : null,
-      feeExpenseAccountId:
-          hasFee ? await _systemAccountResolver.resolveDebtFeeExpense() : null,
-      discountIncomeAccountId:
-          hasDiscount
-              ? await _systemAccountResolver.resolveDiscountIncome()
-              : null,
-      occurredAt: instruction.occurredAt,
-      counterpartyName: instruction.counterpartyName,
-      note: instruction.note,
-      ownership: instruction.ownership,
-      sourceKind: instruction.sourceKind,
-    );
+    if (instruction is TransferInstruction) {
+      final hasFee =
+          instruction.feeAmount != null &&
+          instruction.feeAmount!.minorUnits > 0;
+      return _postingEngine.createTransfer(
+        instruction,
+        feeExpenseAccountId:
+            hasFee ? await _systemAccountResolver.resolveFeeExpense() : null,
+      );
+    }
+    if (instruction is RepaymentInstruction) {
+      final hasInterest =
+          instruction.interest != null && instruction.interest!.minorUnits > 0;
+      final hasFee = instruction.fee != null && instruction.fee!.minorUnits > 0;
+      final hasDiscount =
+          instruction.discount != null && instruction.discount!.minorUnits > 0;
+      return _postingEngine.createRepayment(
+        instruction,
+        interestExpenseAccountId:
+            hasInterest
+                ? await _systemAccountResolver.resolveInterestExpense()
+                : null,
+        feeExpenseAccountId:
+            hasFee ? await _systemAccountResolver.resolveFeeExpense() : null,
+        discountIncomeAccountId:
+            hasDiscount
+                ? await _systemAccountResolver.resolveDiscountIncome()
+                : null,
+      );
+    }
+    return _postingEngine.create(instruction);
   }
 
   Result<T> _failure<T>(String code) {

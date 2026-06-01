@@ -185,11 +185,6 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       detailType: TransactionDetailType.transferMain,
       direction: EntryDirection.debit,
     );
-    final feeAccountId = _entryForDetailAmount(
-      transaction,
-      detailType: TransactionDetailType.transferFee,
-      direction: EntryDirection.debit,
-    );
     final feeAmount = _detailAmount(
       transaction,
       TransactionDetailType.transferFee,
@@ -208,7 +203,6 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
         fromAccountId: fromAccountId,
         toAccountId: toAccountId,
         feeAmount: feeAmount,
-        feeExpenseAccountId: feeAccountId,
         occurredAt: transaction.occurredAt,
         counterpartyName: transaction.counterpartyName,
         note: transaction.note,
@@ -284,21 +278,6 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
         discount: discount,
         liabilityAccountId: liabilityAccountId,
         paidFromAccountId: paidFromAccountId,
-        interestExpenseAccountId: _entryForDetailAmount(
-          transaction,
-          detailType: TransactionDetailType.repaymentInterest,
-          direction: EntryDirection.debit,
-        ),
-        feeExpenseAccountId: _entryForDetailAmount(
-          transaction,
-          detailType: TransactionDetailType.repaymentFee,
-          direction: EntryDirection.debit,
-        ),
-        discountIncomeAccountId: _entryForDetailAmount(
-          transaction,
-          detailType: TransactionDetailType.repaymentDiscount,
-          direction: EntryDirection.credit,
-        ),
         occurredAt: transaction.occurredAt,
         counterpartyName: transaction.counterpartyName,
         note: transaction.note,

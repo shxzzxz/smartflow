@@ -58,7 +58,6 @@ class AccountRoleContext {
   factory AccountRoleContext.transfer({
     required String fromAccountId,
     required String toAccountId,
-    String? feeExpenseAccountId,
   }) {
     return AccountRoleContext([
       AccountRoleRequirement(
@@ -69,11 +68,6 @@ class AccountRoleContext {
         accountId: toAccountId,
         requiredUsage: AccountUsage.settlement,
       ),
-      if (feeExpenseAccountId != null)
-        AccountRoleRequirement(
-          accountId: feeExpenseAccountId,
-          expectedTypes: {AccountType.expense},
-        ),
     ]);
   }
 

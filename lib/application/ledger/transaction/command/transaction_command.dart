@@ -51,7 +51,6 @@ class CreateTransferCommand {
     required this.toAccountId,
     required this.occurredAt,
     this.feeAmount,
-    this.feeExpenseAccountId,
     this.counterpartyName,
     this.note,
   });
@@ -61,7 +60,6 @@ class CreateTransferCommand {
   final String toAccountId;
   final DateTime occurredAt;
   final Money? feeAmount;
-  final String? feeExpenseAccountId;
   final String? counterpartyName;
   final String? note;
 }
@@ -280,7 +278,6 @@ class CorrectTransferCommand {
     this.toAccountId,
     this.occurredAt,
     this.feeAmount,
-    this.feeExpenseAccountId,
     this.counterpartyName,
     this.note,
   });
@@ -291,7 +288,6 @@ class CorrectTransferCommand {
   final String? toAccountId;
   final DateTime? occurredAt;
   final Money? feeAmount;
-  final Patch<String?>? feeExpenseAccountId;
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;
 }

@@ -5,7 +5,7 @@ import '../../domain/ledger/valobj/ledger_enum.dart';
 import 'app_database.dart';
 
 const builtinDataVersionKey = 'builtin_data_version';
-const currentBuiltinDataVersion = 7;
+const currentBuiltinDataVersion = 8;
 
 const _uuid = Uuid();
 
@@ -16,6 +16,9 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
       return;
     }
 
+    if (version >= 1 && version < 8) {
+      await _renameInterestAndFeeSystemKeys(database);
+    }
     if (version < 1) {
       await _seedBuiltinAccounts(database);
     }
@@ -37,6 +40,17 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
 
     await _writeBuiltinDataVersion(database, currentBuiltinDataVersion);
   });
+}
+
+Future<void> _renameInterestAndFeeSystemKeys(AppDatabase database) async {
+  await database.customStatement(
+    "UPDATE accounts SET system_key = 'interestExpense' "
+    "WHERE system_key = 'debtInterestExpense'",
+  );
+  await database.customStatement(
+    "UPDATE accounts SET system_key = 'feeExpense' "
+    "WHERE system_key = 'debtFeeExpense'",
+  );
 }
 
 Future<void> _renameOpeningBalanceAccount(AppDatabase database) async {
@@ -197,14 +211,14 @@ Future<void> _upgradeBuiltinIcons(AppDatabase database) async {
     database,
     name: '利息',
     type: AccountType.expense,
-    systemKey: SystemKey.debtInterestExpense,
+    systemKey: SystemKey.interestExpense,
     iconKey: 'money-cny-circle-line',
   );
   await _updateCategoryIcon(
     database,
     name: '手续费',
     type: AccountType.expense,
-    systemKey: SystemKey.debtFeeExpense,
+    systemKey: SystemKey.feeExpense,
     iconKey: 'swap-box-line',
   );
 }
@@ -629,13 +643,13 @@ const _expenseCategories = [
         name: '利息',
         iconKey: 'money-cny-circle-line',
         sortOrder: 20,
-        systemKey: SystemKey.debtInterestExpense,
+        systemKey: SystemKey.interestExpense,
       ),
       _BuiltinCategory(
         name: '手续费',
         iconKey: 'swap-box-line',
         sortOrder: 30,
-        systemKey: SystemKey.debtFeeExpense,
+        systemKey: SystemKey.feeExpense,
       ),
       _BuiltinCategory(name: '借出', iconKey: 'logout-box-r-line', sortOrder: 40),
     ],

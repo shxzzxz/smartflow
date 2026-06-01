@@ -228,7 +228,6 @@ class TransferInstruction extends PostingInstruction {
     required this.toAccountId,
     required this.occurredAt,
     this.feeAmount,
-    this.feeExpenseAccountId,
     this.counterpartyName,
     this.note,
     this.sourceKind = SourceKind.manual,
@@ -238,7 +237,6 @@ class TransferInstruction extends PostingInstruction {
   final String fromAccountId;
   final String toAccountId;
   final Money? feeAmount;
-  final String? feeExpenseAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -248,18 +246,13 @@ class TransferInstruction extends PostingInstruction {
   BusinessPurpose get businessPurpose => BusinessPurpose.transfer;
 
   @override
-  Set<String> get accountIds => {
-    fromAccountId,
-    toAccountId,
-    if (feeExpenseAccountId != null) feeExpenseAccountId!,
-  };
+  Set<String> get accountIds => {fromAccountId, toAccountId};
 
   TransferInstruction copyWith({
     Money? amount,
     String? fromAccountId,
     String? toAccountId,
     Money? feeAmount,
-    String? feeExpenseAccountId,
     DateTime? occurredAt,
     String? counterpartyName,
     String? note,
@@ -270,7 +263,6 @@ class TransferInstruction extends PostingInstruction {
       fromAccountId: fromAccountId ?? this.fromAccountId,
       toAccountId: toAccountId ?? this.toAccountId,
       feeAmount: feeAmount ?? this.feeAmount,
-      feeExpenseAccountId: feeExpenseAccountId ?? this.feeExpenseAccountId,
       occurredAt: occurredAt ?? this.occurredAt,
       counterpartyName: counterpartyName ?? this.counterpartyName,
       note: note ?? this.note,
@@ -308,9 +300,6 @@ class RepaymentInstruction extends PostingInstruction {
     this.interest,
     this.fee,
     this.discount,
-    this.interestExpenseAccountId,
-    this.feeExpenseAccountId,
-    this.discountIncomeAccountId,
     this.counterpartyName,
     this.note,
     this.ownership,
@@ -323,9 +312,6 @@ class RepaymentInstruction extends PostingInstruction {
   final Money? discount;
   final String liabilityAccountId;
   final String paidFromAccountId;
-  final String? interestExpenseAccountId;
-  final String? feeExpenseAccountId;
-  final String? discountIncomeAccountId;
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
@@ -336,13 +322,7 @@ class RepaymentInstruction extends PostingInstruction {
   BusinessPurpose get businessPurpose => BusinessPurpose.debtRepayment;
 
   @override
-  Set<String> get accountIds => {
-    liabilityAccountId,
-    paidFromAccountId,
-    if (interestExpenseAccountId != null) interestExpenseAccountId!,
-    if (feeExpenseAccountId != null) feeExpenseAccountId!,
-    if (discountIncomeAccountId != null) discountIncomeAccountId!,
-  };
+  Set<String> get accountIds => {liabilityAccountId, paidFromAccountId};
 
   RepaymentInstruction copyWith({
     Money? principal,
@@ -351,9 +331,6 @@ class RepaymentInstruction extends PostingInstruction {
     Money? discount,
     String? liabilityAccountId,
     String? paidFromAccountId,
-    String? interestExpenseAccountId,
-    String? feeExpenseAccountId,
-    String? discountIncomeAccountId,
     DateTime? occurredAt,
     String? counterpartyName,
     String? note,
@@ -367,11 +344,6 @@ class RepaymentInstruction extends PostingInstruction {
       discount: discount ?? this.discount,
       liabilityAccountId: liabilityAccountId ?? this.liabilityAccountId,
       paidFromAccountId: paidFromAccountId ?? this.paidFromAccountId,
-      interestExpenseAccountId:
-          interestExpenseAccountId ?? this.interestExpenseAccountId,
-      feeExpenseAccountId: feeExpenseAccountId ?? this.feeExpenseAccountId,
-      discountIncomeAccountId:
-          discountIncomeAccountId ?? this.discountIncomeAccountId,
       occurredAt: occurredAt ?? this.occurredAt,
       counterpartyName: counterpartyName ?? this.counterpartyName,
       note: note ?? this.note,
@@ -679,14 +651,12 @@ class TransferReplacementPatch extends PostingReplacementPatch {
     this.fromAccountId,
     this.toAccountId,
     this.feeAmount,
-    this.feeExpenseAccountId,
   });
 
   final Money? amount;
   final String? fromAccountId;
   final String? toAccountId;
   final Money? feeAmount;
-  final Patch<String?>? feeExpenseAccountId;
 
   @override
   BusinessPurpose get targetPurpose => BusinessPurpose.transfer;
@@ -700,10 +670,6 @@ class TransferReplacementPatch extends PostingReplacementPatch {
           fromAccountId: fromAccountId ?? current.fromAccountId,
           toAccountId: toAccountId ?? current.toAccountId,
           feeAmount: feeAmount ?? current.feeAmount,
-          feeExpenseAccountId: _applyPatch(
-            feeExpenseAccountId,
-            current.feeExpenseAccountId,
-          ),
           occurredAt: current.occurredAt,
           counterpartyName: current.counterpartyName,
           note: current.note,
@@ -823,9 +789,6 @@ class RepaymentReplacementPatch extends PostingReplacementPatch {
           discount: _applyPatch(discount, current.discount),
           liabilityAccountId: liabilityAccountId ?? current.liabilityAccountId,
           paidFromAccountId: paidFromAccountId ?? current.paidFromAccountId,
-          interestExpenseAccountId: current.interestExpenseAccountId,
-          feeExpenseAccountId: current.feeExpenseAccountId,
-          discountIncomeAccountId: current.discountIncomeAccountId,
           occurredAt: current.occurredAt,
           counterpartyName: current.counterpartyName,
           note: current.note,

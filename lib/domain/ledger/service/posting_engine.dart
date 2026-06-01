@@ -240,7 +240,10 @@ class PostingEngine {
     );
   }
 
-  Result<Transaction> createTransfer(TransferInstruction instruction) {
+  Result<Transaction> createTransfer(
+    TransferInstruction instruction, {
+    String? feeExpenseAccountId,
+  }) {
     final fee = instruction.feeAmount;
     final hasFee = fee != null && fee.minorUnits > 0;
     if (instruction.amount.minorUnits <= 0) {
@@ -267,7 +270,7 @@ class PostingEngine {
         ),
       );
     }
-    if (hasFee && instruction.feeExpenseAccountId == null) {
+    if (hasFee && feeExpenseAccountId == null) {
       return const Result.failure(
         Failure(
           code: 'transfer_fee_account_required',
@@ -317,7 +320,7 @@ class PostingEngine {
           if (hasFee)
             _entry(
               transactionId: transactionId,
-              accountId: instruction.feeExpenseAccountId!,
+              accountId: feeExpenseAccountId!,
               direction: EntryDirection.debit,
               amount: fee,
             ),
@@ -387,7 +390,12 @@ class PostingEngine {
     );
   }
 
-  Result<Transaction> createRepayment(RepaymentInstruction instruction) {
+  Result<Transaction> createRepayment(
+    RepaymentInstruction instruction, {
+    String? interestExpenseAccountId,
+    String? feeExpenseAccountId,
+    String? discountIncomeAccountId,
+  }) {
     if (instruction.principal.minorUnits <= 0) {
       return const Result.failure(
         Failure(
@@ -402,7 +410,7 @@ class PostingEngine {
     final hasInterest = interest != null && interest.minorUnits > 0;
     final hasFee = fee != null && fee.minorUnits > 0;
     final hasDiscount = discount != null && discount.minorUnits > 0;
-    if (hasInterest && instruction.interestExpenseAccountId == null) {
+    if (hasInterest && interestExpenseAccountId == null) {
       return const Result.failure(
         Failure(
           code: 'repayment_interest_account_missing',
@@ -410,7 +418,7 @@ class PostingEngine {
         ),
       );
     }
-    if (hasFee && instruction.feeExpenseAccountId == null) {
+    if (hasFee && feeExpenseAccountId == null) {
       return const Result.failure(
         Failure(
           code: 'repayment_fee_account_missing',
@@ -418,7 +426,7 @@ class PostingEngine {
         ),
       );
     }
-    if (hasDiscount && instruction.discountIncomeAccountId == null) {
+    if (hasDiscount && discountIncomeAccountId == null) {
       return const Result.failure(
         Failure(
           code: 'repayment_discount_account_missing',
@@ -496,21 +504,21 @@ class PostingEngine {
           if (hasInterest)
             _entry(
               transactionId: transactionId,
-              accountId: instruction.interestExpenseAccountId!,
+              accountId: interestExpenseAccountId!,
               direction: EntryDirection.debit,
               amount: interest,
             ),
           if (hasFee)
             _entry(
               transactionId: transactionId,
-              accountId: instruction.feeExpenseAccountId!,
+              accountId: feeExpenseAccountId!,
               direction: EntryDirection.debit,
               amount: fee,
             ),
           if (hasDiscount)
             _entry(
               transactionId: transactionId,
-              accountId: instruction.discountIncomeAccountId!,
+              accountId: discountIncomeAccountId!,
               direction: EntryDirection.credit,
               amount: discount,
             ),

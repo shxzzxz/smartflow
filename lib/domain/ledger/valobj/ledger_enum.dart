@@ -64,8 +64,8 @@ enum SourceKind { manual, import, auto }
 enum SystemKey {
   openingBalance,
   reimbursementGapIncome,
-  debtInterestExpense,
-  debtFeeExpense,
+  interestExpense,
+  feeExpense,
   discountIncome,
   ghostAccount,
 }

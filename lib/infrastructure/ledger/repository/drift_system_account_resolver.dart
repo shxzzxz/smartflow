@@ -1,11 +1,14 @@
+import 'package:drift/drift.dart';
+
 import '../../../domain/ledger/valobj/ledger_enum.dart';
 import '../../../domain/ledger/port/system_account_resolver.dart';
 import '../../database/app_database.dart';
 
 class DriftSystemAccountResolver implements SystemAccountResolver {
-  const DriftSystemAccountResolver(this._database);
+  DriftSystemAccountResolver(this._database);
 
   final AppDatabase _database;
+  final _cache = <SystemKey, Future<String>>{};
 
   @override
   Future<String> resolveOpeningBalance() {
@@ -26,18 +29,18 @@ class DriftSystemAccountResolver implements SystemAccountResolver {
   }
 
   @override
-  Future<String> resolveDebtInterestExpense() {
+  Future<String> resolveInterestExpense() {
     return _resolve(
-      systemKey: SystemKey.debtInterestExpense,
+      systemKey: SystemKey.interestExpense,
       accountType: AccountType.expense,
       defaultName: '利息',
     );
   }
 
   @override
-  Future<String> resolveDebtFeeExpense() {
+  Future<String> resolveFeeExpense() {
     return _resolve(
-      systemKey: SystemKey.debtFeeExpense,
+      systemKey: SystemKey.feeExpense,
       accountType: AccountType.expense,
       defaultName: '手续费',
     );
@@ -65,18 +68,22 @@ class DriftSystemAccountResolver implements SystemAccountResolver {
     required SystemKey systemKey,
     required AccountType accountType,
     required String defaultName,
-  }) async {
-    final existing =
-        await (_database.select(_database.accounts)..where(
-          (account) => account.systemKey.equalsValue(systemKey),
-        )).getSingleOrNull();
-    if (existing != null) {
-      return existing.id;
-    }
+  }) {
+    return _cache.putIfAbsent(systemKey, () async {
+      final existing =
+          await (_database.select(_database.accounts)..where(
+            (account) =>
+                account.systemKey.equalsValue(systemKey) &
+                account.accountType.equalsValue(accountType),
+          )).getSingleOrNull();
+      if (existing != null) {
+        return existing.id;
+      }
 
-    throw StateError(
-      'Missing builtin account "$defaultName" '
-      '($systemKey, $accountType).',
-    );
+      throw StateError(
+        'Missing or invalid builtin account "$defaultName" '
+        '($systemKey, $accountType).',
+      );
+    });
   }
 }

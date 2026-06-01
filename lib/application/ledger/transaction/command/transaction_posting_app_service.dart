@@ -174,7 +174,6 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
           toAccountId: command.toAccountId,
           occurredAt: command.occurredAt,
           feeAmount: command.feeAmount,
-          feeExpenseAccountId: command.feeExpenseAccountId,
           counterpartyName: command.counterpartyName,
           note: command.note,
         ),

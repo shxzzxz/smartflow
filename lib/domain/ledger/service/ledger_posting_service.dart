@@ -74,12 +74,15 @@ class LedgerPostingService {
       AccountRoleContext.transfer(
         fromAccountId: instruction.fromAccountId,
         toAccountId: instruction.toAccountId,
-        feeExpenseAccountId: hasFee ? instruction.feeExpenseAccountId : null,
       ),
     );
     if (roleFailure != null) return Result.failure(roleFailure);
 
-    final transactionResult = _postingEngine.createTransfer(instruction);
+    final transactionResult = _postingEngine.createTransfer(
+      instruction,
+      feeExpenseAccountId:
+          hasFee ? await _systemAccountResolver.resolveFeeExpense() : null,
+    );
     if (transactionResult case FailureResult(:final failure)) {
       return Result.failure(failure);
     }
@@ -97,32 +100,24 @@ class LedgerPostingService {
     );
     if (roleFailure != null) return Result.failure(roleFailure);
 
-    final fullInstruction = RepaymentInstruction(
-      principal: instruction.principal,
-      liabilityAccountId: instruction.liabilityAccountId,
-      paidFromAccountId: instruction.paidFromAccountId,
-      occurredAt: instruction.occurredAt,
-      interest: instruction.interest,
-      fee: instruction.fee,
-      discount: instruction.discount,
+    final hasInterest =
+        instruction.interest != null && instruction.interest!.minorUnits > 0;
+    final hasFee = instruction.fee != null && instruction.fee!.minorUnits > 0;
+    final hasDiscount =
+        instruction.discount != null && instruction.discount!.minorUnits > 0;
+    final transactionResult = _postingEngine.createRepayment(
+      instruction,
       interestExpenseAccountId:
-          instruction.interest != null && instruction.interest!.minorUnits > 0
-              ? await _systemAccountResolver.resolveDebtInterestExpense()
+          hasInterest
+              ? await _systemAccountResolver.resolveInterestExpense()
               : null,
       feeExpenseAccountId:
-          instruction.fee != null && instruction.fee!.minorUnits > 0
-              ? await _systemAccountResolver.resolveDebtFeeExpense()
-              : null,
+          hasFee ? await _systemAccountResolver.resolveFeeExpense() : null,
       discountIncomeAccountId:
-          instruction.discount != null && instruction.discount!.minorUnits > 0
+          hasDiscount
               ? await _systemAccountResolver.resolveDiscountIncome()
               : null,
-      counterpartyName: instruction.counterpartyName,
-      note: instruction.note,
-      ownership: instruction.ownership,
-      sourceKind: instruction.sourceKind,
     );
-    final transactionResult = _postingEngine.createRepayment(fullInstruction);
     if (transactionResult case FailureResult(:final failure)) {
       return Result.failure(failure);
     }
