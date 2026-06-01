@@ -1,7 +1,7 @@
 import '../../../core/error/failure.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
-import '../../../application/ledger/ledger_api.dart';
+import '../../../application/ledger/ledger_command_api.dart';
 import 'transaction_action_policy.dart';
 
 /// 普通交易的默认 policy：将 universal 动作路由到对应账务应用服务。

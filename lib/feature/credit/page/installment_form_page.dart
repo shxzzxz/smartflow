@@ -9,8 +9,8 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
-import '../../../application/ledger/ledger_api.dart';
-import 'package:smartflow/application/credit/credit_api.dart';
+import '../../../application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/credit/credit_command_api.dart';
 import '../../../widget/business/plain_transaction_fields.dart';
 import '../widget/installment_field_options.dart';
 

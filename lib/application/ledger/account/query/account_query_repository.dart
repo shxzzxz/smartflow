@@ -1,0 +1,10 @@
+import 'package:smartflow/domain/ledger/entity/account.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
+
+abstract interface class AccountQueryRepository {
+  Future<Account?> findAccountById(String id);
+
+  Stream<List<Account>> watchAccounts(Set<AccountType> types);
+
+  Stream<List<Account>> watchCategories(AccountType type);
+}

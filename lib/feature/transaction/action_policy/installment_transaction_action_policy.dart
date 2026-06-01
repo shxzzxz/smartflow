@@ -1,6 +1,6 @@
 import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
-import 'package:smartflow/application/credit/credit_api.dart';
+import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'transaction_action_policy.dart';
 
 /// 分期业务域针对单笔交易的 action policy。

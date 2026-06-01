@@ -1,8 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../domain/ledger/valobj/ledger_enum.dart';
-import '../../../application/ledger/query/transaction_scope.dart';
-import '../../../application/ledger/query/balance_aggregate_repository.dart';
+import '../../../application/ledger/ledger_query_port_api.dart';
 import '../../database/app_database.dart';
 import '../sql/balance_expressions.dart';
 

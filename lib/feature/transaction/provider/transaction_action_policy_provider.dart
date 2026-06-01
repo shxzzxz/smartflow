@@ -1,8 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
-import '../../../application/ledger/ledger_api.dart';
-import 'package:smartflow/application/credit/credit_api.dart';
+import '../../../application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../action_policy/default_transaction_action_policy.dart';
 import '../action_policy/installment_transaction_action_policy.dart';
 import '../action_policy/transaction_action_policy.dart';

@@ -1,5 +1,5 @@
 import '../../core/money/money.dart';
-import '../../application/ledger/ledger_api.dart';
+import '../../application/ledger/ledger_query_api.dart';
 
 /// `Entry` 在 UI 层的查表能力。
 ///

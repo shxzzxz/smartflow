@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-import '../../../application/ledger/query/account_query_repository.dart';
+import '../../../application/ledger/ledger_query_port_api.dart';
 import '../../../domain/ledger/entity/account.dart';
 import '../../../domain/ledger/valobj/ledger_enum.dart';
 import '../../database/app_database.dart';

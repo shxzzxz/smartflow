@@ -2,8 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../domain/ledger/entity/transaction.dart';
 import '../../../domain/ledger/valobj/ledger_enum.dart';
-import '../../../application/ledger/query/transaction_queries.dart';
-import '../../../application/ledger/query/transaction_read_repository.dart';
+import '../../../application/ledger/ledger_query_port_api.dart';
 import '../../database/app_database.dart';
 import '../mapper/transaction_mapper.dart';
 import '../sql/balance_expressions.dart';

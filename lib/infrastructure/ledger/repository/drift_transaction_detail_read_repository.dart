@@ -3,7 +3,7 @@ import 'package:drift/drift.dart';
 import '../../../core/money/money.dart';
 import '../../../domain/ledger/entity/transaction_detail_record.dart';
 import '../../../domain/ledger/valobj/ledger_enum.dart';
-import '../../../application/ledger/query/transaction_detail_read_repository.dart';
+import '../../../application/ledger/ledger_query_port_api.dart';
 import '../../database/app_database.dart';
 
 class DriftTransactionDetailReadRepository

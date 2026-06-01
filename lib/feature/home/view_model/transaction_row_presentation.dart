@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
-import '../../../application/ledger/ledger_api.dart';
+import '../../../application/ledger/ledger_query_api.dart';
 import '../../../widget/business/account_lookup.dart';
 import '../../../widget/business/finance_labels.dart';
 

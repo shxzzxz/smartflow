@@ -9,9 +9,10 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
-import '../../../application/ledger/ledger_api.dart'
-    hide CreateRepaymentCommand, CorrectRepaymentCommand;
-import '../../../application/credit/use_case/credit_service.dart';
+import '../../../application/ledger/ledger_command_api.dart'
+    show PostedTransactionResult;
+import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/credit/credit_command_api.dart';
 import '../../../widget/business/plain_transaction_fields.dart';
 
 class RepaymentFormPage extends ConsumerStatefulWidget {

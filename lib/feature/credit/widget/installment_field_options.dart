@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:smartflow/application/credit/credit_api.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 
 const List<DropdownMenuItem<InstallmentRepaymentMethod>>
 installmentRepaymentMethodItems = [

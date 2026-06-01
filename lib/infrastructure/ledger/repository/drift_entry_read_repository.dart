@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../core/money/money.dart';
 import '../../../domain/ledger/entity/entry.dart';
-import '../../../application/ledger/query/entry_read_repository.dart';
+import '../../../application/ledger/ledger_query_port_api.dart';
 import '../../database/app_database.dart';
 
 class DriftEntryReadRepository implements EntryReadRepository {

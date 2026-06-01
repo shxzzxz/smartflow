@@ -1,8 +1,8 @@
 import 'package:go_router/go_router.dart';
 
 import 'app_shell.dart';
-import '../application/ledger/ledger_api.dart';
-import 'package:smartflow/application/credit/credit_api.dart';
+import '../application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../feature/account/page/account_detail_page.dart';
 import '../feature/account/page/account_form_page.dart';
 import '../feature/account/page/accounts_page.dart';
@@ -68,9 +68,8 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/transaction/:id',
       builder:
-          (context, state) => TransactionDetailPage(
-            transactionId: state.pathParameters['id']!,
-          ),
+          (context, state) =>
+              TransactionDetailPage(transactionId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/transaction/:id/edit',
@@ -89,9 +88,8 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/transaction/:id/refund',
       builder:
-          (context, state) => RefundFormPage(
-            parentTransactionId: state.pathParameters['id']!,
-          ),
+          (context, state) =>
+              RefundFormPage(parentTransactionId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/transaction/:id/reimburse-receipt',
@@ -114,16 +112,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/account/:id',
       builder:
-          (context, state) => AccountDetailPage(
-            accountId: state.pathParameters['id']!,
-          ),
+          (context, state) =>
+              AccountDetailPage(accountId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/account/:id/edit',
       builder:
-          (context, state) => AccountFormPage(
-            accountId: state.pathParameters['id']!,
-          ),
+          (context, state) =>
+              AccountFormPage(accountId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/account/:id/repayment',

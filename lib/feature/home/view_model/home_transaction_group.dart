@@ -1,4 +1,4 @@
-import '../../../application/ledger/ledger_api.dart';
+import '../../../application/ledger/ledger_query_api.dart';
 
 /// 同一日的主交易聚合，用于按日分组卡片。
 class HomeTransactionDayGroup {

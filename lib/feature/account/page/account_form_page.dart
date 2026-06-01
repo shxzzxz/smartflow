@@ -14,7 +14,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
-import '../../../application/ledger/ledger_api.dart';
+import '../../../application/ledger/ledger_command_api.dart';
 import '../../../widget/business/business_icon.dart';
 import '../../../widget/business/icon_choice_grid.dart';
 

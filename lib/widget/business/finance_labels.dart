@@ -1,4 +1,4 @@
-import '../../application/ledger/ledger_api.dart';
+import '../../application/ledger/ledger_query_api.dart';
 
 String accountTypeLabel(AccountType type) {
   return switch (type) {

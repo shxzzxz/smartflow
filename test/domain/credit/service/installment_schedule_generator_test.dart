@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/application/credit/credit_api.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 
 void main() {
   const generator = InstallmentScheduleGenerator();

@@ -13,7 +13,8 @@ import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../design_system/widget/app_surface.dart';
-import 'package:smartflow/application/credit/credit_api.dart';
+import 'package:smartflow/application/credit/credit_command_api.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../../../widget/business/plain_transaction_fields.dart';
 import '../widget/installment_field_options.dart';
 

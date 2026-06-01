@@ -1,4 +1,4 @@
-import '../../../application/ledger/ledger_api.dart';
+import '../../../application/ledger/ledger_query_api.dart';
 import '../../home/view_model/home_transaction_group.dart';
 import '../../home/view_model/transaction_row_presentation.dart';
 import 'lunar_label_resolver.dart';
