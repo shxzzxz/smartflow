@@ -12,7 +12,7 @@ part of 'transaction_action_policy_provider.dart';
 ///
 /// policy 按 `transaction.owner_type` 预解析，UI 不再按业务模块分流。
 /// 这里属于 feature 集成层——TransactionActionPolicy 的本质是 UI 接入业务域
-/// 的统一契约，不属于任何业务域；详见 docs/08.2。
+/// 的统一契约，不属于任何业务域；详见 docs/adr/0002-通用UI与业务域接入协议.md。
 
 @ProviderFor(transactionActionPolicy)
 final transactionActionPolicyProvider = TransactionActionPolicyFamily._();
@@ -21,7 +21,7 @@ final transactionActionPolicyProvider = TransactionActionPolicyFamily._();
 ///
 /// policy 按 `transaction.owner_type` 预解析，UI 不再按业务模块分流。
 /// 这里属于 feature 集成层——TransactionActionPolicy 的本质是 UI 接入业务域
-/// 的统一契约，不属于任何业务域；详见 docs/08.2。
+/// 的统一契约，不属于任何业务域；详见 docs/adr/0002-通用UI与业务域接入协议.md。
 
 final class TransactionActionPolicyProvider
     extends
@@ -35,7 +35,7 @@ final class TransactionActionPolicyProvider
   ///
   /// policy 按 `transaction.owner_type` 预解析，UI 不再按业务模块分流。
   /// 这里属于 feature 集成层——TransactionActionPolicy 的本质是 UI 接入业务域
-  /// 的统一契约，不属于任何业务域；详见 docs/08.2。
+  /// 的统一契约，不属于任何业务域；详见 docs/adr/0002-通用UI与业务域接入协议.md。
   TransactionActionPolicyProvider._({
     required TransactionActionPolicyFamily super.from,
     required Transaction super.argument,
@@ -96,7 +96,7 @@ String _$transactionActionPolicyHash() =>
 ///
 /// policy 按 `transaction.owner_type` 预解析，UI 不再按业务模块分流。
 /// 这里属于 feature 集成层——TransactionActionPolicy 的本质是 UI 接入业务域
-/// 的统一契约，不属于任何业务域；详见 docs/08.2。
+/// 的统一契约，不属于任何业务域；详见 docs/adr/0002-通用UI与业务域接入协议.md。
 
 final class TransactionActionPolicyFamily extends $Family
     with $FunctionalFamilyOverride<TransactionActionPolicy, Transaction> {
@@ -113,7 +113,7 @@ final class TransactionActionPolicyFamily extends $Family
   ///
   /// policy 按 `transaction.owner_type` 预解析，UI 不再按业务模块分流。
   /// 这里属于 feature 集成层——TransactionActionPolicy 的本质是 UI 接入业务域
-  /// 的统一契约，不属于任何业务域；详见 docs/08.2。
+  /// 的统一契约，不属于任何业务域；详见 docs/adr/0002-通用UI与业务域接入协议.md。
 
   TransactionActionPolicyProvider call(Transaction transaction) =>
       TransactionActionPolicyProvider._(argument: transaction, from: this);

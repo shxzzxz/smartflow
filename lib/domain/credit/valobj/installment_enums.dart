@@ -25,8 +25,6 @@ enum InstallmentScheduleStatus { pending, paid, skipped }
 enum InstallmentRepaymentType { scheduled, extraPrincipal, earlySettlement }
 
 /// 分期模块写入 `transaction.owner_type` 的固定值。
-/// `transaction.owner_*` 仍是开放字符串字段，账务核心不解释（见 docs/08.1）；
-/// 该常量只在分期模块内部使用，避免裸字面值散布。
 const String installmentOwnerType = 'installment';
 
 /// 分期模块写入 `transaction.owner_role` 的角色枚举。

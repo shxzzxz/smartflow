@@ -1,5 +1,6 @@
 # ===== Agent / AI 工具 =====
 .claude/
+.agents/
 .codex/
 .superpowers/
 .worktrees/

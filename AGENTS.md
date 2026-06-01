@@ -7,11 +7,14 @@ SmartFlow 是一款基于**复式记账法**的个人财务管理系统
 ## 核心文档
 
 - `docs/01. 项目概述.md` - 项目概览与快速参考
+- `CONTEXT.md` - 项目领域语言与术语表
 - `docs/02. 核心功能.md` - 核心模块与功能说明
-- `docs/03. 业务领域设计.md` - 会计基础知识、复式记账核心数据模型与核心业务规则
+- `docs/domains/ledger/` - 账务核心领域文档
+- `docs/domains/credit/` - 信贷领域文档
+- `docs/domains/budget/` - 预算领域文档
 - `docs/05. 设计系统.md` - 设计系统、视觉语义与组件分层规则
 - `docs/06. 项目结构说明.md` - 工程目录组织、分层边界与演进规则
-- `docs/08. 架构决策.md` - 跨模块边界与长期演进方向的关键决策（含 08.x 子文档）
+- `docs/adr/` - 跨模块边界与长期演进方向的架构决策记录
 
 ## MCP
 
@@ -31,3 +34,17 @@ SmartFlow 是一款基于**复式记账法**的个人财务管理系统
 ## 补充规则
 
 - 坚决禁止使用数据库外键约束
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are tracked in GitHub Issues using the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the default five-label triage vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo: root `CONTEXT.md` and `docs/adr/`. See `docs/agents/domain.md`.

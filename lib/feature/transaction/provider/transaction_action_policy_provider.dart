@@ -13,7 +13,7 @@ part 'transaction_action_policy_provider.g.dart';
 ///
 /// policy 按 `transaction.owner_type` 预解析，UI 不再按业务模块分流。
 /// 这里属于 feature 集成层——TransactionActionPolicy 的本质是 UI 接入业务域
-/// 的统一契约，不属于任何业务域；详见 docs/08.2。
+/// 的统一契约，不属于任何业务域；详见 docs/adr/0002-通用UI与业务域接入协议.md。
 @riverpod
 TransactionActionPolicy transactionActionPolicy(
   Ref ref,
