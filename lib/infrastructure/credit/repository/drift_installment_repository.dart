@@ -175,29 +175,27 @@ class DriftInstallmentRepository implements InstallmentRepository {
     String contractId,
     List<InstallmentScheduleDraft> drafts,
   ) async {
-    await _database.transaction(() async {
-      await (_database.delete(_database.installmentSchedules)
-        ..where((s) => s.contractId.equals(contractId))).go();
-      final now = DateTime.now();
-      await _database.batch((batch) {
-        for (final draft in drafts) {
-          batch.insert(
-            _database.installmentSchedules,
-            InstallmentSchedulesCompanion.insert(
-              id: _uuid.v7(),
-              contractId: contractId,
-              periodNo: draft.periodNo,
-              expectedRepaymentDate: draft.expectedRepaymentDate,
-              expectedPrincipalMinor: Value(draft.expectedPrincipal.minorUnits),
-              expectedInterestMinor: Value(draft.expectedInterest.minorUnits),
-              expectedFeeMinor: Value(draft.expectedFee.minorUnits),
-              status: InstallmentScheduleStatus.pending,
-              createdAt: Value(now),
-              updatedAt: Value(now),
-            ),
-          );
-        }
-      });
+    await (_database.delete(_database.installmentSchedules)
+      ..where((s) => s.contractId.equals(contractId))).go();
+    final now = DateTime.now();
+    await _database.batch((batch) {
+      for (final draft in drafts) {
+        batch.insert(
+          _database.installmentSchedules,
+          InstallmentSchedulesCompanion.insert(
+            id: _uuid.v7(),
+            contractId: contractId,
+            periodNo: draft.periodNo,
+            expectedRepaymentDate: draft.expectedRepaymentDate,
+            expectedPrincipalMinor: Value(draft.expectedPrincipal.minorUnits),
+            expectedInterestMinor: Value(draft.expectedInterest.minorUnits),
+            expectedFeeMinor: Value(draft.expectedFee.minorUnits),
+            status: InstallmentScheduleStatus.pending,
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+      }
     });
   }
 
@@ -302,14 +300,12 @@ class DriftInstallmentRepository implements InstallmentRepository {
 
   @override
   Future<void> deleteContract(String contractId) async {
-    await _database.transaction(() async {
-      await (_database.delete(_database.installmentRepayments)
-        ..where((r) => r.contractId.equals(contractId))).go();
-      await (_database.delete(_database.installmentSchedules)
-        ..where((s) => s.contractId.equals(contractId))).go();
-      await (_database.delete(_database.installmentContracts)
-        ..where((c) => c.id.equals(contractId))).go();
-    });
+    await (_database.delete(_database.installmentRepayments)
+      ..where((r) => r.contractId.equals(contractId))).go();
+    await (_database.delete(_database.installmentSchedules)
+      ..where((s) => s.contractId.equals(contractId))).go();
+    await (_database.delete(_database.installmentContracts)
+      ..where((c) => c.id.equals(contractId))).go();
   }
 
   InstallmentContract _mapContract(InstallmentContractRow row) {
