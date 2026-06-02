@@ -1,9 +1,11 @@
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/error/failure.dart';
 import 'package:smartflow/core/result/result.dart';
 import '../../entity/account.dart';
 import '../../entity/transaction.dart';
 import '../../port/account_repository.dart';
 import '../../port/system_account_resolver.dart';
+import '../../valobj/ledger_error_code.dart';
 import '../../valobj/posting_instruction.dart';
 import '../../valobj/posting_result.dart';
 import '../account/account_role_policy.dart';
@@ -29,22 +31,20 @@ class LedgerPostingService {
   final AccountPostingService _accountPostingService;
   final AccountRolePolicy _accountRolePolicy;
 
-  Future<Result<PostingResult>> postExpense(
-    ExpenseInstruction instruction,
-  ) async {
+  Future<PostingResult> postExpense(ExpenseInstruction instruction) async {
     final roleFailure = await _accountRolePolicy.validate(
       AccountRoleContext.expense(
         paidFromAccountId: instruction.paidFromAccountId,
         expenseAccountId: instruction.expenseAccountId,
       ),
     );
-    if (roleFailure != null) return Result.failure(roleFailure);
+    if (roleFailure != null) throw _businessExceptionFromFailure(roleFailure);
 
     final transactionResult = _postingEngine.createExpense(instruction);
     if (transactionResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
+      throw _businessExceptionFromFailure(failure);
     }
-    return _applyPosting(transactionResult.value);
+    return _applyPostingValue(transactionResult.value);
   }
 
   Future<Result<PostingResult>> postIncome(
@@ -259,6 +259,36 @@ class LedgerPostingService {
     }
   }
 
+  Future<PostingResult> _applyPostingValue(
+    Transaction transaction, {
+    Iterable<Account> loadedAccounts = const [],
+  }) async {
+    final accountMap = {
+      for (final account in loadedAccounts) account.id: account,
+    };
+    final missingIds = transaction.accountIds.difference(
+      accountMap.keys.toSet(),
+    );
+    if (missingIds.isNotEmpty) {
+      final accounts = await _accountRepository.findByIds(missingIds);
+      accountMap.addEntries(
+        accounts.map((account) => MapEntry(account.id, account)),
+      );
+    }
+    final missingFailure = _validateAccountsLoaded(
+      transaction.accountIds,
+      accountMap,
+    );
+    if (missingFailure != null) {
+      throw _businessExceptionFromFailure(missingFailure);
+    }
+    final updated = _accountPostingService.apply(
+      transaction: transaction,
+      accounts: accountMap,
+    );
+    return PostingResult(transaction: transaction, accounts: updated);
+  }
+
   Failure? _validateAccountsLoaded(
     Set<String> accountIds,
     Map<String, Account> accounts,
@@ -279,5 +309,25 @@ class LedgerPostingService {
       }
     }
     return null;
+  }
+
+  BusinessException _businessExceptionFromFailure(Failure failure) {
+    return BusinessException(
+      _ledgerErrorCodeFromFailureCode(failure.code),
+      message: failure.message,
+      cause: failure.cause,
+    );
+  }
+
+  LedgerErrorCode _ledgerErrorCodeFromFailureCode(String? code) {
+    return switch (code) {
+      'account_not_found' => LedgerErrorCode.accountNotFound,
+      'account_archived' => LedgerErrorCode.accountUnavailable,
+      'account_role_invalid' => LedgerErrorCode.accountInvalidRole,
+      'account_subtype_invalid' => LedgerErrorCode.accountInvalidRole,
+      'expense_amount_not_positive' =>
+        LedgerErrorCode.transactionInvalidCommand,
+      _ => LedgerErrorCode.transactionPostingFailed,
+    };
   }
 }

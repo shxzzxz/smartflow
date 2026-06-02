@@ -38,6 +38,19 @@ class TransactionLedgerWriter {
     });
   }
 
+  Future<PostedTransactionResult> persistPostingValue(
+    PostingResult posting,
+  ) async {
+    return _transactionRunner.runValue(() async {
+      await _transactionRepository.save(posting.transaction);
+      await _accountRepository.saveAll(posting.accounts);
+      return PostedTransactionResult(
+        transactionId: posting.transaction.id,
+        rootTransactionId: posting.transaction.rootTransactionId,
+      );
+    });
+  }
+
   Future<Result<PostedTransactionResult>> persistMutation(
     Result<MutationResult> mutationResult,
   ) async {

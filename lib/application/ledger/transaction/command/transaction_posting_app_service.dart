@@ -16,9 +16,7 @@ import 'transaction_command.dart';
 import 'transaction_ledger_writer.dart';
 
 abstract interface class TransactionPostingAppService {
-  Future<Result<PostedTransactionResult>> createExpense(
-    CreateExpenseCommand command,
-  );
+  Future<PostedTransactionResult> createExpense(CreateExpenseCommand command);
 
   Future<Result<PostedTransactionResult>> createIncome(
     CreateIncomeCommand command,
@@ -124,10 +122,10 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   final ReimbursementPostingService _reimbursementPostingService;
 
   @override
-  Future<Result<PostedTransactionResult>> createExpense(
+  Future<PostedTransactionResult> createExpense(
     CreateExpenseCommand command,
   ) async {
-    return _ledgerWriter.persistPosting(
+    return _ledgerWriter.persistPostingValue(
       await _ledgerPostingService.postExpense(
         ExpenseInstruction(
           amount: command.amount,
