@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../tokens/colors.dart';
+import '../token/colors.dart';
 
 abstract final class AppColorSchemes {
   static ColorScheme light() {

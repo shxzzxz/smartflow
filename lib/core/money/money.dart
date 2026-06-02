@@ -1,81 +1,62 @@
 import 'package:decimal/decimal.dart';
 
 class Money implements Comparable<Money> {
-  const Money({required this.minorUnits, this.currency = defaultCurrency});
+  const Money({required this.minorUnits});
 
-  factory Money.zero({String currency = defaultCurrency}) {
-    return Money(minorUnits: 0, currency: currency);
+  factory Money.zero() {
+    return const Money(minorUnits: 0);
   }
 
-  factory Money.fromMajor(Decimal amount, {String currency = defaultCurrency}) {
+  factory Money.fromMajor(Decimal amount) {
     final minor = amount.shift(2);
     if (!minor.isInteger) {
       throw FormatException('Money only supports cent precision: $amount');
     }
 
-    return Money(minorUnits: minor.toBigInt().toInt(), currency: currency);
+    return Money(minorUnits: minor.toBigInt().toInt());
   }
 
-  factory Money.parse(String amount, {String currency = defaultCurrency}) {
-    return Money.fromMajor(Decimal.parse(amount.trim()), currency: currency);
+  factory Money.parse(String amount) {
+    return Money.fromMajor(Decimal.parse(amount.trim()));
   }
-
-  static const defaultCurrency = 'CNY';
 
   final int minorUnits;
-  final String currency;
 
   Decimal get major => Decimal.fromInt(minorUnits).shift(-2);
 
   Money operator +(Money other) {
-    _checkSameCurrency(other);
-    return Money(minorUnits: minorUnits + other.minorUnits, currency: currency);
+    return Money(minorUnits: minorUnits + other.minorUnits);
   }
 
   Money operator -(Money other) {
-    _checkSameCurrency(other);
-    return Money(minorUnits: minorUnits - other.minorUnits, currency: currency);
+    return Money(minorUnits: minorUnits - other.minorUnits);
   }
 
   Money operator -() {
-    return Money(minorUnits: -minorUnits, currency: currency);
+    return Money(minorUnits: -minorUnits);
   }
 
   Money abs() {
-    return Money(minorUnits: minorUnits.abs(), currency: currency);
+    return Money(minorUnits: minorUnits.abs());
   }
 
-  String format({bool withCurrency = false}) {
-    final value = major.toStringAsFixed(2);
-    return withCurrency ? '$currency $value' : value;
+  String format() {
+    return major.toStringAsFixed(2);
   }
 
   @override
   int compareTo(Money other) {
-    _checkSameCurrency(other);
     return minorUnits.compareTo(other.minorUnits);
-  }
-
-  void _checkSameCurrency(Money other) {
-    if (currency != other.currency) {
-      throw ArgumentError.value(
-        other.currency,
-        'other.currency',
-        'Currency mismatch: $currency != ${other.currency}',
-      );
-    }
   }
 
   @override
   bool operator ==(Object other) {
-    return other is Money &&
-        other.minorUnits == minorUnits &&
-        other.currency == currency;
+    return other is Money && other.minorUnits == minorUnits;
   }
 
   @override
-  int get hashCode => Object.hash(minorUnits, currency);
+  int get hashCode => minorUnits.hashCode;
 
   @override
-  String toString() => format(withCurrency: true);
+  String toString() => format();
 }

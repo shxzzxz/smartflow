@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:smartflow/core/errors/failure.dart';
+import 'package:smartflow/core/error/failure.dart';
 import 'package:smartflow/core/result/result.dart';
 
 void main() {

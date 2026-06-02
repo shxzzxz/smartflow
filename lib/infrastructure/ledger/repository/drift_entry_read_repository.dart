@@ -1,0 +1,41 @@
+import 'package:drift/drift.dart';
+
+import '../../../core/money/money.dart';
+import '../../../domain/ledger/entity/entry.dart';
+import '../../../application/ledger/ledger_query_port_api.dart';
+import '../../database/app_database.dart';
+
+class DriftEntryReadRepository implements EntryReadRepository {
+  const DriftEntryReadRepository(this._db);
+
+  final AppDatabase _db;
+
+  @override
+  Future<Map<String, List<Entry>>> findByTransactionIds(
+    Set<String> transactionIds,
+  ) async {
+    if (transactionIds.isEmpty) return const {};
+
+    final rows =
+        await (_db.select(_db.entries)
+              ..where((entry) => entry.transactionId.isIn(transactionIds))
+              ..orderBy([(entry) => OrderingTerm.asc(entry.id)]))
+            .get();
+
+    final result = <String, List<Entry>>{};
+    for (final entryRow in rows) {
+      result
+          .putIfAbsent(entryRow.transactionId, () => <Entry>[])
+          .add(
+            Entry(
+              id: entryRow.id,
+              transactionId: entryRow.transactionId,
+              accountId: entryRow.accountId,
+              direction: entryRow.direction,
+              amount: Money(minorUnits: entryRow.amountMinor),
+            ),
+          );
+    }
+    return result;
+  }
+}

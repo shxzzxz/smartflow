@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../tokens/typography.dart';
+import '../token/typography.dart';
 
 extension AppTextStyleContext on BuildContext {
   AppTextStyles get appTextStyles => AppTextStyles.of(this);

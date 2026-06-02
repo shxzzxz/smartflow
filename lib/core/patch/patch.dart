@@ -23,3 +23,20 @@ final class PatchClear<T> extends Patch<T> {
   const PatchClear();
 }
 
+extension NullablePatchApply<T> on Patch<T>? {
+  T? applyTo(T? current) {
+    return switch (this) {
+      null => current,
+      PatchClear<T>() => null,
+      PatchSet<T>(:final value) => value,
+    };
+  }
+
+  R? applyMappedTo<R>(R? current, R? Function(T value) map) {
+    return switch (this) {
+      null => current,
+      PatchClear<T>() => null,
+      PatchSet<T>(:final value) => map(value),
+    };
+  }
+}

@@ -1,0 +1,89 @@
+import 'package:drift/drift.dart';
+
+import '../../../domain/ledger/valobj/ledger_enum.dart';
+import '../../../domain/ledger/port/system_account_resolver.dart';
+import '../../database/app_database.dart';
+
+class DriftSystemAccountResolver implements SystemAccountResolver {
+  DriftSystemAccountResolver(this._database);
+
+  final AppDatabase _database;
+  final _cache = <SystemKey, Future<String>>{};
+
+  @override
+  Future<String> resolveOpeningBalance() {
+    return _resolve(
+      systemKey: SystemKey.openingBalance,
+      accountType: AccountType.equity,
+      defaultName: '系统期初余额',
+    );
+  }
+
+  @override
+  Future<String> resolveReimbursementGapIncome() {
+    return _resolve(
+      systemKey: SystemKey.reimbursementGapIncome,
+      accountType: AccountType.income,
+      defaultName: '报销差额收入',
+    );
+  }
+
+  @override
+  Future<String> resolveInterestExpense() {
+    return _resolve(
+      systemKey: SystemKey.interestExpense,
+      accountType: AccountType.expense,
+      defaultName: '利息',
+    );
+  }
+
+  @override
+  Future<String> resolveFeeExpense() {
+    return _resolve(
+      systemKey: SystemKey.feeExpense,
+      accountType: AccountType.expense,
+      defaultName: '手续费',
+    );
+  }
+
+  @override
+  Future<String> resolveDiscountIncome() {
+    return _resolve(
+      systemKey: SystemKey.discountIncome,
+      accountType: AccountType.income,
+      defaultName: '优惠',
+    );
+  }
+
+  @override
+  Future<String> resolveGhostAccount() {
+    return _resolve(
+      systemKey: SystemKey.ghostAccount,
+      accountType: AccountType.equity,
+      defaultName: '幽灵账户',
+    );
+  }
+
+  Future<String> _resolve({
+    required SystemKey systemKey,
+    required AccountType accountType,
+    required String defaultName,
+  }) {
+    return _cache.putIfAbsent(systemKey, () async {
+      final existing =
+          await (_database.select(_database.accounts)..where(
+            (account) =>
+                account.systemKey.equalsValue(systemKey) &
+                account.accountType.equalsValue(accountType),
+          )).getSingleOrNull();
+      if (existing != null) {
+        return existing.id;
+      }
+
+      throw StateError(
+        'Missing or invalid builtin account "$defaultName" '
+        '($systemKey, $accountType).',
+      );
+    });
+  }
+}
