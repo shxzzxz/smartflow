@@ -11,6 +11,7 @@
 - 金额字段：数据库层用 `_minor` 后缀，领域 / UI 层使用 `Money`。
 - Riverpod provider：`<scope>Provider`。
 - 业务域目录名用领域语言（`ledger / credit / budget / analytics`），不用技术词替代领域词。
+- 失败语义命名只作为软约定，但方法名应让契约可预期：返回 violation / validation report 的校验方法可使用 `validate`、`check`、`evaluate`；失败时抛内部异常的方法优先使用 `ensure`、`require` 或具体命令动词。方法签名和返回类型必须表达契约，不依赖命名猜测。
 
 ## 演进规则
 

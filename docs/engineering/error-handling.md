@@ -4,11 +4,11 @@
 
 ## 基本原则
 
-异常用于阻断一次命令流程；返回值用于表达普通判断和组合。
+校验用于判断输入、规则或状态是否满足要求；错误用于表达一次命令或调用已经失败。异常用于阻断一次命令流程；返回值用于表达普通判断、组合、预检和批量校验。
 
 适合抛内部异常的场景：
 
-- application command / domain service 中的预期业务失败，例如账户角色非法、合同状态不允许编辑、冲销目标不存在。
+- application command / domain service 主路径中的预期业务失败，例如账户角色非法、合同状态不允许编辑、冲销目标不存在。
 - 不变量被破坏、代码状态不可能、数据损坏。
 - 基础设施、平台、网络调用失败经边界转换后的调用失败。
 - 已知且可预期的持久化冲突经 repository / adapter 边界转换后的业务失败，例如幂等冲突、版本冲突或唯一性冲突。
@@ -17,6 +17,7 @@
 
 - `tryParse`、可选转换、分支探测。
 - 需要组合的纯函数。
+- 不修改状态的预检或规则校验；这类返回值应使用场景专用 violation / validation report。当前只需阻断第一个问题时优先返回单个 violation；需要一次收集多个问题时再升级为 validation report。
 - 批量校验或需要一次性收集多个字段错误的表单基础校验。
 - query/read path 中的正常空态；空结果使用 nullable 或 empty list 表达。
 
@@ -81,7 +82,9 @@ call.timeout
 call.invalid_response
 ```
 
-错误 code 按领域或调用类型分组定义，禁止维护一个不断膨胀的全局大 enum。
+错误 code 按领域或调用类型分组定义，禁止维护一个不断膨胀的全局大 enum。错误 code 表达稳定的外部处理类别，不要求和每个内部判断分支一一对应。
+
+校验返回的 violation 可以比错误 code 更贴近具体规则，但 violation 不是错误码。映射为内部异常或 UI 错误语义时，再归并到稳定外部处理类别，例如 `ledger.account.not_found`、`ledger.account.unavailable`、`ledger.account.invalid_role`。
 
 基础异常类型和错误 code interface 放在 `lib/core/error/`：
 
@@ -97,5 +100,6 @@ lib/core/error/
 
 - 新增命令式 application API 优先使用内部异常表达业务失败，不再默认返回 `Result`。
 - 既有 `Result` API 按触达式迁移。
-- 纯函数 / presentation / tryParse 类函数不强制迁移为异常。
+- 历史 `Result` / `Failure` 仅作为迁移遗留保留，不作为新主路径类型。
+- 纯函数 / presentation / tryParse / 非 mutating 预检或规则校验 / 批量校验不强制迁移为异常；长期值返回失败应使用场景专用 violation / validation report，而不是通用 `Failure`。
 - ViewModel 新增 API 不使用 `Result<T>` 作为默认返回类型；旧页面按触达式迁移到 UI 语义 outcome。
