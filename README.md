@@ -17,6 +17,6 @@ fvm flutter test
 ## 文档
 
 - `docs/01. 项目概述.md`
-- `docs/06. 项目结构说明.md`
+- `docs/06. 工程结构总览.md`
 - `docs/07. 开发计划.md`
 - `docs/09. 发布流程.md`

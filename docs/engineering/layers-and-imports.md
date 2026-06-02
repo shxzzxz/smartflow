@@ -1,55 +1,10 @@
-# 项目结构说明
+# 分层、目录与导入边界
 
-本文档定义 SmartFlow Flutter 工程的目录组织与分层边界。业务模型见《domains/ledger/账务核心业务设计》，视觉规范见《05. 设计系统》，业务域划分与依赖边界的决策依据见 [ADR-0001: 业务域划分与账务核心独立性](adr/0001-业务域划分与账务核心独立性.md)。
+本文档定义 SmartFlow 的工程分层、目录模板、事务边界、Drift 单库规则和 import 边界。
 
-## 1. 总体原则
+## 分层职责
 
-SmartFlow 采用**顶层分层 + 层内按业务域组织**：
-
-- `application/`：用例编排层，负责用户操作、事务边界、跨领域协调、查询投影。
-- `domain/`：领域层，负责领域模型、领域服务、领域不变量与 ports。
-- `infrastructure/`：基础设施实现层，负责 Drift / SQL / mapper / repository 实现 / RPC 等技术细节。
-- `feature/`：UI 页面与用户工作流，不按 DDD 业务域强行归属。
-
-写侧依赖方向：
-
-```text
-feature / widget / app
-        ↓
-application/<域或用例组>
-        ↓
-domain/<域>
-        ↑
-infrastructure/<域>  实现 domain ports
-```
-
-纯读侧可以绕过 domain：
-
-```text
-feature / widget / app
-        ↓
-application/<域>/<capability>/query
-        ↓
-infrastructure/<域> query implementation
-        ↓
-database
-```
-
-application 定义查询接口、查询参数和 read model；infrastructure 提供 Drift / SQL 实现并由装配层注入。纯 UI 展示、报表、响应式投影不强制经过 domain ports。
-
-约束：
-
-- `domain/` 不依赖 Flutter、Riverpod、Drift、`application/`、`infrastructure/`、`feature/`、`app/`。
-- `application/` 可以编排一个或多个 `domain/`，并通过 ports 调用写侧持久化能力；事务边界属于 application 用例。
-- `application/<域>/<capability>/query` 可以定义纯读侧查询用例、查询参数、scope filter、read model 与读侧 port；查询实现位于 infrastructure。
-- `infrastructure/` 实现 domain ports 和 application query interfaces，可以依赖 Drift / SQL / RPC 等技术细节。
-- `feature/` 通过 Riverpod provider 使用 application 用例和查询，不直接 new DAO / repository 实现。
-- `feature/` 内不要新建 `domain/`、`repository/`、`use_case/` 等分层目录。
-- 主题、token、基础组件放 `design_system/`，不放进 `core/`。
-
-## 2. 分层职责
-
-### 2.1 application
+### application
 
 application 是**用例编排层**，不是某个业务域的附属实现细节。
 
@@ -68,7 +23,7 @@ application 是**用例编排层**，不是某个业务域的附属实现细节�
 - 不把另一个 application use case 当成可复用领域能力。
 - 不直接依赖 Drift / SQL 实现；纯读侧通过 application query interface 由 infrastructure 提供实现。
 
-### 2.2 domain
+### domain
 
 domain 负责领域规则与不变量。判断标准：
 
@@ -88,7 +43,7 @@ domain service / aggregate 可以依赖**本领域定义的 ports** 获取领域
 
 这些事实应由 `domain/ledger` 的领域服务通过 `domain/ledger/port` 获取，或由账务领域明确声明为上下文对象；不要让 `credit` / import / UI 等调用方复制账务事实加载规则。
 
-### 2.3 infrastructure
+### infrastructure
 
 infrastructure 实现 port 与 query interfaces，不承载业务决策。
 
@@ -106,7 +61,7 @@ infrastructure 实现 port 与 query interfaces，不承载业务决策。
 - 不编码业务流程字面量。
 - 不让兄弟业务域直接调用自己的实现类。
 
-### 2.4 feature
+### feature
 
 `feature/` 按页面与用户工作流组织。UI 不强行归属到 DDD 业务域。
 
@@ -116,7 +71,7 @@ infrastructure 实现 port 与 query interfaces，不承载业务决策。
 - `calendar` 可能消费交易、还款计划和预算。
 - `transactions` 是账务入口，但详情页可能通过 action policy 接入其它业务域。
 
-## 3. 业务域与角色
+## 业务域与角色
 
 业务域按领域语言命名，主要出现在 `domain/`、`application/`、`infrastructure/` 的层内目录。
 
@@ -137,9 +92,9 @@ application/credit + domain/credit + infrastructure/credit
 
 薄域允许先保持轻量结构；当长出复杂不变量、状态机或跨用例规则，再拆完整分层。
 
-## 4. 目录结构模板
+## 目录结构模板
 
-本节只描述目录组织模板，不枚举具体文件。业务域可以在 `application/<domain>/` 根部提供 `<domain>_command_api.dart`、`<domain>_query_api.dart`、`<domain>_query_port_api.dart` 等窄 facade 文件，但 facade 文件名不进入目录模板。
+业务域可以在 `application/<domain>/` 根部提供 `<domain>_command_api.dart`、`<domain>_query_api.dart`、`<domain>_query_port_api.dart` 等窄 facade 文件，但 facade 文件名不进入目录模板。
 
 ```text
 lib/
@@ -166,13 +121,11 @@ lib/
 │   │   ├── mapper/
 │   │   └── sql/
 │   └── database/                         # Drift 单库装配、tables、migrations、seed、数据库工具
-├── feature/                             # 页面与 UI 状态编排
+├── feature/                              # 页面与 UI 状态编排
 ├── design_system/                        # 项目级设计系统
-├── widget/business/                     # 跨 feature 复用的业务组件
+├── widget/business/                      # 跨 feature 复用的业务组件
 └── l10n/
 ```
-
-`lib/infrastructure/database/` 统一承载应用级 Drift 单库装配、schema 注册、tables 与 migrations。
 
 feature 内部按需使用：
 
@@ -182,12 +135,11 @@ feature/<feature>/
 ├── widget/
 ├── provider/
 ├── view_model/
-└── action_policy/                        # 可选；目前主要用于 transactions feature
+├── presentation/
+└── action_policy/                        # 可选；目前主要用于 transaction feature
 ```
 
-## 5. 事务与 Drift 单库
-
-### 5.1 事务边界
+## 事务与 Drift 单库
 
 事务边界属于 application 用例。domain 不知道事务，infrastructure 只实现事务机制。
 
@@ -203,13 +155,12 @@ application use case 不应通过调用另一个完整 application use case 来�
 
 `TransactionRunner` 只负责承接这个边界：
 
-- `FailureResult` 表示可预期业务失败，由 runner 触发回滚并原样返回。
+- 目标接口为 `Future<T> run<T>(Future<T> Function() body)`。
+- 命令式业务失败抛内部异常，由底层事务机制自然回滚。
 - 非业务异常由底层事务机制回滚后继续抛出，不转成业务失败。
 - repository / service 不自行开启完整用例事务；事务只在 application 编排层收口。
 
 过渡期代码中可能仍存在 repository / store 内部自行开启数据库事务的情况；这属于历史实现细节，不是目标边界。重构时应逐步收敛为 application 用例控制事务，infrastructure 写入方法参与当前调用链，不自行表达完整用例事务。
-
-### 5.2 Drift 单库集中
 
 模块化不等于 Drift schema 分散化。以下能力必须保持应用级集中管理：
 
@@ -231,7 +182,7 @@ lib/infrastructure/database/table/*
 
 禁止把迁移版本号和 schema 管理拆进各业务域，避免迁移撞号和装配混乱。
 
-## 6. Import 边界
+## Import 边界
 
 - `domain/*` 不依赖 `application/`、`infrastructure/`、`feature/`、`app/`、Drift、Riverpod。
 - `domain/*` 不依赖 application query DTO / read model / scope filter。
@@ -240,49 +191,3 @@ lib/infrastructure/database/table/*
 - `feature/*` 不直接依赖 `domain/*` 或 `infrastructure/*`，通过 application provider / use case / query 使用业务能力。
 - `domain/ledger` 不依赖 `domain/credit`、`domain/budget` 等兄弟业务域。
 - 兄弟业务域之间如需组合，由 application 用例编排。
-
-## 7. 测试规则
-
-测试目录随结构演进逐步镜像：
-
-```text
-test/application/
-test/domain/
-test/infrastructure/
-test/feature/
-```
-
-数据库与基础设施测试放在 `test/infrastructure/`。
-
-测试原则：
-
-- `domain/` 测试用纯 Dart unit test。
-- `application/` 测试验证用例编排、事务失败传播和跨领域协调。
-- `infrastructure/` 测试用 Drift in-memory 或对应技术替身。
-- `feature/` 测试优先 mock provider / application 用例。
-
-## 8. 命名约定
-
-- 文件与目录：`snake_case`；类名：`UpperCamelCase`。
-- **架构角色目录**一律单数形式（`entity / valobj / service / port / command / query / use_case / read_model / feature / widget / page / view_model / provider / mapper / repository / migration / table` 等），不写复数或 `-s / -ed` 变形。例外仅限 Drift / SQL 习惯（Drift 表类名 `Accounts / Transactions / Entries`、表注册集合沿用复数）。
-- **业务/语义目录**（如 `shared / design_system / l10n`）按其本身语义命名，不机械单数化——`shared` 是“共享的”不是“share”的复数。
-- **文件名**按其承载的主类型、主页面或业务概念命名，不机械单数化；同样不引入复数 / `-ed` 变形。
-- 数据库列名：`snake_case`，与《domains/ledger/数据模型》一致。
-- 金额字段：数据库层用 `_minor` 后缀，领域 / UI 层使用 `Money`。
-- Riverpod provider：`<scope>Provider`。
-- 业务域目录名用领域语言（`ledger / credit / budget / analytics`），不用技术词替代领域词。
-
-## 9. 演进规则
-
-- **新增字段**：先改《domains/ledger/数据模型》，再改 Drift table 与迁移，同步领域模型、application DTO 与 UI。
-- **新增账务核心场景（流图原语）**：先改《domains/ledger/核心业务规则》和《domains/ledger/业务场景流程示例》；扩展 `BusinessPurpose` / `TransactionDetailType` / `SystemKey`；落地账务领域规则；按需补 application 用例和查询投影。
-- **新增独立业务域**：按 [ADR-0001](adr/0001-业务域划分与账务核心独立性.md) 的归类判断；先建 domain 规则和 port，再按业务复杂度决定是否补 application / infrastructure 完整结构。
-- **新增跨域用例**：放 application 层，由最外层用例编排多个领域；不要把一个领域的 application use case 当作另一个用例的领域能力复用。
-- **新增 feature**：优先只建 `page / widget / provider / view_model`；领域规则不得放入 feature。
-- **新增纯读侧查询**：优先在 `application/<domain>/<capability>/query` 定义 query / scope / read model，由 infrastructure 实现 Drift / SQL；不要为了 UI 查询把 read model 或 `TransactionScopeFilter` 放进 domain。
-- **新增领域规则事实加载**：如果查询结果参与退款、报销、更正、取消等领域判定，应定义 domain port 和领域上下文，不复用 application read model。
-- **性能优化**：优先在 infrastructure 查询、application projection 或索引上处理，不在页面层堆业务缓存。
-
----
-
-**文档版本**：v0.9
