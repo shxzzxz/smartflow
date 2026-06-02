@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 
 import '../../../domain/ledger/entity/account.dart';
 import '../../../domain/ledger/port/account_repository.dart';
@@ -98,7 +99,7 @@ class DriftAccountRepository implements AccountRepository {
       ),
     );
     if (updatedCount != 1) {
-      throw const AccountVersionConflictException();
+      throw BusinessException(AccountRepositoryErrorCode.concurrentUpdate);
     }
     account.version += 1;
   }

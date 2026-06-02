@@ -24,6 +24,11 @@ class DriftTransactionRunner implements TransactionRunner {
       return Result.failure(rollback.failure);
     }
   }
+
+  @override
+  Future<T> runValue<T>(Future<T> Function() body) {
+    return _database.transaction(body);
+  }
 }
 
 class _Rollback implements Exception {

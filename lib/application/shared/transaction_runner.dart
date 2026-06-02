@@ -14,4 +14,11 @@ abstract interface class TransactionRunner {
   /// - 嵌套 [run] 是过渡期允许的实现细节；外层是否回滚取决于外层
   ///   [body] 的最终结果。
   Future<Result<T>> run<T>(Future<Result<T>> Function() body);
+
+  /// 在事务内执行返回普通值的 [body]。
+  ///
+  /// 契约：
+  /// - [body] 正常返回时提交事务。
+  /// - [body] 抛出任何异常时由底层事务机制回滚，并原样继续抛出。
+  Future<T> runValue<T>(Future<T> Function() body);
 }

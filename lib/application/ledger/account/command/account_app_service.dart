@@ -1,4 +1,5 @@
 import 'package:smartflow/application/shared/transaction_runner.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/error/failure.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/core/result/result.dart';
@@ -157,7 +158,7 @@ class AccountAppServiceImpl implements AccountAppService {
             return Result.failure(failure);
         }
       });
-    } on AccountVersionConflictException {
+    } on AppException {
       rethrow;
     } on Object catch (error) {
       return Result.failure(
