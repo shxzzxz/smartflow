@@ -5,8 +5,8 @@ import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/transaction_repository.dart';
-import 'package:smartflow/domain/ledger/service/account_factory.dart';
-import 'package:smartflow/domain/ledger/service/ledger_posting_service.dart';
+import 'package:smartflow/domain/ledger/service/account/account_factory.dart';
+import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
 import 'account_command.dart';

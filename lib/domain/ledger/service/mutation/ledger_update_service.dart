@@ -1,9 +1,9 @@
-import '../../../core/error/failure.dart';
-import '../../../core/result/result.dart';
-import '../port/root_transaction_group_repository.dart';
-import '../port/transaction_repository.dart';
-import '../valobj/posting_instruction.dart';
-import '../valobj/posting_result.dart';
+import 'package:smartflow/core/error/failure.dart';
+import 'package:smartflow/core/result/result.dart';
+import '../../port/root_transaction_group_repository.dart';
+import '../../port/transaction_repository.dart';
+import '../../valobj/posting_instruction.dart';
+import '../../valobj/posting_result.dart';
 
 class LedgerUpdateService {
   const LedgerUpdateService({

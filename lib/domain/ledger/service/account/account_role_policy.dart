@@ -1,8 +1,8 @@
-import '../../../core/error/failure.dart';
-import '../entity/account.dart';
-import '../port/account_repository.dart';
-import '../valobj/account_usage.dart';
-import '../valobj/ledger_enum.dart';
+import 'package:smartflow/core/error/failure.dart';
+import '../../entity/account.dart';
+import '../../port/account_repository.dart';
+import '../../valobj/account_usage.dart';
+import '../../valobj/ledger_enum.dart';
 
 class AccountRoleRequirement {
   const AccountRoleRequirement({

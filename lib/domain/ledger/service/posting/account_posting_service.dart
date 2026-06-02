@@ -1,5 +1,5 @@
-import '../entity/account.dart';
-import '../entity/transaction.dart';
+import '../../entity/account.dart';
+import '../../entity/transaction.dart';
 
 abstract interface class AccountPostingService {
   List<Account> apply({

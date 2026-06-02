@@ -1,7 +1,7 @@
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/domain/ledger/port/root_transaction_group_repository.dart';
 import 'package:smartflow/domain/ledger/port/transaction_repository.dart';
-import 'package:smartflow/domain/ledger/service/ledger_update_service.dart';
+import 'package:smartflow/domain/ledger/service/mutation/ledger_update_service.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
 import 'transaction_command.dart';

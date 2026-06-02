@@ -1,15 +1,15 @@
-import '../../../core/error/failure.dart';
-import '../../../core/id/id_generator.dart';
-import '../../../core/money/money.dart';
-import '../../../core/result/result.dart';
-import '../entity/account.dart';
-import '../entity/entry.dart';
-import '../entity/transaction.dart';
-import '../entity/transaction_detail_record.dart';
-import '../valobj/ledger_enum.dart';
-import '../valobj/posting_instruction.dart';
-import '../valobj/posting_result.dart';
-import 'ledger_rule.dart';
+import 'package:smartflow/core/error/failure.dart';
+import 'package:smartflow/core/id/id_generator.dart';
+import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/result/result.dart';
+import '../../entity/account.dart';
+import '../../entity/entry.dart';
+import '../../entity/transaction.dart';
+import '../../entity/transaction_detail_record.dart';
+import '../../valobj/ledger_enum.dart';
+import '../../valobj/posting_instruction.dart';
+import '../../valobj/posting_result.dart';
+import 'posting_rule.dart';
 
 class PostingEngine {
   const PostingEngine({required IdGenerator idGenerator})

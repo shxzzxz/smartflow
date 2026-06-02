@@ -1,12 +1,12 @@
-import '../../../core/error/failure.dart';
-import '../../../core/result/result.dart';
-import '../entity/root_transaction_group.dart';
-import '../entity/transaction.dart';
-import '../valobj/ledger_enum.dart';
-import '../valobj/posting_instruction.dart';
-import '../valobj/posting_result.dart';
-import 'posting_engine.dart';
-import 'posting_instruction_resolver.dart';
+import 'package:smartflow/core/error/failure.dart';
+import 'package:smartflow/core/result/result.dart';
+import '../../entity/root_transaction_group.dart';
+import '../../entity/transaction.dart';
+import '../../valobj/ledger_enum.dart';
+import '../../valobj/posting_instruction.dart';
+import '../../valobj/posting_result.dart';
+import '../posting/posting_engine.dart';
+import '../posting/posting_instruction_resolver.dart';
 
 abstract interface class ChildTransactionMigrationPolicy {
   Failure? validateConvertible({

@@ -2,7 +2,7 @@ import 'package:smartflow/core/error/failure.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
-import 'package:smartflow/domain/ledger/service/category_factory.dart';
+import 'package:smartflow/domain/ledger/service/account/category_factory.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 
 import 'category_command.dart';

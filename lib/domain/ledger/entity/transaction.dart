@@ -1,7 +1,7 @@
 import '../../../core/error/failure.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
-import '../service/ledger_rule.dart';
+import '../service/posting/posting_rule.dart';
 import '../valobj/ledger_enum.dart';
 import '../valobj/transaction_ownership.dart';
 import 'entry.dart';

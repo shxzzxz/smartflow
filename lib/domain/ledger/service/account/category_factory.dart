@@ -1,9 +1,9 @@
-import '../../../core/error/failure.dart';
-import '../../../core/money/money.dart';
-import '../../../core/result/result.dart';
-import '../../../core/text/text_normalizer.dart';
-import '../entity/account.dart';
-import '../valobj/ledger_enum.dart';
+import 'package:smartflow/core/error/failure.dart';
+import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/result/result.dart';
+import 'package:smartflow/core/text/text_normalizer.dart';
+import '../../entity/account.dart';
+import '../../valobj/ledger_enum.dart';
 
 class CategoryFactory {
   const CategoryFactory();

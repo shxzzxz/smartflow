@@ -1,13 +1,13 @@
-import '../../../core/error/failure.dart';
-import '../../../core/result/result.dart';
-import '../entity/account.dart';
-import '../entity/transaction.dart';
-import '../port/account_repository.dart';
-import '../port/system_account_resolver.dart';
-import '../valobj/posting_instruction.dart';
-import '../valobj/posting_result.dart';
+import 'package:smartflow/core/error/failure.dart';
+import 'package:smartflow/core/result/result.dart';
+import '../../entity/account.dart';
+import '../../entity/transaction.dart';
+import '../../port/account_repository.dart';
+import '../../port/system_account_resolver.dart';
+import '../../valobj/posting_instruction.dart';
+import '../../valobj/posting_result.dart';
+import '../account/account_role_policy.dart';
 import 'account_posting_service.dart';
-import 'account_role_policy.dart';
 import 'posting_engine.dart';
 
 class LedgerPostingService {

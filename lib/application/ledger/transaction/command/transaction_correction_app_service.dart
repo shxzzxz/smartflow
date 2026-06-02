@@ -3,12 +3,12 @@ import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/root_transaction_group_repository.dart';
 import 'package:smartflow/domain/ledger/port/system_account_resolver.dart';
-import 'package:smartflow/domain/ledger/service/account_posting_service.dart';
-import 'package:smartflow/domain/ledger/service/account_role_policy.dart';
-import 'package:smartflow/domain/ledger/service/child_transaction_migration_policy.dart';
-import 'package:smartflow/domain/ledger/service/ledger_correction_service.dart';
-import 'package:smartflow/domain/ledger/service/posting_engine.dart';
-import 'package:smartflow/domain/ledger/service/posting_instruction_resolver.dart';
+import 'package:smartflow/domain/ledger/service/account/account_role_policy.dart';
+import 'package:smartflow/domain/ledger/service/mutation/child_transaction_migration_policy.dart';
+import 'package:smartflow/domain/ledger/service/mutation/ledger_correction_service.dart';
+import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
+import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
+import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 

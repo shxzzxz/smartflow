@@ -4,7 +4,7 @@ import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../valobj/ledger_enum.dart';
-import '../service/ledger_rule.dart';
+import '../service/posting/posting_rule.dart';
 import 'entry.dart';
 
 class AccountProfilePatch {

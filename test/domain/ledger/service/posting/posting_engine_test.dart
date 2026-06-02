@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
-import 'package:smartflow/domain/ledger/service/ledger_rule.dart';
-import 'package:smartflow/domain/ledger/service/posting_engine.dart';
+import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
+import 'package:smartflow/domain/ledger/service/posting/posting_rule.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
-import '../../../helper/sequential_id_generator.dart';
+import '../../../../helper/sequential_id_generator.dart';
 
 void main() {
   group('PostingEngine', () {

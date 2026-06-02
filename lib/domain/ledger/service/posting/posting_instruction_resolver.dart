@@ -1,9 +1,9 @@
-import '../../../core/error/failure.dart';
-import '../../../core/money/money.dart';
-import '../../../core/result/result.dart';
-import '../entity/transaction.dart';
-import '../valobj/ledger_enum.dart';
-import '../valobj/posting_instruction.dart';
+import 'package:smartflow/core/error/failure.dart';
+import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/result/result.dart';
+import '../../entity/transaction.dart';
+import '../../valobj/ledger_enum.dart';
+import '../../valobj/posting_instruction.dart';
 
 abstract interface class PostingInstructionResolver {
   Result<PostingInstruction> resolve(Transaction transaction);
