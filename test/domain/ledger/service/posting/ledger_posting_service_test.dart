@@ -118,6 +118,14 @@ class _FakeAccountRepository implements AccountRepository {
   }
 
   @override
+  Future<List<Account>> findChildrenOf(String parentId) async {
+    return [
+      for (final account in _accounts.values)
+        if (account.parentId == parentId && !account.isArchived) account,
+    ];
+  }
+
+  @override
   Future<void> save(Account account) async {
     _accounts[account.id] = account;
   }

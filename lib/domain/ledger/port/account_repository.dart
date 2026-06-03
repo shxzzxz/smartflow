@@ -24,6 +24,8 @@ abstract interface class AccountRepository {
 
   Future<List<Account>> findByIds(Set<String> ids);
 
+  Future<List<Account>> findChildrenOf(String parentId);
+
   Future<void> create(Account account);
 
   Future<void> save(Account account);

@@ -25,6 +25,23 @@ enum LedgerErrorCode implements AppErrorCode {
   accountInvalidRole(
     code: 'ledger.account.invalid_role',
     defaultMessage: '账户不能用于当前交易。',
+  ),
+  accountInvalidCommand(
+    code: 'ledger.account.invalid_command',
+    defaultMessage: '账户参数不完整或不合法。',
+  ),
+  categoryNotFound(code: 'ledger.category.not_found', defaultMessage: '分类不存在。'),
+  categoryUnavailable(
+    code: 'ledger.category.unavailable',
+    defaultMessage: '分类当前不可用。',
+  ),
+  categoryInvalidCommand(
+    code: 'ledger.category.invalid_command',
+    defaultMessage: '分类参数不完整或不合法。',
+  ),
+  categoryInvalidParent(
+    code: 'ledger.category.invalid_parent',
+    defaultMessage: '父分类不可用。',
   );
 
   const LedgerErrorCode({required this.code, required this.defaultMessage});

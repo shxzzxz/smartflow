@@ -182,6 +182,32 @@ class LedgerPostingService {
     return _applyPosting(transactionResult.value, loadedAccounts: [account]);
   }
 
+  Future<PostingResult> postOpeningBalanceForAccountValue({
+    required Account account,
+    required OpeningBalanceInstruction instruction,
+  }) async {
+    if (!account.supportsManualBalance) {
+      throw BusinessException(
+        LedgerErrorCode.accountUnavailable,
+        message: 'This account type does not support opening balance.',
+      );
+    }
+    final equityAccountId =
+        await _systemAccountResolver.resolveOpeningBalance();
+    final transactionResult = _postingEngine.createOpeningBalance(
+      instruction: instruction,
+      account: account,
+      equityAccountId: equityAccountId,
+    );
+    if (transactionResult case FailureResult(:final failure)) {
+      throw _businessExceptionFromFailure(failure);
+    }
+    return _applyPostingValue(
+      transactionResult.value,
+      loadedAccounts: [account],
+    );
+  }
+
   Future<Result<PostingResult>> postBalanceAdjustment(
     BalanceAdjustmentInstruction instruction,
   ) async {
@@ -217,6 +243,31 @@ class LedgerPostingService {
       return Result.failure(failure);
     }
     return _applyPosting(transactionResult.value, loadedAccounts: [account]);
+  }
+
+  Future<PostingResult> postBalanceAdjustmentForAccountValue({
+    required Account account,
+    required BalanceAdjustmentInstruction instruction,
+  }) async {
+    final deltaResult = account.targetBalanceDeltaTo(instruction.targetBalance);
+    if (deltaResult case FailureResult(:final failure)) {
+      throw _businessExceptionFromFailure(failure);
+    }
+    final equityAccountId =
+        await _systemAccountResolver.resolveOpeningBalance();
+    final transactionResult = _postingEngine.createBalanceAdjustment(
+      instruction: instruction,
+      account: account,
+      signedDelta: deltaResult.value,
+      equityAccountId: equityAccountId,
+    );
+    if (transactionResult case FailureResult(:final failure)) {
+      throw _businessExceptionFromFailure(failure);
+    }
+    return _applyPostingValue(
+      transactionResult.value,
+      loadedAccounts: [account],
+    );
   }
 
   Future<Result<PostingResult>> _applyPosting(

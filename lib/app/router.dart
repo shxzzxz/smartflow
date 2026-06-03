@@ -197,5 +197,11 @@ final appRouter = GoRouter(
         return CategoryFormPage(initialType: type, initialParentId: parentId);
       },
     ),
+    GoRoute(
+      path: '/category/:id/edit',
+      builder:
+          (context, state) =>
+              CategoryFormPage(categoryId: state.pathParameters['id']!),
+    ),
   ],
 );

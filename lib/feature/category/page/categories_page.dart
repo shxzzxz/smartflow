@@ -150,6 +150,10 @@ class _CategoryGridPageState extends State<_CategoryGridPage> {
               onAddChild:
                   (rootId) =>
                       _openCategoryForm(context, widget.type, parentId: rootId),
+              onRootLongPressed:
+                  (category) => _openCategoryEditForm(context, category.id),
+              onChildLongPressed:
+                  (_, child) => _openCategoryEditForm(context, child.id),
             ),
           ],
         );
@@ -187,6 +191,10 @@ void _openCategoryForm(
     },
   );
   context.push(uri.toString());
+}
+
+void _openCategoryEditForm(BuildContext context, String categoryId) {
+  context.push('/category/$categoryId/edit');
 }
 
 class _EmptyCategories extends StatelessWidget {

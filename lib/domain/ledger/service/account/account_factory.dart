@@ -1,14 +1,14 @@
-import 'package:smartflow/core/error/failure.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/core/text/text_normalizer.dart';
 import '../../entity/account.dart';
+import '../../valobj/ledger_error_code.dart';
 import '../../valobj/ledger_enum.dart';
 
 class AccountFactory {
   const AccountFactory();
 
-  Result<Account> createUserAccount({
+  Account createUserAccount({
     required String id,
     required String name,
     required AccountType type,
@@ -23,53 +23,47 @@ class AccountFactory {
   }) {
     final normalizedName = trimToNull(name);
     if (normalizedName == null) {
-      return const Result.failure(
-        Failure(
-          code: 'account_name_required',
-          message: 'Account name is required.',
-        ),
+      throw BusinessException(
+        LedgerErrorCode.accountInvalidCommand,
+        message: 'Account name is required.',
       );
     }
     if (!type.isUserAccount) {
-      return const Result.failure(
-        Failure(
-          code: 'account_type_invalid',
-          message: 'Only asset and liability account can be created here.',
-        ),
+      throw BusinessException(
+        LedgerErrorCode.accountInvalidCommand,
+        message: 'Only asset and liability account can be created here.',
       );
     }
-    final subtypeFailure = Account.validateSubtypeCompatibility(
-      type: type,
-      subtype: subtype,
-    );
-    if (subtypeFailure != null) return Result.failure(subtypeFailure);
-    final creditFailure = _validateCreditFields(
+    if (!Account.isSubtypeCompatible(type: type, subtype: subtype)) {
+      throw BusinessException(
+        LedgerErrorCode.accountInvalidCommand,
+        message: 'Account subtype does not match account type.',
+      );
+    }
+    _ensureCreditFields(
       type: type,
       creditLimit: creditLimit,
       billingDay: billingDay,
       repaymentDay: repaymentDay,
     );
-    if (creditFailure != null) return Result.failure(creditFailure);
 
-    return Result.success(
-      Account(
-        id: id,
-        name: normalizedName,
-        type: type,
-        subtype: subtype,
-        balance: const Money(minorUnits: 0),
-        iconKey: trimToNull(iconKey),
-        note: trimToNull(note),
-        creditLimit: creditLimit,
-        billingDay: billingDay,
-        repaymentDay: repaymentDay,
-        sortOrder: sortOrder,
-        isHidden: isHidden,
-      ),
+    return Account(
+      id: id,
+      name: normalizedName,
+      type: type,
+      subtype: subtype,
+      balance: const Money(minorUnits: 0),
+      iconKey: trimToNull(iconKey),
+      note: trimToNull(note),
+      creditLimit: creditLimit,
+      billingDay: billingDay,
+      repaymentDay: repaymentDay,
+      sortOrder: sortOrder,
+      isHidden: isHidden,
     );
   }
 
-  Failure? _validateCreditFields({
+  void _ensureCreditFields({
     required AccountType type,
     required Money? creditLimit,
     required int? billingDay,
@@ -77,29 +71,28 @@ class AccountFactory {
   }) {
     if (type != AccountType.liability &&
         (creditLimit != null || billingDay != null || repaymentDay != null)) {
-      return const Failure(
-        code: 'credit_profile_not_supported',
+      throw BusinessException(
+        LedgerErrorCode.accountInvalidCommand,
         message: 'Credit profile is only supported for liability accounts.',
       );
     }
     if (creditLimit != null && creditLimit.minorUnits < 0) {
-      return const Failure(
-        code: 'credit_limit_negative',
+      throw BusinessException(
+        LedgerErrorCode.accountInvalidCommand,
         message: 'Credit limit cannot be negative.',
       );
     }
     if (billingDay != null && (billingDay < 1 || billingDay > 31)) {
-      return const Failure(
-        code: 'billing_day_invalid',
+      throw BusinessException(
+        LedgerErrorCode.accountInvalidCommand,
         message: 'Billing day must be between 1 and 31.',
       );
     }
     if (repaymentDay != null && (repaymentDay < 1 || repaymentDay > 31)) {
-      return const Failure(
-        code: 'repayment_day_invalid',
+      throw BusinessException(
+        LedgerErrorCode.accountInvalidCommand,
         message: 'Repayment day must be between 1 and 31.',
       );
     }
-    return null;
   }
 }

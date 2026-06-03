@@ -9,6 +9,7 @@ class BusinessIconTile extends StatelessWidget {
     required this.child,
     super.key,
     this.onTap,
+    this.onLongPress,
     this.extent = 64,
     this.borderRadius = AppRadius.radiusLg,
     this.alignment = Alignment.center,
@@ -16,6 +17,7 @@ class BusinessIconTile extends StatelessWidget {
 
   final Widget child;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final double extent;
   final double borderRadius;
   final AlignmentGeometry alignment;
@@ -27,7 +29,7 @@ class BusinessIconTile extends StatelessWidget {
       child: Center(child: child),
     );
 
-    if (onTap == null) {
+    if (onTap == null && onLongPress == null) {
       return Align(alignment: alignment, child: content);
     }
 
@@ -35,6 +37,7 @@ class BusinessIconTile extends StatelessWidget {
       alignment: alignment,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(borderRadius),
         child: content,
       ),

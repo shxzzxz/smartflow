@@ -1,8 +1,10 @@
 import '../../../core/error/failure.dart';
+import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
 import '../../../core/text/text_normalizer.dart';
+import '../valobj/ledger_error_code.dart';
 import '../valobj/ledger_enum.dart';
 import '../service/posting/posting_rule.dart';
 import 'entry.dart';
@@ -35,6 +37,14 @@ class AccountCreditProfilePatch {
   final Patch<Money>? creditLimit;
   final Patch<int>? billingDay;
   final Patch<int>? repaymentDay;
+}
+
+class CategoryProfilePatch {
+  const CategoryProfilePatch({this.name, this.iconKey, this.note});
+
+  final String? name;
+  final Patch<String>? iconKey;
+  final Patch<String>? note;
 }
 
 class Account {
@@ -98,24 +108,17 @@ class Account {
     return null;
   }
 
-  Result<void> changeProfile(AccountProfilePatch patch) {
-    final editFailure = checkEditable();
-    if (editFailure != null) return Result.failure(editFailure);
+  void changeProfile(AccountProfilePatch patch) {
+    _ensureUserAccountEditable();
     final normalizedName = patch.name == null ? name : trimToNull(patch.name);
     if (normalizedName == null) {
-      return const Result.failure(
-        Failure(
-          code: 'account_name_required',
-          message: 'Account name is required.',
-        ),
+      throw BusinessException(
+        LedgerErrorCode.accountInvalidCommand,
+        message: 'Account name is required.',
       );
     }
     final nextSubtype = patch.subtype.applyTo(subtype);
-    final subtypeFailure = validateSubtypeCompatibility(
-      type: type,
-      subtype: nextSubtype,
-    );
-    if (subtypeFailure != null) return Result.failure(subtypeFailure);
+    _ensureSubtypeCompatibility(type: type, subtype: nextSubtype);
 
     name = normalizedName;
     subtype = nextSubtype;
@@ -123,44 +126,58 @@ class Account {
     note = patch.note.applyMappedTo(note, trimToNull);
     sortOrder = patch.sortOrder ?? sortOrder;
     isHidden = patch.isHidden ?? isHidden;
-    return const Result.success(null);
   }
 
-  Result<void> changeCreditProfile(AccountCreditProfilePatch patch) {
-    final editFailure = checkEditable();
-    if (editFailure != null) return Result.failure(editFailure);
+  void changeCreditProfile(AccountCreditProfilePatch patch) {
+    _ensureUserAccountEditable();
     final nextCreditLimit = patch.creditLimit.applyTo(creditLimit);
     final nextBillingDay = patch.billingDay.applyTo(billingDay);
     final nextRepaymentDay = patch.repaymentDay.applyTo(repaymentDay);
-    final failure = _validateCreditFields(
+    _ensureCreditFields(
       type: type,
       creditLimit: nextCreditLimit,
       billingDay: nextBillingDay,
       repaymentDay: nextRepaymentDay,
     );
-    if (failure != null) return Result.failure(failure);
 
     creditLimit = nextCreditLimit;
     billingDay = nextBillingDay;
     repaymentDay = nextRepaymentDay;
-    return const Result.success(null);
   }
 
-  Result<void> moveCategoryTo(Account? parent) {
+  void moveCategoryTo(Account? parent) {
+    _ensureCategoryEditable();
     if (!type.isCategory) {
-      return const Result.failure(
-        Failure(
-          code: 'category_type_invalid',
-          message: 'Only income and expense category can be moved.',
-        ),
+      throw BusinessException(
+        LedgerErrorCode.categoryInvalidCommand,
+        message: 'Only income and expense category can be moved.',
       );
     }
     if (parent != null) {
-      final failure = parent.checkValidCategoryParent(type);
-      if (failure != null) return Result.failure(failure);
+      parent._ensureValidCategoryParent(type);
     }
     parentId = parent?.id;
-    return const Result.success(null);
+  }
+
+  void changeCategoryProfile(CategoryProfilePatch patch) {
+    _ensureCategoryEditable();
+    if (!type.isCategory) {
+      throw BusinessException(
+        LedgerErrorCode.categoryInvalidCommand,
+        message: 'Only income and expense category can be edited.',
+      );
+    }
+    final normalizedName = patch.name == null ? name : trimToNull(patch.name);
+    if (normalizedName == null) {
+      throw BusinessException(
+        LedgerErrorCode.categoryInvalidCommand,
+        message: 'Category name is required.',
+      );
+    }
+
+    name = normalizedName;
+    iconKey = patch.iconKey.applyMappedTo(iconKey, trimToNull);
+    note = patch.note.applyMappedTo(note, trimToNull);
   }
 
   /// 计算把余额调整到 [target] 所需的 signed delta(可负)。
@@ -257,7 +274,19 @@ class Account {
     required AccountSubtype? subtype,
   }) {
     if (subtype == null) return null;
-    final compatible = switch (type) {
+    if (isSubtypeCompatible(type: type, subtype: subtype)) return null;
+    return const Failure(
+      code: 'account_subtype_type_mismatch',
+      message: 'Account subtype does not match account type.',
+    );
+  }
+
+  static bool isSubtypeCompatible({
+    required AccountType type,
+    required AccountSubtype? subtype,
+  }) {
+    if (subtype == null) return true;
+    return switch (type) {
       AccountType.asset =>
         subtype == AccountSubtype.cash ||
             subtype == AccountSubtype.bankCard ||
@@ -270,14 +299,65 @@ class Account {
             subtype == AccountSubtype.consumerCredit,
       AccountType.equity || AccountType.income || AccountType.expense => false,
     };
-    if (compatible) return null;
-    return const Failure(
-      code: 'account_subtype_type_mismatch',
+  }
+
+  void _ensureUserAccountEditable() {
+    if (isArchived) {
+      throw BusinessException(
+        LedgerErrorCode.accountUnavailable,
+        message: 'Archived account cannot be edited.',
+      );
+    }
+    if (!type.isUserAccount) {
+      throw BusinessException(
+        LedgerErrorCode.accountUnavailable,
+        message: 'Only asset and liability account can be edited here.',
+      );
+    }
+  }
+
+  void _ensureCategoryEditable() {
+    if (isArchived) {
+      throw BusinessException(
+        LedgerErrorCode.categoryUnavailable,
+        message: 'Archived category cannot be edited.',
+      );
+    }
+  }
+
+  void _ensureValidCategoryParent(AccountType expectedType) {
+    if (isArchived) {
+      throw BusinessException(
+        LedgerErrorCode.categoryInvalidParent,
+        message: 'Archived category cannot be used as parent.',
+      );
+    }
+    if (type != expectedType) {
+      throw BusinessException(
+        LedgerErrorCode.categoryInvalidParent,
+        message: 'Parent category type must match child category type.',
+      );
+    }
+    if (parentId != null) {
+      throw BusinessException(
+        LedgerErrorCode.categoryInvalidParent,
+        message: 'Categories support one child level in this stage.',
+      );
+    }
+  }
+
+  static void _ensureSubtypeCompatibility({
+    required AccountType type,
+    required AccountSubtype? subtype,
+  }) {
+    if (isSubtypeCompatible(type: type, subtype: subtype)) return;
+    throw BusinessException(
+      LedgerErrorCode.accountInvalidCommand,
       message: 'Account subtype does not match account type.',
     );
   }
 
-  static Failure? _validateCreditFields({
+  static void _ensureCreditFields({
     required AccountType type,
     required Money? creditLimit,
     required int? billingDay,
@@ -285,29 +365,28 @@ class Account {
   }) {
     if (type != AccountType.liability &&
         (creditLimit != null || billingDay != null || repaymentDay != null)) {
-      return const Failure(
-        code: 'credit_profile_not_supported',
+      throw BusinessException(
+        LedgerErrorCode.accountInvalidCommand,
         message: 'Credit profile is only supported for liability accounts.',
       );
     }
     if (creditLimit != null && creditLimit.minorUnits < 0) {
-      return const Failure(
-        code: 'credit_limit_negative',
+      throw BusinessException(
+        LedgerErrorCode.accountInvalidCommand,
         message: 'Credit limit cannot be negative.',
       );
     }
     if (billingDay != null && (billingDay < 1 || billingDay > 31)) {
-      return const Failure(
-        code: 'billing_day_invalid',
+      throw BusinessException(
+        LedgerErrorCode.accountInvalidCommand,
         message: 'Billing day must be between 1 and 31.',
       );
     }
     if (repaymentDay != null && (repaymentDay < 1 || repaymentDay > 31)) {
-      return const Failure(
-        code: 'repayment_day_invalid',
+      throw BusinessException(
+        LedgerErrorCode.accountInvalidCommand,
         message: 'Repayment day must be between 1 and 31.',
       );
     }
-    return null;
   }
 }

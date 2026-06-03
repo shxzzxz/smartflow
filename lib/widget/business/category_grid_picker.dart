@@ -19,6 +19,8 @@ class CategoryGridPicker extends StatelessWidget {
     required this.onAddRoot,
     required this.onAddChild,
     super.key,
+    this.onRootLongPressed,
+    this.onChildLongPressed,
   });
 
   final List<CategoryNode> nodes;
@@ -29,6 +31,8 @@ class CategoryGridPicker extends StatelessWidget {
   final void Function(Account root, Account child) onChildSelected;
   final VoidCallback onAddRoot;
   final ValueChanged<String> onAddChild;
+  final ValueChanged<Account>? onRootLongPressed;
+  final void Function(Account root, Account child)? onChildLongPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -74,6 +78,7 @@ class CategoryGridPicker extends StatelessWidget {
             selectedRootId: selectedRootId,
             selectedCategoryId: selectedCategoryId,
             onRootSelected: onRootSelected,
+            onRootLongPressed: onRootLongPressed,
             showAddRoot: row == rows.last,
             onAddRoot: onAddRoot,
           ),
@@ -83,6 +88,7 @@ class CategoryGridPicker extends StatelessWidget {
               selectedCategoryId: selectedCategoryId,
               onChildSelected: onChildSelected,
               onAddChild: onAddChild,
+              onChildLongPressed: onChildLongPressed,
             ),
           const SizedBox(height: AppSpacing.space8),
         ],
@@ -97,6 +103,7 @@ class _CategoryRow extends StatelessWidget {
     required this.selectedRootId,
     required this.selectedCategoryId,
     required this.onRootSelected,
+    required this.onRootLongPressed,
     required this.showAddRoot,
     required this.onAddRoot,
   });
@@ -105,6 +112,7 @@ class _CategoryRow extends StatelessWidget {
   final String? selectedRootId;
   final String? selectedCategoryId;
   final ValueChanged<Account> onRootSelected;
+  final ValueChanged<Account>? onRootLongPressed;
   final bool showAddRoot;
   final VoidCallback onAddRoot;
 
@@ -122,6 +130,10 @@ class _CategoryRow extends StatelessWidget {
                   node.account.id == selectedCategoryId ||
                   node.account.id == selectedRootId,
               onTap: () => onRootSelected(node.account),
+              onLongPress:
+                  onRootLongPressed == null
+                      ? null
+                      : () => onRootLongPressed!(node.account),
             ),
           ),
         if (showAddRoot && nodes.length < 5)
@@ -138,12 +150,14 @@ class _SubcategoryPanel extends StatelessWidget {
     required this.selectedCategoryId,
     required this.onChildSelected,
     required this.onAddChild,
+    required this.onChildLongPressed,
   });
 
   final CategoryNode node;
   final String? selectedCategoryId;
   final void Function(Account root, Account child) onChildSelected;
   final ValueChanged<String> onAddChild;
+  final void Function(Account root, Account child)? onChildLongPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -154,6 +168,10 @@ class _SubcategoryPanel extends StatelessWidget {
           category: child,
           selected: child.id == selectedCategoryId,
           onTap: () => onChildSelected(node.account, child),
+          onLongPress:
+              onChildLongPressed == null
+                  ? null
+                  : () => onChildLongPressed!(node.account, child),
         ),
       _AddCategoryTile(onTap: () => onAddChild(node.account.id)),
     ];
@@ -197,11 +215,13 @@ class _CategoryTile extends StatelessWidget {
     required this.category,
     required this.selected,
     required this.onTap,
+    this.onLongPress,
   });
 
   final Account category;
   final bool selected;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -211,6 +231,7 @@ class _CategoryTile extends StatelessWidget {
         extent: 64,
         borderRadius: AppRadius.radiusMd,
         onTap: onTap,
+        onLongPress: onLongPress,
         child: BusinessIconBubble(
           selected: selected,
           label: category.name,

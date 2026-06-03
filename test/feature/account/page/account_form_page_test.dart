@@ -1,0 +1,43 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/app/provider.dart';
+import 'package:smartflow/application/ledger/ledger_command_api.dart';
+import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/feature/account/page/account_form_page.dart';
+
+void main() {
+  testWidgets('name validator blocks account submit', (tester) async {
+    final service = _FakeAccountAppService();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [accountAppServiceProvider.overrideWith((ref) => service)],
+        child: const MaterialApp(home: AccountFormPage()),
+      ),
+    );
+
+    await tester.tap(find.text('保存'));
+    await tester.pump();
+
+    expect(find.text('请输入账户名称'), findsWidgets);
+    expect(service.createCommands, isEmpty);
+  });
+}
+
+class _FakeAccountAppService implements AccountAppService {
+  final createCommands = <CreateAccountCommand>[];
+
+  @override
+  Future<Account> createAccount(CreateAccountCommand command) async {
+    createCommands.add(command);
+    return Account(
+      id: 'created',
+      name: command.name,
+      type: command.type,
+      balance: const Money(minorUnits: 0),
+    );
+  }
+
+  @override
+  Future<void> editAccount(EditAccountCommand command) async {}
+}

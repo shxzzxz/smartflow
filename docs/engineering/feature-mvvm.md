@@ -20,7 +20,7 @@ View 不负责：
 
 ## ViewModel
 
-ViewModel 持有普通 Dart 状态、输入值、选择项、加载 / 提交状态和可测试的用户意图处理；ViewModel 不持有 `BuildContext`，不直接执行导航或展示弹窗。
+ViewModel 持有普通 Dart 状态、业务选择项、加载 / 提交状态和可测试的用户意图处理；ViewModel 不持有 `BuildContext`，不直接执行导航或展示弹窗。`TextEditingController` 背后的瞬时文本输入默认留在 View，除非该文本需要实时驱动页面状态。
 
 表单页面中，页面级校验、屏幕状态到 application command 的映射、application service 调用和提交状态维护属于 ViewModel。真正业务规则校验仍属于 application / domain，ViewModel 不绕过 application 直接调用 domain 或 infrastructure。
 
@@ -28,7 +28,7 @@ ViewModel 通过 Riverpod 注入 application service、query service 或页面�
 
 ViewModel state 使用不可变对象表达，每次状态变化发布新的 state 快照。复杂页面 state 优先使用 Freezed 生成 `copyWith`、相等比较和联合类型；简单状态可以保持轻量，但不通过可变字段暴露给 View。
 
-编辑页的已有数据加载、read model 到表单 state 的映射、初始化幂等控制属于 ViewModel。
+编辑页的已有数据加载、read model 到页面状态的映射、初始化幂等控制属于 ViewModel。需要写入 `TextEditingController` 的初始文本由 View 根据 ViewModel 或 read model 提供的数据执行，并避免覆盖用户正在编辑的内容。
 
 ## 页面动态渲染与业务行为分发
 
@@ -62,7 +62,11 @@ Reactive 页面由 ViewModel 聚合多个底层 query provider，并向 View 暴
 
 ## 表单控件同步
 
-表单字段值以 ViewModel state 为事实来源。`TextEditingController`、`FocusNode` 等只是 View 的输入适配器；View 在初始加载或外部状态变化时按差异同步 controller，用户输入再通过 `onChanged` / listener 更新 ViewModel state。禁止在每次 build 中无条件覆盖 controller 文本。
+`TextEditingController` 背后的瞬时文本默认以 View 持有的 controller 为事实来源；提交时 View 将原始文本传给 ViewModel，由 ViewModel 负责 trim、空值语义、Patch 语义、command 构造和 outcome 映射。不要仅为提交取值而把每个字符同步进 ViewModel state。
+
+非文本业务选择项，例如 `type`、`parentId`、`accountId`、`categoryId`、`iconKey`、筛选口径和编辑模式，可以放在 ViewModel state 中，因为它们通常直接驱动页面渲染、可选项范围、按钮状态或 command 构造。
+
+当文本输入需要实时校验、dirty state、预览、autosave 或跨字段派生 UI 时，可以把对应文本或派生状态纳入 ViewModel state；此时 View 应通过 `select`、局部 widget 或拆分 provider 控制重建范围，并禁止在每次 build 中无条件覆盖 controller 文本。
 
 字段级校验使用 Flutter `Form` / `FormField.validator` 机制，由 View 或输入组件控制内联错误展示。View 在调用 ViewModel 提交前先执行 `formKey.currentState?.validate()`；ViewModel 仍保留 command 前置检查，防止绕过 UI 直接提交非法 state，但不负责字段内联展示。
 

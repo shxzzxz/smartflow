@@ -17,6 +17,17 @@ class DriftAccountRepository implements AccountRepository {
   @override
   Future<List<Account>> findByIds(Set<String> ids) => findAccountsByIds(ids);
 
+  @override
+  Future<List<Account>> findChildrenOf(String parentId) async {
+    final rows =
+        await (_database.select(_database.accounts)
+          ..where(
+            (account) =>
+                account.archivedAt.isNull() & account.parentId.equals(parentId),
+          )).get();
+    return rows.map(mapAccount).toList();
+  }
+
   Future<Account?> findAccountById(String id) async {
     final row =
         await (_database.select(_database.accounts)
