@@ -9,6 +9,14 @@ enum LedgerErrorCode implements AppErrorCode {
     code: 'ledger.transaction.posting_failed',
     defaultMessage: '交易入账失败。',
   ),
+  transactionNotFound(
+    code: 'ledger.transaction.not_found',
+    defaultMessage: '交易不存在。',
+  ),
+  transactionNotEditable(
+    code: 'ledger.transaction.not_editable',
+    defaultMessage: '交易当前不可编辑。',
+  ),
   accountNotFound(code: 'ledger.account.not_found', defaultMessage: '账户不存在。'),
   accountUnavailable(
     code: 'ledger.account.unavailable',

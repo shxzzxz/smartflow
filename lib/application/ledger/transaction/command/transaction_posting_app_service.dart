@@ -18,19 +18,15 @@ import 'transaction_ledger_writer.dart';
 abstract interface class TransactionPostingAppService {
   Future<PostedTransactionResult> createExpense(CreateExpenseCommand command);
 
-  Future<Result<PostedTransactionResult>> createIncome(
-    CreateIncomeCommand command,
-  );
+  Future<PostedTransactionResult> createIncome(CreateIncomeCommand command);
 
-  Future<Result<PostedTransactionResult>> createTransfer(
-    CreateTransferCommand command,
-  );
+  Future<PostedTransactionResult> createTransfer(CreateTransferCommand command);
 
   Future<Result<PostedTransactionResult>> createRefund(
     CreateRefundCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> createReimbursementAdvance(
+  Future<PostedTransactionResult> createReimbursementAdvance(
     CreateReimbursementAdvanceCommand command,
   );
 
@@ -46,7 +42,7 @@ abstract interface class TransactionPostingAppService {
     CreateRepaymentCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> createBorrowing(
+  Future<PostedTransactionResult> createBorrowing(
     CreateBorrowingCommand command,
   );
 
@@ -142,10 +138,10 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createIncome(
+  Future<PostedTransactionResult> createIncome(
     CreateIncomeCommand command,
   ) async {
-    return _ledgerWriter.persistPosting(
+    return _ledgerWriter.persistPostingResultValue(
       await _ledgerPostingService.postIncome(
         IncomeInstruction(
           amount: command.amount,
@@ -161,10 +157,10 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createTransfer(
+  Future<PostedTransactionResult> createTransfer(
     CreateTransferCommand command,
   ) async {
-    return _ledgerWriter.persistPosting(
+    return _ledgerWriter.persistPostingResultValue(
       await _ledgerPostingService.postTransfer(
         TransferInstruction(
           amount: command.amount,
@@ -198,10 +194,10 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createReimbursementAdvance(
+  Future<PostedTransactionResult> createReimbursementAdvance(
     CreateReimbursementAdvanceCommand command,
   ) async {
-    return _ledgerWriter.persistPosting(
+    return _ledgerWriter.persistPostingResultValue(
       await _reimbursementPostingService.postAdvance(
         ReimbursementAdvanceInstruction(
           amount: command.amount,
@@ -277,10 +273,10 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createBorrowing(
+  Future<PostedTransactionResult> createBorrowing(
     CreateBorrowingCommand command,
   ) async {
-    return _ledgerWriter.persistPosting(
+    return _ledgerWriter.persistPostingResultValue(
       await _ledgerPostingService.postBorrowing(
         BorrowingInstruction(
           amount: command.amount,

@@ -124,16 +124,14 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createBorrowing(
+  Future<PostedTransactionResult> createBorrowing(
     CreateBorrowingCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createIncome(
-    CreateIncomeCommand command,
-  ) {
+  Future<PostedTransactionResult> createIncome(CreateIncomeCommand command) {
     throw UnimplementedError();
   }
 
@@ -152,7 +150,7 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createReimbursementAdvance(
+  Future<PostedTransactionResult> createReimbursementAdvance(
     CreateReimbursementAdvanceCommand command,
   ) {
     throw UnimplementedError();
@@ -173,7 +171,7 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createTransfer(
+  Future<PostedTransactionResult> createTransfer(
     CreateTransferCommand command,
   ) {
     throw UnimplementedError();

@@ -1,7 +1,10 @@
 import 'package:smartflow/application/shared/transaction_runner.dart';
+import 'package:smartflow/core/error/app_exception.dart';
+import 'package:smartflow/core/error/failure.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/transaction_repository.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_result.dart';
 
 import 'transaction_command.dart';
@@ -51,6 +54,12 @@ class TransactionLedgerWriter {
     });
   }
 
+  Future<PostedTransactionResult> persistPostingResultValue(
+    Result<PostingResult> postingResult,
+  ) {
+    return persistPostingValue(_valueOrThrow(postingResult));
+  }
+
   Future<Result<PostedTransactionResult>> persistMutation(
     Result<MutationResult> mutationResult,
   ) async {
@@ -70,6 +79,20 @@ class TransactionLedgerWriter {
     });
   }
 
+  Future<PostedTransactionResult> persistMutationValue(
+    Result<MutationResult> mutationResult,
+  ) async {
+    final mutation = _valueOrThrow(mutationResult);
+    return _transactionRunner.runValue(() async {
+      await _transactionRepository.saveAll(mutation.transactions);
+      await _accountRepository.saveAll(mutation.accounts);
+      return PostedTransactionResult(
+        transactionId: mutation.currentTransaction.id,
+        rootTransactionId: mutation.currentTransaction.rootTransactionId,
+      );
+    });
+  }
+
   Future<Result<void>> persistCancellation(
     Result<CancellationResult> cancellationResult,
   ) async {
@@ -81,6 +104,16 @@ class TransactionLedgerWriter {
       await _transactionRepository.saveAll(cancellation.transactions);
       await _accountRepository.saveAll(cancellation.accounts);
       return const Result.success(null);
+    });
+  }
+
+  Future<void> persistCancellationValue(
+    Result<CancellationResult> cancellationResult,
+  ) async {
+    final cancellation = _valueOrThrow(cancellationResult);
+    return _transactionRunner.runValue(() async {
+      await _transactionRepository.saveAll(cancellation.transactions);
+      await _accountRepository.saveAll(cancellation.accounts);
     });
   }
 
@@ -101,5 +134,41 @@ class TransactionLedgerWriter {
         ),
       );
     });
+  }
+
+  T _valueOrThrow<T>(Result<T> result) {
+    return switch (result) {
+      Success<T>(:final value) => value,
+      FailureResult<T>(:final failure) =>
+        throw _businessExceptionFromFailure(failure),
+    };
+  }
+
+  BusinessException _businessExceptionFromFailure(Failure failure) {
+    return BusinessException(
+      _ledgerErrorCodeFromFailureCode(failure.code),
+      message: failure.message,
+      cause: failure.cause,
+    );
+  }
+
+  LedgerErrorCode _ledgerErrorCodeFromFailureCode(String? code) {
+    return switch (code) {
+      'account_not_found' => LedgerErrorCode.accountNotFound,
+      'account_archived' => LedgerErrorCode.accountUnavailable,
+      'account_role_invalid' => LedgerErrorCode.accountInvalidRole,
+      'account_subtype_invalid' => LedgerErrorCode.accountInvalidRole,
+      'transaction_not_found' => LedgerErrorCode.transactionNotFound,
+      'parent_transaction_required' => LedgerErrorCode.transactionNotEditable,
+      'transaction_not_current' => LedgerErrorCode.transactionNotEditable,
+      'transaction_purpose_mismatch' => LedgerErrorCode.transactionNotEditable,
+      'reimbursement_parent_not_advance' =>
+        LedgerErrorCode.transactionNotEditable,
+      'reimbursement_advance_not_current' =>
+        LedgerErrorCode.transactionNotEditable,
+      'expense_amount_not_positive' =>
+        LedgerErrorCode.transactionInvalidCommand,
+      _ => LedgerErrorCode.transactionPostingFailed,
+    };
   }
 }

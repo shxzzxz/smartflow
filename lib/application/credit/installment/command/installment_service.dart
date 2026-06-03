@@ -405,7 +405,7 @@ class InstallmentServiceImpl implements InstallmentService {
         _defaultLastDate(command.firstRepaymentDate, command.totalPeriods);
 
     return _runner.run<CreateContractResult>(() async {
-      final borrowingResult = await _postingService.createBorrowing(
+      final borrowing = await _postingService.createBorrowing(
         CreateBorrowingCommand(
           amount: command.principal,
           liabilityAccountId: command.liabilityAccountId,
@@ -415,10 +415,6 @@ class InstallmentServiceImpl implements InstallmentService {
           note: command.note,
         ),
       );
-      if (borrowingResult case FailureResult(:final failure)) {
-        return Result.failure(failure);
-      }
-      final borrowing = (borrowingResult as Success).value;
       final drafts = _generator.generate(
         principal: command.principal,
         borrowingDate: command.borrowingDate,
@@ -640,16 +636,13 @@ class InstallmentServiceImpl implements InstallmentService {
         if (txId != null) {
           if (command.disbursementAccountId != null ||
               command.borrowingDate != null) {
-            final basicsResult = await _correctionService.correctBorrowing(
+            await _correctionService.correctBorrowing(
               CorrectBorrowingCommand(
                 transactionId: txId,
                 receiveAccountId: command.disbursementAccountId,
                 occurredAt: command.borrowingDate,
               ),
             );
-            if (basicsResult case FailureResult(:final failure)) {
-              return Result.failure(failure);
-            }
           }
           if (command.note != null) {
             final metadataResult = await _updateService.updateBasicInfo(
