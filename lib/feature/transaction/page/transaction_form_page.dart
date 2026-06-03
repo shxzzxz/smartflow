@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_query_api.dart';
-import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/colors.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
+import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/business_icon.dart';
 import '../../../widget/business/category_grid_picker.dart';
@@ -80,8 +79,8 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
       _,
       next,
     ) {
-      _syncControllerText(_amountController, next.amountText);
-      _syncControllerText(_noteController, next.noteText);
+      syncTextControllerText(_amountController, next.amountText);
+      syncTextControllerText(_noteController, next.noteText);
     });
 
     final settlementAccountsAsync = ref.watch(
@@ -361,7 +360,11 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                       amountController: _amountController,
                       noteController: _noteController,
                       semantic: _amountSemantic(formState.mode),
-                      amountValidator: _validatePositiveAmount,
+                      amountValidator:
+                          (value) => validatePositiveMoneyText(
+                            value,
+                            nonPositiveMessage: '请输入有效金额',
+                          ),
                     ),
                     const SizedBox(height: AppSpacing.space4),
                     _TransactionOptionsPanel(
@@ -448,23 +451,17 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   }
 
   void _handleNumberInput(String value) {
-    final current = _amountController.text;
-    if (value == '.') {
-      if (current.contains('.')) return;
-      _amountController.text = current.isEmpty ? '0.' : '$current.';
-      return;
-    }
-
-    final next = current == '0' ? value : '$current$value';
-    final decimalIndex = next.indexOf('.');
-    if (decimalIndex >= 0 && next.length - decimalIndex > 3) return;
-    _amountController.text = next;
+    syncTextControllerText(
+      _amountController,
+      appendMoneyInputText(_amountController.text, value),
+    );
   }
 
   void _deleteAmountDigit() {
-    final text = _amountController.text;
-    if (text.isEmpty) return;
-    _amountController.text = text.substring(0, text.length - 1);
+    syncTextControllerText(
+      _amountController,
+      deleteLastMoneyInputText(_amountController.text),
+    );
   }
 
   void _clearForNext() {
@@ -514,15 +511,6 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     );
   }
 
-  String? _validatePositiveAmount(String? value) {
-    try {
-      final money = Money.parse(value ?? '');
-      return money.minorUnits > 0 ? null : '请输入有效金额';
-    } on FormatException {
-      return '请输入有效金额';
-    }
-  }
-
   MoneySemantic _amountSemantic(TransactionFormMode mode) {
     return switch (mode) {
       TransactionFormMode.expense => MoneySemantic.expense,
@@ -548,14 +536,6 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     ref
         .read(transactionFormViewModelProvider.notifier)
         .setNoteText(_noteController.text);
-  }
-
-  void _syncControllerText(TextEditingController controller, String text) {
-    if (controller.text == text) return;
-    controller.value = TextEditingValue(
-      text: text,
-      selection: TextSelection.collapsed(offset: text.length),
-    );
   }
 
   void _selectExpenseCategory({
@@ -634,32 +614,37 @@ class _AccountValidationFields extends StatelessWidget {
       if (state.mode == TransactionFormMode.expense)
         _HiddenValidationField(
           keyValue:
-              'expense-account-${_effectiveId(state.fromAccountId, settlementAccounts)}',
+              'expense-account-${effectiveAccountId(state.fromAccountId, settlementAccounts)}',
           validator:
               () =>
-                  _effectiveId(state.fromAccountId, settlementAccounts) == null
+                  effectiveAccountId(state.fromAccountId, settlementAccounts) ==
+                          null
                       ? '请选择支出账户'
                       : null,
         ),
       if (state.mode == TransactionFormMode.income)
         _HiddenValidationField(
           keyValue:
-              'income-account-${_effectiveId(state.toAccountId, settlementAccounts)}',
+              'income-account-${effectiveAccountId(state.toAccountId, settlementAccounts)}',
           validator:
               () =>
-                  _effectiveId(state.toAccountId, settlementAccounts) == null
+                  effectiveAccountId(state.toAccountId, settlementAccounts) ==
+                          null
                       ? '请选择收入账户'
                       : null,
         ),
       if (state.mode == TransactionFormMode.transfer)
         _HiddenValidationField(
           keyValue:
-              'transfer-accounts-${_effectiveId(state.fromAccountId, settlementAccounts)}-${_effectiveId(state.toAccountId, settlementAccounts)}',
+              'transfer-accounts-${effectiveAccountId(state.fromAccountId, settlementAccounts)}-${effectiveAccountId(state.toAccountId, settlementAccounts)}',
           validator:
               () =>
-                  _effectiveId(state.fromAccountId, settlementAccounts) ==
+                  effectiveAccountId(state.fromAccountId, settlementAccounts) ==
                               null ||
-                          _effectiveId(state.toAccountId, settlementAccounts) ==
+                          effectiveAccountId(
+                                state.toAccountId,
+                                settlementAccounts,
+                              ) ==
                               null
                       ? '请选择转出和转入账户'
                       : null,
@@ -667,12 +652,16 @@ class _AccountValidationFields extends StatelessWidget {
       if (state.mode == TransactionFormMode.borrowing)
         _HiddenValidationField(
           keyValue:
-              'borrowing-accounts-${_effectiveId(state.liabilityAccountId, liabilityAccounts)}-${_effectiveId(state.toAccountId, fundAccounts)}',
+              'borrowing-accounts-${effectiveAccountId(state.liabilityAccountId, liabilityAccounts)}-${effectiveAccountId(state.toAccountId, fundAccounts)}',
           validator:
               () =>
-                  _effectiveId(state.liabilityAccountId, liabilityAccounts) ==
+                  effectiveAccountId(
+                                state.liabilityAccountId,
+                                liabilityAccounts,
+                              ) ==
                               null ||
-                          _effectiveId(state.toAccountId, fundAccounts) == null
+                          effectiveAccountId(state.toAccountId, fundAccounts) ==
+                              null
                       ? '请选择借出和借入账户'
                       : null,
         ),
@@ -706,25 +695,6 @@ class _HiddenValidationField extends StatelessWidget {
                   ),
     );
   }
-}
-
-String? _effectiveId(String? selectedId, List<Account> options) {
-  if (selectedId != null &&
-      options.any((account) => account.id == selectedId)) {
-    return selectedId;
-  }
-  return options.isEmpty ? null : options.first.id;
-}
-
-Account? _effectiveAccount(String? selectedId, List<Account> options) {
-  if (selectedId != null) {
-    for (final account in options) {
-      if (account.id == selectedId) {
-        return account;
-      }
-    }
-  }
-  return options.firstOrNull;
 }
 
 class _TopBar extends StatelessWidget {
@@ -891,7 +861,7 @@ class _MainAccountPickerTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textStyles = context.appTextStyles;
-    final effective = _effectiveAccount(selectedId, accounts);
+    final effective = effectiveAccount(selectedId, accounts);
     final title = effective?.name ?? '$label为空';
 
     return Material(
@@ -941,7 +911,7 @@ class _MainAccountPickerTile extends StatelessWidget {
       context: context,
       title: '选择$label',
       accounts: accounts,
-      selectedId: _effectiveAccount(selectedId, accounts)?.id,
+      selectedId: effectiveAccount(selectedId, accounts)?.id,
     );
     if (selected == null) return;
     onChanged(selected);
@@ -1002,9 +972,7 @@ class _AmountNotePanel extends StatelessWidget {
               readOnly: true,
               showCursor: false,
               textAlign: TextAlign.end,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-              ],
+              inputFormatters: [moneyInputFormatter],
               validator: amountValidator,
               style: textStyles.amountHero.copyWith(color: amountColor),
               decoration: InputDecoration(
@@ -1170,7 +1138,7 @@ class _AccountSelectorChip extends StatelessWidget {
         selectedId == null
             ? null
             : accounts.where((account) => account.id == selectedId).firstOrNull;
-    final effective = selected ?? (accounts.isEmpty ? null : accounts.first);
+    final effective = selected ?? effectiveAccount(null, accounts);
     final text =
         allowNone && selectedId == null
             ? noneLabel
@@ -1208,7 +1176,7 @@ class _AccountSelectorChip extends StatelessWidget {
       context: context,
       title: '选择$label',
       accounts: accounts,
-      selectedId: _effectiveAccount(selectedId, accounts)?.id,
+      selectedId: effectiveAccount(selectedId, accounts)?.id,
     );
     if (selected == null) return;
     onChanged(selected);

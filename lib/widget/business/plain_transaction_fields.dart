@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/money/money.dart';
 import '../../design_system/theme/app_text_styles.dart';
 import '../../design_system/token/spacing.dart';
 import '../../design_system/widget/app_form_field.dart';
@@ -11,6 +12,75 @@ import 'business_icon.dart';
 final moneyInputFormatter = FilteringTextInputFormatter.allow(
   RegExp(r'^\d*\.?\d{0,2}'),
 );
+
+String appendMoneyInputText(String current, String input) {
+  if (input == '.') {
+    if (current.contains('.')) return current;
+    return current.isEmpty ? '0.' : '$current.';
+  }
+
+  if (input.length != 1 || !RegExp(r'^\d$').hasMatch(input)) {
+    return current;
+  }
+
+  final next = current == '0' ? input : '$current$input';
+  final decimalIndex = next.indexOf('.');
+  if (decimalIndex >= 0 && next.length - decimalIndex > 3) {
+    return current;
+  }
+  return next;
+}
+
+String deleteLastMoneyInputText(String current) {
+  if (current.isEmpty) return current;
+  return current.substring(0, current.length - 1);
+}
+
+String? validatePositiveMoneyText(
+  String? value, {
+  String invalidMessage = '请输入有效金额',
+  String nonPositiveMessage = '金额必须大于 0',
+}) {
+  final money = Money.tryParse(value);
+  if (money == null) return invalidMessage;
+  return money.minorUnits > 0 ? null : nonPositiveMessage;
+}
+
+String? validateNonNegativeMoneyText(
+  String? value, {
+  String invalidMessage = '请输入有效金额',
+  String negativeMessage = '金额不能小于 0',
+}) {
+  final money = Money.tryParse(value);
+  if (money == null) return invalidMessage;
+  return money.minorUnits >= 0 ? null : negativeMessage;
+}
+
+int? parseMoneyMinorUnitsOrNull(String? value) {
+  return Money.tryParse(value)?.minorUnits;
+}
+
+bool containsAccount(List<Account> accounts, String? accountId) {
+  if (accountId == null) return false;
+  return accounts.any((account) => account.id == accountId);
+}
+
+Account? findAccountById(String? accountId, List<Account> accounts) {
+  if (accountId == null) return null;
+  for (final account in accounts) {
+    if (account.id == accountId) return account;
+  }
+  return null;
+}
+
+String? effectiveAccountId(String? selectedId, List<Account> accounts) {
+  if (containsAccount(accounts, selectedId)) return selectedId;
+  return accounts.isEmpty ? null : accounts.first.id;
+}
+
+Account? effectiveAccount(String? selectedId, List<Account> accounts) {
+  return findAccountById(effectiveAccountId(selectedId, accounts), accounts);
+}
 
 class MoneyPlainFormRow extends StatelessWidget {
   const MoneyPlainFormRow({

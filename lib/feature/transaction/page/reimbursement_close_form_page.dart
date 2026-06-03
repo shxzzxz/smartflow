@@ -5,14 +5,15 @@ import 'package:go_router/go_router.dart';
 import '../../../app/provider.dart';
 import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
+import '../../../core/text/text_normalizer.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../application/ledger/ledger_command_api.dart';
-import '../../../application/ledger/ledger_query_api.dart';
 import '../../../widget/business/plain_transaction_fields.dart';
+import '../presentation/transaction_form_presentation.dart';
 
 class ReimbursementCloseFormPage extends ConsumerStatefulWidget {
   const ReimbursementCloseFormPage({
@@ -56,13 +57,13 @@ class _ReimbursementCloseFormPageState
         const <Account>[];
     final accountsById =
         ref.watch(accountsByIdProvider).value ?? const <String, Account>{};
-    final receiveAccount = _findAccount(_receiveAccountId, accounts);
+    final receiveAccount = findAccountById(_receiveAccountId, accounts);
     final detail =
         ref.watch(transactionDetailProvider(widget.advanceTransactionId)).value;
     final summary = detail?.reimbursementSummary;
-    final receivable = _resolveReceivable(detail, accountsById);
+    final receivable = reimbursementReceivableAccountId(detail, accountsById);
     final outstanding = summary?.outstanding;
-    final actualMinor = _parseMinorOrNull(_amountController.text);
+    final actualMinor = parseMoneyMinorUnitsOrNull(_amountController.text);
     final gap =
         (outstanding != null && actualMinor != null)
             ? Money(minorUnits: actualMinor - outstanding.minorUnits)
@@ -107,7 +108,7 @@ class _ReimbursementCloseFormPageState
                     label: '实收金额',
                     controller: _amountController,
                     hintText: '请输入实收金额',
-                    validator: _validateNonNegative,
+                    validator: validateNonNegativeMoneyText,
                   ),
                   AccountPlainFormRow(
                     label: '到账账户',
@@ -116,7 +117,9 @@ class _ReimbursementCloseFormPageState
                     placeholder: '请选择到账账户',
                     onTap: () => _pickReceiveAccount(accounts),
                     validator: (value) {
-                      final amount = _parseMinorOrNull(_amountController.text);
+                      final amount = parseMoneyMinorUnitsOrNull(
+                        _amountController.text,
+                      );
                       if (amount != null && amount > 0 && value == null) {
                         return '请选择账户';
                       }
@@ -143,37 +146,6 @@ class _ReimbursementCloseFormPageState
         ),
       ),
     );
-  }
-
-  int? _parseMinorOrNull(String input) {
-    try {
-      return Money.parse(input).minorUnits;
-    } on FormatException {
-      return null;
-    }
-  }
-
-  String? _validateNonNegative(String? value) {
-    try {
-      final money = Money.parse(value ?? '');
-      return money.minorUnits >= 0 ? null : '金额不能小于 0';
-    } on FormatException {
-      return '请输入有效金额';
-    }
-  }
-
-  String? _resolveReceivable(
-    TransactionDetail? detail,
-    Map<String, Account> accountsById,
-  ) {
-    if (detail == null) return null;
-    for (final entry in detail.entries) {
-      if (accountsById[entry.accountId]?.type == AccountType.asset &&
-          entry.direction == EntryDirection.debit) {
-        return entry.accountId;
-      }
-    }
-    return null;
   }
 
   Future<void> _pickReceiveAccount(List<Account> accounts) async {
@@ -211,10 +183,7 @@ class _ReimbursementCloseFormPageState
         receivableAccountId: receivableAccountId,
         receiveAccountId: _receiveAccountId ?? receivableAccountId,
         occurredAt: _occurredAt,
-        note:
-            _noteController.text.trim().isEmpty
-                ? null
-                : _noteController.text.trim(),
+        note: trimToNull(_noteController.text),
       ),
     );
     if (!mounted) return;
@@ -228,14 +197,6 @@ class _ReimbursementCloseFormPageState
         ).showSnackBar(SnackBar(content: Text(failure.message)));
     }
   }
-}
-
-Account? _findAccount(String? accountId, List<Account> accounts) {
-  if (accountId == null) return null;
-  for (final account in accounts) {
-    if (account.id == accountId) return account;
-  }
-  return null;
 }
 
 String _formatDateTime(DateTime date) {

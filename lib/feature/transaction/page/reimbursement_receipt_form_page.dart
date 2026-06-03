@@ -5,14 +5,15 @@ import 'package:go_router/go_router.dart';
 import '../../../app/provider.dart';
 import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
+import '../../../core/text/text_normalizer.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../application/ledger/ledger_command_api.dart';
-import '../../../application/ledger/ledger_query_api.dart';
 import '../../../widget/business/plain_transaction_fields.dart';
+import '../presentation/transaction_form_presentation.dart';
 
 class ReimbursementReceiptFormPage extends ConsumerStatefulWidget {
   const ReimbursementReceiptFormPage({
@@ -50,11 +51,11 @@ class _ReimbursementReceiptFormPageState
         const <Account>[];
     final accountsById =
         ref.watch(accountsByIdProvider).value ?? const <String, Account>{};
-    final receiveAccount = _findAccount(_receiveAccountId, accounts);
+    final receiveAccount = findAccountById(_receiveAccountId, accounts);
     final detail =
         ref.watch(transactionDetailProvider(widget.advanceTransactionId)).value;
     final summary = detail?.reimbursementSummary;
-    final receivable = _resolveReceivable(detail, accountsById);
+    final receivable = reimbursementReceivableAccountId(detail, accountsById);
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -86,7 +87,7 @@ class _ReimbursementReceiptFormPageState
                     label: '到账金额',
                     controller: _amountController,
                     hintText: '请输入到账金额',
-                    validator: _validatePositive,
+                    validator: validatePositiveMoneyText,
                   ),
                   AccountPlainFormRow(
                     label: '到账账户',
@@ -116,29 +117,6 @@ class _ReimbursementReceiptFormPageState
         ),
       ),
     );
-  }
-
-  String? _validatePositive(String? value) {
-    try {
-      final money = Money.parse(value ?? '');
-      return money.minorUnits > 0 ? null : '金额必须大于 0';
-    } on FormatException {
-      return '请输入有效金额';
-    }
-  }
-
-  String? _resolveReceivable(
-    TransactionDetail? detail,
-    Map<String, Account> accountsById,
-  ) {
-    if (detail == null) return null;
-    for (final entry in detail.entries) {
-      if (accountsById[entry.accountId]?.type == AccountType.asset &&
-          entry.direction == EntryDirection.debit) {
-        return entry.accountId;
-      }
-    }
-    return null;
   }
 
   Future<void> _pickReceiveAccount(List<Account> accounts) async {
@@ -175,10 +153,7 @@ class _ReimbursementReceiptFormPageState
         receivableAccountId: receivableAccountId,
         receiveAccountId: _receiveAccountId!,
         occurredAt: _occurredAt,
-        note:
-            _noteController.text.trim().isEmpty
-                ? null
-                : _noteController.text.trim(),
+        note: trimToNull(_noteController.text),
       ),
     );
     if (!mounted) return;
@@ -192,14 +167,6 @@ class _ReimbursementReceiptFormPageState
         ).showSnackBar(SnackBar(content: Text(failure.message)));
     }
   }
-}
-
-Account? _findAccount(String? accountId, List<Account> accounts) {
-  if (accountId == null) return null;
-  for (final account in accounts) {
-    if (account.id == accountId) return account;
-  }
-  return null;
 }
 
 String _formatDateTime(DateTime date) {

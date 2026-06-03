@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/provider.dart';
 import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
+import '../../../core/text/text_normalizer.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
@@ -12,9 +13,9 @@ import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../application/ledger/ledger_command_api.dart';
-import '../../../application/ledger/ledger_query_api.dart';
 import '../../../widget/business/money_text.dart';
 import '../../../widget/business/plain_transaction_fields.dart';
+import '../presentation/transaction_form_presentation.dart';
 
 class RefundFormPage extends ConsumerStatefulWidget {
   const RefundFormPage({required this.parentTransactionId, super.key});
@@ -50,9 +51,9 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
     final detailAsync = ref.watch(
       transactionDetailProvider(widget.parentTransactionId),
     );
-    final refundToAccountId = _effectiveRefundToAccountId(
+    final refundToAccountId = effectiveRefundToAccountId(
       selectedId: _refundToAccountId,
-      parentSettlementAccountId: _resolveParentSettlementAccountId(
+      parentSettlementAccountId: parentSettlementAccountIdForRefund(
         detailAsync.value,
         accountsById,
       ),
@@ -64,7 +65,7 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
       final refunded = detail.refundedTotal ?? const Money(minorUnits: 0);
       return amount - refunded;
     });
-    final refundToAccount = _findAccount(refundToAccountId, accounts);
+    final refundToAccount = findAccountById(refundToAccountId, accounts);
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -95,7 +96,7 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
                     label: '退款金额',
                     controller: _amountController,
                     hintText: '请输入退款金额',
-                    validator: _validatePositive,
+                    validator: validatePositiveMoneyText,
                   ),
                   AccountPlainFormRow(
                     label: '退款账户',
@@ -128,15 +129,6 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
         ),
       ),
     );
-  }
-
-  String? _validatePositive(String? value) {
-    try {
-      final money = Money.parse(value ?? '');
-      return money.minorUnits > 0 ? null : '金额必须大于 0';
-    } on FormatException {
-      return '请输入有效金额';
-    }
   }
 
   Future<void> _pickRefundAccount(
@@ -174,9 +166,9 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
         ref.read(accountsByIdProvider).value ?? const <String, Account>{};
     final detail =
         ref.read(transactionDetailProvider(widget.parentTransactionId)).value;
-    final refundToAccountId = _effectiveRefundToAccountId(
+    final refundToAccountId = effectiveRefundToAccountId(
       selectedId: _refundToAccountId,
-      parentSettlementAccountId: _resolveParentSettlementAccountId(
+      parentSettlementAccountId: parentSettlementAccountIdForRefund(
         detail,
         accountsById,
       ),
@@ -193,10 +185,7 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
         parentTransactionId: widget.parentTransactionId,
         refundToAccountId: refundToAccountId,
         occurredAt: _occurredAt,
-        note:
-            _noteController.text.trim().isEmpty
-                ? null
-                : _noteController.text.trim(),
+        note: trimToNull(_noteController.text),
       ),
     );
     if (!mounted) return;
@@ -210,52 +199,6 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
         ).showSnackBar(SnackBar(content: Text(failure.message)));
     }
   }
-}
-
-Account? _findAccount(String? accountId, List<Account> accounts) {
-  if (accountId == null) return null;
-  for (final account in accounts) {
-    if (account.id == accountId) return account;
-  }
-  return null;
-}
-
-String? _effectiveRefundToAccountId({
-  required String? selectedId,
-  required String? parentSettlementAccountId,
-  required List<Account> accounts,
-}) {
-  if (_containsAccount(accounts, selectedId)) {
-    return selectedId;
-  }
-  if (_containsAccount(accounts, parentSettlementAccountId)) {
-    return parentSettlementAccountId;
-  }
-  return null;
-}
-
-bool _containsAccount(List<Account> accounts, String? accountId) {
-  if (accountId == null) {
-    return false;
-  }
-  return accounts.any((account) => account.id == accountId);
-}
-
-String? _resolveParentSettlementAccountId(
-  TransactionDetail? detail,
-  Map<String, Account> accountsById,
-) {
-  if (detail == null) {
-    return null;
-  }
-  for (final entry in detail.entries) {
-    final type = accountsById[entry.accountId]?.type;
-    if ((type == AccountType.asset || type == AccountType.liability) &&
-        entry.direction == EntryDirection.credit) {
-      return entry.accountId;
-    }
-  }
-  return null;
 }
 
 String _formatDateTime(DateTime date) {

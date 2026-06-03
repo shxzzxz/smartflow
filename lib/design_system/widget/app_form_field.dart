@@ -5,6 +5,14 @@ import '../theme/app_text_styles.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
 
+void syncTextControllerText(TextEditingController controller, String text) {
+  if (controller.text == text) return;
+  controller.value = TextEditingValue(
+    text: text,
+    selection: TextSelection.collapsed(offset: text.length),
+  );
+}
+
 class AppTextFormField extends StatelessWidget {
   const AppTextFormField({
     required this.controller,

@@ -444,12 +444,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   }
 
   Money? _parsePositiveAmount(String value) {
-    try {
-      final money = Money.parse(value);
-      return money.minorUnits > 0 ? money : null;
-    } on FormatException {
-      return null;
-    }
+    final money = Money.tryParse(value);
+    return money != null && money.minorUnits > 0 ? money : null;
   }
 
   String? _effectiveId(String? selectedId, List<Account> options) {

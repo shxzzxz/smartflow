@@ -69,6 +69,71 @@ void main() {
       expect(snapshot.reimbursementAccountId, 'company');
     });
   });
+
+  group('transaction semantic helpers', () {
+    test('resolves refund target with selected account first', () {
+      final accounts = [_account('cash'), _account('bank')];
+
+      expect(
+        effectiveRefundToAccountId(
+          selectedId: 'bank',
+          parentSettlementAccountId: 'cash',
+          accounts: accounts,
+        ),
+        'bank',
+      );
+      expect(
+        effectiveRefundToAccountId(
+          selectedId: 'missing',
+          parentSettlementAccountId: 'cash',
+          accounts: accounts,
+        ),
+        'cash',
+      );
+      expect(
+        effectiveRefundToAccountId(
+          selectedId: 'missing',
+          parentSettlementAccountId: 'also-missing',
+          accounts: accounts,
+        ),
+        isNull,
+      );
+    });
+
+    test('resolves parent settlement account for refund', () {
+      final detail = _detail(
+        purpose: BusinessPurpose.dailyExpense,
+        entries: [
+          _entry('food', EntryDirection.debit),
+          _entry('cash', EntryDirection.credit),
+        ],
+      );
+
+      final accountId = parentSettlementAccountIdForRefund(detail, {
+        'food': _account('food', type: AccountType.expense),
+        'cash': _account('cash'),
+      });
+
+      expect(accountId, 'cash');
+    });
+
+    test('resolves reimbursement receivable account', () {
+      final detail = _detail(
+        purpose: BusinessPurpose.reimbursementAdvance,
+        entries: [
+          _entry('company', EntryDirection.debit),
+          _entry('cash', EntryDirection.credit),
+        ],
+      );
+
+      final accountId = reimbursementReceivableAccountId(detail, {
+        'company': _account('company'),
+        'cash': _account('cash'),
+      });
+
+      expect(accountId, 'company');
+    });
+  });
 }
 
 TransactionDetail _detail({

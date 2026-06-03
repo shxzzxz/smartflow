@@ -175,6 +175,47 @@ String? rootCategoryId(List<CategoryNode> tree, String? categoryId) {
   return categoryId;
 }
 
+String? effectiveRefundToAccountId({
+  required String? selectedId,
+  required String? parentSettlementAccountId,
+  required List<Account> accounts,
+}) {
+  if (_containsAccountId(accounts, selectedId)) {
+    return selectedId;
+  }
+  if (_containsAccountId(accounts, parentSettlementAccountId)) {
+    return parentSettlementAccountId;
+  }
+  return null;
+}
+
+String? parentSettlementAccountIdForRefund(
+  TransactionDetail? detail,
+  Map<String, Account> accountsById,
+) {
+  if (detail == null) return null;
+  return _firstSettlementId(detail, accountsById, EntryDirection.credit);
+}
+
+String? reimbursementReceivableAccountId(
+  TransactionDetail? detail,
+  Map<String, Account> accountsById,
+) {
+  if (detail == null) return null;
+  for (final entry in detail.entries) {
+    if (accountsById[entry.accountId]?.type == AccountType.asset &&
+        entry.direction == EntryDirection.debit) {
+      return entry.accountId;
+    }
+  }
+  return null;
+}
+
+bool _containsAccountId(List<Account> accounts, String? accountId) {
+  if (accountId == null) return false;
+  return accounts.any((account) => account.id == accountId);
+}
+
 String? _firstAccountId(
   TransactionDetail detail,
   Map<String, Account> accountsById,
