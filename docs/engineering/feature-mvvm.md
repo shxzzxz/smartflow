@@ -30,6 +30,16 @@ ViewModel state 使用不可变对象表达，每次状态变化发布新的 sta
 
 编辑页的已有数据加载、read model 到表单 state 的映射、初始化幂等控制属于 ViewModel。
 
+## 页面动态渲染与业务行为分发
+
+复杂页面的动态渲染由页面级 ViewModel 输出 view state 控制。View state 可以包含字段可编辑状态、按钮显示、禁用原因、banner 语义、当前选择、加载状态和提交状态；View 只根据这些状态渲染，不在 widget 内复制跨数据源或跨业务域判断。
+
+业务行为分发也由页面级 ViewModel 控制。View 触发页面语义事件，例如 `save`、`delete`、`changeOccurredAt` 或 `toggleExcludeStats`；ViewModel 根据当前页面 state、read model、业务类型和业务归属转换为 application command，并调用对应 application service。
+
+路由参数只作为身份或初始化信号，不直接决定复杂渲染规则，也不承载业务分发逻辑。组件工厂只用于拆分差异明显的 UI 结构，不作为跨业务域 command 分发机制。
+
+当同一页面内需要根据类型或归属分发到不同业务域接口时，优先把分发逻辑作为 ViewModel 私有函数或私有类保留在 `view_model` 附近。只有多个页面已经稳定复用同一套页面无关动作协议时，才提升为共享 handler 或策略对象。不要为了单个页面新增公开 `policy` / `handler` 契约。
+
 ## Provider
 
 `app/provider.dart` 只承担应用装配级 provider，例如 database、repository、application service 与全局 facade。页面级查询聚合、ViewModel provider 和交互状态 provider 放在对应 `feature/<feature>/provider` 或 `feature/<feature>/view_model` 下，不继续集中进 `app/provider.dart`。
