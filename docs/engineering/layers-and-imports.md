@@ -69,7 +69,7 @@ infrastructure 实现 port 与 query interfaces，不承载业务决策。
 
 - `home` 可能消费账务、预算、信贷摘要。
 - `calendar` 可能消费交易、还款计划和预算。
-- `transactions` 是账务入口，但详情页可能通过 action policy 接入其它业务域。
+- `transaction` 是账务入口，但交易相关页面可能通过页面级 ViewModel 把页面事件分发到信贷等其它业务域 application service。
 
 ## 业务域与角色
 
@@ -135,8 +135,7 @@ feature/<feature>/
 ├── widget/
 ├── provider/
 ├── view_model/
-├── presentation/
-└── action_policy/                        # 可选；目前主要用于 transaction feature
+└── presentation/
 ```
 
 ## 事务与 Drift 单库
