@@ -1,0 +1,278 @@
+import '../../../application/credit/credit_command_api.dart';
+import '../../../application/ledger/ledger_command_api.dart';
+import '../../../application/ledger/ledger_query_api.dart';
+import '../../../core/patch/patch.dart';
+import '../../../core/result/result.dart';
+import '../../../domain/ledger/valobj/ledger_error_code.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
+
+abstract interface class TransactionDetailActionDispatcher {
+  Future<UiActionOutcome<void>> delete();
+
+  Future<UiActionOutcome<void>> changeNote(String? value);
+
+  Future<UiActionOutcome<void>> changeOccurredAt(DateTime value);
+
+  Future<UiActionOutcome<void>> changeSettlementAccount(String accountId);
+}
+
+TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
+  required Transaction transaction,
+  required TransactionCorrectionAppService correctionService,
+  required TransactionUpdateAppService updateService,
+  required InstallmentService installmentService,
+}) {
+  final ownership = transaction.ownership;
+  if (ownership == null) {
+    return _DefaultActionDispatcher(
+      transaction: transaction,
+      correctionService: correctionService,
+      updateService: updateService,
+    );
+  }
+
+  if (ownership.ownerType == installmentOwnerType &&
+      ownership.ownerId != null) {
+    final role = InstallmentOwnerRole.fromWire(ownership.ownerRole);
+    if (role != null) {
+      return _InstallmentActionDispatcher(
+        transaction: transaction,
+        installmentService: installmentService,
+        contractId: ownership.ownerId!,
+        role: role,
+      );
+    }
+  }
+
+  return _UnknownActionDispatcher(
+    transaction: transaction,
+    updateService: updateService,
+  );
+}
+
+UiActionOutcome<void> detailVoidOutcomeFromResult<T>(Result<T> result) {
+  return switch (result) {
+    Success<T>() => const UiActionOutcome.success(null),
+    FailureResult<T>(:final failure) => UiActionOutcome.failure(
+      UiError(
+        code: failure.code ?? LedgerErrorCode.transactionPostingFailed.code,
+        message: failure.message,
+      ),
+    ),
+  };
+}
+
+UiActionOutcome<void> detailNotEditable(String message) {
+  return UiActionOutcome.failure(
+    UiError(
+      code: LedgerErrorCode.transactionNotEditable.code,
+      message: message,
+    ),
+  );
+}
+
+UiActionOutcome<void> detailInvalidCommand(String message) {
+  return UiActionOutcome.failure(
+    UiError(
+      code: LedgerErrorCode.transactionInvalidCommand.code,
+      message: message,
+    ),
+  );
+}
+
+Patch<String?> _nullableStringPatch(String? value) {
+  return value == null ? const Patch<String?>.clear() : Patch.set(value);
+}
+
+final class _DefaultActionDispatcher
+    implements TransactionDetailActionDispatcher {
+  const _DefaultActionDispatcher({
+    required this.transaction,
+    required this.correctionService,
+    required this.updateService,
+  });
+
+  final Transaction transaction;
+  final TransactionCorrectionAppService correctionService;
+  final TransactionUpdateAppService updateService;
+
+  @override
+  Future<UiActionOutcome<void>> delete() async {
+    await correctionService.cancelTransaction(
+      DeleteTransactionCommand(transactionId: transaction.id),
+    );
+    return const UiActionOutcome.success(null);
+  }
+
+  @override
+  Future<UiActionOutcome<void>> changeNote(String? value) async {
+    final result = await updateService.updateBasicInfo(
+      UpdateTransactionBasicInfoCommand(
+        transactionId: transaction.id,
+        note: _nullableStringPatch(value),
+      ),
+    );
+    return detailVoidOutcomeFromResult(result);
+  }
+
+  @override
+  Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
+    final result = await updateService.updateBasicInfo(
+      UpdateTransactionBasicInfoCommand(
+        transactionId: transaction.id,
+        occurredAt: value,
+      ),
+    );
+    return detailVoidOutcomeFromResult(result);
+  }
+
+  @override
+  Future<UiActionOutcome<void>> changeSettlementAccount(
+    String accountId,
+  ) async {
+    return detailNotEditable('结算账户变更需要通过更正交易完成');
+  }
+}
+
+final class _InstallmentActionDispatcher
+    implements TransactionDetailActionDispatcher {
+  const _InstallmentActionDispatcher({
+    required this.transaction,
+    required this.installmentService,
+    required this.contractId,
+    required this.role,
+  });
+
+  final Transaction transaction;
+  final InstallmentService installmentService;
+  final String contractId;
+  final InstallmentOwnerRole role;
+
+  @override
+  Future<UiActionOutcome<void>> delete() async {
+    final result = switch (role) {
+      InstallmentOwnerRole.disbursement => await installmentService
+          .deleteContract(DeleteContractCommand(contractId: contractId)),
+      InstallmentOwnerRole.scheduledRepayment ||
+      InstallmentOwnerRole.extraPrincipal ||
+      InstallmentOwnerRole.earlySettlement => await installmentService
+          .revertRepayment(
+            RevertRepaymentCommand(transactionId: transaction.id),
+          ),
+    };
+    return detailVoidOutcomeFromResult(result);
+  }
+
+  @override
+  Future<UiActionOutcome<void>> changeNote(String? value) async {
+    final result = switch (role) {
+      InstallmentOwnerRole.disbursement => await installmentService
+          .updateContract(
+            UpdateContractCommand(
+              contractId: contractId,
+              note:
+                  value == null
+                      ? const Patch<String>.clear()
+                      : Patch<String>.set(value),
+            ),
+          ),
+      InstallmentOwnerRole.scheduledRepayment ||
+      InstallmentOwnerRole.extraPrincipal ||
+      InstallmentOwnerRole.earlySettlement => await installmentService
+          .editRepayment(
+            EditRepaymentCommand(
+              transactionId: transaction.id,
+              contractId: contractId,
+              note: _nullableStringPatch(value),
+            ),
+          ),
+    };
+    return detailVoidOutcomeFromResult(result);
+  }
+
+  @override
+  Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
+    final result = switch (role) {
+      InstallmentOwnerRole.disbursement => await installmentService
+          .updateContract(
+            UpdateContractCommand(contractId: contractId, borrowingDate: value),
+          ),
+      InstallmentOwnerRole.scheduledRepayment ||
+      InstallmentOwnerRole.extraPrincipal ||
+      InstallmentOwnerRole.earlySettlement => await installmentService
+          .editRepayment(
+            EditRepaymentCommand(
+              transactionId: transaction.id,
+              contractId: contractId,
+              occurredAt: value,
+            ),
+          ),
+    };
+    return detailVoidOutcomeFromResult(result);
+  }
+
+  @override
+  Future<UiActionOutcome<void>> changeSettlementAccount(
+    String accountId,
+  ) async {
+    final result = switch (role) {
+      InstallmentOwnerRole.disbursement => await installmentService
+          .updateContract(
+            UpdateContractCommand(
+              contractId: contractId,
+              disbursementAccountId: accountId,
+            ),
+          ),
+      InstallmentOwnerRole.scheduledRepayment ||
+      InstallmentOwnerRole.extraPrincipal ||
+      InstallmentOwnerRole.earlySettlement => await installmentService
+          .editRepayment(
+            EditRepaymentCommand(
+              transactionId: transaction.id,
+              contractId: contractId,
+              paidFromAccountId: accountId,
+            ),
+          ),
+    };
+    return detailVoidOutcomeFromResult(result);
+  }
+}
+
+final class _UnknownActionDispatcher
+    implements TransactionDetailActionDispatcher {
+  const _UnknownActionDispatcher({
+    required this.transaction,
+    required this.updateService,
+  });
+
+  final Transaction transaction;
+  final TransactionUpdateAppService updateService;
+
+  @override
+  Future<UiActionOutcome<void>> delete() async {
+    return detailNotEditable('该交易属于当前版本未识别的业务来源，仅允许修改备注');
+  }
+
+  @override
+  Future<UiActionOutcome<void>> changeNote(String? value) async {
+    final result = await updateService.updateBasicInfo(
+      UpdateTransactionBasicInfoCommand(
+        transactionId: transaction.id,
+        note: _nullableStringPatch(value),
+      ),
+    );
+    return detailVoidOutcomeFromResult(result);
+  }
+
+  @override
+  Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
+    return detailNotEditable('该交易属于当前版本未识别的业务来源，仅允许修改备注');
+  }
+
+  @override
+  Future<UiActionOutcome<void>> changeSettlementAccount(
+    String accountId,
+  ) async {
+    return detailNotEditable('该交易属于当前版本未识别的业务来源，仅允许修改备注');
+  }
+}

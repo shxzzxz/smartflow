@@ -4,26 +4,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../app/provider.dart';
+import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
-import '../../../core/result/result.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_surface.dart';
-import '../../../application/ledger/ledger_command_api.dart';
-import '../../../application/ledger/ledger_query_api.dart';
-import '../action_policy/transaction_action_policy.dart';
-import '../provider/transaction_action_policy_provider.dart';
 import '../../../widget/business/account_endpoint_view.dart';
-import '../../../widget/business/account_lookup.dart';
 import '../../../widget/business/business_icon.dart';
 import '../../../widget/business/business_icon_bubble.dart';
-import '../../../widget/business/finance_labels.dart';
 import '../../../widget/business/money_text.dart';
 import '../../../widget/business/plain_transaction_fields.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
+import '../presentation/transaction_detail_presentation.dart';
+import '../view_model/transaction_detail_state.dart';
+import '../view_model/transaction_detail_view_model.dart';
 
 class TransactionDetailPage extends ConsumerWidget {
   const TransactionDetailPage({required this.transactionId, super.key});
@@ -32,45 +29,39 @@ class TransactionDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final detailAsync = ref.watch(transactionDetailProvider(transactionId));
-    final detailValue = detailAsync.value;
-    final policy =
-        detailValue == null
-            ? null
-            : ref.watch(
-              transactionActionPolicyProvider(detailValue.transaction),
-            );
+    final stateAsync = ref.watch(
+      transactionDetailViewModelProvider(transactionId),
+    );
+    final loaded = stateAsync.asData?.value;
 
     return Scaffold(
       appBar: AppBar(
         scrolledUnderElevation: 0,
         title: const Text('交易详情'),
         actions: [
-          if (policy != null)
+          if (loaded is TransactionDetailLoaded)
             IconButton(
-              onPressed: () => _confirmDelete(context, policy),
+              onPressed:
+                  loaded.submitting ? null : () => _confirmDelete(context, ref),
               icon: const Icon(RemixIcons.more_2_line),
               tooltip: '更多',
             ),
         ],
       ),
-      body: detailAsync.when(
+      body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => Center(child: Text('$error')),
-        data: (detail) {
-          if (detail == null) {
-            return const Center(child: Text('交易不存在'));
-          }
-          return _DetailBody(detail: detail, policy: policy!);
+        data: (state) {
+          return switch (state) {
+            TransactionDetailNotFound() => const Center(child: Text('交易不存在')),
+            TransactionDetailLoaded() => _DetailBody(state: state),
+          };
         },
       ),
     );
   }
 
-  Future<void> _confirmDelete(
-    BuildContext context,
-    TransactionActionPolicy policy,
-  ) async {
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -90,43 +81,22 @@ class TransactionDetailPage extends ConsumerWidget {
           ),
     );
     if (confirmed != true) return;
-    final result = await policy.delete();
+    final outcome =
+        await ref
+            .read(transactionDetailViewModelProvider(transactionId).notifier)
+            .delete();
     if (!context.mounted) return;
-    result.when(
-      success: (_) => context.pop(),
-      failure:
-          (failure) => ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('删除失败：${failure.message}'))),
-    );
+    _handleActionOutcome(context, outcome, success: () => context.pop());
   }
 }
 
 class _DetailBody extends ConsumerWidget {
-  const _DetailBody({required this.detail, required this.policy});
+  const _DetailBody({required this.state});
 
-  final TransactionDetail detail;
-  final TransactionActionPolicy policy;
+  final TransactionDetailLoaded state;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final transaction = detail.transaction;
-    final purpose = transaction.businessPurpose;
-    final semantic = _semanticForPurpose(purpose);
-    final accountsById =
-        ref.watch(accountsByIdProvider).value ?? const <String, Account>{};
-    final accountRows = _resolveAccountRows(detail, accountsById);
-    final settlementAccounts =
-        ref.watch(accountsForUsageProvider(AccountUsage.settlement)).value ??
-        const <Account>[];
-    final reimbursementAccounts =
-        ref.watch(accountsForUsageProvider(AccountUsage.reimbursement)).value ??
-        const <Account>[];
-
-    final showRefund = purpose == BusinessPurpose.dailyExpense;
-    final showReimbursement = purpose == BusinessPurpose.reimbursementAdvance;
-    final banner = policy.displayBanner();
-
     return Column(
       children: [
         Expanded(
@@ -138,101 +108,50 @@ class _DetailBody extends ConsumerWidget {
               AppSpacing.space24,
             ),
             children: [
-              _HeroCard(detail: detail, semantic: semantic),
-              if (banner != null) ...[
+              _HeroCard(hero: state.hero),
+              if (state.behavior.bannerText != null) ...[
                 const SizedBox(height: AppSpacing.space12),
-                _HandlerBanner(text: banner),
+                _HandlerBanner(text: state.behavior.bannerText!),
               ],
-              if (showRefund || showReimbursement) ...[
+              if (state.refund != null || state.reimbursement != null) ...[
                 const SizedBox(height: AppSpacing.space12),
                 _RefundReimbursementCard(
-                  detail: detail,
-                  showRefund: showRefund,
-                  showReimbursement: showReimbursement,
+                  refund: state.refund,
+                  reimbursement: state.reimbursement,
                 ),
               ],
               const SizedBox(height: AppSpacing.space12),
               _PrimaryMetaCard(
-                detail: detail,
-                accountRows: accountRows,
-                onOccurredAtTap: _resolveTap(
-                  context,
-                  EditableField.occurredAt,
-                  () => _editOccurredAt(context),
-                ),
-                onAccountTap:
-                    (row) => _handleAccountTap(
-                      context,
-                      ref,
-                      row,
-                      settlementAccounts: settlementAccounts,
-                      reimbursementAccounts: reimbursementAccounts,
-                    ),
-                onNoteTap: _resolveTap(
-                  context,
-                  EditableField.note,
-                  () => _editNote(context),
-                ),
+                state: state,
+                onOccurredAtTap: () => _editOccurredAt(context, ref),
+                onAccountTap: (row) => _handleAccountTap(context, ref, row),
+                onNoteTap: () => _editNote(context, ref),
               ),
-              if (detail.history.isNotEmpty) ...[
+              if (state.historyItems.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.space12),
-                _HistoryCard(detail: detail),
+                _HistoryCard(items: state.historyItems),
               ],
-              if (_showsExclusionCard(detail)) ...[
+              if (state.showExcludeStats || state.showExcludeBudget) ...[
                 const SizedBox(height: AppSpacing.space12),
-                _ExclusionCard(detail: detail),
+                _ExclusionCard(state: state),
               ],
             ],
           ),
         ),
-        _ActionBar(detail: detail, policy: policy),
+        _ActionBar(state: state),
       ],
     );
   }
 
-  VoidCallback _resolveTap(
-    BuildContext context,
-    EditableField field,
-    Future<void> Function() editor,
-  ) {
-    final permission = policy.canEdit(field);
-    if (permission.isAllowed) {
-      return () => editor();
-    }
-    return () => _showDenied(context, permission.deniedReason);
-  }
-
-  void _handleAccountTap(
-    BuildContext context,
-    WidgetRef ref,
-    _AccountRowInfo row, {
-    required List<Account> settlementAccounts,
-    required List<Account> reimbursementAccounts,
-  }) {
-    if (row.editKind == _AccountEditKind.settlement) {
-      final permission = policy.canEdit(EditableField.settlementAccount);
-      if (!permission.isAllowed) {
-        _showDenied(context, permission.deniedReason);
+  Future<void> _editNote(BuildContext context, WidgetRef ref) async {
+    switch (state.behavior.canEditNote) {
+      case DetailEditDenied(:final reason):
+        _showMessage(context, reason);
         return;
-      }
+      case DetailEditAllowed():
+        break;
     }
-    _editAccount(
-      context,
-      ref,
-      row,
-      settlementAccounts: settlementAccounts,
-      reimbursementAccounts: reimbursementAccounts,
-    );
-  }
-
-  void _showDenied(BuildContext context, String? reason) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(reason ?? '此字段在当前上下文不可编辑')));
-  }
-
-  Future<void> _editNote(BuildContext context) async {
-    final current = detail.transaction.note ?? '';
+    final current = state.noteText ?? '';
     final controller = TextEditingController(text: current);
     final updated = await showDialog<String>(
       context: context,
@@ -263,104 +182,99 @@ class _DetailBody extends ConsumerWidget {
     );
     await WidgetsBinding.instance.endOfFrame;
     controller.dispose();
+    if (!context.mounted || updated == null || updated == current) return;
+    final outcome = await ref
+        .read(transactionDetailViewModelProvider(state.transactionId).notifier)
+        .changeNote(updated.isEmpty ? null : updated);
     if (!context.mounted) return;
-    if (updated == null) return;
-    if (updated == current) return;
-
-    final result = await policy.changeNote(updated.isEmpty ? null : updated);
-    if (!context.mounted) return;
-    _showResultSnackBar(context, result, success: '备注已更新');
+    _handleActionOutcome(context, outcome, successMessage: '备注已更新');
   }
 
-  Future<void> _editOccurredAt(BuildContext context) async {
-    final current = detail.transaction.occurredAt;
+  Future<void> _editOccurredAt(BuildContext context, WidgetRef ref) async {
+    switch (state.behavior.canEditOccurredAt) {
+      case DetailEditDenied(:final reason):
+        _showMessage(context, reason);
+        return;
+      case DetailEditAllowed():
+        break;
+    }
+    final current = state.detail.transaction.occurredAt;
     final updated = await showAppDateTimePicker(
       context: context,
       initialDateTime: current,
       title: '选择交易时间',
     );
-    if (updated == null || !context.mounted) return;
-    if (updated == current) return;
-    final result = await policy.changeOccurredAt(updated);
+    if (updated == null || !context.mounted || updated == current) return;
+    final outcome = await ref
+        .read(transactionDetailViewModelProvider(state.transactionId).notifier)
+        .changeOccurredAt(updated);
     if (!context.mounted) return;
-    _showResultSnackBar(context, result, success: '交易时间已更新');
+    _handleActionOutcome(context, outcome, successMessage: '交易时间已更新');
   }
 
-  Future<void> _editAccount(
+  Future<void> _handleAccountTap(
     BuildContext context,
     WidgetRef ref,
-    _AccountRowInfo row, {
-    required List<Account> settlementAccounts,
-    required List<Account> reimbursementAccounts,
-  }) async {
-    final options =
-        row.editKind == _AccountEditKind.reimbursement
-            ? reimbursementAccounts
-            : settlementAccounts;
+    DetailAccountRow row,
+  ) async {
+    final editUsage = row.editUsage;
+    if (editUsage == null) return;
+    switch (row.permission) {
+      case DetailEditDenied(:final reason):
+        _showMessage(context, reason);
+        return;
+      case DetailEditAllowed():
+        break;
+    }
+    final viewModel = ref.read(
+      transactionDetailViewModelProvider(state.transactionId).notifier,
+    );
+    final accounts = await viewModel.accountOptions(editUsage);
+    if (!context.mounted) return;
     final selectedId = await showAccountPickerSheet(
       context: context,
       title: '选择${row.label}',
-      accounts: options,
+      accounts: accounts,
       selectedId: row.accountId,
     );
     if (selectedId == null || selectedId == row.accountId) return;
-    final Result<dynamic> result;
-    if (row.editKind == _AccountEditKind.settlement) {
-      result = await policy.changeSettlementAccount(selectedId);
-    } else {
-      // reimbursement 账户变更属 reimbursementAdvance 流图原语自身的字段，
-      result = await ref
-          .read(transactionCorrectionAppServiceProvider)
-          .correctReimbursementAdvance(
-            CorrectReimbursementAdvanceCommand(
-              transactionId: detail.transaction.id,
-              receivableAccountId: selectedId,
-            ),
-          );
-    }
+    final outcome = await viewModel.changeAccount(editUsage, selectedId);
     if (!context.mounted) return;
-    _showResultSnackBar(context, result, success: '${row.label}已更新');
+    _handleActionOutcome(context, outcome, successMessage: '${row.label}已更新');
   }
 }
 
-class _HeroCard extends ConsumerWidget {
-  const _HeroCard({required this.detail, required this.semantic});
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({required this.hero});
 
-  final TransactionDetail detail;
-  final MoneySemantic semantic;
+  final DetailHero hero;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final transaction = detail.transaction;
+  Widget build(BuildContext context) {
     final textStyles = context.appTextStyles;
-    final accountsById =
-        ref.watch(accountsByIdProvider).value ?? const <String, Account>{};
-    final categoryName = _resolveCategoryName(detail, accountsById);
-    final iconKey = _resolveCategoryIconKey(detail, accountsById);
-    final subtitle = _resolveHeroSubtitle(detail);
-
     return AppSurface(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space16),
         child: Row(
           children: [
-            BusinessIconBubble(child: BusinessIcon(iconKey: iconKey, size: 28)),
+            BusinessIconBubble(
+              child: BusinessIcon(iconKey: hero.iconKey, size: 28),
+            ),
             const SizedBox(width: AppSpacing.space12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    categoryName ??
-                        transactionPurposeLabel(transaction.businessPurpose),
+                    hero.title,
                     style: textStyles.subsectionTitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (subtitle != null) ...[
+                  if (hero.subtitle != null) ...[
                     const SizedBox(height: AppSpacing.space4),
                     Text(
-                      subtitle,
+                      hero.subtitle!,
                       style: textStyles.listSupporting,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -371,9 +285,9 @@ class _HeroCard extends ConsumerWidget {
             ),
             const SizedBox(width: AppSpacing.space12),
             MoneyText(
-              money: _signedAmount(transaction.primaryAmount, semantic),
-              showSign: semantic == MoneySemantic.income,
-              semantic: semantic,
+              money: hero.amount,
+              showSign: hero.showSign,
+              semantic: hero.semantic,
               style: textStyles.amountPrimary,
             ),
           ],
@@ -384,36 +298,33 @@ class _HeroCard extends ConsumerWidget {
 }
 
 class _RefundReimbursementCard extends StatelessWidget {
-  const _RefundReimbursementCard({
-    required this.detail,
-    required this.showRefund,
-    required this.showReimbursement,
-  });
+  const _RefundReimbursementCard({this.refund, this.reimbursement});
 
-  final TransactionDetail detail;
-  final bool showRefund;
-  final bool showReimbursement;
+  final DetailRefund? refund;
+  final DetailReimbursement? reimbursement;
 
   @override
   Widget build(BuildContext context) {
     final rows = <Widget>[];
-
-    if (showRefund) {
-      final refunded = detail.refundedTotal;
-      final hasRefund = refunded != null && refunded.minorUnits > 0;
+    final refund = this.refund;
+    if (refund != null) {
       rows.add(
         AppPlainValueRow(
           label: '退款金额',
-          value: hasRefund ? null : '无退款',
-          enabled: hasRefund,
+          value: refund.hasRefund ? null : '无退款',
+          enabled: refund.hasRefund,
           onTap:
-              hasRefund
-                  ? () => _showRefundList(context, detail.children)
+              refund.hasRefund
+                  ? () => _showChildrenSheet(
+                    context,
+                    title: '退款记录',
+                    items: refund.items,
+                  )
                   : null,
           child:
-              hasRefund
+              refund.hasRefund
                   ? MoneyText(
-                    money: refunded,
+                    money: refund.refundedTotal!,
                     semantic: MoneySemantic.income,
                     style: context.appTextStyles.formPlainValue,
                   )
@@ -421,127 +332,81 @@ class _RefundReimbursementCard extends StatelessWidget {
         ),
       );
     }
-    if (showReimbursement) {
-      final summary = detail.reimbursementSummary;
-      final hasActivity =
-          summary != null && summary.receivedAmount.minorUnits > 0;
-      final value =
-          summary == null
-              ? '未报销'
-              : summary.isClosed
-              ? '已结束 · 实收 ${summary.receivedAmount.format()}'
-              : hasActivity
-              ? '已收 ${summary.receivedAmount.format()} / 应收 ${summary.advanceAmount.format()}'
-              : '未报销';
+    final reimbursement = this.reimbursement;
+    if (reimbursement != null) {
       rows.add(
         AppPlainValueRow(
           label: '报销详情',
-          value: value,
-          enabled: hasActivity,
+          value: reimbursement.summaryText,
+          enabled: reimbursement.hasActivity,
           onTap:
-              hasActivity
-                  ? () => _showReimbursementList(context, detail.children)
+              reimbursement.hasActivity
+                  ? () => _showChildrenSheet(
+                    context,
+                    title: '报销记录',
+                    items: reimbursement.items,
+                  )
                   : null,
         ),
       );
     }
-
     return _RowCard(rows: rows);
   }
-
-  void _showRefundList(
-    BuildContext context,
-    List<TransactionListItem> children,
-  ) {
-    final refunds =
-        children
-            .where((c) => c.businessPurpose == BusinessPurpose.refund)
-            .map(_listItemToSheet)
-            .toList();
-    _showChildrenSheet(context, title: '退款记录', items: refunds);
-  }
-
-  void _showReimbursementList(
-    BuildContext context,
-    List<TransactionListItem> children,
-  ) {
-    final receipts =
-        children
-            .where(
-              (c) =>
-                  c.businessPurpose == BusinessPurpose.reimbursementReceipt ||
-                  c.businessPurpose == BusinessPurpose.reimbursementClose,
-            )
-            .map(_listItemToSheet)
-            .toList();
-    _showChildrenSheet(context, title: '报销记录', items: receipts);
-  }
-
-  _SheetItem _listItemToSheet(TransactionListItem c) => _SheetItem(
-    id: c.id,
-    purpose: c.businessPurpose,
-    occurredAt: c.occurredAt,
-    primaryAmount: c.primaryAmount,
-  );
 }
 
 class _PrimaryMetaCard extends StatelessWidget {
   const _PrimaryMetaCard({
-    required this.detail,
-    required this.accountRows,
+    required this.state,
     required this.onOccurredAtTap,
     required this.onAccountTap,
     required this.onNoteTap,
   });
 
-  final TransactionDetail detail;
-  final List<_AccountRowInfo> accountRows;
+  final TransactionDetailLoaded state;
   final VoidCallback onOccurredAtTap;
-  final ValueChanged<_AccountRowInfo> onAccountTap;
+  final ValueChanged<DetailAccountRow> onAccountTap;
   final VoidCallback onNoteTap;
 
   @override
   Widget build(BuildContext context) {
-    final transaction = detail.transaction;
-    final note = transaction.note;
+    final note = state.noteText;
     final hasNote = note != null && note.isNotEmpty;
     final colors = Theme.of(context).colorScheme;
-
-    final rows = <Widget>[
-      AppPlainValueRow(
-        label: '交易时间',
-        value: _formatDateTime(transaction.occurredAt),
-        onTap: onOccurredAtTap,
-      ),
-      AppPlainValueRow(label: '创建时间', value: _formatDateTime(detail.createdAt)),
-      for (final accountRow in accountRows)
+    return _RowCard(
+      rows: [
         AppPlainValueRow(
-          label: accountRow.label,
-          onTap:
-              accountRow.editKind == null
-                  ? null
-                  : () => onAccountTap(accountRow),
-          child: AccountEndpointView(
-            endpoint: accountRow.endpoint,
-            style: context.appTextStyles.formPlainValue,
-          ),
+          label: '交易时间',
+          value: state.occurredAtText,
+          onTap: onOccurredAtTap,
         ),
-      AppPlainValueRow(
-        label: '备注',
-        value: hasNote ? note : '点击添加备注',
-        valueColor: hasNote ? null : colors.onSurfaceVariant,
-        onTap: onNoteTap,
-      ),
-    ];
-
-    return _RowCard(rows: rows);
+        AppPlainValueRow(label: '创建时间', value: state.createdAtText),
+        for (final row in state.accountRows)
+          AppPlainValueRow(
+            label: row.label,
+            onTap: row.editUsage == null ? null : () => onAccountTap(row),
+            child: AccountEndpointView(
+              endpoint: AccountEndpoint(
+                label: row.endpoint.label,
+                iconKey: row.endpoint.iconKey,
+              ),
+              style: context.appTextStyles.formPlainValue,
+            ),
+          ),
+        AppPlainValueRow(
+          label: '备注',
+          value: hasNote ? note : '点击添加备注',
+          valueColor: hasNote ? null : colors.onSurfaceVariant,
+          onTap: onNoteTap,
+        ),
+      ],
+    );
   }
 }
 
 class _HistoryCard extends StatelessWidget {
-  const _HistoryCard({required this.detail});
+  const _HistoryCard({required this.items});
 
-  final TransactionDetail detail;
+  final List<DetailSheetItem> items;
 
   @override
   Widget build(BuildContext context) {
@@ -549,21 +414,8 @@ class _HistoryCard extends StatelessWidget {
       rows: [
         AppPlainValueRow(
           label: '历史链路',
-          value: '${detail.history.length} 条记录',
-          onTap:
-              () => _showChildrenSheet(
-                context,
-                title: '历史链路',
-                items: [
-                  for (final h in detail.history)
-                    _SheetItem(
-                      id: h.id,
-                      purpose: h.businessPurpose,
-                      occurredAt: h.occurredAt,
-                      primaryAmount: h.primaryAmount,
-                    ),
-                ],
-              ),
+          value: '${items.length} 条记录',
+          onTap: () => _showChildrenSheet(context, title: '历史链路', items: items),
         ),
       ],
     );
@@ -571,29 +423,28 @@ class _HistoryCard extends StatelessWidget {
 }
 
 class _ExclusionCard extends ConsumerWidget {
-  const _ExclusionCard({required this.detail});
+  const _ExclusionCard({required this.state});
 
-  final TransactionDetail detail;
+  final TransactionDetailLoaded state;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final transaction = detail.transaction;
-    final rows = <Widget>[
-      if (transaction.businessPurpose == BusinessPurpose.dailyExpense ||
-          transaction.businessPurpose == BusinessPurpose.dailyIncome)
-        AppPlainSwitchRow(
-          label: '不计入收支',
-          value: transaction.isExcludedFromStats,
-          onChanged: (next) => _toggleExcludeStats(context, ref, next),
-        ),
-      if (transaction.businessPurpose == BusinessPurpose.dailyExpense)
-        AppPlainSwitchRow(
-          label: '不计入预算',
-          value: transaction.isExcludedFromBudget,
-          onChanged: (next) => _toggleExcludeBudget(context, ref, next),
-        ),
-    ];
-    return _RowCard(rows: rows);
+    return _RowCard(
+      rows: [
+        if (state.showExcludeStats)
+          AppPlainSwitchRow(
+            label: '不计入收支',
+            value: state.excludeStats,
+            onChanged: (next) => _toggleExcludeStats(context, ref, next),
+          ),
+        if (state.showExcludeBudget)
+          AppPlainSwitchRow(
+            label: '不计入预算',
+            value: state.excludeBudget,
+            onChanged: (next) => _toggleExcludeBudget(context, ref, next),
+          ),
+      ],
+    );
   }
 
   Future<void> _toggleExcludeStats(
@@ -601,16 +452,11 @@ class _ExclusionCard extends ConsumerWidget {
     WidgetRef ref,
     bool next,
   ) async {
-    final result = await ref
-        .read(transactionUpdateAppServiceProvider)
-        .updateReportingFlag(
-          UpdateTransactionReportingFlagCommand(
-            transactionId: detail.transaction.id,
-            isExcludedFromStats: next,
-          ),
-        );
+    final outcome = await ref
+        .read(transactionDetailViewModelProvider(state.transactionId).notifier)
+        .toggleExcludeStats(next);
     if (!context.mounted) return;
-    _showResultSnackBar(context, result, success: null);
+    _handleActionOutcome(context, outcome);
   }
 
   Future<void> _toggleExcludeBudget(
@@ -618,16 +464,11 @@ class _ExclusionCard extends ConsumerWidget {
     WidgetRef ref,
     bool next,
   ) async {
-    final result = await ref
-        .read(transactionUpdateAppServiceProvider)
-        .updateReportingFlag(
-          UpdateTransactionReportingFlagCommand(
-            transactionId: detail.transaction.id,
-            isExcludedFromBudget: next,
-          ),
-        );
+    final outcome = await ref
+        .read(transactionDetailViewModelProvider(state.transactionId).notifier)
+        .toggleExcludeBudget(next);
     if (!context.mounted) return;
-    _showResultSnackBar(context, result, success: null);
+    _handleActionOutcome(context, outcome);
   }
 }
 
@@ -652,57 +493,12 @@ class _RowCard extends StatelessWidget {
 }
 
 class _ActionBar extends StatelessWidget {
-  const _ActionBar({required this.detail, required this.policy});
+  const _ActionBar({required this.state});
 
-  final TransactionDetail detail;
-  final TransactionActionPolicy policy;
+  final TransactionDetailLoaded state;
 
   @override
   Widget build(BuildContext context) {
-    final transaction = detail.transaction;
-    final purpose = transaction.businessPurpose;
-    final closed = detail.reimbursementSummary?.isClosed ?? false;
-
-    final actions = <Widget>[];
-    switch (purpose) {
-      case BusinessPurpose.dailyExpense:
-        actions.add(
-          _SecondaryAction(
-            label: '退款',
-            onPressed:
-                () => context.push('/transaction/${transaction.id}/refund'),
-          ),
-        );
-      case BusinessPurpose.reimbursementAdvance:
-        if (!closed) {
-          actions.add(
-            _SecondaryAction(
-              label: '退款',
-              onPressed:
-                  () => context.push('/transaction/${transaction.id}/refund'),
-            ),
-          );
-        }
-        actions.add(
-          _SecondaryAction(
-            label: '报销',
-            onPressed:
-                closed
-                    ? () => _showReimbursementClosed(context)
-                    : () => _showReimbursementDialog(context, detail),
-          ),
-        );
-      default:
-        break;
-    }
-    final editPath = policy.editRoutePath();
-    actions.add(
-      _PrimaryAction(
-        label: '编辑',
-        onPressed: editPath.isEmpty ? null : () => _openEdit(context, editPath),
-      ),
-    );
-
     return SafeArea(
       top: false,
       child: Padding(
@@ -714,45 +510,70 @@ class _ActionBar extends StatelessWidget {
         ),
         child: Row(
           children: [
-            for (var i = 0; i < actions.length; i++) ...[
+            for (var i = 0; i < state.actionButtons.length; i++) ...[
               if (i > 0) const SizedBox(width: AppSpacing.space12),
-              Expanded(child: actions[i]),
+              Expanded(
+                child: _ActionButton(
+                  state: state.actionButtons[i],
+                  detailState: state,
+                ),
+              ),
             ],
           ],
         ),
       ),
     );
   }
+}
 
-  void _showReimbursementClosed(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('报销已结束')));
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({required this.state, required this.detailState});
+
+  final DetailActionButton state;
+  final TransactionDetailLoaded detailState;
+
+  @override
+  Widget build(BuildContext context) {
+    final onPressed =
+        detailState.submitting ? null : () => _handlePressed(context);
+    if (state.primary) {
+      return _PrimaryAction(label: state.label, onPressed: onPressed);
+    }
+    return _SecondaryAction(label: state.label, onPressed: onPressed);
   }
 
-  Future<void> _openEdit(BuildContext context, String editPath) async {
-    final result = await context.push<String>(editPath);
-    if (!context.mounted || result == null) {
+  Future<void> _handlePressed(BuildContext context) async {
+    if (!state.enabled) {
+      _showMessage(context, state.deniedReason ?? '当前不可操作');
       return;
     }
-    context.replace('/transaction/$result');
-  }
-
-  void _showReimbursementDialog(
-    BuildContext context,
-    TransactionDetail detail,
-  ) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => _ReimbursementDialog(detail: detail),
-    );
+    switch (state.kind) {
+      case DetailActionKind.refund:
+        final route = state.route;
+        if (route != null) {
+          context.push(route);
+        }
+      case DetailActionKind.reimbursement:
+        showDialog<void>(
+          context: context,
+          builder: (_) => _ReimbursementDialog(state: detailState),
+        );
+      case DetailActionKind.edit:
+        final route = state.route;
+        if (route == null) return;
+        final result = await context.push<String>(route);
+        if (!context.mounted || result == null) {
+          return;
+        }
+        context.replace('/transaction/$result');
+    }
   }
 }
 
 class _ReimbursementDialog extends ConsumerStatefulWidget {
-  const _ReimbursementDialog({required this.detail});
+  const _ReimbursementDialog({required this.state});
 
-  final TransactionDetail detail;
+  final TransactionDetailLoaded state;
 
   @override
   ConsumerState<_ReimbursementDialog> createState() =>
@@ -765,15 +586,20 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
   final _noteController = TextEditingController();
 
   bool _closeReimbursement = true;
-  bool _submitting = false;
   String? _receiveAccountId;
   late DateTime _occurredAt;
+  late Future<List<Account>> _receiveAccountsFuture;
+
+  TransactionDetailLoaded get _state => widget.state;
 
   @override
   void initState() {
     super.initState();
     _occurredAt = DateTime.now();
-    final outstanding = widget.detail.reimbursementSummary?.outstanding;
+    _receiveAccountsFuture = ref
+        .read(transactionDetailViewModelProvider(_state.transactionId).notifier)
+        .accountOptions(AccountUsage.settlement);
+    final outstanding = _state.reimbursement?.outstanding;
     if (outstanding != null) {
       _amountController.text = outstanding.format();
     }
@@ -788,16 +614,7 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final receiveAccounts =
-        ref.watch(accountsForUsageProvider(AccountUsage.settlement)).value ??
-        const <Account>[];
-    final selectedAccountId = _effectiveAccountId(
-      _receiveAccountId,
-      receiveAccounts,
-    );
-    final selectedAccount = _findAccount(selectedAccountId, receiveAccounts);
-    final summary = widget.detail.reimbursementSummary;
-    final outstanding = summary?.outstanding;
+    final outstanding = _state.reimbursement?.outstanding;
 
     return AlertDialog(
       shape: RoundedRectangleBorder(
@@ -806,143 +623,166 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
       title: const Text('报销'),
       content: SizedBox(
         width: 360,
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _DialogRowCard(
-                  rows: [
-                    if (outstanding != null)
-                      _DialogValueRow(
-                        label: '剩余应收',
-                        child: Text(
-                          outstanding.format(),
-                          textAlign: TextAlign.right,
-                          style: context.appTextStyles.detailValue,
-                        ),
-                      ),
-                    FormField<String>(
-                      initialValue: selectedAccountId,
-                      validator: (_) {
-                        final amount = _parseAmountOrNull();
-                        if (amount != null &&
-                            amount.minorUnits > 0 &&
-                            selectedAccountId == null) {
-                          return '请选择到账账户';
-                        }
-                        return null;
-                      },
-                      builder: (field) {
-                        return _DialogValueRow(
-                          label: '到账账户',
-                          onTap: () => _pickReceiveAccount(receiveAccounts),
-                          errorText: field.errorText,
-                          child:
-                              selectedAccount == null
-                                  ? Text(
-                                    '请选择账户',
-                                    textAlign: TextAlign.right,
-                                    style: context.appTextStyles.detailValue
-                                        .copyWith(
-                                          color:
-                                              Theme.of(
-                                                context,
-                                              ).colorScheme.onSurfaceVariant,
-                                        ),
-                                  )
-                                  : Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      BusinessIcon(
-                                        iconKey: selectedAccount.iconKey,
-                                        size: 20,
+        child: FutureBuilder<List<Account>>(
+          future: _receiveAccountsFuture,
+          builder: (context, snapshot) {
+            final receiveAccounts = snapshot.data ?? const <Account>[];
+            final selectedAccountId = _effectiveAccountId(
+              _receiveAccountId,
+              receiveAccounts,
+            );
+            final selectedAccount = _findAccount(
+              selectedAccountId,
+              receiveAccounts,
+            );
+            return Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _DialogRowCard(
+                      rows: [
+                        if (outstanding != null)
+                          _DialogValueRow(
+                            label: '剩余应收',
+                            child: Text(
+                              outstanding.format(),
+                              textAlign: TextAlign.right,
+                              style: context.appTextStyles.detailValue,
+                            ),
+                          ),
+                        FormField<String>(
+                          initialValue: selectedAccountId,
+                          validator: (_) {
+                            final amount = _parseAmountOrNull();
+                            if (amount != null &&
+                                amount.minorUnits > 0 &&
+                                selectedAccountId == null) {
+                              return '请选择到账账户';
+                            }
+                            return null;
+                          },
+                          builder: (field) {
+                            return _DialogValueRow(
+                              label: '到账账户',
+                              onTap: () => _pickReceiveAccount(receiveAccounts),
+                              errorText: field.errorText,
+                              child:
+                                  selectedAccount == null
+                                      ? Text(
+                                        '请选择账户',
+                                        textAlign: TextAlign.right,
+                                        style: context.appTextStyles.detailValue
+                                            .copyWith(
+                                              color:
+                                                  Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                            ),
+                                      )
+                                      : Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
+                                        children: [
+                                          BusinessIcon(
+                                            iconKey: selectedAccount.iconKey,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(
+                                            width: AppSpacing.space8,
+                                          ),
+                                          Flexible(
+                                            child: Text(
+                                              selectedAccount.name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style:
+                                                  context
+                                                      .appTextStyles
+                                                      .detailValue,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(width: AppSpacing.space8),
-                                      Flexible(
-                                        child: Text(
-                                          selectedAccount.name,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style:
-                                              context.appTextStyles.detailValue,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                        );
-                      },
-                    ),
-                    _DialogValueRow(
-                      label: '报销金额',
-                      child: TextFormField(
-                        controller: _amountController,
-                        decoration: _dialogInlineInputDecoration(context),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
+                            );
+                          },
                         ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                        ],
-                        validator: _validateAmount,
-                        textAlign: TextAlign.right,
-                        style: context.appTextStyles.detailValue,
-                      ),
-                    ),
-                    _DialogValueRow(
-                      label: '备注',
-                      alignTop: true,
-                      child: TextFormField(
-                        controller: _noteController,
-                        decoration: _dialogInlineInputDecoration(
-                          context,
-                          hintText: '点击填写备注',
+                        _DialogValueRow(
+                          label: '报销金额',
+                          child: TextFormField(
+                            controller: _amountController,
+                            decoration: _dialogInlineInputDecoration(context),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9.]'),
+                              ),
+                            ],
+                            validator: _validateAmount,
+                            textAlign: TextAlign.right,
+                            style: context.appTextStyles.detailValue,
+                          ),
                         ),
-                        maxLines: 2,
-                        textAlign: TextAlign.right,
-                        style: context.appTextStyles.detailValue,
-                      ),
-                    ),
-                    _DialogValueRow(
-                      label: '报销时间',
-                      onTap: _pickOccurredAt,
-                      child: Text(
-                        _formatDateTime(_occurredAt),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                        style: context.appTextStyles.detailValue,
-                      ),
-                    ),
-                    _DialogValueRow(
-                      label: '结束报销',
-                      child: Switch(
-                        value: _closeReimbursement,
-                        onChanged:
-                            (value) =>
-                                setState(() => _closeReimbursement = value),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
+                        _DialogValueRow(
+                          label: '备注',
+                          alignTop: true,
+                          child: TextFormField(
+                            controller: _noteController,
+                            decoration: _dialogInlineInputDecoration(
+                              context,
+                              hintText: '点击填写备注',
+                            ),
+                            maxLines: 2,
+                            textAlign: TextAlign.right,
+                            style: context.appTextStyles.detailValue,
+                          ),
+                        ),
+                        _DialogValueRow(
+                          label: '报销时间',
+                          onTap: _pickOccurredAt,
+                          child: Text(
+                            formatTransactionDetailDateTime(_occurredAt),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.right,
+                            style: context.appTextStyles.detailValue,
+                          ),
+                        ),
+                        _DialogValueRow(
+                          label: '结束报销',
+                          child: Switch(
+                            value: _closeReimbursement,
+                            onChanged:
+                                (value) =>
+                                    setState(() => _closeReimbursement = value),
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
       actions: [
         TextButton(
-          onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+          onPressed:
+              _state.submitting ? null : () => Navigator.of(context).pop(),
           child: const Text('取消'),
         ),
         FilledButton(
-          onPressed: _submitting ? null : () => _submit(selectedAccountId),
+          onPressed: _state.submitting ? null : _submit,
           child:
-              _submitting
+              _state.submitting
                   ? const SizedBox.square(
                     dimension: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
@@ -983,7 +823,7 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
     if (amount.minorUnits <= 0) {
       return '金额必须大于 0';
     }
-    final outstanding = widget.detail.reimbursementSummary?.outstanding;
+    final outstanding = _state.reimbursement?.outstanding;
     if (outstanding != null && amount.minorUnits > outstanding.minorUnits) {
       return '到账金额不能超过剩余应收';
     }
@@ -1002,59 +842,33 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
     });
   }
 
-  Future<void> _submit(String? selectedAccountId) async {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    final accountsById =
-        ref.read(accountsByIdProvider).value ?? const <String, Account>{};
-    final receivableAccountId = _resolveReceivableAccountId(
-      widget.detail,
-      accountsById,
+    final receiveAccounts = await _receiveAccountsFuture;
+    final selectedAccountId = _effectiveAccountId(
+      _receiveAccountId,
+      receiveAccounts,
     );
-    if (receivableAccountId == null) {
-      _showFailure('无法定位报销账户');
-      return;
-    }
     final amount = Money.parse(_amountController.text);
-    final receiveAccountId = selectedAccountId ?? receivableAccountId;
-    setState(() => _submitting = true);
-    final service = ref.read(transactionPostingAppServiceProvider);
-    final note = _blankToNull(_noteController.text);
-    final Result<PostedTransactionResult> result =
-        _closeReimbursement
-            ? await service.closeReimbursement(
-              CloseReimbursementCommand(
-                actualReceivedAmount: amount,
-                advanceTransactionId: widget.detail.transaction.id,
-                receivableAccountId: receivableAccountId,
-                receiveAccountId: receiveAccountId,
-                occurredAt: _occurredAt,
-                note: note,
-              ),
-            )
-            : await service.createReimbursementReceipt(
-              CreateReimbursementReceiptCommand(
-                amount: amount,
-                advanceTransactionId: widget.detail.transaction.id,
-                receivableAccountId: receivableAccountId,
-                receiveAccountId: receiveAccountId,
-                occurredAt: _occurredAt,
-                note: note,
-              ),
-            );
+    final outcome = await ref
+        .read(transactionDetailViewModelProvider(_state.transactionId).notifier)
+        .submitReimbursement(
+          ReimbursementSubmitInput(
+            amount: amount,
+            receiveAccountId: selectedAccountId,
+            occurredAt: _occurredAt,
+            closeReimbursement: _closeReimbursement,
+            noteText: _noteController.text,
+          ),
+        );
     if (!mounted) return;
-    setState(() => _submitting = false);
-    result.when(
-      success: (_) => Navigator.of(context).pop(),
-      failure: (failure) => _showFailure(failure.message),
-    );
-  }
-
-  void _showFailure(String message) {
-    ScaffoldMessenger.of(
+    _handleActionOutcome(
       context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+      outcome,
+      success: () => Navigator.of(context).pop(),
+    );
   }
 }
 
@@ -1206,340 +1020,10 @@ class _DialogValueRow extends StatelessWidget {
   }
 }
 
-class _AccountRowInfo {
-  const _AccountRowInfo({
-    required this.label,
-    required this.accountId,
-    required this.endpoint,
-    this.editKind,
-  });
-
-  final String label;
-  final String accountId;
-  final AccountEndpoint endpoint;
-  final _AccountEditKind? editKind;
-}
-
-enum _AccountEditKind { settlement, reimbursement }
-
-List<_AccountRowInfo> _resolveAccountRows(
-  TransactionDetail detail,
-  Map<String, Account> accountsById,
-) {
-  final purpose = detail.transaction.businessPurpose;
-  final entries = detail.entries;
-  final asset =
-      entries.where((e) {
-        final type = accountsById[e.accountId]?.type;
-        return type == AccountType.asset || type == AccountType.liability;
-      }).toList();
-
-  _AccountRowInfo info(
-    String label,
-    Entry entry, {
-    _AccountEditKind? editKind,
-  }) {
-    return _AccountRowInfo(
-      label: label,
-      accountId: entry.accountId,
-      endpoint: _endpointFromEntry(entry, accountsById),
-      editKind: editKind,
-    );
-  }
-
-  _AccountRowInfo placeholderRow(String label, {_AccountEditKind? editKind}) {
-    return _AccountRowInfo(
-      label: label,
-      accountId: '',
-      endpoint: const AccountEndpoint(label: '—', iconKey: null),
-      editKind: editKind,
-    );
-  }
-
-  switch (purpose) {
-    case BusinessPurpose.transfer:
-      if (asset.isEmpty) {
-        return [placeholderRow('转出账户'), placeholderRow('转入账户')];
-      }
-      final from = asset.firstWhere(
-        (e) => e.direction == EntryDirection.credit,
-        orElse: () => asset.first,
-      );
-      final to = asset.firstWhere(
-        (e) => e.direction == EntryDirection.debit,
-        orElse: () => asset.first,
-      );
-      return [info('转出账户', from), info('转入账户', to)];
-    case BusinessPurpose.dailyIncome:
-    case BusinessPurpose.refund:
-    case BusinessPurpose.reimbursementReceipt:
-    case BusinessPurpose.reimbursementClose:
-    case BusinessPurpose.borrowing:
-      final editKind =
-          purpose == BusinessPurpose.dailyIncome ||
-                  purpose == BusinessPurpose.borrowing
-              ? _AccountEditKind.settlement
-              : null;
-      if (asset.isEmpty) {
-        return [placeholderRow('收支账户', editKind: editKind)];
-      }
-      final inAccount = asset.firstWhere(
-        (e) => e.direction == EntryDirection.debit,
-        orElse: () => asset.first,
-      );
-      return [info('收支账户', inAccount, editKind: editKind)];
-    case BusinessPurpose.dailyExpense:
-    case BusinessPurpose.debtRepayment:
-      final label = purpose == BusinessPurpose.debtRepayment ? '还款账户' : '收支账户';
-      if (asset.isEmpty) {
-        return [placeholderRow(label, editKind: _AccountEditKind.settlement)];
-      }
-      final outAccount = asset.firstWhere(
-        (e) => e.direction == EntryDirection.credit,
-        orElse: () => asset.first,
-      );
-      return [info(label, outAccount, editKind: _AccountEditKind.settlement)];
-    case BusinessPurpose.reimbursementAdvance:
-      if (asset.isEmpty) {
-        return [
-          placeholderRow('收支账户', editKind: _AccountEditKind.settlement),
-          placeholderRow('报销账户', editKind: _AccountEditKind.reimbursement),
-        ];
-      }
-      final receivable = asset.firstWhere(
-        (e) =>
-            e.direction == EntryDirection.debit &&
-            accountsById[e.accountId]?.type == AccountType.asset,
-        orElse: () => asset.first,
-      );
-      final paidFrom = asset.firstWhere(
-        (e) => e.direction == EntryDirection.credit,
-        orElse: () => asset.first,
-      );
-      return [
-        info('收支账户', paidFrom, editKind: _AccountEditKind.settlement),
-        info('报销账户', receivable, editKind: _AccountEditKind.reimbursement),
-      ];
-    case BusinessPurpose.openingBalance:
-    case BusinessPurpose.balanceAdjustment:
-      if (asset.isEmpty) {
-        return [placeholderRow('账户')];
-      }
-      return [info('账户', asset.first)];
-  }
-}
-
-AccountEndpoint _endpointFromEntry(
-  Entry entry,
-  Map<String, Account> accountsById,
-) {
-  final account = accountsById[entry.accountId];
-  return AccountEndpoint(
-    label: account?.name ?? '—',
-    iconKey: account?.iconKey,
-  );
-}
-
-String? _resolveReceivableAccountId(
-  TransactionDetail detail,
-  Map<String, Account> accountsById,
-) {
-  for (final entry in detail.entries) {
-    if (accountsById[entry.accountId]?.type == AccountType.asset &&
-        entry.direction == EntryDirection.debit) {
-      return entry.accountId;
-    }
-  }
-  return null;
-}
-
-String? _effectiveAccountId(String? selectedId, List<Account> options) {
-  if (selectedId != null &&
-      options.any((account) => account.id == selectedId)) {
-    return selectedId;
-  }
-  return options.isEmpty ? null : options.first.id;
-}
-
-Account? _findAccount(String? accountId, List<Account> accounts) {
-  if (accountId == null) return null;
-  for (final account in accounts) {
-    if (account.id == accountId) return account;
-  }
-  return null;
-}
-
-String? _blankToNull(String value) {
-  final trimmed = value.trim();
-  return trimmed.isEmpty ? null : trimmed;
-}
-
-InputDecoration _dialogInlineInputDecoration(
-  BuildContext context, {
-  String? hintText,
-}) {
-  final colors = Theme.of(context).colorScheme;
-  return InputDecoration(
-    isDense: true,
-    hintText: hintText,
-    hintStyle: context.appTextStyles.detailValue.copyWith(
-      color: colors.onSurfaceVariant,
-    ),
-    border: InputBorder.none,
-    enabledBorder: InputBorder.none,
-    focusedBorder: InputBorder.none,
-    errorBorder: InputBorder.none,
-    focusedErrorBorder: InputBorder.none,
-    contentPadding: EdgeInsets.zero,
-  );
-}
-
-String? _resolveCategoryName(
-  TransactionDetail detail,
-  Map<String, Account> accountsById,
-) {
-  final purpose = detail.transaction.businessPurpose;
-  Account? categoryAccount;
-  if (purpose == BusinessPurpose.dailyExpense ||
-      purpose == BusinessPurpose.refund) {
-    final entry = firstEntryByType(
-      detail.entries,
-      accountsById: accountsById,
-      accountType: AccountType.expense,
-    );
-    categoryAccount = entry?.resolveAccount(accountsById);
-  } else if (purpose == BusinessPurpose.dailyIncome) {
-    final entry = firstEntryByType(
-      detail.entries,
-      accountsById: accountsById,
-      accountType: AccountType.income,
-    );
-    categoryAccount = entry?.resolveAccount(accountsById);
-  } else if (purpose == BusinessPurpose.reimbursementAdvance) {
-    final expenseId = detail.transaction.reimbursementExpenseAccountId;
-    if (expenseId != null) {
-      categoryAccount = accountsById[expenseId];
-    }
-  }
-  return categoryAccount?.name;
-}
-
-String? _resolveCategoryIconKey(
-  TransactionDetail detail,
-  Map<String, Account> accountsById,
-) {
-  final purpose = detail.transaction.businessPurpose;
-  Account? categoryAccount;
-  if (purpose == BusinessPurpose.dailyExpense ||
-      purpose == BusinessPurpose.refund) {
-    final entry = firstEntryByType(
-      detail.entries,
-      accountsById: accountsById,
-      accountType: AccountType.expense,
-    );
-    categoryAccount = entry?.resolveAccount(accountsById);
-  } else if (purpose == BusinessPurpose.dailyIncome) {
-    final entry = firstEntryByType(
-      detail.entries,
-      accountsById: accountsById,
-      accountType: AccountType.income,
-    );
-    categoryAccount = entry?.resolveAccount(accountsById);
-  } else if (purpose == BusinessPurpose.reimbursementAdvance) {
-    final expenseId = detail.transaction.reimbursementExpenseAccountId;
-    if (expenseId != null) {
-      categoryAccount = accountsById[expenseId];
-    }
-  }
-  if (categoryAccount?.iconKey != null &&
-      categoryAccount!.iconKey!.isNotEmpty) {
-    return categoryAccount.iconKey;
-  }
-  final name = categoryAccount?.name;
-  return switch (name) {
-    '茶叶' || '咖啡' => 'coffee',
-    '早餐' => 'breakfast',
-    '午餐' => 'lunch',
-    '晚餐' => 'dinner',
-    '饮料酒水' => 'drink',
-    '休闲零食' => 'snack',
-    '生鲜食品' => 'seafood',
-    '粮油调味' => 'seasoning',
-    '购物消费' || '日用品' || '衣物' => 'shopping',
-    '地铁' || '公交' || '出行交通' => 'metro',
-    '打车' => 'taxi',
-    '文化教育' || '书籍' => 'book',
-    '休闲娱乐' || '电影' => 'movie',
-    '工资' || '兼职' => 'salary',
-    '家里' || '居家生活' || '房租' || '水电' || '物业' => 'home',
-    '人情社交' => 'social',
-    '送礼人情' => 'gift',
-    '健康医疗' => 'health',
-    _ => null,
-  };
-}
-
-String? _resolveHeroSubtitle(TransactionDetail detail) {
-  final transaction = detail.transaction;
-  final counterparty = transaction.counterpartyName;
-  if (counterparty != null && counterparty.isNotEmpty) {
-    return counterparty;
-  }
-  return null;
-}
-
-MoneySemantic _semanticForPurpose(BusinessPurpose purpose) {
-  return switch (purpose) {
-    BusinessPurpose.dailyExpense ||
-    BusinessPurpose.reimbursementAdvance ||
-    BusinessPurpose.debtRepayment => MoneySemantic.expense,
-    BusinessPurpose.dailyIncome ||
-    BusinessPurpose.refund ||
-    BusinessPurpose.reimbursementReceipt ||
-    BusinessPurpose.reimbursementClose ||
-    BusinessPurpose.borrowing => MoneySemantic.income,
-    BusinessPurpose.transfer => MoneySemantic.neutral,
-    BusinessPurpose.openingBalance ||
-    BusinessPurpose.balanceAdjustment => MoneySemantic.neutral,
-  };
-}
-
-Money _signedAmount(Money money, MoneySemantic semantic) {
-  if (semantic == MoneySemantic.expense) {
-    return Money(minorUnits: -money.minorUnits);
-  }
-  return money;
-}
-
-bool _showsExclusionCard(TransactionDetail detail) {
-  return detail.transaction.businessPurpose == BusinessPurpose.dailyExpense ||
-      detail.transaction.businessPurpose == BusinessPurpose.dailyIncome;
-}
-
-String _formatDateTime(DateTime dt) {
-  String two(int n) => n.toString().padLeft(2, '0');
-  return '${dt.year}年${two(dt.month)}月${two(dt.day)}日 '
-      '${two(dt.hour)}:${two(dt.minute)}';
-}
-
-class _SheetItem {
-  const _SheetItem({
-    required this.id,
-    required this.purpose,
-    required this.occurredAt,
-    required this.primaryAmount,
-  });
-
-  final String id;
-  final BusinessPurpose purpose;
-  final DateTime occurredAt;
-  final Money primaryAmount;
-}
-
 void _showChildrenSheet(
   BuildContext context, {
   required String title,
-  required List<_SheetItem> items,
+  required List<DetailSheetItem> items,
 }) {
   if (items.isEmpty) return;
   showModalBottomSheet<void>(
@@ -1568,17 +1052,12 @@ void _showChildrenSheet(
               for (final item in items)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text(transactionPurposeLabel(item.purpose)),
-                  subtitle: Text(_formatDateTime(item.occurredAt)),
+                  title: Text(item.title),
+                  subtitle: Text(item.occurredAtText),
                   trailing: MoneyText(
-                    money: _signedAmount(
-                      item.primaryAmount,
-                      _semanticForPurpose(item.purpose),
-                    ),
-                    semantic: _semanticForPurpose(item.purpose),
-                    showSign:
-                        _semanticForPurpose(item.purpose) ==
-                        MoneySemantic.income,
+                    money: item.amount,
+                    semantic: item.semantic,
+                    showSign: item.showSign,
                   ),
                   onTap: () {
                     Navigator.of(ctx).pop();
@@ -1593,22 +1072,59 @@ void _showChildrenSheet(
   );
 }
 
-void _showResultSnackBar<T>(
-  BuildContext context,
-  Result<T> result, {
-  String? success,
+String? _effectiveAccountId(String? selectedId, List<Account> options) {
+  if (selectedId != null &&
+      options.any((account) => account.id == selectedId)) {
+    return selectedId;
+  }
+  return options.isEmpty ? null : options.first.id;
+}
+
+Account? _findAccount(String? accountId, List<Account> accounts) {
+  if (accountId == null) return null;
+  for (final account in accounts) {
+    if (account.id == accountId) return account;
+  }
+  return null;
+}
+
+InputDecoration _dialogInlineInputDecoration(
+  BuildContext context, {
+  String? hintText,
 }) {
-  final messenger = ScaffoldMessenger.of(context);
-  result.when(
-    success: (_) {
-      if (success != null) {
-        messenger.showSnackBar(SnackBar(content: Text(success)));
-      }
-    },
-    failure: (failure) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('操作失败：${failure.message}')),
-      );
-    },
+  final colors = Theme.of(context).colorScheme;
+  return InputDecoration(
+    isDense: true,
+    hintText: hintText,
+    hintStyle: context.appTextStyles.detailValue.copyWith(
+      color: colors.onSurfaceVariant,
+    ),
+    border: InputBorder.none,
+    enabledBorder: InputBorder.none,
+    focusedBorder: InputBorder.none,
+    errorBorder: InputBorder.none,
+    focusedErrorBorder: InputBorder.none,
+    contentPadding: EdgeInsets.zero,
   );
+}
+
+void _handleActionOutcome(
+  BuildContext context,
+  UiActionOutcome<void> outcome, {
+  VoidCallback? success,
+  String? successMessage,
+}) {
+  switch (outcome) {
+    case UiActionSuccess<void>():
+      success?.call();
+      if (successMessage != null) {
+        _showMessage(context, successMessage);
+      }
+    case UiActionFailure<void>(:final error):
+      _showMessage(context, '操作失败：${error.message}');
+  }
+}
+
+void _showMessage(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }

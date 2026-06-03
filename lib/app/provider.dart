@@ -30,6 +30,7 @@ import '../application/shared/update_channel_store.dart';
 import '../core/id/id_generator.dart';
 import '../core/time/month_key.dart';
 import '../core/money/money.dart';
+import '../widget/business/account_lookup.dart';
 
 part 'provider.g.dart';
 
@@ -203,11 +204,18 @@ Stream<List<Account>> accountList(Ref ref) {
 /// 全量账户索引。覆盖 5 种 account_type,供 UI 层把 entries 的 accountId
 /// 解析为 Account 元数据(type / name / iconKey 等)。
 ///
-/// 用法:在 widget 内 `ref.watch(accountsByIdProvider).value ?? const {}`,
-/// 配合 `widget/business/account_lookup.dart` 的 extension 使用。
+/// 新 UI 优先使用 `accountLookupProvider`; 仍保留 Map 形式给表单解析等旧路径使用。
 @riverpod
 Stream<Map<String, Account>> accountsById(Ref ref) {
   return ref.watch(accountQueryServiceProvider).watchAccountsById();
+}
+
+@riverpod
+Stream<AccountLookup> accountLookup(Ref ref) {
+  return ref
+      .watch(accountQueryServiceProvider)
+      .watchAccountsById()
+      .map(AccountLookup.new);
 }
 
 @riverpod

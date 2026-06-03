@@ -33,25 +33,25 @@ class TransactionRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final accountsById =
-        ref.watch(accountsByIdProvider).value ?? const <String, Account>{};
+    final accountLookup =
+        ref.watch(accountLookupProvider).value ??
+        const AccountLookup(<String, Account>{});
     final colors = Theme.of(context).colorScheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
     final textStyles = context.appTextStyles;
     final balanceDelta =
         viewAccountId == null
             ? null
-            : balanceDeltaForAccount(
+            : accountLookup.balanceDeltaForAccount(
               accountId: viewAccountId!,
               entries: item.entries,
-              accountsById: accountsById,
             );
     final isAccountLedger = balanceDelta != null;
     final color =
         isAccountLedger
             ? colors.onSurface
             : amountColor(colors, financeColors, item.businessPurpose);
-    final title = transactionPrimaryLabel(item, accountsById);
+    final title = transactionPrimaryLabel(item, accountLookup);
     final note = item.note?.trim();
     final hasNote = note != null && note.isNotEmpty;
     final subtitle =
@@ -71,7 +71,7 @@ class TransactionRow extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             CategoryAvatar(
-              iconKey: resolveCategoryIconKey(item, accountsById),
+              iconKey: resolveCategoryIconKey(item, accountLookup),
               size: 24,
             ),
             const SizedBox(width: AppSpacing.space8),
@@ -110,7 +110,7 @@ class TransactionRow extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: AppSpacing.space2),
-                  _AccountLine(item: item, accountsById: accountsById),
+                  _AccountLine(item: item, accountLookup: accountLookup),
                 ],
               ),
             ),
@@ -291,16 +291,16 @@ class _TitleLine extends StatelessWidget {
 }
 
 class _AccountLine extends StatelessWidget {
-  const _AccountLine({required this.item, required this.accountsById});
+  const _AccountLine({required this.item, required this.accountLookup});
 
   final TransactionListItem item;
-  final Map<String, Account> accountsById;
+  final AccountLookup accountLookup;
 
   @override
   Widget build(BuildContext context) {
     final textStyle = context.appTextStyles.listSupporting;
-    final flow = _resolveAccountFlow(item, accountsById);
-    final fallbackText = transactionAccountLabel(item, accountsById);
+    final flow = _resolveAccountFlow(item, accountLookup);
+    final fallbackText = transactionAccountLabel(item, accountLookup);
 
     if (flow.out != null && flow.in_ != null) {
       return Row(
@@ -349,15 +349,15 @@ class _AccountFlow {
 
 _AccountFlow _resolveAccountFlow(
   TransactionListItem item,
-  Map<String, Account> accountsById,
+  AccountLookup accountLookup,
 ) {
   AccountEndpoint? endpointOf(Account? account) {
     if (account == null) return null;
     return AccountEndpoint(label: account.name, iconKey: account.iconKey);
   }
 
-  final out = endpointOf(flowOutAccount(item, accountsById));
-  final in_ = endpointOf(flowInAccount(item, accountsById));
+  final out = endpointOf(flowOutAccount(item, accountLookup));
+  final in_ = endpointOf(flowInAccount(item, accountLookup));
 
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense => _AccountFlow(out: out),

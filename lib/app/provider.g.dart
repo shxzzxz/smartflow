@@ -1105,8 +1105,7 @@ String _$accountListHash() => r'95dee3110f192c62457e962aca9bdbefc29c02c6';
 /// 全量账户索引。覆盖 5 种 account_type,供 UI 层把 entries 的 accountId
 /// 解析为 Account 元数据(type / name / iconKey 等)。
 ///
-/// 用法:在 widget 内 `ref.watch(accountsByIdProvider).value ?? const {}`,
-/// 配合 `widget/business/account_lookup.dart` 的 extension 使用。
+/// 新 UI 优先使用 `accountLookupProvider`; 仍保留 Map 形式给表单解析等旧路径使用。
 
 @ProviderFor(accountsById)
 final accountsByIdProvider = AccountsByIdProvider._();
@@ -1114,8 +1113,7 @@ final accountsByIdProvider = AccountsByIdProvider._();
 /// 全量账户索引。覆盖 5 种 account_type,供 UI 层把 entries 的 accountId
 /// 解析为 Account 元数据(type / name / iconKey 等)。
 ///
-/// 用法:在 widget 内 `ref.watch(accountsByIdProvider).value ?? const {}`,
-/// 配合 `widget/business/account_lookup.dart` 的 extension 使用。
+/// 新 UI 优先使用 `accountLookupProvider`; 仍保留 Map 形式给表单解析等旧路径使用。
 
 final class AccountsByIdProvider
     extends
@@ -1130,8 +1128,7 @@ final class AccountsByIdProvider
   /// 全量账户索引。覆盖 5 种 account_type,供 UI 层把 entries 的 accountId
   /// 解析为 Account 元数据(type / name / iconKey 等)。
   ///
-  /// 用法:在 widget 内 `ref.watch(accountsByIdProvider).value ?? const {}`,
-  /// 配合 `widget/business/account_lookup.dart` 的 extension 使用。
+  /// 新 UI 优先使用 `accountLookupProvider`; 仍保留 Map 形式给表单解析等旧路径使用。
   AccountsByIdProvider._()
     : super(
         from: null,
@@ -1159,6 +1156,45 @@ final class AccountsByIdProvider
 }
 
 String _$accountsByIdHash() => r'0c0c7d4fc91a4f029ff3081a98c2a9d98b31ff20';
+
+@ProviderFor(accountLookup)
+final accountLookupProvider = AccountLookupProvider._();
+
+final class AccountLookupProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<AccountLookup>,
+          AccountLookup,
+          Stream<AccountLookup>
+        >
+    with $FutureModifier<AccountLookup>, $StreamProvider<AccountLookup> {
+  AccountLookupProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'accountLookupProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountLookupHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<AccountLookup> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<AccountLookup> create(Ref ref) {
+    return accountLookup(ref);
+  }
+}
+
+String _$accountLookupHash() => r'1e7f3ff1a838b081749c675acdf5c4be8a9f8505';
 
 @ProviderFor(accountsForUsage)
 final accountsForUsageProvider = AccountsForUsageFamily._();
