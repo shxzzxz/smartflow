@@ -30,6 +30,19 @@ void main() {
 
       expect(exception.code, 'test.sample');
     });
+
+    test('keeps cause and stack trace', () {
+      final cause = Exception('database failed');
+      final stackTrace = StackTrace.current;
+      final exception = InfrastructureException(
+        _TestErrorCode.sample,
+        cause: cause,
+        stackTrace: stackTrace,
+      );
+
+      expect(exception.cause, same(cause));
+      expect(exception.stackTrace, same(stackTrace));
+    });
   });
 }
 

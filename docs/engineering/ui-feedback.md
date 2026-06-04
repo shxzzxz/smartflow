@@ -7,7 +7,8 @@
 - ViewModel 输出错误语义，例如 `UiError(code, message, fieldErrors)`。
 - View 根据页面上下文决定展示方式。
 - `UiError` 不包含 snackbar / dialog / banner / fullscreen 等展示类型。
-- 非预期异常由全局错误处理接管，不在页面 ViewModel 中吞掉。
+- 用户命令中的 `AppException` 由 ViewModel 转成可展示错误；普通 `Exception` 由 ViewModel 兜底成未知错误，不展示具体技术信息。
+- `Error`、未处理异步异常和命令边界之外的异常由全局错误处理接管。
 
 ## 展示方式
 

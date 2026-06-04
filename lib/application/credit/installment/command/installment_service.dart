@@ -1,6 +1,7 @@
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/error/failure.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
@@ -10,6 +11,7 @@ import 'package:smartflow/domain/credit/entity/installment_repayment.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/service/installment_schedule_generator.dart';
+import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
 class CreateDisbursementContractCommand {
@@ -298,7 +300,7 @@ abstract interface class InstallmentService {
     CreateBillConversionContractCommand command,
   );
 
-  Future<Result<void>> updateContract(UpdateContractCommand command);
+  Future<void> updateContract(UpdateContractCommand command);
 
   /// 编辑受分期管理的还款交易（scheduled / extraPrincipal / earlySettlement）。
   /// 通用 UI 在还款交易上的 universal 编辑入口；service 内部校验归属、
@@ -525,33 +527,27 @@ class InstallmentServiceImpl implements InstallmentService {
   }
 
   @override
-  Future<Result<void>> updateContract(UpdateContractCommand command) async {
+  Future<void> updateContract(UpdateContractCommand command) async {
     final contract = await _repository.findContract(command.contractId);
     if (contract == null) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_found',
-          message: 'Installment contract does not exist.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractNotFound,
+        message: 'Installment contract does not exist.',
       );
     }
     if (contract.status != InstallmentContractStatus.active) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_active',
-          message: 'Only active contracts can be edited.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractNotActive,
+        message: 'Only active contracts can be edited.',
       );
     }
 
     // disbursementAccountId 仅对放款合同有效，账单分期不允许携带该字段。
     if (command.disbursementAccountId != null &&
         contract.sourceType != InstallmentSourceType.disbursement) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_disbursement',
-          message: 'Only disbursement contracts carry a disbursement account.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: 'Only disbursement contracts carry a disbursement account.',
       );
     }
 
@@ -579,20 +575,16 @@ class InstallmentServiceImpl implements InstallmentService {
     );
 
     if (effectiveTotalPeriods <= 0) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_total_periods_invalid',
-          message: 'Total periods must be greater than zero.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: 'Total periods must be greater than zero.',
       );
     }
     if (effectiveTotalPeriods > 1 &&
         !effectiveLastRepaymentDate.isAfter(effectiveFirstRepaymentDate)) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_dates_invalid',
-          message: 'Last repayment date must be after first.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: 'Last repayment date must be after first.',
       );
     }
 
@@ -610,9 +602,9 @@ class InstallmentServiceImpl implements InstallmentService {
         command.equalInstallmentOverrideMinor != null ||
         command.schedulePatches.isNotEmpty;
 
-    return _runner.run<void>(() async {
+    await _runner.runValue<void>(() async {
       if (needsRecalc) {
-        final recalcFailure = await _recalculateForUpdate(
+        await _recalculateForUpdate(
           command: command,
           contract: contract,
           effectiveTotalPeriods: effectiveTotalPeriods,
@@ -625,9 +617,6 @@ class InstallmentServiceImpl implements InstallmentService {
           effectiveRatePeriod: effectiveRatePeriod,
           effectiveRatePpm: effectiveRatePpm,
         );
-        if (recalcFailure != null) {
-          return Result.failure(recalcFailure);
-        }
       }
 
       // 联动放款交易（仅对放款合同存在 disbursement transaction）。
@@ -652,7 +641,10 @@ class InstallmentServiceImpl implements InstallmentService {
               ),
             );
             if (metadataResult case FailureResult(:final failure)) {
-              return Result.failure(failure);
+              throw BusinessException(
+                CreditErrorCode.contractInvalidCommand,
+                message: failure.message,
+              );
             }
           }
         }
@@ -675,12 +667,10 @@ class InstallmentServiceImpl implements InstallmentService {
           disbursementAccountId: command.disbursementAccountId,
         ),
       );
-
-      return const Result.success(null);
     });
   }
 
-  Future<Failure?> _recalculateForUpdate({
+  Future<void> _recalculateForUpdate({
     required UpdateContractCommand command,
     required InstallmentContract contract,
     required int effectiveTotalPeriods,
@@ -703,14 +693,14 @@ class InstallmentServiceImpl implements InstallmentService {
 
     if (paidCount > 0 &&
         effectiveFirstRepaymentDate != contract.firstRepaymentDate) {
-      return const Failure(
-        code: 'installment_first_date_locked',
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
         message: 'First repayment date cannot change after any period is paid.',
       );
     }
     if (effectiveTotalPeriods < paidCount + 1) {
-      return const Failure(
-        code: 'installment_periods_too_few',
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
         message: 'Total periods must be at least paidCount + 1.',
       );
     }
@@ -736,8 +726,8 @@ class InstallmentServiceImpl implements InstallmentService {
         paidPrincipalMinor -
         extraPrincipalMinor;
     if (remainingMinor < 0) {
-      return const Failure(
-        code: 'installment_principal_imbalance',
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
         message: 'Remaining principal would be negative.',
       );
     }
@@ -832,8 +822,6 @@ class InstallmentServiceImpl implements InstallmentService {
         );
       }
     }
-
-    return null;
   }
 
   @override

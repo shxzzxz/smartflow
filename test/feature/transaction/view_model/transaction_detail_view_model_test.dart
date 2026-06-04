@@ -5,6 +5,7 @@ import 'package:smartflow/application/credit/credit_command_api.dart'
     hide CorrectRepaymentCommand, CreateRepaymentCommand;
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/error/failure.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
@@ -73,6 +74,68 @@ void main() {
         expect(command.transactionId, 'tx-1');
         expect(command.contractId, 'contract-1');
         expect(command.paidFromAccountId, 'bank');
+      },
+    );
+
+    test(
+      'maps installment disbursement update exception to action failure',
+      () async {
+        final installment = _FakeInstallmentService(
+          updateContractException: BusinessException(
+            CreditErrorCode.contractPersistenceConflict,
+            message: '合同数据已变化，请刷新后重试。',
+          ),
+        );
+        final detail = _detail(
+          purpose: BusinessPurpose.borrowing,
+          ownership: const TransactionOwnership(
+            ownerType: installmentOwnerType,
+            ownerId: 'contract-1',
+            ownerRole: 'disbursement',
+          ),
+        );
+        final container = _container(detail: detail, installment: installment);
+        await _readState(container);
+
+        final outcome = await container
+            .read(transactionDetailViewModelProvider('tx-1').notifier)
+            .changeNote('new note');
+
+        expect(outcome, isA<UiActionFailure<void>>());
+        final failure = outcome as UiActionFailure<void>;
+        expect(
+          failure.error.code,
+          CreditErrorCode.contractPersistenceConflict.code,
+        );
+        expect(failure.error.message, '合同数据已变化，请刷新后重试。');
+      },
+    );
+
+    test(
+      'maps installment disbursement regular exception to unknown failure',
+      () async {
+        final installment = _FakeInstallmentService(
+          updateContractException: Exception('database failed'),
+        );
+        final detail = _detail(
+          purpose: BusinessPurpose.borrowing,
+          ownership: const TransactionOwnership(
+            ownerType: installmentOwnerType,
+            ownerId: 'contract-1',
+            ownerRole: 'disbursement',
+          ),
+        );
+        final container = _container(detail: detail, installment: installment);
+        await _readState(container);
+
+        final outcome = await container
+            .read(transactionDetailViewModelProvider('tx-1').notifier)
+            .changeNote('new note');
+
+        expect(outcome, isA<UiActionFailure<void>>());
+        final failure = outcome as UiActionFailure<void>;
+        expect(failure.error.code, 'unknown');
+        expect(failure.error.message, '未知错误，请稍后重试。');
       },
     );
 
@@ -497,15 +560,19 @@ class _FakeTransactionPostingAppService
 }
 
 class _FakeInstallmentService implements InstallmentService {
+  _FakeInstallmentService({this.updateContractException});
+
+  final Object? updateContractException;
   final updateContractCommands = <UpdateContractCommand>[];
   final editRepaymentCommands = <EditRepaymentCommand>[];
   final deleteContractCommands = <DeleteContractCommand>[];
   final revertRepaymentCommands = <RevertRepaymentCommand>[];
 
   @override
-  Future<Result<void>> updateContract(UpdateContractCommand command) async {
+  Future<void> updateContract(UpdateContractCommand command) async {
     updateContractCommands.add(command);
-    return const Result.success(null);
+    final exception = updateContractException;
+    if (exception != null) throw exception;
   }
 
   @override

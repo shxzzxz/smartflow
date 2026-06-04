@@ -10,8 +10,8 @@
 
 - application command / domain service 主路径中的预期业务失败，例如账户角色非法、合同状态不允许编辑、冲销目标不存在。
 - 不变量被破坏、代码状态不可能、数据损坏。
-- 基础设施、平台、网络调用失败经边界转换后的调用失败。
-- 已知且可预期的持久化冲突经 repository / adapter 边界转换后的业务失败，例如幂等冲突、版本冲突或唯一性冲突。
+- 基础设施、平台、网络调用失败中，调用方明确关心且需要稳定错误语义的失败，经边界转换后的内部失败。
+- 已知且可预期的持久化冲突经 repository / adapter 局部转换后的内部失败，例如幂等冲突、版本冲突或唯一性冲突。
 
 不优先用异常表达的场景：
 
@@ -23,8 +23,9 @@
 
 ## MVVM 边界
 
-- ViewModel 捕获内部异常，并转换为 ViewModel error state 或 submit failure。
-- ViewModel 不吞掉非预期异常；非预期异常上抛给全局错误处理。
+- Request-Response 型 ViewModel 在用户命令边界捕获两层异常：先捕获 `AppException` 并转换为 ViewModel error state 或 submit failure；再捕获普通 `Exception` 并转换为未知错误语义，不向用户展示具体技术信息。
+- ViewModel 不捕获 `Error`，例如 `StateError`、`TypeError` 和断言错误；这类编程错误或未处理异步错误交给全局错误处理。
+- Reactive State-Driven 页面中的 query / provider 加载失败可以进入页面级 error state 或全局错误处理；不要为了展示错误而把正常空态表达成异常。
 - View 负责根据 ViewModel 暴露的错误状态执行 snackbar、dialog、inline error、banner 或 fullscreen placeholder。
 - ViewModel 对 View 的返回协议不使用 `Result<T>` 命名，避免和业务层历史 `Result` 混用；使用 `SubmitOutcome`、`UiActionOutcome` 或具体页面语义 outcome。
 - `UiError` 只包含错误语义和字段错误，不包含 snackbar / dialog / banner 等展示方式。
@@ -39,7 +40,7 @@
 - 记录日志并展示兜底错误页或兜底提示。
 - Debug 下保留错误详情；Release 下展示通用文案。
 
-全局处理不尝试恢复业务状态，不维护复杂错误队列。业务可预期失败应在 ViewModel 捕获内部异常后转成 UI outcome；非预期异常才进入全局处理。
+全局处理不尝试恢复业务状态，不维护复杂错误队列。业务可预期失败应在 ViewModel 捕获 `AppException` 后转成 UI outcome；用户命令中的普通 `Exception` 由 ViewModel 兜底成未知错误；未被命令 outcome 接住的异常和 `Error` 进入全局处理。
 
 ## 事务
 
@@ -49,18 +50,18 @@
 Future<T> run<T>(Future<T> Function() body);
 ```
 
-命令式业务失败抛内部异常，底层事务机制自然回滚；ViewModel 在 application 调用边界捕获内部异常。既有返回 `Result<T>` 的事务接口按触达式迁移。
+命令式业务失败抛内部异常，底层事务机制自然回滚；ViewModel 在 application 调用边界捕获 `AppException` 和普通 `Exception`。既有返回 `Result<T>` 的事务接口按触达式迁移。
 
-repository / adapter 可以把明确识别的数据库异常转换为内部异常；未知数据库异常不吞掉、不包装为业务失败，继续上抛给全局错误处理。
+repository / adapter 只转换调用方明确关心的持久化失败，例如 `UPDATE` 影响行数为 0、幂等表唯一冲突或版本冲突。不要给每条 SQL 或每个 repository 方法套通用 guard。未知数据库异常不包装为业务失败；在用户命令链路中由 ViewModel 的普通 `Exception` 兜底成未知错误，在非命令链路中进入页面加载错误或全局错误处理。
 
 ## 内部异常类型
 
 内部异常先保持最小层级：
 
 - `BusinessException`：用户操作不满足业务规则，例如账户角色不允许、合同状态不允许、交易不可编辑。
-- `CallException`：外部调用失败，例如网络超时、平台 API 失败、远端返回参数错误并被解析为可展示失败。
+- `InfrastructureException`：调用方明确关心的基础设施、平台、网络或持久化失败，并且该失败需要稳定 code 和 fallback message。
 
-非预期异常不包成内部异常，继续上抛给全局错误处理。
+不关心具体类型的基础设施异常不强制包装成内部异常。Request-Response 型 ViewModel 捕获普通 `Exception` 后只返回未知错误文案；`Error` 继续上抛给全局错误处理。
 
 内部异常必须携带稳定 `code` 和 fallback `message`。`code` 用于测试、日志、展示映射和未来埋点；`message` 是兜底文案，ViewModel / 展示层可以按页面场景覆盖最终用户文案。
 
@@ -78,8 +79,9 @@ ledger.account.invalid_role
 ledger.transaction.not_editable
 credit.contract.not_found
 credit.contract.closed
-call.timeout
-call.invalid_response
+infra.network.timeout
+infra.call.invalid_response
+infra.persistence.conflict
 ```
 
 错误 code 按领域或调用类型分组定义，禁止维护一个不断膨胀的全局大 enum。错误 code 表达稳定的外部处理类别，不要求和每个内部判断分支一一对应。
@@ -94,7 +96,7 @@ lib/core/error/
 └── app_error_code.dart
 ```
 
-具体领域 code 按领域或调用类型分散定义，不集中进全局大 enum。例如账务 code 放在 ledger 相关目录，信贷 code 放在 credit 相关目录，调用错误 code 可放在 core 或调用适配层附近。
+具体领域 code 按领域或调用类型分散定义，不集中进全局大 enum。例如账务 code 放在 ledger 相关目录，信贷 code 放在 credit 相关目录，基础设施调用错误 code 放在对应 adapter / infrastructure 附近；只有真正跨层通用的 code interface 放在 core。
 
 ## 迁移原则
 

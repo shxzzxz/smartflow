@@ -186,10 +186,10 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     _setSubmitting(true);
     try {
       return await body(loaded);
-    } on BusinessException catch (exception) {
+    } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on CallException catch (exception) {
-      return UiActionOutcome.failure(UiError.fromException(exception));
+    } on Exception {
+      return const UiActionOutcome.failure(UiError.unknown());
     } finally {
       _setSubmitting(false);
     }

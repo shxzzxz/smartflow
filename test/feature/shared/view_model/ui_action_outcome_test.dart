@@ -16,6 +16,13 @@ void main() {
       expect(error.code, 'test.ui_error');
       expect(error.message, 'Visible message.');
     });
+
+    test('builds unknown error with generic message', () {
+      const error = UiError.unknown();
+
+      expect(error.code, 'unknown');
+      expect(error.message, '未知错误，请稍后重试。');
+    });
   });
 }
 

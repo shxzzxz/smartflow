@@ -156,10 +156,10 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         await _submitCorrection(editTransactionId, amount, options);
       }
       return const SubmitOutcome.success();
-    } on BusinessException catch (exception) {
+    } on AppException catch (exception) {
       return SubmitOutcome.failure(UiError.fromException(exception));
-    } on CallException catch (exception) {
-      return SubmitOutcome.failure(UiError.fromException(exception));
+    } on Exception {
+      return const SubmitOutcome.failure(UiError.unknown());
     } finally {
       state = state.copyWith(submitting: false);
     }
@@ -174,10 +174,10 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             DeleteTransactionCommand(transactionId: transactionId),
           );
       return const UiActionOutcome.success(null);
-    } on BusinessException catch (exception) {
+    } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on CallException catch (exception) {
-      return UiActionOutcome.failure(UiError.fromException(exception));
+    } on Exception {
+      return const UiActionOutcome.failure(UiError.unknown());
     } finally {
       state = state.copyWith(submitting: false);
     }

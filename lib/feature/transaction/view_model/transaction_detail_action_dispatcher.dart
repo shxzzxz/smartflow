@@ -1,6 +1,7 @@
 import '../../../application/credit/credit_command_api.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../core/error/app_exception.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
@@ -60,6 +61,19 @@ UiActionOutcome<void> detailVoidOutcomeFromResult<T>(Result<T> result) {
       ),
     ),
   };
+}
+
+Future<UiActionOutcome<void>> detailVoidOutcomeFromAction(
+  Future<void> Function() action,
+) async {
+  try {
+    await action();
+    return const UiActionOutcome.success(null);
+  } on AppException catch (exception) {
+    return UiActionOutcome.failure(UiError.fromException(exception));
+  } on Exception {
+    return const UiActionOutcome.failure(UiError.unknown());
+  }
 }
 
 UiActionOutcome<void> detailNotEditable(String message) {
@@ -165,49 +179,45 @@ final class _InstallmentActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> changeNote(String? value) async {
-    final result = switch (role) {
-      InstallmentOwnerRole.disbursement => await installmentService
-          .updateContract(
-            UpdateContractCommand(
-              contractId: contractId,
-              note:
-                  value == null
-                      ? const Patch<String>.clear()
-                      : Patch<String>.set(value),
-            ),
+    if (role == InstallmentOwnerRole.disbursement) {
+      return detailVoidOutcomeFromAction(() {
+        return installmentService.updateContract(
+          UpdateContractCommand(
+            contractId: contractId,
+            note:
+                value == null
+                    ? const Patch<String>.clear()
+                    : Patch<String>.set(value),
           ),
-      InstallmentOwnerRole.scheduledRepayment ||
-      InstallmentOwnerRole.extraPrincipal ||
-      InstallmentOwnerRole.earlySettlement => await installmentService
-          .editRepayment(
-            EditRepaymentCommand(
-              transactionId: transaction.id,
-              contractId: contractId,
-              note: _nullableStringPatch(value),
-            ),
-          ),
-    };
+        );
+      });
+    }
+    final result = await installmentService.editRepayment(
+      EditRepaymentCommand(
+        transactionId: transaction.id,
+        contractId: contractId,
+        note: _nullableStringPatch(value),
+      ),
+    );
     return detailVoidOutcomeFromResult(result);
   }
 
   @override
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
-    final result = switch (role) {
-      InstallmentOwnerRole.disbursement => await installmentService
-          .updateContract(
-            UpdateContractCommand(contractId: contractId, borrowingDate: value),
-          ),
-      InstallmentOwnerRole.scheduledRepayment ||
-      InstallmentOwnerRole.extraPrincipal ||
-      InstallmentOwnerRole.earlySettlement => await installmentService
-          .editRepayment(
-            EditRepaymentCommand(
-              transactionId: transaction.id,
-              contractId: contractId,
-              occurredAt: value,
-            ),
-          ),
-    };
+    if (role == InstallmentOwnerRole.disbursement) {
+      return detailVoidOutcomeFromAction(() {
+        return installmentService.updateContract(
+          UpdateContractCommand(contractId: contractId, borrowingDate: value),
+        );
+      });
+    }
+    final result = await installmentService.editRepayment(
+      EditRepaymentCommand(
+        transactionId: transaction.id,
+        contractId: contractId,
+        occurredAt: value,
+      ),
+    );
     return detailVoidOutcomeFromResult(result);
   }
 
@@ -215,25 +225,23 @@ final class _InstallmentActionDispatcher
   Future<UiActionOutcome<void>> changeSettlementAccount(
     String accountId,
   ) async {
-    final result = switch (role) {
-      InstallmentOwnerRole.disbursement => await installmentService
-          .updateContract(
-            UpdateContractCommand(
-              contractId: contractId,
-              disbursementAccountId: accountId,
-            ),
+    if (role == InstallmentOwnerRole.disbursement) {
+      return detailVoidOutcomeFromAction(() {
+        return installmentService.updateContract(
+          UpdateContractCommand(
+            contractId: contractId,
+            disbursementAccountId: accountId,
           ),
-      InstallmentOwnerRole.scheduledRepayment ||
-      InstallmentOwnerRole.extraPrincipal ||
-      InstallmentOwnerRole.earlySettlement => await installmentService
-          .editRepayment(
-            EditRepaymentCommand(
-              transactionId: transaction.id,
-              contractId: contractId,
-              paidFromAccountId: accountId,
-            ),
-          ),
-    };
+        );
+      });
+    }
+    final result = await installmentService.editRepayment(
+      EditRepaymentCommand(
+        transactionId: transaction.id,
+        contractId: contractId,
+        paidFromAccountId: accountId,
+      ),
+    );
     return detailVoidOutcomeFromResult(result);
   }
 }

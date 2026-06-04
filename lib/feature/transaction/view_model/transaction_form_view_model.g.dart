@@ -42,7 +42,7 @@ final class TransactionFormViewModelProvider
 }
 
 String _$transactionFormViewModelHash() =>
-    r'85b8ad0133f5c50a605a2fcee9dec8e0b3d873f8';
+    r'eee8377c30856f9611fde760048a56bc66cfba13';
 
 abstract class _$TransactionFormViewModel
     extends $Notifier<TransactionFormState> {

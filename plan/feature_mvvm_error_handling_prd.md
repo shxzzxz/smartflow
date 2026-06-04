@@ -18,7 +18,7 @@ SmartFlow 当前 feature 层的 View 与 ViewModel 职责没有被清晰定义�
 
 单页面内的类型 / 归属分发默认作为 ViewModel 私有实现细节存在。只有多个页面已经稳定复用同一套页面无关动作协议时，才提升为共享 handler 或策略对象。组件工厂只用于拆分 UI 结构差异，不作为业务行为分发机制。
 
-命令式业务失败逐步从 `Result` 迁移为内部异常。内部异常分为基础业务异常和调用异常，携带稳定命名空间字符串 code 和 fallback message。ViewModel 捕获内部异常并转换为 UI 语义 outcome；非预期异常继续上抛给全局异常处理。纯函数、`tryParse`、可组合转换、预检、规则校验和批量校验不强制使用异常，但长期值返回失败应使用场景专用 violation / validation report，不继续扩散通用 `Failure`。
+命令式业务失败逐步从 `Result` 迁移为内部异常。内部异常分为业务异常和基础设施异常，携带稳定命名空间字符串 code 和 fallback message。Request-Response 型 ViewModel 在用户命令边界捕获 `AppException` 并转换为 UI 语义 outcome；普通 `Exception` 兜底为未知错误，不向用户展示具体技术信息；`Error` 和未处理异步异常继续交给全局异常处理。纯函数、`tryParse`、可组合转换、预检、规则校验和批量校验不强制使用异常，但长期值返回失败应使用场景专用 violation / validation report，不继续扩散通用 `Failure`。
 
 错误展示由 View 或全局 UI handler 决定。ViewModel 只暴露错误语义，不携带 snackbar、dialog、banner、fullscreen 等展示方式。字段级校验使用 Flutter `Form` / `FormField.validator` 机制，validator 可按复用范围沉淀到设计系统、业务组件或 feature presentation。
 
@@ -40,7 +40,7 @@ SmartFlow 当前 feature 层的 View 与 ViewModel 职责没有被清晰定义�
 - ViewModel 对 View 使用 UI 语义 outcome，不使用业务层历史 `Result`。
 - 重复 helper 按语义收口到设计系统、业务组件、presentation、core 或具体 ViewModel，不再在页面内重复散落。
 - 字段级校验使用 Flutter 表单 validator 和可复用 validator，ViewModel 不承担字段内联错误展示。
-- 非预期异常进入全局异常处理，内部异常由 ViewModel 捕获并转换为 UI outcome。
+- 用户命令中的内部异常由 ViewModel 捕获并转换为 UI outcome；普通 `Exception` 由 ViewModel 兜底为未知错误；`Error` 和未处理异步异常进入全局异常处理。
 - 工程文档与实现保持一致，后续 agent 能按文档独立迁移页面。
 
 ## 落地策略
@@ -55,7 +55,7 @@ SmartFlow 当前 feature 层的 View 与 ViewModel 职责没有被清晰定义�
 4. 迁移复杂页面动态渲染与业务行为分发：以交易详情页为代表，把页面状态收敛到 ViewModel view state，把类型 / 归属分发收为 ViewModel 私有实现。
 5. 改造事务和命令边界：将更多命令式业务失败迁移为内部异常；既有 `Result` API 只作为迁移遗留保留。
 6. 扩展到高收益页面：按风险和收益迁移账户与分类表单、信贷合同编辑、还款表单、日历和首页等页面。
-7. 建立全局异常最小闭环：捕获非预期异常、记录日志、提供兜底展示。
+7. 建立全局异常最小闭环：捕获 `Error`、未处理异步异常和命令边界之外的异常，记录日志并提供兜底展示。
 
 ## 用户故事
 
@@ -75,7 +75,7 @@ SmartFlow 当前 feature 层的 View 与 ViewModel 职责没有被清晰定义�
 14. 作为开发者，我希望纯函数和 `tryParse` 类 helper 保留值返回失败模式，从而普通判断和组合仍然显式。
 15. 作为开发者，我希望事务 runner 的目标接口对异常友好，从而回滚直接使用数据库事务机制。
 16. 作为开发者，我希望已知持久化冲突能转换成业务异常，从而幂等冲突和版本冲突按预期失败处理。
-17. 作为开发者，我希望未知基础设施失败继续上抛，从而不会被误标记为业务错误。
+17. 作为开发者，我希望未知基础设施失败不被误标记为业务错误；用户命令中只展示未知错误文案，命令边界之外进入页面加载错误或全局异常处理。
 18. 作为开发者，我希望内部异常携带稳定字符串 code，从而测试、日志和展示映射不依赖中文 message。
 19. 作为开发者，我希望错误 code 按领域或调用类型分组，从而避免一个持续膨胀的全局 enum。
 20. 作为开发者，我希望 UI 反馈方式留在 View 或全局 UI 处理层，从而 ViewModel 不知道 snackbar、dialog、banner 或 fullscreen 组件。
@@ -112,17 +112,19 @@ SmartFlow 当前 feature 层的 View 与 ViewModel 职责没有被清晰定义�
 - ViewModel 到 View 的提交协议使用 `SubmitOutcome`、`UiActionOutcome` 等 UI 语义命名，不使用 `Result`。
 - 命令式 application API 逐步迁移为用内部异常表达预期业务失败。
 - 纯函数、`tryParse`、可选转换、非 mutating 预检或规则校验和批量校验可以继续使用值返回失败，不强制抛异常；返回类型应优先使用场景专用 violation / validation report，而不是通用 `Failure`。
-- 校验产物和错误产物分离：violation / validation report 表达规则判断结果；`BusinessException`、`CallException`、`UiError` 和错误 code 表达命令或调用失败后的错误语义。
+- 校验产物和错误产物分离：violation / validation report 表达规则判断结果；`BusinessException`、`InfrastructureException`、`UiError` 和错误 code 表达命令或调用失败后的错误语义。
 - violation 可以比错误 code 更贴近具体规则；映射为内部异常或 UI 错误语义时，再归并到稳定外部处理类别。
 - 失败语义命名只作为软约定。返回 violation / validation report 的校验方法可使用 `validate`、`check`、`evaluate`；失败时抛内部异常的方法优先使用 `ensure`、`require` 或具体命令动词。
-- 内部异常基础类型为 `BusinessException` 和 `CallException`。
+- 内部异常基础类型为 `BusinessException` 和 `InfrastructureException`。
 - 内部异常携带稳定命名空间字符串 code 和 fallback message。
 - 错误 code 使用 `<domain>.<subject>.<reason>` 风格字符串，不使用数字码。
 - 错误 code 按领域或调用类型分组，不引入持续膨胀的全局大 enum。
-- 已知持久化冲突可以在 repository 或 adapter 边界转换成内部异常。未知数据库异常继续作为非预期异常上抛。
+- 已知持久化冲突可以在 repository 或 adapter 边界局部转换成内部异常，例如影响行数为 0、幂等表唯一冲突或版本冲突。不要给每条 SQL 或每个 repository 方法套通用 guard。
+- 未知数据库异常不包装为业务失败；在用户命令链路中由 ViewModel 的普通 `Exception` 兜底为未知错误，在非命令链路中进入页面加载错误或全局异常处理。
 - 事务 runner 目标接口对异常友好，直接返回 body 结果，不再包装 `Result`。
-- ViewModel 捕获内部异常并映射为 UI 语义错误或 outcome failure。
-- 非预期异常不被 ViewModel 吞掉，交给全局异常处理。
+- Request-Response 型 ViewModel 先捕获 `AppException` 并映射为 UI 语义错误或 outcome failure，再捕获普通 `Exception` 并返回未知错误。
+- ViewModel 不捕获 `Error`，例如 `StateError`、`TypeError` 和断言错误；这类错误交给全局异常处理。
+- 暂不引入 `BaseViewModel` 或通用 submit helper 处理 `submitting`、`isLoading`、`SubmitOutcome` 等样板；待多个页面演化出稳定模式后再以组合式 helper 优先收口。
 - `UiError` 只包含错误语义，不包含 snackbar、dialog、banner、inline、fullscreen 等展示指令。
 - View 根据页面上下文决定展示 snackbar、dialog、全屏占位、内联字段反馈或 banner。
 - 全局异常处理先建立最小闭环：捕获、记录、兜底展示，不做复杂业务恢复。
@@ -142,8 +144,8 @@ SmartFlow 当前 feature 层的 View 与 ViewModel 职责没有被清晰定义�
 - 业务行为分发测试通过页面语义事件后的可观察 outcome、fake service 调用或 state 变化验证，不测试 ViewModel 私有分发类本身。
 - presentation 测试覆盖格式化、分组、展示文案、图标语义和纯展示转换。
 - widget test 覆盖渲染、`Form` / `FormField.validator` 行为、controller 同步和交互连线。
-- 全局异常处理测试验证内部异常在 ViewModel 边界被处理，非预期异常进入全局处理。
-- 交易表单参考测试应覆盖新建、编辑初始化、字段非法阻断、提交成功、业务异常失败、调用异常失败和 controller 同步行为；#2 已提供日常支出 ViewModel unit test 和交易表单 widget test 先例，后续交易类型按同一 seam 补齐。
+- 全局异常处理测试验证内部异常在 ViewModel 边界被处理，用户命令中的普通 `Exception` 被兜底为未知错误，`Error` 和未处理异步异常进入全局处理。
+- 交易表单参考测试应覆盖新建、编辑初始化、字段非法阻断、提交成功、业务异常失败、普通 `Exception` 兜底未知错误和 controller 同步行为；#2 已提供日常支出 ViewModel unit test 和交易表单 widget test 先例，后续交易类型按同一 seam 补齐。
 - 现有 domain unit test、core value object test、feature widget test 和 transaction form test 可作为先例。新增 ViewModel test 应使用 ProviderContainer override 或 fake application service，而不是完整 widget test。
 
 ## 不在范围内

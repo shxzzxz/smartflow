@@ -42,7 +42,7 @@ final class CategoryFormViewModelProvider
 }
 
 String _$categoryFormViewModelHash() =>
-    r'15772d63eb5e26f6b5f3c2d9b4f8fe5a32c78055';
+    r'23eed85bb4f31b28c25f93d3e8872f512731d5f0';
 
 abstract class _$CategoryFormViewModel extends $Notifier<CategoryFormState> {
   CategoryFormState build();

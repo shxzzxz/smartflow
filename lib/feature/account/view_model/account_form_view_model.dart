@@ -117,10 +117,10 @@ class AccountFormViewModel extends _$AccountFormViewModel {
         );
       }
       return const SubmitOutcome.success();
-    } on BusinessException catch (exception) {
+    } on AppException catch (exception) {
       return SubmitOutcome.failure(UiError.fromException(exception));
-    } on CallException catch (exception) {
-      return SubmitOutcome.failure(UiError.fromException(exception));
+    } on Exception {
+      return const SubmitOutcome.failure(UiError.unknown());
     } finally {
       state = state.copyWith(submitting: false);
     }

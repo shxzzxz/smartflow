@@ -30,6 +30,8 @@ ViewModel state 使用不可变对象表达，每次状态变化发布新的 sta
 
 编辑页的已有数据加载、read model 到页面状态的映射、初始化幂等控制属于 ViewModel。需要写入 `TextEditingController` 的初始文本由 View 根据 ViewModel 或 read model 提供的数据执行，并避免覆盖用户正在编辑的内容。
 
+暂不引入 `BaseViewModel` 或通用 submit helper 来提前抽象 `submitting`、`isLoading`、`SubmitOutcome` 等样板。不同页面的 state 形态、提交副作用和返回 outcome 尚未稳定统一，重复代码先保留在具体 ViewModel 内；当多个页面出现稳定一致的模式后，再优先以组合式 helper 收口，而不是默认使用继承式基类。
+
 ## 页面动态渲染与业务行为分发
 
 复杂页面的动态渲染由页面级 ViewModel 输出 view state 控制。View state 可以包含字段可编辑状态、按钮显示、禁用原因、banner 语义、当前选择、加载状态和提交状态；View 只根据这些状态渲染，不在 widget 内复制跨数据源或跨业务域判断。
