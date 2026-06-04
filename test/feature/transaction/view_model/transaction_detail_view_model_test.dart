@@ -452,7 +452,7 @@ class _FakeTransactionCorrectionAppService
   }
 
   @override
-  Future<Result<PostedTransactionResult>> correctRepayment(
+  Future<PostedTransactionResult> correctRepayment(
     CorrectRepaymentCommand command,
   ) {
     throw UnimplementedError();
@@ -484,19 +484,19 @@ class _FakeTransactionPostingAppService
   final closeCommands = <CloseReimbursementCommand>[];
 
   @override
-  Future<Result<PostedTransactionResult>> createReimbursementReceipt(
+  Future<PostedTransactionResult> createReimbursementReceipt(
     CreateReimbursementReceiptCommand command,
   ) async {
     receiptCommands.add(command);
-    return Result.success(_posted());
+    return _posted();
   }
 
   @override
-  Future<Result<PostedTransactionResult>> closeReimbursement(
+  Future<PostedTransactionResult> closeReimbursement(
     CloseReimbursementCommand command,
   ) async {
     closeCommands.add(command);
-    return Result.success(_posted());
+    return _posted();
   }
 
   @override
@@ -526,8 +526,13 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createRefund(
-    CreateRefundCommand command,
+  Future<PostedTransactionResult> createRefund(CreateRefundCommand command) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PostedTransactionResult> createRepayment(
+    CreateRepaymentCommand command,
   ) {
     throw UnimplementedError();
   }
@@ -541,13 +546,6 @@ class _FakeTransactionPostingAppService
 
   @override
   Future<PostedTransactionResult> createIncome(CreateIncomeCommand command) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Result<PostedTransactionResult>> createRepayment(
-    CreateRepaymentCommand command,
-  ) {
     throw UnimplementedError();
   }
 
@@ -608,21 +606,21 @@ class _FakeInstallmentService implements InstallmentService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createEarlySettlement(
+  Future<PostedTransactionResult> createEarlySettlement(
     CreateEarlySettlementCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createPrincipalPrepayment(
+  Future<PostedTransactionResult> createPrincipalPrepayment(
     CreatePrincipalPrepaymentCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createScheduledRepayment(
+  Future<PostedTransactionResult> createScheduledRepayment(
     CreateScheduledRepaymentCommand command,
   ) {
     throw UnimplementedError();

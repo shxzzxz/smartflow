@@ -8,10 +8,10 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart'
         CreateRepaymentCommand,
         CorrectRepaymentCommand;
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
-import 'package:smartflow/core/error/failure.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
-import 'package:smartflow/core/result/result.dart';
+import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
 import '../../installment/command/installment_service.dart';
@@ -19,11 +19,11 @@ import '../../installment/command/installment_service.dart';
 /// 信贷域对外的通用入口。承载"非分期合同关联的普通还款"的创建、更正与编辑视图反解；
 /// 内部委托账务核心写入，并强制走额度校验（debt − 未还分期本金）。
 abstract interface class CreditService {
-  Future<Result<PostedTransactionResult>> createRepayment(
+  Future<PostedTransactionResult> createRepayment(
     CreateRepaymentCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> correctRepayment(
+  Future<PostedTransactionResult> correctRepayment(
     CorrectRepaymentCommand command,
   );
 
@@ -128,14 +128,13 @@ class CreditServiceImpl implements CreditService {
   final AccountQueryService _accountQueryService;
 
   @override
-  Future<Result<PostedTransactionResult>> createRepayment(
+  Future<PostedTransactionResult> createRepayment(
     CreateRepaymentCommand command,
   ) async {
-    final failure = await _validatePrincipal(
+    await _validatePrincipal(
       liabilityAccountId: command.liabilityAccountId,
       principal: command.principal,
     );
-    if (failure != null) return Result.failure(failure);
 
     return _postingService.createRepayment(
       tx.CreateRepaymentCommand(
@@ -152,36 +151,30 @@ class CreditServiceImpl implements CreditService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> correctRepayment(
+  Future<PostedTransactionResult> correctRepayment(
     CorrectRepaymentCommand command,
   ) async {
     final detail = await _transactionQueryService.findTransactionDetail(
       command.transactionId,
     );
     if (detail == null) {
-      return const Result.failure(
-        Failure(
-          code: 'credit_repayment_not_found',
-          message: 'Repayment transaction does not exist.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.repaymentNotFound,
+        message: 'Repayment transaction does not exist.',
       );
     }
     if (detail.transaction.businessPurpose != BusinessPurpose.debtRepayment) {
-      return const Result.failure(
-        Failure(
-          code: 'credit_correct_purpose_invalid',
-          message:
-              'CreditService.correctRepayment only handles DEBT_REPAYMENT.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.repaymentNotEditable,
+        message: 'CreditService.correctRepayment only handles DEBT_REPAYMENT.',
       );
     }
 
-    final failure = await _validatePrincipal(
+    await _validatePrincipal(
       liabilityAccountId: command.liabilityAccountId,
       principal: command.principal,
       editingTransactionDetail: detail,
     );
-    if (failure != null) return Result.failure(failure);
 
     return _correctionService.correctRepayment(
       tx.CorrectRepaymentCommand(
@@ -258,23 +251,23 @@ class CreditServiceImpl implements CreditService {
   /// 编辑模式（[editingTransactionDetail] 非空）：
   ///   - 若原交易挂在分期合同上（owner_type=installment），跳过校验（分期通路自管金额）。
   ///   - 否则把原交易的 REPAYMENT_PRINCIPAL 加回到 debt，避免"原地编辑同金额"被自己挤掉。
-  Future<Failure?> _validatePrincipal({
+  Future<void> _validatePrincipal({
     required String liabilityAccountId,
     required Money principal,
     TransactionDetail? editingTransactionDetail,
   }) async {
-    if (principal.minorUnits <= 0) return null;
+    if (principal.minorUnits <= 0) return;
 
     if (editingTransactionDetail != null &&
         editingTransactionDetail.transaction.ownership?.ownerType ==
             installmentOwnerType) {
-      return null;
+      return;
     }
 
     final account = await _accountQueryService.findAccountById(
       liabilityAccountId,
     );
-    if (account == null) return null;
+    if (account == null) return;
 
     var oldPrincipalMinor = 0;
     if (editingTransactionDetail != null) {
@@ -293,12 +286,11 @@ class CreditServiceImpl implements CreditService {
     if (principal.minorUnits > availableMinor) {
       final clamped = availableMinor < 0 ? 0 : availableMinor;
       final available = Money(minorUnits: clamped);
-      return Failure(
-        code: 'repayment_principal_exceeds_available',
+      throw BusinessException(
+        CreditErrorCode.repaymentExceedsAvailable,
         message: '本金超过可还额度（${available.format()}），剩余请通过分期合同还款',
       );
     }
-    return null;
   }
 
   String? _firstAccountId(

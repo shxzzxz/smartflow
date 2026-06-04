@@ -139,29 +139,30 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
       final receiveAccountId = input.receiveAccountId ?? receivableAccountId;
       final note = trimToNull(input.noteText);
       final service = ref.read(transactionPostingAppServiceProvider);
-      final result =
-          input.closeReimbursement
-              ? await service.closeReimbursement(
-                CloseReimbursementCommand(
-                  actualReceivedAmount: input.amount,
-                  advanceTransactionId: loaded.detail.transaction.id,
-                  receivableAccountId: receivableAccountId,
-                  receiveAccountId: receiveAccountId,
-                  occurredAt: input.occurredAt,
-                  note: note,
-                ),
-              )
-              : await service.createReimbursementReceipt(
-                CreateReimbursementReceiptCommand(
-                  amount: input.amount,
-                  advanceTransactionId: loaded.detail.transaction.id,
-                  receivableAccountId: receivableAccountId,
-                  receiveAccountId: receiveAccountId,
-                  occurredAt: input.occurredAt,
-                  note: note,
-                ),
-              );
-      return detailVoidOutcomeFromResult(result);
+      if (input.closeReimbursement) {
+        await service.closeReimbursement(
+          CloseReimbursementCommand(
+            actualReceivedAmount: input.amount,
+            advanceTransactionId: loaded.detail.transaction.id,
+            receivableAccountId: receivableAccountId,
+            receiveAccountId: receiveAccountId,
+            occurredAt: input.occurredAt,
+            note: note,
+          ),
+        );
+      } else {
+        await service.createReimbursementReceipt(
+          CreateReimbursementReceiptCommand(
+            amount: input.amount,
+            advanceTransactionId: loaded.detail.transaction.id,
+            receivableAccountId: receivableAccountId,
+            receiveAccountId: receiveAccountId,
+            occurredAt: input.occurredAt,
+            note: note,
+          ),
+        );
+      }
+      return const UiActionOutcome.success(null);
     });
   }
 

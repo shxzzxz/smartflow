@@ -433,7 +433,7 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<Result<PostedTransactionResult>> closeReimbursement(
+  Future<PostedTransactionResult> closeReimbursement(
     CloseReimbursementCommand command,
   ) {
     throw UnimplementedError();
@@ -447,21 +447,19 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createRefund(
-    CreateRefundCommand command,
-  ) {
+  Future<PostedTransactionResult> createRefund(CreateRefundCommand command) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createReimbursementReceipt(
+  Future<PostedTransactionResult> createReimbursementReceipt(
     CreateReimbursementReceiptCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createRepayment(
+  Future<PostedTransactionResult> createRepayment(
     CreateRepaymentCommand command,
   ) {
     throw UnimplementedError();
@@ -544,7 +542,7 @@ class _FakeTransactionCorrectionAppService
   }
 
   @override
-  Future<Result<PostedTransactionResult>> correctRepayment(
+  Future<PostedTransactionResult> correctRepayment(
     CorrectRepaymentCommand command,
   ) {
     throw UnimplementedError();

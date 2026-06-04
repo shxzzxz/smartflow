@@ -89,16 +89,14 @@ class LedgerPostingService {
     return _applyPosting(transactionResult.value);
   }
 
-  Future<Result<PostingResult>> postRepayment(
-    RepaymentInstruction instruction,
-  ) async {
+  Future<PostingResult> postRepayment(RepaymentInstruction instruction) async {
     final roleFailure = await _accountRolePolicy.validate(
       AccountRoleContext.repayment(
         liabilityAccountId: instruction.liabilityAccountId,
         paidFromAccountId: instruction.paidFromAccountId,
       ),
     );
-    if (roleFailure != null) return Result.failure(roleFailure);
+    if (roleFailure != null) throw _businessExceptionFromFailure(roleFailure);
 
     final hasInterest =
         instruction.interest != null && instruction.interest!.minorUnits > 0;
@@ -119,9 +117,9 @@ class LedgerPostingService {
               : null,
     );
     if (transactionResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
+      throw _businessExceptionFromFailure(failure);
     }
-    return _applyPosting(transactionResult.value);
+    return _applyPostingValue(transactionResult.value);
   }
 
   Future<Result<PostingResult>> postBorrowing(

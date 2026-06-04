@@ -348,21 +348,21 @@ class _FakeInstallmentService implements InstallmentService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createEarlySettlement(
+  Future<PostedTransactionResult> createEarlySettlement(
     CreateEarlySettlementCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createPrincipalPrepayment(
+  Future<PostedTransactionResult> createPrincipalPrepayment(
     CreatePrincipalPrepaymentCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createScheduledRepayment(
+  Future<PostedTransactionResult> createScheduledRepayment(
     CreateScheduledRepaymentCommand command,
   ) {
     throw UnimplementedError();

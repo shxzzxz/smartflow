@@ -22,23 +22,21 @@ abstract interface class TransactionPostingAppService {
 
   Future<PostedTransactionResult> createTransfer(CreateTransferCommand command);
 
-  Future<Result<PostedTransactionResult>> createRefund(
-    CreateRefundCommand command,
-  );
+  Future<PostedTransactionResult> createRefund(CreateRefundCommand command);
 
   Future<PostedTransactionResult> createReimbursementAdvance(
     CreateReimbursementAdvanceCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> createReimbursementReceipt(
+  Future<PostedTransactionResult> createReimbursementReceipt(
     CreateReimbursementReceiptCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> closeReimbursement(
+  Future<PostedTransactionResult> closeReimbursement(
     CloseReimbursementCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> createRepayment(
+  Future<PostedTransactionResult> createRepayment(
     CreateRepaymentCommand command,
   );
 
@@ -176,10 +174,10 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createRefund(
+  Future<PostedTransactionResult> createRefund(
     CreateRefundCommand command,
   ) async {
-    return _ledgerWriter.persistPosting(
+    return _ledgerWriter.persistPostingValue(
       await _refundPostingService.postRefund(
         RefundInstruction(
           parentTransactionId: command.parentTransactionId,
@@ -213,10 +211,10 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createReimbursementReceipt(
+  Future<PostedTransactionResult> createReimbursementReceipt(
     CreateReimbursementReceiptCommand command,
   ) async {
-    return _ledgerWriter.persistPosting(
+    return _ledgerWriter.persistPostingValue(
       await _reimbursementPostingService.postReceipt(
         ReimbursementReceiptInstruction(
           advanceTransactionId: command.advanceTransactionId,
@@ -232,10 +230,10 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> closeReimbursement(
+  Future<PostedTransactionResult> closeReimbursement(
     CloseReimbursementCommand command,
   ) async {
-    return _ledgerWriter.persistPosting(
+    return _ledgerWriter.persistPostingValue(
       await _reimbursementPostingService.close(
         ReimbursementCloseInstruction(
           advanceTransactionId: command.advanceTransactionId,
@@ -251,10 +249,10 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createRepayment(
+  Future<PostedTransactionResult> createRepayment(
     CreateRepaymentCommand command,
   ) async {
-    return _ledgerWriter.persistPosting(
+    return _ledgerWriter.persistPostingValue(
       await _ledgerPostingService.postRepayment(
         RepaymentInstruction(
           principal: command.principal,

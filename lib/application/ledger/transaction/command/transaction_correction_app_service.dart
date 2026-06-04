@@ -48,7 +48,7 @@ abstract interface class TransactionCorrectionAppService {
     CorrectBorrowingCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> correctRepayment(
+  Future<PostedTransactionResult> correctRepayment(
     CorrectRepaymentCommand command,
   );
 
@@ -300,10 +300,10 @@ class TransactionCorrectionAppServiceImpl
   }
 
   @override
-  Future<Result<PostedTransactionResult>> correctRepayment(
+  Future<PostedTransactionResult> correctRepayment(
     CorrectRepaymentCommand cmd,
   ) async {
-    return _ledgerWriter.persistMutation(
+    return _ledgerWriter.persistMutationValue(
       await _ledgerCorrectionService.replaceParentTransaction(
         ReplaceParentTransactionInstruction(
           transactionId: cmd.transactionId,

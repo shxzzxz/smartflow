@@ -307,15 +307,15 @@ abstract interface class InstallmentService {
   /// 再委托账务应用服务完成 transaction 表的写入。
   Future<Result<void>> editRepayment(EditRepaymentCommand command);
 
-  Future<Result<PostedTransactionResult>> createScheduledRepayment(
+  Future<PostedTransactionResult> createScheduledRepayment(
     CreateScheduledRepaymentCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> createPrincipalPrepayment(
+  Future<PostedTransactionResult> createPrincipalPrepayment(
     CreatePrincipalPrepaymentCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> createEarlySettlement(
+  Future<PostedTransactionResult> createEarlySettlement(
     CreateEarlySettlementCommand command,
   );
 
@@ -855,16 +855,13 @@ class InstallmentServiceImpl implements InstallmentService {
 
     return _runner.run<void>(() async {
       if (command.paidFromAccountId != null || command.occurredAt != null) {
-        final basicsResult = await _correctionService.correctRepayment(
+        await _correctionService.correctRepayment(
           CorrectRepaymentCommand(
             transactionId: command.transactionId,
             paidFromAccountId: command.paidFromAccountId,
             occurredAt: command.occurredAt,
           ),
         );
-        if (basicsResult case FailureResult(:final failure)) {
-          return Result.failure(failure);
-        }
       }
 
       if (command.note != null) {
@@ -900,38 +897,32 @@ class InstallmentServiceImpl implements InstallmentService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createScheduledRepayment(
+  Future<PostedTransactionResult> createScheduledRepayment(
     CreateScheduledRepaymentCommand command,
   ) async {
     final contract = await _repository.findContract(command.contractId);
     if (contract == null) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_found',
-          message: 'Installment contract does not exist.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractNotFound,
+        message: 'Installment contract does not exist.',
       );
     }
     final schedule = await _repository.findSchedule(command.scheduleId);
     if (schedule == null || schedule.contractId != command.contractId) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_schedule_not_found',
-          message: 'Schedule does not belong to the contract.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.scheduleNotFound,
+        message: 'Schedule does not belong to the contract.',
       );
     }
     if (schedule.status != InstallmentScheduleStatus.pending) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_schedule_not_pending',
-          message: 'Schedule is not pending.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.scheduleNotPending,
+        message: 'Schedule is not pending.',
       );
     }
 
-    return _runner.run<PostedTransactionResult>(() async {
-      final result = await _postingService.createRepayment(
+    return _runner.runValue<PostedTransactionResult>(() async {
+      final post = await _postingService.createRepayment(
         CreateRepaymentCommand(
           principal: command.principal,
           interest: command.interest,
@@ -948,10 +939,6 @@ class InstallmentServiceImpl implements InstallmentService {
           ),
         ),
       );
-      if (result case FailureResult(:final failure)) {
-        return Result.failure(failure);
-      }
-      final post = (result as Success).value;
       await _repository.insertRepayment(
         InstallmentRepaymentDraft(
           contractId: command.contractId,
@@ -965,34 +952,30 @@ class InstallmentServiceImpl implements InstallmentService {
         const InstallmentSchedulePatch(status: InstallmentScheduleStatus.paid),
       );
       await _maybeMarkContractSettled(command.contractId);
-      return Result.success(post);
+      return post;
     });
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createPrincipalPrepayment(
+  Future<PostedTransactionResult> createPrincipalPrepayment(
     CreatePrincipalPrepaymentCommand command,
   ) async {
     final contract = await _repository.findContract(command.contractId);
     if (contract == null) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_found',
-          message: 'Installment contract does not exist.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractNotFound,
+        message: 'Installment contract does not exist.',
       );
     }
     if (contract.status != InstallmentContractStatus.active) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_active',
-          message: 'Only active contracts allow extra principal repayment.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractNotActive,
+        message: 'Only active contracts allow extra principal repayment.',
       );
     }
 
-    return _runner.run<PostedTransactionResult>(() async {
-      final result = await _postingService.createRepayment(
+    return _runner.runValue<PostedTransactionResult>(() async {
+      final post = await _postingService.createRepayment(
         CreateRepaymentCommand(
           principal: command.principal,
           interest: command.interest,
@@ -1008,10 +991,6 @@ class InstallmentServiceImpl implements InstallmentService {
           ),
         ),
       );
-      if (result case FailureResult(:final failure)) {
-        return Result.failure(failure);
-      }
-      final post = (result as Success).value;
       await _repository.insertRepayment(
         InstallmentRepaymentDraft(
           contractId: command.contractId,
@@ -1020,34 +999,30 @@ class InstallmentServiceImpl implements InstallmentService {
         ),
       );
       await _recalculatePendingSchedules(command.contractId);
-      return Result.success(post);
+      return post;
     });
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createEarlySettlement(
+  Future<PostedTransactionResult> createEarlySettlement(
     CreateEarlySettlementCommand command,
   ) async {
     final contract = await _repository.findContract(command.contractId);
     if (contract == null) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_found',
-          message: 'Installment contract does not exist.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractNotFound,
+        message: 'Installment contract does not exist.',
       );
     }
     if (contract.status != InstallmentContractStatus.active) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_active',
-          message: 'Only active contracts can be settled early.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractNotActive,
+        message: 'Only active contracts can be settled early.',
       );
     }
 
-    return _runner.run<PostedTransactionResult>(() async {
-      final result = await _postingService.createRepayment(
+    return _runner.runValue<PostedTransactionResult>(() async {
+      final post = await _postingService.createRepayment(
         CreateRepaymentCommand(
           principal: command.principal,
           interest: command.interest,
@@ -1063,10 +1038,6 @@ class InstallmentServiceImpl implements InstallmentService {
           ),
         ),
       );
-      if (result case FailureResult(:final failure)) {
-        return Result.failure(failure);
-      }
-      final post = (result as Success).value;
       await _repository.insertRepayment(
         InstallmentRepaymentDraft(
           contractId: command.contractId,
@@ -1089,7 +1060,7 @@ class InstallmentServiceImpl implements InstallmentService {
         command.contractId,
         InstallmentContractStatus.closed,
       );
-      return Result.success(post);
+      return post;
     });
   }
 
