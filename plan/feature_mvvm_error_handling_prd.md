@@ -166,6 +166,7 @@ SmartFlow 当前 feature 层的 View 与 ViewModel 职责没有被清晰定义�
 - 后续 issue 应保持可独立领取。
 - 工程文档已经记录当前决策，实现过程中如出现新约束应同步更新。
 - 后续 issue 创建或调整后建议使用 `ready-for-agent` 状态或标签。
+- #16 是 #10 / #11 完成共享交易列表 presentation 后的后续收口：将 `TransactionRow` 从内部读取账户 lookup 的折中形态迁移为完全受控组件，由调用方传入完整交易行 presentation。
 
 ## #12 补充验收标准
 
@@ -186,5 +187,6 @@ SmartFlow 当前 feature 层的 View 与 ViewModel 职责没有被清晰定义�
 - [#9 信贷还款相关表单迁移](https://github.com/shxzzxz/smartflow/issues/9)
 - [#10 日历页 Reactive ViewModel 与 presentation 收口](https://github.com/shxzzxz/smartflow/issues/10)
 - [#11 首页 Reactive ViewModel 与交易行 presentation 收口](https://github.com/shxzzxz/smartflow/issues/11)
+- [#16 交易行共享组件完全受控化：移除内部 account lookup provider 依赖](https://github.com/shxzzxz/smartflow/issues/16)
 - [#12 历史 Result/Failure 迁移审计与剩余切片拆分](https://github.com/shxzzxz/smartflow/issues/12)
 - [#13 helper 重复审计与收口完成度检查](https://github.com/shxzzxz/smartflow/issues/13)

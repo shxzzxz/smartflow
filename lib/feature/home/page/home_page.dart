@@ -3,15 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../app/provider.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_month_picker.dart';
-import '../../../application/ledger/ledger_query_api.dart';
-import '../view_model/home_transaction_group.dart';
-import '../widget/empty_transaction_card.dart';
+import '../../../widget/business/empty_transaction_card.dart';
+import '../../../widget/business/transaction_day_card.dart';
+import '../../../widget/business/transaction_list_presentation.dart';
+import '../view_model/home_view_model.dart';
 import '../widget/home_header.dart';
 import '../widget/monthly_summary_card.dart';
-import '../widget/transaction_day_card.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -21,70 +20,30 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  late DateTime _visibleMonth;
-
-  @override
-  void initState() {
-    super.initState();
-    final now = DateTime.now();
-    _visibleMonth = DateTime(now.year, now.month);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final transactionsAsync = ref.watch(
-      homeMonthTransactionsProvider(
-        year: _visibleMonth.year,
-        month: _visibleMonth.month,
-      ),
-    );
-    final summaryAsync = ref.watch(
-      homeMonthCashflowComparisonProvider(
-        year: _visibleMonth.year,
-        month: _visibleMonth.month,
-      ),
-    );
-    final dailySummariesAsync = ref.watch(
-      homeMonthDailyCashflowSummariesProvider(
-        year: _visibleMonth.year,
-        month: _visibleMonth.month,
-      ),
-    );
+    final state = ref.watch(homeViewModelProvider);
 
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
             HomeHeader(
-              visibleMonth: _visibleMonth,
+              visibleMonth: state.visibleMonth,
               onMonthPressed: _pickMonth,
               onPreviousMonth: () => _shiftMonth(-1),
               onNextMonth: () => _shiftMonth(1),
             ),
             Expanded(
-              child: switch ((
-                transactionsAsync,
-                summaryAsync,
-                dailySummariesAsync,
-              )) {
-                (
-                  AsyncData(:final value),
-                  AsyncData(value: final comparison),
-                  AsyncData(value: final dailySummaries),
-                ) =>
-                  _HomeContent(
-                    transactions: value,
-                    comparison: comparison,
-                    dailySummaries: dailySummaries,
-                  ),
-                (AsyncError(:final error), _, _) ||
-                (_, AsyncError(:final error), _) ||
-                (
-                  _,
-                  _,
-                  AsyncError(:final error),
-                ) => Center(child: Text('加载失败：$error')),
-                _ => const Center(child: CircularProgressIndicator()),
+              child: switch (state.content) {
+                HomeContentLoaded(:final summary, :final groups) =>
+                  _HomeContent(summary: summary, groups: groups),
+                HomeContentError(:final message) => Center(
+                  child: Text(message),
+                ),
+                HomeContentLoading() => const Center(
+                  child: CircularProgressIndicator(),
+                ),
               },
             ),
           ],
@@ -104,38 +63,27 @@ class _HomePageState extends ConsumerState<HomePage> {
   Future<void> _pickMonth() async {
     final selected = await showAppMonthPicker(
       context: context,
-      initialMonth: _visibleMonth,
+      initialMonth: ref.read(homeViewModelProvider).visibleMonth,
     );
     if (!mounted || selected == null) {
       return;
     }
-    setState(() {
-      _visibleMonth = DateTime(selected.year, selected.month);
-    });
+    ref.read(homeViewModelProvider.notifier).pickMonth(selected);
   }
 
   void _shiftMonth(int delta) {
-    setState(() {
-      _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + delta);
-    });
+    ref.read(homeViewModelProvider.notifier).shiftMonth(delta);
   }
 }
 
 class _HomeContent extends StatelessWidget {
-  const _HomeContent({
-    required this.transactions,
-    required this.comparison,
-    required this.dailySummaries,
-  });
+  const _HomeContent({required this.summary, required this.groups});
 
-  final List<TransactionListItem> transactions;
-  final CashflowComparison comparison;
-  final List<DailyCashflowSummary> dailySummaries;
+  final MonthlySummaryPresentation summary;
+  final List<TransactionDayGroup> groups;
 
   @override
   Widget build(BuildContext context) {
-    final groups = groupTransactionsByDay(transactions, dailySummaries);
-
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
@@ -147,7 +95,7 @@ class _HomeContent extends StatelessWidget {
         AppSpacing.space24 + 56, // 留给 FAB
       ),
       children: [
-        MonthlySummaryCard(comparison: comparison),
+        MonthlySummaryCard(summary: summary),
         const SizedBox(height: AppSpacing.space20),
         if (groups.isEmpty)
           const EmptyTransactionCard()

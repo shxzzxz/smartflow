@@ -10,8 +10,8 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
-import '../../../feature/home/view_model/transaction_row_presentation.dart';
-import '../../../feature/home/widget/transaction_row.dart';
+import '../../../widget/business/transaction_list_presentation.dart';
+import '../../../widget/business/transaction_row.dart';
 
 class AccountDetailPage extends ConsumerWidget {
   const AccountDetailPage({required this.accountId, super.key});

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/provider.dart';
 import '../../../design_system/token/spacing.dart';
-import '../../home/widget/transaction_row.dart';
+import '../../../widget/business/transaction_row.dart';
 
 class AccountTransactionsPage extends ConsumerWidget {
   const AccountTransactionsPage({required this.accountId, super.key});

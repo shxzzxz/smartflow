@@ -1,7 +1,36 @@
 import '../../../application/ledger/ledger_query_api.dart';
-import '../../home/view_model/home_transaction_group.dart';
-import '../../home/view_model/transaction_row_presentation.dart';
+import '../../../widget/business/transaction_list_presentation.dart';
 import 'lunar_label_resolver.dart';
+
+class CalendarMonthPresentation {
+  const CalendarMonthPresentation({
+    required this.summary,
+    required this.days,
+    required this.selectedGroup,
+  });
+
+  final CalendarMonthlySummaryPresentation summary;
+  final List<CalendarDayPresentation> days;
+  final TransactionDayGroup selectedGroup;
+}
+
+class CalendarMonthlySummaryPresentation {
+  const CalendarMonthlySummaryPresentation({required this.metrics});
+
+  final List<CalendarMonthlySummaryMetricPresentation> metrics;
+}
+
+class CalendarMonthlySummaryMetricPresentation {
+  const CalendarMonthlySummaryMetricPresentation({
+    required this.label,
+    required this.amountText,
+    required this.tone,
+  });
+
+  final String label;
+  final String amountText;
+  final FinanceTone tone;
+}
 
 class CalendarDayPresentation {
   const CalendarDayPresentation({
@@ -31,10 +60,60 @@ class CalendarDayPresentation {
   String get expenseText => '-${formatMinorAmount(expenseMinor)}';
 }
 
-List<CalendarDayPresentation> buildCalendarMonthPresentation({
+CalendarMonthPresentation buildCalendarMonthPresentation({
   required DateTime visibleMonth,
   required DateTime selectedDate,
   required List<TransactionListItem> transactions,
+  required CashflowSummary summary,
+  required List<DailyCashflowSummary> dailySummaries,
+  DateTime? today,
+  CalendarLunarLabelResolver lunarLabelResolver =
+      const DefaultCalendarLunarLabelResolver(),
+}) {
+  return CalendarMonthPresentation(
+    summary: buildCalendarMonthlySummaryPresentation(summary),
+    days: buildCalendarDayPresentations(
+      visibleMonth: visibleMonth,
+      selectedDate: selectedDate,
+      dailySummaries: dailySummaries,
+      today: today,
+      lunarLabelResolver: lunarLabelResolver,
+    ),
+    selectedGroup: transactionGroupForDate(
+      date: selectedDate,
+      transactions: transactions,
+      dailySummaries: dailySummaries,
+    ),
+  );
+}
+
+CalendarMonthlySummaryPresentation buildCalendarMonthlySummaryPresentation(
+  CashflowSummary summary,
+) {
+  return CalendarMonthlySummaryPresentation(
+    metrics: [
+      CalendarMonthlySummaryMetricPresentation(
+        label: '收入',
+        amountText: formatMinorAmount(summary.income.minorUnits),
+        tone: FinanceTone.income,
+      ),
+      CalendarMonthlySummaryMetricPresentation(
+        label: '支出',
+        amountText: formatMinorAmount(summary.expense.minorUnits),
+        tone: FinanceTone.expense,
+      ),
+      CalendarMonthlySummaryMetricPresentation(
+        label: '净收入',
+        amountText: formatMonthlyAmount(summary.net.minorUnits, showSign: true),
+        tone: FinanceTone.neutral,
+      ),
+    ],
+  );
+}
+
+List<CalendarDayPresentation> buildCalendarDayPresentations({
+  required DateTime visibleMonth,
+  required DateTime selectedDate,
   required List<DailyCashflowSummary> dailySummaries,
   DateTime? today,
   CalendarLunarLabelResolver lunarLabelResolver =
@@ -46,7 +125,7 @@ List<CalendarDayPresentation> buildCalendarMonthPresentation({
   final totalsByDate = _totalsByDate(dailySummaries);
 
   return [
-    for (final date in calendarGridDates(month)) ...[
+    for (final date in calendarGridDates(month))
       _buildCalendarDay(
         date: date,
         month: month,
@@ -55,7 +134,6 @@ List<CalendarDayPresentation> buildCalendarMonthPresentation({
         totals: totalsByDate[date],
         lunarLabel: lunarLabelResolver.labelFor(date),
       ),
-    ],
   ];
 }
 
@@ -98,40 +176,6 @@ DateTime clampSelectedDateToMonth(DateTime selectedDate, DateTime month) {
   final lastDay = DateTime(targetMonth.year, targetMonth.month + 1, 0).day;
   final day = selectedDate.day > lastDay ? lastDay : selectedDate.day;
   return DateTime(targetMonth.year, targetMonth.month, day);
-}
-
-List<TransactionListItem> transactionsForDate(
-  List<TransactionListItem> transactions,
-  DateTime date,
-) {
-  final normalized = normalizeDate(date);
-  return [
-    for (final item in transactions)
-      if (isSameDate(item.occurredAt, normalized)) item,
-  ];
-}
-
-HomeTransactionDayGroup transactionGroupForDate({
-  required DateTime date,
-  required List<TransactionListItem> transactions,
-  required List<DailyCashflowSummary> dailySummaries,
-}) {
-  final items = transactionsForDate(transactions, date);
-  final summary = _totalsByDate(dailySummaries)[normalizeDate(date)];
-  return HomeTransactionDayGroup(
-    date: normalizeDate(date),
-    items: items,
-    incomeMinor: summary?.incomeMinor ?? 0,
-    expenseMinor: summary?.expenseMinor ?? 0,
-  );
-}
-
-DateTime normalizeDate(DateTime value) {
-  return DateTime(value.year, value.month, value.day);
-}
-
-bool isSameDate(DateTime a, DateTime b) {
-  return a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
 Map<DateTime, _DayTotals> _totalsByDate(List<DailyCashflowSummary> summaries) {

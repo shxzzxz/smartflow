@@ -3,16 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../app/provider.dart';
-import '../../../core/money/money.dart';
-import '../../../design_system/theme/app_text_styles.dart';
-import '../../../design_system/theme/app_theme_extension.dart';
-import '../../../design_system/token/spacing.dart';
-import '../../../application/ledger/ledger_query_api.dart';
-import '../../../widget/business/account_endpoint_view.dart';
-import '../../../widget/business/account_lookup.dart';
-import '../../../widget/business/category_avatar.dart';
-import '../view_model/transaction_row_presentation.dart';
+import '../../app/provider.dart';
+import '../../application/ledger/ledger_query_api.dart';
+import '../../design_system/theme/app_text_styles.dart';
+import '../../design_system/theme/app_theme_extension.dart';
+import '../../design_system/token/spacing.dart';
+import 'account_endpoint_view.dart';
+import 'account_lookup.dart';
+import 'category_avatar.dart';
+import 'finance_tone_color.dart';
+import 'transaction_list_presentation.dart';
 import 'transaction_progress_badges.dart';
 
 class TransactionRow extends ConsumerWidget {
@@ -39,26 +39,16 @@ class TransactionRow extends ConsumerWidget {
     final colors = Theme.of(context).colorScheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
     final textStyles = context.appTextStyles;
-    final balanceDelta =
-        viewAccountId == null
-            ? null
-            : accountLookup.balanceDeltaForAccount(
-              accountId: viewAccountId!,
-              entries: item.entries,
-            );
-    final isAccountLedger = balanceDelta != null;
-    final color =
-        isAccountLedger
-            ? colors.onSurface
-            : amountColor(colors, financeColors, item.businessPurpose);
-    final title = transactionPrimaryLabel(item, accountLookup);
-    final note = item.note?.trim();
-    final hasNote = note != null && note.isNotEmpty;
-    final subtitle =
-        hasNote
-            ? '${formatTime(item.occurredAt)}  $note'
-            : formatTime(item.occurredAt);
-    final hasBadges = _hasBadges(item);
+    final presentation = buildTransactionRowPresentation(
+      item: item,
+      accountLookup: accountLookup,
+      viewAccountId: viewAccountId,
+    );
+    final amountColor = financeToneColor(
+      colors,
+      financeColors,
+      presentation.amountTone,
+    );
 
     final row = InkWell(
       onTap: () => _openTransaction(context, item),
@@ -70,24 +60,20 @@ class TransactionRow extends ConsumerWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            CategoryAvatar(
-              iconKey: resolveCategoryIconKey(item, accountLookup),
-              size: 24,
-            ),
+            CategoryAvatar(iconKey: presentation.iconKey, size: 24),
             const SizedBox(width: AppSpacing.space8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _TitleLine(
-                    title: title,
+                    title: presentation.title,
                     style: textStyles.listTitle,
-                    item: item,
-                    hasBadges: hasBadges,
+                    badges: presentation.badges,
                   ),
                   const SizedBox(height: AppSpacing.space2),
                   Text(
-                    subtitle,
+                    presentation.subtitle,
                     style: textStyles.listSupporting,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -102,15 +88,13 @@ class TransactionRow extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    isAccountLedger
-                        ? _formatAccountDelta(balanceDelta)
-                        : formatTransactionAmount(item),
-                    style: textStyles.amountList.copyWith(color: color),
+                    presentation.amountText,
+                    style: textStyles.amountList.copyWith(color: amountColor),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: AppSpacing.space2),
-                  _AccountLine(item: item, accountLookup: accountLookup),
+                  _AccountLine(flow: presentation.accountFlow),
                 ],
               ),
             ),
@@ -119,7 +103,7 @@ class TransactionRow extends ConsumerWidget {
       ),
     );
 
-    if (!enableQuickEdit || !canQuickEditTransaction(item)) {
+    if (!enableQuickEdit || !presentation.canQuickEdit) {
       return row;
     }
 
@@ -142,11 +126,6 @@ class TransactionRow extends ConsumerWidget {
       child: row,
     );
   }
-}
-
-String _formatAccountDelta(Money delta) {
-  final sign = delta.minorUnits >= 0 ? '+' : '-';
-  return '$sign${formatMinorAmount(delta.minorUnits)}';
 }
 
 void _openTransaction(BuildContext context, TransactionListItem item) {
@@ -194,47 +173,22 @@ class _QuickEditBackground extends StatelessWidget {
   }
 }
 
-bool _hasBadges(TransactionListItem item) {
-  if (item.isExcludedFromStats ||
-      item.isExcludedFromBudget ||
-      item.refundedTotal != null ||
-      item.reimbursementReceivedTotal != null ||
-      item.reimbursementGapIncome != null ||
-      item.reimbursementGapExpense != null) {
-    return true;
-  }
-  for (final line in item.details) {
-    if (line.amount.minorUnits <= 0) continue;
-    switch (line.type) {
-      case TransactionDetailType.repaymentInterest:
-      case TransactionDetailType.repaymentFee:
-      case TransactionDetailType.repaymentDiscount:
-        return true;
-      default:
-        break;
-    }
-  }
-  return false;
-}
-
 class _TitleLine extends StatelessWidget {
   const _TitleLine({
     required this.title,
     required this.style,
-    required this.item,
-    required this.hasBadges,
+    required this.badges,
   });
 
   static const _minBadgeWidth = 48.0;
 
   final String title;
   final TextStyle style;
-  final TransactionListItem item;
-  final bool hasBadges;
+  final List<TransactionBadgePresentation> badges;
 
   @override
   Widget build(BuildContext context) {
-    if (!hasBadges) {
+    if (badges.isEmpty) {
       return Text(
         title,
         style: style,
@@ -281,7 +235,7 @@ class _TitleLine extends StatelessWidget {
             const SizedBox(width: gap),
             SizedBox(
               width: badgeWidth,
-              child: TransactionProgressBadges(item: item),
+              child: TransactionProgressBadges(badges: badges),
             ),
           ],
         );
@@ -291,23 +245,23 @@ class _TitleLine extends StatelessWidget {
 }
 
 class _AccountLine extends StatelessWidget {
-  const _AccountLine({required this.item, required this.accountLookup});
+  const _AccountLine({required this.flow});
 
-  final TransactionListItem item;
-  final AccountLookup accountLookup;
+  final TransactionAccountFlowPresentation flow;
 
   @override
   Widget build(BuildContext context) {
     final textStyle = context.appTextStyles.listSupporting;
-    final flow = _resolveAccountFlow(item, accountLookup);
-    final fallbackText = transactionAccountLabel(item, accountLookup);
 
     if (flow.out != null && flow.in_ != null) {
       return Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           Flexible(
-            child: AccountEndpointView(endpoint: flow.out!, style: textStyle),
+            child: AccountEndpointView(
+              endpoint: _endpoint(flow.out!),
+              style: textStyle,
+            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
@@ -319,54 +273,25 @@ class _AccountLine extends StatelessWidget {
             ),
           ),
           Flexible(
-            child: AccountEndpointView(endpoint: flow.in_!, style: textStyle),
+            child: AccountEndpointView(
+              endpoint: _endpoint(flow.in_!),
+              style: textStyle,
+            ),
           ),
         ],
       );
     }
 
-    final endpoint =
-        flow.out ??
-        flow.in_ ??
-        AccountEndpoint(
-          label: fallbackText.isEmpty ? '未分配账户' : fallbackText,
-          iconKey: null,
-        );
     return Align(
       alignment: Alignment.centerRight,
-      child: AccountEndpointView(endpoint: endpoint, style: textStyle),
+      child: AccountEndpointView(
+        endpoint: _endpoint(flow.singleEndpoint),
+        style: textStyle,
+      ),
     );
   }
-}
 
-class _AccountFlow {
-  const _AccountFlow({this.out, this.in_, this.separator = '→'});
-
-  final AccountEndpoint? out;
-  final AccountEndpoint? in_;
-  final String separator;
-}
-
-_AccountFlow _resolveAccountFlow(
-  TransactionListItem item,
-  AccountLookup accountLookup,
-) {
-  AccountEndpoint? endpointOf(Account? account) {
-    if (account == null) return null;
-    return AccountEndpoint(label: account.name, iconKey: account.iconKey);
+  AccountEndpoint _endpoint(AccountEndpointPresentation value) {
+    return AccountEndpoint(label: value.label, iconKey: value.iconKey);
   }
-
-  final out = endpointOf(flowOutAccount(item, accountLookup));
-  final in_ = endpointOf(flowInAccount(item, accountLookup));
-
-  return switch (item.businessPurpose) {
-    BusinessPurpose.dailyExpense => _AccountFlow(out: out),
-    BusinessPurpose.reimbursementAdvance => _AccountFlow(
-      out: in_,
-      in_: out,
-      separator: '|',
-    ),
-    BusinessPurpose.dailyIncome => _AccountFlow(in_: in_),
-    _ => _AccountFlow(out: out, in_: in_),
-  };
 }

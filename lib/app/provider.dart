@@ -249,59 +249,6 @@ Stream<List<TransactionListItem>> transactionList(
 }
 
 @riverpod
-Stream<List<TransactionListItem>> homeMonthTransactions(
-  Ref ref, {
-  required int year,
-  required int month,
-}) {
-  final from = DateTime(year, month);
-  final until = DateTime(year, month + 1);
-  return ref
-      .watch(transactionQueryServiceProvider)
-      .watchTransactions(
-        TransactionListQuery(
-          topLevelOnly: true,
-          occurredFrom: from,
-          occurredUntil: until,
-        ),
-      );
-}
-
-@riverpod
-Stream<CashflowComparison> homeMonthCashflowComparison(
-  Ref ref, {
-  required int year,
-  required int month,
-}) {
-  final now = DateTime.now();
-  final selectedMonth = MonthKey(year: year, month: month);
-  return ref
-      .watch(financialMetricsServiceProvider)
-      .watchCashflowComparison(
-        CashflowComparisonQuery(
-          month: selectedMonth,
-          asOfDate:
-              now.year == selectedMonth.year && now.month == selectedMonth.month
-                  ? now
-                  : null,
-        ),
-      );
-}
-
-@riverpod
-Stream<List<DailyCashflowSummary>> homeMonthDailyCashflowSummaries(
-  Ref ref, {
-  required int year,
-  required int month,
-}) {
-  return ref
-      .watch(financialMetricsServiceProvider)
-      .watchDailyCashflowSummaries(
-        DailyCashflowSummaryQuery(month: MonthKey(year: year, month: month)),
-      );
-}
-
-@riverpod
 Stream<BalanceSheetComparison> balanceSheetComparison(Ref ref) {
   final now = DateTime.now();
   return ref
