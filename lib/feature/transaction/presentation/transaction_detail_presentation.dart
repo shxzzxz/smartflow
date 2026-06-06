@@ -63,7 +63,9 @@ DetailHero transactionDetailHero({
   );
 }
 
-List<DetailSheetItem> refundSheetItems(Iterable<TransactionListItem> children) {
+List<DetailSheetItem> refundSheetItems(
+  Iterable<TransactionListReadModel> children,
+) {
   return children
       .where((child) => child.businessPurpose == BusinessPurpose.refund)
       .map(_listItemToSheetItem)
@@ -71,7 +73,7 @@ List<DetailSheetItem> refundSheetItems(Iterable<TransactionListItem> children) {
 }
 
 List<DetailSheetItem> reimbursementSheetItems(
-  Iterable<TransactionListItem> children,
+  Iterable<TransactionListReadModel> children,
 ) {
   return children
       .where(
@@ -130,7 +132,7 @@ Money signedAmountForSemantic(Money money, MoneySemantic semantic) {
   return money;
 }
 
-DetailSheetItem _listItemToSheetItem(TransactionListItem item) {
+DetailSheetItem _listItemToSheetItem(TransactionListReadModel item) {
   final semantic = semanticForTransactionPurpose(item.businessPurpose);
   return DetailSheetItem(
     id: item.id,

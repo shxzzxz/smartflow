@@ -1,49 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../app/provider.dart';
-import '../../application/ledger/ledger_query_api.dart';
 import '../../design_system/theme/app_text_styles.dart';
 import '../../design_system/theme/app_theme_extension.dart';
 import '../../design_system/token/spacing.dart';
 import 'account_endpoint_view.dart';
-import 'account_lookup.dart';
 import 'category_avatar.dart';
 import 'finance_tone_color.dart';
 import 'transaction_list_presentation.dart';
 import 'transaction_progress_badges.dart';
 
-class TransactionRow extends ConsumerWidget {
+class TransactionRow extends StatelessWidget {
   const TransactionRow({
-    required this.item,
+    required this.presentation,
+    required this.onTap,
     super.key,
     this.enableQuickEdit = true,
     this.onQuickEdit,
-    this.viewAccountId,
   });
 
-  final TransactionListItem item;
+  final TransactionRowPresentation presentation;
+  final VoidCallback onTap;
   final bool enableQuickEdit;
   final VoidCallback? onQuickEdit;
 
-  /// 「账户视角」下当前账户 id。提供时,显示对该账户的余额变动而非交易金额。
-  final String? viewAccountId;
-
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final accountLookup =
-        ref.watch(accountLookupProvider).value ??
-        const AccountLookup(<String, Account>{});
+  Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
     final textStyles = context.appTextStyles;
-    final presentation = buildTransactionRowPresentation(
-      item: item,
-      accountLookup: accountLookup,
-      viewAccountId: viewAccountId,
-    );
     final amountColor = financeToneColor(
       colors,
       financeColors,
@@ -51,7 +36,7 @@ class TransactionRow extends ConsumerWidget {
     );
 
     final row = InkWell(
-      onTap: () => _openTransaction(context, item),
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space12,
@@ -103,37 +88,24 @@ class TransactionRow extends ConsumerWidget {
       ),
     );
 
-    if (!enableQuickEdit || !presentation.canQuickEdit) {
+    if (!enableQuickEdit || !presentation.canQuickEdit || onQuickEdit == null) {
       return row;
     }
 
     return Dismissible(
-      key: ValueKey('transaction-row-${item.id}'),
+      key: ValueKey('transaction-row-${presentation.transactionId}'),
       direction: DismissDirection.startToEnd,
       dismissThresholds: const {DismissDirection.startToEnd: 0.4},
       background: const _QuickEditBackground(),
       confirmDismiss: (direction) {
         if (direction == DismissDirection.startToEnd) {
-          final callback = onQuickEdit;
-          if (callback != null) {
-            callback();
-          } else {
-            _openTransactionEditor(context, item);
-          }
+          onQuickEdit?.call();
         }
         return Future.value(false);
       },
       child: row,
     );
   }
-}
-
-void _openTransaction(BuildContext context, TransactionListItem item) {
-  context.push('/transaction/${item.id}');
-}
-
-void _openTransactionEditor(BuildContext context, TransactionListItem item) {
-  context.push('/transaction/${item.id}/edit');
 }
 
 class _QuickEditBackground extends StatelessWidget {

@@ -1429,13 +1429,13 @@ final transactionListProvider = TransactionListFamily._();
 final class TransactionListProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<TransactionListItem>>,
-          List<TransactionListItem>,
-          Stream<List<TransactionListItem>>
+          AsyncValue<List<TransactionListReadModel>>,
+          List<TransactionListReadModel>,
+          Stream<List<TransactionListReadModel>>
         >
     with
-        $FutureModifier<List<TransactionListItem>>,
-        $StreamProvider<List<TransactionListItem>> {
+        $FutureModifier<List<TransactionListReadModel>>,
+        $StreamProvider<List<TransactionListReadModel>> {
   TransactionListProvider._({
     required TransactionListFamily super.from,
     required String? super.argument,
@@ -1459,12 +1459,12 @@ final class TransactionListProvider
 
   @$internal
   @override
-  $StreamProviderElement<List<TransactionListItem>> $createElement(
+  $StreamProviderElement<List<TransactionListReadModel>> $createElement(
     $ProviderPointer pointer,
   ) => $StreamProviderElement(pointer);
 
   @override
-  Stream<List<TransactionListItem>> create(Ref ref) {
+  Stream<List<TransactionListReadModel>> create(Ref ref) {
     final argument = this.argument as String?;
     return transactionList(ref, accountId: argument);
   }
@@ -1480,10 +1480,14 @@ final class TransactionListProvider
   }
 }
 
-String _$transactionListHash() => r'eb89425a5fdc8ae3b1f66699bd1586aa17f9019f';
+String _$transactionListHash() => r'5d311170c35eb08026988b1d846b7ebe0013db0b';
 
 final class TransactionListFamily extends $Family
-    with $FunctionalFamilyOverride<Stream<List<TransactionListItem>>, String?> {
+    with
+        $FunctionalFamilyOverride<
+          Stream<List<TransactionListReadModel>>,
+          String?
+        > {
   TransactionListFamily._()
     : super(
         retry: null,

@@ -1,34 +1,70 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/widget/business/account_lookup.dart';
+import 'package:smartflow/widget/business/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/transaction_row.dart';
 
 void main() {
-  testWidgets('renders transaction row presentation', (tester) async {
+  testWidgets('renders controlled transaction row presentation', (
+    tester,
+  ) async {
+    var tapped = false;
+    final presentation = buildTransactionRowPresentation(
+      item: _item(),
+      accountLookup: AccountLookup(_accounts),
+    );
+
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          accountLookupProvider.overrideWith(
-            (ref) => Stream.value(AccountLookup(_accounts)),
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: TransactionRow(
+            presentation: presentation,
+            onTap: () => tapped = true,
           ),
-        ],
-        child: MaterialApp(
-          theme: AppTheme.light(),
-          home: Scaffold(body: TransactionRow(item: _item())),
         ),
       ),
     );
-    await tester.pumpAndSettle();
 
     expect(find.text('餐饮'), findsOneWidget);
     expect(find.text('08:30  午餐'), findsOneWidget);
     expect(find.text('-12.34'), findsOneWidget);
     expect(find.text('不计统计'), findsOneWidget);
+
+    await tester.tap(find.text('餐饮'));
+    expect(tapped, true);
+  });
+
+  testWidgets('calls quick edit callback from swipe action', (tester) async {
+    var quickEdited = false;
+    final presentation = buildTransactionRowPresentation(
+      item: _item(),
+      accountLookup: AccountLookup(_accounts),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: SizedBox(
+            width: 360,
+            child: TransactionRow(
+              presentation: presentation,
+              onTap: () {},
+              onQuickEdit: () => quickEdited = true,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.drag(find.byType(TransactionRow), const Offset(180, 0));
+    await tester.pumpAndSettle();
+
+    expect(quickEdited, true);
   });
 }
 
@@ -37,8 +73,8 @@ final _accounts = <String, Account>{
   'food': _account('food', '餐饮', type: AccountType.expense, iconKey: 'meal'),
 };
 
-TransactionListItem _item() {
-  return TransactionListItem(
+TransactionListReadModel _item() {
+  return TransactionListReadModel(
     id: 'tx-1',
     rootTransactionId: 'tx-1',
     businessPurpose: BusinessPurpose.dailyExpense,

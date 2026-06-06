@@ -19,8 +19,8 @@ class CashflowSummary {
 /// - 交易基础字段(来自 transaction 表)
 /// - `entries` / `details`:会计事实,UI 装饰(name/icon)由 UI 层通过 accountStore 渲染
 /// - 子树聚合:service 派生,仅 root 时填(refundedTotal / reimbursement* )
-class TransactionListItem {
-  const TransactionListItem({
+class TransactionListReadModel {
+  const TransactionListReadModel({
     required this.id,
     required this.rootTransactionId,
     required this.businessPurpose,
@@ -73,7 +73,7 @@ class TransactionListItem {
 /// 更正链场景的 read model
 /// (`state != current OR mutation_kind != original` 的历史快照)。
 ///
-/// 与 [TransactionListItem] 的区别:含 mutation 元数据;**无子树聚合**(历史快照
+/// 与 [TransactionListReadModel] 的区别:含 mutation 元数据;**无子树聚合**(历史快照
 /// 不再算业务派生,仅是操作记录)。
 class TransactionHistorySnapshot {
   const TransactionHistorySnapshot({
@@ -136,7 +136,7 @@ class TransactionDetail {
   final DateTime createdAt;
   final List<TransactionDetailRecord> details;
   final List<Entry> entries;
-  final List<TransactionListItem> children;
+  final List<TransactionListReadModel> children;
   final List<TransactionHistorySnapshot> history;
   final Money? refundedTotal;
   final ReimbursementSummary? reimbursementSummary;

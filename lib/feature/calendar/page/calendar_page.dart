@@ -24,6 +24,12 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(calendarViewModelProvider);
+    final content = ref.watch(
+      calendarContentProvider(
+        visibleMonth: state.visibleMonth,
+        selectedDate: state.selectedDate,
+      ),
+    );
 
     return Scaffold(
       body: SafeArea(
@@ -43,7 +49,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                           .toggleLunar(),
             ),
             Expanded(
-              child: switch (state.content) {
+              child: switch (content) {
                 CalendarContentLoaded(:final month) => _CalendarContent(
                   month: month,
                   showLunar: state.showLunar,

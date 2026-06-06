@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../design_system/theme/app_text_styles.dart';
 import '../../design_system/theme/app_theme_extension.dart';
@@ -9,10 +10,18 @@ import 'transaction_list_presentation.dart';
 import 'transaction_row.dart';
 
 class TransactionDayCard extends StatelessWidget {
-  const TransactionDayCard({required this.group, super.key, this.emptyMessage});
+  const TransactionDayCard({
+    required this.group,
+    super.key,
+    this.emptyMessage,
+    this.onRowTap,
+    this.onRowQuickEdit,
+  });
 
   final TransactionDayGroup group;
   final String? emptyMessage;
+  final ValueChanged<String>? onRowTap;
+  final ValueChanged<String>? onRowQuickEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -31,15 +40,20 @@ class TransactionDayCard extends StatelessWidget {
           ),
           child: _DayHeader(group: group),
         ),
-        if (group.items.isEmpty)
+        if (group.rows.isEmpty)
           EmptyTransactionCard(message: emptyMessage ?? '本月暂无交易记录')
         else
           AppSurface(
             child: Column(
               children: [
-                for (var i = 0; i < group.items.length; i++) ...[
-                  TransactionRow(item: group.items[i]),
-                  if (i < group.items.length - 1)
+                for (var i = 0; i < group.rows.length; i++) ...[
+                  TransactionRow(
+                    presentation: group.rows[i],
+                    onTap: () => _openTransaction(context, group.rows[i]),
+                    onQuickEdit:
+                        () => _openTransactionEditor(context, group.rows[i]),
+                  ),
+                  if (i < group.rows.length - 1)
                     Container(
                       margin: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.space16,
@@ -53,6 +67,30 @@ class TransactionDayCard extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  void _openTransaction(
+    BuildContext context,
+    TransactionRowPresentation presentation,
+  ) {
+    final callback = onRowTap;
+    if (callback != null) {
+      callback(presentation.transactionId);
+      return;
+    }
+    context.push('/transaction/${presentation.transactionId}');
+  }
+
+  void _openTransactionEditor(
+    BuildContext context,
+    TransactionRowPresentation presentation,
+  ) {
+    final callback = onRowQuickEdit;
+    if (callback != null) {
+      callback(presentation.transactionId);
+      return;
+    }
+    context.push('/transaction/${presentation.transactionId}/edit');
   }
 }
 

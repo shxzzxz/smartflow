@@ -8,19 +8,20 @@ enum FinanceTone { income, expense, neutral, info, equity, primary }
 class TransactionDayGroup {
   const TransactionDayGroup({
     required this.date,
-    required this.items,
+    required this.rows,
     required this.incomeMinor,
     required this.expenseMinor,
   });
 
   final DateTime date;
-  final List<TransactionListItem> items;
+  final List<TransactionRowPresentation> rows;
   final int incomeMinor;
   final int expenseMinor;
 }
 
 class TransactionRowPresentation {
   const TransactionRowPresentation({
+    required this.transactionId,
     required this.iconKey,
     required this.title,
     required this.subtitle,
@@ -31,6 +32,7 @@ class TransactionRowPresentation {
     required this.canQuickEdit,
   });
 
+  final String transactionId;
   final String? iconKey;
   final String title;
   final String subtitle;
@@ -94,14 +96,24 @@ class MonthlySummaryMetricPresentation {
   final FinanceTone tone;
 }
 
-List<TransactionDayGroup> groupTransactionsByDay(
-  List<TransactionListItem> items, [
+List<TransactionDayGroup> groupTransactionsByDay({
+  required List<TransactionListReadModel> items,
+  required AccountLookup accountLookup,
   List<DailyCashflowSummary> dailySummaries = const [],
-]) {
-  final groups = <DateTime, List<TransactionListItem>>{};
+  String? viewAccountId,
+}) {
+  final groups = <DateTime, List<TransactionRowPresentation>>{};
   for (final item in items) {
     final date = normalizeDate(item.occurredAt);
-    groups.putIfAbsent(date, () => []).add(item);
+    groups
+        .putIfAbsent(date, () => [])
+        .add(
+          buildTransactionRowPresentation(
+            item: item,
+            accountLookup: accountLookup,
+            viewAccountId: viewAccountId,
+          ),
+        );
   }
 
   final totalsByDate = _dailySummariesByDate(dailySummaries);
@@ -112,7 +124,7 @@ List<TransactionDayGroup> groupTransactionsByDay(
     for (final date in dates)
       TransactionDayGroup(
         date: date,
-        items: groups[date] ?? const [],
+        rows: groups[date] ?? const [],
         incomeMinor: totalsByDate[date]?.income.minorUnits ?? 0,
         expenseMinor: totalsByDate[date]?.expense.minorUnits ?? 0,
       ),
@@ -121,8 +133,10 @@ List<TransactionDayGroup> groupTransactionsByDay(
 
 TransactionDayGroup transactionGroupForDate({
   required DateTime date,
-  required List<TransactionListItem> transactions,
+  required List<TransactionListReadModel> transactions,
+  required AccountLookup accountLookup,
   required List<DailyCashflowSummary> dailySummaries,
+  String? viewAccountId,
 }) {
   final normalized = normalizeDate(date);
   final items = [
@@ -132,14 +146,21 @@ TransactionDayGroup transactionGroupForDate({
   final summary = _dailySummariesByDate(dailySummaries)[normalized];
   return TransactionDayGroup(
     date: normalized,
-    items: items,
+    rows: [
+      for (final item in items)
+        buildTransactionRowPresentation(
+          item: item,
+          accountLookup: accountLookup,
+          viewAccountId: viewAccountId,
+        ),
+    ],
     incomeMinor: summary?.income.minorUnits ?? 0,
     expenseMinor: summary?.expense.minorUnits ?? 0,
   );
 }
 
 TransactionRowPresentation buildTransactionRowPresentation({
-  required TransactionListItem item,
+  required TransactionListReadModel item,
   required AccountLookup accountLookup,
   String? viewAccountId,
 }) {
@@ -154,6 +175,7 @@ TransactionRowPresentation buildTransactionRowPresentation({
   final hasNote = note != null && note.isNotEmpty;
 
   return TransactionRowPresentation(
+    transactionId: item.id,
     iconKey: resolveCategoryIconKey(item, accountLookup),
     title: transactionPrimaryLabel(item, accountLookup),
     subtitle:
@@ -175,7 +197,7 @@ TransactionRowPresentation buildTransactionRowPresentation({
 }
 
 TransactionAccountFlowPresentation resolveAccountFlow(
-  TransactionListItem item,
+  TransactionListReadModel item,
   AccountLookup accountLookup,
 ) {
   AccountEndpointPresentation? endpointOf(Account? account) {
@@ -215,7 +237,7 @@ TransactionAccountFlowPresentation resolveAccountFlow(
 }
 
 List<TransactionBadgePresentation> buildTransactionBadges(
-  TransactionListItem item,
+  TransactionListReadModel item,
 ) {
   final badges = <TransactionBadgePresentation>[];
 
@@ -333,7 +355,7 @@ MonthlySummaryPresentation buildMonthlySummaryPresentation(
 }
 
 Account? categoryAccount(
-  TransactionListItem item,
+  TransactionListReadModel item,
   AccountLookup accountLookup,
 ) {
   Account? byType(AccountType accountType) {
@@ -356,7 +378,10 @@ Account? categoryAccount(
   };
 }
 
-Account? flowOutAccount(TransactionListItem item, AccountLookup accountLookup) {
+Account? flowOutAccount(
+  TransactionListReadModel item,
+  AccountLookup accountLookup,
+) {
   final entry = accountLookup.firstSettlementEntry(
     item.entries,
     direction: EntryDirection.credit,
@@ -364,7 +389,10 @@ Account? flowOutAccount(TransactionListItem item, AccountLookup accountLookup) {
   return entry == null ? null : accountLookup.accountOf(entry);
 }
 
-Account? flowInAccount(TransactionListItem item, AccountLookup accountLookup) {
+Account? flowInAccount(
+  TransactionListReadModel item,
+  AccountLookup accountLookup,
+) {
   final entry = accountLookup.firstSettlementEntry(
     item.entries,
     direction: EntryDirection.debit,
@@ -373,7 +401,7 @@ Account? flowInAccount(TransactionListItem item, AccountLookup accountLookup) {
 }
 
 String? resolveCategoryIconKey(
-  TransactionListItem item,
+  TransactionListReadModel item,
   AccountLookup accountLookup,
 ) {
   return switch (item.businessPurpose) {
@@ -393,7 +421,7 @@ String? resolveCategoryIconKey(
 }
 
 String transactionPrimaryLabel(
-  TransactionListItem item,
+  TransactionListReadModel item,
   AccountLookup accountLookup,
 ) {
   return switch (item.businessPurpose) {
@@ -407,7 +435,7 @@ String transactionPrimaryLabel(
 }
 
 String transactionAccountLabel(
-  TransactionListItem item,
+  TransactionListReadModel item,
   AccountLookup accountLookup,
 ) {
   return switch (item.businessPurpose) {
@@ -420,7 +448,7 @@ String transactionAccountLabel(
 }
 
 String _flowAccountLabel(
-  TransactionListItem item,
+  TransactionListReadModel item,
   AccountLookup accountLookup,
 ) {
   final out = _cleanText(flowOutAccount(item, accountLookup)?.name);
@@ -447,7 +475,7 @@ FinanceTone amountTone(BusinessPurpose purpose) {
   };
 }
 
-String formatTransactionAmount(TransactionListItem item) {
+String formatTransactionAmount(TransactionListReadModel item) {
   final prefix = switch (item.businessPurpose) {
     BusinessPurpose.dailyIncome => '+',
     BusinessPurpose.dailyExpense => '-',
@@ -461,7 +489,7 @@ String formatAccountDelta(Money delta) {
   return '$sign${formatMinorAmount(delta.minorUnits)}';
 }
 
-bool canQuickEditTransaction(TransactionListItem item) {
+bool canQuickEditTransaction(TransactionListReadModel item) {
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense ||
     BusinessPurpose.reimbursementAdvance ||
@@ -477,7 +505,7 @@ bool canQuickEditTransaction(TransactionListItem item) {
   };
 }
 
-Money? detailAmount(TransactionListItem item, TransactionDetailType type) {
+Money? detailAmount(TransactionListReadModel item, TransactionDetailType type) {
   for (final line in item.details) {
     if (line.type == type && line.amount.minorUnits > 0) {
       return line.amount;

@@ -13,7 +13,7 @@ import 'transaction_read_models.dart';
 import 'transaction_scope.dart';
 
 abstract interface class TransactionQueryService {
-  Stream<List<TransactionListItem>> watchTransactions(
+  Stream<List<TransactionListReadModel>> watchTransactions(
     TransactionListQuery query,
   );
 
@@ -68,13 +68,13 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   // ---------- 列表场景 ----------
 
   @override
-  Stream<List<TransactionListItem>> watchTransactions(
+  Stream<List<TransactionListReadModel>> watchTransactions(
     TransactionListQuery query,
   ) {
     return _txRead.watchPage(query).asyncMap(_projectListItems);
   }
 
-  Future<List<TransactionListItem>> _projectListItems(
+  Future<List<TransactionListReadModel>> _projectListItems(
     List<Transaction> page,
   ) async {
     if (page.isEmpty) return const [];
@@ -127,7 +127,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
 
     return [
       for (final t in page)
-        TransactionListItem(
+        TransactionListReadModel(
           id: t.id,
           rootTransactionId: t.rootTransactionId,
           parentTransactionId: t.parentTransactionId,

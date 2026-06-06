@@ -23,6 +23,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(homeViewModelProvider);
+    final content = ref.watch(homeContentProvider(state.visibleMonth));
 
     return Scaffold(
       body: SafeArea(
@@ -35,7 +36,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               onNextMonth: () => _shiftMonth(1),
             ),
             Expanded(
-              child: switch (state.content) {
+              child: switch (content) {
                 HomeContentLoaded(:final summary, :final groups) =>
                   _HomeContent(summary: summary, groups: groups),
                 HomeContentError(:final message) => Center(

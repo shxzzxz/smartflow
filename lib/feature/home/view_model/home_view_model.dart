@@ -1,10 +1,9 @@
-import 'dart:async';
-
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/time/month_key.dart';
+import '../../../widget/business/account_lookup.dart';
 import '../../../widget/business/transaction_list_presentation.dart';
 import '../../shared/provider/current_date_time_provider.dart';
 
@@ -12,155 +11,118 @@ part 'home_view_model.g.dart';
 
 @riverpod
 class HomeViewModel extends _$HomeViewModel {
-  StreamSubscription<List<TransactionListItem>>? _transactionsSubscription;
-  StreamSubscription<CashflowComparison>? _comparisonSubscription;
-  StreamSubscription<List<DailyCashflowSummary>>? _dailySubscription;
-
-  int _generation = 0;
-  List<TransactionListItem>? _transactions;
-  CashflowComparison? _comparison;
-  List<DailyCashflowSummary>? _dailySummaries;
-  bool _hasError = false;
-
   @override
   HomePageState build() {
     final now = ref.watch(currentDateTimeProvider);
-    final visibleMonth = DateTime(now.year, now.month);
-    ref.onDispose(_cancelSubscriptions);
-    _watchMonth(visibleMonth, now: now);
-    return HomePageState(
-      visibleMonth: visibleMonth,
-      content: const HomeContentState.loading(),
-    );
+    return HomePageState(visibleMonth: DateTime(now.year, now.month));
   }
 
   void pickMonth(DateTime month) {
-    _setVisibleMonth(DateTime(month.year, month.month));
+    state = state.copyWith(visibleMonth: DateTime(month.year, month.month));
   }
 
   void shiftMonth(int delta) {
     final month = state.visibleMonth;
-    _setVisibleMonth(DateTime(month.year, month.month + delta));
-  }
-
-  void _setVisibleMonth(DateTime visibleMonth) {
     state = state.copyWith(
-      visibleMonth: visibleMonth,
-      content: const HomeContentState.loading(),
+      visibleMonth: DateTime(month.year, month.month + delta),
     );
-    _watchMonth(visibleMonth, now: ref.read(currentDateTimeProvider));
-  }
-
-  void _watchMonth(DateTime visibleMonth, {required DateTime now}) {
-    final generation = ++_generation;
-    _cancelSubscriptions();
-    _transactions = null;
-    _comparison = null;
-    _dailySummaries = null;
-    _hasError = false;
-
-    final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
-    final transactionService = ref.read(transactionQueryServiceProvider);
-    final metricsService = ref.read(financialMetricsServiceProvider);
-    final asOfDate =
-        now.year == month.year && now.month == month.month ? now : null;
-
-    _transactionsSubscription = transactionService
-        .watchTransactions(
-          TransactionListQuery(
-            topLevelOnly: true,
-            occurredFrom: month.start,
-            occurredUntil: month.nextMonthStart,
-          ),
-        )
-        .listen(
-          (value) {
-            if (!_isCurrent(generation)) return;
-            _transactions = value;
-            _publishLoadedIfReady(generation);
-          },
-          onError: (Object error, StackTrace stackTrace) {
-            _publishError(generation, error);
-          },
-        );
-    _comparisonSubscription = metricsService
-        .watchCashflowComparison(
-          CashflowComparisonQuery(month: month, asOfDate: asOfDate),
-        )
-        .listen(
-          (value) {
-            if (!_isCurrent(generation)) return;
-            _comparison = value;
-            _publishLoadedIfReady(generation);
-          },
-          onError: (Object error, StackTrace stackTrace) {
-            _publishError(generation, error);
-          },
-        );
-    _dailySubscription = metricsService
-        .watchDailyCashflowSummaries(DailyCashflowSummaryQuery(month: month))
-        .listen(
-          (value) {
-            if (!_isCurrent(generation)) return;
-            _dailySummaries = value;
-            _publishLoadedIfReady(generation);
-          },
-          onError: (Object error, StackTrace stackTrace) {
-            _publishError(generation, error);
-          },
-        );
-  }
-
-  void _publishLoadedIfReady(int generation) {
-    if (!_isCurrent(generation) || _hasError) return;
-    final transactions = _transactions;
-    final comparison = _comparison;
-    final dailySummaries = _dailySummaries;
-    if (transactions == null || comparison == null || dailySummaries == null) {
-      return;
-    }
-
-    state = state.copyWith(
-      content: HomeContentState.loaded(
-        summary: buildMonthlySummaryPresentation(comparison),
-        groups: groupTransactionsByDay(transactions, dailySummaries),
-      ),
-    );
-  }
-
-  void _publishError(int generation, Object error) {
-    if (!_isCurrent(generation)) return;
-    _hasError = true;
-    state = state.copyWith(
-      content: HomeContentState.error(message: '加载失败：$error'),
-    );
-  }
-
-  bool _isCurrent(int generation) {
-    return generation == _generation;
-  }
-
-  void _cancelSubscriptions() {
-    _transactionsSubscription?.cancel();
-    _comparisonSubscription?.cancel();
-    _dailySubscription?.cancel();
-    _transactionsSubscription = null;
-    _comparisonSubscription = null;
-    _dailySubscription = null;
   }
 }
 
+@riverpod
+Stream<List<TransactionListReadModel>> homeTransactions(
+  Ref ref,
+  DateTime visibleMonth,
+) {
+  final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
+  return ref
+      .watch(transactionQueryServiceProvider)
+      .watchTransactions(
+        TransactionListQuery(
+          topLevelOnly: true,
+          occurredFrom: month.start,
+          occurredUntil: month.nextMonthStart,
+        ),
+      );
+}
+
+@riverpod
+Stream<CashflowComparison> homeCashflowComparison(
+  Ref ref,
+  DateTime visibleMonth,
+) {
+  final now = ref.watch(currentDateTimeProvider);
+  final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
+  final asOfDate =
+      now.year == month.year && now.month == month.month ? now : null;
+  return ref
+      .watch(financialMetricsServiceProvider)
+      .watchCashflowComparison(
+        CashflowComparisonQuery(month: month, asOfDate: asOfDate),
+      );
+}
+
+@riverpod
+Stream<List<DailyCashflowSummary>> homeDailyCashflowSummaries(
+  Ref ref,
+  DateTime visibleMonth,
+) {
+  final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
+  return ref
+      .watch(financialMetricsServiceProvider)
+      .watchDailyCashflowSummaries(DailyCashflowSummaryQuery(month: month));
+}
+
+@riverpod
+HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
+  final transactions = ref.watch(homeTransactionsProvider(visibleMonth));
+  final comparison = ref.watch(homeCashflowComparisonProvider(visibleMonth));
+  final dailySummaries = ref.watch(
+    homeDailyCashflowSummariesProvider(visibleMonth),
+  );
+  final accountsById = ref.watch(accountsByIdProvider);
+
+  if (transactions case AsyncError(:final error)) {
+    return HomeContentState.error(message: '加载失败：$error');
+  }
+  if (comparison case AsyncError(:final error)) {
+    return HomeContentState.error(message: '加载失败：$error');
+  }
+  if (dailySummaries case AsyncError(:final error)) {
+    return HomeContentState.error(message: '加载失败：$error');
+  }
+  if (accountsById case AsyncError(:final error)) {
+    return HomeContentState.error(message: '加载失败：$error');
+  }
+
+  final transactionValues = transactions.value;
+  final comparisonValue = comparison.value;
+  final dailySummaryValues = dailySummaries.value;
+  final accountValues = accountsById.value;
+  if (transactionValues == null ||
+      comparisonValue == null ||
+      dailySummaryValues == null ||
+      accountValues == null) {
+    return const HomeContentState.loading();
+  }
+
+  return HomeContentState.loaded(
+    summary: buildMonthlySummaryPresentation(comparisonValue),
+    groups: groupTransactionsByDay(
+      items: transactionValues,
+      accountLookup: AccountLookup(accountValues),
+      dailySummaries: dailySummaryValues,
+    ),
+  );
+}
+
 class HomePageState {
-  const HomePageState({required this.visibleMonth, required this.content});
+  const HomePageState({required this.visibleMonth});
 
   final DateTime visibleMonth;
-  final HomeContentState content;
 
-  HomePageState copyWith({DateTime? visibleMonth, HomeContentState? content}) {
-    return HomePageState(
-      visibleMonth: visibleMonth ?? this.visibleMonth,
-      content: content ?? this.content,
-    );
+  HomePageState copyWith({DateTime? visibleMonth}) {
+    return HomePageState(visibleMonth: visibleMonth ?? this.visibleMonth);
   }
 }
 

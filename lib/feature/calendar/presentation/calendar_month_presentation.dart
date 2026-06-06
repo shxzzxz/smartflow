@@ -1,4 +1,5 @@
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../widget/business/account_lookup.dart';
 import '../../../widget/business/transaction_list_presentation.dart';
 import 'lunar_label_resolver.dart';
 
@@ -63,7 +64,8 @@ class CalendarDayPresentation {
 CalendarMonthPresentation buildCalendarMonthPresentation({
   required DateTime visibleMonth,
   required DateTime selectedDate,
-  required List<TransactionListItem> transactions,
+  required List<TransactionListReadModel> transactions,
+  required AccountLookup accountLookup,
   required CashflowSummary summary,
   required List<DailyCashflowSummary> dailySummaries,
   DateTime? today,
@@ -82,6 +84,7 @@ CalendarMonthPresentation buildCalendarMonthPresentation({
     selectedGroup: transactionGroupForDate(
       date: selectedDate,
       transactions: transactions,
+      accountLookup: accountLookup,
       dailySummaries: dailySummaries,
     ),
   );

@@ -11,8 +11,12 @@ void main() {
       final jan2 = DateTime(2026, 1, 2, 9);
 
       final groups = groupTransactionsByDay(
-        [_item(id: 'a', occurredAt: jan1), _item(id: 'b', occurredAt: jan2)],
-        [
+        items: [
+          _item(id: 'a', occurredAt: jan1),
+          _item(id: 'b', occurredAt: jan2),
+        ],
+        accountLookup: AccountLookup(_accounts),
+        dailySummaries: [
           DailyCashflowSummary(
             date: DateTime(2026, 1, 1),
             income: const Money(minorUnits: 300),
@@ -25,8 +29,37 @@ void main() {
         DateTime(2026, 1, 2),
         DateTime(2026, 1, 1),
       ]);
+      expect(groups.first.rows.single.transactionId, 'b');
       expect(groups.last.incomeMinor, 300);
       expect(groups.last.expenseMinor, 100);
+    });
+
+    test('groups controlled row presentations by descending date', () {
+      final jan1 = DateTime(2026, 1, 1, 8);
+      final jan2 = DateTime(2026, 1, 2, 9);
+
+      final groups = groupTransactionsByDay(
+        items: [
+          _item(id: 'a', occurredAt: jan1),
+          _item(id: 'b', occurredAt: jan2),
+        ],
+        accountLookup: AccountLookup(_accounts),
+        dailySummaries: [
+          DailyCashflowSummary(
+            date: DateTime(2026, 1, 1),
+            income: const Money(minorUnits: 300),
+            expense: const Money(minorUnits: 100),
+          ),
+        ],
+      );
+
+      expect(groups.map((group) => group.date), [
+        DateTime(2026, 1, 2),
+        DateTime(2026, 1, 1),
+      ]);
+      expect(groups.first.rows.single.transactionId, 'b');
+      expect(groups.last.rows.single.title, '餐饮');
+      expect(groups.last.incomeMinor, 300);
     });
 
     test('builds row text, tone, account flow, and badges', () {
@@ -41,6 +74,7 @@ void main() {
       );
 
       expect(row.title, '餐饮');
+      expect(row.transactionId, 'tx-1');
       expect(row.subtitle, '08:30  午餐');
       expect(row.amountText, '-12.34');
       expect(row.amountTone, FinanceTone.expense);
@@ -68,13 +102,13 @@ final _accounts = <String, Account>{
   'food': _account('food', '餐饮', type: AccountType.expense, iconKey: 'meal'),
 };
 
-TransactionListItem _item({
+TransactionListReadModel _item({
   String id = 'tx-1',
   DateTime? occurredAt,
   bool isExcludedFromStats = false,
   Money? refundedTotal,
 }) {
-  return TransactionListItem(
+  return TransactionListReadModel(
     id: id,
     rootTransactionId: id,
     businessPurpose: BusinessPurpose.dailyExpense,

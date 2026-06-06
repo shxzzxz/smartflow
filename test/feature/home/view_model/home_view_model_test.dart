@@ -13,46 +13,84 @@ void main() {
     test('combines month streams into loaded page state', () async {
       final transactionService = _FakeTransactionQueryService();
       final metricsService = _FakeFinancialMetricsService();
-      final container = _container(transactionService, metricsService);
-
-      container.listen(homeViewModelProvider, (_, _) {});
-      expect(
-        container.read(homeViewModelProvider).content,
-        isA<HomeContentLoading>(),
+      final accountService = _FakeAccountQueryService(
+        accountsById: const <String, Account>{},
+      );
+      final visibleMonth = DateTime(2026, 1);
+      final container = _container(
+        transactionService,
+        metricsService,
+        accountService,
+        overrides: [
+          homeTransactionsProvider(
+            visibleMonth,
+          ).overrideWith((ref) => Stream.value([_item()])),
+          homeCashflowComparisonProvider(
+            visibleMonth,
+          ).overrideWith((ref) => Stream.value(_comparison())),
+          homeDailyCashflowSummariesProvider(visibleMonth).overrideWith(
+            (ref) => Stream.value([
+              DailyCashflowSummary(
+                date: DateTime(2026, 1, 1),
+                income: const Money(minorUnits: 10000),
+                expense: const Money(minorUnits: 2500),
+              ),
+            ]),
+          ),
+        ],
       );
 
-      transactionService.emit([_item()]);
-      metricsService.emitComparison(_comparison());
-      metricsService.emitDaily([
-        DailyCashflowSummary(
-          date: DateTime(2026, 1, 1),
-          income: const Money(minorUnits: 10000),
-          expense: const Money(minorUnits: 2500),
-        ),
-      ]);
+      final viewModelSub = container.listen(homeViewModelProvider, (_, _) {});
+      addTearDown(viewModelSub.close);
+      expect(container.read(homeViewModelProvider).visibleMonth, visibleMonth);
+      final contentSub = container.listen(
+        homeContentProvider(visibleMonth),
+        (_, _) {},
+      );
+      addTearDown(contentSub.close);
+      await container.read(homeTransactionsProvider(visibleMonth).future);
+      await container.read(homeCashflowComparisonProvider(visibleMonth).future);
+      await container.read(
+        homeDailyCashflowSummariesProvider(visibleMonth).future,
+      );
+      await container.read(accountsByIdProvider.future);
+      await container.pump();
       await _flush();
 
-      final content = container.read(homeViewModelProvider).content;
+      final content = container.read(homeContentProvider(visibleMonth));
       expect(content, isA<HomeContentLoaded>());
       final loaded = content as HomeContentLoaded;
       expect(loaded.summary.metrics.first.amountText, '100.00');
       expect(loaded.groups.single.incomeMinor, 10000);
+      expect(loaded.groups.single.rows.single.transactionId, 'tx-1');
     });
 
     test('restarts queries when shifting month', () {
       final transactionService = _FakeTransactionQueryService();
       final metricsService = _FakeFinancialMetricsService();
-      final container = _container(transactionService, metricsService);
+      final accountService = _FakeAccountQueryService();
+      final container = _container(
+        transactionService,
+        metricsService,
+        accountService,
+      );
 
-      container.listen(homeViewModelProvider, (_, _) {});
+      final viewModelSub = container.listen(homeViewModelProvider, (_, _) {});
+      addTearDown(viewModelSub.close);
       container.read(homeViewModelProvider.notifier).shiftMonth(1);
+      final visibleMonth = container.read(homeViewModelProvider).visibleMonth;
+      final contentSub = container.listen(
+        homeContentProvider(visibleMonth),
+        (_, _) {},
+      );
+      addTearDown(contentSub.close);
 
       expect(
         container.read(homeViewModelProvider).visibleMonth,
         DateTime(2026, 2),
       );
       expect(
-        container.read(homeViewModelProvider).content,
+        container.read(homeContentProvider(visibleMonth)),
         isA<HomeContentLoading>(),
       );
       expect(transactionService.queries.last.occurredFrom, DateTime(2026, 2));
@@ -67,17 +105,22 @@ void main() {
 ProviderContainer _container(
   _FakeTransactionQueryService transactionService,
   _FakeFinancialMetricsService metricsService,
-) {
+  _FakeAccountQueryService accountService, {
+  List<dynamic> overrides = const [],
+}) {
   final container = ProviderContainer(
     overrides: [
       currentDateTimeProvider.overrideWith((ref) => DateTime(2026, 1, 15, 9)),
       transactionQueryServiceProvider.overrideWithValue(transactionService),
       financialMetricsServiceProvider.overrideWithValue(metricsService),
+      accountQueryServiceProvider.overrideWithValue(accountService),
+      ...overrides,
     ],
   );
   addTearDown(container.dispose);
   addTearDown(transactionService.dispose);
   addTearDown(metricsService.dispose);
+  addTearDown(accountService.dispose);
   return container;
 }
 
@@ -86,8 +129,8 @@ Future<void> _flush() async {
   await Future<void>.delayed(Duration.zero);
 }
 
-TransactionListItem _item() {
-  return TransactionListItem(
+TransactionListReadModel _item() {
+  return TransactionListReadModel(
     id: 'tx-1',
     rootTransactionId: 'tx-1',
     businessPurpose: BusinessPurpose.dailyIncome,
@@ -120,25 +163,25 @@ CashflowComparison _comparison() {
 
 class _FakeTransactionQueryService implements TransactionQueryService {
   final queries = <TransactionListQuery>[];
-  final _controllers = <StreamController<List<TransactionListItem>>>[];
+  final _streams = <_ReplayStream<List<TransactionListReadModel>>>[];
 
   @override
-  Stream<List<TransactionListItem>> watchTransactions(
+  Stream<List<TransactionListReadModel>> watchTransactions(
     TransactionListQuery query,
   ) {
     queries.add(query);
-    final controller = StreamController<List<TransactionListItem>>.broadcast();
-    _controllers.add(controller);
-    return controller.stream;
+    final stream = _ReplayStream<List<TransactionListReadModel>>();
+    _streams.add(stream);
+    return stream.watch();
   }
 
-  void emit(List<TransactionListItem> items) {
-    _controllers.last.add(items);
+  void emit(List<TransactionListReadModel> items) {
+    _streams.last.add(items);
   }
 
   void dispose() {
-    for (final controller in _controllers) {
-      controller.close();
+    for (final stream in _streams) {
+      stream.close();
     }
   }
 
@@ -149,17 +192,17 @@ class _FakeTransactionQueryService implements TransactionQueryService {
 class _FakeFinancialMetricsService implements FinancialMetricsService {
   final comparisonQueries = <CashflowComparisonQuery>[];
   final dailyQueries = <DailyCashflowSummaryQuery>[];
-  final _comparisonControllers = <StreamController<CashflowComparison>>[];
-  final _dailyControllers = <StreamController<List<DailyCashflowSummary>>>[];
+  final _comparisonStreams = <_ReplayStream<CashflowComparison>>[];
+  final _dailyStreams = <_ReplayStream<List<DailyCashflowSummary>>>[];
 
   @override
   Stream<CashflowComparison> watchCashflowComparison(
     CashflowComparisonQuery query,
   ) {
     comparisonQueries.add(query);
-    final controller = StreamController<CashflowComparison>.broadcast();
-    _comparisonControllers.add(controller);
-    return controller.stream;
+    final stream = _ReplayStream<CashflowComparison>();
+    _comparisonStreams.add(stream);
+    return stream.watch();
   }
 
   @override
@@ -167,28 +210,102 @@ class _FakeFinancialMetricsService implements FinancialMetricsService {
     DailyCashflowSummaryQuery query,
   ) {
     dailyQueries.add(query);
-    final controller = StreamController<List<DailyCashflowSummary>>.broadcast();
-    _dailyControllers.add(controller);
-    return controller.stream;
+    final stream = _ReplayStream<List<DailyCashflowSummary>>();
+    _dailyStreams.add(stream);
+    return stream.watch();
   }
 
   void emitComparison(CashflowComparison value) {
-    _comparisonControllers.last.add(value);
+    _comparisonStreams.last.add(value);
   }
 
   void emitDaily(List<DailyCashflowSummary> value) {
-    _dailyControllers.last.add(value);
+    _dailyStreams.last.add(value);
   }
 
   void dispose() {
-    for (final controller in _comparisonControllers) {
-      controller.close();
+    for (final stream in _comparisonStreams) {
+      stream.close();
     }
-    for (final controller in _dailyControllers) {
-      controller.close();
+    for (final stream in _dailyStreams) {
+      stream.close();
     }
   }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeAccountQueryService implements AccountQueryService {
+  _FakeAccountQueryService({Map<String, Account>? accountsById})
+    : _accountsById = accountsById;
+
+  final Map<String, Account>? _accountsById;
+  final _byIdStreams = <_ReplayStream<Map<String, Account>>>[];
+
+  @override
+  Stream<Map<String, Account>> watchAccountsById() {
+    final accountsById = _accountsById;
+    if (accountsById != null) {
+      return Stream.value(accountsById);
+    }
+    final stream = _ReplayStream<Map<String, Account>>();
+    _byIdStreams.add(stream);
+    return stream.watch();
+  }
+
+  void emitById(Map<String, Account> value) {
+    _byIdStreams.last.add(value);
+  }
+
+  void dispose() {
+    for (final stream in _byIdStreams) {
+      stream.close();
+    }
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _ReplayStream<T> {
+  final _controllers = <StreamController<T>>[];
+  T? _value;
+  bool _hasValue = false;
+
+  Stream<T> watch() {
+    late StreamController<T> controller;
+    controller = StreamController<T>.broadcast(
+      sync: true,
+      onListen: () {
+        if (_hasValue) {
+          controller.add(_value as T);
+        }
+      },
+      onCancel: () {
+        if (!controller.hasListener) {
+          _controllers.remove(controller);
+        }
+      },
+    );
+    _controllers.add(controller);
+    return controller.stream;
+  }
+
+  void add(T value) {
+    _value = value;
+    _hasValue = true;
+    for (final controller in List.of(_controllers)) {
+      if (!controller.isClosed) {
+        controller.add(value);
+      }
+    }
+  }
+
+  void close() {
+    for (final controller in List.of(_controllers)) {
+      controller.close();
+    }
+    _controllers.clear();
+  }
 }

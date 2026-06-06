@@ -234,7 +234,7 @@ Stream<List<CategoryNode>> categoryTree(Ref ref, AccountType type) {
 }
 
 @riverpod
-Stream<List<TransactionListItem>> transactionList(
+Stream<List<TransactionListReadModel>> transactionList(
   Ref ref, {
   String? accountId,
 }) {

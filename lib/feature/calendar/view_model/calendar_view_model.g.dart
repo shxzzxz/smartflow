@@ -41,7 +41,7 @@ final class CalendarViewModelProvider
   }
 }
 
-String _$calendarViewModelHash() => r'8721c3854ad3545110720ae3fd883dea9e8cb8ca';
+String _$calendarViewModelHash() => r'2da9c65fca5456dbc64104e8859fb28ffc194274';
 
 abstract class _$CalendarViewModel extends $Notifier<CalendarPageState> {
   CalendarPageState build();
@@ -59,4 +59,349 @@ abstract class _$CalendarViewModel extends $Notifier<CalendarPageState> {
             >;
     element.handleCreate(ref, build);
   }
+}
+
+@ProviderFor(calendarTransactions)
+final calendarTransactionsProvider = CalendarTransactionsFamily._();
+
+final class CalendarTransactionsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<TransactionListReadModel>>,
+          List<TransactionListReadModel>,
+          Stream<List<TransactionListReadModel>>
+        >
+    with
+        $FutureModifier<List<TransactionListReadModel>>,
+        $StreamProvider<List<TransactionListReadModel>> {
+  CalendarTransactionsProvider._({
+    required CalendarTransactionsFamily super.from,
+    required DateTime super.argument,
+  }) : super(
+         retry: null,
+         name: r'calendarTransactionsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$calendarTransactionsHash();
+
+  @override
+  String toString() {
+    return r'calendarTransactionsProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<TransactionListReadModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<TransactionListReadModel>> create(Ref ref) {
+    final argument = this.argument as DateTime;
+    return calendarTransactions(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CalendarTransactionsProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$calendarTransactionsHash() =>
+    r'4c219dbac0416fb8a3e539adc5f25871dba3ecfa';
+
+final class CalendarTransactionsFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          Stream<List<TransactionListReadModel>>,
+          DateTime
+        > {
+  CalendarTransactionsFamily._()
+    : super(
+        retry: null,
+        name: r'calendarTransactionsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  CalendarTransactionsProvider call(DateTime visibleMonth) =>
+      CalendarTransactionsProvider._(argument: visibleMonth, from: this);
+
+  @override
+  String toString() => r'calendarTransactionsProvider';
+}
+
+@ProviderFor(calendarCashflowComparison)
+final calendarCashflowComparisonProvider = CalendarCashflowComparisonFamily._();
+
+final class CalendarCashflowComparisonProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<CashflowComparison>,
+          CashflowComparison,
+          Stream<CashflowComparison>
+        >
+    with
+        $FutureModifier<CashflowComparison>,
+        $StreamProvider<CashflowComparison> {
+  CalendarCashflowComparisonProvider._({
+    required CalendarCashflowComparisonFamily super.from,
+    required DateTime super.argument,
+  }) : super(
+         retry: null,
+         name: r'calendarCashflowComparisonProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$calendarCashflowComparisonHash();
+
+  @override
+  String toString() {
+    return r'calendarCashflowComparisonProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<CashflowComparison> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<CashflowComparison> create(Ref ref) {
+    final argument = this.argument as DateTime;
+    return calendarCashflowComparison(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CalendarCashflowComparisonProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$calendarCashflowComparisonHash() =>
+    r'a8f05ef22cb15ee78ea86b95a5b60aa4168b5f5f';
+
+final class CalendarCashflowComparisonFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<CashflowComparison>, DateTime> {
+  CalendarCashflowComparisonFamily._()
+    : super(
+        retry: null,
+        name: r'calendarCashflowComparisonProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  CalendarCashflowComparisonProvider call(DateTime visibleMonth) =>
+      CalendarCashflowComparisonProvider._(argument: visibleMonth, from: this);
+
+  @override
+  String toString() => r'calendarCashflowComparisonProvider';
+}
+
+@ProviderFor(calendarDailyCashflowSummaries)
+final calendarDailyCashflowSummariesProvider =
+    CalendarDailyCashflowSummariesFamily._();
+
+final class CalendarDailyCashflowSummariesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<DailyCashflowSummary>>,
+          List<DailyCashflowSummary>,
+          Stream<List<DailyCashflowSummary>>
+        >
+    with
+        $FutureModifier<List<DailyCashflowSummary>>,
+        $StreamProvider<List<DailyCashflowSummary>> {
+  CalendarDailyCashflowSummariesProvider._({
+    required CalendarDailyCashflowSummariesFamily super.from,
+    required DateTime super.argument,
+  }) : super(
+         retry: null,
+         name: r'calendarDailyCashflowSummariesProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$calendarDailyCashflowSummariesHash();
+
+  @override
+  String toString() {
+    return r'calendarDailyCashflowSummariesProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<DailyCashflowSummary>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<DailyCashflowSummary>> create(Ref ref) {
+    final argument = this.argument as DateTime;
+    return calendarDailyCashflowSummaries(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CalendarDailyCashflowSummariesProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$calendarDailyCashflowSummariesHash() =>
+    r'b19aa80b72833ff520cf84ea9ca2280eb974624f';
+
+final class CalendarDailyCashflowSummariesFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          Stream<List<DailyCashflowSummary>>,
+          DateTime
+        > {
+  CalendarDailyCashflowSummariesFamily._()
+    : super(
+        retry: null,
+        name: r'calendarDailyCashflowSummariesProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  CalendarDailyCashflowSummariesProvider call(DateTime visibleMonth) =>
+      CalendarDailyCashflowSummariesProvider._(
+        argument: visibleMonth,
+        from: this,
+      );
+
+  @override
+  String toString() => r'calendarDailyCashflowSummariesProvider';
+}
+
+@ProviderFor(calendarContent)
+final calendarContentProvider = CalendarContentFamily._();
+
+final class CalendarContentProvider
+    extends
+        $FunctionalProvider<
+          CalendarContentState,
+          CalendarContentState,
+          CalendarContentState
+        >
+    with $Provider<CalendarContentState> {
+  CalendarContentProvider._({
+    required CalendarContentFamily super.from,
+    required ({DateTime visibleMonth, DateTime selectedDate}) super.argument,
+  }) : super(
+         retry: null,
+         name: r'calendarContentProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$calendarContentHash();
+
+  @override
+  String toString() {
+    return r'calendarContentProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<CalendarContentState> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CalendarContentState create(Ref ref) {
+    final argument =
+        this.argument as ({DateTime visibleMonth, DateTime selectedDate});
+    return calendarContent(
+      ref,
+      visibleMonth: argument.visibleMonth,
+      selectedDate: argument.selectedDate,
+    );
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CalendarContentState value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CalendarContentState>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CalendarContentProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$calendarContentHash() => r'ca48856acaabc560a9f16def47b4d4f537c7b249';
+
+final class CalendarContentFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          CalendarContentState,
+          ({DateTime visibleMonth, DateTime selectedDate})
+        > {
+  CalendarContentFamily._()
+    : super(
+        retry: null,
+        name: r'calendarContentProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  CalendarContentProvider call({
+    required DateTime visibleMonth,
+    required DateTime selectedDate,
+  }) => CalendarContentProvider._(
+    argument: (visibleMonth: visibleMonth, selectedDate: selectedDate),
+    from: this,
+  );
+
+  @override
+  String toString() => r'calendarContentProvider';
 }

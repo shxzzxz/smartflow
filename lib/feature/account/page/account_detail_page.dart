@@ -3,15 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../app/provider.dart';
+import '../../../application/credit/credit_command_api.dart';
+import '../../../application/ledger/ledger_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
-import '../../../application/ledger/ledger_query_api.dart';
-import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../../../widget/business/transaction_list_presentation.dart';
 import '../../../widget/business/transaction_row.dart';
+import '../view_model/account_detail_view_model.dart';
 
 class AccountDetailPage extends ConsumerWidget {
   const AccountDetailPage({required this.accountId, super.key});
@@ -20,10 +20,7 @@ class AccountDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final accountsAsync = ref.watch(accountListProvider);
-    final transactionsAsync = ref.watch(
-      transactionListProvider(accountId: accountId),
-    );
+    final state = ref.watch(accountDetailViewModelProvider(accountId));
 
     return Scaffold(
       appBar: AppBar(
@@ -36,45 +33,41 @@ class AccountDetailPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: switch ((accountsAsync, transactionsAsync)) {
-        (AsyncData(value: final accounts), AsyncData(value: final items)) =>
+      body: switch (state) {
+        AccountDetailLoaded(
+          :final account,
+          :final transactionGroups,
+          :final contracts,
+        ) =>
           _AccountDetailContent(
-            account: _findAccount(accounts, accountId),
-            transactions: items,
-            accountId: accountId,
+            account: account,
+            transactionGroups: transactionGroups,
+            contracts: contracts,
           ),
-        (AsyncError(:final error), _) ||
-        (_, AsyncError(:final error)) => Center(child: Text('加载失败：$error')),
-        _ => const Center(child: CircularProgressIndicator()),
+        AccountDetailNotFound() => const Center(child: Text('账户不存在')),
+        AccountDetailError(:final message) => Center(child: Text(message)),
+        AccountDetailLoading() => const Center(
+          child: CircularProgressIndicator(),
+        ),
       },
     );
   }
 }
 
-class _AccountDetailContent extends ConsumerWidget {
+class _AccountDetailContent extends StatelessWidget {
   const _AccountDetailContent({
     required this.account,
-    required this.transactions,
-    required this.accountId,
+    required this.transactionGroups,
+    required this.contracts,
   });
 
-  final Account? account;
-  final List<TransactionListItem> transactions;
-  final String accountId;
+  final Account account;
+  final List<TransactionDayGroup> transactionGroups;
+  final AccountContractsState contracts;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final account = this.account;
-    if (account == null) {
-      return const Center(child: Text('账户不存在'));
-    }
-
-    final groups = _groupTransactionsByDay(transactions);
+  Widget build(BuildContext context) {
     final showInstallments = account.type == AccountType.liability;
-    final contractsAsync =
-        showInstallments
-            ? ref.watch(installmentContractsByAccountProvider(accountId))
-            : null;
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.space10,
@@ -87,14 +80,14 @@ class _AccountDetailContent extends ConsumerWidget {
         const SizedBox(height: AppSpacing.space8),
         _AccountActionBar(account: account),
         const SizedBox(height: AppSpacing.space8),
-        if (showInstallments && contractsAsync != null) ...[
-          _InstallmentSection(contractsAsync: contractsAsync),
+        if (showInstallments) ...[
+          _InstallmentSection(contracts: contracts),
           const SizedBox(height: AppSpacing.space8),
         ],
-        if (groups.isEmpty)
+        if (transactionGroups.isEmpty)
           const _EmptyAccountTransactions()
         else
-          for (final group in groups) ...[
+          for (final group in transactionGroups) ...[
             _AccountTransactionDaySection(group: group),
             const SizedBox(height: AppSpacing.space8),
           ],
@@ -420,7 +413,7 @@ class _ActionButton extends StatelessWidget {
 class _AccountTransactionDaySection extends StatelessWidget {
   const _AccountTransactionDaySection({required this.group});
 
-  final _AccountTransactionDayGroup group;
+  final TransactionDayGroup group;
 
   @override
   Widget build(BuildContext context) {
@@ -454,9 +447,19 @@ class _AccountTransactionDaySection extends StatelessWidget {
         AppSurface(
           child: Column(
             children: [
-              for (var i = 0; i < group.items.length; i++) ...[
-                TransactionRow(item: group.items[i]),
-                if (i < group.items.length - 1)
+              for (var i = 0; i < group.rows.length; i++) ...[
+                TransactionRow(
+                  presentation: group.rows[i],
+                  onTap:
+                      () => context.push(
+                        '/transaction/${group.rows[i].transactionId}',
+                      ),
+                  onQuickEdit:
+                      () => context.push(
+                        '/transaction/${group.rows[i].transactionId}/edit',
+                      ),
+                ),
+                if (i < group.rows.length - 1)
                   Container(
                     margin: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.space16,
@@ -497,9 +500,9 @@ class _EmptyAccountTransactions extends StatelessWidget {
 }
 
 class _InstallmentSection extends StatefulWidget {
-  const _InstallmentSection({required this.contractsAsync});
+  const _InstallmentSection({required this.contracts});
 
-  final AsyncValue<List<InstallmentContract>> contractsAsync;
+  final AccountContractsState contracts;
 
   @override
   State<_InstallmentSection> createState() => _InstallmentSectionState();
@@ -556,8 +559,8 @@ class _InstallmentSectionState extends State<_InstallmentSection> {
   }
 
   Widget _buildBody(BuildContext context, AppTextStyles styles) {
-    return switch (widget.contractsAsync) {
-      AsyncData(value: final contracts) =>
+    return switch (widget.contracts) {
+      AccountContractsLoaded(:final contracts) =>
         contracts.isEmpty
             ? AppSurface(
               child: Padding(
@@ -589,16 +592,19 @@ class _InstallmentSectionState extends State<_InstallmentSection> {
                 ],
               ),
             ),
-      AsyncError(:final error) => AppSurface(
+      AccountContractsError(:final message) => AppSurface(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.space12),
-          child: Text('合同加载失败：$error'),
+          child: Text('合同加载失败：$message'),
         ),
       ),
-      _ => const Padding(
-        padding: EdgeInsets.all(AppSpacing.space12),
-        child: Center(child: CircularProgressIndicator()),
+      AccountContractsLoading() => const AppSurface(
+        child: Padding(
+          padding: EdgeInsets.all(AppSpacing.space20),
+          child: Center(child: CircularProgressIndicator()),
+        ),
       ),
+      AccountContractsNotApplicable() => const SizedBox.shrink(),
     };
   }
 }
@@ -690,41 +696,6 @@ String _accrualLabel(InterestAccrualMethod accrual) {
 String _formatContractDate(DateTime date) {
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')}';
-}
-
-class _AccountTransactionDayGroup {
-  const _AccountTransactionDayGroup({required this.date, required this.items});
-
-  final DateTime date;
-  final List<TransactionListItem> items;
-}
-
-List<_AccountTransactionDayGroup> _groupTransactionsByDay(
-  List<TransactionListItem> items,
-) {
-  final groups = <DateTime, List<TransactionListItem>>{};
-  for (final item in items) {
-    final date = DateTime(
-      item.occurredAt.year,
-      item.occurredAt.month,
-      item.occurredAt.day,
-    );
-    groups.putIfAbsent(date, () => []).add(item);
-  }
-  final dates = groups.keys.toList()..sort((a, b) => b.compareTo(a));
-  return [
-    for (final date in dates)
-      _AccountTransactionDayGroup(date: date, items: groups[date]!),
-  ];
-}
-
-Account? _findAccount(List<Account> accounts, String id) {
-  for (final account in accounts) {
-    if (account.id == id) {
-      return account;
-    }
-  }
-  return null;
 }
 
 void _openTransactionForm(BuildContext context, Account account) {
