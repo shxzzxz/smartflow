@@ -64,10 +64,16 @@ class AppUpdateService {
   }
 
   Future<AppUpdateInfo?> checkForUpdate({
-    required int currentBuildNumber,
+    required int currentAndroidVersionCode,
+    required List<String> supportedAbis,
   }) async {
     final info = await fetchUpdateInfo();
-    return info.isNewerThan(currentBuildNumber) ? info : null;
+    return info.hasInstallableUpdate(
+          currentAndroidVersionCode: currentAndroidVersionCode,
+          supportedAbis: supportedAbis,
+        )
+        ? info
+        : null;
   }
 
   Future<File> downloadApk(
@@ -76,14 +82,15 @@ class AppUpdateService {
     void Function(AppUpdateDownloadProgress progress)? onProgress,
   }) async {
     final package = info.resolvePackage(supportedAbis);
+    if (package == null) {
+      throw const FormatException('No compatible APK package.');
+    }
     final uri = Uri.parse(package.url);
     final directory = await getTemporaryDirectory();
     final file = File(
       path.join(
         directory.path,
-        package.abi == 'universal'
-            ? 'smartflow-${info.versionName}.apk'
-            : 'smartflow-${info.versionName}-${package.abi}.apk',
+        'smartflow-${info.versionName}-${package.abi}.apk',
       ),
     );
 

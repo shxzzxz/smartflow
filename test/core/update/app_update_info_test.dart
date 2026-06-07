@@ -7,35 +7,40 @@ void main() {
     test('parses update manifest', () {
       final info = AppUpdateInfo.fromJson({
         'channel': 'beta',
-        'versionName': '0.1.1',
-        'versionCode': 11,
-        'apkUrl':
-            'https://github.com/shxzzxz/smartflow/releases/download/v0.1.1/smartflow-0.1.1+11.apk',
-        'apkSha256': 'ABCDEF',
-        'apkSize': '456',
+        'versionName': '0.3.0-dev.2',
+        'buildNumber': 31,
+        'universalApk': {
+          'url': 'https://example.com/smartflow.apk',
+          'sha256': 'ABCDEF',
+          'size': '456',
+          'androidVersionCode': 31,
+        },
         'releaseUrl':
-            'https://github.com/shxzzxz/smartflow/releases/tag/v0.1.1',
+            'https://github.com/shxzzxz/smartflow/releases/tag/v0.3.0-dev.2',
         'required': false,
-        'notes': 'SmartFlow 0.1.1 内测版本。',
+        'notes': 'SmartFlow 0.3.0-dev.2 开发渠道版本。',
       });
 
       expect(info.channel, AppUpdateChannel.beta);
-      expect(info.versionName, '0.1.1');
-      expect(info.versionCode, 11);
-      expect(info.apkSha256, 'abcdef');
-      expect(info.apkSize, 456);
+      expect(info.versionName, '0.3.0-dev.2');
+      expect(info.buildNumber, 31);
+      expect(info.universalApk.url, 'https://example.com/smartflow.apk');
+      expect(info.universalApk.sha256, 'abcdef');
+      expect(info.universalApk.size, 456);
+      expect(info.universalApk.androidVersionCode, 31);
       expect(info.required, isFalse);
-      expect(info.notes, 'SmartFlow 0.1.1 内测版本。');
+      expect(info.notes, 'SmartFlow 0.3.0-dev.2 开发渠道版本。');
     });
 
-    test('parses split APK packages', () {
+    test('parses split APK packages with Android version codes', () {
       final info = AppUpdateInfo.fromJson({
-        'channel': 'beta',
-        'versionName': '0.1.3-beta.1',
-        'versionCode': 13,
-        'apkUrl': 'https://example.com/smartflow.apk',
-        'apkSha256': '123456',
-        'apkSize': 456,
+        'channel': 'dev',
+        'versionName': '0.3.0-dev.2',
+        'buildNumber': 31,
+        'universalApk': {
+          'url': 'https://example.com/smartflow.apk',
+          'androidVersionCode': 31,
+        },
         'releaseUrl': '',
         'apks': [
           {
@@ -43,10 +48,12 @@ void main() {
             'url': 'https://example.com/smartflow-arm64.apk',
             'sha256': 'ABCDEF',
             'size': 123,
+            'androidVersionCode': 2031,
           },
           {
             'abi': 'armeabi-v7a',
             'url': 'https://example.com/smartflow-arm.apk',
+            'androidVersionCode': '1031',
           },
         ],
       });
@@ -55,59 +62,79 @@ void main() {
       expect(info.packages.first.abi, 'arm64-v8a');
       expect(info.packages.first.sha256, 'abcdef');
       expect(info.packages.first.size, 123);
+      expect(info.packages.first.androidVersionCode, 2031);
+      expect(info.packages.last.androidVersionCode, 1031);
     });
 
-    test('resolves package by supported ABI with universal fallback', () {
-      final info = AppUpdateInfo.fromJson({
-        'channel': 'beta',
-        'versionName': '0.1.3-beta.1',
-        'versionCode': 13,
-        'apkUrl': 'https://example.com/smartflow.apk',
-        'apkSha256': '123456',
-        'apkSize': 456,
-        'releaseUrl': '',
-        'apks': [
-          {
-            'abi': 'arm64-v8a',
-            'url': 'https://example.com/smartflow-arm64.apk',
-          },
-        ],
-      });
+    test('resolves package by supported ABI without universal fallback', () {
+      final info = AppUpdateInfo.fromJson(_manifest(apks: [_arm64Package()]));
 
       expect(
-        info.resolvePackage(['x86_64', 'arm64-v8a']).url,
+        info.resolvePackage(['x86_64', 'arm64-v8a'])?.url,
         'https://example.com/smartflow-arm64.apk',
       );
-      final fallback = info.resolvePackage(['armeabi-v7a']);
-      expect(fallback.abi, 'universal');
-      expect(fallback.url, 'https://example.com/smartflow.apk');
-      expect(fallback.sha256, '123456');
-      expect(fallback.size, 456);
+      expect(info.resolvePackage(['armeabi-v7a']), isNull);
     });
 
-    test('compares updates by versionCode', () {
-      final info = AppUpdateInfo.fromJson({
-        'channel': 'beta',
-        'versionName': '0.1.1',
-        'versionCode': '11',
-        'apkUrl': 'https://example.com/smartflow.apk',
-        'releaseUrl': '',
-      });
+    test('compares installable update by matching split APK versionCode', () {
+      final info = AppUpdateInfo.fromJson(_manifest(apks: [_arm64Package()]));
 
-      expect(info.isNewerThan(10), isTrue);
-      expect(info.isNewerThan(11), isFalse);
-      expect(info.isNewerThan(12), isFalse);
+      expect(
+        info.hasInstallableUpdate(
+          currentAndroidVersionCode: 2020,
+          supportedAbis: ['arm64-v8a'],
+        ),
+        isTrue,
+      );
+      expect(
+        info.hasInstallableUpdate(
+          currentAndroidVersionCode: 2031,
+          supportedAbis: ['arm64-v8a'],
+        ),
+        isFalse,
+      );
+      expect(
+        info.hasInstallableUpdate(
+          currentAndroidVersionCode: 20,
+          supportedAbis: ['x86_64'],
+        ),
+        isFalse,
+      );
     });
 
     test('rejects incomplete manifest', () {
       expect(
         () => AppUpdateInfo.fromJson({
           'channel': 'beta',
-          'versionName': '0.1.1',
-          'versionCode': 11,
+          'versionName': '0.3.0-dev.2',
+          'buildNumber': 31,
         }),
         throwsFormatException,
       );
     });
   });
+}
+
+Map<String, Object?> _manifest({List<Map<String, Object?>> apks = const []}) {
+  return {
+    'channel': 'dev',
+    'versionName': '0.3.0-dev.2',
+    'buildNumber': 31,
+    'universalApk': {
+      'url': 'https://example.com/smartflow.apk',
+      'sha256': '123456',
+      'size': 456,
+      'androidVersionCode': 31,
+    },
+    'releaseUrl': '',
+    'apks': apks,
+  };
+}
+
+Map<String, Object?> _arm64Package() {
+  return {
+    'abi': 'arm64-v8a',
+    'url': 'https://example.com/smartflow-arm64.apk',
+    'androidVersionCode': 2031,
+  };
 }

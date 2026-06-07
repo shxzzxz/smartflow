@@ -124,8 +124,14 @@ class _SoftwareVersionPageState extends ConsumerState<SoftwareVersionPage> {
     });
     try {
       final updateService = _createUpdateService();
+      final supportedAbis = await _updatePlatform.getSupportedAbis();
+      if (!mounted) {
+        return;
+      }
+
       final updateInfo = await updateService.checkForUpdate(
-        currentBuildNumber: versionInfo.buildNumber,
+        currentAndroidVersionCode: versionInfo.buildNumber,
+        supportedAbis: supportedAbis,
       );
       if (!mounted) {
         return;
@@ -134,11 +140,6 @@ class _SoftwareVersionPageState extends ConsumerState<SoftwareVersionPage> {
       if (updateInfo == null) {
         setState(() => _hasCheckedLatest = true);
         _showMessage('当前已是最新版本');
-        return;
-      }
-
-      final supportedAbis = await _updatePlatform.getSupportedAbis();
-      if (!mounted) {
         return;
       }
 
@@ -552,12 +553,18 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
           if (widget.updateInfo.notes.isEmpty)
             Text('有新的内测版本可用。', style: textStyles.detailValue),
           const SizedBox(height: AppSpacing.space12),
-          Text(
-            package.abi == 'universal' ? '安装包：通用包' : '安装包：${package.abi}',
-            style: textStyles.listSupporting.copyWith(
-              color: colors.onSurfaceVariant,
+          if (package != null)
+            Text(
+              '安装包：${package.abi}',
+              style: textStyles.listSupporting.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
             ),
-          ),
+          if (package == null)
+            Text(
+              '当前设备暂无可用安装包',
+              style: textStyles.listSupporting.copyWith(color: colors.error),
+            ),
           if (_isDownloading) ...[
             const SizedBox(height: AppSpacing.space16),
             LinearProgressIndicator(value: progress),
@@ -579,7 +586,8 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
             child: const Text('稍后'),
           ),
         FilledButton(
-          onPressed: _isDownloading ? null : _downloadAndInstall,
+          onPressed:
+              _isDownloading || package == null ? null : _downloadAndInstall,
           child: Text(_isDownloading ? '下载中' : '立即更新'),
         ),
       ],

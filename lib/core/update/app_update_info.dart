@@ -4,10 +4,8 @@ class AppUpdateInfo {
   const AppUpdateInfo({
     required this.channel,
     required this.versionName,
-    required this.versionCode,
-    required this.apkUrl,
-    this.apkSha256,
-    this.apkSize,
+    required this.buildNumber,
+    required this.universalApk,
     required this.releaseUrl,
     required this.required,
     required this.notes,
@@ -16,10 +14,8 @@ class AppUpdateInfo {
 
   final AppUpdateChannel channel;
   final String versionName;
-  final int versionCode;
-  final String apkUrl;
-  final String? apkSha256;
-  final int? apkSize;
+  final int buildNumber;
+  final AppUpdateUniversalApk universalApk;
   final String releaseUrl;
   final bool required;
   final String notes;
@@ -28,26 +24,25 @@ class AppUpdateInfo {
   factory AppUpdateInfo.fromJson(Map<String, Object?> json) {
     final channel = AppUpdateChannel.fromCode(_readString(json, 'channel'));
     final versionName = _readString(json, 'versionName');
-    final versionCode = _readInt(json, 'versionCode');
-    final apkUrl = _readString(json, 'apkUrl');
-    final apkSha256 = _readOptionalString(json, 'apkSha256');
-    final apkSize = _readOptionalInt(json, 'apkSize');
+    final buildNumber = _readInt(json, 'buildNumber');
+    final universalApk = _readUniversalApk(json['universalApk']);
     final releaseUrl = _readString(json, 'releaseUrl');
     final notes = _readOptionalString(json, 'notes');
     final required = json['required'] == true;
     final packages = _readPackages(json['apks']);
 
-    if (versionName.isEmpty || versionCode <= 0 || apkUrl.isEmpty) {
+    if (versionName.isEmpty ||
+        buildNumber <= 0 ||
+        universalApk.url.isEmpty ||
+        universalApk.androidVersionCode <= 0) {
       throw const FormatException('Invalid update manifest.');
     }
 
     return AppUpdateInfo(
       channel: channel,
       versionName: versionName,
-      versionCode: versionCode,
-      apkUrl: apkUrl,
-      apkSha256: apkSha256.isEmpty ? null : apkSha256.toLowerCase(),
-      apkSize: apkSize,
+      buildNumber: buildNumber,
+      universalApk: universalApk,
       releaseUrl: releaseUrl,
       required: required,
       notes: notes,
@@ -55,11 +50,16 @@ class AppUpdateInfo {
     );
   }
 
-  bool isNewerThan(int currentBuildNumber) {
-    return versionCode > currentBuildNumber;
+  bool hasInstallableUpdate({
+    required int currentAndroidVersionCode,
+    required List<String> supportedAbis,
+  }) {
+    final package = resolvePackage(supportedAbis);
+    return package != null &&
+        package.androidVersionCode > currentAndroidVersionCode;
   }
 
-  AppUpdatePackage resolvePackage(List<String> supportedAbis) {
+  AppUpdatePackage? resolvePackage(List<String> supportedAbis) {
     final normalizedAbis = supportedAbis
         .map((abi) => abi.trim())
         .where((abi) => abi.isNotEmpty);
@@ -70,11 +70,79 @@ class AppUpdateInfo {
         }
       }
     }
-    return AppUpdatePackage(
-      abi: 'universal',
-      url: apkUrl,
-      sha256: apkSha256,
-      size: apkSize,
+    return null;
+  }
+
+  static String _readString(Map<String, Object?> json, String key) {
+    final value = json[key];
+    return value is String ? value.trim() : '';
+  }
+
+  static String _readOptionalString(Map<String, Object?> json, String key) {
+    final value = json[key];
+    return value is String ? value.trim() : '';
+  }
+
+  static int _readInt(Map<String, Object?> json, String key) {
+    final value = json[key];
+    if (value is int) {
+      return value;
+    }
+    if (value is String) {
+      return int.tryParse(value) ?? 0;
+    }
+    return 0;
+  }
+
+  static AppUpdateUniversalApk _readUniversalApk(Object? value) {
+    if (value is! Map<String, Object?>) {
+      return const AppUpdateUniversalApk(url: '', androidVersionCode: 0);
+    }
+    return AppUpdateUniversalApk.fromJson(value);
+  }
+
+  static List<AppUpdatePackage> _readPackages(Object? value) {
+    if (value is! List) {
+      return const [];
+    }
+
+    return value
+        .whereType<Map<String, Object?>>()
+        .map(AppUpdatePackage.fromJson)
+        .where(
+          (package) =>
+              package.abi.isNotEmpty &&
+              package.url.isNotEmpty &&
+              package.androidVersionCode > 0,
+        )
+        .toList(growable: false);
+  }
+}
+
+class AppUpdateUniversalApk {
+  const AppUpdateUniversalApk({
+    required this.url,
+    required this.androidVersionCode,
+    this.sha256,
+    this.size,
+  });
+
+  final String url;
+  final int androidVersionCode;
+  final String? sha256;
+  final int? size;
+
+  factory AppUpdateUniversalApk.fromJson(Map<String, Object?> json) {
+    final url = _readString(json, 'url');
+    final sha256 = _readOptionalString(json, 'sha256');
+    final size = _readOptionalInt(json, 'size');
+    final androidVersionCode = _readInt(json, 'androidVersionCode');
+
+    return AppUpdateUniversalApk(
+      url: url,
+      androidVersionCode: androidVersionCode,
+      sha256: sha256.isEmpty ? null : sha256.toLowerCase(),
+      size: size,
     );
   }
 
@@ -110,30 +178,20 @@ class AppUpdateInfo {
     }
     return null;
   }
-
-  static List<AppUpdatePackage> _readPackages(Object? value) {
-    if (value is! List) {
-      return const [];
-    }
-
-    return value
-        .whereType<Map<String, Object?>>()
-        .map(AppUpdatePackage.fromJson)
-        .where((package) => package.abi.isNotEmpty && package.url.isNotEmpty)
-        .toList(growable: false);
-  }
 }
 
 class AppUpdatePackage {
   const AppUpdatePackage({
     required this.abi,
     required this.url,
+    required this.androidVersionCode,
     this.sha256,
     this.size,
   });
 
   final String abi;
   final String url;
+  final int androidVersionCode;
   final String? sha256;
   final int? size;
 
@@ -142,10 +200,12 @@ class AppUpdatePackage {
     final url = _readString(json, 'url');
     final sha256 = _readOptionalString(json, 'sha256');
     final size = _readOptionalInt(json, 'size');
+    final androidVersionCode = _readInt(json, 'androidVersionCode');
 
     return AppUpdatePackage(
       abi: abi,
       url: url,
+      androidVersionCode: androidVersionCode,
       sha256: sha256.isEmpty ? null : sha256.toLowerCase(),
       size: size,
     );
@@ -159,6 +219,17 @@ class AppUpdatePackage {
   static String _readOptionalString(Map<String, Object?> json, String key) {
     final value = json[key];
     return value is String ? value.trim() : '';
+  }
+
+  static int _readInt(Map<String, Object?> json, String key) {
+    final value = json[key];
+    if (value is int) {
+      return value;
+    }
+    if (value is String) {
+      return int.tryParse(value) ?? 0;
+    }
+    return 0;
   }
 
   static int? _readOptionalInt(Map<String, Object?> json, String key) {

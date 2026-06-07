@@ -195,6 +195,7 @@ jobs:
               --tag "${{ steps.release-meta.outputs.tag }}" \
               --repository "${{ github.repository }}" \
               --asset-dir dist \
+              --apk-metadata build/app/outputs/apk/release/output-metadata.json \
               --output-dir public
           done
 
