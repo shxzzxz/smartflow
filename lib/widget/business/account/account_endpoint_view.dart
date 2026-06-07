@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../design_system/token/spacing.dart';
-import 'business_icon.dart';
+import 'package:smartflow/design_system/token/spacing.dart';
 
-class AccountEndpoint {
-  const AccountEndpoint({required this.label, required this.iconKey});
-
-  final String label;
-  final String? iconKey;
-}
+import '../icon/business_icon.dart';
+import 'account_endpoint.dart';
 
 class AccountEndpointView extends StatelessWidget {
   const AccountEndpointView({

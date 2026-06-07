@@ -1,6 +1,6 @@
-import '../../core/money/money.dart';
-import '../../application/ledger/ledger_query_api.dart';
-import 'account_endpoint_view.dart';
+import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/widget/business/account/account_endpoint.dart';
 
 class AccountLookup {
   const AccountLookup(this.byId);

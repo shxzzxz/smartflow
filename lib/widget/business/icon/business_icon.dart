@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../design_system/token/colors.dart';
+import 'package:smartflow/design_system/token/colors.dart';
 
 enum BusinessIconSource { remixIcon, svgAsset }
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/money/money.dart';
-import '../../design_system/theme/app_theme_extension.dart';
+import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/design_system/theme/app_theme_extension.dart';
 
 class MoneyText extends StatelessWidget {
   const MoneyText({

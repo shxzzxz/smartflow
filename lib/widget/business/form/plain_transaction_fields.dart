@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../core/money/money.dart';
-import '../../design_system/theme/app_text_styles.dart';
-import '../../design_system/token/spacing.dart';
-import '../../design_system/widget/app_form_field.dart';
-import '../../design_system/widget/app_plain_form_row.dart';
-import '../../application/ledger/ledger_query_api.dart';
-import 'business_icon.dart';
+import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/design_system/theme/app_text_styles.dart';
+import 'package:smartflow/design_system/token/spacing.dart';
+import 'package:smartflow/design_system/widget/app_form_field.dart';
+import 'package:smartflow/design_system/widget/app_plain_form_row.dart';
+import 'package:smartflow/application/ledger/ledger_query_api.dart';
+
+import '../icon/business_icon.dart';
 
 final moneyInputFormatter = FilteringTextInputFormatter.allow(
   RegExp(r'^\d*\.?\d{0,2}'),

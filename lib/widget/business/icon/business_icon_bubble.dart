@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../design_system/theme/app_text_styles.dart';
-import '../../design_system/token/radius.dart';
-import '../../design_system/token/spacing.dart';
+import 'package:smartflow/design_system/theme/app_text_styles.dart';
+import 'package:smartflow/design_system/token/radius.dart';
+import 'package:smartflow/design_system/token/spacing.dart';
 
 class BusinessIconTile extends StatelessWidget {
   const BusinessIconTile({

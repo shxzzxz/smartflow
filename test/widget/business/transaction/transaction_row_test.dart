@@ -3,9 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
-import 'package:smartflow/widget/business/account_lookup.dart';
-import 'package:smartflow/widget/business/transaction_list_presentation.dart';
-import 'package:smartflow/widget/business/transaction_row.dart';
+import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
+import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
+import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 
 void main() {
   testWidgets('renders controlled transaction row presentation', (

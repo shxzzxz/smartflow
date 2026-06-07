@@ -3,7 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/time/month_key.dart';
-import '../../../widget/business/account_lookup.dart';
+import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 
 part 'ledger_query_providers.g.dart';
 

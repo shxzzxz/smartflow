@@ -2,7 +2,8 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
-import '../../../widget/business/account_endpoint_view.dart';
+import 'package:smartflow/widget/business/account/account_endpoint.dart';
+
 import '../presentation/transaction_detail_presentation.dart';
 
 part 'transaction_detail_state.freezed.dart';

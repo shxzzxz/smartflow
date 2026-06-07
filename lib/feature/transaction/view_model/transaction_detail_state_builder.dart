@@ -1,7 +1,8 @@
 import '../../../application/credit/credit_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
-import '../../../widget/business/account_endpoint_view.dart';
-import '../../../widget/business/account_lookup.dart';
+import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
+import 'package:smartflow/widget/business/account/account_endpoint.dart';
+
 import '../presentation/transaction_detail_presentation.dart';
 import 'transaction_detail_state.dart';
 

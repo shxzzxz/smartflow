@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../../design_system/theme/app_text_styles.dart';
-import '../../design_system/theme/app_theme_extension.dart';
-import '../../design_system/token/radius.dart';
-import '../../design_system/token/spacing.dart';
-import 'finance_tone_color.dart';
-import 'transaction_list_presentation.dart';
+import 'package:smartflow/design_system/theme/app_text_styles.dart';
+import 'package:smartflow/design_system/theme/app_theme_extension.dart';
+import 'package:smartflow/design_system/token/radius.dart';
+import 'package:smartflow/design_system/token/spacing.dart';
+import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
+
+import '../finance/finance_tone_color.dart';
 
 class TransactionProgressBadges extends StatelessWidget {
   const TransactionProgressBadges({required this.badges, super.key});

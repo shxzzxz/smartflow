@@ -11,7 +11,7 @@ import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_state.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_view_model.dart';
-import 'package:smartflow/widget/business/account_lookup.dart';
+import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 
 void main() {

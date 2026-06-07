@@ -2,8 +2,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
-import '../../../widget/business/account_lookup.dart';
-import '../../../widget/business/transaction_list_presentation.dart';
+import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
+import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../credit/provider/installment_query_providers.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 

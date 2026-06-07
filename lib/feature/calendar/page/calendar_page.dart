@@ -8,8 +8,8 @@ import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_month_picker.dart';
-import '../../../widget/business/finance_tone_color.dart';
-import '../../../widget/business/transaction_day_card.dart';
+import 'package:smartflow/widget/business/finance/finance_tone_color.dart';
+import 'package:smartflow/widget/business/transaction/transaction_day_card.dart';
 import '../presentation/calendar_month_presentation.dart';
 import '../view_model/calendar_view_model.dart';
 

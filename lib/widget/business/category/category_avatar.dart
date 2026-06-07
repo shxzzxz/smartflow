@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'business_icon.dart';
-import 'business_icon_bubble.dart';
+import '../icon/business_icon.dart';
+import '../icon/business_icon_bubble.dart';
 
 class CategoryAvatar extends StatelessWidget {
   const CategoryAvatar({required this.iconKey, super.key, this.size = 32});

@@ -11,7 +11,7 @@ import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
-import '../../../widget/business/plain_transaction_fields.dart';
+import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
 import '../view_model/installment_contract_edit_state.dart';

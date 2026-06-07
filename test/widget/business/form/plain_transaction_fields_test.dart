@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/widget/business/plain_transaction_fields.dart';
+import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 
 void main() {
   group('money input helpers', () {

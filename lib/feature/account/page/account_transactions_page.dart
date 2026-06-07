@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../design_system/token/spacing.dart';
-import '../../../widget/business/transaction_row.dart';
+import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 import '../view_model/account_transactions_view_model.dart';
 
 class AccountTransactionsPage extends ConsumerWidget {

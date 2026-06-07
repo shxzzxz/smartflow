@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../design_system/token/radius.dart';
-import '../../design_system/token/spacing.dart';
+import 'package:smartflow/design_system/token/radius.dart';
+import 'package:smartflow/design_system/token/spacing.dart';
 import 'business_icon_bubble.dart';
 
 class IconChoiceGrid extends StatelessWidget {

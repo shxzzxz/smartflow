@@ -9,8 +9,8 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
-import '../../../widget/business/transaction_list_presentation.dart';
-import '../../../widget/business/transaction_row.dart';
+import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
+import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 import '../view_model/account_detail_view_model.dart';
 
 class AccountDetailPage extends ConsumerWidget {

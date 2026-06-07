@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../design_system/theme/app_theme_extension.dart';
-import '../../application/ledger/ledger_query_api.dart';
-import 'finance_labels.dart';
+import 'package:smartflow/design_system/theme/app_theme_extension.dart';
+import 'package:smartflow/application/ledger/ledger_query_api.dart';
+
+import '../finance/finance_labels.dart';
 
 class TransactionPurposeBadge extends StatelessWidget {
   const TransactionPurposeBadge({required this.purpose, super.key});

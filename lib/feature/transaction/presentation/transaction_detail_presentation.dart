@@ -1,8 +1,8 @@
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
-import '../../../widget/business/account_lookup.dart';
-import '../../../widget/business/finance_labels.dart';
-import '../../../widget/business/money_text.dart';
+import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
+import 'package:smartflow/widget/business/finance/finance_labels.dart';
+import 'package:smartflow/widget/business/finance/money_text.dart';
 
 class DetailHero {
   const DetailHero({

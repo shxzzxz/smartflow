@@ -1,7 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../widget/business/account_lookup.dart';
-import '../../../widget/business/transaction_list_presentation.dart';
+import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
+import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 
 part 'account_transactions_view_model.g.dart';

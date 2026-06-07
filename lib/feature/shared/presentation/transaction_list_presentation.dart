@@ -1,9 +1,9 @@
-import '../../application/ledger/ledger_query_api.dart';
-import '../../core/money/money.dart';
-import 'account_lookup.dart';
-import 'finance_labels.dart';
+import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/widget/business/finance/finance_labels.dart';
+import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
-enum FinanceTone { income, expense, neutral, info, equity, primary }
+import 'account_lookup.dart';
 
 class TransactionDayGroup {
   const TransactionDayGroup({
