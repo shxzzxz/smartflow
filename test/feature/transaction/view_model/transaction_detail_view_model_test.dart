@@ -6,13 +6,12 @@ import 'package:smartflow/application/credit/credit_command_api.dart'
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
-import 'package:smartflow/core/error/failure.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_state.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_view_model.dart';
 import 'package:smartflow/widget/business/account_lookup.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 
 void main() {
   group('TransactionDetailViewModel', () {
@@ -139,10 +138,11 @@ void main() {
       },
     );
 
-    test('maps legacy result failure to UI action failure', () async {
+    test('maps update exception to UI action failure', () async {
       final update = _FakeTransactionUpdateAppService(
-        reportingFlagResult: const Result.failure(
-          Failure(code: 'legacy_failure', message: '旧接口失败'),
+        reportingFlagException: BusinessException(
+          LedgerErrorCode.transactionNotEditable,
+          message: '交易当前不可编辑',
         ),
       );
       final container = _container(
@@ -157,8 +157,8 @@ void main() {
 
       expect(outcome, isA<UiActionFailure<void>>());
       final failure = outcome as UiActionFailure<void>;
-      expect(failure.error.code, 'legacy_failure');
-      expect(failure.error.message, '旧接口失败');
+      expect(failure.error.code, LedgerErrorCode.transactionNotEditable.code);
+      expect(failure.error.message, '交易当前不可编辑');
     });
 
     test('submits reimbursement close command', () async {
@@ -363,30 +363,32 @@ PostedTransactionResult _posted() {
 }
 
 class _FakeTransactionUpdateAppService implements TransactionUpdateAppService {
-  _FakeTransactionUpdateAppService({this.reportingFlagResult});
+  _FakeTransactionUpdateAppService({this.reportingFlagException});
 
-  final Result<PostedTransactionResult>? reportingFlagResult;
+  final Object? reportingFlagException;
   final basicInfoCommands = <UpdateTransactionBasicInfoCommand>[];
   final reportingFlagCommands = <UpdateTransactionReportingFlagCommand>[];
 
   @override
-  Future<Result<PostedTransactionResult>> updateBasicInfo(
+  Future<PostedTransactionResult> updateBasicInfo(
     UpdateTransactionBasicInfoCommand command,
   ) async {
     basicInfoCommands.add(command);
-    return Result.success(_posted());
+    return _posted();
   }
 
   @override
-  Future<Result<PostedTransactionResult>> updateReportingFlag(
+  Future<PostedTransactionResult> updateReportingFlag(
     UpdateTransactionReportingFlagCommand command,
   ) async {
     reportingFlagCommands.add(command);
-    return reportingFlagResult ?? Result.success(_posted());
+    final exception = reportingFlagException;
+    if (exception != null) throw exception;
+    return _posted();
   }
 
   @override
-  Future<Result<PostedTransactionResult>> updateOwnership(
+  Future<PostedTransactionResult> updateOwnership(
     UpdateTransactionOwnershipCommand command,
   ) {
     throw UnimplementedError();
@@ -399,16 +401,16 @@ class _FakeTransactionCorrectionAppService
   final reimbursementAdvanceCommands = <CorrectReimbursementAdvanceCommand>[];
 
   @override
-  Future<void> cancelTransaction(DeleteTransactionCommand command) async {
+  Future<void> deleteTransaction(DeleteTransactionCommand command) async {
     canceledTransactionIds.add(command.transactionId);
   }
 
   @override
-  Future<Result<PostedTransactionResult>> correctReimbursementAdvance(
+  Future<PostedTransactionResult> correctReimbursementAdvance(
     CorrectReimbursementAdvanceCommand command,
   ) async {
     reimbursementAdvanceCommands.add(command);
-    return Result.success(_posted());
+    return _posted();
   }
 
   @override
@@ -431,21 +433,19 @@ class _FakeTransactionCorrectionAppService
   }
 
   @override
-  Future<Result<PostedTransactionResult>> correctRefund(
-    CorrectRefundCommand command,
-  ) {
+  Future<PostedTransactionResult> correctRefund(CorrectRefundCommand command) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Result<PostedTransactionResult>> correctReimbursementClose(
+  Future<PostedTransactionResult> correctReimbursementClose(
     CorrectReimbursementCloseCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Result<PostedTransactionResult>> correctReimbursementReceipt(
+  Future<PostedTransactionResult> correctReimbursementReceipt(
     CorrectReimbursementReceiptCommand command,
   ) {
     throw UnimplementedError();
@@ -461,18 +461,6 @@ class _FakeTransactionCorrectionAppService
   @override
   Future<PostedTransactionResult> correctTransfer(
     CorrectTransferCommand command,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Result<void>> deleteTransaction(DeleteTransactionCommand command) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<PostedTransactionResult> saveReimbursementAdvanceCorrection(
-    CorrectReimbursementAdvanceCommand command,
   ) {
     throw UnimplementedError();
   }
@@ -500,9 +488,7 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<Result<PostedTransactionResult>> adjustBalance(
-    AdjustBalanceCommand command,
-  ) {
+  Future<PostedTransactionResult> adjustBalance(AdjustBalanceCommand command) {
     throw UnimplementedError();
   }
 
@@ -519,7 +505,7 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createOpeningBalance(
+  Future<PostedTransactionResult> createOpeningBalance(
     CreateOpeningBalanceCommand command,
   ) {
     throw UnimplementedError();
@@ -574,32 +560,29 @@ class _FakeInstallmentService implements InstallmentService {
   }
 
   @override
-  Future<Result<void>> editRepayment(EditRepaymentCommand command) async {
+  Future<void> editRepayment(EditRepaymentCommand command) async {
     editRepaymentCommands.add(command);
-    return const Result.success(null);
   }
 
   @override
-  Future<Result<void>> deleteContract(DeleteContractCommand command) async {
+  Future<void> deleteContract(DeleteContractCommand command) async {
     deleteContractCommands.add(command);
-    return const Result.success(null);
   }
 
   @override
-  Future<Result<void>> revertRepayment(RevertRepaymentCommand command) async {
+  Future<void> revertRepayment(RevertRepaymentCommand command) async {
     revertRepaymentCommands.add(command);
-    return const Result.success(null);
   }
 
   @override
-  Future<Result<CreateContractResult>> createBillConversionContract(
+  Future<CreateContractResult> createBillConversionContract(
     CreateBillConversionContractCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Result<CreateContractResult>> createDisbursementContract(
+  Future<CreateContractResult> createDisbursementContract(
     CreateDisbursementContractCommand command,
   ) {
     throw UnimplementedError();

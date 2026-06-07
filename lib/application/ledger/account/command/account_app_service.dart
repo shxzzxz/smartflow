@@ -55,23 +55,22 @@ class AccountAppServiceImpl implements AccountAppService {
     );
 
     if (command.openingBalance.minorUnits == 0) {
-      return _runner.runValue<Account>(() async {
+      return _runner.run<Account>(() async {
         await _repository.create(account);
         return account;
       });
     }
 
-    final posting = await _ledgerPostingService
-        .postOpeningBalanceForAccountValue(
-          account: account,
-          instruction: OpeningBalanceInstruction(
-            accountId: account.id,
-            amount: command.openingBalance,
-            occurredAt: DateTime.now(),
-          ),
-        );
+    final posting = await _ledgerPostingService.postOpeningBalanceForAccount(
+      account: account,
+      instruction: OpeningBalanceInstruction(
+        accountId: account.id,
+        amount: command.openingBalance,
+        occurredAt: DateTime.now(),
+      ),
+    );
 
-    return _runner.runValue<Account>(() async {
+    return _runner.run<Account>(() async {
       await _repository.create(account);
       await _transactionRepository.save(posting.transaction);
       await _repository.saveAll(posting.accounts);
@@ -104,14 +103,14 @@ class AccountAppServiceImpl implements AccountAppService {
       ),
     );
 
-    await _runner.runValue<void>(() async {
+    await _runner.run<void>(() async {
       if (targetBalance == null ||
           targetBalance.minorUnits == account.balance.minorUnits) {
         await _repository.save(account);
         return;
       }
       final adjustment = await _ledgerPostingService
-          .postBalanceAdjustmentForAccountValue(
+          .postBalanceAdjustmentForAccount(
             account: account,
             instruction: BalanceAdjustmentInstruction(
               accountId: command.id,

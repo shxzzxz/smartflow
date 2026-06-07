@@ -1,6 +1,6 @@
 # 错误处理
 
-本文档定义 SmartFlow 的错误表达边界。当前代码仍存在大量 `Result` / `Failure`，后续按触达式迁移，不做一次性全量重构。
+本文档定义 SmartFlow 的错误表达边界。通用 `Result` / `Failure` 已退出命令式业务主路径；命令失败使用内部异常表达，长期值返回失败使用场景专用 violation / validation report。
 
 ## 基本原则
 
@@ -50,7 +50,7 @@
 Future<T> run<T>(Future<T> Function() body);
 ```
 
-命令式业务失败抛内部异常，底层事务机制自然回滚；ViewModel 在 application 调用边界捕获 `AppException` 和普通 `Exception`。既有返回 `Result<T>` 的事务接口按触达式迁移。
+命令式业务失败抛内部异常，底层事务机制自然回滚；ViewModel 在 application 调用边界捕获 `AppException` 和普通 `Exception`。`TransactionRunner` 只暴露异常友好的普通返回值接口，不再提供返回通用 `Result<T>` 的事务入口。
 
 repository / adapter 只转换调用方明确关心的持久化失败，例如 `UPDATE` 影响行数为 0、幂等表唯一冲突或版本冲突。不要给每条 SQL 或每个 repository 方法套通用 guard。未知数据库异常不包装为业务失败；在用户命令链路中由 ViewModel 的普通 `Exception` 兜底成未知错误，在非命令链路中进入页面加载错误或全局错误处理。
 
@@ -100,8 +100,7 @@ lib/core/error/
 
 ## 迁移原则
 
-- 新增命令式 application API 优先使用内部异常表达业务失败，不再默认返回 `Result`。
-- 既有 `Result` API 按触达式迁移。
-- 历史 `Result` / `Failure` 仅作为迁移遗留保留，不作为新主路径类型。
+- 命令式 application API 使用内部异常表达业务失败，不默认返回 `Result`。
+- 代码中不再保留通用 `Result` / `Failure` 主路径；`Result` 后缀仅可用于表达成功返回数据的场景专用 DTO，例如 `PostingResult` 或 `PostedTransactionResult`，不得重新引入通用失败容器。
 - 纯函数 / presentation / tryParse / 非 mutating 预检或规则校验 / 批量校验不强制迁移为异常；长期值返回失败应使用场景专用 violation / validation report，而不是通用 `Failure`。
 - ViewModel 新增 API 不使用 `Result<T>` 作为默认返回类型；旧页面按触达式迁移到 UI 语义 outcome。

@@ -5,7 +5,6 @@ import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/transaction/page/transaction_detail_page.dart';
 import 'package:smartflow/widget/business/account_lookup.dart';
@@ -113,24 +112,25 @@ class _FakeTransactionUpdateAppService implements TransactionUpdateAppService {
   final basicInfoCommands = <UpdateTransactionBasicInfoCommand>[];
 
   @override
-  Future<Result<PostedTransactionResult>> updateBasicInfo(
+  Future<PostedTransactionResult> updateBasicInfo(
     UpdateTransactionBasicInfoCommand command,
   ) async {
     basicInfoCommands.add(command);
-    return const Result.success(
-      PostedTransactionResult(transactionId: 'tx-1', rootTransactionId: 'tx-1'),
+    return const PostedTransactionResult(
+      transactionId: 'tx-1',
+      rootTransactionId: 'tx-1',
     );
   }
 
   @override
-  Future<Result<PostedTransactionResult>> updateReportingFlag(
+  Future<PostedTransactionResult> updateReportingFlag(
     UpdateTransactionReportingFlagCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Result<PostedTransactionResult>> updateOwnership(
+  Future<PostedTransactionResult> updateOwnership(
     UpdateTransactionOwnershipCommand command,
   ) {
     throw UnimplementedError();

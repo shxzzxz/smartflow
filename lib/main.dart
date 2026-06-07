@@ -13,19 +13,16 @@ Future<void> main() async {
     scaffoldMessengerKey: appScaffoldMessengerKey,
   );
 
-  await runZonedGuarded<Future<void>>(
-    () async {
-      WidgetsFlutterBinding.ensureInitialized();
-      await bootstrap();
-      errorHandler.install();
+  await runZonedGuarded<Future<void>>(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await bootstrap();
+    errorHandler.install();
 
-      runApp(
-        ProviderScope(
-          observers: [AppProviderErrorObserver()],
-          child: SmartFlowApp(scaffoldMessengerKey: appScaffoldMessengerKey),
-        ),
-      );
-    },
-    errorHandler.handleZoneError,
-  );
+    runApp(
+      ProviderScope(
+        observers: [AppProviderErrorObserver()],
+        child: SmartFlowApp(scaffoldMessengerKey: appScaffoldMessengerKey),
+      ),
+    );
+  }, errorHandler.handleZoneError);
 }

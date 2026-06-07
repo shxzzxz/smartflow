@@ -65,7 +65,7 @@ void main() {
               .having(
                 (error) => error.message,
                 'message',
-                'Account food cannot be used for this transaction.',
+                'Account cannot be used for this transaction.',
               ),
         ),
       );

@@ -1,11 +1,10 @@
-import '../../../core/error/failure.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
-import '../../../core/result/result.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../valobj/ledger_error_code.dart';
 import '../valobj/ledger_enum.dart';
+import '../valobj/ledger_violation_reason.dart';
 import '../service/posting/posting_rule.dart';
 import 'entry.dart';
 
@@ -92,18 +91,12 @@ class Account {
 
   /// 是否可以作为"用户账户"被编辑(通过 EditAccountCommand 修改属性)。
   /// 系统类账户(income / expense / equity)走 CategoryService 或其它路径。
-  Failure? checkEditable() {
+  LedgerViolationReason? checkEditable() {
     if (isArchived) {
-      return const Failure(
-        code: 'account_archived',
-        message: 'Archived account cannot be edited.',
-      );
+      return LedgerViolationReason.accountArchived;
     }
     if (!type.isUserAccount) {
-      return const Failure(
-        code: 'account_type_not_editable',
-        message: 'Only asset and liability account can be edited here.',
-      );
+      return LedgerViolationReason.accountTypeNotEditable;
     }
     return null;
   }
@@ -180,65 +173,38 @@ class Account {
     note = patch.note.applyMappedTo(note, trimToNull);
   }
 
-  /// 计算把余额调整到 [target] 所需的 signed delta(可负)。
-  /// archived / 不支持手动调整 / 目标负数 / delta == 0 均视为失败。
-  Result<Money> targetBalanceDeltaTo(Money target) {
+  LedgerViolationReason? checkBalanceAdjustmentTarget(Money target) {
     if (isArchived) {
-      return const Result.failure(
-        Failure(
-          code: 'account_archived',
-          message: 'Cannot adjust archived account.',
-        ),
-      );
+      return LedgerViolationReason.accountArchived;
     }
     if (!supportsManualBalance) {
-      return const Result.failure(
-        Failure(
-          code: 'account_target_balance_not_supported',
-          message: 'This account type does not support balance adjustment.',
-        ),
-      );
+      return LedgerViolationReason.accountTargetBalanceNotSupported;
     }
     if (target.minorUnits < 0) {
-      return const Result.failure(
-        Failure(
-          code: 'account_target_balance_negative',
-          message: 'Target balance cannot be negative.',
-        ),
-      );
+      return LedgerViolationReason.accountTargetBalanceNegative;
     }
     final deltaMinor = target.minorUnits - balance.minorUnits;
     if (deltaMinor == 0) {
-      return const Result.failure(
-        Failure(
-          code: 'balance_adjustment_zero_delta',
-          message: 'Balance is already at the target value.',
-        ),
-      );
+      return LedgerViolationReason.balanceAdjustmentZeroDelta;
     }
-    return Result.success(Money(minorUnits: deltaMinor));
+    return null;
+  }
+
+  Money balanceDeltaTo(Money target) {
+    return Money(minorUnits: target.minorUnits - balance.minorUnits);
   }
 
   /// 校验当前账户能否作为新分类的父节点。
   /// 当前实现限制分类树为二层(顶层 + 子节点),所以 parent 自己不能再有 parent。
-  Failure? checkValidCategoryParent(AccountType expectedType) {
+  LedgerViolationReason? checkValidCategoryParent(AccountType expectedType) {
     if (isArchived) {
-      return const Failure(
-        code: 'category_parent_archived',
-        message: 'Archived category cannot be used as parents.',
-      );
+      return LedgerViolationReason.categoryParentArchived;
     }
     if (type != expectedType) {
-      return const Failure(
-        code: 'category_parent_type_mismatch',
-        message: 'Parent category type must match child category type.',
-      );
+      return LedgerViolationReason.categoryParentTypeMismatch;
     }
     if (parentId != null) {
-      return const Failure(
-        code: 'category_depth_exceeded',
-        message: 'Categories support one child level in this stage.',
-      );
+      return LedgerViolationReason.categoryDepthExceeded;
     }
     return null;
   }
@@ -269,16 +235,13 @@ class Account {
     balance = Money(minorUnits: balance.minorUnits - delta);
   }
 
-  static Failure? validateSubtypeCompatibility({
+  static LedgerViolationReason? validateSubtypeCompatibility({
     required AccountType type,
     required AccountSubtype? subtype,
   }) {
     if (subtype == null) return null;
     if (isSubtypeCompatible(type: type, subtype: subtype)) return null;
-    return const Failure(
-      code: 'account_subtype_type_mismatch',
-      message: 'Account subtype does not match account type.',
-    );
+    return LedgerViolationReason.accountSubtypeTypeMismatch;
   }
 
   static bool isSubtypeCompatible({

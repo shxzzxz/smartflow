@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/provider.dart';
+import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
-import '../../../core/result/result.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
@@ -294,52 +294,51 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
 
     setState(() => _submitting = true);
     final service = ref.read(installmentServiceProvider);
-    Result<CreateContractResult> result;
-    if (isDisbursement) {
-      result = await service.createDisbursementContract(
-        CreateDisbursementContractCommand(
-          liabilityAccountId: liability.id,
-          disbursementAccountId: _disbursementAccountId!,
-          principal: principal,
-          totalPeriods: totalPeriods,
-          borrowingDate: _borrowingDate,
-          firstRepaymentDate: _firstRepaymentDate,
-          repaymentMethod: _method,
-          interestRatePeriod: ratePpm == null ? null : _ratePeriod,
-          interestRatePpm: ratePpm,
-          interestAccrualMethod: _accrualMethod,
-          totalFeeMinor: totalFeeMinor,
-          equalInstallmentOverrideMinor: overrideMinor,
-          note: note,
-        ),
-      );
-    } else {
-      result = await service.createBillConversionContract(
-        CreateBillConversionContractCommand(
-          liabilityAccountId: liability.id,
-          principal: principal,
-          totalPeriods: totalPeriods,
-          borrowingDate: _borrowingDate,
-          firstRepaymentDate: _firstRepaymentDate,
-          repaymentMethod: _method,
-          interestRatePeriod: ratePpm == null ? null : _ratePeriod,
-          interestRatePpm: ratePpm,
-          interestAccrualMethod: _accrualMethod,
-          totalFeeMinor: totalFeeMinor,
-          equalInstallmentOverrideMinor: overrideMinor,
-          note: note,
-        ),
-      );
-    }
-    if (!mounted) return;
-    setState(() => _submitting = false);
-
-    switch (result) {
-      case Success(:final value):
-        ref.invalidate(installmentContractsByAccountProvider(liability.id));
-        context.pushReplacement('/installments/${value.contractId}');
-      case FailureResult(:final failure):
-        _showError(failure.message);
+    try {
+      final result =
+          isDisbursement
+              ? await service.createDisbursementContract(
+                CreateDisbursementContractCommand(
+                  liabilityAccountId: liability.id,
+                  disbursementAccountId: _disbursementAccountId!,
+                  principal: principal,
+                  totalPeriods: totalPeriods,
+                  borrowingDate: _borrowingDate,
+                  firstRepaymentDate: _firstRepaymentDate,
+                  repaymentMethod: _method,
+                  interestRatePeriod: ratePpm == null ? null : _ratePeriod,
+                  interestRatePpm: ratePpm,
+                  interestAccrualMethod: _accrualMethod,
+                  totalFeeMinor: totalFeeMinor,
+                  equalInstallmentOverrideMinor: overrideMinor,
+                  note: note,
+                ),
+              )
+              : await service.createBillConversionContract(
+                CreateBillConversionContractCommand(
+                  liabilityAccountId: liability.id,
+                  principal: principal,
+                  totalPeriods: totalPeriods,
+                  borrowingDate: _borrowingDate,
+                  firstRepaymentDate: _firstRepaymentDate,
+                  repaymentMethod: _method,
+                  interestRatePeriod: ratePpm == null ? null : _ratePeriod,
+                  interestRatePpm: ratePpm,
+                  interestAccrualMethod: _accrualMethod,
+                  totalFeeMinor: totalFeeMinor,
+                  equalInstallmentOverrideMinor: overrideMinor,
+                  note: note,
+                ),
+              );
+      if (!mounted) return;
+      ref.invalidate(installmentContractsByAccountProvider(liability.id));
+      context.pushReplacement('/installments/${result.contractId}');
+    } on AppException catch (exception) {
+      if (mounted) _showError(exception.message);
+    } on Exception {
+      if (mounted) _showError('创建失败，请稍后重试');
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 

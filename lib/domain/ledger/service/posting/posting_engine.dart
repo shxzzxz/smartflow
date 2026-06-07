@@ -1,12 +1,11 @@
-import 'package:smartflow/core/error/failure.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/core/result/result.dart';
 import '../../entity/account.dart';
 import '../../entity/entry.dart';
 import '../../entity/transaction.dart';
 import '../../entity/transaction_detail_record.dart';
 import '../../valobj/ledger_enum.dart';
+import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import '../../valobj/posting_result.dart';
 import 'posting_rule.dart';
@@ -17,7 +16,7 @@ class PostingEngine {
 
   final IdGenerator _idGenerator;
 
-  Result<Transaction> create(PostingInstruction instruction) {
+  Transaction create(PostingInstruction instruction) {
     return switch (instruction) {
       ExpenseInstruction i => createExpense(i),
       IncomeInstruction i => createIncome(i),
@@ -28,13 +27,10 @@ class PostingEngine {
     };
   }
 
-  Result<Transaction> createExpense(ExpenseInstruction instruction) {
+  Transaction createExpense(ExpenseInstruction instruction) {
     if (instruction.amount.minorUnits <= 0) {
-      return const Result.failure(
-        Failure(
-          code: 'expense_amount_not_positive',
-          message: 'Expense amount must be positive.',
-        ),
+      return LedgerViolationReason.expenseAmountNotPositive.throwException(
+        message: 'Expense amount must be positive.',
       );
     }
     final transactionId = _idGenerator.newId();
@@ -79,13 +75,10 @@ class PostingEngine {
     );
   }
 
-  Result<Transaction> createIncome(IncomeInstruction instruction) {
+  Transaction createIncome(IncomeInstruction instruction) {
     if (instruction.amount.minorUnits <= 0) {
-      return const Result.failure(
-        Failure(
-          code: 'income_amount_not_positive',
-          message: 'Income amount must be positive.',
-        ),
+      return LedgerViolationReason.incomeAmountNotPositive.throwException(
+        message: 'Income amount must be positive.',
       );
     }
     final transactionId = _idGenerator.newId();
@@ -130,16 +123,14 @@ class PostingEngine {
     );
   }
 
-  Result<Transaction> createReimbursementAdvance(
+  Transaction createReimbursementAdvance(
     ReimbursementAdvanceInstruction instruction,
   ) {
     if (instruction.amount.minorUnits <= 0) {
-      return const Result.failure(
-        Failure(
-          code: 'reimbursement_amount_not_positive',
-          message: 'Reimbursement advance amount must be positive.',
-        ),
-      );
+      return LedgerViolationReason.reimbursementAmountNotPositive
+          .throwException(
+            message: 'Reimbursement advance amount must be positive.',
+          );
     }
     final transactionId = _idGenerator.newId();
     return _validated(
@@ -184,17 +175,14 @@ class PostingEngine {
     );
   }
 
-  Result<Transaction> createRefund({
+  Transaction createRefund({
     required RefundInstruction instruction,
     required Transaction parent,
     required String refundOffsetAccountId,
   }) {
     if (instruction.amount.minorUnits <= 0) {
-      return const Result.failure(
-        Failure(
-          code: 'refund_amount_not_positive',
-          message: 'Refund amount must be positive.',
-        ),
+      return LedgerViolationReason.refundAmountNotPositive.throwException(
+        message: 'Refund amount must be positive.',
       );
     }
     final transactionId = _idGenerator.newId();
@@ -240,42 +228,30 @@ class PostingEngine {
     );
   }
 
-  Result<Transaction> createTransfer(
+  Transaction createTransfer(
     TransferInstruction instruction, {
     String? feeExpenseAccountId,
   }) {
     final fee = instruction.feeAmount;
     final hasFee = fee != null && fee.minorUnits > 0;
     if (instruction.amount.minorUnits <= 0) {
-      return const Result.failure(
-        Failure(
-          code: 'transfer_amount_not_positive',
-          message: 'Transfer amount must be positive.',
-        ),
+      return LedgerViolationReason.transferAmountNotPositive.throwException(
+        message: 'Transfer amount must be positive.',
       );
     }
     if (instruction.fromAccountId == instruction.toAccountId) {
-      return const Result.failure(
-        Failure(
-          code: 'transfer_accounts_must_differ',
-          message: 'Transfer source and target account must differ.',
-        ),
+      return LedgerViolationReason.transferAccountsMustDiffer.throwException(
+        message: 'Transfer source and target account must differ.',
       );
     }
     if (fee != null && fee.minorUnits < 0) {
-      return const Result.failure(
-        Failure(
-          code: 'transfer_fee_negative',
-          message: 'Transfer fee cannot be negative.',
-        ),
+      return LedgerViolationReason.transferFeeNegative.throwException(
+        message: 'Transfer fee cannot be negative.',
       );
     }
     if (hasFee && feeExpenseAccountId == null) {
-      return const Result.failure(
-        Failure(
-          code: 'transfer_fee_account_required',
-          message: 'Transfer fee account is required.',
-        ),
+      return LedgerViolationReason.transferFeeAccountRequired.throwException(
+        message: 'Transfer fee account is required.',
       );
     }
 
@@ -335,17 +311,13 @@ class PostingEngine {
     );
   }
 
-  Result<Transaction> createReimbursementReceipt({
+  Transaction createReimbursementReceipt({
     required ReimbursementReceiptInstruction instruction,
     required Transaction advance,
   }) {
     if (instruction.amount.minorUnits <= 0) {
-      return const Result.failure(
-        Failure(
-          code: 'reimbursement_amount_not_positive',
-          message: 'Receipt amount must be positive.',
-        ),
-      );
+      return LedgerViolationReason.reimbursementAmountNotPositive
+          .throwException(message: 'Receipt amount must be positive.');
     }
     final transactionId = _idGenerator.newId();
     return _validated(
@@ -390,18 +362,15 @@ class PostingEngine {
     );
   }
 
-  Result<Transaction> createRepayment(
+  Transaction createRepayment(
     RepaymentInstruction instruction, {
     String? interestExpenseAccountId,
     String? feeExpenseAccountId,
     String? discountIncomeAccountId,
   }) {
     if (instruction.principal.minorUnits <= 0) {
-      return const Result.failure(
-        Failure(
-          code: 'repayment_principal_not_positive',
-          message: 'Repayment principal must be positive.',
-        ),
+      return LedgerViolationReason.repaymentPrincipalNotPositive.throwException(
+        message: 'Repayment principal must be positive.',
       );
     }
     final interest = instruction.interest;
@@ -411,28 +380,21 @@ class PostingEngine {
     final hasFee = fee != null && fee.minorUnits > 0;
     final hasDiscount = discount != null && discount.minorUnits > 0;
     if (hasInterest && interestExpenseAccountId == null) {
-      return const Result.failure(
-        Failure(
-          code: 'repayment_interest_account_missing',
-          message: 'Interest expense system account is required.',
-        ),
-      );
+      return LedgerViolationReason.repaymentInterestAccountMissing
+          .throwException(
+            message: 'Interest expense system account is required.',
+          );
     }
     if (hasFee && feeExpenseAccountId == null) {
-      return const Result.failure(
-        Failure(
-          code: 'repayment_fee_account_missing',
-          message: 'Fee expense system account is required.',
-        ),
+      return LedgerViolationReason.repaymentFeeAccountMissing.throwException(
+        message: 'Fee expense system account is required.',
       );
     }
     if (hasDiscount && discountIncomeAccountId == null) {
-      return const Result.failure(
-        Failure(
-          code: 'repayment_discount_account_missing',
-          message: 'Discount income system account is required.',
-        ),
-      );
+      return LedgerViolationReason.repaymentDiscountAccountMissing
+          .throwException(
+            message: 'Discount income system account is required.',
+          );
     }
     final totalPaid =
         instruction.principal +
@@ -440,11 +402,8 @@ class PostingEngine {
         (hasFee ? fee : Money.zero()) -
         (hasDiscount ? discount : Money.zero());
     if (totalPaid.minorUnits <= 0) {
-      return const Result.failure(
-        Failure(
-          code: 'repayment_total_paid_not_positive',
-          message: 'Repayment total paid must be positive.',
-        ),
+      return LedgerViolationReason.repaymentTotalPaidNotPositive.throwException(
+        message: 'Repayment total paid must be positive.',
       );
     }
 
@@ -533,13 +492,10 @@ class PostingEngine {
     );
   }
 
-  Result<Transaction> createBorrowing(BorrowingInstruction instruction) {
+  Transaction createBorrowing(BorrowingInstruction instruction) {
     if (instruction.amount.minorUnits <= 0) {
-      return const Result.failure(
-        Failure(
-          code: 'borrowing_amount_not_positive',
-          message: 'Borrowing amount must be positive.',
-        ),
+      return LedgerViolationReason.borrowingAmountNotPositive.throwException(
+        message: 'Borrowing amount must be positive.',
       );
     }
     final transactionId = _idGenerator.newId();
@@ -584,25 +540,19 @@ class PostingEngine {
     );
   }
 
-  Result<Transaction> createOpeningBalance({
+  Transaction createOpeningBalance({
     required OpeningBalanceInstruction instruction,
     required Account account,
     required String equityAccountId,
   }) {
     if (account.archivedAt != null) {
-      return const Result.failure(
-        Failure(
-          code: 'account_archived',
-          message: 'Cannot initialize archived account.',
-        ),
+      return LedgerViolationReason.accountArchived.throwException(
+        message: 'Cannot initialize archived account.',
       );
     }
     if (instruction.amount.minorUnits == 0) {
-      return const Result.failure(
-        Failure(
-          code: 'opening_balance_zero',
-          message: 'Opening balance amount cannot be zero.',
-        ),
+      return LedgerViolationReason.openingBalanceZero.throwException(
+        message: 'Opening balance amount cannot be zero.',
       );
     }
     final amount = instruction.amount.abs();
@@ -655,7 +605,7 @@ class PostingEngine {
     );
   }
 
-  Result<Transaction> createBalanceAdjustment({
+  Transaction createBalanceAdjustment({
     required BalanceAdjustmentInstruction instruction,
     required Account account,
     required Money signedDelta,
@@ -711,7 +661,7 @@ class PostingEngine {
     );
   }
 
-  Result<Transaction> createReimbursementClose({
+  Transaction createReimbursementClose({
     required ReimbursementCloseInstruction instruction,
     required Transaction advance,
     required Money outstanding,
@@ -719,21 +669,13 @@ class PostingEngine {
   }) {
     final actual = instruction.actualReceivedAmount;
     if (actual.minorUnits < 0) {
-      return const Result.failure(
-        Failure(
-          code: 'reimbursement_close_amount_negative',
-          message: 'Received amount cannot be negative.',
-        ),
-      );
+      return LedgerViolationReason.reimbursementCloseAmountNegative
+          .throwException(message: 'Received amount cannot be negative.');
     }
     final gap = actual - outstanding;
     if (gap.minorUnits > 0 && gapIncomeAccountId == null) {
-      return const Result.failure(
-        Failure(
-          code: 'reimbursement_gap_income_required',
-          message: 'Gap income account is required.',
-        ),
-      );
+      return LedgerViolationReason.reimbursementGapIncomeRequired
+          .throwException(message: 'Gap income account is required.');
     }
 
     final transactionId = _idGenerator.newId();
@@ -825,7 +767,7 @@ class PostingEngine {
     );
   }
 
-  Result<TransactionReplacement> createReplacement({
+  TransactionReplacement createReplacement({
     required Transaction original,
     required Transaction replacement,
     required MutationReason reason,
@@ -885,21 +827,17 @@ class PostingEngine {
       ownership: original.ownership,
     );
 
-    final reversalFailure = reversal.validateSelf(allowNegativeAmounts: true);
-    if (reversalFailure != null) return Result.failure(reversalFailure);
-    final correctionFailure = correction.validateSelf();
-    if (correctionFailure != null) return Result.failure(correctionFailure);
+    reversal.validateSelf(allowNegativeAmounts: true);
+    correction.validateSelf();
 
-    return Result.success(
-      TransactionReplacement(
-        replacedTransaction: replaced,
-        reversalTransaction: reversal,
-        correctionTransaction: correction,
-      ),
+    return TransactionReplacement(
+      replacedTransaction: replaced,
+      reversalTransaction: reversal,
+      correctionTransaction: correction,
     );
   }
 
-  Result<TransactionCancellation> createCancellation({
+  TransactionCancellation createCancellation({
     required Transaction original,
     required MutationReason reason,
   }) {
@@ -942,21 +880,16 @@ class PostingEngine {
           ),
       ],
     );
-    final reversalFailure = reversal.validateSelf(allowNegativeAmounts: true);
-    if (reversalFailure != null) return Result.failure(reversalFailure);
-    return Result.success(
-      TransactionCancellation(
-        canceledTransaction: canceled,
-        reversalTransaction: reversal,
-      ),
+    reversal.validateSelf(allowNegativeAmounts: true);
+    return TransactionCancellation(
+      canceledTransaction: canceled,
+      reversalTransaction: reversal,
     );
   }
 
-  Result<Transaction> _validated(Transaction transaction) {
-    final failure = transaction.validateSelf();
-    return failure == null
-        ? Result.success(transaction)
-        : Result.failure(failure);
+  Transaction _validated(Transaction transaction) {
+    transaction.validateSelf();
+    return transaction;
   }
 
   TransactionDetailRecord _detail({

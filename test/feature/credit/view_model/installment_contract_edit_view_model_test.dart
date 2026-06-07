@@ -7,7 +7,6 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
-import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/feature/credit/view_model/installment_contract_edit_state.dart';
 import 'package:smartflow/feature/credit/view_model/installment_contract_edit_view_model.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
@@ -334,14 +333,14 @@ class _FakeInstallmentService implements InstallmentService {
   }
 
   @override
-  Future<Result<CreateContractResult>> createBillConversionContract(
+  Future<CreateContractResult> createBillConversionContract(
     CreateBillConversionContractCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Result<CreateContractResult>> createDisbursementContract(
+  Future<CreateContractResult> createDisbursementContract(
     CreateDisbursementContractCommand command,
   ) {
     throw UnimplementedError();
@@ -369,12 +368,12 @@ class _FakeInstallmentService implements InstallmentService {
   }
 
   @override
-  Future<Result<void>> deleteContract(DeleteContractCommand command) {
+  Future<void> deleteContract(DeleteContractCommand command) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Result<void>> editRepayment(EditRepaymentCommand command) {
+  Future<void> editRepayment(EditRepaymentCommand command) {
     throw UnimplementedError();
   }
 
@@ -396,7 +395,7 @@ class _FakeInstallmentService implements InstallmentService {
   }
 
   @override
-  Future<Result<void>> revertRepayment(RevertRepaymentCommand command) {
+  Future<void> revertRepayment(RevertRepaymentCommand command) {
     throw UnimplementedError();
   }
 

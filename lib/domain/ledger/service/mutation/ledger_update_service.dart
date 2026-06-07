@@ -1,7 +1,6 @@
-import 'package:smartflow/core/error/failure.dart';
-import 'package:smartflow/core/result/result.dart';
 import '../../port/root_transaction_group_repository.dart';
 import '../../port/transaction_repository.dart';
+import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import '../../valobj/posting_result.dart';
 
@@ -15,7 +14,7 @@ class LedgerUpdateService {
   final TransactionRepository _transactionRepository;
   final RootTransactionGroupRepository _rootGroupRepository;
 
-  Future<Result<TransactionUpdateResult>> updateBasicInfo(
+  Future<TransactionUpdateResult> updateBasicInfo(
     UpdateTransactionBasicInfoInstruction instruction,
   ) async {
     if (instruction.occurredAt == null &&
@@ -27,25 +26,24 @@ class LedgerUpdateService {
     final transaction = await _transactionRepository.findCompleteById(
       instruction.transactionId,
     );
-    if (transaction == null) return _failure('transaction_not_found');
-    final updateFailure = transaction.assertCanBeBasicsUpdated();
-    if (updateFailure != null) return Result.failure(updateFailure);
+    if (transaction == null) {
+      LedgerViolationReason.transactionNotFound.throwException();
+    }
+    transaction.assertCanBeBasicsUpdated();
 
     transaction.updateBasicInfo(
       occurredAt: instruction.occurredAt,
       counterpartyName: instruction.counterpartyName,
       note: instruction.note,
     );
-    return Result.success(
-      TransactionUpdateResult(
-        transactions: [transaction],
-        accounts: const [],
-        currentTransaction: transaction,
-      ),
+    return TransactionUpdateResult(
+      transactions: [transaction],
+      accounts: const [],
+      currentTransaction: transaction,
     );
   }
 
-  Future<Result<TransactionUpdateResult>> updateReportingFlag(
+  Future<TransactionUpdateResult> updateReportingFlag(
     UpdateTransactionReportingFlagInstruction instruction,
   ) async {
     if (instruction.isExcludedFromStats == null &&
@@ -56,58 +54,56 @@ class LedgerUpdateService {
     final group = await _rootGroupRepository.findByTransactionId(
       instruction.transactionId,
     );
-    if (group == null) return _failure('transaction_not_found');
+    if (group == null) {
+      LedgerViolationReason.transactionNotFound.throwException();
+    }
     group.updateReportingFlags(
       isExcludedFromStats: instruction.isExcludedFromStats,
       isExcludedFromBudget: instruction.isExcludedFromBudget,
     );
     final current = group.findTransaction(instruction.transactionId);
-    if (current == null) return _failure('transaction_not_found');
-    return Result.success(
-      TransactionUpdateResult(
-        transactions: group.transactions.toList(),
-        accounts: const [],
-        currentTransaction: current,
-      ),
+    if (current == null) {
+      LedgerViolationReason.transactionNotFound.throwException();
+    }
+    return TransactionUpdateResult(
+      transactions: group.transactions.toList(),
+      accounts: const [],
+      currentTransaction: current,
     );
   }
 
-  Future<Result<TransactionUpdateResult>> updateOwnership(
+  Future<TransactionUpdateResult> updateOwnership(
     UpdateTransactionOwnershipInstruction instruction,
   ) async {
     final group = await _rootGroupRepository.findByTransactionId(
       instruction.transactionId,
     );
-    if (group == null) return _failure('transaction_not_found');
+    if (group == null) {
+      LedgerViolationReason.transactionNotFound.throwException();
+    }
     group.updateOwnership(instruction.ownership);
     final current = group.findTransaction(instruction.transactionId);
-    if (current == null) return _failure('transaction_not_found');
-    return Result.success(
-      TransactionUpdateResult(
-        transactions: group.transactions.toList(),
-        accounts: const [],
-        currentTransaction: current,
-      ),
+    if (current == null) {
+      LedgerViolationReason.transactionNotFound.throwException();
+    }
+    return TransactionUpdateResult(
+      transactions: group.transactions.toList(),
+      accounts: const [],
+      currentTransaction: current,
     );
   }
 
-  Future<Result<TransactionUpdateResult>> _empty(String transactionId) async {
+  Future<TransactionUpdateResult> _empty(String transactionId) async {
     final transaction = await _transactionRepository.findCompleteById(
       transactionId,
     );
-    if (transaction == null) return _failure('transaction_not_found');
-    return Result.success(
-      TransactionUpdateResult(
-        transactions: const [],
-        accounts: const [],
-        currentTransaction: transaction,
-      ),
-    );
-  }
-
-  Result<T> _failure<T>(String code) {
-    return Result.failure(
-      Failure(code: code, message: 'Ledger update failed: $code.'),
+    if (transaction == null) {
+      LedgerViolationReason.transactionNotFound.throwException();
+    }
+    return TransactionUpdateResult(
+      transactions: const [],
+      accounts: const [],
+      currentTransaction: transaction,
     );
   }
 }

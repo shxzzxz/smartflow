@@ -4,7 +4,6 @@ import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/presentation/transaction_form_presentation.dart';
@@ -381,7 +380,7 @@ class _FakeTransactionPostingAppService
     CreateExpenseCommand command,
   ) async {
     expenseCommands.add(command);
-    return _resultOrThrow();
+    return _postedResult();
   }
 
   @override
@@ -389,7 +388,7 @@ class _FakeTransactionPostingAppService
     CreateIncomeCommand command,
   ) async {
     incomeCommands.add(command);
-    return _resultOrThrow();
+    return _postedResult();
   }
 
   @override
@@ -397,7 +396,7 @@ class _FakeTransactionPostingAppService
     CreateTransferCommand command,
   ) async {
     transferCommands.add(command);
-    return _resultOrThrow();
+    return _postedResult();
   }
 
   @override
@@ -405,7 +404,7 @@ class _FakeTransactionPostingAppService
     CreateReimbursementAdvanceCommand command,
   ) async {
     reimbursementAdvanceCommands.add(command);
-    return _resultOrThrow();
+    return _postedResult();
   }
 
   @override
@@ -413,10 +412,10 @@ class _FakeTransactionPostingAppService
     CreateBorrowingCommand command,
   ) async {
     borrowingCommands.add(command);
-    return _resultOrThrow();
+    return _postedResult();
   }
 
-  PostedTransactionResult _resultOrThrow() {
+  PostedTransactionResult _postedResult() {
     final exception = this.exception;
     if (exception != null) throw exception;
     return const PostedTransactionResult(
@@ -426,9 +425,7 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<Result<PostedTransactionResult>> adjustBalance(
-    AdjustBalanceCommand command,
-  ) {
+  Future<PostedTransactionResult> adjustBalance(AdjustBalanceCommand command) {
     throw UnimplementedError();
   }
 
@@ -440,7 +437,7 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createOpeningBalance(
+  Future<PostedTransactionResult> createOpeningBalance(
     CreateOpeningBalanceCommand command,
   ) {
     throw UnimplementedError();
@@ -491,7 +488,7 @@ class _FakeTransactionCorrectionAppService
   }
 
   @override
-  Future<PostedTransactionResult> saveReimbursementAdvanceCorrection(
+  Future<PostedTransactionResult> correctReimbursementAdvance(
     CorrectReimbursementAdvanceCommand command,
   ) async {
     reimbursementAdvanceCommands.add(command);
@@ -509,33 +506,24 @@ class _FakeTransactionCorrectionAppService
   }
 
   @override
-  Future<void> cancelTransaction(DeleteTransactionCommand command) async {
+  Future<void> deleteTransaction(DeleteTransactionCommand command) async {
     deletedTransactionIds.add(command.transactionId);
   }
 
   @override
-  Future<Result<PostedTransactionResult>> correctReimbursementAdvance(
-    CorrectReimbursementAdvanceCommand command,
-  ) {
+  Future<PostedTransactionResult> correctRefund(CorrectRefundCommand command) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Result<PostedTransactionResult>> correctRefund(
-    CorrectRefundCommand command,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Result<PostedTransactionResult>> correctReimbursementClose(
+  Future<PostedTransactionResult> correctReimbursementClose(
     CorrectReimbursementCloseCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Result<PostedTransactionResult>> correctReimbursementReceipt(
+  Future<PostedTransactionResult> correctReimbursementReceipt(
     CorrectReimbursementReceiptCommand command,
   ) {
     throw UnimplementedError();
@@ -545,11 +533,6 @@ class _FakeTransactionCorrectionAppService
   Future<PostedTransactionResult> correctRepayment(
     CorrectRepaymentCommand command,
   ) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Result<void>> deleteTransaction(DeleteTransactionCommand command) {
     throw UnimplementedError();
   }
 }

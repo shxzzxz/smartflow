@@ -3,7 +3,6 @@ import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/patch/patch.dart';
-import '../../../core/result/result.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 
@@ -49,18 +48,6 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
     transaction: transaction,
     updateService: updateService,
   );
-}
-
-UiActionOutcome<void> detailVoidOutcomeFromResult<T>(Result<T> result) {
-  return switch (result) {
-    Success<T>() => const UiActionOutcome.success(null),
-    FailureResult<T>(:final failure) => UiActionOutcome.failure(
-      UiError(
-        code: failure.code ?? LedgerErrorCode.transactionPostingFailed.code,
-        message: failure.message,
-      ),
-    ),
-  };
 }
 
 Future<UiActionOutcome<void>> detailVoidOutcomeFromAction(
@@ -112,32 +99,35 @@ final class _DefaultActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> delete() async {
-    await correctionService.cancelTransaction(
-      DeleteTransactionCommand(transactionId: transaction.id),
-    );
-    return const UiActionOutcome.success(null);
+    return detailVoidOutcomeFromAction(() {
+      return correctionService.deleteTransaction(
+        DeleteTransactionCommand(transactionId: transaction.id),
+      );
+    });
   }
 
   @override
   Future<UiActionOutcome<void>> changeNote(String? value) async {
-    final result = await updateService.updateBasicInfo(
-      UpdateTransactionBasicInfoCommand(
-        transactionId: transaction.id,
-        note: _nullableStringPatch(value),
-      ),
-    );
-    return detailVoidOutcomeFromResult(result);
+    return detailVoidOutcomeFromAction(() {
+      return updateService.updateBasicInfo(
+        UpdateTransactionBasicInfoCommand(
+          transactionId: transaction.id,
+          note: _nullableStringPatch(value),
+        ),
+      );
+    });
   }
 
   @override
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
-    final result = await updateService.updateBasicInfo(
-      UpdateTransactionBasicInfoCommand(
-        transactionId: transaction.id,
-        occurredAt: value,
-      ),
-    );
-    return detailVoidOutcomeFromResult(result);
+    return detailVoidOutcomeFromAction(() {
+      return updateService.updateBasicInfo(
+        UpdateTransactionBasicInfoCommand(
+          transactionId: transaction.id,
+          occurredAt: value,
+        ),
+      );
+    });
   }
 
   @override
@@ -164,17 +154,19 @@ final class _InstallmentActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> delete() async {
-    final result = switch (role) {
-      InstallmentOwnerRole.disbursement => await installmentService
-          .deleteContract(DeleteContractCommand(contractId: contractId)),
-      InstallmentOwnerRole.scheduledRepayment ||
-      InstallmentOwnerRole.extraPrincipal ||
-      InstallmentOwnerRole.earlySettlement => await installmentService
-          .revertRepayment(
-            RevertRepaymentCommand(transactionId: transaction.id),
-          ),
-    };
-    return detailVoidOutcomeFromResult(result);
+    return detailVoidOutcomeFromAction(() {
+      return switch (role) {
+        InstallmentOwnerRole.disbursement => installmentService.deleteContract(
+          DeleteContractCommand(contractId: contractId),
+        ),
+        InstallmentOwnerRole.scheduledRepayment ||
+        InstallmentOwnerRole.extraPrincipal ||
+        InstallmentOwnerRole.earlySettlement => installmentService
+            .revertRepayment(
+              RevertRepaymentCommand(transactionId: transaction.id),
+            ),
+      };
+    });
   }
 
   @override
@@ -192,14 +184,15 @@ final class _InstallmentActionDispatcher
         );
       });
     }
-    final result = await installmentService.editRepayment(
-      EditRepaymentCommand(
-        transactionId: transaction.id,
-        contractId: contractId,
-        note: _nullableStringPatch(value),
-      ),
-    );
-    return detailVoidOutcomeFromResult(result);
+    return detailVoidOutcomeFromAction(() {
+      return installmentService.editRepayment(
+        EditRepaymentCommand(
+          transactionId: transaction.id,
+          contractId: contractId,
+          note: _nullableStringPatch(value),
+        ),
+      );
+    });
   }
 
   @override
@@ -211,14 +204,15 @@ final class _InstallmentActionDispatcher
         );
       });
     }
-    final result = await installmentService.editRepayment(
-      EditRepaymentCommand(
-        transactionId: transaction.id,
-        contractId: contractId,
-        occurredAt: value,
-      ),
-    );
-    return detailVoidOutcomeFromResult(result);
+    return detailVoidOutcomeFromAction(() {
+      return installmentService.editRepayment(
+        EditRepaymentCommand(
+          transactionId: transaction.id,
+          contractId: contractId,
+          occurredAt: value,
+        ),
+      );
+    });
   }
 
   @override
@@ -235,14 +229,15 @@ final class _InstallmentActionDispatcher
         );
       });
     }
-    final result = await installmentService.editRepayment(
-      EditRepaymentCommand(
-        transactionId: transaction.id,
-        contractId: contractId,
-        paidFromAccountId: accountId,
-      ),
-    );
-    return detailVoidOutcomeFromResult(result);
+    return detailVoidOutcomeFromAction(() {
+      return installmentService.editRepayment(
+        EditRepaymentCommand(
+          transactionId: transaction.id,
+          contractId: contractId,
+          paidFromAccountId: accountId,
+        ),
+      );
+    });
   }
 }
 
@@ -263,13 +258,14 @@ final class _UnknownActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> changeNote(String? value) async {
-    final result = await updateService.updateBasicInfo(
-      UpdateTransactionBasicInfoCommand(
-        transactionId: transaction.id,
-        note: _nullableStringPatch(value),
-      ),
-    );
-    return detailVoidOutcomeFromResult(result);
+    return detailVoidOutcomeFromAction(() {
+      return updateService.updateBasicInfo(
+        UpdateTransactionBasicInfoCommand(
+          transactionId: transaction.id,
+          note: _nullableStringPatch(value),
+        ),
+      );
+    });
   }
 
   @override

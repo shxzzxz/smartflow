@@ -1,11 +1,8 @@
-import 'package:smartflow/core/error/app_exception.dart';
-import 'package:smartflow/core/error/failure.dart';
-import 'package:smartflow/core/result/result.dart';
 import '../../entity/account.dart';
 import '../../entity/transaction.dart';
 import '../../port/account_repository.dart';
 import '../../port/system_account_resolver.dart';
-import '../../valobj/ledger_error_code.dart';
+import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import '../../valobj/posting_result.dart';
 import '../account/account_role_policy.dart';
@@ -32,122 +29,98 @@ class LedgerPostingService {
   final AccountRolePolicy _accountRolePolicy;
 
   Future<PostingResult> postExpense(ExpenseInstruction instruction) async {
-    final roleFailure = await _accountRolePolicy.validate(
+    final roleViolation = await _accountRolePolicy.validate(
       AccountRoleContext.expense(
         paidFromAccountId: instruction.paidFromAccountId,
         expenseAccountId: instruction.expenseAccountId,
       ),
     );
-    if (roleFailure != null) throw _businessExceptionFromFailure(roleFailure);
+    if (roleViolation != null) roleViolation.throwException();
 
-    final transactionResult = _postingEngine.createExpense(instruction);
-    if (transactionResult case FailureResult(:final failure)) {
-      throw _businessExceptionFromFailure(failure);
-    }
-    return _applyPostingValue(transactionResult.value);
+    return _applyPosting(_postingEngine.createExpense(instruction));
   }
 
-  Future<Result<PostingResult>> postIncome(
-    IncomeInstruction instruction,
-  ) async {
-    final roleFailure = await _accountRolePolicy.validate(
+  Future<PostingResult> postIncome(IncomeInstruction instruction) async {
+    final roleViolation = await _accountRolePolicy.validate(
       AccountRoleContext.income(
         receiveAccountId: instruction.receiveAccountId,
         incomeAccountId: instruction.incomeAccountId,
       ),
     );
-    if (roleFailure != null) return Result.failure(roleFailure);
+    if (roleViolation != null) roleViolation.throwException();
 
-    final transactionResult = _postingEngine.createIncome(instruction);
-    if (transactionResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    return _applyPosting(transactionResult.value);
+    return _applyPosting(_postingEngine.createIncome(instruction));
   }
 
-  Future<Result<PostingResult>> postTransfer(
-    TransferInstruction instruction,
-  ) async {
+  Future<PostingResult> postTransfer(TransferInstruction instruction) async {
     final hasFee =
         instruction.feeAmount != null && instruction.feeAmount!.minorUnits > 0;
-    final roleFailure = await _accountRolePolicy.validate(
+    final roleViolation = await _accountRolePolicy.validate(
       AccountRoleContext.transfer(
         fromAccountId: instruction.fromAccountId,
         toAccountId: instruction.toAccountId,
       ),
     );
-    if (roleFailure != null) return Result.failure(roleFailure);
+    if (roleViolation != null) roleViolation.throwException();
 
-    final transactionResult = _postingEngine.createTransfer(
-      instruction,
-      feeExpenseAccountId:
-          hasFee ? await _systemAccountResolver.resolveFeeExpense() : null,
+    return _applyPosting(
+      _postingEngine.createTransfer(
+        instruction,
+        feeExpenseAccountId:
+            hasFee ? await _systemAccountResolver.resolveFeeExpense() : null,
+      ),
     );
-    if (transactionResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    return _applyPosting(transactionResult.value);
   }
 
   Future<PostingResult> postRepayment(RepaymentInstruction instruction) async {
-    final roleFailure = await _accountRolePolicy.validate(
+    final roleViolation = await _accountRolePolicy.validate(
       AccountRoleContext.repayment(
         liabilityAccountId: instruction.liabilityAccountId,
         paidFromAccountId: instruction.paidFromAccountId,
       ),
     );
-    if (roleFailure != null) throw _businessExceptionFromFailure(roleFailure);
+    if (roleViolation != null) roleViolation.throwException();
 
     final hasInterest =
         instruction.interest != null && instruction.interest!.minorUnits > 0;
     final hasFee = instruction.fee != null && instruction.fee!.minorUnits > 0;
     final hasDiscount =
         instruction.discount != null && instruction.discount!.minorUnits > 0;
-    final transactionResult = _postingEngine.createRepayment(
-      instruction,
-      interestExpenseAccountId:
-          hasInterest
-              ? await _systemAccountResolver.resolveInterestExpense()
-              : null,
-      feeExpenseAccountId:
-          hasFee ? await _systemAccountResolver.resolveFeeExpense() : null,
-      discountIncomeAccountId:
-          hasDiscount
-              ? await _systemAccountResolver.resolveDiscountIncome()
-              : null,
+    return _applyPosting(
+      _postingEngine.createRepayment(
+        instruction,
+        interestExpenseAccountId:
+            hasInterest
+                ? await _systemAccountResolver.resolveInterestExpense()
+                : null,
+        feeExpenseAccountId:
+            hasFee ? await _systemAccountResolver.resolveFeeExpense() : null,
+        discountIncomeAccountId:
+            hasDiscount
+                ? await _systemAccountResolver.resolveDiscountIncome()
+                : null,
+      ),
     );
-    if (transactionResult case FailureResult(:final failure)) {
-      throw _businessExceptionFromFailure(failure);
-    }
-    return _applyPostingValue(transactionResult.value);
   }
 
-  Future<Result<PostingResult>> postBorrowing(
-    BorrowingInstruction instruction,
-  ) async {
-    final roleFailure = await _accountRolePolicy.validate(
+  Future<PostingResult> postBorrowing(BorrowingInstruction instruction) async {
+    final roleViolation = await _accountRolePolicy.validate(
       AccountRoleContext.borrowing(
         liabilityAccountId: instruction.liabilityAccountId,
         receiveAccountId: instruction.receiveAccountId,
       ),
     );
-    if (roleFailure != null) return Result.failure(roleFailure);
+    if (roleViolation != null) roleViolation.throwException();
 
-    final transactionResult = _postingEngine.createBorrowing(instruction);
-    if (transactionResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    return _applyPosting(transactionResult.value);
+    return _applyPosting(_postingEngine.createBorrowing(instruction));
   }
 
-  Future<Result<PostingResult>> postOpeningBalance(
+  Future<PostingResult> postOpeningBalance(
     OpeningBalanceInstruction instruction,
   ) async {
     final account = await _accountRepository.findById(instruction.accountId);
     if (account == null) {
-      return const Result.failure(
-        Failure(code: 'account_not_found', message: 'Account does not exist.'),
-      );
+      LedgerViolationReason.accountNotFound.throwException();
     }
     return postOpeningBalanceForAccount(
       account: account,
@@ -155,65 +128,33 @@ class LedgerPostingService {
     );
   }
 
-  Future<Result<PostingResult>> postOpeningBalanceForAccount({
+  Future<PostingResult> postOpeningBalanceForAccount({
     required Account account,
     required OpeningBalanceInstruction instruction,
   }) async {
     if (!account.supportsManualBalance) {
-      return const Result.failure(
-        Failure(
-          code: 'opening_balance_not_supported',
-          message: 'This account type does not support opening balance.',
-        ),
-      );
-    }
-    final equityAccountId =
-        await _systemAccountResolver.resolveOpeningBalance();
-    final transactionResult = _postingEngine.createOpeningBalance(
-      instruction: instruction,
-      account: account,
-      equityAccountId: equityAccountId,
-    );
-    if (transactionResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    return _applyPosting(transactionResult.value, loadedAccounts: [account]);
-  }
-
-  Future<PostingResult> postOpeningBalanceForAccountValue({
-    required Account account,
-    required OpeningBalanceInstruction instruction,
-  }) async {
-    if (!account.supportsManualBalance) {
-      throw BusinessException(
-        LedgerErrorCode.accountUnavailable,
+      LedgerViolationReason.openingBalanceNotSupported.throwException(
         message: 'This account type does not support opening balance.',
       );
     }
     final equityAccountId =
         await _systemAccountResolver.resolveOpeningBalance();
-    final transactionResult = _postingEngine.createOpeningBalance(
-      instruction: instruction,
-      account: account,
-      equityAccountId: equityAccountId,
-    );
-    if (transactionResult case FailureResult(:final failure)) {
-      throw _businessExceptionFromFailure(failure);
-    }
-    return _applyPostingValue(
-      transactionResult.value,
+    return _applyPosting(
+      _postingEngine.createOpeningBalance(
+        instruction: instruction,
+        account: account,
+        equityAccountId: equityAccountId,
+      ),
       loadedAccounts: [account],
     );
   }
 
-  Future<Result<PostingResult>> postBalanceAdjustment(
+  Future<PostingResult> postBalanceAdjustment(
     BalanceAdjustmentInstruction instruction,
   ) async {
     final account = await _accountRepository.findById(instruction.accountId);
     if (account == null) {
-      return const Result.failure(
-        Failure(code: 'account_not_found', message: 'Account does not exist.'),
-      );
+      LedgerViolationReason.accountNotFound.throwException();
     }
     return postBalanceAdjustmentForAccount(
       account: account,
@@ -221,94 +162,29 @@ class LedgerPostingService {
     );
   }
 
-  Future<Result<PostingResult>> postBalanceAdjustmentForAccount({
+  Future<PostingResult> postBalanceAdjustmentForAccount({
     required Account account,
     required BalanceAdjustmentInstruction instruction,
   }) async {
-    final deltaResult = account.targetBalanceDeltaTo(instruction.targetBalance);
-    if (deltaResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
+    final adjustmentViolation = account.checkBalanceAdjustmentTarget(
+      instruction.targetBalance,
+    );
+    if (adjustmentViolation != null) adjustmentViolation.throwException();
+    final signedDelta = account.balanceDeltaTo(instruction.targetBalance);
     final equityAccountId =
         await _systemAccountResolver.resolveOpeningBalance();
-    final transactionResult = _postingEngine.createBalanceAdjustment(
-      instruction: instruction,
-      account: account,
-      signedDelta: deltaResult.value,
-      equityAccountId: equityAccountId,
-    );
-    if (transactionResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    return _applyPosting(transactionResult.value, loadedAccounts: [account]);
-  }
-
-  Future<PostingResult> postBalanceAdjustmentForAccountValue({
-    required Account account,
-    required BalanceAdjustmentInstruction instruction,
-  }) async {
-    final deltaResult = account.targetBalanceDeltaTo(instruction.targetBalance);
-    if (deltaResult case FailureResult(:final failure)) {
-      throw _businessExceptionFromFailure(failure);
-    }
-    final equityAccountId =
-        await _systemAccountResolver.resolveOpeningBalance();
-    final transactionResult = _postingEngine.createBalanceAdjustment(
-      instruction: instruction,
-      account: account,
-      signedDelta: deltaResult.value,
-      equityAccountId: equityAccountId,
-    );
-    if (transactionResult case FailureResult(:final failure)) {
-      throw _businessExceptionFromFailure(failure);
-    }
-    return _applyPostingValue(
-      transactionResult.value,
+    return _applyPosting(
+      _postingEngine.createBalanceAdjustment(
+        instruction: instruction,
+        account: account,
+        signedDelta: signedDelta,
+        equityAccountId: equityAccountId,
+      ),
       loadedAccounts: [account],
     );
   }
 
-  Future<Result<PostingResult>> _applyPosting(
-    Transaction transaction, {
-    Iterable<Account> loadedAccounts = const [],
-  }) async {
-    try {
-      final accountMap = {
-        for (final account in loadedAccounts) account.id: account,
-      };
-      final missingIds = transaction.accountIds.difference(
-        accountMap.keys.toSet(),
-      );
-      if (missingIds.isNotEmpty) {
-        final accounts = await _accountRepository.findByIds(missingIds);
-        accountMap.addEntries(
-          accounts.map((account) => MapEntry(account.id, account)),
-        );
-      }
-      final missingFailure = _validateAccountsLoaded(
-        transaction.accountIds,
-        accountMap,
-      );
-      if (missingFailure != null) return Result.failure(missingFailure);
-      final updated = _accountPostingService.apply(
-        transaction: transaction,
-        accounts: accountMap,
-      );
-      return Result.success(
-        PostingResult(transaction: transaction, accounts: updated),
-      );
-    } on Object catch (error) {
-      return Result.failure(
-        Failure(
-          code: 'posting_failed',
-          message: 'Failed to post transaction.',
-          cause: error,
-        ),
-      );
-    }
-  }
-
-  Future<PostingResult> _applyPostingValue(
+  Future<PostingResult> _applyPosting(
     Transaction transaction, {
     Iterable<Account> loadedAccounts = const [],
   }) async {
@@ -324,13 +200,11 @@ class LedgerPostingService {
         accounts.map((account) => MapEntry(account.id, account)),
       );
     }
-    final missingFailure = _validateAccountsLoaded(
+    final accountViolation = _validateAccountsLoaded(
       transaction.accountIds,
       accountMap,
     );
-    if (missingFailure != null) {
-      throw _businessExceptionFromFailure(missingFailure);
-    }
+    if (accountViolation != null) accountViolation.throwException();
     final updated = _accountPostingService.apply(
       transaction: transaction,
       accounts: accountMap,
@@ -338,45 +212,19 @@ class LedgerPostingService {
     return PostingResult(transaction: transaction, accounts: updated);
   }
 
-  Failure? _validateAccountsLoaded(
+  LedgerViolationReason? _validateAccountsLoaded(
     Set<String> accountIds,
     Map<String, Account> accounts,
   ) {
     for (final accountId in accountIds) {
       final account = accounts[accountId];
       if (account == null) {
-        return Failure(
-          code: 'account_not_found',
-          message: 'Account $accountId does not exist.',
-        );
+        return LedgerViolationReason.accountNotFound;
       }
       if (account.archivedAt != null) {
-        return Failure(
-          code: 'account_archived',
-          message: 'Account $accountId is archived.',
-        );
+        return LedgerViolationReason.accountArchived;
       }
     }
     return null;
-  }
-
-  BusinessException _businessExceptionFromFailure(Failure failure) {
-    return BusinessException(
-      _ledgerErrorCodeFromFailureCode(failure.code),
-      message: failure.message,
-      cause: failure.cause,
-    );
-  }
-
-  LedgerErrorCode _ledgerErrorCodeFromFailureCode(String? code) {
-    return switch (code) {
-      'account_not_found' => LedgerErrorCode.accountNotFound,
-      'account_archived' => LedgerErrorCode.accountUnavailable,
-      'account_role_invalid' => LedgerErrorCode.accountInvalidRole,
-      'account_subtype_invalid' => LedgerErrorCode.accountInvalidRole,
-      'expense_amount_not_positive' =>
-        LedgerErrorCode.transactionInvalidCommand,
-      _ => LedgerErrorCode.transactionPostingFailed,
-    };
   }
 }

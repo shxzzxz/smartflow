@@ -170,7 +170,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     try {
       await ref
           .read(transactionCorrectionAppServiceProvider)
-          .cancelTransaction(
+          .deleteTransaction(
             DeleteTransactionCommand(transactionId: transactionId),
           );
       return const UiActionOutcome.success(null);
@@ -336,7 +336,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             ),
           );
         } else {
-          await correctionService.saveReimbursementAdvanceCorrection(
+          await correctionService.correctReimbursementAdvance(
             CorrectReimbursementAdvanceCommand(
               transactionId: transactionId,
               amount: amount,

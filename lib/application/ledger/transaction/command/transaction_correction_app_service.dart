@@ -1,5 +1,4 @@
 import 'package:smartflow/core/id/id_generator.dart';
-import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/root_transaction_group_repository.dart';
 import 'package:smartflow/domain/ledger/port/system_account_resolver.dart';
@@ -24,23 +23,17 @@ abstract interface class TransactionCorrectionAppService {
     CorrectTransferCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> correctReimbursementAdvance(
+  Future<PostedTransactionResult> correctReimbursementAdvance(
     CorrectReimbursementAdvanceCommand command,
   );
 
-  Future<PostedTransactionResult> saveReimbursementAdvanceCorrection(
-    CorrectReimbursementAdvanceCommand command,
-  );
+  Future<PostedTransactionResult> correctRefund(CorrectRefundCommand command);
 
-  Future<Result<PostedTransactionResult>> correctRefund(
-    CorrectRefundCommand command,
-  );
-
-  Future<Result<PostedTransactionResult>> correctReimbursementReceipt(
+  Future<PostedTransactionResult> correctReimbursementReceipt(
     CorrectReimbursementReceiptCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> correctReimbursementClose(
+  Future<PostedTransactionResult> correctReimbursementClose(
     CorrectReimbursementCloseCommand command,
   );
 
@@ -52,9 +45,7 @@ abstract interface class TransactionCorrectionAppService {
     CorrectRepaymentCommand command,
   );
 
-  Future<Result<void>> deleteTransaction(DeleteTransactionCommand command);
-
-  Future<void> cancelTransaction(DeleteTransactionCommand command);
+  Future<void> deleteTransaction(DeleteTransactionCommand command);
 }
 
 class TransactionCorrectionAppServiceImpl
@@ -103,7 +94,7 @@ class TransactionCorrectionAppServiceImpl
   Future<PostedTransactionResult> correctExpense(
     CorrectExpenseCommand cmd,
   ) async {
-    return _ledgerWriter.persistMutationValue(
+    return _ledgerWriter.persistMutation(
       await _ledgerCorrectionService.replaceParentTransaction(
         ReplaceParentTransactionInstruction(
           transactionId: cmd.transactionId,
@@ -127,7 +118,7 @@ class TransactionCorrectionAppServiceImpl
   Future<PostedTransactionResult> correctIncome(
     CorrectIncomeCommand cmd,
   ) async {
-    return _ledgerWriter.persistMutationValue(
+    return _ledgerWriter.persistMutation(
       await _ledgerCorrectionService.replaceParentTransaction(
         ReplaceParentTransactionInstruction(
           transactionId: cmd.transactionId,
@@ -150,7 +141,7 @@ class TransactionCorrectionAppServiceImpl
   Future<PostedTransactionResult> correctTransfer(
     CorrectTransferCommand cmd,
   ) async {
-    return _ledgerWriter.persistMutationValue(
+    return _ledgerWriter.persistMutation(
       await _ledgerCorrectionService.replaceParentTransaction(
         ReplaceParentTransactionInstruction(
           transactionId: cmd.transactionId,
@@ -170,7 +161,7 @@ class TransactionCorrectionAppServiceImpl
   }
 
   @override
-  Future<Result<PostedTransactionResult>> correctReimbursementAdvance(
+  Future<PostedTransactionResult> correctReimbursementAdvance(
     CorrectReimbursementAdvanceCommand cmd,
   ) async {
     return _ledgerWriter.persistMutation(
@@ -195,32 +186,7 @@ class TransactionCorrectionAppServiceImpl
   }
 
   @override
-  Future<PostedTransactionResult> saveReimbursementAdvanceCorrection(
-    CorrectReimbursementAdvanceCommand cmd,
-  ) async {
-    return _ledgerWriter.persistMutationValue(
-      await _ledgerCorrectionService.replaceParentTransaction(
-        ReplaceParentTransactionInstruction(
-          transactionId: cmd.transactionId,
-          expectedCurrentPurpose: BusinessPurpose.reimbursementAdvance,
-          occurredAt: cmd.occurredAt,
-          counterpartyName: cmd.counterpartyName,
-          note: cmd.note,
-          isExcludedFromStats: cmd.isExcludedFromStats,
-          isExcludedFromBudget: cmd.isExcludedFromBudget,
-          replacementPatch: ReimbursementAdvanceReplacementPatch(
-            amount: cmd.amount,
-            receivableAccountId: cmd.receivableAccountId,
-            paidFromAccountId: cmd.paidFromAccountId,
-            expenseAccountId: cmd.expenseCategoryId,
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Future<Result<PostedTransactionResult>> correctRefund(
+  Future<PostedTransactionResult> correctRefund(
     CorrectRefundCommand cmd,
   ) async {
     return _ledgerWriter.persistMutation(
@@ -240,7 +206,7 @@ class TransactionCorrectionAppServiceImpl
   }
 
   @override
-  Future<Result<PostedTransactionResult>> correctReimbursementReceipt(
+  Future<PostedTransactionResult> correctReimbursementReceipt(
     CorrectReimbursementReceiptCommand cmd,
   ) async {
     return _ledgerWriter.persistMutation(
@@ -259,7 +225,7 @@ class TransactionCorrectionAppServiceImpl
   }
 
   @override
-  Future<Result<PostedTransactionResult>> correctReimbursementClose(
+  Future<PostedTransactionResult> correctReimbursementClose(
     CorrectReimbursementCloseCommand cmd,
   ) async {
     return _ledgerWriter.persistMutation(
@@ -281,7 +247,7 @@ class TransactionCorrectionAppServiceImpl
   Future<PostedTransactionResult> correctBorrowing(
     CorrectBorrowingCommand cmd,
   ) async {
-    return _ledgerWriter.persistMutationValue(
+    return _ledgerWriter.persistMutation(
       await _ledgerCorrectionService.replaceParentTransaction(
         ReplaceParentTransactionInstruction(
           transactionId: cmd.transactionId,
@@ -303,7 +269,7 @@ class TransactionCorrectionAppServiceImpl
   Future<PostedTransactionResult> correctRepayment(
     CorrectRepaymentCommand cmd,
   ) async {
-    return _ledgerWriter.persistMutationValue(
+    return _ledgerWriter.persistMutation(
       await _ledgerCorrectionService.replaceParentTransaction(
         ReplaceParentTransactionInstruction(
           transactionId: cmd.transactionId,
@@ -325,19 +291,8 @@ class TransactionCorrectionAppServiceImpl
   }
 
   @override
-  Future<Result<void>> deleteTransaction(
-    DeleteTransactionCommand command,
-  ) async {
+  Future<void> deleteTransaction(DeleteTransactionCommand command) async {
     return _ledgerWriter.persistCancellation(
-      await _ledgerCorrectionService.cancelTransaction(
-        CancelTransactionInstruction(transactionId: command.transactionId),
-      ),
-    );
-  }
-
-  @override
-  Future<void> cancelTransaction(DeleteTransactionCommand command) async {
-    return _ledgerWriter.persistCancellationValue(
       await _ledgerCorrectionService.cancelTransaction(
         CancelTransactionInstruction(transactionId: command.transactionId),
       ),

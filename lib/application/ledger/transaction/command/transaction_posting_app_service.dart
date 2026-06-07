@@ -1,5 +1,4 @@
 import 'package:smartflow/core/id/id_generator.dart';
-import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/root_transaction_group_repository.dart';
 import 'package:smartflow/domain/ledger/port/system_account_resolver.dart';
@@ -44,13 +43,11 @@ abstract interface class TransactionPostingAppService {
     CreateBorrowingCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> createOpeningBalance(
+  Future<PostedTransactionResult> createOpeningBalance(
     CreateOpeningBalanceCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> adjustBalance(
-    AdjustBalanceCommand command,
-  );
+  Future<PostedTransactionResult> adjustBalance(AdjustBalanceCommand command);
 }
 
 class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
@@ -119,7 +116,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   Future<PostedTransactionResult> createExpense(
     CreateExpenseCommand command,
   ) async {
-    return _ledgerWriter.persistPostingValue(
+    return _ledgerWriter.persistPosting(
       await _ledgerPostingService.postExpense(
         ExpenseInstruction(
           amount: command.amount,
@@ -139,7 +136,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   Future<PostedTransactionResult> createIncome(
     CreateIncomeCommand command,
   ) async {
-    return _ledgerWriter.persistPostingResultValue(
+    return _ledgerWriter.persistPosting(
       await _ledgerPostingService.postIncome(
         IncomeInstruction(
           amount: command.amount,
@@ -158,7 +155,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   Future<PostedTransactionResult> createTransfer(
     CreateTransferCommand command,
   ) async {
-    return _ledgerWriter.persistPostingResultValue(
+    return _ledgerWriter.persistPosting(
       await _ledgerPostingService.postTransfer(
         TransferInstruction(
           amount: command.amount,
@@ -177,7 +174,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   Future<PostedTransactionResult> createRefund(
     CreateRefundCommand command,
   ) async {
-    return _ledgerWriter.persistPostingValue(
+    return _ledgerWriter.persistPosting(
       await _refundPostingService.postRefund(
         RefundInstruction(
           parentTransactionId: command.parentTransactionId,
@@ -195,7 +192,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   Future<PostedTransactionResult> createReimbursementAdvance(
     CreateReimbursementAdvanceCommand command,
   ) async {
-    return _ledgerWriter.persistPostingResultValue(
+    return _ledgerWriter.persistPosting(
       await _reimbursementPostingService.postAdvance(
         ReimbursementAdvanceInstruction(
           amount: command.amount,
@@ -214,7 +211,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   Future<PostedTransactionResult> createReimbursementReceipt(
     CreateReimbursementReceiptCommand command,
   ) async {
-    return _ledgerWriter.persistPostingValue(
+    return _ledgerWriter.persistPosting(
       await _reimbursementPostingService.postReceipt(
         ReimbursementReceiptInstruction(
           advanceTransactionId: command.advanceTransactionId,
@@ -233,7 +230,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   Future<PostedTransactionResult> closeReimbursement(
     CloseReimbursementCommand command,
   ) async {
-    return _ledgerWriter.persistPostingValue(
+    return _ledgerWriter.persistPosting(
       await _reimbursementPostingService.close(
         ReimbursementCloseInstruction(
           advanceTransactionId: command.advanceTransactionId,
@@ -252,7 +249,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   Future<PostedTransactionResult> createRepayment(
     CreateRepaymentCommand command,
   ) async {
-    return _ledgerWriter.persistPostingValue(
+    return _ledgerWriter.persistPosting(
       await _ledgerPostingService.postRepayment(
         RepaymentInstruction(
           principal: command.principal,
@@ -274,7 +271,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   Future<PostedTransactionResult> createBorrowing(
     CreateBorrowingCommand command,
   ) async {
-    return _ledgerWriter.persistPostingResultValue(
+    return _ledgerWriter.persistPosting(
       await _ledgerPostingService.postBorrowing(
         BorrowingInstruction(
           amount: command.amount,
@@ -290,7 +287,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createOpeningBalance(
+  Future<PostedTransactionResult> createOpeningBalance(
     CreateOpeningBalanceCommand command,
   ) async {
     return _ledgerWriter.persistPosting(
@@ -307,7 +304,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> adjustBalance(
+  Future<PostedTransactionResult> adjustBalance(
     AdjustBalanceCommand command,
   ) async {
     return _ledgerWriter.persistPosting(

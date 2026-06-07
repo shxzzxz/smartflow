@@ -5,7 +5,6 @@ import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/feature/transaction/page/transaction_form_page.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
 
@@ -110,9 +109,7 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<Result<PostedTransactionResult>> adjustBalance(
-    AdjustBalanceCommand command,
-  ) {
+  Future<PostedTransactionResult> adjustBalance(AdjustBalanceCommand command) {
     throw UnimplementedError();
   }
 
@@ -136,7 +133,7 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createOpeningBalance(
+  Future<PostedTransactionResult> createOpeningBalance(
     CreateOpeningBalanceCommand command,
   ) {
     throw UnimplementedError();

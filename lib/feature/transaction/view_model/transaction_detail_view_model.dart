@@ -70,7 +70,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
             loaded.detail.transaction,
           ).changeSettlementAccount(accountId);
         case AccountUsage.reimbursement:
-          final result = await ref
+          await ref
               .read(transactionCorrectionAppServiceProvider)
               .correctReimbursementAdvance(
                 CorrectReimbursementAdvanceCommand(
@@ -78,7 +78,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
                   receivableAccountId: accountId,
                 ),
               );
-          return detailVoidOutcomeFromResult(result);
+          return const UiActionOutcome.success(null);
         case AccountUsage.fund:
         case AccountUsage.credit:
         case AccountUsage.loan:
@@ -95,7 +95,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
       if (!isPlainTransaction(loaded.detail.transaction)) {
         return detailNotEditable('该交易当前不可修改统计口径');
       }
-      final result = await ref
+      await ref
           .read(transactionUpdateAppServiceProvider)
           .updateReportingFlag(
             UpdateTransactionReportingFlagCommand(
@@ -103,7 +103,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
               isExcludedFromStats: value,
             ),
           );
-      return detailVoidOutcomeFromResult(result);
+      return const UiActionOutcome.success(null);
     });
   }
 
@@ -112,7 +112,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
       if (!isPlainTransaction(loaded.detail.transaction)) {
         return detailNotEditable('该交易当前不可修改统计口径');
       }
-      final result = await ref
+      await ref
           .read(transactionUpdateAppServiceProvider)
           .updateReportingFlag(
             UpdateTransactionReportingFlagCommand(
@@ -120,7 +120,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
               isExcludedFromBudget: value,
             ),
           );
-      return detailVoidOutcomeFromResult(result);
+      return const UiActionOutcome.success(null);
     });
   }
 

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../app/provider.dart';
+import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
@@ -86,22 +87,26 @@ class InstallmentDetailPage extends ConsumerWidget {
           ),
     );
     if (confirmed != true) return;
-    final result = await ref
-        .read(installmentServiceProvider)
-        .deleteContract(DeleteContractCommand(contractId: contract.id));
-    if (!context.mounted) return;
-    result.when(
-      success: (_) {
-        ref.invalidate(
-          installmentContractsByAccountProvider(contract.liabilityAccountId),
-        );
-        context.pop();
-      },
-      failure:
-          (failure) => ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('删除失败：${failure.message}'))),
-    );
+    try {
+      await ref
+          .read(installmentServiceProvider)
+          .deleteContract(DeleteContractCommand(contractId: contract.id));
+      if (!context.mounted) return;
+      ref.invalidate(
+        installmentContractsByAccountProvider(contract.liabilityAccountId),
+      );
+      context.pop();
+    } on AppException catch (exception) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('删除失败：${exception.message}')));
+    } on Exception {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('删除失败，请稍后重试')));
+    }
   }
 }
 
@@ -566,27 +571,31 @@ class _RepaymentRow extends ConsumerWidget {
           ),
     );
     if (confirmed != true) return;
-    final result = await ref
-        .read(installmentServiceProvider)
-        .revertRepayment(
-          RevertRepaymentCommand(transactionId: cashflow.transactionId),
-        );
-    if (!context.mounted) return;
-    result.when(
-      success: (_) {
-        ref.invalidate(installmentContractProvider(contract.id));
-        ref.invalidate(installmentSchedulesProvider(contract.id));
-        ref.invalidate(installmentRepaymentsProvider(contract.id));
-        ref.invalidate(installmentRepaymentCashflowsProvider(contract.id));
-        ref.invalidate(
-          installmentContractsByAccountProvider(contract.liabilityAccountId),
-        );
-      },
-      failure:
-          (failure) => ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('撤销失败：${failure.message}'))),
-    );
+    try {
+      await ref
+          .read(installmentServiceProvider)
+          .revertRepayment(
+            RevertRepaymentCommand(transactionId: cashflow.transactionId),
+          );
+      if (!context.mounted) return;
+      ref.invalidate(installmentContractProvider(contract.id));
+      ref.invalidate(installmentSchedulesProvider(contract.id));
+      ref.invalidate(installmentRepaymentsProvider(contract.id));
+      ref.invalidate(installmentRepaymentCashflowsProvider(contract.id));
+      ref.invalidate(
+        installmentContractsByAccountProvider(contract.liabilityAccountId),
+      );
+    } on AppException catch (exception) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('撤销失败：${exception.message}')));
+    } on Exception {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('撤销失败，请稍后重试')));
+    }
   }
 }
 

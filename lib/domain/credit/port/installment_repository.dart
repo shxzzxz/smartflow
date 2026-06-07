@@ -123,7 +123,9 @@ abstract interface class InstallmentRepository {
 
   Future<List<InstallmentRepayment>> listRepayments(String contractId);
 
-  Future<InstallmentRepayment?> findRepaymentByTransaction(String transactionId);
+  Future<InstallmentRepayment?> findRepaymentByTransaction(
+    String transactionId,
+  );
 
   /// 反查：transaction 是否为某合同的放款交易；若是返回该合同，否则返回 null。
   /// 仅 `sourceType == disbursement` 的合同会命中。
@@ -133,7 +135,10 @@ abstract interface class InstallmentRepository {
 
   Future<String> insertContract(InstallmentContractDraft draft);
 
-  Future<void> updateContract(String contractId, InstallmentContractPatch patch);
+  Future<void> updateContract(
+    String contractId,
+    InstallmentContractPatch patch,
+  );
 
   Future<void> replaceSchedules(
     String contractId,
@@ -147,7 +152,10 @@ abstract interface class InstallmentRepository {
     List<InstallmentScheduleDraft> drafts,
   );
 
-  Future<void> updateSchedule(String scheduleId, InstallmentSchedulePatch patch);
+  Future<void> updateSchedule(
+    String scheduleId,
+    InstallmentSchedulePatch patch,
+  );
 
   Future<String> insertRepayment(InstallmentRepaymentDraft draft);
 
