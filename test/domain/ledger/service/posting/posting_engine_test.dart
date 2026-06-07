@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_rule.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
@@ -15,7 +14,7 @@ void main() {
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
 
-      final result = engine.createExpense(
+      final transaction = engine.createExpense(
         ExpenseInstruction(
           amount: Money.parse('12.30'),
           paidFromAccountId: 'cash',
@@ -24,7 +23,6 @@ void main() {
         ),
       );
 
-      final transaction = result.value;
       expect(transaction.businessPurpose, BusinessPurpose.dailyExpense);
       expect(transaction.rootTransactionId, transaction.id);
       expect(
@@ -45,33 +43,27 @@ void main() {
       final engine = PostingEngine(
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
-      final parent =
-          engine
-              .createExpense(
-                ExpenseInstruction(
-                  amount: Money.parse('20.00'),
-                  paidFromAccountId: 'cash',
-                  expenseAccountId: 'food',
-                  occurredAt: DateTime(2026, 5, 1),
-                  isExcludedFromStats: true,
-                  isExcludedFromBudget: true,
-                ),
-              )
-              .value;
+      final parent = engine.createExpense(
+        ExpenseInstruction(
+          amount: Money.parse('20.00'),
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'food',
+          occurredAt: DateTime(2026, 5, 1),
+          isExcludedFromStats: true,
+          isExcludedFromBudget: true,
+        ),
+      );
 
-      final refund =
-          engine
-              .createRefund(
-                instruction: RefundInstruction(
-                  parentTransactionId: parent.id,
-                  amount: Money.parse('8.00'),
-                  refundToAccountId: 'cash',
-                  occurredAt: DateTime(2026, 5, 2),
-                ),
-                parent: parent,
-                refundOffsetAccountId: 'food',
-              )
-              .value;
+      final refund = engine.createRefund(
+        instruction: RefundInstruction(
+          parentTransactionId: parent.id,
+          amount: Money.parse('8.00'),
+          refundToAccountId: 'cash',
+          occurredAt: DateTime(2026, 5, 2),
+        ),
+        parent: parent,
+        refundOffsetAccountId: 'food',
+      );
 
       expect(refund.rootTransactionId, parent.rootTransactionId);
       expect(refund.parentTransactionId, parent.id);
@@ -84,37 +76,28 @@ void main() {
       final engine = PostingEngine(
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
-      final original =
-          engine
-              .createExpense(
-                ExpenseInstruction(
-                  amount: Money.parse('10.00'),
-                  paidFromAccountId: 'cash',
-                  expenseAccountId: 'food',
-                  occurredAt: DateTime(2026, 5, 1),
-                ),
-              )
-              .value;
-      final candidate =
-          engine
-              .createExpense(
-                ExpenseInstruction(
-                  amount: Money.parse('11.00'),
-                  paidFromAccountId: 'card',
-                  expenseAccountId: 'food',
-                  occurredAt: DateTime(2026, 5, 1),
-                ),
-              )
-              .value;
+      final original = engine.createExpense(
+        ExpenseInstruction(
+          amount: Money.parse('10.00'),
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'food',
+          occurredAt: DateTime(2026, 5, 1),
+        ),
+      );
+      final candidate = engine.createExpense(
+        ExpenseInstruction(
+          amount: Money.parse('11.00'),
+          paidFromAccountId: 'card',
+          expenseAccountId: 'food',
+          occurredAt: DateTime(2026, 5, 1),
+        ),
+      );
 
-      final replacement =
-          engine
-              .createReplacement(
-                original: original,
-                replacement: candidate,
-                reason: MutationReason.correction,
-              )
-              .value;
+      final replacement = engine.createReplacement(
+        original: original,
+        replacement: candidate,
+        reason: MutationReason.correction,
+      );
 
       expect(
         replacement.replacedTransaction.businessState,

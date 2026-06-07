@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/provider.dart';
-import '../../../core/money/money.dart';
-import '../../../core/result/result.dart';
+import '../../../application/ledger/ledger_command_api.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
+import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
-import '../../../application/ledger/ledger_query_api.dart';
-import 'package:smartflow/application/credit/credit_command_api.dart';
-import '../../../widget/business/plain_transaction_fields.dart';
+import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
+import '../view_model/installment_repayment_form_view_model.dart';
+import '../view_model/installment_repayment_mode.dart';
 
-enum InstallmentRepaymentMode { scheduled, extraPrincipal, earlySettlement }
+export '../view_model/installment_repayment_mode.dart';
 
 class InstallmentRepaymentFormPage extends ConsumerStatefulWidget {
   const InstallmentRepaymentFormPage({
@@ -40,11 +40,37 @@ class _InstallmentRepaymentFormPageState
   final _feeController = TextEditingController();
   final _discountController = TextEditingController();
   final _noteController = TextEditingController();
+  bool _syncing = false;
 
-  DateTime _occurredAt = DateTime.now();
-  String? _paidFromAccountId;
-  bool _submitting = false;
-  bool _initialized = false;
+  @override
+  void initState() {
+    super.initState();
+    _principalController.addListener(
+      () => _setText(
+        (vm, value) => vm.setPrincipalText(value),
+        _principalController.text,
+      ),
+    );
+    _interestController.addListener(
+      () => _setText(
+        (vm, value) => vm.setInterestText(value),
+        _interestController.text,
+      ),
+    );
+    _feeController.addListener(
+      () => _setText((vm, value) => vm.setFeeText(value), _feeController.text),
+    );
+    _discountController.addListener(
+      () => _setText(
+        (vm, value) => vm.setDiscountText(value),
+        _discountController.text,
+      ),
+    );
+    _noteController.addListener(
+      () =>
+          _setText((vm, value) => vm.setNoteText(value), _noteController.text),
+    );
+  }
 
   @override
   void dispose() {
@@ -58,72 +84,32 @@ class _InstallmentRepaymentFormPageState
 
   @override
   Widget build(BuildContext context) {
-    final contractAsync = ref.watch(
-      installmentContractProvider(widget.contractId),
-    );
-    final schedulesAsync = ref.watch(
-      installmentSchedulesProvider(widget.contractId),
-    );
-    final fundAccountsAsync = ref.watch(
-      accountsForUsageProvider(AccountUsage.repaymentSource),
-    );
-
+    final provider = installmentRepaymentFormViewModelProvider(_args);
+    final asyncState = ref.watch(provider);
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(title: Text(_titleForMode(widget.mode))),
-      body: switch ((contractAsync, schedulesAsync, fundAccountsAsync)) {
-        (
-          AsyncData(value: final contract),
-          AsyncData(value: final schedules),
-          AsyncData(value: final accounts),
-        ) =>
-          contract == null
-              ? const Center(child: Text('合同不存在'))
-              : _buildForm(context, contract, schedules, accounts),
-        (AsyncError(:final error), _, _) ||
-        (_, AsyncError(:final error), _) ||
-        (_, _, AsyncError(:final error)) => Center(child: Text('加载失败：$error')),
+      body: switch (asyncState) {
+        AsyncData(value: final state) => _buildLoaded(provider, state),
+        AsyncError(:final error) => Center(child: Text('加载失败：$error')),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
   }
 
-  Widget _buildForm(
-    BuildContext context,
-    InstallmentContract contract,
-    List<InstallmentSchedule> schedules,
-    List<Account> fundAccounts,
+  Widget _buildLoaded(
+    InstallmentRepaymentFormViewModelProvider provider,
+    InstallmentRepaymentFormState state,
   ) {
-    final schedule =
-        widget.mode == InstallmentRepaymentMode.scheduled
-            ? _findSchedule(schedules, widget.scheduleId)
-            : null;
-
-    if (!_initialized) {
-      _initialized = true;
-      if (schedule != null) {
-        _principalController.text = schedule.expectedPrincipal.major.toString();
-        if (schedule.expectedInterest.minorUnits > 0) {
-          _interestController.text = schedule.expectedInterest.major.toString();
-        }
-        if (schedule.expectedFee.minorUnits > 0) {
-          _feeController.text = schedule.expectedFee.major.toString();
-        }
-      }
-      if (widget.mode == InstallmentRepaymentMode.earlySettlement) {
-        final paidPrincipalSum = schedules
-            .where((s) => s.status.name == 'paid')
-            .fold<int>(0, (acc, s) => acc + s.expectedPrincipal.minorUnits);
-        final remaining = contract.principal.minorUnits - paidPrincipalSum;
-        _principalController.text =
-            Money(minorUnits: remaining < 0 ? 0 : remaining).major.toString();
-      }
-      final disbursementId = contract.disbursementAccountId;
-      if (disbursementId != null &&
-          fundAccounts.any((a) => a.id == disbursementId)) {
-        _paidFromAccountId = disbursementId;
-      }
+    switch (state.status) {
+      case InstallmentRepaymentFormStatus.notFound:
+        return const Center(child: Text('合同不存在'));
+      case InstallmentRepaymentFormStatus.scheduleNotFound:
+        return const Center(child: Text('计划行不存在'));
+      case InstallmentRepaymentFormStatus.loaded:
+        break;
     }
+    _syncControllers(state);
 
     return Form(
       key: _formKey,
@@ -141,46 +127,50 @@ class _InstallmentRepaymentFormPageState
                 label: '本金',
                 controller: _principalController,
                 hintText: '请输入还款本金',
-                validator: _validatePositiveMoney,
+                validator: validatePositiveMoneyText,
               ),
               if (widget.mode != InstallmentRepaymentMode.extraPrincipal)
                 MoneyPlainFormRow(
                   label: '利息',
                   controller: _interestController,
                   hintText: '请输入利息（可选）',
-                  validator: _validateOptionalMoney,
+                  validator: validateOptionalNonNegativeMoneyText,
                 ),
               MoneyPlainFormRow(
                 label: '手续费',
                 controller: _feeController,
                 hintText: '请输入手续费（可选）',
-                validator: _validateOptionalMoney,
+                validator: validateOptionalNonNegativeMoneyText,
               ),
               if (widget.mode == InstallmentRepaymentMode.scheduled)
                 MoneyPlainFormRow(
                   label: '优惠',
                   controller: _discountController,
                   hintText: '请输入优惠（可选）',
-                  validator: _validateOptionalMoney,
+                  validator: validateOptionalNonNegativeMoneyText,
                 ),
               DateTimePlainFormRow(
                 label: '还款日期',
-                value: _formatDateTime(_occurredAt),
-                onTap: _pickDate,
+                value: _formatDateTime(state.occurredAt),
+                onTap: () => _pickDate(provider, state.occurredAt),
               ),
               AccountPlainFormRow(
                 label: '还款账户',
-                account: _findAccount(fundAccounts, _paidFromAccountId),
-                selectedId: _paidFromAccountId,
+                account: _findAccount(state.accounts, state.paidFromAccountId),
+                selectedId: state.paidFromAccountId,
                 placeholder: '请选择还款账户',
                 onTap:
-                    fundAccounts.isEmpty
+                    state.accounts.isEmpty
                         ? null
                         : () => _pickAccount(
-                          accounts: fundAccounts,
+                          accounts: state.accounts,
+                          selectedId: state.paidFromAccountId,
                           onSelected:
-                              (id) => setState(() => _paidFromAccountId = id),
+                              (id) => ref
+                                  .read(provider.notifier)
+                                  .setPaidFromAccountId(id),
                         ),
+                validator: (value) => value == null ? '请选择还款账户' : null,
               ),
               NotePlainFormRow(controller: _noteController),
             ],
@@ -196,118 +186,75 @@ class _InstallmentRepaymentFormPageState
             ),
           AppSubmitButton(
             label: _submitLabel(widget.mode),
-            loading: _submitting,
-            onPressed: () => _submit(contract, schedule),
+            loading: state.submitting,
+            onPressed: () => _submit(provider),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _pickDate() async {
+  Future<void> _pickDate(
+    InstallmentRepaymentFormViewModelProvider provider,
+    DateTime occurredAt,
+  ) async {
     final picked = await showAppDateTimePicker(
       context: context,
-      initialDateTime: _occurredAt,
+      initialDateTime: occurredAt,
       title: '选择还款日期',
     );
     if (picked == null || !mounted) return;
-    setState(() => _occurredAt = picked);
+    ref.read(provider.notifier).setOccurredAt(picked);
   }
 
   Future<void> _pickAccount({
     required List<Account> accounts,
+    required String? selectedId,
     required ValueChanged<String> onSelected,
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,
       title: '选择还款账户',
       accounts: accounts,
-      selectedId: _paidFromAccountId,
+      selectedId: selectedId,
     );
     if (!mounted || selected == null) return;
     onSelected(selected);
   }
 
   Future<void> _submit(
-    InstallmentContract contract,
-    InstallmentSchedule? schedule,
+    InstallmentRepaymentFormViewModelProvider provider,
   ) async {
     if (!_formKey.currentState!.validate()) return;
-    if (_paidFromAccountId == null) {
-      _showError('请选择还款账户');
-      return;
-    }
-    final principal = Money.parse(_principalController.text);
-    final interest = _parseOptional(_interestController.text);
-    final fee = _parseOptional(_feeController.text);
-    final discount = _parseOptional(_discountController.text);
-    final note = _blankToNull(_noteController.text);
-
-    setState(() => _submitting = true);
-    final service = ref.read(installmentServiceProvider);
-    Result<dynamic> result;
-    switch (widget.mode) {
-      case InstallmentRepaymentMode.scheduled:
-        if (schedule == null) {
-          setState(() => _submitting = false);
-          _showError('计划行不存在');
-          return;
-        }
-        result = await service.createScheduledRepayment(
-          CreateScheduledRepaymentCommand(
-            contractId: contract.id,
-            scheduleId: schedule.id,
-            principal: principal,
-            interest:
-                interest != null && interest.minorUnits > 0 ? interest : null,
-            fee: fee != null && fee.minorUnits > 0 ? fee : null,
-            discount:
-                discount != null && discount.minorUnits > 0 ? discount : null,
-            paidFromAccountId: _paidFromAccountId!,
-            occurredAt: _occurredAt,
-            note: note,
-          ),
-        );
-      case InstallmentRepaymentMode.extraPrincipal:
-        result = await service.createPrincipalPrepayment(
-          CreatePrincipalPrepaymentCommand(
-            contractId: contract.id,
-            principal: principal,
-            fee: fee != null && fee.minorUnits > 0 ? fee : null,
-            paidFromAccountId: _paidFromAccountId!,
-            occurredAt: _occurredAt,
-            note: note,
-          ),
-        );
-      case InstallmentRepaymentMode.earlySettlement:
-        result = await service.createEarlySettlement(
-          CreateEarlySettlementCommand(
-            contractId: contract.id,
-            principal: principal,
-            interest:
-                interest != null && interest.minorUnits > 0 ? interest : null,
-            fee: fee != null && fee.minorUnits > 0 ? fee : null,
-            paidFromAccountId: _paidFromAccountId!,
-            occurredAt: _occurredAt,
-            note: note,
-          ),
-        );
-    }
+    final outcome = await ref.read(provider.notifier).submit();
     if (!mounted) return;
-    setState(() => _submitting = false);
-
-    switch (result) {
-      case Success():
-        ref.invalidate(installmentContractProvider(contract.id));
-        ref.invalidate(installmentSchedulesProvider(contract.id));
-        ref.invalidate(installmentRepaymentsProvider(contract.id));
-        ref.invalidate(
-          installmentContractsByAccountProvider(contract.liabilityAccountId),
-        );
+    switch (outcome) {
+      case SubmitSuccess():
         context.pop();
-      case FailureResult(:final failure):
-        _showError(failure.message);
+      case SubmitFailure(:final error):
+        _showError(error.message);
     }
+  }
+
+  void _syncControllers(InstallmentRepaymentFormState state) {
+    _syncing = true;
+    syncTextControllerText(_principalController, state.principalText);
+    syncTextControllerText(_interestController, state.interestText);
+    syncTextControllerText(_feeController, state.feeText);
+    syncTextControllerText(_discountController, state.discountText);
+    syncTextControllerText(_noteController, state.noteText);
+    _syncing = false;
+  }
+
+  void _setText(
+    void Function(InstallmentRepaymentFormViewModel, String) setter,
+    String value,
+  ) {
+    if (_syncing) return;
+    setter(
+      ref.read(installmentRepaymentFormViewModelProvider(_args).notifier),
+      value,
+    );
   }
 
   void _showError(String message) {
@@ -316,29 +263,12 @@ class _InstallmentRepaymentFormPageState
     );
   }
 
-  String? _validatePositiveMoney(String? value) {
-    try {
-      final money = Money.parse(value ?? '');
-      return money.minorUnits > 0 ? null : '金额必须大于 0';
-    } on FormatException {
-      return '请输入有效金额';
-    }
-  }
-
-  String? _validateOptionalMoney(String? value) {
-    final trimmed = value?.trim() ?? '';
-    if (trimmed.isEmpty) return null;
-    try {
-      Money.parse(trimmed);
-      return null;
-    } on FormatException {
-      return '请输入有效金额';
-    }
-  }
-
-  Money? _parseOptional(String value) {
-    final trimmed = value.trim();
-    return trimmed.isEmpty ? null : Money.parse(trimmed);
+  InstallmentRepaymentFormArgs get _args {
+    return InstallmentRepaymentFormArgs(
+      contractId: widget.contractId,
+      mode: widget.mode,
+      scheduleId: widget.scheduleId,
+    );
   }
 }
 
@@ -358,28 +288,12 @@ String _submitLabel(InstallmentRepaymentMode mode) {
   };
 }
 
-InstallmentSchedule? _findSchedule(
-  List<InstallmentSchedule> schedules,
-  String? id,
-) {
-  if (id == null) return null;
-  for (final s in schedules) {
-    if (s.id == id) return s;
-  }
-  return null;
-}
-
 Account? _findAccount(List<Account> accounts, String? id) {
   if (id == null) return null;
-  for (final a in accounts) {
-    if (a.id == id) return a;
+  for (final account in accounts) {
+    if (account.id == id) return account;
   }
   return null;
-}
-
-String? _blankToNull(String value) {
-  final trimmed = value.trim();
-  return trimmed.isEmpty ? null : trimmed;
 }
 
 String _formatDateTime(DateTime date) {

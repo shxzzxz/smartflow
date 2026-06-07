@@ -1,21 +1,20 @@
-import 'package:smartflow/core/error/failure.dart';
-import 'package:smartflow/core/result/result.dart';
 import '../../entity/root_transaction_group.dart';
 import '../../entity/transaction.dart';
 import '../../valobj/ledger_enum.dart';
+import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import '../../valobj/posting_result.dart';
 import '../posting/posting_engine.dart';
 import '../posting/posting_instruction_resolver.dart';
 
 abstract interface class ChildTransactionMigrationPolicy {
-  Failure? validateConvertible({
+  LedgerViolationReason? validateConvertible({
     required RootTransactionGroup oldGroup,
     required BusinessPurpose newParentPurpose,
     required Transaction newParent,
   });
 
-  Future<Result<List<ChildTransactionMigration>>> migrateChildren({
+  Future<List<ChildTransactionMigration>> migrateChildren({
     required RootTransactionGroup oldGroup,
     required Transaction newParent,
   });
@@ -33,7 +32,7 @@ class RefundOnlyChildMigrationPolicy
   final PostingInstructionResolver _postingInstructionResolver;
 
   @override
-  Failure? validateConvertible({
+  LedgerViolationReason? validateConvertible({
     required RootTransactionGroup oldGroup,
     required BusinessPurpose newParentPurpose,
     required Transaction newParent,
@@ -42,62 +41,39 @@ class RefundOnlyChildMigrationPolicy
         newParentPurpose == BusinessPurpose.dailyExpense ||
         newParentPurpose == BusinessPurpose.reimbursementAdvance;
     if (!refundSupported && oldGroup.childTransactions.isNotEmpty) {
-      return const Failure(
-        code: 'transaction_group_child_migration_not_supported',
-        message: 'This transaction group cannot be migrated.',
-      );
+      return LedgerViolationReason.transactionGroupChildMigrationNotSupported;
     }
     for (final child in oldGroup.childTransactions) {
       if (child.businessPurpose != BusinessPurpose.refund) {
-        return const Failure(
-          code: 'transaction_group_has_unconvertible_children',
-          message: 'This transaction group has unsupported child records.',
-        );
+        return LedgerViolationReason.transactionGroupHasUnconvertibleChildren;
       }
     }
     if (oldGroup.refundedTotal().minorUnits >
         newParent.primaryAmount.minorUnits) {
-      return const Failure(
-        code: 'refund_exceeds_remaining',
-        message: 'Existing refunds exceed the replacement amount.',
-      );
+      return LedgerViolationReason.refundExceedsRemaining;
     }
     return null;
   }
 
   @override
-  Future<Result<List<ChildTransactionMigration>>> migrateChildren({
+  Future<List<ChildTransactionMigration>> migrateChildren({
     required RootTransactionGroup oldGroup,
     required Transaction newParent,
   }) async {
-    final parentInstructionResult = _postingInstructionResolver.resolve(
-      newParent,
-    );
-    if (parentInstructionResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
+    final parentInstruction = _postingInstructionResolver.resolve(newParent);
     final refundOffsetAccountId = resolveRefundOffsetAccountId(
-      parentInstructionResult.value,
+      parentInstruction,
     );
     if (refundOffsetAccountId == null) {
-      return const Result.failure(
-        Failure(
-          code: 'refund_parent_not_supported',
-          message: 'This parent transaction does not support refunds.',
-        ),
+      LedgerViolationReason.refundParentNotSupported.throwException(
+        message: 'This parent transaction does not support refunds.',
       );
     }
 
     final migrations = <ChildTransactionMigration>[];
     for (final oldChild in oldGroup.childTransactions) {
-      final currentRefundResult = _postingInstructionResolver.resolveRefund(
-        oldChild,
-      );
-      if (currentRefundResult case FailureResult(:final failure)) {
-        return Result.failure(failure);
-      }
-      final currentRefund = currentRefundResult.value;
-      final candidateResult = _postingEngine.createRefund(
+      final currentRefund = _postingInstructionResolver.resolveRefund(oldChild);
+      final candidate = _postingEngine.createRefund(
         instruction: RefundInstruction(
           parentTransactionId: newParent.id,
           amount: currentRefund.amount,
@@ -109,16 +85,13 @@ class RefundOnlyChildMigrationPolicy
         parent: newParent,
         refundOffsetAccountId: refundOffsetAccountId,
       );
-      if (candidateResult case FailureResult(:final failure)) {
-        return Result.failure(failure);
-      }
       migrations.add(
         ChildTransactionMigration(
           originalChild: oldChild,
-          replacementCandidate: candidateResult.value,
+          replacementCandidate: candidate,
         ),
       );
     }
-    return Result.success(migrations);
+    return migrations;
   }
 }

@@ -1,4 +1,3 @@
-import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/domain/ledger/port/root_transaction_group_repository.dart';
 import 'package:smartflow/domain/ledger/port/transaction_repository.dart';
 import 'package:smartflow/domain/ledger/service/mutation/ledger_update_service.dart';
@@ -8,15 +7,15 @@ import 'transaction_command.dart';
 import 'transaction_ledger_writer.dart';
 
 abstract interface class TransactionUpdateAppService {
-  Future<Result<PostedTransactionResult>> updateBasicInfo(
+  Future<PostedTransactionResult> updateBasicInfo(
     UpdateTransactionBasicInfoCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> updateReportingFlag(
+  Future<PostedTransactionResult> updateReportingFlag(
     UpdateTransactionReportingFlagCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> updateOwnership(
+  Future<PostedTransactionResult> updateOwnership(
     UpdateTransactionOwnershipCommand command,
   );
 }
@@ -39,7 +38,7 @@ class TransactionUpdateAppServiceImpl implements TransactionUpdateAppService {
   final LedgerUpdateService _ledgerUpdateService;
 
   @override
-  Future<Result<PostedTransactionResult>> updateBasicInfo(
+  Future<PostedTransactionResult> updateBasicInfo(
     UpdateTransactionBasicInfoCommand command,
   ) async {
     return _ledgerWriter.persistUpdate(
@@ -55,7 +54,7 @@ class TransactionUpdateAppServiceImpl implements TransactionUpdateAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> updateReportingFlag(
+  Future<PostedTransactionResult> updateReportingFlag(
     UpdateTransactionReportingFlagCommand command,
   ) async {
     return _ledgerWriter.persistUpdate(
@@ -70,7 +69,7 @@ class TransactionUpdateAppServiceImpl implements TransactionUpdateAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> updateOwnership(
+  Future<PostedTransactionResult> updateOwnership(
     UpdateTransactionOwnershipCommand command,
   ) async {
     return _ledgerWriter.persistUpdate(

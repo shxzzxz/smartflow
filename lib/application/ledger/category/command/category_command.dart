@@ -1,3 +1,4 @@
+import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 class CreateCategoryCommand {
@@ -16,4 +17,20 @@ class CreateCategoryCommand {
   final String? iconKey;
   final String? note;
   final int sortOrder;
+}
+
+class EditCategoryCommand {
+  const EditCategoryCommand({
+    required this.id,
+    this.name,
+    this.parentId,
+    this.iconKey,
+    this.note,
+  });
+
+  final String id;
+  final String? name;
+  final Patch<String>? parentId;
+  final Patch<String>? iconKey;
+  final Patch<String>? note;
 }

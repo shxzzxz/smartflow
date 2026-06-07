@@ -2,18 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/provider.dart';
-import '../../../core/money/money.dart';
-import '../../../core/result/result.dart';
+import '../../../application/ledger/ledger_command_api.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
+import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
-import '../../../application/ledger/ledger_command_api.dart'
-    show PostedTransactionResult;
-import '../../../application/ledger/ledger_query_api.dart';
-import '../../../application/credit/credit_command_api.dart';
-import '../../../widget/business/plain_transaction_fields.dart';
+import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
+import '../view_model/repayment_form_view_model.dart';
 
 class RepaymentFormPage extends ConsumerStatefulWidget {
   const RepaymentFormPage({required this.liabilityAccountId, super.key})
@@ -38,17 +35,36 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
   final _feeController = TextEditingController();
   final _discountController = TextEditingController();
   final _noteController = TextEditingController();
-
-  DateTime _occurredAt = DateTime.now();
-  String? _liabilityAccountId;
-  String? _paidFromAccountId;
-  bool _submitting = false;
-  bool _editInitialized = false;
+  bool _syncing = false;
 
   @override
   void initState() {
     super.initState();
-    _liabilityAccountId = widget.liabilityAccountId;
+    _principalController.addListener(
+      () => _setText(
+        (vm, value) => vm.setPrincipalText(value),
+        _principalController.text,
+      ),
+    );
+    _interestController.addListener(
+      () => _setText(
+        (vm, value) => vm.setInterestText(value),
+        _interestController.text,
+      ),
+    );
+    _feeController.addListener(
+      () => _setText((vm, value) => vm.setFeeText(value), _feeController.text),
+    );
+    _discountController.addListener(
+      () => _setText(
+        (vm, value) => vm.setDiscountText(value),
+        _discountController.text,
+      ),
+    );
+    _noteController.addListener(
+      () =>
+          _setText((vm, value) => vm.setNoteText(value), _noteController.text),
+    );
   }
 
   @override
@@ -63,192 +79,146 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isEdit = widget.editTransactionId != null;
-    final liabilityAccountsAsync = ref.watch(
-      accountsForUsageProvider(AccountUsage.repaymentTarget),
+    final provider = repaymentFormViewModelProvider(_args);
+    final asyncState = ref.watch(provider);
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      appBar: AppBar(title: Text(_pageTitle)),
+      body: switch (asyncState) {
+        AsyncData(value: final state) => _buildLoaded(provider, state),
+        AsyncError(:final error) => Center(child: Text('加载失败：$error')),
+        _ => const Center(child: CircularProgressIndicator()),
+      },
     );
-    final repaymentAccountsAsync = ref.watch(
-      accountsForUsageProvider(AccountUsage.repaymentSource),
-    );
-    final detailAsync =
-        isEdit
-            ? ref.watch(transactionDetailProvider(widget.editTransactionId!))
-            : null;
+  }
 
-    final loadError =
-        liabilityAccountsAsync.error ??
-        repaymentAccountsAsync.error ??
-        detailAsync?.error;
-    if (loadError != null) {
-      return _scaffold(Center(child: Text('加载失败：$loadError')));
+  Widget _buildLoaded(
+    RepaymentFormViewModelProvider provider,
+    RepaymentFormState state,
+  ) {
+    switch (state.status) {
+      case RepaymentFormLoadStatus.notFound:
+        return const Center(child: Text('还款记录不存在'));
+      case RepaymentFormLoadStatus.notEditable:
+        return const Center(child: Text('该还款记录不可编辑'));
+      case RepaymentFormLoadStatus.loaded:
+        break;
     }
-    if (!liabilityAccountsAsync.hasValue ||
-        !repaymentAccountsAsync.hasValue ||
-        (isEdit && !(detailAsync?.hasValue ?? false))) {
-      return _scaffold(const Center(child: CircularProgressIndicator()));
-    }
-
-    if (isEdit && !_editInitialized) {
-      final detail = detailAsync!.value;
-      final accountsById =
-          ref.read(accountsByIdProvider).value ?? const <String, Account>{};
-      final view =
-          detail == null
-              ? null
-              : ref
-                  .read(creditServiceProvider)
-                  .parseRepaymentEditView(detail, accountsById: accountsById);
-      if (view == null) {
-        return _scaffold(const Center(child: Text('该还款记录不可编辑')));
-      }
-      _applyView(view);
-      _editInitialized = true;
-    }
-
-    final liabilityAccounts = liabilityAccountsAsync.value ?? const <Account>[];
-    final allRepaymentAccounts =
-        repaymentAccountsAsync.value ?? const <Account>[];
-    final liabilityAccountId = _selectedId(
-      _liabilityAccountId,
-      liabilityAccounts,
-    );
-    final repaymentAccounts =
-        allRepaymentAccounts
-            .where((account) => account.id != liabilityAccountId)
-            .toList();
-    final paidFromAccountId = _selectedId(
-      _paidFromAccountId,
-      repaymentAccounts,
-    );
+    _syncControllers(state);
     final liabilityAccount = _findAccount(
-      liabilityAccounts,
-      liabilityAccountId,
+      state.liabilityAccounts,
+      state.liabilityAccountId,
     );
-    final paidFromAccount = _findAccount(repaymentAccounts, paidFromAccountId);
+    final paidFromAccount = _findAccount(
+      state.repaymentAccounts,
+      state.paidFromAccountId,
+    );
+    final isEdit = widget.editTransactionId != null;
 
-    return _scaffold(
-      Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.space28,
-            AppSpacing.space18,
-            AppSpacing.space28,
-            AppSpacing.space24,
-          ),
-          children: [
-            AppPlainFormSection(
-              children: [
-                AccountPlainFormRow(
-                  label: '债务账户',
-                  account: liabilityAccount,
-                  selectedId: liabilityAccountId,
-                  placeholder: '请选择债务账户',
-                  // 编辑态禁止改债务账户：金额校验依赖原账户余额，改了语义就乱了。
-                  onTap:
-                      (isEdit || liabilityAccounts.isEmpty)
-                          ? null
-                          : () => _pickAccount(
-                            title: '选择债务账户',
-                            accounts: liabilityAccounts,
-                            selectedId: liabilityAccountId,
-                            onSelected:
-                                (value) => setState(() {
-                                  _liabilityAccountId = value;
-                                  if (_paidFromAccountId == value) {
-                                    _paidFromAccountId = null;
-                                  }
-                                }),
-                          ),
-                ),
-                MoneyPlainFormRow(
-                  label: '金额',
-                  controller: _principalController,
-                  hintText: '请输入还款金额',
-                  validator: _validatePositiveMoney,
-                ),
-                MoneyPlainFormRow(
-                  label: '利息',
-                  controller: _interestController,
-                  hintText: '请输入利息（可选）',
-                  validator: _validateOptionalMoney,
-                ),
-                MoneyPlainFormRow(
-                  label: '手续费',
-                  controller: _feeController,
-                  hintText: '请输入手续费（可选）',
-                  validator: _validateOptionalMoney,
-                ),
-                MoneyPlainFormRow(
-                  label: '优惠',
-                  controller: _discountController,
-                  hintText: '请输入优惠（可选）',
-                  validator: _validateOptionalMoney,
-                ),
-                DateTimePlainFormRow(
-                  label: '还款日期',
-                  value: _formatDateTime(_occurredAt),
-                  onTap: _pickDate,
-                ),
-                AccountPlainFormRow(
-                  label: '还款账户',
-                  account: paidFromAccount,
-                  selectedId: paidFromAccountId,
-                  placeholder: '请选择还款账户',
-                  onTap:
-                      repaymentAccounts.isEmpty
-                          ? null
-                          : () => _pickAccount(
-                            title: '选择还款账户',
-                            accounts: repaymentAccounts,
-                            selectedId: paidFromAccountId,
-                            onSelected:
-                                (value) =>
-                                    setState(() => _paidFromAccountId = value),
-                          ),
-                ),
-                NotePlainFormRow(controller: _noteController),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.space24),
-            AppSubmitButton(
-              label: '保存',
-              loading: _submitting,
-              onPressed: _submit,
-            ),
-          ],
+    return Form(
+      key: _formKey,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.space28,
+          AppSpacing.space18,
+          AppSpacing.space28,
+          AppSpacing.space24,
         ),
+        children: [
+          AppPlainFormSection(
+            children: [
+              AccountPlainFormRow(
+                label: '债务账户',
+                account: liabilityAccount,
+                selectedId: state.liabilityAccountId,
+                placeholder: '请选择债务账户',
+                onTap:
+                    (isEdit || state.liabilityAccounts.isEmpty)
+                        ? null
+                        : () => _pickAccount(
+                          title: '选择债务账户',
+                          accounts: state.liabilityAccounts,
+                          selectedId: state.liabilityAccountId,
+                          onSelected:
+                              (value) => ref
+                                  .read(provider.notifier)
+                                  .setLiabilityAccountId(value),
+                        ),
+                validator: (value) => value == null ? '请选择债务账户' : null,
+              ),
+              MoneyPlainFormRow(
+                label: '金额',
+                controller: _principalController,
+                hintText: '请输入还款金额',
+                validator: validatePositiveMoneyText,
+              ),
+              MoneyPlainFormRow(
+                label: '利息',
+                controller: _interestController,
+                hintText: '请输入利息（可选）',
+                validator: validateOptionalNonNegativeMoneyText,
+              ),
+              MoneyPlainFormRow(
+                label: '手续费',
+                controller: _feeController,
+                hintText: '请输入手续费（可选）',
+                validator: validateOptionalNonNegativeMoneyText,
+              ),
+              MoneyPlainFormRow(
+                label: '优惠',
+                controller: _discountController,
+                hintText: '请输入优惠（可选）',
+                validator: validateOptionalNonNegativeMoneyText,
+              ),
+              DateTimePlainFormRow(
+                label: '还款日期',
+                value: _formatDateTime(state.occurredAt),
+                onTap: () => _pickDate(provider, state.occurredAt),
+              ),
+              AccountPlainFormRow(
+                label: '还款账户',
+                account: paidFromAccount,
+                selectedId: state.paidFromAccountId,
+                placeholder: '请选择还款账户',
+                onTap:
+                    state.repaymentAccounts.isEmpty
+                        ? null
+                        : () => _pickAccount(
+                          title: '选择还款账户',
+                          accounts: state.repaymentAccounts,
+                          selectedId: state.paidFromAccountId,
+                          onSelected:
+                              (value) => ref
+                                  .read(provider.notifier)
+                                  .setPaidFromAccountId(value),
+                        ),
+                validator: (value) => value == null ? '请选择还款账户' : null,
+              ),
+              NotePlainFormRow(controller: _noteController),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.space24),
+          AppSubmitButton(
+            label: '保存',
+            loading: state.submitting,
+            onPressed: () => _submit(provider),
+          ),
+        ],
       ),
     );
   }
 
-  Scaffold _scaffold(Widget body) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(title: Text(_pageTitle)),
-      body: body,
-    );
-  }
-
-  void _applyView(RepaymentEditView view) {
-    _principalController.text = view.principal.format();
-    _interestController.text = view.interest?.format() ?? '';
-    _feeController.text = view.fee?.format() ?? '';
-    _discountController.text = view.discount?.format() ?? '';
-    _noteController.text = view.note ?? '';
-    _liabilityAccountId = view.liabilityAccountId;
-    _paidFromAccountId = view.paidFromAccountId;
-    _occurredAt = view.occurredAt;
-  }
-
-  Future<void> _pickDate() async {
+  Future<void> _pickDate(
+    RepaymentFormViewModelProvider provider,
+    DateTime occurredAt,
+  ) async {
     final picked = await showAppDateTimePicker(
       context: context,
-      initialDateTime: _occurredAt,
+      initialDateTime: occurredAt,
       title: '选择还款日期',
     );
     if (picked == null || !mounted) return;
-    setState(() => _occurredAt = picked);
+    ref.read(provider.notifier).setOccurredAt(picked);
   }
 
   Future<void> _pickAccount({
@@ -267,122 +237,34 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
     onSelected(selected);
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit(RepaymentFormViewModelProvider provider) async {
     if (!_formKey.currentState!.validate()) return;
-
-    final liabilityAccounts =
-        ref
-            .read(accountsForUsageProvider(AccountUsage.repaymentTarget))
-            .value ??
-        const <Account>[];
-    final liabilityAccountId = _selectedId(
-      _liabilityAccountId,
-      liabilityAccounts,
-    );
-    final allRepaymentAccounts =
-        ref
-            .read(accountsForUsageProvider(AccountUsage.repaymentSource))
-            .value ??
-        const <Account>[];
-    final repaymentAccounts =
-        allRepaymentAccounts
-            .where((account) => account.id != liabilityAccountId)
-            .toList();
-    final paidFromAccountId = _selectedId(
-      _paidFromAccountId,
-      repaymentAccounts,
-    );
-    if (liabilityAccountId == null) {
-      _showError('请选择债务账户');
-      return;
-    }
-    if (paidFromAccountId == null) {
-      _showError('请选择还款账户');
-      return;
-    }
-
-    final principal = Money.parse(_principalController.text);
-    final interest = _parseOptionalMoney(_interestController.text);
-    final fee = _parseOptionalMoney(_feeController.text);
-    final discount = _parseOptionalMoney(_discountController.text);
-    final note = _blankToNull(_noteController.text);
-
-    setState(() => _submitting = true);
-    final service = ref.read(creditServiceProvider);
-    final editTransactionId = widget.editTransactionId;
-    final Result<PostedTransactionResult> result;
-    if (editTransactionId == null) {
-      result = await service.createRepayment(
-        CreateRepaymentCommand(
-          liabilityAccountId: liabilityAccountId,
-          paidFromAccountId: paidFromAccountId,
-          principal: principal,
-          interest: interest,
-          fee: fee,
-          discount: discount,
-          occurredAt: _occurredAt,
-          note: note,
-        ),
-      );
-    } else {
-      result = await service.correctRepayment(
-        CorrectRepaymentCommand(
-          transactionId: editTransactionId,
-          liabilityAccountId: liabilityAccountId,
-          paidFromAccountId: paidFromAccountId,
-          principal: principal,
-          interest: interest,
-          fee: fee,
-          discount: discount,
-          occurredAt: _occurredAt,
-          note: note,
-        ),
-      );
-    }
+    final outcome = await ref.read(provider.notifier).submit();
     if (!mounted) return;
-    setState(() => _submitting = false);
-
-    switch (result) {
-      case Success(:final value):
-        if (editTransactionId == null) {
-          context.pop();
-        } else if (context.canPop()) {
-          context.pop(value.transactionId);
-        } else {
-          context.go('/transaction/${value.transactionId}');
-        }
-      case FailureResult(:final failure):
-        _showError(failure.message);
+    switch (outcome) {
+      case SubmitSuccess():
+        context.pop();
+      case SubmitFailure(:final error):
+        _showError(error.message);
     }
   }
 
-  String get _pageTitle => widget.editTransactionId == null ? '还款' : '编辑还款';
-
-  String? _validatePositiveMoney(String? value) {
-    try {
-      final money = Money.parse(value ?? '');
-      return money.minorUnits > 0 ? null : '金额必须大于 0';
-    } on FormatException {
-      return '请输入有效金额';
-    }
+  void _syncControllers(RepaymentFormState state) {
+    _syncing = true;
+    syncTextControllerText(_principalController, state.principalText);
+    syncTextControllerText(_interestController, state.interestText);
+    syncTextControllerText(_feeController, state.feeText);
+    syncTextControllerText(_discountController, state.discountText);
+    syncTextControllerText(_noteController, state.noteText);
+    _syncing = false;
   }
 
-  String? _validateOptionalMoney(String? value) {
-    final trimmed = value?.trim() ?? '';
-    if (trimmed.isEmpty) return null;
-    try {
-      final money = Money.parse(trimmed);
-      return money.minorUnits >= 0 ? null : '金额不能小于 0';
-    } on FormatException {
-      return '请输入有效金额';
-    }
-  }
-
-  Money? _parseOptionalMoney(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return null;
-    final money = Money.parse(trimmed);
-    return money.minorUnits > 0 ? money : null;
+  void _setText(
+    void Function(RepaymentFormViewModel, String) setter,
+    String value,
+  ) {
+    if (_syncing) return;
+    setter(ref.read(repaymentFormViewModelProvider(_args).notifier), value);
   }
 
   void _showError(String message) {
@@ -390,6 +272,15 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
       SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
+
+  RepaymentFormArgs get _args {
+    return RepaymentFormArgs(
+      liabilityAccountId: widget.liabilityAccountId,
+      editTransactionId: widget.editTransactionId,
+    );
+  }
+
+  String get _pageTitle => widget.editTransactionId == null ? '还款' : '编辑还款';
 }
 
 Account? _findAccount(List<Account> accounts, String? id) {
@@ -398,19 +289,6 @@ Account? _findAccount(List<Account> accounts, String? id) {
     if (account.id == id) return account;
   }
   return null;
-}
-
-String? _selectedId(String? id, List<Account> accounts) {
-  if (id == null) return null;
-  for (final account in accounts) {
-    if (account.id == id) return id;
-  }
-  return null;
-}
-
-String? _blankToNull(String value) {
-  final trimmed = value.trim();
-  return trimmed.isEmpty ? null : trimmed;
 }
 
 String _formatDateTime(DateTime date) {

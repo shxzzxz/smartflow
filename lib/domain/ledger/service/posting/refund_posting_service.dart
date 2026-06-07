@@ -1,10 +1,10 @@
-import 'package:smartflow/core/error/failure.dart';
-import 'package:smartflow/core/result/result.dart';
 import '../../entity/account.dart';
+import '../../entity/root_transaction_group.dart';
 import '../../entity/transaction.dart';
 import '../../port/account_repository.dart';
 import '../../port/root_transaction_group_repository.dart';
 import '../../valobj/ledger_enum.dart';
+import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import '../../valobj/posting_result.dart';
 import '../account/account_role_policy.dart';
@@ -34,133 +34,92 @@ class RefundPostingService {
   final AccountPostingService _accountPostingService;
   final AccountRolePolicy _accountRolePolicy;
 
-  Future<Result<PostingResult>> postRefund(
-    RefundInstruction instruction,
-  ) async {
+  Future<PostingResult> postRefund(RefundInstruction instruction) async {
     final group = await _rootGroupRepository.findByTransactionId(
       instruction.parentTransactionId,
     );
     if (group == null) {
-      return const Result.failure(
-        Failure(
-          code: 'refund_parent_not_found',
-          message: 'Original expense not found.',
-        ),
-      );
+      LedgerViolationReason.refundParentNotFound.throwException();
     }
+
     final parent = group.parentTransaction;
-    if (parent.id != instruction.parentTransactionId ||
-        (parent.businessPurpose != BusinessPurpose.dailyExpense &&
-            parent.businessPurpose != BusinessPurpose.reimbursementAdvance)) {
-      return const Result.failure(
-        Failure(
-          code: 'refund_parent_not_expense',
-          message: 'Refund can only be applied to an expense transaction.',
-        ),
-      );
-    }
-    if (parent.businessState != BusinessState.current) {
-      return const Result.failure(
-        Failure(
-          code: 'refund_parent_not_current',
-          message: 'Refund can only be applied to a current expense.',
-        ),
-      );
-    }
-    if (parent.businessPurpose == BusinessPurpose.reimbursementAdvance &&
-        group.reimbursementClosed) {
-      return const Result.failure(
-        Failure(
-          code: 'refund_parent_reimbursement_closed',
-          message: 'Refund is not supported after reimbursement is closed.',
-        ),
-      );
-    }
+    final parentViolation = _validateRefundParent(parent, group, instruction);
+    if (parentViolation != null) parentViolation.throwException();
+
     final remaining = parent.primaryAmount - group.refundedTotal();
     if (instruction.amount.minorUnits > remaining.minorUnits) {
-      return const Result.failure(
-        Failure(
-          code: 'refund_exceeds_remaining',
-          message: 'Refund exceeds remaining refundable amount.',
-        ),
-      );
+      LedgerViolationReason.refundExceedsRemaining.throwException();
     }
 
-    final parentInstructionResult = _postingInstructionResolver.resolve(parent);
-    if (parentInstructionResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
+    final parentInstruction = _postingInstructionResolver.resolve(parent);
     final refundOffsetAccountId = resolveRefundOffsetAccountId(
-      parentInstructionResult.value,
+      parentInstruction,
     );
     if (refundOffsetAccountId == null) {
-      return const Result.failure(
-        Failure(
-          code: 'refund_parent_not_supported',
-          message: 'This parent transaction does not support refunds.',
-        ),
-      );
+      LedgerViolationReason.refundParentNotSupported.throwException();
     }
 
-    final roleFailure = await _accountRolePolicy.validate(
+    final roleViolation = await _accountRolePolicy.validate(
       AccountRoleContext.refund(
         refundToAccountId: instruction.refundToAccountId,
       ),
     );
-    if (roleFailure != null) return Result.failure(roleFailure);
+    if (roleViolation != null) roleViolation.throwException();
 
-    final transactionResult = _postingEngine.createRefund(
+    final transaction = _postingEngine.createRefund(
       instruction: instruction,
       parent: parent,
       refundOffsetAccountId: refundOffsetAccountId,
     );
-    if (transactionResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    return _applyPosting(transactionResult.value);
+    return _applyPosting(transaction);
   }
 
-  Future<Result<PostingResult>> _applyPosting(Transaction transaction) async {
-    try {
-      final accounts = await _accountRepository.findByIds(
-        transaction.accountIds,
-      );
-      final accountMap = {for (final account in accounts) account.id: account};
-      final missingFailure = _validateAccountsLoaded(
-        transaction.accountIds,
-        accountMap,
-      );
-      if (missingFailure != null) return Result.failure(missingFailure);
-      return Result.success(
-        PostingResult(
-          transaction: transaction,
-          accounts: _accountPostingService.apply(
-            transaction: transaction,
-            accounts: accountMap,
-          ),
-        ),
-      );
-    } on Object catch (error) {
-      return Result.failure(
-        Failure(
-          code: 'posting_failed',
-          message: 'Failed to post refund.',
-          cause: error,
-        ),
-      );
+  LedgerViolationReason? _validateRefundParent(
+    Transaction parent,
+    RootTransactionGroup group,
+    RefundInstruction instruction,
+  ) {
+    if (parent.id != instruction.parentTransactionId ||
+        (parent.businessPurpose != BusinessPurpose.dailyExpense &&
+            parent.businessPurpose != BusinessPurpose.reimbursementAdvance)) {
+      return LedgerViolationReason.refundParentNotExpense;
     }
+    if (parent.businessState != BusinessState.current) {
+      return LedgerViolationReason.refundParentNotCurrent;
+    }
+    if (parent.businessPurpose == BusinessPurpose.reimbursementAdvance &&
+        group.reimbursementClosed) {
+      return LedgerViolationReason.refundParentReimbursementClosed;
+    }
+    return null;
   }
 
-  Failure? _validateAccountsLoaded(
+  Future<PostingResult> _applyPosting(Transaction transaction) async {
+    final accounts = await _accountRepository.findByIds(transaction.accountIds);
+    final accountMap = {for (final account in accounts) account.id: account};
+    final accountViolation = _validateAccountsLoaded(
+      transaction.accountIds,
+      accountMap,
+    );
+    if (accountViolation != null) accountViolation.throwException();
+    return PostingResult(
+      transaction: transaction,
+      accounts: _accountPostingService.apply(
+        transaction: transaction,
+        accounts: accountMap,
+      ),
+    );
+  }
+
+  LedgerViolationReason? _validateAccountsLoaded(
     Set<String> accountIds,
     Map<String, Account> accounts,
   ) {
     for (final accountId in accountIds) {
-      if (accounts[accountId] == null) {
-        return Failure(
-          code: 'account_not_found',
-          message: 'Account $accountId does not exist.',
-        );
+      final account = accounts[accountId];
+      if (account == null) return LedgerViolationReason.accountNotFound;
+      if (account.archivedAt != null) {
+        return LedgerViolationReason.accountArchived;
       }
     }
     return null;

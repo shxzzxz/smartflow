@@ -1,8 +1,8 @@
-import '../../../core/error/failure.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../service/posting/posting_rule.dart';
 import '../valobj/ledger_enum.dart';
+import '../valobj/ledger_violation_reason.dart';
 import '../valobj/transaction_ownership.dart';
 import 'entry.dart';
 import 'transaction_detail_record.dart';
@@ -53,54 +53,46 @@ class Transaction {
   Set<String> get accountIds => entries.map((entry) => entry.accountId).toSet();
 
   /// 删除路径:仅 current 可删,replaced / canceled / compensation 拒绝。
-  Failure? assertCanBeDeleted() {
+  void assertCanBeDeleted() {
     if (businessState != BusinessState.current) {
-      return const Failure(
-        code: 'transaction_not_current',
+      LedgerViolationReason.transactionNotCurrent.throwException(
         message: 'Only current transaction can be deleted.',
       );
     }
-    return null;
   }
 
   /// 更正路径:current + purpose 匹配 + 无 active children。
   /// [hasActiveChildren] 由 application 层基于 TransactionDetail.children 派生。
-  Failure? assertCanBeCorrectedAs(
+  void assertCanBeCorrectedAs(
     BusinessPurpose expected, {
     required bool hasActiveChildren,
   }) {
     if (businessState != BusinessState.current) {
-      return const Failure(
-        code: 'transaction_not_current',
+      LedgerViolationReason.transactionNotCurrent.throwException(
         message: 'Only current transaction can be corrected.',
       );
     }
     if (businessPurpose != expected) {
-      return const Failure(
-        code: 'transaction_correction_purpose_mismatch',
+      LedgerViolationReason.transactionCorrectionPurposeMismatch.throwException(
         message: 'Correction command purpose must match the transaction.',
       );
     }
     if (hasActiveChildren) {
-      return const Failure(
-        code: 'transaction_has_children',
+      LedgerViolationReason.transactionHasChildren.throwException(
         message:
             'Transactions with child records cannot be corrected; '
             'use updateBasicInfo / updateReportingFlag for editable fields.',
       );
     }
-    return null;
   }
 
   /// 基础信息(occurredAt / settlement / reimbursement account)更新路径。
-  Failure? assertCanBeBasicsUpdated() {
+  void assertCanBeBasicsUpdated() {
     if (businessState != BusinessState.current) {
-      return const Failure(
-        code: 'transaction_not_current',
+      LedgerViolationReason.transactionNotCurrent.throwException(
         message: 'Only current transaction can be updated.',
       );
     }
-    return null;
   }
 
   Transaction markReplaced() {
@@ -159,23 +151,20 @@ class Transaction {
     this.ownership = ownership;
   }
 
-  Failure? validateSelf({bool allowNegativeAmounts = false}) {
+  void validateSelf({bool allowNegativeAmounts = false}) {
     if (details.isEmpty) {
-      return const Failure(
-        code: 'details_required',
+      LedgerViolationReason.detailsRequired.throwException(
         message: 'A transaction must have at least one detail.',
       );
     }
     if (entries.length < 2) {
-      return const Failure(
-        code: 'entries_required',
+      LedgerViolationReason.entriesRequired.throwException(
         message: 'A transaction must have at least two entries.',
       );
     }
     if ((!allowNegativeAmounts && primaryAmount.minorUnits <= 0) ||
         (allowNegativeAmounts && primaryAmount.minorUnits == 0)) {
-      return const Failure(
-        code: 'primary_amount_not_positive',
+      LedgerViolationReason.primaryAmountNotPositive.throwException(
         message: 'Primary amount has an invalid sign.',
       );
     }
@@ -184,8 +173,7 @@ class Transaction {
         amountMinor: detail.amount.minorUnits,
         expectsNegative: allowNegativeAmounts,
       )) {
-        return Failure(
-          code: 'detail_amount_sign_invalid',
+        LedgerViolationReason.detailAmountSignInvalid.throwException(
           message:
               'Detail amount must be '
               '${allowNegativeAmounts ? 'negative' : 'positive'}.',
@@ -195,8 +183,7 @@ class Transaction {
         detailType: detail.type,
         businessPurpose: businessPurpose,
       )) {
-        return Failure(
-          code: 'detail_type_not_allowed',
+        LedgerViolationReason.detailTypeNotAllowed.throwException(
           message:
               '${detail.type.name} is not allowed for '
               '${businessPurpose.name}.',
@@ -208,8 +195,7 @@ class Transaction {
         amountMinor: entry.amount.minorUnits,
         expectsNegative: allowNegativeAmounts,
       )) {
-        return Failure(
-          code: 'entry_amount_sign_invalid',
+        LedgerViolationReason.entryAmountSignInvalid.throwException(
           message:
               'Entry amount must be '
               '${allowNegativeAmounts ? 'negative' : 'positive'}.',
@@ -217,12 +203,10 @@ class Transaction {
       }
     }
     if (!entriesAreBalanced(entries)) {
-      return const Failure(
-        code: 'entries_not_balanced',
+      LedgerViolationReason.entriesNotBalanced.throwException(
         message: 'Debit and credit entries must be balanced.',
       );
     }
-    return null;
   }
 
   /// 更新元数据(note 三态 + 排除统计 / 排除预算)。

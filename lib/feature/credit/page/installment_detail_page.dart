@@ -3,13 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../app/provider.dart';
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
-import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
+import '../view_model/installment_detail_view_model.dart';
 
 class InstallmentDetailPage extends ConsumerWidget {
   const InstallmentDetailPage({required this.contractId, super.key});
@@ -18,14 +18,12 @@ class InstallmentDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final contractAsync = ref.watch(installmentContractProvider(contractId));
-    final schedulesAsync = ref.watch(installmentSchedulesProvider(contractId));
-    final cashflowsAsync = ref.watch(
-      installmentRepaymentCashflowsProvider(contractId),
+    final detailAsync = ref.watch(
+      installmentDetailViewModelProvider(contractId),
     );
 
-    final loadedContract = switch (contractAsync) {
-      AsyncData(value: final c) => c,
+    final loaded = switch (detailAsync) {
+      AsyncData(value: final InstallmentDetailLoaded value) => value,
       _ => null,
     };
 
@@ -33,40 +31,28 @@ class InstallmentDetailPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('分期合同'),
         actions: [
-          if (loadedContract != null)
+          if (loaded != null)
             IconButton(
-              onPressed: () => _confirmDelete(context, ref, loadedContract),
+              onPressed: () => _confirmDelete(context, ref),
               icon: const Icon(RemixIcons.delete_bin_line),
               tooltip: '删除合同',
             ),
         ],
       ),
-      body: switch ((contractAsync, schedulesAsync, cashflowsAsync)) {
-        (
-          AsyncData(value: final contract),
-          AsyncData(value: final schedules),
-          AsyncData(value: final cashflows),
-        ) =>
-          contract == null
-              ? const Center(child: Text('合同不存在'))
-              : _Body(
-                contract: contract,
-                schedules: schedules,
-                cashflows: cashflows,
-              ),
-        (AsyncError(:final error), _, _) ||
-        (_, AsyncError(:final error), _) ||
-        (_, _, AsyncError(:final error)) => Center(child: Text('加载失败：$error')),
+      body: switch (detailAsync) {
+        AsyncData(value: final InstallmentDetailLoaded loaded) => _Body(
+          loaded: loaded,
+        ),
+        AsyncData(value: InstallmentDetailNotFound()) => const Center(
+          child: Text('合同不存在'),
+        ),
+        AsyncError(:final error) => Center(child: Text('加载失败：$error')),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
   }
 
-  Future<void> _confirmDelete(
-    BuildContext context,
-    WidgetRef ref,
-    InstallmentContract contract,
-  ) async {
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -86,50 +72,32 @@ class InstallmentDetailPage extends ConsumerWidget {
           ),
     );
     if (confirmed != true) return;
-    final result = await ref
-        .read(installmentServiceProvider)
-        .deleteContract(DeleteContractCommand(contractId: contract.id));
+    final outcome =
+        await ref
+            .read(installmentDetailViewModelProvider(contractId).notifier)
+            .deleteContract();
     if (!context.mounted) return;
-    result.when(
-      success: (_) {
-        ref.invalidate(
-          installmentContractsByAccountProvider(contract.liabilityAccountId),
-        );
+    switch (outcome) {
+      case UiActionSuccess<void>():
         context.pop();
-      },
-      failure:
-          (failure) => ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('删除失败：${failure.message}'))),
-    );
+      case UiActionFailure<void>(:final error):
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('删除失败：${error.message}')));
+    }
   }
 }
 
-class _Body extends ConsumerWidget {
-  const _Body({
-    required this.contract,
-    required this.schedules,
-    required this.cashflows,
-  });
+class _Body extends StatelessWidget {
+  const _Body({required this.loaded});
 
-  final InstallmentContract contract;
-  final List<InstallmentSchedule> schedules;
-  final List<RepaymentCashflow> cashflows;
+  final InstallmentDetailLoaded loaded;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // 剩余本金 = pending 期次应还本金合计。
-    // 提前还本时 service 已将 pending 行重算为剩余本金，故此处直接累加 pending。
-    final remainingPrincipal = schedules
-        .where((s) => s.status == InstallmentScheduleStatus.pending)
-        .fold<int>(0, (acc, s) => acc + s.expectedPrincipal.minorUnits);
-
-    var paidInterestMinor = 0;
-    var paidFeeMinor = 0;
-    for (final c in cashflows) {
-      paidInterestMinor += c.interest.minorUnits;
-      paidFeeMinor += c.fee.minorUnits;
-    }
+  Widget build(BuildContext context) {
+    final contract = loaded.contract;
+    final schedules = loaded.schedules;
+    final cashflows = loaded.cashflows;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -141,10 +109,9 @@ class _Body extends ConsumerWidget {
       children: [
         _Header(
           contract: contract,
-          remainingPrincipalMinor:
-              remainingPrincipal < 0 ? 0 : remainingPrincipal,
-          paidInterestMinor: paidInterestMinor,
-          paidFeeMinor: paidFeeMinor,
+          remainingPrincipalMinor: loaded.remainingPrincipalMinor,
+          paidInterestMinor: loaded.paidInterestMinor,
+          paidFeeMinor: loaded.paidFeeMinor,
         ),
         const SizedBox(height: AppSpacing.space8),
         _ActionBar(contract: contract),
@@ -566,27 +533,18 @@ class _RepaymentRow extends ConsumerWidget {
           ),
     );
     if (confirmed != true) return;
-    final result = await ref
-        .read(installmentServiceProvider)
-        .revertRepayment(
-          RevertRepaymentCommand(transactionId: cashflow.transactionId),
-        );
+    final outcome = await ref
+        .read(installmentDetailViewModelProvider(contract.id).notifier)
+        .revertRepayment(cashflow.transactionId);
     if (!context.mounted) return;
-    result.when(
-      success: (_) {
-        ref.invalidate(installmentContractProvider(contract.id));
-        ref.invalidate(installmentSchedulesProvider(contract.id));
-        ref.invalidate(installmentRepaymentsProvider(contract.id));
-        ref.invalidate(installmentRepaymentCashflowsProvider(contract.id));
-        ref.invalidate(
-          installmentContractsByAccountProvider(contract.liabilityAccountId),
-        );
-      },
-      failure:
-          (failure) => ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('撤销失败：${failure.message}'))),
-    );
+    switch (outcome) {
+      case UiActionSuccess<void>():
+        break;
+      case UiActionFailure<void>(:final error):
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('撤销失败：${error.message}')));
+    }
   }
 }
 

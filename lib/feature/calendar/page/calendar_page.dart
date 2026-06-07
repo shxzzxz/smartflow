@@ -3,16 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../app/provider.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_month_picker.dart';
-import '../../../application/ledger/ledger_query_api.dart';
-import '../../home/view_model/transaction_row_presentation.dart';
-import '../../home/widget/transaction_day_card.dart';
-import '../view_model/calendar_month_presentation.dart';
+import 'package:smartflow/widget/business/finance/finance_tone_color.dart';
+import 'package:smartflow/widget/business/transaction/transaction_day_card.dart';
+import '../presentation/calendar_month_presentation.dart';
+import '../view_model/calendar_view_model.dart';
 
 class CalendarPage extends ConsumerStatefulWidget {
   const CalendarPage({super.key});
@@ -22,36 +21,13 @@ class CalendarPage extends ConsumerStatefulWidget {
 }
 
 class _CalendarPageState extends ConsumerState<CalendarPage> {
-  late DateTime _visibleMonth;
-  late DateTime _selectedDate;
-  bool _showLunar = true;
-
-  @override
-  void initState() {
-    super.initState();
-    final now = DateTime.now();
-    _visibleMonth = DateTime(now.year, now.month);
-    _selectedDate = DateTime(now.year, now.month, now.day);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final transactionsAsync = ref.watch(
-      homeMonthTransactionsProvider(
-        year: _visibleMonth.year,
-        month: _visibleMonth.month,
-      ),
-    );
-    final summaryAsync = ref.watch(
-      homeMonthCashflowComparisonProvider(
-        year: _visibleMonth.year,
-        month: _visibleMonth.month,
-      ),
-    );
-    final dailySummariesAsync = ref.watch(
-      homeMonthDailyCashflowSummariesProvider(
-        year: _visibleMonth.year,
-        month: _visibleMonth.month,
+    final state = ref.watch(calendarViewModelProvider);
+    final content = ref.watch(
+      calendarContentProvider(
+        visibleMonth: state.visibleMonth,
+        selectedDate: state.selectedDate,
       ),
     );
 
@@ -60,43 +36,32 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
         child: Column(
           children: [
             _CalendarHeader(
-              visibleMonth: _visibleMonth,
-              showLunar: _showLunar,
+              visibleMonth: state.visibleMonth,
+              showLunar: state.showLunar,
               onMonthPressed: _pickMonth,
               onPreviousMonth: () => _shiftMonth(-1),
               onNextMonth: () => _shiftMonth(1),
               onTodayPressed: _goToday,
-              onToggleLunar: () => setState(() => _showLunar = !_showLunar),
+              onToggleLunar:
+                  () =>
+                      ref
+                          .read(calendarViewModelProvider.notifier)
+                          .toggleLunar(),
             ),
             Expanded(
-              child: switch ((
-                transactionsAsync,
-                summaryAsync,
-                dailySummariesAsync,
-              )) {
-                (
-                  AsyncData(value: final transactions),
-                  AsyncData(value: final comparison),
-                  AsyncData(value: final dailySummaries),
-                ) =>
-                  _CalendarContent(
-                    visibleMonth: _visibleMonth,
-                    selectedDate: _selectedDate,
-                    showLunar: _showLunar,
-                    transactions: transactions,
-                    summary: comparison.current,
-                    dailySummaries: dailySummaries,
-                    onDateSelected: _selectDate,
-                    onMonthSwipe: _shiftMonth,
-                  ),
-                (AsyncError(:final error), _, _) ||
-                (_, AsyncError(:final error), _) ||
-                (
-                  _,
-                  _,
-                  AsyncError(:final error),
-                ) => Center(child: Text('加载失败：$error')),
-                _ => const Center(child: CircularProgressIndicator()),
+              child: switch (content) {
+                CalendarContentLoaded(:final month) => _CalendarContent(
+                  month: month,
+                  showLunar: state.showLunar,
+                  onDateSelected: _selectDate,
+                  onMonthSwipe: _shiftMonth,
+                ),
+                CalendarContentError(:final message) => Center(
+                  child: Text(message),
+                ),
+                CalendarContentLoading() => const Center(
+                  child: CircularProgressIndicator(),
+                ),
               },
             ),
           ],
@@ -116,38 +81,24 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
   Future<void> _pickMonth() async {
     final selected = await showAppMonthPicker(
       context: context,
-      initialMonth: _visibleMonth,
+      initialMonth: ref.read(calendarViewModelProvider).visibleMonth,
     );
     if (!mounted || selected == null) {
       return;
     }
-    setState(() {
-      _visibleMonth = DateTime(selected.year, selected.month);
-      _selectedDate = clampSelectedDateToMonth(_selectedDate, _visibleMonth);
-    });
+    ref.read(calendarViewModelProvider.notifier).pickMonth(selected);
   }
 
   void _goToday() {
-    final now = DateTime.now();
-    setState(() {
-      _visibleMonth = DateTime(now.year, now.month);
-      _selectedDate = DateTime(now.year, now.month, now.day);
-    });
+    ref.read(calendarViewModelProvider.notifier).goToday();
   }
 
   void _selectDate(DateTime date) {
-    setState(() {
-      _selectedDate = normalizeDate(date);
-      _visibleMonth = DateTime(date.year, date.month);
-    });
+    ref.read(calendarViewModelProvider.notifier).selectDate(date);
   }
 
   void _shiftMonth(int delta) {
-    final nextMonth = DateTime(_visibleMonth.year, _visibleMonth.month + delta);
-    setState(() {
-      _visibleMonth = nextMonth;
-      _selectedDate = clampSelectedDateToMonth(_selectedDate, nextMonth);
-    });
+    ref.read(calendarViewModelProvider.notifier).shiftMonth(delta);
   }
 }
 
@@ -261,39 +212,19 @@ enum _CalendarMenuAction { today }
 
 class _CalendarContent extends StatelessWidget {
   const _CalendarContent({
-    required this.visibleMonth,
-    required this.selectedDate,
+    required this.month,
     required this.showLunar,
-    required this.transactions,
-    required this.summary,
-    required this.dailySummaries,
     required this.onDateSelected,
     required this.onMonthSwipe,
   });
 
-  final DateTime visibleMonth;
-  final DateTime selectedDate;
+  final CalendarMonthPresentation month;
   final bool showLunar;
-  final List<TransactionListItem> transactions;
-  final CashflowSummary summary;
-  final List<DailyCashflowSummary> dailySummaries;
   final ValueChanged<DateTime> onDateSelected;
   final ValueChanged<int> onMonthSwipe;
 
   @override
   Widget build(BuildContext context) {
-    final days = buildCalendarMonthPresentation(
-      visibleMonth: visibleMonth,
-      selectedDate: selectedDate,
-      transactions: transactions,
-      dailySummaries: dailySummaries,
-    );
-    final selectedGroup = transactionGroupForDate(
-      date: selectedDate,
-      transactions: transactions,
-      dailySummaries: dailySummaries,
-    );
-
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
@@ -305,18 +236,21 @@ class _CalendarContent extends StatelessWidget {
         AppSpacing.space24,
       ),
       children: [
-        _MonthlySummaryStrip(summary: summary),
+        _MonthlySummaryStrip(summary: month.summary),
         const SizedBox(height: AppSpacing.space10),
         const _WeekdayHeader(),
         const SizedBox(height: AppSpacing.space8),
         _CalendarGrid(
-          days: days,
+          days: month.days,
           showLunar: showLunar,
           onDateSelected: onDateSelected,
           onMonthSwipe: onMonthSwipe,
         ),
         const SizedBox(height: AppSpacing.space10),
-        TransactionDayCard(group: selectedGroup, emptyMessage: '当天暂无交易记录'),
+        TransactionDayCard(
+          group: month.selectedGroup,
+          emptyMessage: '当天暂无交易记录',
+        ),
       ],
     );
   }
@@ -325,71 +259,61 @@ class _CalendarContent extends StatelessWidget {
 class _MonthlySummaryStrip extends StatelessWidget {
   const _MonthlySummaryStrip({required this.summary});
 
-  final CashflowSummary summary;
+  final CalendarMonthlySummaryPresentation summary;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
-    final incomeMinor = summary.income.minorUnits;
-    final expenseMinor = summary.expense.minorUnits;
-    final balanceMinor = summary.net.minorUnits;
+    final metrics = summary.metrics;
 
     return Row(
       children: [
-        _SummaryText(
-          label: '收入',
-          amountMinor: incomeMinor,
-          amountColor: financeColors.income,
-        ),
-        const SizedBox(width: AppSpacing.space24),
-        _SummaryText(
-          label: '支出',
-          amountMinor: expenseMinor,
-          amountColor: financeColors.expense,
-        ),
-        const SizedBox(width: AppSpacing.space24),
-        Expanded(
-          child: _SummaryText(
-            label: '净收入',
-            amountMinor: balanceMinor,
-            amountColor: colors.onSurface,
-            showSignedNegative: true,
-          ),
-        ),
+        for (var i = 0; i < metrics.length; i++) ...[
+          if (i > 0) const SizedBox(width: AppSpacing.space24),
+          if (i == metrics.length - 1)
+            Expanded(
+              child: _SummaryText(
+                metric: metrics[i],
+                amountColor: financeToneColor(
+                  colors,
+                  financeColors,
+                  metrics[i].tone,
+                ),
+              ),
+            )
+          else
+            _SummaryText(
+              metric: metrics[i],
+              amountColor: financeToneColor(
+                colors,
+                financeColors,
+                metrics[i].tone,
+              ),
+            ),
+        ],
       ],
     );
   }
 }
 
 class _SummaryText extends StatelessWidget {
-  const _SummaryText({
-    required this.label,
-    required this.amountMinor,
-    required this.amountColor,
-    this.showSignedNegative = false,
-  });
+  const _SummaryText({required this.metric, required this.amountColor});
 
-  final String label;
-  final int amountMinor;
+  final CalendarMonthlySummaryMetricPresentation metric;
   final Color amountColor;
-  final bool showSignedNegative;
 
   @override
   Widget build(BuildContext context) {
     final textStyles = context.appTextStyles;
-    final amount =
-        showSignedNegative
-            ? formatMonthlyAmount(amountMinor, showSign: true)
-            : formatMinorAmount(amountMinor);
 
     return Text.rich(
       TextSpan(
-        text: '$label ',
+        text: '${metric.label} ',
         style: textStyles.listSupporting,
         children: [
           TextSpan(
-            text: amount,
+            text: metric.amountText,
             style: textStyles.calendarSummaryAmount.copyWith(
               color: amountColor,
             ),

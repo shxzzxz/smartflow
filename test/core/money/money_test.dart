@@ -23,6 +23,14 @@ void main() {
       expect(() => Money.parse('1.234'), throwsFormatException);
     });
 
+    test('tryParse returns null for invalid input', () {
+      expect(Money.tryParse('12.34'), const Money(minorUnits: 1234));
+      expect(Money.tryParse(null), isNull);
+      expect(Money.tryParse(''), isNull);
+      expect(Money.tryParse('1.234'), isNull);
+      expect(Money.tryParse('abc'), isNull);
+    });
+
     test('compares by minor units', () {
       final first = Money.parse('1.00');
       final second = Money.parse('2.00');

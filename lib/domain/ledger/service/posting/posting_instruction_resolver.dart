@@ -1,21 +1,20 @@
-import 'package:smartflow/core/error/failure.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/core/result/result.dart';
 import '../../entity/transaction.dart';
 import '../../valobj/ledger_enum.dart';
+import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 
 abstract interface class PostingInstructionResolver {
-  Result<PostingInstruction> resolve(Transaction transaction);
+  PostingInstruction resolve(Transaction transaction);
 
-  Result<RefundInstruction> resolveRefund(Transaction transaction);
+  RefundInstruction resolveRefund(Transaction transaction);
 }
 
 class DefaultPostingInstructionResolver implements PostingInstructionResolver {
   const DefaultPostingInstructionResolver();
 
   @override
-  Result<PostingInstruction> resolve(Transaction transaction) {
+  PostingInstruction resolve(Transaction transaction) {
     return switch (transaction.businessPurpose) {
       BusinessPurpose.dailyExpense => _resolveExpense(transaction),
       BusinessPurpose.dailyIncome => _resolveIncome(transaction),
@@ -25,26 +24,21 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       BusinessPurpose.transfer => _resolveTransfer(transaction),
       BusinessPurpose.debtRepayment => _resolveRepayment(transaction),
       BusinessPurpose.borrowing => _resolveBorrowing(transaction),
-      _ => Result.failure(
-        Failure(
-          code: 'unsupported_posting_instruction_resolution',
-          message:
-              'Cannot resolve ${transaction.businessPurpose.name} as a '
-              'posting instruction.',
-        ),
-      ),
+      _ => LedgerViolationReason.unsupportedPostingInstructionResolution
+          .throwException(
+            message:
+                'Cannot resolve ${transaction.businessPurpose.name} as a '
+                'posting instruction.',
+          ),
     };
   }
 
   @override
-  Result<RefundInstruction> resolveRefund(Transaction transaction) {
+  RefundInstruction resolveRefund(Transaction transaction) {
     if (transaction.businessPurpose != BusinessPurpose.refund ||
         transaction.parentTransactionId == null) {
-      return const Result.failure(
-        Failure(
-          code: 'refund_transaction_required',
-          message: 'A refund transaction is required.',
-        ),
+      return LedgerViolationReason.refundTransactionRequired.throwException(
+        message: 'A refund transaction is required.',
       );
     }
     final refundTo = _firstEntryAccount(
@@ -52,26 +46,21 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       direction: EntryDirection.debit,
     );
     if (refundTo == null) {
-      return const Result.failure(
-        Failure(
-          code: 'refund_to_account_not_found',
-          message: 'Refund receiving account cannot be resolved.',
-        ),
+      return LedgerViolationReason.refundToAccountNotFound.throwException(
+        message: 'Refund receiving account cannot be resolved.',
       );
     }
-    return Result.success(
-      RefundInstruction(
-        parentTransactionId: transaction.parentTransactionId!,
-        amount: transaction.primaryAmount,
-        refundToAccountId: refundTo,
-        occurredAt: transaction.occurredAt,
-        counterpartyName: transaction.counterpartyName,
-        note: transaction.note,
-      ),
+    return RefundInstruction(
+      parentTransactionId: transaction.parentTransactionId!,
+      amount: transaction.primaryAmount,
+      refundToAccountId: refundTo,
+      occurredAt: transaction.occurredAt,
+      counterpartyName: transaction.counterpartyName,
+      note: transaction.note,
     );
   }
 
-  Result<ExpenseInstruction> _resolveExpense(Transaction transaction) {
+  ExpenseInstruction _resolveExpense(Transaction transaction) {
     final expenseAccountId = _firstEntryAccount(
       transaction,
       direction: EntryDirection.debit,
@@ -81,30 +70,24 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       direction: EntryDirection.credit,
     );
     if (expenseAccountId == null || paidFromAccountId == null) {
-      return const Result.failure(
-        Failure(
-          code: 'expense_instruction_unresolvable',
-          message: 'Expense accounts cannot be resolved.',
-        ),
-      );
+      return LedgerViolationReason.expenseInstructionUnresolvable
+          .throwException(message: 'Expense accounts cannot be resolved.');
     }
-    return Result.success(
-      ExpenseInstruction(
-        amount: transaction.primaryAmount,
-        paidFromAccountId: paidFromAccountId,
-        expenseAccountId: expenseAccountId,
-        occurredAt: transaction.occurredAt,
-        counterpartyName: transaction.counterpartyName,
-        note: transaction.note,
-        isExcludedFromStats: transaction.isExcludedFromStats,
-        isExcludedFromBudget: transaction.isExcludedFromBudget,
-        sourceKind: transaction.sourceKind,
-        ownership: transaction.ownership,
-      ),
+    return ExpenseInstruction(
+      amount: transaction.primaryAmount,
+      paidFromAccountId: paidFromAccountId,
+      expenseAccountId: expenseAccountId,
+      occurredAt: transaction.occurredAt,
+      counterpartyName: transaction.counterpartyName,
+      note: transaction.note,
+      isExcludedFromStats: transaction.isExcludedFromStats,
+      isExcludedFromBudget: transaction.isExcludedFromBudget,
+      sourceKind: transaction.sourceKind,
+      ownership: transaction.ownership,
     );
   }
 
-  Result<IncomeInstruction> _resolveIncome(Transaction transaction) {
+  IncomeInstruction _resolveIncome(Transaction transaction) {
     final receiveAccountId = _firstEntryAccount(
       transaction,
       direction: EntryDirection.debit,
@@ -114,29 +97,24 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       direction: EntryDirection.credit,
     );
     if (receiveAccountId == null || incomeAccountId == null) {
-      return const Result.failure(
-        Failure(
-          code: 'income_instruction_unresolvable',
-          message: 'Income accounts cannot be resolved.',
-        ),
+      return LedgerViolationReason.incomeInstructionUnresolvable.throwException(
+        message: 'Income accounts cannot be resolved.',
       );
     }
-    return Result.success(
-      IncomeInstruction(
-        amount: transaction.primaryAmount,
-        receiveAccountId: receiveAccountId,
-        incomeAccountId: incomeAccountId,
-        occurredAt: transaction.occurredAt,
-        counterpartyName: transaction.counterpartyName,
-        note: transaction.note,
-        isExcludedFromStats: transaction.isExcludedFromStats,
-        sourceKind: transaction.sourceKind,
-        ownership: transaction.ownership,
-      ),
+    return IncomeInstruction(
+      amount: transaction.primaryAmount,
+      receiveAccountId: receiveAccountId,
+      incomeAccountId: incomeAccountId,
+      occurredAt: transaction.occurredAt,
+      counterpartyName: transaction.counterpartyName,
+      note: transaction.note,
+      isExcludedFromStats: transaction.isExcludedFromStats,
+      sourceKind: transaction.sourceKind,
+      ownership: transaction.ownership,
     );
   }
 
-  Result<ReimbursementAdvanceInstruction> _resolveReimbursementAdvance(
+  ReimbursementAdvanceInstruction _resolveReimbursementAdvance(
     Transaction transaction,
   ) {
     final expenseAccountId = transaction.reimbursementExpenseAccountId;
@@ -153,29 +131,25 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
     if (expenseAccountId == null ||
         receivableAccountId == null ||
         paidFromAccountId == null) {
-      return const Result.failure(
-        Failure(
-          code: 'reimbursement_instruction_unresolvable',
-          message: 'Reimbursement advance accounts cannot be resolved.',
-        ),
-      );
+      return LedgerViolationReason.reimbursementInstructionUnresolvable
+          .throwException(
+            message: 'Reimbursement advance accounts cannot be resolved.',
+          );
     }
-    return Result.success(
-      ReimbursementAdvanceInstruction(
-        amount: transaction.primaryAmount,
-        receivableAccountId: receivableAccountId,
-        paidFromAccountId: paidFromAccountId,
-        expenseAccountId: expenseAccountId,
-        occurredAt: transaction.occurredAt,
-        counterpartyName: transaction.counterpartyName,
-        note: transaction.note,
-        sourceKind: transaction.sourceKind,
-        ownership: transaction.ownership,
-      ),
+    return ReimbursementAdvanceInstruction(
+      amount: transaction.primaryAmount,
+      receivableAccountId: receivableAccountId,
+      paidFromAccountId: paidFromAccountId,
+      expenseAccountId: expenseAccountId,
+      occurredAt: transaction.occurredAt,
+      counterpartyName: transaction.counterpartyName,
+      note: transaction.note,
+      sourceKind: transaction.sourceKind,
+      ownership: transaction.ownership,
     );
   }
 
-  Result<TransferInstruction> _resolveTransfer(Transaction transaction) {
+  TransferInstruction _resolveTransfer(Transaction transaction) {
     final fromAccountId = _firstEntryAccount(
       transaction,
       direction: EntryDirection.credit,
@@ -190,28 +164,22 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       TransactionDetailType.transferFee,
     );
     if (fromAccountId == null || toAccountId == null) {
-      return const Result.failure(
-        Failure(
-          code: 'transfer_instruction_unresolvable',
-          message: 'Transfer accounts cannot be resolved.',
-        ),
-      );
+      return LedgerViolationReason.transferInstructionUnresolvable
+          .throwException(message: 'Transfer accounts cannot be resolved.');
     }
-    return Result.success(
-      TransferInstruction(
-        amount: transaction.primaryAmount,
-        fromAccountId: fromAccountId,
-        toAccountId: toAccountId,
-        feeAmount: feeAmount,
-        occurredAt: transaction.occurredAt,
-        counterpartyName: transaction.counterpartyName,
-        note: transaction.note,
-        sourceKind: transaction.sourceKind,
-      ),
+    return TransferInstruction(
+      amount: transaction.primaryAmount,
+      fromAccountId: fromAccountId,
+      toAccountId: toAccountId,
+      feeAmount: feeAmount,
+      occurredAt: transaction.occurredAt,
+      counterpartyName: transaction.counterpartyName,
+      note: transaction.note,
+      sourceKind: transaction.sourceKind,
     );
   }
 
-  Result<BorrowingInstruction> _resolveBorrowing(Transaction transaction) {
+  BorrowingInstruction _resolveBorrowing(Transaction transaction) {
     final receiveAccountId = _firstEntryAccount(
       transaction,
       direction: EntryDirection.debit,
@@ -221,28 +189,22 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       direction: EntryDirection.credit,
     );
     if (receiveAccountId == null || liabilityAccountId == null) {
-      return const Result.failure(
-        Failure(
-          code: 'borrowing_instruction_unresolvable',
-          message: 'Borrowing accounts cannot be resolved.',
-        ),
-      );
+      return LedgerViolationReason.borrowingInstructionUnresolvable
+          .throwException(message: 'Borrowing accounts cannot be resolved.');
     }
-    return Result.success(
-      BorrowingInstruction(
-        amount: transaction.primaryAmount,
-        liabilityAccountId: liabilityAccountId,
-        receiveAccountId: receiveAccountId,
-        occurredAt: transaction.occurredAt,
-        counterpartyName: transaction.counterpartyName,
-        note: transaction.note,
-        ownership: transaction.ownership,
-        sourceKind: transaction.sourceKind,
-      ),
+    return BorrowingInstruction(
+      amount: transaction.primaryAmount,
+      liabilityAccountId: liabilityAccountId,
+      receiveAccountId: receiveAccountId,
+      occurredAt: transaction.occurredAt,
+      counterpartyName: transaction.counterpartyName,
+      note: transaction.note,
+      ownership: transaction.ownership,
+      sourceKind: transaction.sourceKind,
     );
   }
 
-  Result<RepaymentInstruction> _resolveRepayment(Transaction transaction) {
+  RepaymentInstruction _resolveRepayment(Transaction transaction) {
     final principal = _detailAmount(
       transaction,
       TransactionDetailType.repaymentPrincipal,
@@ -254,12 +216,8 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
     );
     final paidFromAccountId = transaction.entries.last.accountId;
     if (principal == null || liabilityAccountId == null) {
-      return const Result.failure(
-        Failure(
-          code: 'repayment_instruction_unresolvable',
-          message: 'Repayment accounts cannot be resolved.',
-        ),
-      );
+      return LedgerViolationReason.repaymentInstructionUnresolvable
+          .throwException(message: 'Repayment accounts cannot be resolved.');
     }
     final interest = _detailAmount(
       transaction,
@@ -270,20 +228,18 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       transaction,
       TransactionDetailType.repaymentDiscount,
     );
-    return Result.success(
-      RepaymentInstruction(
-        principal: principal,
-        interest: interest,
-        fee: fee,
-        discount: discount,
-        liabilityAccountId: liabilityAccountId,
-        paidFromAccountId: paidFromAccountId,
-        occurredAt: transaction.occurredAt,
-        counterpartyName: transaction.counterpartyName,
-        note: transaction.note,
-        ownership: transaction.ownership,
-        sourceKind: transaction.sourceKind,
-      ),
+    return RepaymentInstruction(
+      principal: principal,
+      interest: interest,
+      fee: fee,
+      discount: discount,
+      liabilityAccountId: liabilityAccountId,
+      paidFromAccountId: paidFromAccountId,
+      occurredAt: transaction.occurredAt,
+      counterpartyName: transaction.counterpartyName,
+      note: transaction.note,
+      ownership: transaction.ownership,
+      sourceKind: transaction.sourceKind,
     );
   }
 

@@ -1,5 +1,4 @@
 import 'package:smartflow/core/id/id_generator.dart';
-import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/root_transaction_group_repository.dart';
 import 'package:smartflow/domain/ledger/port/system_account_resolver.dart';
@@ -16,49 +15,39 @@ import 'transaction_command.dart';
 import 'transaction_ledger_writer.dart';
 
 abstract interface class TransactionPostingAppService {
-  Future<Result<PostedTransactionResult>> createExpense(
-    CreateExpenseCommand command,
-  );
+  Future<PostedTransactionResult> createExpense(CreateExpenseCommand command);
 
-  Future<Result<PostedTransactionResult>> createIncome(
-    CreateIncomeCommand command,
-  );
+  Future<PostedTransactionResult> createIncome(CreateIncomeCommand command);
 
-  Future<Result<PostedTransactionResult>> createTransfer(
-    CreateTransferCommand command,
-  );
+  Future<PostedTransactionResult> createTransfer(CreateTransferCommand command);
 
-  Future<Result<PostedTransactionResult>> createRefund(
-    CreateRefundCommand command,
-  );
+  Future<PostedTransactionResult> createRefund(CreateRefundCommand command);
 
-  Future<Result<PostedTransactionResult>> createReimbursementAdvance(
+  Future<PostedTransactionResult> createReimbursementAdvance(
     CreateReimbursementAdvanceCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> createReimbursementReceipt(
+  Future<PostedTransactionResult> createReimbursementReceipt(
     CreateReimbursementReceiptCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> closeReimbursement(
+  Future<PostedTransactionResult> closeReimbursement(
     CloseReimbursementCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> createRepayment(
+  Future<PostedTransactionResult> createRepayment(
     CreateRepaymentCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> createBorrowing(
+  Future<PostedTransactionResult> createBorrowing(
     CreateBorrowingCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> createOpeningBalance(
+  Future<PostedTransactionResult> createOpeningBalance(
     CreateOpeningBalanceCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> adjustBalance(
-    AdjustBalanceCommand command,
-  );
+  Future<PostedTransactionResult> adjustBalance(AdjustBalanceCommand command);
 }
 
 class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
@@ -124,7 +113,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   final ReimbursementPostingService _reimbursementPostingService;
 
   @override
-  Future<Result<PostedTransactionResult>> createExpense(
+  Future<PostedTransactionResult> createExpense(
     CreateExpenseCommand command,
   ) async {
     return _ledgerWriter.persistPosting(
@@ -144,7 +133,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createIncome(
+  Future<PostedTransactionResult> createIncome(
     CreateIncomeCommand command,
   ) async {
     return _ledgerWriter.persistPosting(
@@ -163,7 +152,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createTransfer(
+  Future<PostedTransactionResult> createTransfer(
     CreateTransferCommand command,
   ) async {
     return _ledgerWriter.persistPosting(
@@ -182,7 +171,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createRefund(
+  Future<PostedTransactionResult> createRefund(
     CreateRefundCommand command,
   ) async {
     return _ledgerWriter.persistPosting(
@@ -200,7 +189,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createReimbursementAdvance(
+  Future<PostedTransactionResult> createReimbursementAdvance(
     CreateReimbursementAdvanceCommand command,
   ) async {
     return _ledgerWriter.persistPosting(
@@ -219,7 +208,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createReimbursementReceipt(
+  Future<PostedTransactionResult> createReimbursementReceipt(
     CreateReimbursementReceiptCommand command,
   ) async {
     return _ledgerWriter.persistPosting(
@@ -238,7 +227,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> closeReimbursement(
+  Future<PostedTransactionResult> closeReimbursement(
     CloseReimbursementCommand command,
   ) async {
     return _ledgerWriter.persistPosting(
@@ -257,7 +246,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createRepayment(
+  Future<PostedTransactionResult> createRepayment(
     CreateRepaymentCommand command,
   ) async {
     return _ledgerWriter.persistPosting(
@@ -279,7 +268,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createBorrowing(
+  Future<PostedTransactionResult> createBorrowing(
     CreateBorrowingCommand command,
   ) async {
     return _ledgerWriter.persistPosting(
@@ -298,7 +287,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createOpeningBalance(
+  Future<PostedTransactionResult> createOpeningBalance(
     CreateOpeningBalanceCommand command,
   ) async {
     return _ledgerWriter.persistPosting(
@@ -315,7 +304,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> adjustBalance(
+  Future<PostedTransactionResult> adjustBalance(
     AdjustBalanceCommand command,
   ) async {
     return _ledgerWriter.persistPosting(

@@ -3,26 +3,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../app/provider.dart';
-import '../../../core/result/result.dart';
+import '../../../application/ledger/ledger_command_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
-import '../../../application/ledger/ledger_command_api.dart';
-import '../../../widget/business/business_icon.dart';
-import '../../../widget/business/icon_choice_grid.dart';
+import 'package:smartflow/widget/business/icon/business_icon.dart';
+import 'package:smartflow/widget/business/icon/icon_choice_grid.dart';
+import '../../shared/provider/ledger_query_providers.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
+import '../view_model/category_form_view_model.dart';
 
 class CategoryFormPage extends ConsumerStatefulWidget {
   const CategoryFormPage({
     super.key,
     this.initialType = AccountType.expense,
     this.initialParentId,
+    this.categoryId,
   });
 
   final AccountType initialType;
   final String? initialParentId;
+  final String? categoryId;
 
   @override
   ConsumerState<CategoryFormPage> createState() => _CategoryFormPageState();
@@ -32,17 +35,17 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _noteController = TextEditingController();
-  AccountType _type = AccountType.expense;
-  String? _parentId;
-  String? _iconKey;
-  bool _submitting = false;
+  String? _scheduledEditCategoryId;
+  bool _scheduledNewInitialization = false;
+
+  bool get _isEditMode => widget.categoryId != null;
 
   @override
   void initState() {
     super.initState();
-    _type = widget.initialType;
-    _parentId = widget.initialParentId;
-    _iconKey = _defaultIconKeyForType(_type);
+    if (!_isEditMode) {
+      _scheduleNewInitialization();
+    }
   }
 
   @override
@@ -54,18 +57,89 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isEditMode) {
+      return _buildFormScaffold(
+        context,
+        ref.watch(categoryFormViewModelProvider),
+      );
+    }
+
+    final categoriesAsync = ref.watch(accountsByIdProvider);
+    return switch (categoriesAsync) {
+      AsyncData(value: final categories) => _buildForEdit(context, categories),
+      AsyncError(:final error) => Scaffold(
+        appBar: AppBar(title: const Text('编辑分类')),
+        body: Center(child: Text('分类加载失败：$error')),
+      ),
+      _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
+    };
+  }
+
+  Widget _buildForEdit(BuildContext context, Map<String, Account> categories) {
+    final category = categories[widget.categoryId!];
+    if (category == null || !category.type.isCategory) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('编辑分类')),
+        body: const Center(child: Text('分类不存在')),
+      );
+    }
+    _scheduleEditInitialization(category);
+    return _buildFormScaffold(
+      context,
+      ref.watch(categoryFormViewModelProvider),
+    );
+  }
+
+  void _scheduleNewInitialization() {
+    if (_scheduledNewInitialization) return;
+    _scheduledNewInitialization = true;
+    Future.microtask(() {
+      if (!mounted) return;
+      ref
+          .read(categoryFormViewModelProvider.notifier)
+          .initializeNew(
+            type: widget.initialType,
+            parentId: widget.initialParentId,
+          );
+    });
+  }
+
+  void _scheduleEditInitialization(Account category) {
+    final initializedId =
+        ref.read(categoryFormViewModelProvider).initializedCategoryId;
+    if (initializedId == category.id ||
+        _scheduledEditCategoryId == category.id) {
+      return;
+    }
+    _scheduledEditCategoryId = category.id;
+    Future.microtask(() {
+      if (!mounted) return;
+      syncTextControllerText(_nameController, category.name);
+      syncTextControllerText(_noteController, category.note ?? '');
+      ref
+          .read(categoryFormViewModelProvider.notifier)
+          .initializeForEdit(category);
+    });
+  }
+
+  Widget _buildFormScaffold(BuildContext context, CategoryFormState formState) {
     final colors = Theme.of(context).colorScheme;
+    final notifier = ref.read(categoryFormViewModelProvider.notifier);
     final parentOptions = ref
-        .watch(categoryTreeProvider(_type))
+        .watch(categoryTreeProvider(formState.type))
         .maybeWhen(
-          data: (nodes) => nodes.map((node) => node.account).toList(),
+          data:
+              (nodes) => categoryParentOptions(
+                nodes: nodes,
+                type: formState.type,
+                editingCategoryId: widget.categoryId,
+              ),
           orElse: () => const <Account>[],
         );
     final effectiveParent =
-        parentOptions.where((parent) => parent.id == _parentId).firstOrNull;
-    if (effectiveParent == null && _parentId != null) {
-      _parentId = null;
-    }
+        parentOptions
+            .where((parent) => parent.id == formState.parentId)
+            .firstOrNull;
 
     return Scaffold(
       backgroundColor: colors.surface,
@@ -74,9 +148,15 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
           key: _formKey,
           child: Column(
             children: [
-              _CategoryFormHeader(submitting: _submitting, onSave: _submit),
-              _TypeTabs(type: _type, onChanged: _switchType),
-              const Divider(height: 1),
+              _CategoryFormHeader(
+                title: _isEditMode ? '编辑分类' : '新增分类',
+                submitting: formState.submitting,
+                onSave: _submit,
+              ),
+              if (!_isEditMode) ...[
+                _TypeTabs(type: formState.type, onChanged: notifier.setType),
+                const Divider(height: 1),
+              ],
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(
@@ -87,9 +167,9 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
                   ),
                   children: [
                     IconChoiceGrid(
-                      choices: _categoryIconGridItemsForType(_type),
-                      selectedKey: _iconKey,
-                      onChanged: (value) => setState(() => _iconKey = value),
+                      choices: _categoryIconGridItemsForType(formState.type),
+                      selectedKey: formState.iconKey,
+                      onChanged: notifier.setIconKey,
                     ),
                     const SizedBox(height: AppSpacing.space20),
                     const Divider(height: 1),
@@ -132,16 +212,8 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
     );
   }
 
-  void _switchType(AccountType type) {
-    if (type == _type) return;
-    setState(() {
-      _type = type;
-      _parentId = null;
-      _iconKey = _defaultIconKeyForType(type);
-    });
-  }
-
   Future<void> _showParentSheet(List<Account> parents) async {
+    final parentId = ref.read(categoryFormViewModelProvider).parentId;
     final selected = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -152,7 +224,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
             children: [
               ListTile(
                 leading: Icon(
-                  _parentId == null
+                  parentId == null
                       ? RemixIcons.checkbox_circle_fill
                       : RemixIcons.checkbox_blank_circle_line,
                 ),
@@ -162,7 +234,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
               for (final parent in parents)
                 ListTile(
                   leading: Icon(
-                    _parentId == parent.id
+                    parentId == parent.id
                         ? RemixIcons.checkbox_circle_fill
                         : RemixIcons.checkbox_blank_circle_line,
                   ),
@@ -175,45 +247,42 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
       },
     );
     if (!mounted || selected == null) return;
-    setState(() => _parentId = selected.isEmpty ? null : selected);
+    ref
+        .read(categoryFormViewModelProvider.notifier)
+        .setParentId(selected.isEmpty ? null : selected);
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _submitting = true);
-    final result = await ref
-        .read(categoryAppServiceProvider)
-        .createCategory(
-          CreateCategoryCommand(
-            name: _nameController.text,
-            type: _type,
-            parentId: _parentId,
-            iconKey: _iconKey,
-            note: _noteController.text,
-          ),
+    final outcome = await ref
+        .read(categoryFormViewModelProvider.notifier)
+        .submit(
+          nameText: _nameController.text,
+          noteText: _noteController.text,
+          editCategoryId: widget.categoryId,
         );
-    if (!mounted) {
-      return;
-    }
-    setState(() => _submitting = false);
+    if (!mounted) return;
 
-    switch (result) {
-      case Success():
+    switch (outcome) {
+      case SubmitSuccess():
         context.pop();
-      case FailureResult(:final failure):
+      case SubmitFailure(:final error):
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(failure.message)));
+        ).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 }
 
 class _CategoryFormHeader extends StatelessWidget {
-  const _CategoryFormHeader({required this.submitting, required this.onSave});
+  const _CategoryFormHeader({
+    required this.title,
+    required this.submitting,
+    required this.onSave,
+  });
 
+  final String title;
   final bool submitting;
   final VoidCallback onSave;
 
@@ -251,7 +320,7 @@ class _CategoryFormHeader extends StatelessWidget {
                       : const Text('保存'),
             ),
           ),
-          Text('新增分类', style: context.appTextStyles.sectionTitleStrong),
+          Text(title, style: context.appTextStyles.sectionTitleStrong),
         ],
       ),
     );
@@ -335,10 +404,6 @@ BusinessIconUsage _iconUsageForType(AccountType type) {
   return type == AccountType.income
       ? BusinessIconUsage.incomeCategory
       : BusinessIconUsage.expenseCategory;
-}
-
-String _defaultIconKeyForType(AccountType type) {
-  return businessIconSpecsForUsage(_iconUsageForType(type)).first.iconKey;
 }
 
 List<IconChoiceGridItem> _categoryIconGridItemsForType(AccountType type) {

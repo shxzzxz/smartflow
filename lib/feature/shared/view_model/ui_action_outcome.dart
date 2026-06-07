@@ -3,6 +3,8 @@ import 'package:smartflow/core/error/app_exception.dart';
 class UiError {
   const UiError({required this.code, required this.message});
 
+  const UiError.unknown() : code = 'unknown', message = '未知错误，请稍后重试。';
+
   factory UiError.fromException(AppException exception) {
     return UiError(code: exception.code, message: exception.message);
   }

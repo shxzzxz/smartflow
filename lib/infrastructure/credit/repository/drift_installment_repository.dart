@@ -1,10 +1,12 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../domain/credit/entity/installment_contract.dart';
 import '../../../domain/credit/entity/installment_repayment.dart';
 import '../../../domain/credit/entity/installment_schedule.dart';
+import '../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
 import '../../../domain/credit/port/installment_repository.dart';
 import '../../../domain/credit/service/installment_schedule_generator.dart';
@@ -166,8 +168,11 @@ class DriftInstallmentRepository implements InstallmentRepository {
               : Value(patch.disbursementAccountId!),
       updatedAt: Value(DateTime.now()),
     );
-    await (_database.update(_database.installmentContracts)
+    final updated = await (_database.update(_database.installmentContracts)
       ..where((c) => c.id.equals(contractId))).write(companion);
+    if (updated == 0) {
+      throw BusinessException(CreditErrorCode.contractPersistenceConflict);
+    }
   }
 
   @override
@@ -254,8 +259,11 @@ class DriftInstallmentRepository implements InstallmentRepository {
       note: patch.note.toValue(),
       updatedAt: Value(DateTime.now()),
     );
-    await (_database.update(_database.installmentSchedules)
+    final updated = await (_database.update(_database.installmentSchedules)
       ..where((s) => s.id.equals(scheduleId))).write(companion);
+    if (updated == 0) {
+      throw BusinessException(CreditErrorCode.contractPersistenceConflict);
+    }
   }
 
   @override

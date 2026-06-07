@@ -20,6 +20,15 @@ class Money implements Comparable<Money> {
     return Money.fromMajor(Decimal.parse(amount.trim()));
   }
 
+  static Money? tryParse(String? amount) {
+    if (amount == null) return null;
+    try {
+      return Money.parse(amount);
+    } on FormatException {
+      return null;
+    }
+  }
+
   final int minorUnits;
 
   Decimal get major => Decimal.fromInt(minorUnits).shift(-2);

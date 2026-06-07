@@ -4,23 +4,19 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
-import '../../../application/ledger/ledger_query_api.dart';
-import '../view_model/transaction_row_presentation.dart';
+import 'package:smartflow/widget/business/finance/finance_tone_color.dart';
+import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 
 class MonthlySummaryCard extends StatelessWidget {
-  const MonthlySummaryCard({required this.comparison, super.key});
+  const MonthlySummaryCard({required this.summary, super.key});
 
-  static const _monthlyBudgetMinor = 1000000;
-
-  final CashflowComparison comparison;
+  final MonthlySummaryPresentation summary;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
-    final summary = comparison.current;
-    final incomeMinor = summary.income.minorUnits;
-    final expenseMinor = summary.expense.minorUnits;
+    final metrics = summary.metrics;
 
     return AppSurface(
       child: Padding(
@@ -31,69 +27,25 @@ class MonthlySummaryCard extends StatelessWidget {
         child: IntrinsicHeight(
           child: Row(
             children: [
-              Expanded(
-                child: _SummaryMetric(
-                  label: '本月收入',
-                  amountMinor: incomeMinor,
-                  amountColor: financeColors.income,
-                  caption: formatPeriodChangeMetrics(comparison.incomeChange),
-                  showSign: true,
+              for (var i = 0; i < metrics.length; i++) ...[
+                if (i > 0) _SummaryDivider(color: colors.outlineVariant),
+                Expanded(
+                  child: _SummaryMetric(
+                    metric: metrics[i],
+                    amountColor: financeToneColor(
+                      colors,
+                      financeColors,
+                      metrics[i].tone,
+                    ),
+                  ),
                 ),
-              ),
-              _SummaryDivider(color: colors.outlineVariant),
-              Expanded(
-                child: _SummaryMetric(
-                  label: '本月支出',
-                  amountMinor: expenseMinor,
-                  amountColor: financeColors.expense,
-                  caption: formatPeriodChangeMetrics(comparison.expenseChange),
-                ),
-              ),
-              _SummaryDivider(color: colors.outlineVariant),
-              Expanded(
-                child: _SummaryMetric(
-                  label: '本月预算',
-                  amountMinor: _monthlyBudgetMinor,
-                  amountColor: colors.primary,
-                  caption:
-                      '${_formatPercent(expenseMinor / _monthlyBudgetMinor)}/'
-                      '${_formatRoundedMajor(_monthlyBudgetMinor)}',
-                ),
-              ),
+              ],
             ],
           ),
         ),
       ),
     );
   }
-}
-
-String formatPeriodChangeMetrics(PeriodChange change) {
-  return [
-    _formatSignedCompactAmount(change.delta.minorUnits),
-    _formatOptionalPercent(change.ratio),
-    _formatOptionalPercent(change.fullPeriodRatio),
-  ].join('/');
-}
-
-String _formatSignedCompactAmount(int minorUnits) {
-  final sign = minorUnits >= 0 ? '+' : '-';
-  return '$sign${_formatRoundedMajor(minorUnits)}';
-}
-
-String _formatOptionalPercent(double? ratio) {
-  if (ratio == null) {
-    return '--%';
-  }
-  return _formatPercent(ratio);
-}
-
-String _formatPercent(double ratio) {
-  return '${(ratio * 100).round()}%';
-}
-
-String _formatRoundedMajor(int minorUnits) {
-  return (minorUnits.abs() / 100).round().toString();
 }
 
 class _SummaryDivider extends StatelessWidget {
@@ -115,19 +67,10 @@ class _SummaryDivider extends StatelessWidget {
 }
 
 class _SummaryMetric extends StatelessWidget {
-  const _SummaryMetric({
-    required this.label,
-    required this.amountMinor,
-    required this.amountColor,
-    required this.caption,
-    this.showSign = false,
-  });
+  const _SummaryMetric({required this.metric, required this.amountColor});
 
-  final String label;
-  final int amountMinor;
+  final MonthlySummaryMetricPresentation metric;
   final Color amountColor;
-  final String caption;
-  final bool showSign;
 
   @override
   Widget build(BuildContext context) {
@@ -138,7 +81,7 @@ class _SummaryMetric extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          label,
+          metric.label,
           style: textStyles.metricLabel,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -148,14 +91,14 @@ class _SummaryMetric extends StatelessWidget {
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
           child: Text(
-            formatMonthlyAmount(amountMinor, showSign: showSign),
+            metric.amountText,
             style: textStyles.metricValue.copyWith(color: amountColor),
             maxLines: 1,
           ),
         ),
         const SizedBox(height: AppSpacing.space6),
         Text(
-          caption,
+          metric.caption,
           style: textStyles.metricSupporting.copyWith(
             color: colors.onSurfaceVariant,
           ),

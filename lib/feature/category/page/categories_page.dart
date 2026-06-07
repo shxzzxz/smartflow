@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../app/provider.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../application/ledger/ledger_query_api.dart';
-import '../../../widget/business/category_grid_picker.dart';
+import 'package:smartflow/widget/business/category/category_grid_picker.dart';
+import '../../shared/provider/ledger_query_providers.dart';
 
 class CategoriesPage extends ConsumerWidget {
   const CategoriesPage({super.key});
@@ -150,6 +150,10 @@ class _CategoryGridPageState extends State<_CategoryGridPage> {
               onAddChild:
                   (rootId) =>
                       _openCategoryForm(context, widget.type, parentId: rootId),
+              onRootLongPressed:
+                  (category) => _openCategoryEditForm(context, category.id),
+              onChildLongPressed:
+                  (_, child) => _openCategoryEditForm(context, child.id),
             ),
           ],
         );
@@ -187,6 +191,10 @@ void _openCategoryForm(
     },
   );
   context.push(uri.toString());
+}
+
+void _openCategoryEditForm(BuildContext context, String categoryId) {
+  context.push('/category/$categoryId/edit');
 }
 
 class _EmptyCategories extends StatelessWidget {

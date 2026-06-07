@@ -1,8 +1,7 @@
-import '../../../core/error/failure.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
-import '../../../core/result/result.dart';
 import 'ledger_enum.dart';
+import 'ledger_violation_reason.dart';
 import 'transaction_ownership.dart';
 
 sealed class PostingInstruction {
@@ -560,7 +559,7 @@ sealed class PostingReplacementPatch {
 
   BusinessPurpose get targetPurpose;
 
-  Result<PostingInstruction> applyTo(PostingInstruction current);
+  PostingInstruction applyTo(PostingInstruction current);
 }
 
 class ExpenseReplacementPatch extends PostingReplacementPatch {
@@ -578,35 +577,28 @@ class ExpenseReplacementPatch extends PostingReplacementPatch {
   BusinessPurpose get targetPurpose => BusinessPurpose.dailyExpense;
 
   @override
-  Result<ExpenseInstruction> applyTo(PostingInstruction current) {
+  ExpenseInstruction applyTo(PostingInstruction current) {
     if (current is ExpenseInstruction) {
-      return Result.success(
-        current.copyWith(
-          amount: amount,
-          paidFromAccountId: paidFromAccountId,
-          expenseAccountId: expenseAccountId,
-        ),
+      return current.copyWith(
+        amount: amount,
+        paidFromAccountId: paidFromAccountId,
+        expenseAccountId: expenseAccountId,
       );
     }
     if (current is ReimbursementAdvanceInstruction) {
-      return Result.success(
-        ExpenseInstruction(
-          amount: amount ?? current.amount,
-          paidFromAccountId: paidFromAccountId ?? current.paidFromAccountId,
-          expenseAccountId: expenseAccountId ?? current.expenseAccountId,
-          occurredAt: current.occurredAt,
-          counterpartyName: current.counterpartyName,
-          note: current.note,
-          sourceKind: current.sourceKind,
-          ownership: current.ownership,
-        ),
+      return ExpenseInstruction(
+        amount: amount ?? current.amount,
+        paidFromAccountId: paidFromAccountId ?? current.paidFromAccountId,
+        expenseAccountId: expenseAccountId ?? current.expenseAccountId,
+        occurredAt: current.occurredAt,
+        counterpartyName: current.counterpartyName,
+        note: current.note,
+        sourceKind: current.sourceKind,
+        ownership: current.ownership,
       );
     }
-    return const Result.failure(
-      Failure(
-        code: 'unsupported_replacement_source',
-        message: 'This transaction cannot be replaced as an expense.',
-      ),
+    return LedgerViolationReason.unsupportedReplacementSource.throwException(
+      message: 'This transaction cannot be replaced as an expense.',
     );
   }
 }
@@ -626,21 +618,16 @@ class IncomeReplacementPatch extends PostingReplacementPatch {
   BusinessPurpose get targetPurpose => BusinessPurpose.dailyIncome;
 
   @override
-  Result<IncomeInstruction> applyTo(PostingInstruction current) {
+  IncomeInstruction applyTo(PostingInstruction current) {
     if (current is IncomeInstruction) {
-      return Result.success(
-        current.copyWith(
-          amount: amount,
-          receiveAccountId: receiveAccountId,
-          incomeAccountId: incomeAccountId,
-        ),
+      return current.copyWith(
+        amount: amount,
+        receiveAccountId: receiveAccountId,
+        incomeAccountId: incomeAccountId,
       );
     }
-    return const Result.failure(
-      Failure(
-        code: 'unsupported_replacement_source',
-        message: 'This transaction cannot be replaced as an income.',
-      ),
+    return LedgerViolationReason.unsupportedReplacementSource.throwException(
+      message: 'This transaction cannot be replaced as an income.',
     );
   }
 }
@@ -662,26 +649,21 @@ class TransferReplacementPatch extends PostingReplacementPatch {
   BusinessPurpose get targetPurpose => BusinessPurpose.transfer;
 
   @override
-  Result<TransferInstruction> applyTo(PostingInstruction current) {
+  TransferInstruction applyTo(PostingInstruction current) {
     if (current is TransferInstruction) {
-      return Result.success(
-        TransferInstruction(
-          amount: amount ?? current.amount,
-          fromAccountId: fromAccountId ?? current.fromAccountId,
-          toAccountId: toAccountId ?? current.toAccountId,
-          feeAmount: feeAmount ?? current.feeAmount,
-          occurredAt: current.occurredAt,
-          counterpartyName: current.counterpartyName,
-          note: current.note,
-          sourceKind: current.sourceKind,
-        ),
+      return TransferInstruction(
+        amount: amount ?? current.amount,
+        fromAccountId: fromAccountId ?? current.fromAccountId,
+        toAccountId: toAccountId ?? current.toAccountId,
+        feeAmount: feeAmount ?? current.feeAmount,
+        occurredAt: current.occurredAt,
+        counterpartyName: current.counterpartyName,
+        note: current.note,
+        sourceKind: current.sourceKind,
       );
     }
-    return const Result.failure(
-      Failure(
-        code: 'unsupported_replacement_source',
-        message: 'This transaction cannot be replaced as a transfer.',
-      ),
+    return LedgerViolationReason.unsupportedReplacementSource.throwException(
+      message: 'This transaction cannot be replaced as a transfer.',
     );
   }
 }
@@ -703,23 +685,18 @@ class ReimbursementAdvanceReplacementPatch extends PostingReplacementPatch {
   BusinessPurpose get targetPurpose => BusinessPurpose.reimbursementAdvance;
 
   @override
-  Result<ReimbursementAdvanceInstruction> applyTo(PostingInstruction current) {
+  ReimbursementAdvanceInstruction applyTo(PostingInstruction current) {
     if (current is ReimbursementAdvanceInstruction) {
-      return Result.success(
-        current.copyWith(
-          amount: amount,
-          receivableAccountId: receivableAccountId,
-          paidFromAccountId: paidFromAccountId,
-          expenseAccountId: expenseAccountId,
-        ),
+      return current.copyWith(
+        amount: amount,
+        receivableAccountId: receivableAccountId,
+        paidFromAccountId: paidFromAccountId,
+        expenseAccountId: expenseAccountId,
       );
     }
-    return const Result.failure(
-      Failure(
-        code: 'unsupported_replacement_source',
-        message:
-            'This transaction cannot be replaced as a reimbursement advance.',
-      ),
+    return LedgerViolationReason.unsupportedReplacementSource.throwException(
+      message:
+          'This transaction cannot be replaced as a reimbursement advance.',
     );
   }
 }
@@ -739,21 +716,16 @@ class BorrowingReplacementPatch extends PostingReplacementPatch {
   BusinessPurpose get targetPurpose => BusinessPurpose.borrowing;
 
   @override
-  Result<BorrowingInstruction> applyTo(PostingInstruction current) {
+  BorrowingInstruction applyTo(PostingInstruction current) {
     if (current is BorrowingInstruction) {
-      return Result.success(
-        current.copyWith(
-          amount: amount,
-          liabilityAccountId: liabilityAccountId,
-          receiveAccountId: receiveAccountId,
-        ),
+      return current.copyWith(
+        amount: amount,
+        liabilityAccountId: liabilityAccountId,
+        receiveAccountId: receiveAccountId,
       );
     }
-    return const Result.failure(
-      Failure(
-        code: 'unsupported_replacement_source',
-        message: 'This transaction cannot be replaced as borrowing.',
-      ),
+    return LedgerViolationReason.unsupportedReplacementSource.throwException(
+      message: 'This transaction cannot be replaced as borrowing.',
     );
   }
 }
@@ -779,29 +751,24 @@ class RepaymentReplacementPatch extends PostingReplacementPatch {
   BusinessPurpose get targetPurpose => BusinessPurpose.debtRepayment;
 
   @override
-  Result<RepaymentInstruction> applyTo(PostingInstruction current) {
+  RepaymentInstruction applyTo(PostingInstruction current) {
     if (current is RepaymentInstruction) {
-      return Result.success(
-        RepaymentInstruction(
-          principal: principal ?? current.principal,
-          interest: _applyPatch(interest, current.interest),
-          fee: _applyPatch(fee, current.fee),
-          discount: _applyPatch(discount, current.discount),
-          liabilityAccountId: liabilityAccountId ?? current.liabilityAccountId,
-          paidFromAccountId: paidFromAccountId ?? current.paidFromAccountId,
-          occurredAt: current.occurredAt,
-          counterpartyName: current.counterpartyName,
-          note: current.note,
-          ownership: current.ownership,
-          sourceKind: current.sourceKind,
-        ),
+      return RepaymentInstruction(
+        principal: principal ?? current.principal,
+        interest: _applyPatch(interest, current.interest),
+        fee: _applyPatch(fee, current.fee),
+        discount: _applyPatch(discount, current.discount),
+        liabilityAccountId: liabilityAccountId ?? current.liabilityAccountId,
+        paidFromAccountId: paidFromAccountId ?? current.paidFromAccountId,
+        occurredAt: current.occurredAt,
+        counterpartyName: current.counterpartyName,
+        note: current.note,
+        ownership: current.ownership,
+        sourceKind: current.sourceKind,
       );
     }
-    return const Result.failure(
-      Failure(
-        code: 'unsupported_replacement_source',
-        message: 'This transaction cannot be replaced as repayment.',
-      ),
+    return LedgerViolationReason.unsupportedReplacementSource.throwException(
+      message: 'This transaction cannot be replaced as repayment.',
     );
   }
 }
@@ -812,16 +779,14 @@ class RefundReplacementPatch {
   final Money? amount;
   final String? refundToAccountId;
 
-  Result<RefundInstruction> applyTo(RefundInstruction current) {
-    return Result.success(
-      RefundInstruction(
-        parentTransactionId: current.parentTransactionId,
-        amount: amount ?? current.amount,
-        refundToAccountId: refundToAccountId ?? current.refundToAccountId,
-        occurredAt: current.occurredAt,
-        counterpartyName: current.counterpartyName,
-        note: current.note,
-      ),
+  RefundInstruction applyTo(RefundInstruction current) {
+    return RefundInstruction(
+      parentTransactionId: current.parentTransactionId,
+      amount: amount ?? current.amount,
+      refundToAccountId: refundToAccountId ?? current.refundToAccountId,
+      occurredAt: current.occurredAt,
+      counterpartyName: current.counterpartyName,
+      note: current.note,
     );
   }
 }

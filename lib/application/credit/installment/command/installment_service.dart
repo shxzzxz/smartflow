@@ -1,15 +1,14 @@
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
-import 'package:smartflow/core/error/failure.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
-import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
-import 'package:smartflow/domain/credit/entity/installment_repayment.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/service/installment_schedule_generator.dart';
+import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
 class CreateDisbursementContractCommand {
@@ -290,76 +289,37 @@ class CreateContractResult {
 }
 
 abstract interface class InstallmentService {
-  Future<Result<CreateContractResult>> createDisbursementContract(
+  Future<CreateContractResult> createDisbursementContract(
     CreateDisbursementContractCommand command,
   );
 
-  Future<Result<CreateContractResult>> createBillConversionContract(
+  Future<CreateContractResult> createBillConversionContract(
     CreateBillConversionContractCommand command,
   );
 
-  Future<Result<void>> updateContract(UpdateContractCommand command);
+  Future<void> updateContract(UpdateContractCommand command);
 
   /// 编辑受分期管理的还款交易（scheduled / extraPrincipal / earlySettlement）。
   /// 通用 UI 在还款交易上的 universal 编辑入口；service 内部校验归属、
   /// 再委托账务应用服务完成 transaction 表的写入。
-  Future<Result<void>> editRepayment(EditRepaymentCommand command);
+  Future<void> editRepayment(EditRepaymentCommand command);
 
-  Future<Result<PostedTransactionResult>> createScheduledRepayment(
+  Future<PostedTransactionResult> createScheduledRepayment(
     CreateScheduledRepaymentCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> createPrincipalPrepayment(
+  Future<PostedTransactionResult> createPrincipalPrepayment(
     CreatePrincipalPrepaymentCommand command,
   );
 
-  Future<Result<PostedTransactionResult>> createEarlySettlement(
+  Future<PostedTransactionResult> createEarlySettlement(
     CreateEarlySettlementCommand command,
   );
 
-  Future<Result<void>> revertRepayment(RevertRepaymentCommand command);
-
-  /// 该负债账户上所有 active 分期合同的"未还本金合计"（minor units）。
-  /// 计算依据：Σ(contract.principal − 已 paid 期次本金 − extraPrincipal 还本) over active contracts。
-  /// credit 域据此推算"非分期合同还款"的可用额度。
-  Future<int> unpaidInstallmentPrincipalMinor(String liabilityAccountId);
+  Future<void> revertRepayment(RevertRepaymentCommand command);
 
   /// 删除合同：先回滚已发生的还款交易与放款交易，再级联删除 schedules / repayments / contract。
-  Future<Result<void>> deleteContract(DeleteContractCommand command);
-
-  Future<List<InstallmentContract>> listContractsByLiabilityAccount(
-    String liabilityAccountId,
-  );
-
-  Future<InstallmentContract?> findContract(String contractId);
-
-  Future<List<InstallmentSchedule>> listSchedules(String contractId);
-
-  Future<List<InstallmentRepayment>> listRepayments(String contractId);
-
-  /// 反查交易是否被分期模块持有。
-  /// 命中放款侧返回 disbursement；命中还款侧返回 repayment；否则 null。
-  Future<InstallmentLink?> findLinkByTransaction(String transactionId);
-}
-
-/// 分期模块对某 transaction 的"所有权"指针。
-sealed class InstallmentLink {
-  const InstallmentLink({required this.contractId});
-
-  final String contractId;
-}
-
-class InstallmentDisbursementLink extends InstallmentLink {
-  const InstallmentDisbursementLink({required super.contractId});
-}
-
-class InstallmentRepaymentLink extends InstallmentLink {
-  const InstallmentRepaymentLink({
-    required super.contractId,
-    required this.repaymentType,
-  });
-
-  final InstallmentRepaymentType repaymentType;
+  Future<void> deleteContract(DeleteContractCommand command);
 }
 
 class InstallmentServiceImpl implements InstallmentService {
@@ -389,23 +349,22 @@ class InstallmentServiceImpl implements InstallmentService {
   final InstallmentScheduleGenerator _generator;
 
   @override
-  Future<Result<CreateContractResult>> createDisbursementContract(
+  Future<CreateContractResult> createDisbursementContract(
     CreateDisbursementContractCommand command,
   ) async {
-    final preValidation = _validateCreate(
+    _requireValidCreate(
       principal: command.principal,
       totalPeriods: command.totalPeriods,
       firstRepaymentDate: command.firstRepaymentDate,
       lastRepaymentDate: command.lastRepaymentDate,
     );
-    if (preValidation != null) return Result.failure(preValidation);
 
     final lastDate =
         command.lastRepaymentDate ??
         _defaultLastDate(command.firstRepaymentDate, command.totalPeriods);
 
     return _runner.run<CreateContractResult>(() async {
-      final borrowingResult = await _postingService.createBorrowing(
+      final borrowing = await _postingService.createBorrowing(
         CreateBorrowingCommand(
           amount: command.principal,
           liabilityAccountId: command.liabilityAccountId,
@@ -415,10 +374,6 @@ class InstallmentServiceImpl implements InstallmentService {
           note: command.note,
         ),
       );
-      if (borrowingResult case FailureResult(:final failure)) {
-        return Result.failure(failure);
-      }
-      final borrowing = (borrowingResult as Success).value;
       final drafts = _generator.generate(
         principal: command.principal,
         borrowingDate: command.borrowingDate,
@@ -452,7 +407,7 @@ class InstallmentServiceImpl implements InstallmentService {
           note: command.note,
         ),
       );
-      final ownershipResult = await _updateService.updateOwnership(
+      await _updateService.updateOwnership(
         UpdateTransactionOwnershipCommand(
           transactionId: borrowing.transactionId,
           ownership: _installmentOwnership(
@@ -461,30 +416,24 @@ class InstallmentServiceImpl implements InstallmentService {
           ),
         ),
       );
-      if (ownershipResult case FailureResult(:final failure)) {
-        return Result.failure(failure);
-      }
       await _repository.replaceSchedules(contractId, drafts);
-      return Result.success(
-        CreateContractResult(
-          contractId: contractId,
-          disbursementTransactionId: borrowing.transactionId,
-        ),
+      return CreateContractResult(
+        contractId: contractId,
+        disbursementTransactionId: borrowing.transactionId,
       );
     });
   }
 
   @override
-  Future<Result<CreateContractResult>> createBillConversionContract(
+  Future<CreateContractResult> createBillConversionContract(
     CreateBillConversionContractCommand command,
   ) async {
-    final preValidation = _validateCreate(
+    _requireValidCreate(
       principal: command.principal,
       totalPeriods: command.totalPeriods,
       firstRepaymentDate: command.firstRepaymentDate,
       lastRepaymentDate: command.lastRepaymentDate,
     );
-    if (preValidation != null) return Result.failure(preValidation);
 
     final lastDate =
         command.lastRepaymentDate ??
@@ -524,38 +473,32 @@ class InstallmentServiceImpl implements InstallmentService {
         ),
       );
       await _repository.replaceSchedules(contractId, drafts);
-      return Result.success(CreateContractResult(contractId: contractId));
+      return CreateContractResult(contractId: contractId);
     });
   }
 
   @override
-  Future<Result<void>> updateContract(UpdateContractCommand command) async {
+  Future<void> updateContract(UpdateContractCommand command) async {
     final contract = await _repository.findContract(command.contractId);
     if (contract == null) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_found',
-          message: 'Installment contract does not exist.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractNotFound,
+        message: 'Installment contract does not exist.',
       );
     }
     if (contract.status != InstallmentContractStatus.active) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_active',
-          message: 'Only active contracts can be edited.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractNotActive,
+        message: 'Only active contracts can be edited.',
       );
     }
 
     // disbursementAccountId 仅对放款合同有效，账单分期不允许携带该字段。
     if (command.disbursementAccountId != null &&
         contract.sourceType != InstallmentSourceType.disbursement) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_disbursement',
-          message: 'Only disbursement contracts carry a disbursement account.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: 'Only disbursement contracts carry a disbursement account.',
       );
     }
 
@@ -583,20 +526,16 @@ class InstallmentServiceImpl implements InstallmentService {
     );
 
     if (effectiveTotalPeriods <= 0) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_total_periods_invalid',
-          message: 'Total periods must be greater than zero.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: 'Total periods must be greater than zero.',
       );
     }
     if (effectiveTotalPeriods > 1 &&
         !effectiveLastRepaymentDate.isAfter(effectiveFirstRepaymentDate)) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_dates_invalid',
-          message: 'Last repayment date must be after first.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: 'Last repayment date must be after first.',
       );
     }
 
@@ -614,9 +553,9 @@ class InstallmentServiceImpl implements InstallmentService {
         command.equalInstallmentOverrideMinor != null ||
         command.schedulePatches.isNotEmpty;
 
-    return _runner.run<void>(() async {
+    await _runner.run<void>(() async {
       if (needsRecalc) {
-        final recalcFailure = await _recalculateForUpdate(
+        await _recalculateForUpdate(
           command: command,
           contract: contract,
           effectiveTotalPeriods: effectiveTotalPeriods,
@@ -629,9 +568,6 @@ class InstallmentServiceImpl implements InstallmentService {
           effectiveRatePeriod: effectiveRatePeriod,
           effectiveRatePpm: effectiveRatePpm,
         );
-        if (recalcFailure != null) {
-          return Result.failure(recalcFailure);
-        }
       }
 
       // 联动放款交易（仅对放款合同存在 disbursement transaction）。
@@ -640,27 +576,21 @@ class InstallmentServiceImpl implements InstallmentService {
         if (txId != null) {
           if (command.disbursementAccountId != null ||
               command.borrowingDate != null) {
-            final basicsResult = await _correctionService.correctBorrowing(
+            await _correctionService.correctBorrowing(
               CorrectBorrowingCommand(
                 transactionId: txId,
                 receiveAccountId: command.disbursementAccountId,
                 occurredAt: command.borrowingDate,
               ),
             );
-            if (basicsResult case FailureResult(:final failure)) {
-              return Result.failure(failure);
-            }
           }
           if (command.note != null) {
-            final metadataResult = await _updateService.updateBasicInfo(
+            await _updateService.updateBasicInfo(
               UpdateTransactionBasicInfoCommand(
                 transactionId: txId,
                 note: _nullableStringPatch(command.note),
               ),
             );
-            if (metadataResult case FailureResult(:final failure)) {
-              return Result.failure(failure);
-            }
           }
         }
       }
@@ -682,12 +612,10 @@ class InstallmentServiceImpl implements InstallmentService {
           disbursementAccountId: command.disbursementAccountId,
         ),
       );
-
-      return const Result.success(null);
     });
   }
 
-  Future<Failure?> _recalculateForUpdate({
+  Future<void> _recalculateForUpdate({
     required UpdateContractCommand command,
     required InstallmentContract contract,
     required int effectiveTotalPeriods,
@@ -710,14 +638,14 @@ class InstallmentServiceImpl implements InstallmentService {
 
     if (paidCount > 0 &&
         effectiveFirstRepaymentDate != contract.firstRepaymentDate) {
-      return const Failure(
-        code: 'installment_first_date_locked',
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
         message: 'First repayment date cannot change after any period is paid.',
       );
     }
     if (effectiveTotalPeriods < paidCount + 1) {
-      return const Failure(
-        code: 'installment_periods_too_few',
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
         message: 'Total periods must be at least paidCount + 1.',
       );
     }
@@ -743,8 +671,8 @@ class InstallmentServiceImpl implements InstallmentService {
         paidPrincipalMinor -
         extraPrincipalMinor;
     if (remainingMinor < 0) {
-      return const Failure(
-        code: 'installment_principal_imbalance',
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
         message: 'Remaining principal would be negative.',
       );
     }
@@ -839,66 +767,52 @@ class InstallmentServiceImpl implements InstallmentService {
         );
       }
     }
-
-    return null;
   }
 
   @override
-  Future<Result<void>> editRepayment(EditRepaymentCommand command) async {
+  Future<void> editRepayment(EditRepaymentCommand command) async {
     if (command.paidFromAccountId == null &&
         command.occurredAt == null &&
         command.note == null) {
-      return const Result.success(null);
+      return;
     }
 
     final repayment = await _repository.findRepaymentByTransaction(
       command.transactionId,
     );
     if (repayment == null) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_repayment_not_found',
-          message: 'No installment repayment is linked to this transaction.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.repaymentNotFound,
+        message: 'No installment repayment is linked to this transaction.',
       );
     }
     if (command.contractId != null &&
         command.contractId != repayment.contractId) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_repayment_contract_mismatch',
-          message: 'Provided contract id does not match the repayment owner.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.repaymentInvalidCommand,
+        message: 'Provided contract id does not match the repayment owner.',
       );
     }
 
     return _runner.run<void>(() async {
       if (command.paidFromAccountId != null || command.occurredAt != null) {
-        final basicsResult = await _correctionService.correctRepayment(
+        await _correctionService.correctRepayment(
           CorrectRepaymentCommand(
             transactionId: command.transactionId,
             paidFromAccountId: command.paidFromAccountId,
             occurredAt: command.occurredAt,
           ),
         );
-        if (basicsResult case FailureResult(:final failure)) {
-          return Result.failure(failure);
-        }
       }
 
       if (command.note != null) {
-        final metadataResult = await _updateService.updateBasicInfo(
+        await _updateService.updateBasicInfo(
           UpdateTransactionBasicInfoCommand(
             transactionId: command.transactionId,
             note: command.note,
           ),
         );
-        if (metadataResult case FailureResult(:final failure)) {
-          return Result.failure(failure);
-        }
       }
-
-      return const Result.success(null);
     });
   }
 
@@ -919,38 +833,32 @@ class InstallmentServiceImpl implements InstallmentService {
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createScheduledRepayment(
+  Future<PostedTransactionResult> createScheduledRepayment(
     CreateScheduledRepaymentCommand command,
   ) async {
     final contract = await _repository.findContract(command.contractId);
     if (contract == null) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_found',
-          message: 'Installment contract does not exist.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractNotFound,
+        message: 'Installment contract does not exist.',
       );
     }
     final schedule = await _repository.findSchedule(command.scheduleId);
     if (schedule == null || schedule.contractId != command.contractId) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_schedule_not_found',
-          message: 'Schedule does not belong to the contract.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.scheduleNotFound,
+        message: 'Schedule does not belong to the contract.',
       );
     }
     if (schedule.status != InstallmentScheduleStatus.pending) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_schedule_not_pending',
-          message: 'Schedule is not pending.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.scheduleNotPending,
+        message: 'Schedule is not pending.',
       );
     }
 
     return _runner.run<PostedTransactionResult>(() async {
-      final result = await _postingService.createRepayment(
+      final post = await _postingService.createRepayment(
         CreateRepaymentCommand(
           principal: command.principal,
           interest: command.interest,
@@ -967,10 +875,6 @@ class InstallmentServiceImpl implements InstallmentService {
           ),
         ),
       );
-      if (result case FailureResult(:final failure)) {
-        return Result.failure(failure);
-      }
-      final post = (result as Success).value;
       await _repository.insertRepayment(
         InstallmentRepaymentDraft(
           contractId: command.contractId,
@@ -984,34 +888,30 @@ class InstallmentServiceImpl implements InstallmentService {
         const InstallmentSchedulePatch(status: InstallmentScheduleStatus.paid),
       );
       await _maybeMarkContractSettled(command.contractId);
-      return Result.success(post);
+      return post;
     });
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createPrincipalPrepayment(
+  Future<PostedTransactionResult> createPrincipalPrepayment(
     CreatePrincipalPrepaymentCommand command,
   ) async {
     final contract = await _repository.findContract(command.contractId);
     if (contract == null) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_found',
-          message: 'Installment contract does not exist.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractNotFound,
+        message: 'Installment contract does not exist.',
       );
     }
     if (contract.status != InstallmentContractStatus.active) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_active',
-          message: 'Only active contracts allow extra principal repayment.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractNotActive,
+        message: 'Only active contracts allow extra principal repayment.',
       );
     }
 
     return _runner.run<PostedTransactionResult>(() async {
-      final result = await _postingService.createRepayment(
+      final post = await _postingService.createRepayment(
         CreateRepaymentCommand(
           principal: command.principal,
           interest: command.interest,
@@ -1027,10 +927,6 @@ class InstallmentServiceImpl implements InstallmentService {
           ),
         ),
       );
-      if (result case FailureResult(:final failure)) {
-        return Result.failure(failure);
-      }
-      final post = (result as Success).value;
       await _repository.insertRepayment(
         InstallmentRepaymentDraft(
           contractId: command.contractId,
@@ -1039,34 +935,30 @@ class InstallmentServiceImpl implements InstallmentService {
         ),
       );
       await _recalculatePendingSchedules(command.contractId);
-      return Result.success(post);
+      return post;
     });
   }
 
   @override
-  Future<Result<PostedTransactionResult>> createEarlySettlement(
+  Future<PostedTransactionResult> createEarlySettlement(
     CreateEarlySettlementCommand command,
   ) async {
     final contract = await _repository.findContract(command.contractId);
     if (contract == null) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_found',
-          message: 'Installment contract does not exist.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractNotFound,
+        message: 'Installment contract does not exist.',
       );
     }
     if (contract.status != InstallmentContractStatus.active) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_active',
-          message: 'Only active contracts can be settled early.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractNotActive,
+        message: 'Only active contracts can be settled early.',
       );
     }
 
     return _runner.run<PostedTransactionResult>(() async {
-      final result = await _postingService.createRepayment(
+      final post = await _postingService.createRepayment(
         CreateRepaymentCommand(
           principal: command.principal,
           interest: command.interest,
@@ -1082,10 +974,6 @@ class InstallmentServiceImpl implements InstallmentService {
           ),
         ),
       );
-      if (result case FailureResult(:final failure)) {
-        return Result.failure(failure);
-      }
-      final post = (result as Success).value;
       await _repository.insertRepayment(
         InstallmentRepaymentDraft(
           contractId: command.contractId,
@@ -1108,31 +996,26 @@ class InstallmentServiceImpl implements InstallmentService {
         command.contractId,
         InstallmentContractStatus.closed,
       );
-      return Result.success(post);
+      return post;
     });
   }
 
   @override
-  Future<Result<void>> revertRepayment(RevertRepaymentCommand command) async {
+  Future<void> revertRepayment(RevertRepaymentCommand command) async {
     final repayment = await _repository.findRepaymentByTransaction(
       command.transactionId,
     );
     if (repayment == null) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_repayment_not_found',
-          message: 'No installment repayment is linked to this transaction.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.repaymentNotFound,
+        message: 'No installment repayment is linked to this transaction.',
       );
     }
 
     return _runner.run<void>(() async {
-      final deleteResult = await _correctionService.deleteTransaction(
+      await _correctionService.deleteTransaction(
         DeleteTransactionCommand(transactionId: command.transactionId),
       );
-      if (deleteResult case FailureResult(:final failure)) {
-        return Result.failure(failure);
-      }
       await _repository.deleteRepayment(repayment.id);
       switch (repayment.repaymentType) {
         case InstallmentRepaymentType.scheduled:
@@ -1166,42 +1049,16 @@ class InstallmentServiceImpl implements InstallmentService {
             InstallmentContractStatus.active,
           );
       }
-      return const Result.success(null);
     });
   }
 
   @override
-  Future<int> unpaidInstallmentPrincipalMinor(String liabilityAccountId) async {
-    final contracts = await _repository.listContractsByLiabilityAccount(
-      liabilityAccountId,
-    );
-    var sum = 0;
-    for (final c in contracts) {
-      if (c.status != InstallmentContractStatus.active) continue;
-      final paid = await _paidPrincipalForContract(c.id);
-      final unpaid = c.principal.minorUnits - paid;
-      if (unpaid > 0) sum += unpaid;
-    }
-    return sum;
-  }
-
-  Future<int> _paidPrincipalForContract(String contractId) async {
-    final repayments = await _repository.listRepayments(contractId);
-    return _transactionQueryService.getDetailAmountSum(
-      transactionIds: repayments.map((r) => r.transactionId),
-      detailType: TransactionDetailType.repaymentPrincipal,
-    );
-  }
-
-  @override
-  Future<Result<void>> deleteContract(DeleteContractCommand command) async {
+  Future<void> deleteContract(DeleteContractCommand command) async {
     final contract = await _repository.findContract(command.contractId);
     if (contract == null) {
-      return const Result.failure(
-        Failure(
-          code: 'installment_contract_not_found',
-          message: 'Installment contract does not exist.',
-        ),
+      throw BusinessException(
+        CreditErrorCode.contractNotFound,
+        message: 'Installment contract does not exist.',
       );
     }
 
@@ -1212,71 +1069,22 @@ class InstallmentServiceImpl implements InstallmentService {
 
     return _runner.run<void>(() async {
       for (final repayment in sortedRepayments) {
-        final result = await _correctionService.deleteTransaction(
+        await _correctionService.deleteTransaction(
           DeleteTransactionCommand(transactionId: repayment.transactionId),
         );
-        if (result case FailureResult(:final failure)) {
-          return Result.failure(failure);
-        }
       }
 
       // 2. 放款合同需要撤回放款交易；账单分期没有放款交易，跳过。
       final disbursementTxId = contract.disbursementTransactionId;
       if (disbursementTxId != null) {
-        final result = await _correctionService.deleteTransaction(
+        await _correctionService.deleteTransaction(
           DeleteTransactionCommand(transactionId: disbursementTxId),
         );
-        if (result case FailureResult(:final failure)) {
-          return Result.failure(failure);
-        }
       }
 
       // 3. 物理删除合同与子表。
       await _repository.deleteContract(command.contractId);
-      return const Result.success(null);
     });
-  }
-
-  @override
-  Future<List<InstallmentContract>> listContractsByLiabilityAccount(
-    String liabilityAccountId,
-  ) {
-    return _repository.listContractsByLiabilityAccount(liabilityAccountId);
-  }
-
-  @override
-  Future<InstallmentContract?> findContract(String contractId) {
-    return _repository.findContract(contractId);
-  }
-
-  @override
-  Future<List<InstallmentSchedule>> listSchedules(String contractId) {
-    return _repository.listSchedules(contractId);
-  }
-
-  @override
-  Future<List<InstallmentRepayment>> listRepayments(String contractId) {
-    return _repository.listRepayments(contractId);
-  }
-
-  @override
-  Future<InstallmentLink?> findLinkByTransaction(String transactionId) async {
-    final repayment = await _repository.findRepaymentByTransaction(
-      transactionId,
-    );
-    if (repayment != null) {
-      return InstallmentRepaymentLink(
-        contractId: repayment.contractId,
-        repaymentType: repayment.repaymentType,
-      );
-    }
-    final contract = await _repository.findContractByDisbursementTransaction(
-      transactionId,
-    );
-    if (contract != null) {
-      return InstallmentDisbursementLink(contractId: contract.id);
-    }
-    return null;
   }
 
   Future<void> _maybeMarkContractSettled(String contractId) async {
@@ -1463,33 +1271,32 @@ class InstallmentServiceImpl implements InstallmentService {
     );
   }
 
-  Failure? _validateCreate({
+  void _requireValidCreate({
     required Money principal,
     required int totalPeriods,
     required DateTime firstRepaymentDate,
     DateTime? lastRepaymentDate,
   }) {
     if (principal.minorUnits <= 0) {
-      return const Failure(
-        code: 'installment_principal_not_positive',
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
         message: 'Installment principal must be positive.',
       );
     }
     if (totalPeriods <= 0) {
-      return const Failure(
-        code: 'installment_total_periods_invalid',
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
         message: 'Total periods must be greater than zero.',
       );
     }
     if (lastRepaymentDate != null &&
         totalPeriods > 1 &&
         !lastRepaymentDate.isAfter(firstRepaymentDate)) {
-      return const Failure(
-        code: 'installment_dates_invalid',
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
         message: 'Last repayment date must be after first.',
       );
     }
-    return null;
   }
 
   DateTime _defaultLastDate(DateTime firstDate, int totalPeriods) {

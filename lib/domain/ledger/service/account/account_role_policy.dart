@@ -1,8 +1,8 @@
-import 'package:smartflow/core/error/failure.dart';
 import '../../entity/account.dart';
 import '../../port/account_repository.dart';
 import '../../valobj/account_usage.dart';
 import '../../valobj/ledger_enum.dart';
+import '../../valobj/ledger_violation_reason.dart';
 
 class AccountRoleRequirement {
   const AccountRoleRequirement({
@@ -174,7 +174,7 @@ class AccountRolePolicy {
 
   final AccountRepository _accountRepository;
 
-  Future<Failure?> validate(AccountRoleContext context) async {
+  Future<LedgerViolationReason?> validate(AccountRoleContext context) async {
     final ids = {
       for (final requirement in context.requirements) requirement.accountId,
     };
@@ -192,45 +192,27 @@ class AccountRolePolicy {
     return null;
   }
 
-  Failure? _validateRequirement(
+  LedgerViolationReason? _validateRequirement(
     Account? account,
     AccountRoleRequirement requirement,
   ) {
     if (account == null) {
-      return Failure(
-        code: 'account_not_found',
-        message: 'Account ${requirement.accountId} does not exist.',
-      );
+      return LedgerViolationReason.accountNotFound;
     }
     if (account.archivedAt != null) {
-      return Failure(
-        code: 'account_archived',
-        message: 'Account ${requirement.accountId} is archived.',
-      );
+      return LedgerViolationReason.accountArchived;
     }
     if (requirement.expectedTypes.isNotEmpty &&
         !requirement.expectedTypes.contains(account.type)) {
-      return Failure(
-        code: 'account_role_invalid',
-        message:
-            'Account ${requirement.accountId} cannot be used for this transaction.',
-      );
+      return LedgerViolationReason.accountRoleInvalid;
     }
     if (requirement.requiredSubtype != null &&
         account.subtype != requirement.requiredSubtype) {
-      return Failure(
-        code: 'account_subtype_invalid',
-        message:
-            'Account ${requirement.accountId} cannot be used for this transaction.',
-      );
+      return LedgerViolationReason.accountSubtypeInvalid;
     }
     if (requirement.requiredUsage != null &&
         !accountMatchesUsage(account, requirement.requiredUsage!)) {
-      return Failure(
-        code: 'account_role_invalid',
-        message:
-            'Account ${requirement.accountId} cannot be used for this transaction.',
-      );
+      return LedgerViolationReason.accountRoleInvalid;
     }
     return null;
   }

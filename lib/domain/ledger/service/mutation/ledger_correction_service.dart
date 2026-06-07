@@ -1,7 +1,5 @@
-import 'package:smartflow/core/error/failure.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
-import 'package:smartflow/core/result/result.dart';
 import '../../entity/account.dart';
 import '../../entity/root_transaction_group.dart';
 import '../../entity/transaction.dart';
@@ -9,6 +7,7 @@ import '../../port/account_repository.dart';
 import '../../port/root_transaction_group_repository.dart';
 import '../../port/system_account_resolver.dart';
 import '../../valobj/ledger_enum.dart';
+import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import '../../valobj/posting_result.dart';
 import '../account/account_role_policy.dart';
@@ -46,97 +45,69 @@ class LedgerCorrectionService {
   final ChildTransactionMigrationPolicy _childMigrationPolicy;
   final SystemAccountResolver _systemAccountResolver;
 
-  Future<Result<ParentReplacementResult>> replaceParentTransaction(
+  Future<ParentReplacementResult> replaceParentTransaction(
     ReplaceParentTransactionInstruction instruction,
   ) async {
     final group = await _rootGroupRepository.findByTransactionId(
       instruction.transactionId,
     );
-    if (group == null) return _failure('transaction_not_found');
-    final currentParent = group.parentTransaction;
-    if (instruction.transactionId != currentParent.id) {
-      return _failure('parent_transaction_required');
-    }
-    if (currentParent.businessState != BusinessState.current) {
-      return _failure('transaction_not_current');
-    }
-    if (currentParent.businessPurpose != instruction.expectedCurrentPurpose) {
-      return _failure('transaction_purpose_mismatch');
-    }
+    final targetViolation = _validateParentReplacementTarget(
+      group,
+      instruction,
+    );
+    if (targetViolation != null) targetViolation.throwException();
 
-    final currentInstructionResult = _postingInstructionResolver.resolve(
+    final currentParent = group!.parentTransaction;
+    final currentInstruction = _postingInstructionResolver.resolve(
       currentParent,
     );
-    if (currentInstructionResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    final replacementInstructionResult = instruction.replacementPatch.applyTo(
-      currentInstructionResult.value,
+    final replacementInstruction = instruction.replacementPatch.applyTo(
+      currentInstruction,
     );
-    if (replacementInstructionResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    final replacementInstruction = replacementInstructionResult.value;
-    final roleFailure = await _validatePostingInstruction(
+    final roleViolation = await _validatePostingInstruction(
       replacementInstruction,
     );
-    if (roleFailure != null) return Result.failure(roleFailure);
+    if (roleViolation != null) roleViolation.throwException();
 
-    final candidateParentResult = await _createPostingCandidate(
+    final candidateParent = await _createPostingCandidate(
       replacementInstruction,
     );
-    if (candidateParentResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    final candidateParent = candidateParentResult.value;
     if (hasSamePostingShape(currentParent, candidateParent)) {
       _applyParentCorrectionFields(group, instruction);
-      return Result.success(
-        ParentReplacementResult(
-          transactions: group.transactions.toList(),
-          accounts: const [],
-          currentTransaction: currentParent,
-          currentGroup: group,
-        ),
+      return ParentReplacementResult(
+        transactions: group.transactions.toList(),
+        accounts: const [],
+        currentTransaction: currentParent,
+        currentGroup: group,
       );
     }
 
-    final convertibleFailure = _childMigrationPolicy.validateConvertible(
+    final convertibleViolation = _childMigrationPolicy.validateConvertible(
       oldGroup: group,
       newParentPurpose: replacementInstruction.businessPurpose,
       newParent: candidateParent,
     );
-    if (convertibleFailure != null) return Result.failure(convertibleFailure);
+    if (convertibleViolation != null) convertibleViolation.throwException();
 
-    final parentReplacementResult = _postingEngine.createReplacement(
+    final parentReplacement = _postingEngine.createReplacement(
       original: currentParent,
       replacement: candidateParent,
       reason: MutationReason.correction,
     );
-    if (parentReplacementResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    final parentReplacement = parentReplacementResult.value;
     final newParent = parentReplacement.correctionTransaction;
 
-    final childMigrationResult = await _childMigrationPolicy.migrateChildren(
+    final childMigrations = await _childMigrationPolicy.migrateChildren(
       oldGroup: group,
       newParent: newParent,
     );
-    if (childMigrationResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
     final childReplacements = <TransactionReplacement>[];
-    for (final migration in childMigrationResult.value) {
-      final replacementResult = _postingEngine.createReplacement(
+    for (final migration in childMigrations) {
+      final replacement = _postingEngine.createReplacement(
         original: migration.originalChild,
         replacement: migration.replacementCandidate,
         reason: MutationReason.correction,
       );
-      if (replacementResult case FailureResult(:final failure)) {
-        return Result.failure(failure);
-      }
-      childReplacements.add(replacementResult.value);
+      childReplacements.add(replacement);
     }
 
     final replacements = [parentReplacement, ...childReplacements];
@@ -159,104 +130,84 @@ class LedgerCorrectionService {
     );
     _applyParentCorrectionFields(currentGroup, instruction);
 
-    return Result.success(
-      ParentReplacementResult(
-        transactions: [
-          for (final replacement in replacements) ...replacement.transactions,
-        ],
-        accounts: changedAccounts,
-        currentTransaction: newParent,
-        currentGroup: currentGroup,
-      ),
+    return ParentReplacementResult(
+      transactions: [
+        for (final replacement in replacements) ...replacement.transactions,
+      ],
+      accounts: changedAccounts,
+      currentTransaction: newParent,
+      currentGroup: currentGroup,
     );
   }
 
-  Future<Result<ChildReplacementResult>> replaceRefundTransaction(
+  Future<ChildReplacementResult> replaceRefundTransaction(
     ReplaceRefundTransactionInstruction instruction,
   ) async {
     final group = await _rootGroupRepository.findByTransactionId(
       instruction.transactionId,
     );
-    if (group == null) return _failure('transaction_not_found');
+    if (group == null) {
+      LedgerViolationReason.transactionNotFound.throwException();
+    }
     final currentRefund = group.findTransaction(instruction.transactionId);
     if (currentRefund == null ||
         currentRefund.id == group.parentTransaction.id ||
         currentRefund.businessPurpose != BusinessPurpose.refund) {
-      return _failure('refund_transaction_required');
+      LedgerViolationReason.refundTransactionRequired.throwException();
     }
     if (currentRefund.businessState != BusinessState.current) {
-      return _failure('transaction_not_current');
+      LedgerViolationReason.transactionNotCurrent.throwException();
     }
 
-    final currentInstructionResult = _postingInstructionResolver.resolveRefund(
+    final currentInstruction = _postingInstructionResolver.resolveRefund(
       currentRefund,
     );
-    if (currentInstructionResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    final replacementInstructionResult = instruction.replacementPatch.applyTo(
-      currentInstructionResult.value,
+    final replacementInstruction = instruction.replacementPatch.applyTo(
+      currentInstruction,
     );
-    if (replacementInstructionResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    final replacementInstruction = replacementInstructionResult.value;
     final parent = group.parentTransaction;
     final remaining =
         parent.primaryAmount -
         group.refundedTotal() +
         currentRefund.primaryAmount;
     if (replacementInstruction.amount.minorUnits > remaining.minorUnits) {
-      return _failure('refund_exceeds_remaining');
+      LedgerViolationReason.refundExceedsRemaining.throwException();
     }
 
-    final parentInstructionResult = _postingInstructionResolver.resolve(parent);
-    if (parentInstructionResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
+    final parentInstruction = _postingInstructionResolver.resolve(parent);
     final refundOffsetAccountId = resolveRefundOffsetAccountId(
-      parentInstructionResult.value,
+      parentInstruction,
     );
     if (refundOffsetAccountId == null) {
-      return _failure('refund_parent_not_supported');
+      LedgerViolationReason.refundParentNotSupported.throwException();
     }
-    final roleFailure = await _accountRolePolicy.validate(
+    final roleViolation = await _accountRolePolicy.validate(
       AccountRoleContext.refund(
         refundToAccountId: replacementInstruction.refundToAccountId,
       ),
     );
-    if (roleFailure != null) return Result.failure(roleFailure);
+    if (roleViolation != null) roleViolation.throwException();
 
-    final candidateRefundResult = _postingEngine.createRefund(
+    final candidateRefund = _postingEngine.createRefund(
       instruction: replacementInstruction,
       parent: parent,
       refundOffsetAccountId: refundOffsetAccountId,
     );
-    if (candidateRefundResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    final candidateRefund = candidateRefundResult.value;
     if (hasSamePostingShape(currentRefund, candidateRefund)) {
       _applyChildCorrectionFields(currentRefund, instruction);
-      return Result.success(
-        ChildReplacementResult(
-          transactions: [currentRefund],
-          accounts: const [],
-          currentTransaction: currentRefund,
-          currentGroup: group,
-        ),
+      return ChildReplacementResult(
+        transactions: [currentRefund],
+        accounts: const [],
+        currentTransaction: currentRefund,
+        currentGroup: group,
       );
     }
 
-    final replacementResult = _postingEngine.createReplacement(
+    final replacement = _postingEngine.createReplacement(
       original: currentRefund,
       replacement: candidateRefund,
       reason: MutationReason.correction,
     );
-    if (replacementResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    final replacement = replacementResult.value;
     final postingTransactions = replacement.postingTransactions.toList();
     final accounts = await _loadAccountsFor(postingTransactions);
     final changedAccounts = _accountPostingService.applyAll(
@@ -273,37 +224,38 @@ class LedgerCorrectionService {
           child.id == currentRefund.id ? correctedRefund : child,
       ],
     );
-    return Result.success(
-      ChildReplacementResult(
-        transactions: replacement.transactions.toList(),
-        accounts: changedAccounts,
-        currentTransaction: correctedRefund,
-        currentGroup: currentGroup,
-      ),
+    return ChildReplacementResult(
+      transactions: replacement.transactions.toList(),
+      accounts: changedAccounts,
+      currentTransaction: correctedRefund,
+      currentGroup: currentGroup,
     );
   }
 
-  Future<Result<ChildReplacementResult>> replaceReimbursementReceipt(
+  Future<ChildReplacementResult> replaceReimbursementReceipt(
     ReplaceReimbursementReceiptTransactionInstruction instruction,
   ) async {
     final group = await _rootGroupRepository.findByTransactionId(
       instruction.transactionId,
     );
-    if (group == null) return _failure('transaction_not_found');
+    if (group == null) {
+      LedgerViolationReason.transactionNotFound.throwException();
+    }
     final currentReceipt = group.findTransaction(instruction.transactionId);
     if (currentReceipt == null ||
         currentReceipt.id == group.parentTransaction.id ||
         currentReceipt.businessPurpose !=
             BusinessPurpose.reimbursementReceipt) {
-      return _failure('reimbursement_receipt_transaction_required');
+      LedgerViolationReason.reimbursementReceiptTransactionRequired
+          .throwException();
     }
     if (currentReceipt.businessState != BusinessState.current) {
-      return _failure('transaction_not_current');
+      LedgerViolationReason.transactionNotCurrent.throwException();
     }
-    final advanceFailure = _validateReimbursementAdvance(group);
-    if (advanceFailure != null) return Result.failure(advanceFailure);
+    final advanceViolation = _validateReimbursementAdvance(group);
+    if (advanceViolation != null) advanceViolation.throwException();
     if (group.reimbursementClosed) {
-      return _failure('reimbursement_already_closed');
+      LedgerViolationReason.reimbursementAlreadyClosed.throwException();
     }
 
     final remaining =
@@ -318,21 +270,23 @@ class LedgerCorrectionService {
         instruction.receivableAccountId ??
         _firstEntryAccount(currentReceipt, EntryDirection.credit);
     if (receiveAccountId == null || receivableAccountId == null) {
-      return _failure('reimbursement_receipt_accounts_unresolved');
+      LedgerViolationReason.reimbursementReceiptAccountsUnresolved
+          .throwException();
     }
     if (amount.minorUnits > remaining.minorUnits) {
-      return _failure('reimbursement_receipt_exceeds_outstanding');
+      LedgerViolationReason.reimbursementReceiptExceedsOutstanding
+          .throwException();
     }
 
-    final roleFailure = await _accountRolePolicy.validate(
+    final roleViolation = await _accountRolePolicy.validate(
       AccountRoleContext.reimbursementReceipt(
         receivableAccountId: receivableAccountId,
         receiveAccountId: receiveAccountId,
       ),
     );
-    if (roleFailure != null) return Result.failure(roleFailure);
+    if (roleViolation != null) roleViolation.throwException();
 
-    final candidateResult = _postingEngine.createReimbursementReceipt(
+    final candidate = _postingEngine.createReimbursementReceipt(
       instruction: ReimbursementReceiptInstruction(
         advanceTransactionId: group.parentTransaction.id,
         amount: amount,
@@ -344,37 +298,37 @@ class LedgerCorrectionService {
       ),
       advance: group.parentTransaction,
     );
-    if (candidateResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
     return _replaceChildWithCandidate(
       group: group,
       currentChild: currentReceipt,
-      candidateChild: candidateResult.value,
+      candidateChild: candidate,
       occurredAt: instruction.occurredAt,
       counterpartyName: instruction.counterpartyName,
       note: instruction.note,
     );
   }
 
-  Future<Result<ChildReplacementResult>> replaceReimbursementClose(
+  Future<ChildReplacementResult> replaceReimbursementClose(
     ReplaceReimbursementCloseTransactionInstruction instruction,
   ) async {
     final group = await _rootGroupRepository.findByTransactionId(
       instruction.transactionId,
     );
-    if (group == null) return _failure('transaction_not_found');
+    if (group == null) {
+      LedgerViolationReason.transactionNotFound.throwException();
+    }
     final currentClose = group.findTransaction(instruction.transactionId);
     if (currentClose == null ||
         currentClose.id == group.parentTransaction.id ||
         currentClose.businessPurpose != BusinessPurpose.reimbursementClose) {
-      return _failure('reimbursement_close_transaction_required');
+      LedgerViolationReason.reimbursementCloseTransactionRequired
+          .throwException();
     }
     if (currentClose.businessState != BusinessState.current) {
-      return _failure('transaction_not_current');
+      LedgerViolationReason.transactionNotCurrent.throwException();
     }
-    final advanceFailure = _validateReimbursementAdvance(group);
-    if (advanceFailure != null) return Result.failure(advanceFailure);
+    final advanceViolation = _validateReimbursementAdvance(group);
+    if (advanceViolation != null) advanceViolation.throwException();
 
     final outstanding =
         _detailAmount(
@@ -391,22 +345,23 @@ class LedgerCorrectionService {
         instruction.receivableAccountId ??
         _firstEntryAccount(currentClose, EntryDirection.credit);
     if (receiveAccountId == null || receivableAccountId == null) {
-      return _failure('reimbursement_close_accounts_unresolved');
+      LedgerViolationReason.reimbursementCloseAccountsUnresolved
+          .throwException();
     }
     final gapIncomeAccountId =
         actualReceivedAmount.minorUnits > outstanding.minorUnits
             ? await _systemAccountResolver.resolveReimbursementGapIncome()
             : null;
-    final roleFailure = await _accountRolePolicy.validate(
+    final roleViolation = await _accountRolePolicy.validate(
       AccountRoleContext.reimbursementClose(
         receivableAccountId: receivableAccountId,
         receiveAccountId: receiveAccountId,
         receivesCash: actualReceivedAmount.minorUnits > 0,
       ),
     );
-    if (roleFailure != null) return Result.failure(roleFailure);
+    if (roleViolation != null) roleViolation.throwException();
 
-    final candidateResult = _postingEngine.createReimbursementClose(
+    final candidate = _postingEngine.createReimbursementClose(
       instruction: ReimbursementCloseInstruction(
         advanceTransactionId: group.parentTransaction.id,
         actualReceivedAmount: actualReceivedAmount,
@@ -420,30 +375,31 @@ class LedgerCorrectionService {
       outstanding: outstanding,
       gapIncomeAccountId: gapIncomeAccountId,
     );
-    if (candidateResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
     return _replaceChildWithCandidate(
       group: group,
       currentChild: currentClose,
-      candidateChild: candidateResult.value,
+      candidateChild: candidate,
       occurredAt: instruction.occurredAt,
       counterpartyName: instruction.counterpartyName,
       note: instruction.note,
     );
   }
 
-  Future<Result<CancellationResult>> cancelTransaction(
+  Future<CancellationResult> cancelTransaction(
     CancelTransactionInstruction instruction,
   ) async {
     final group = await _rootGroupRepository.findByTransactionId(
       instruction.transactionId,
     );
-    if (group == null) return _failure('transaction_not_found');
+    if (group == null) {
+      LedgerViolationReason.transactionNotFound.throwException();
+    }
     final target = group.findTransaction(instruction.transactionId);
-    if (target == null) return _failure('transaction_not_found');
+    if (target == null) {
+      LedgerViolationReason.transactionNotFound.throwException();
+    }
     if (target.businessState != BusinessState.current) {
-      return _failure('transaction_not_current');
+      LedgerViolationReason.transactionNotCurrent.throwException();
     }
 
     final originals =
@@ -452,14 +408,11 @@ class LedgerCorrectionService {
             : [target];
     final cancellations = <TransactionCancellation>[];
     for (final original in originals) {
-      final cancellationResult = _postingEngine.createCancellation(
+      final cancellation = _postingEngine.createCancellation(
         original: original,
         reason: MutationReason.delete,
       );
-      if (cancellationResult case FailureResult(:final failure)) {
-        return Result.failure(failure);
-      }
-      cancellations.add(cancellationResult.value);
+      cancellations.add(cancellation);
     }
 
     final postingTransactions = [
@@ -471,14 +424,11 @@ class LedgerCorrectionService {
       transactions: postingTransactions,
       accounts: accounts,
     );
-    return Result.success(
-      CancellationResult(
-        transactions: [
-          for (final cancellation in cancellations)
-            ...cancellation.transactions,
-        ],
-        accounts: changedAccounts,
-      ),
+    return CancellationResult(
+      transactions: [
+        for (final cancellation in cancellations) ...cancellation.transactions,
+      ],
+      accounts: changedAccounts,
     );
   }
 
@@ -492,7 +442,7 @@ class LedgerCorrectionService {
     return {for (final account in accounts) account.id: account};
   }
 
-  Future<Result<ChildReplacementResult>> _replaceChildWithCandidate({
+  Future<ChildReplacementResult> _replaceChildWithCandidate({
     required RootTransactionGroup group,
     required Transaction currentChild,
     required Transaction candidateChild,
@@ -506,25 +456,19 @@ class LedgerCorrectionService {
         counterpartyName: counterpartyName,
         note: note,
       );
-      return Result.success(
-        ChildReplacementResult(
-          transactions: [currentChild],
-          accounts: const [],
-          currentTransaction: currentChild,
-          currentGroup: group,
-        ),
+      return ChildReplacementResult(
+        transactions: [currentChild],
+        accounts: const [],
+        currentTransaction: currentChild,
+        currentGroup: group,
       );
     }
 
-    final replacementResult = _postingEngine.createReplacement(
+    final replacement = _postingEngine.createReplacement(
       original: currentChild,
       replacement: candidateChild,
       reason: MutationReason.correction,
     );
-    if (replacementResult case FailureResult(:final failure)) {
-      return Result.failure(failure);
-    }
-    final replacement = replacementResult.value;
     final postingTransactions = replacement.postingTransactions.toList();
     final accounts = await _loadAccountsFor(postingTransactions);
     final changedAccounts = _accountPostingService.applyAll(
@@ -545,13 +489,11 @@ class LedgerCorrectionService {
           child.id == currentChild.id ? correctedChild : child,
       ],
     );
-    return Result.success(
-      ChildReplacementResult(
-        transactions: replacement.transactions.toList(),
-        accounts: changedAccounts,
-        currentTransaction: correctedChild,
-        currentGroup: currentGroup,
-      ),
+    return ChildReplacementResult(
+      transactions: replacement.transactions.toList(),
+      accounts: changedAccounts,
+      currentTransaction: correctedChild,
+      currentGroup: currentGroup,
     );
   }
 
@@ -591,19 +533,35 @@ class LedgerCorrectionService {
     return null;
   }
 
-  Failure? _validateReimbursementAdvance(RootTransactionGroup group) {
+  LedgerViolationReason? _validateParentReplacementTarget(
+    RootTransactionGroup? group,
+    ReplaceParentTransactionInstruction instruction,
+  ) {
+    if (group == null) {
+      return LedgerViolationReason.transactionNotFound;
+    }
+    final currentParent = group.parentTransaction;
+    if (instruction.transactionId != currentParent.id) {
+      return LedgerViolationReason.parentTransactionRequired;
+    }
+    if (currentParent.businessState != BusinessState.current) {
+      return LedgerViolationReason.transactionNotCurrent;
+    }
+    if (currentParent.businessPurpose != instruction.expectedCurrentPurpose) {
+      return LedgerViolationReason.transactionPurposeMismatch;
+    }
+    return null;
+  }
+
+  LedgerViolationReason? _validateReimbursementAdvance(
+    RootTransactionGroup group,
+  ) {
     final advance = group.parentTransaction;
     if (advance.businessPurpose != BusinessPurpose.reimbursementAdvance) {
-      return const Failure(
-        code: 'reimbursement_parent_not_advance',
-        message: 'Parent transaction is not a reimbursement advance.',
-      );
+      return LedgerViolationReason.reimbursementParentNotAdvance;
     }
     if (advance.businessState != BusinessState.current) {
-      return const Failure(
-        code: 'reimbursement_advance_not_current',
-        message: 'Reimbursement advance is not current.',
-      );
+      return LedgerViolationReason.reimbursementAdvanceNotCurrent;
     }
     return null;
   }
@@ -615,7 +573,9 @@ class LedgerCorrectionService {
     return null;
   }
 
-  Future<Failure?> _validatePostingInstruction(PostingInstruction instruction) {
+  Future<LedgerViolationReason?> _validatePostingInstruction(
+    PostingInstruction instruction,
+  ) {
     return switch (instruction) {
       ExpenseInstruction i => _accountRolePolicy.validate(
         AccountRoleContext.expense(
@@ -657,7 +617,7 @@ class LedgerCorrectionService {
     };
   }
 
-  Future<Result<Transaction>> _createPostingCandidate(
+  Future<Transaction> _createPostingCandidate(
     PostingInstruction instruction,
   ) async {
     if (instruction is TransferInstruction) {
@@ -691,11 +651,5 @@ class LedgerCorrectionService {
       );
     }
     return _postingEngine.create(instruction);
-  }
-
-  Result<T> _failure<T>(String code) {
-    return Result.failure(
-      Failure(code: code, message: 'Ledger correction failed: $code.'),
-    );
   }
 }

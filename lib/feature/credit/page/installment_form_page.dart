@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/provider.dart';
+import '../../../application/credit/credit_query_api.dart';
+import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
-import '../../../core/result/result.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
-import '../../../application/ledger/ledger_query_api.dart';
-import 'package:smartflow/application/credit/credit_command_api.dart';
-import '../../../widget/business/plain_transaction_fields.dart';
+import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
+import '../view_model/installment_form_view_model.dart';
 import '../widget/installment_field_options.dart';
 
 class InstallmentFormPage extends ConsumerStatefulWidget {
@@ -38,21 +38,12 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
   final _overrideInstallmentController = TextEditingController();
   final _noteController = TextEditingController();
 
-  DateTime _borrowingDate = DateTime.now();
-  DateTime _firstRepaymentDate = DateTime(
-    DateTime.now().year,
-    DateTime.now().month + 1,
-    DateTime.now().day,
-  );
-  // 用户是否手工调整过首期还款日；未调整时跟随借款日期联动。
-  bool _firstDateTouched = false;
-  InstallmentRepaymentMethod _method =
-      InstallmentRepaymentMethod.equalInstallment;
-  InterestRatePeriod _ratePeriod = InterestRatePeriod.monthly;
-  InterestAccrualMethod _accrualMethod = InterestAccrualMethod.daily;
-  InstallmentSourceType? _sourceType;
-  String? _disbursementAccountId;
-  bool _submitting = false;
+  InstallmentFormArgs get _args {
+    return InstallmentFormArgs(
+      liabilityAccountId: widget.liabilityAccountId,
+      lockedSourceType: widget.lockedSourceType,
+    );
+  }
 
   @override
   void dispose() {
@@ -67,44 +58,28 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final liabilityAccountsAsync = ref.watch(
-      accountsForUsageProvider(AccountUsage.repaymentTarget),
-    );
-    final fundAccountsAsync = ref.watch(
-      accountsForUsageProvider(AccountUsage.fund),
-    );
+    final asyncState = ref.watch(installmentFormViewModelProvider(_args));
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(title: const Text('新建分期')),
-      body: switch ((liabilityAccountsAsync, fundAccountsAsync)) {
-        (
-          AsyncData(value: final liabilityAccounts),
-          AsyncData(value: final fundAccounts),
-        ) =>
-          _buildForm(context, liabilityAccounts, fundAccounts),
-        (AsyncError(:final error), _) ||
-        (_, AsyncError(:final error)) => Center(child: Text('加载失败：$error')),
+      body: switch (asyncState) {
+        AsyncData(value: final InstallmentFormLoaded state) => _buildForm(
+          context,
+          state,
+        ),
+        AsyncData(value: InstallmentFormNotFound()) => const Center(
+          child: Text('负债账户不存在'),
+        ),
+        AsyncError(:final error) => Center(child: Text('加载失败：$error')),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
   }
 
-  Widget _buildForm(
-    BuildContext context,
-    List<Account> liabilityAccounts,
-    List<Account> fundAccounts,
-  ) {
-    final liability = _findAccount(
-      liabilityAccounts,
-      widget.liabilityAccountId,
-    );
-    if (liability == null) {
-      return const Center(child: Text('负债账户不存在'));
-    }
-
-    _sourceType ??= widget.lockedSourceType ?? _defaultSourceType(liability);
-    final isDisbursement = _sourceType == InstallmentSourceType.disbursement;
+  Widget _buildForm(BuildContext context, InstallmentFormLoaded state) {
+    final isDisbursement = state.isDisbursement;
+    final notifier = ref.read(installmentFormViewModelProvider(_args).notifier);
 
     return Form(
       key: _formKey,
@@ -120,29 +95,33 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
             children: [
               AppPlainFormRow(
                 label: '负债账户',
-                child: AccountPlainValue(account: liability, placeholder: ''),
+                child: AccountPlainValue(
+                  account: state.liability,
+                  placeholder: '',
+                ),
               ),
               if (widget.lockedSourceType == null)
                 _SourceTypeRow(
-                  value: _sourceType!,
-                  onChanged: (value) => setState(() => _sourceType = value),
+                  value: state.sourceType,
+                  onChanged: notifier.setSourceType,
                 ),
               if (isDisbursement)
                 AccountPlainFormRow(
                   label: '到账账户',
-                  account: _findAccount(fundAccounts, _disbursementAccountId),
-                  selectedId: _disbursementAccountId,
+                  account: _findAccount(
+                    state.fundAccounts,
+                    state.disbursementAccountId,
+                  ),
+                  selectedId: state.disbursementAccountId,
                   placeholder: '请选择放款入账账户',
                   onTap:
-                      fundAccounts.isEmpty
+                      state.fundAccounts.isEmpty
                           ? null
                           : () => _pickAccount(
                             title: '选择到账账户',
-                            accounts: fundAccounts,
-                            selectedId: _disbursementAccountId,
-                            onSelected:
-                                (id) =>
-                                    setState(() => _disbursementAccountId = id),
+                            accounts: state.fundAccounts,
+                            selectedId: state.disbursementAccountId,
+                            onSelected: notifier.setDisbursementAccountId,
                           ),
                 ),
               MoneyPlainFormRow(
@@ -159,30 +138,30 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
               ),
               DateTimePlainFormRow(
                 label: '借款日期',
-                value: _formatDate(_borrowingDate),
-                onTap: _pickBorrowingDate,
+                value: _formatDate(state.borrowingDate),
+                onTap: () => _pickBorrowingDate(state.borrowingDate),
               ),
               DateTimePlainFormRow(
                 label: '首期还款日',
-                value: _formatDate(_firstRepaymentDate),
-                onTap: _pickFirstRepaymentDate,
+                value: _formatDate(state.firstRepaymentDate),
+                onTap: () => _pickFirstRepaymentDate(state.firstRepaymentDate),
               ),
               DropdownPlainFormRow<InstallmentRepaymentMethod>(
                 label: '分期方式',
-                value: _method,
+                value: state.method,
                 items: installmentRepaymentMethodItems,
-                onChanged: (value) => setState(() => _method = value),
+                onChanged: notifier.setMethod,
               ),
-              if (_method != InstallmentRepaymentMethod.flatFee &&
-                  _method != InstallmentRepaymentMethod.custom)
+              if (state.method != InstallmentRepaymentMethod.flatFee &&
+                  state.method != InstallmentRepaymentMethod.custom)
                 DropdownPlainFormRow<InterestAccrualMethod>(
                   label: '计息方式',
-                  value: _accrualMethod,
+                  value: state.accrualMethod,
                   items: interestAccrualMethodItems,
-                  onChanged: (value) => setState(() => _accrualMethod = value),
+                  onChanged: notifier.setAccrualMethod,
                 ),
-              if (_method != InstallmentRepaymentMethod.flatFee &&
-                  _method != InstallmentRepaymentMethod.custom)
+              if (state.method != InstallmentRepaymentMethod.flatFee &&
+                  state.method != InstallmentRepaymentMethod.custom)
                 ValueWithUnitPlainFormRow<InterestRatePeriod>(
                   label: '利率(%)',
                   controller: _rateController,
@@ -190,19 +169,18 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  unit: _ratePeriod,
+                  unit: state.ratePeriod,
                   unitItems: interestRatePeriodItems,
-                  onUnitChanged:
-                      (period) => setState(() => _ratePeriod = period),
+                  onUnitChanged: notifier.setRatePeriod,
                 ),
-              if (_method == InstallmentRepaymentMethod.equalInstallment)
+              if (state.method == InstallmentRepaymentMethod.equalInstallment)
                 MoneyPlainFormRow(
                   label: '还款固定额',
                   controller: _overrideInstallmentController,
                   hintText: '前 n-1 期固定额（可选）',
                   validator: _validateOptionalMoney,
                 ),
-              if (_method == InstallmentRepaymentMethod.flatFee)
+              if (state.method == InstallmentRepaymentMethod.flatFee)
                 MoneyPlainFormRow(
                   label: '总手续费',
                   controller: _totalFeeController,
@@ -215,46 +193,36 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
           const SizedBox(height: AppSpacing.space24),
           AppSubmitButton(
             label: '创建分期',
-            loading: _submitting,
-            onPressed: () => _submit(liability),
+            loading: state.submitting,
+            onPressed: () => _submit(),
           ),
         ],
       ),
     );
   }
 
-  InstallmentSourceType _defaultSourceType(Account liability) {
-    return liability.subtype == AccountSubtype.loan
-        ? InstallmentSourceType.disbursement
-        : InstallmentSourceType.billConversion;
-  }
-
-  Future<void> _pickBorrowingDate() async {
+  Future<void> _pickBorrowingDate(DateTime initialDate) async {
     final picked = await showAppDatePicker(
       context: context,
-      initialDate: _borrowingDate,
+      initialDate: initialDate,
       title: '选择借款日期',
     );
     if (picked == null || !mounted) return;
-    setState(() {
-      _borrowingDate = picked;
-      if (!_firstDateTouched) {
-        _firstRepaymentDate = _addMonths(picked, 1);
-      }
-    });
+    ref
+        .read(installmentFormViewModelProvider(_args).notifier)
+        .setBorrowingDate(picked);
   }
 
-  Future<void> _pickFirstRepaymentDate() async {
+  Future<void> _pickFirstRepaymentDate(DateTime initialDate) async {
     final picked = await showAppDatePicker(
       context: context,
-      initialDate: _firstRepaymentDate,
+      initialDate: initialDate,
       title: '选择首期还款日',
     );
     if (picked == null || !mounted) return;
-    setState(() {
-      _firstRepaymentDate = picked;
-      _firstDateTouched = true;
-    });
+    ref
+        .read(installmentFormViewModelProvider(_args).notifier)
+        .setFirstRepaymentDate(picked);
   }
 
   Future<void> _pickAccount({
@@ -273,73 +241,25 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
     onSelected(selected);
   }
 
-  Future<void> _submit(Account liability) async {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final principal = Money.parse(_principalController.text);
-    final totalPeriods = int.parse(_totalPeriodsController.text.trim());
-    final note = _blankToNull(_noteController.text);
-    final isDisbursement = _sourceType == InstallmentSourceType.disbursement;
-    if (isDisbursement && _disbursementAccountId == null) {
-      _showError('请选择放款入账账户');
-      return;
-    }
 
-    final ratePpm = _parseRatePpm(_rateController.text);
-    final totalFeeMinor =
-        _parseOptionalMoney(_totalFeeController.text).minorUnits;
-    final overrideMinor =
-        _method == InstallmentRepaymentMethod.equalInstallment
-            ? _parseOptionalOverride(_overrideInstallmentController.text)
-            : null;
-
-    setState(() => _submitting = true);
-    final service = ref.read(installmentServiceProvider);
-    Result<CreateContractResult> result;
-    if (isDisbursement) {
-      result = await service.createDisbursementContract(
-        CreateDisbursementContractCommand(
-          liabilityAccountId: liability.id,
-          disbursementAccountId: _disbursementAccountId!,
-          principal: principal,
-          totalPeriods: totalPeriods,
-          borrowingDate: _borrowingDate,
-          firstRepaymentDate: _firstRepaymentDate,
-          repaymentMethod: _method,
-          interestRatePeriod: ratePpm == null ? null : _ratePeriod,
-          interestRatePpm: ratePpm,
-          interestAccrualMethod: _accrualMethod,
-          totalFeeMinor: totalFeeMinor,
-          equalInstallmentOverrideMinor: overrideMinor,
-          note: note,
-        ),
-      );
-    } else {
-      result = await service.createBillConversionContract(
-        CreateBillConversionContractCommand(
-          liabilityAccountId: liability.id,
-          principal: principal,
-          totalPeriods: totalPeriods,
-          borrowingDate: _borrowingDate,
-          firstRepaymentDate: _firstRepaymentDate,
-          repaymentMethod: _method,
-          interestRatePeriod: ratePpm == null ? null : _ratePeriod,
-          interestRatePpm: ratePpm,
-          interestAccrualMethod: _accrualMethod,
-          totalFeeMinor: totalFeeMinor,
-          equalInstallmentOverrideMinor: overrideMinor,
-          note: note,
-        ),
-      );
-    }
+    final outcome = await ref
+        .read(installmentFormViewModelProvider(_args).notifier)
+        .submit(
+          principalText: _principalController.text,
+          totalPeriodsText: _totalPeriodsController.text,
+          rateText: _rateController.text,
+          totalFeeText: _totalFeeController.text,
+          overrideInstallmentText: _overrideInstallmentController.text,
+          noteText: _noteController.text,
+        );
     if (!mounted) return;
-    setState(() => _submitting = false);
-
-    switch (result) {
-      case Success(:final value):
-        ref.invalidate(installmentContractsByAccountProvider(liability.id));
-        context.pushReplacement('/installments/${value.contractId}');
-      case FailureResult(:final failure):
-        _showError(failure.message);
+    switch (outcome) {
+      case UiActionSuccess<String>(:final value):
+        context.pushReplacement('/installments/$value');
+      case UiActionFailure<String>(:final error):
+        _showError(error.message);
     }
   }
 
@@ -374,36 +294,6 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
     if (n == null || n <= 0) return '期数必须为正整数';
     return null;
   }
-
-  Money _parseOptionalMoney(String value) {
-    final trimmed = value.trim();
-    return trimmed.isEmpty ? Money.zero() : Money.parse(trimmed);
-  }
-
-  /// 解析"还款固定额"输入；空或非正返回 null（回落公式推导）。
-  int? _parseOptionalOverride(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return null;
-    try {
-      final money = Money.parse(trimmed);
-      return money.minorUnits > 0 ? money.minorUnits : null;
-    } on FormatException {
-      return null;
-    }
-  }
-
-  /// 将输入字符串（百分比形式，如 "0.025" 表示 0.025%）转换为 ppm
-  int? _parseRatePpm(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return null;
-    final percent = double.tryParse(trimmed);
-    if (percent == null || percent <= 0) return null;
-    return (percent * 10000).round();
-  }
-}
-
-DateTime _addMonths(DateTime date, int months) {
-  return DateTime(date.year, date.month + months, date.day);
 }
 
 class _SourceTypeRow extends StatelessWidget {
@@ -472,15 +362,10 @@ class _IntegerPlainFormRow extends StatelessWidget {
 
 Account? _findAccount(List<Account> accounts, String? id) {
   if (id == null) return null;
-  for (final a in accounts) {
-    if (a.id == id) return a;
+  for (final account in accounts) {
+    if (account.id == id) return account;
   }
   return null;
-}
-
-String? _blankToNull(String value) {
-  final trimmed = value.trim();
-  return trimmed.isEmpty ? null : trimmed;
 }
 
 String _formatDate(DateTime date) {
