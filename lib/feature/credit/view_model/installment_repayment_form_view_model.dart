@@ -7,7 +7,9 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
+import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../provider/installment_query_providers.dart';
 import 'installment_repayment_mode.dart';
 
 part 'installment_repayment_form_view_model.g.dart';

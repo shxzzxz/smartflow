@@ -7,6 +7,7 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
+import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/feature/credit/view_model/installment_contract_edit_state.dart';
 import 'package:smartflow/feature/credit/view_model/installment_contract_edit_view_model.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
@@ -236,7 +237,15 @@ void main() {
 
 ProviderContainer _container(_FakeInstallmentService service) {
   final container = ProviderContainer(
-    overrides: [installmentServiceProvider.overrideWithValue(service)],
+    overrides: [
+      installmentContractProvider.overrideWith(
+        (ref, contractId) async => service.contract,
+      ),
+      installmentSchedulesProvider.overrideWith(
+        (ref, contractId) async => service.schedules,
+      ),
+      installmentServiceProvider.overrideWithValue(service),
+    ],
   );
   addTearDown(container.dispose);
   return container;
@@ -324,15 +333,6 @@ class _FakeInstallmentService implements InstallmentService {
   }
 
   @override
-  Future<InstallmentContract?> findContract(String contractId) async =>
-      contract;
-
-  @override
-  Future<List<InstallmentSchedule>> listSchedules(String contractId) async {
-    return schedules;
-  }
-
-  @override
   Future<CreateContractResult> createBillConversionContract(
     CreateBillConversionContractCommand command,
   ) {
@@ -378,29 +378,7 @@ class _FakeInstallmentService implements InstallmentService {
   }
 
   @override
-  Future<InstallmentLink?> findLinkByTransaction(String transactionId) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<InstallmentContract>> listContractsByLiabilityAccount(
-    String liabilityAccountId,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<InstallmentRepayment>> listRepayments(String contractId) async {
-    return const [];
-  }
-
-  @override
   Future<void> revertRepayment(RevertRepaymentCommand command) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<int> unpaidInstallmentPrincipalMinor(String liabilityAccountId) {
     throw UnimplementedError();
   }
 }

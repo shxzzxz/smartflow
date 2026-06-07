@@ -5,7 +5,6 @@ import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
-import 'package:smartflow/domain/credit/entity/installment_repayment.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/service/installment_schedule_generator.dart';
@@ -319,47 +318,8 @@ abstract interface class InstallmentService {
 
   Future<void> revertRepayment(RevertRepaymentCommand command);
 
-  /// 该负债账户上所有 active 分期合同的"未还本金合计"（minor units）。
-  /// 计算依据：Σ(contract.principal − 已 paid 期次本金 − extraPrincipal 还本) over active contracts。
-  /// credit 域据此推算"非分期合同还款"的可用额度。
-  Future<int> unpaidInstallmentPrincipalMinor(String liabilityAccountId);
-
   /// 删除合同：先回滚已发生的还款交易与放款交易，再级联删除 schedules / repayments / contract。
   Future<void> deleteContract(DeleteContractCommand command);
-
-  Future<List<InstallmentContract>> listContractsByLiabilityAccount(
-    String liabilityAccountId,
-  );
-
-  Future<InstallmentContract?> findContract(String contractId);
-
-  Future<List<InstallmentSchedule>> listSchedules(String contractId);
-
-  Future<List<InstallmentRepayment>> listRepayments(String contractId);
-
-  /// 反查交易是否被分期模块持有。
-  /// 命中放款侧返回 disbursement；命中还款侧返回 repayment；否则 null。
-  Future<InstallmentLink?> findLinkByTransaction(String transactionId);
-}
-
-/// 分期模块对某 transaction 的"所有权"指针。
-sealed class InstallmentLink {
-  const InstallmentLink({required this.contractId});
-
-  final String contractId;
-}
-
-class InstallmentDisbursementLink extends InstallmentLink {
-  const InstallmentDisbursementLink({required super.contractId});
-}
-
-class InstallmentRepaymentLink extends InstallmentLink {
-  const InstallmentRepaymentLink({
-    required super.contractId,
-    required this.repaymentType,
-  });
-
-  final InstallmentRepaymentType repaymentType;
 }
 
 class InstallmentServiceImpl implements InstallmentService {
@@ -1093,29 +1053,6 @@ class InstallmentServiceImpl implements InstallmentService {
   }
 
   @override
-  Future<int> unpaidInstallmentPrincipalMinor(String liabilityAccountId) async {
-    final contracts = await _repository.listContractsByLiabilityAccount(
-      liabilityAccountId,
-    );
-    var sum = 0;
-    for (final c in contracts) {
-      if (c.status != InstallmentContractStatus.active) continue;
-      final paid = await _paidPrincipalForContract(c.id);
-      final unpaid = c.principal.minorUnits - paid;
-      if (unpaid > 0) sum += unpaid;
-    }
-    return sum;
-  }
-
-  Future<int> _paidPrincipalForContract(String contractId) async {
-    final repayments = await _repository.listRepayments(contractId);
-    return _transactionQueryService.getDetailAmountSum(
-      transactionIds: repayments.map((r) => r.transactionId),
-      detailType: TransactionDetailType.repaymentPrincipal,
-    );
-  }
-
-  @override
   Future<void> deleteContract(DeleteContractCommand command) async {
     final contract = await _repository.findContract(command.contractId);
     if (contract == null) {
@@ -1148,48 +1085,6 @@ class InstallmentServiceImpl implements InstallmentService {
       // 3. 物理删除合同与子表。
       await _repository.deleteContract(command.contractId);
     });
-  }
-
-  @override
-  Future<List<InstallmentContract>> listContractsByLiabilityAccount(
-    String liabilityAccountId,
-  ) {
-    return _repository.listContractsByLiabilityAccount(liabilityAccountId);
-  }
-
-  @override
-  Future<InstallmentContract?> findContract(String contractId) {
-    return _repository.findContract(contractId);
-  }
-
-  @override
-  Future<List<InstallmentSchedule>> listSchedules(String contractId) {
-    return _repository.listSchedules(contractId);
-  }
-
-  @override
-  Future<List<InstallmentRepayment>> listRepayments(String contractId) {
-    return _repository.listRepayments(contractId);
-  }
-
-  @override
-  Future<InstallmentLink?> findLinkByTransaction(String transactionId) async {
-    final repayment = await _repository.findRepaymentByTransaction(
-      transactionId,
-    );
-    if (repayment != null) {
-      return InstallmentRepaymentLink(
-        contractId: repayment.contractId,
-        repaymentType: repayment.repaymentType,
-      );
-    }
-    final contract = await _repository.findContractByDisbursementTransaction(
-      transactionId,
-    );
-    if (contract != null) {
-      return InstallmentDisbursementLink(contractId: contract.id);
-    }
-    return null;
   }
 
   Future<void> _maybeMarkContractSettled(String contractId) async {

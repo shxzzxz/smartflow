@@ -6,6 +6,7 @@ import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../widget/business/account_lookup.dart';
+import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import 'transaction_detail_action_dispatcher.dart';
 import 'transaction_detail_state.dart';

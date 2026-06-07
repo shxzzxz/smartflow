@@ -75,7 +75,7 @@ final class AccountTransactionsViewModelProvider
 }
 
 String _$accountTransactionsViewModelHash() =>
-    r'29ddcff4d89f37e0d033587b983d3e7c759a2c3b';
+    r'11576123c31db1f7cb0682168575708b4d7b06d5';
 
 final class AccountTransactionsViewModelFamily extends $Family
     with $FunctionalFamilyOverride<AccountTransactionsState, String> {

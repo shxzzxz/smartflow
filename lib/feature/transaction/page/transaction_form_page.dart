@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
@@ -16,6 +15,7 @@ import '../../../widget/business/business_icon.dart';
 import '../../../widget/business/category_grid_picker.dart';
 import '../../../widget/business/money_text.dart';
 import '../../../widget/business/plain_transaction_fields.dart';
+import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_form_presentation.dart';
 import '../view_model/transaction_form_view_model.dart';

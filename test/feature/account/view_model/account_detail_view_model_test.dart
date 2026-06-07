@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
-import 'package:smartflow/application/credit/credit_command_api.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/account/view_model/account_detail_view_model.dart';
+import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
+import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/widget/business/transaction_list_presentation.dart';
 
 void main() {
@@ -14,11 +16,9 @@ void main() {
     test('builds account detail with controlled transaction groups', () async {
       final transactionService = _FakeTransactionQueryService();
       final accountService = _FakeAccountQueryService(accountsById: _accounts);
-      final installmentService = _FakeInstallmentService();
       final container = _container(
         transactionService,
         accountService,
-        installmentService,
         overrides: [
           accountListProvider.overrideWith(
             (ref) => Stream.value([_account('cash', '现金')]),
@@ -55,11 +55,9 @@ void main() {
     test('reports not found when account list does not contain id', () async {
       final transactionService = _FakeTransactionQueryService();
       final accountService = _FakeAccountQueryService(accountsById: _accounts);
-      final installmentService = _FakeInstallmentService();
       final container = _container(
         transactionService,
         accountService,
-        installmentService,
         overrides: [
           accountListProvider.overrideWith(
             (ref) => Stream.value([_account('cash', '现金')]),
@@ -97,11 +95,9 @@ void main() {
           'card': _account('card', '信用卡', type: AccountType.liability),
         },
       );
-      final installmentService = _FakeInstallmentService();
       final container = _container(
         transactionService,
         accountService,
-        installmentService,
         overrides: [
           accountListProvider.overrideWith(
             (ref) => Stream.value([
@@ -145,15 +141,13 @@ void main() {
 
 ProviderContainer _container(
   _FakeTransactionQueryService transactionService,
-  _FakeAccountQueryService accountService,
-  _FakeInstallmentService installmentService, {
+  _FakeAccountQueryService accountService, {
   List<dynamic> overrides = const [],
 }) {
   final container = ProviderContainer(
     overrides: [
       transactionQueryServiceProvider.overrideWithValue(transactionService),
       accountQueryServiceProvider.overrideWithValue(accountService),
-      installmentServiceProvider.overrideWithValue(installmentService),
       ...overrides,
     ],
   );
@@ -352,22 +346,4 @@ class _ReplayStream<T> {
     }
     _controllers.clear();
   }
-}
-
-class _FakeInstallmentService implements InstallmentService {
-  final _contractsCompleter = Completer<List<InstallmentContract>>();
-
-  @override
-  Future<List<InstallmentContract>> listContractsByLiabilityAccount(
-    String liabilityAccountId,
-  ) {
-    return _contractsCompleter.future;
-  }
-
-  void completeContracts(List<InstallmentContract> contracts) {
-    _contractsCompleter.complete(contracts);
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

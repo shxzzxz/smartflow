@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
@@ -14,6 +13,7 @@ import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../widget/business/business_icon.dart';
 import '../../../widget/business/icon_choice_grid.dart';
+import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/account_form_view_model.dart';
 

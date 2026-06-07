@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../app/provider.dart';
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
@@ -14,6 +13,7 @@ import '../../../widget/business/business_icon.dart';
 import '../../../widget/business/business_icon_bubble.dart';
 import '../../../widget/business/finance_labels.dart';
 import '../../../widget/business/money_text.dart';
+import '../../shared/provider/ledger_query_providers.dart';
 
 class AccountsPage extends ConsumerStatefulWidget {
   const AccountsPage({super.key});

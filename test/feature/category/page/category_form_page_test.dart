@@ -6,6 +6,7 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/category/page/category_form_page.dart';
+import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 
 void main() {
   testWidgets('name validator blocks category submit', (tester) async {

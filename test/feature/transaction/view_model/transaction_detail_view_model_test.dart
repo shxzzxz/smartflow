@@ -7,6 +7,7 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_state.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_view_model.dart';
@@ -606,38 +607,6 @@ class _FakeInstallmentService implements InstallmentService {
   Future<PostedTransactionResult> createScheduledRepayment(
     CreateScheduledRepaymentCommand command,
   ) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<InstallmentContract?> findContract(String contractId) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<InstallmentLink?> findLinkByTransaction(String transactionId) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<InstallmentContract>> listContractsByLiabilityAccount(
-    String liabilityAccountId,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<InstallmentRepayment>> listRepayments(String contractId) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<InstallmentSchedule>> listSchedules(String contractId) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<int> unpaidInstallmentPrincipalMinor(String liabilityAccountId) {
     throw UnimplementedError();
   }
 }

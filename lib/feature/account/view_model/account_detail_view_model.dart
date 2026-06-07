@@ -1,10 +1,11 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../app/provider.dart';
-import '../../../application/credit/credit_command_api.dart';
+import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../widget/business/account_lookup.dart';
 import '../../../widget/business/transaction_list_presentation.dart';
+import '../../credit/provider/installment_query_providers.dart';
+import '../../shared/provider/ledger_query_providers.dart';
 
 part 'account_detail_view_model.g.dart';
 

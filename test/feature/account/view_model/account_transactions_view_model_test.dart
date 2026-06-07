@@ -6,6 +6,7 @@ import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/account/view_model/account_transactions_view_model.dart';
+import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/widget/business/transaction_list_presentation.dart';
 
 void main() {

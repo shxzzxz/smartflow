@@ -14,7 +14,7 @@ import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
-import '../../installment/command/installment_service.dart';
+import '../../installment/query/installment_query_service.dart';
 
 /// 信贷域对外的通用入口。承载"非分期合同关联的普通还款"的创建、更正与编辑视图反解；
 /// 内部委托账务核心写入，并强制走额度校验（debt − 未还分期本金）。
@@ -110,18 +110,18 @@ class RepaymentEditView {
 
 class CreditServiceImpl implements CreditService {
   CreditServiceImpl({
-    required InstallmentService installmentService,
+    required InstallmentQueryService installmentQueryService,
     required tx.TransactionPostingAppService postingService,
     required tx.TransactionCorrectionAppService correctionService,
     required TransactionQueryService transactionQueryService,
     required AccountQueryService accountQueryService,
-  }) : _installmentService = installmentService,
+  }) : _installmentQueryService = installmentQueryService,
        _postingService = postingService,
        _correctionService = correctionService,
        _transactionQueryService = transactionQueryService,
        _accountQueryService = accountQueryService;
 
-  final InstallmentService _installmentService;
+  final InstallmentQueryService _installmentQueryService;
   final tx.TransactionPostingAppService _postingService;
   final tx.TransactionCorrectionAppService _correctionService;
   final TransactionQueryService _transactionQueryService;
@@ -279,7 +279,7 @@ class CreditServiceImpl implements CreditService {
     }
 
     final debtMinor = account.balance.minorUnits + oldPrincipalMinor;
-    final unpaidMinor = await _installmentService
+    final unpaidMinor = await _installmentQueryService
         .unpaidInstallmentPrincipalMinor(liabilityAccountId);
     final availableMinor = debtMinor - unpaidMinor;
 

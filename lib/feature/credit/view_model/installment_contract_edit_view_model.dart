@@ -6,6 +6,7 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../provider/installment_query_providers.dart';
 import 'installment_contract_edit_state.dart';
 
 part 'installment_contract_edit_view_model.g.dart';
