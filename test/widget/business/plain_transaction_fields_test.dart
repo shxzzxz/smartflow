@@ -28,6 +28,11 @@ void main() {
 
       expect(validateNonNegativeMoneyText('0'), isNull);
       expect(validateNonNegativeMoneyText('-0.01'), '金额不能小于 0');
+
+      expect(validateOptionalNonNegativeMoneyText(''), isNull);
+      expect(validateOptionalNonNegativeMoneyText('  '), isNull);
+      expect(validateOptionalNonNegativeMoneyText('8.00'), isNull);
+      expect(validateOptionalNonNegativeMoneyText('-0.01'), '金额不能小于 0');
     });
 
     test('parses minor units when valid', () {

@@ -56,6 +56,20 @@ String? validateNonNegativeMoneyText(
   return money.minorUnits >= 0 ? null : negativeMessage;
 }
 
+String? validateOptionalNonNegativeMoneyText(
+  String? value, {
+  String invalidMessage = '请输入有效金额',
+  String negativeMessage = '金额不能小于 0',
+}) {
+  final trimmed = value?.trim() ?? '';
+  if (trimmed.isEmpty) return null;
+  return validateNonNegativeMoneyText(
+    trimmed,
+    invalidMessage: invalidMessage,
+    negativeMessage: negativeMessage,
+  );
+}
+
 int? parseMoneyMinorUnitsOrNull(String? value) {
   return Money.tryParse(value)?.minorUnits;
 }

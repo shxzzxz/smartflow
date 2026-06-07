@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../application/ledger/ledger_command_api.dart';
-import '../../../core/money/money.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
+import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../widget/business/plain_transaction_fields.dart';
@@ -134,20 +134,20 @@ class _InstallmentRepaymentFormPageState
                   label: '利息',
                   controller: _interestController,
                   hintText: '请输入利息（可选）',
-                  validator: validateOptionalMoneyText,
+                  validator: validateOptionalNonNegativeMoneyText,
                 ),
               MoneyPlainFormRow(
                 label: '手续费',
                 controller: _feeController,
                 hintText: '请输入手续费（可选）',
-                validator: validateOptionalMoneyText,
+                validator: validateOptionalNonNegativeMoneyText,
               ),
               if (widget.mode == InstallmentRepaymentMode.scheduled)
                 MoneyPlainFormRow(
                   label: '优惠',
                   controller: _discountController,
                   hintText: '请输入优惠（可选）',
-                  validator: validateOptionalMoneyText,
+                  validator: validateOptionalNonNegativeMoneyText,
                 ),
               DateTimePlainFormRow(
                 label: '还款日期',
@@ -238,17 +238,12 @@ class _InstallmentRepaymentFormPageState
 
   void _syncControllers(InstallmentRepaymentFormState state) {
     _syncing = true;
-    _setControllerText(_principalController, state.principalText);
-    _setControllerText(_interestController, state.interestText);
-    _setControllerText(_feeController, state.feeText);
-    _setControllerText(_discountController, state.discountText);
-    _setControllerText(_noteController, state.noteText);
+    syncTextControllerText(_principalController, state.principalText);
+    syncTextControllerText(_interestController, state.interestText);
+    syncTextControllerText(_feeController, state.feeText);
+    syncTextControllerText(_discountController, state.discountText);
+    syncTextControllerText(_noteController, state.noteText);
     _syncing = false;
-  }
-
-  void _setControllerText(TextEditingController controller, String value) {
-    if (controller.text == value) return;
-    controller.text = value;
   }
 
   void _setText(
@@ -307,12 +302,4 @@ String _formatDateTime(DateTime date) {
       '${date.minute.toString().padLeft(2, '0')}';
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')} $time';
-}
-
-String? validateOptionalMoneyText(String? value) {
-  final trimmed = value?.trim() ?? '';
-  if (trimmed.isEmpty) return null;
-  final money = Money.tryParse(trimmed);
-  if (money == null) return '请输入有效金额';
-  return money.minorUnits >= 0 ? null : '金额不能小于 0';
 }
