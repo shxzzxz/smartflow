@@ -58,7 +58,43 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
       if (from < 10) {
         await migrator.addColumn(database.accounts, database.accounts.version);
       }
+      if (from < 11) {
+        await migrator.addColumn(
+          database.accounts,
+          database.accounts.accountProfileKey,
+        );
+        await _migrateAccountProfileKeys(database);
+      }
     },
+  );
+}
+
+Future<void> _migrateAccountProfileKeys(AppDatabase database) async {
+  await database.customStatement(
+    "UPDATE accounts SET account_profile_key = 'ledger.reimbursement' "
+    "WHERE account_type = 'asset' AND account_subtype = 'reimbursement'",
+  );
+  await database.customStatement(
+    "UPDATE accounts SET account_profile_key = 'ledger.fund' "
+    "WHERE account_type = 'asset' AND "
+    "(account_subtype IS NULL OR account_subtype <> 'reimbursement')",
+  );
+  await database.customStatement(
+    "UPDATE accounts SET account_profile_key = 'credit.loan' "
+    "WHERE account_type = 'liability' AND account_subtype = 'loan'",
+  );
+  await database.customStatement(
+    "UPDATE accounts SET account_profile_key = 'credit.credit' "
+    "WHERE account_type = 'liability' AND "
+    "(account_subtype IS NULL OR account_subtype <> 'loan')",
+  );
+  await database.customStatement(
+    "UPDATE accounts SET account_subtype = NULL "
+    "WHERE account_subtype IS NOT NULL AND account_subtype <> 'reimbursement'",
+  );
+  await database.customStatement(
+    "UPDATE accounts SET account_subtype = NULL, account_profile_key = NULL "
+    "WHERE account_type IN ('equity', 'income', 'expense')",
   );
 }
 

@@ -6,6 +6,8 @@ import '../../../application/ledger/ledger_command_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
+import '../../../shared/account_profile/account_profile_kind.dart';
+import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
@@ -17,10 +19,12 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
   @override
   Future<InstallmentFormState> build(InstallmentFormArgs args) async {
     final liabilityAccounts = await ref.watch(
-      accountsForUsageProvider(AccountUsage.repaymentTarget).future,
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.repaymentTarget,
+      ).future,
     );
     final fundAccounts = await ref.watch(
-      accountsForUsageProvider(AccountUsage.fund).future,
+      accountsForSelectionPurposeProvider(AccountSelectionPurpose.fund).future,
     );
     final liability = _findAccount(liabilityAccounts, args.liabilityAccountId);
     if (liability == null) {
@@ -337,7 +341,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
 }
 
 InstallmentSourceType _defaultSourceType(Account liability) {
-  return liability.subtype == AccountSubtype.loan
+  return liability.profileKey == AccountProfileKind.loan.key
       ? InstallmentSourceType.disbursement
       : InstallmentSourceType.billConversion;
 }

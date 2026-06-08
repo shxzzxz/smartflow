@@ -3,6 +3,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/time/month_key.dart';
+import '../../../shared/account_profile/account_selection_policy.dart';
+import '../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 
 part 'ledger_query_providers.g.dart';
@@ -33,8 +35,20 @@ Stream<AccountLookup> accountLookup(Ref ref) {
 }
 
 @riverpod
-Stream<List<Account>> accountsForUsage(Ref ref, AccountUsage usage) {
-  return ref.watch(accountQueryServiceProvider).watchAccountsForUsage(usage);
+Stream<List<Account>> accountsForSelectionPurpose(
+  Ref ref,
+  AccountSelectionPurpose purpose,
+) {
+  return ref
+      .watch(accountQueryServiceProvider)
+      .watchAccounts({AccountType.asset, AccountType.liability})
+      .map((accounts) {
+        return accounts
+            .where(
+              (account) => accountMatchesSelectionPurpose(account, purpose),
+            )
+            .toList();
+      });
 }
 
 @riverpod

@@ -5,6 +5,7 @@ import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/text/text_normalizer.dart';
+import '../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -33,8 +34,8 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     );
   }
 
-  Future<List<Account>> accountOptions(AccountUsage usage) {
-    return ref.read(accountsForUsageProvider(usage).future);
+  Future<List<Account>> accountOptions(AccountSelectionPurpose purpose) {
+    return ref.read(accountsForSelectionPurposeProvider(purpose).future);
   }
 
   Future<UiActionOutcome<void>> delete() {
@@ -61,16 +62,18 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
   }
 
   Future<UiActionOutcome<void>> changeAccount(
-    AccountUsage usage,
+    AccountSelectionPurpose purpose,
     String accountId,
   ) {
     return _runAction((loaded) async {
-      switch (usage) {
-        case AccountUsage.settlement:
+      switch (purpose) {
+        case AccountSelectionPurpose.settlement:
+        case AccountSelectionPurpose.fund:
+        case AccountSelectionPurpose.repaymentSource:
           return _actionDispatcherFor(
             loaded.detail.transaction,
           ).changeSettlementAccount(accountId);
-        case AccountUsage.reimbursement:
+        case AccountSelectionPurpose.reimbursementReceivable:
           await ref
               .read(transactionCorrectionAppServiceProvider)
               .correctReimbursementAdvance(
@@ -80,12 +83,8 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
                 ),
               );
           return const UiActionOutcome.success(null);
-        case AccountUsage.fund:
-        case AccountUsage.credit:
-        case AccountUsage.loan:
-        case AccountUsage.repaymentTarget:
-        case AccountUsage.repaymentSource:
-        case AccountUsage.borrowingLiability:
+        case AccountSelectionPurpose.repaymentTarget:
+        case AccountSelectionPurpose.borrowingLiability:
           return detailInvalidCommand('当前账户用途不能在交易详情页编辑');
       }
     });

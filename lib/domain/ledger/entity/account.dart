@@ -14,6 +14,7 @@ class AccountProfilePatch {
     this.sortOrder,
     this.isHidden,
     this.subtype,
+    this.profileKey,
     this.iconKey,
     this.note,
   });
@@ -22,6 +23,7 @@ class AccountProfilePatch {
   final int? sortOrder;
   final bool? isHidden;
   final Patch<AccountSubtype>? subtype;
+  final Patch<String>? profileKey;
   final Patch<String>? iconKey;
   final Patch<String>? note;
 }
@@ -53,6 +55,7 @@ class Account {
     required this.type,
     required this.balance,
     this.subtype,
+    this.profileKey,
     this.parentId,
     this.iconKey,
     this.note,
@@ -73,6 +76,7 @@ class Account {
   final AccountSource source;
   String name;
   AccountSubtype? subtype;
+  String? profileKey;
   String? parentId;
   Money balance;
   String? iconKey;
@@ -115,6 +119,7 @@ class Account {
 
     name = normalizedName;
     subtype = nextSubtype;
+    profileKey = patch.profileKey.applyMappedTo(profileKey, trimToNull);
     iconKey = patch.iconKey.applyMappedTo(iconKey, trimToNull);
     note = patch.note.applyMappedTo(note, trimToNull);
     sortOrder = patch.sortOrder ?? sortOrder;
@@ -250,16 +255,8 @@ class Account {
   }) {
     if (subtype == null) return true;
     return switch (type) {
-      AccountType.asset =>
-        subtype == AccountSubtype.cash ||
-            subtype == AccountSubtype.bankCard ||
-            subtype == AccountSubtype.thirdParty ||
-            subtype == AccountSubtype.investment ||
-            subtype == AccountSubtype.reimbursement,
-      AccountType.liability =>
-        subtype == AccountSubtype.creditCard ||
-            subtype == AccountSubtype.loan ||
-            subtype == AccountSubtype.consumerCredit,
+      AccountType.asset => subtype == AccountSubtype.reimbursement,
+      AccountType.liability => false,
       AccountType.equity || AccountType.income || AccountType.expense => false,
     };
   }

@@ -4,12 +4,10 @@ import 'ledger_enum.dart';
 enum AccountUsage {
   settlement,
   fund,
-  credit,
-  loan,
   repaymentTarget,
   repaymentSource,
   borrowingLiability,
-  reimbursement,
+  reimbursementReceivable,
 }
 
 bool accountMatchesUsage(Account account, AccountUsage usage) {
@@ -19,23 +17,17 @@ bool accountMatchesUsage(Account account, AccountUsage usage) {
   return switch (usage) {
     AccountUsage.settlement =>
       accountMatchesUsage(account, AccountUsage.fund) ||
-          accountMatchesUsage(account, AccountUsage.credit),
+          account.type == AccountType.liability,
     AccountUsage.fund =>
       account.type == AccountType.asset &&
           account.subtype != AccountSubtype.reimbursement,
-    AccountUsage.credit =>
-      account.type == AccountType.liability &&
-          account.subtype != AccountSubtype.loan,
-    AccountUsage.loan =>
-      account.type == AccountType.liability &&
-          account.subtype == AccountSubtype.loan,
     AccountUsage.repaymentTarget => account.type == AccountType.liability,
     AccountUsage.repaymentSource => accountMatchesUsage(
       account,
       AccountUsage.settlement,
     ),
     AccountUsage.borrowingLiability => account.type == AccountType.liability,
-    AccountUsage.reimbursement =>
+    AccountUsage.reimbursementReceivable =>
       account.type == AccountType.asset &&
           account.subtype == AccountSubtype.reimbursement,
   };

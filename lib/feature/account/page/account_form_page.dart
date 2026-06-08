@@ -11,6 +11,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
+import '../../../shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/icon_choice_grid.dart';
 import '../../shared/provider/ledger_query_providers.dart';
@@ -185,7 +186,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                         ),
                       ),
                       const Divider(height: 1),
-                      if (formState.kind == AccountFormKind.credit)
+                      if (formState.kind == AccountProfileKind.credit)
                         AppPlainFormRow(
                           label: '出账还款日',
                           child: _BillingRepaymentFields(
@@ -266,7 +267,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
     onChanged(selected);
   }
 
-  void _setKind(AccountFormKind kind) {
+  void _setKind(AccountProfileKind kind) {
     ref.read(accountFormViewModelProvider.notifier).setKind(kind);
     if (!isLiabilityAccountKind(kind)) {
       syncTextControllerText(_creditLimitController, '');
@@ -353,8 +354,8 @@ class _AccountFormHeader extends StatelessWidget {
 class _AccountKindTabs extends StatelessWidget {
   const _AccountKindTabs({required this.kind, required this.onChanged});
 
-  final AccountFormKind kind;
-  final ValueChanged<AccountFormKind> onChanged;
+  final AccountProfileKind kind;
+  final ValueChanged<AccountProfileKind> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -362,23 +363,23 @@ class _AccountKindTabs extends StatelessWidget {
       children: [
         _AccountKindTab(
           label: '资金',
-          selected: kind == AccountFormKind.fund,
-          onTap: () => onChanged(AccountFormKind.fund),
+          selected: kind == AccountProfileKind.fund,
+          onTap: () => onChanged(AccountProfileKind.fund),
         ),
         _AccountKindTab(
           label: '信用',
-          selected: kind == AccountFormKind.credit,
-          onTap: () => onChanged(AccountFormKind.credit),
+          selected: kind == AccountProfileKind.credit,
+          onTap: () => onChanged(AccountProfileKind.credit),
         ),
         _AccountKindTab(
           label: '贷款',
-          selected: kind == AccountFormKind.loan,
-          onTap: () => onChanged(AccountFormKind.loan),
+          selected: kind == AccountProfileKind.loan,
+          onTap: () => onChanged(AccountProfileKind.loan),
         ),
         _AccountKindTab(
           label: '报销',
-          selected: kind == AccountFormKind.reimbursement,
-          onTap: () => onChanged(AccountFormKind.reimbursement),
+          selected: kind == AccountProfileKind.reimbursement,
+          onTap: () => onChanged(AccountProfileKind.reimbursement),
         ),
       ],
     );

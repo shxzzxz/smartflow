@@ -49,6 +49,18 @@ class $AccountsTable extends Accounts
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   ).withConverter<AccountSubtype?>($AccountsTable.$converteraccountSubtypen);
+  static const VerificationMeta _accountProfileKeyMeta = const VerificationMeta(
+    'accountProfileKey',
+  );
+  @override
+  late final GeneratedColumn<String> accountProfileKey =
+      GeneratedColumn<String>(
+        'account_profile_key',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _parentIdMeta = const VerificationMeta(
     'parentId',
   );
@@ -224,6 +236,7 @@ class $AccountsTable extends Accounts
     name,
     accountType,
     accountSubtype,
+    accountProfileKey,
     parentId,
     balanceMinor,
     iconKey,
@@ -264,6 +277,15 @@ class $AccountsTable extends Accounts
       );
     } else if (isInserting) {
       context.missing(_nameMeta);
+    }
+    if (data.containsKey('account_profile_key')) {
+      context.handle(
+        _accountProfileKeyMeta,
+        accountProfileKey.isAcceptableOrUnknown(
+          data['account_profile_key']!,
+          _accountProfileKeyMeta,
+        ),
+      );
     }
     if (data.containsKey('parent_id')) {
       context.handle(
@@ -383,6 +405,10 @@ class $AccountsTable extends Accounts
           data['${effectivePrefix}account_subtype'],
         ),
       ),
+      accountProfileKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_profile_key'],
+      ),
       parentId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}parent_id'],
@@ -484,6 +510,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   final String name;
   final AccountType accountType;
   final AccountSubtype? accountSubtype;
+  final String? accountProfileKey;
   final String? parentId;
   final int balanceMinor;
   final String? iconKey;
@@ -504,6 +531,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.name,
     required this.accountType,
     this.accountSubtype,
+    this.accountProfileKey,
     this.parentId,
     required this.balanceMinor,
     this.iconKey,
@@ -534,6 +562,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       map['account_subtype'] = Variable<String>(
         $AccountsTable.$converteraccountSubtypen.toSql(accountSubtype),
       );
+    }
+    if (!nullToAbsent || accountProfileKey != null) {
+      map['account_profile_key'] = Variable<String>(accountProfileKey);
     }
     if (!nullToAbsent || parentId != null) {
       map['parent_id'] = Variable<String>(parentId);
@@ -584,6 +615,10 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           accountSubtype == null && nullToAbsent
               ? const Value.absent()
               : Value(accountSubtype),
+      accountProfileKey:
+          accountProfileKey == null && nullToAbsent
+              ? const Value.absent()
+              : Value(accountProfileKey),
       parentId:
           parentId == null && nullToAbsent
               ? const Value.absent()
@@ -637,6 +672,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       accountSubtype: $AccountsTable.$converteraccountSubtypen.fromJson(
         serializer.fromJson<String?>(json['accountSubtype']),
       ),
+      accountProfileKey: serializer.fromJson<String?>(
+        json['accountProfileKey'],
+      ),
       parentId: serializer.fromJson<String?>(json['parentId']),
       balanceMinor: serializer.fromJson<int>(json['balanceMinor']),
       iconKey: serializer.fromJson<String?>(json['iconKey']),
@@ -670,6 +708,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'accountSubtype': serializer.toJson<String?>(
         $AccountsTable.$converteraccountSubtypen.toJson(accountSubtype),
       ),
+      'accountProfileKey': serializer.toJson<String?>(accountProfileKey),
       'parentId': serializer.toJson<String?>(parentId),
       'balanceMinor': serializer.toJson<int>(balanceMinor),
       'iconKey': serializer.toJson<String?>(iconKey),
@@ -697,6 +736,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     String? name,
     AccountType? accountType,
     Value<AccountSubtype?> accountSubtype = const Value.absent(),
+    Value<String?> accountProfileKey = const Value.absent(),
     Value<String?> parentId = const Value.absent(),
     int? balanceMinor,
     Value<String?> iconKey = const Value.absent(),
@@ -718,6 +758,10 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     accountType: accountType ?? this.accountType,
     accountSubtype:
         accountSubtype.present ? accountSubtype.value : this.accountSubtype,
+    accountProfileKey:
+        accountProfileKey.present
+            ? accountProfileKey.value
+            : this.accountProfileKey,
     parentId: parentId.present ? parentId.value : this.parentId,
     balanceMinor: balanceMinor ?? this.balanceMinor,
     iconKey: iconKey.present ? iconKey.value : this.iconKey,
@@ -747,6 +791,10 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           data.accountSubtype.present
               ? data.accountSubtype.value
               : this.accountSubtype,
+      accountProfileKey:
+          data.accountProfileKey.present
+              ? data.accountProfileKey.value
+              : this.accountProfileKey,
       parentId: data.parentId.present ? data.parentId.value : this.parentId,
       balanceMinor:
           data.balanceMinor.present
@@ -783,6 +831,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('name: $name, ')
           ..write('accountType: $accountType, ')
           ..write('accountSubtype: $accountSubtype, ')
+          ..write('accountProfileKey: $accountProfileKey, ')
           ..write('parentId: $parentId, ')
           ..write('balanceMinor: $balanceMinor, ')
           ..write('iconKey: $iconKey, ')
@@ -808,6 +857,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     name,
     accountType,
     accountSubtype,
+    accountProfileKey,
     parentId,
     balanceMinor,
     iconKey,
@@ -832,6 +882,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.name == this.name &&
           other.accountType == this.accountType &&
           other.accountSubtype == this.accountSubtype &&
+          other.accountProfileKey == this.accountProfileKey &&
           other.parentId == this.parentId &&
           other.balanceMinor == this.balanceMinor &&
           other.iconKey == this.iconKey &&
@@ -854,6 +905,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<String> name;
   final Value<AccountType> accountType;
   final Value<AccountSubtype?> accountSubtype;
+  final Value<String?> accountProfileKey;
   final Value<String?> parentId;
   final Value<int> balanceMinor;
   final Value<String?> iconKey;
@@ -875,6 +927,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.name = const Value.absent(),
     this.accountType = const Value.absent(),
     this.accountSubtype = const Value.absent(),
+    this.accountProfileKey = const Value.absent(),
     this.parentId = const Value.absent(),
     this.balanceMinor = const Value.absent(),
     this.iconKey = const Value.absent(),
@@ -897,6 +950,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     required String name,
     required AccountType accountType,
     this.accountSubtype = const Value.absent(),
+    this.accountProfileKey = const Value.absent(),
     this.parentId = const Value.absent(),
     this.balanceMinor = const Value.absent(),
     this.iconKey = const Value.absent(),
@@ -921,6 +975,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<String>? name,
     Expression<String>? accountType,
     Expression<String>? accountSubtype,
+    Expression<String>? accountProfileKey,
     Expression<String>? parentId,
     Expression<int>? balanceMinor,
     Expression<String>? iconKey,
@@ -943,6 +998,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (name != null) 'name': name,
       if (accountType != null) 'account_type': accountType,
       if (accountSubtype != null) 'account_subtype': accountSubtype,
+      if (accountProfileKey != null) 'account_profile_key': accountProfileKey,
       if (parentId != null) 'parent_id': parentId,
       if (balanceMinor != null) 'balance_minor': balanceMinor,
       if (iconKey != null) 'icon_key': iconKey,
@@ -967,6 +1023,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<String>? name,
     Value<AccountType>? accountType,
     Value<AccountSubtype?>? accountSubtype,
+    Value<String?>? accountProfileKey,
     Value<String?>? parentId,
     Value<int>? balanceMinor,
     Value<String?>? iconKey,
@@ -989,6 +1046,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       name: name ?? this.name,
       accountType: accountType ?? this.accountType,
       accountSubtype: accountSubtype ?? this.accountSubtype,
+      accountProfileKey: accountProfileKey ?? this.accountProfileKey,
       parentId: parentId ?? this.parentId,
       balanceMinor: balanceMinor ?? this.balanceMinor,
       iconKey: iconKey ?? this.iconKey,
@@ -1026,6 +1084,9 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       map['account_subtype'] = Variable<String>(
         $AccountsTable.$converteraccountSubtypen.toSql(accountSubtype.value),
       );
+    }
+    if (accountProfileKey.present) {
+      map['account_profile_key'] = Variable<String>(accountProfileKey.value);
     }
     if (parentId.present) {
       map['parent_id'] = Variable<String>(parentId.value);
@@ -1089,6 +1150,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('name: $name, ')
           ..write('accountType: $accountType, ')
           ..write('accountSubtype: $accountSubtype, ')
+          ..write('accountProfileKey: $accountProfileKey, ')
           ..write('parentId: $parentId, ')
           ..write('balanceMinor: $balanceMinor, ')
           ..write('iconKey: $iconKey, ')
@@ -6572,6 +6634,7 @@ typedef $$AccountsTableCreateCompanionBuilder =
       required String name,
       required AccountType accountType,
       Value<AccountSubtype?> accountSubtype,
+      Value<String?> accountProfileKey,
       Value<String?> parentId,
       Value<int> balanceMinor,
       Value<String?> iconKey,
@@ -6595,6 +6658,7 @@ typedef $$AccountsTableUpdateCompanionBuilder =
       Value<String> name,
       Value<AccountType> accountType,
       Value<AccountSubtype?> accountSubtype,
+      Value<String?> accountProfileKey,
       Value<String?> parentId,
       Value<int> balanceMinor,
       Value<String?> iconKey,
@@ -6642,6 +6706,11 @@ class $$AccountsTableFilterComposer
   get accountSubtype => $composableBuilder(
     column: $table.accountSubtype,
     builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get accountProfileKey => $composableBuilder(
+    column: $table.accountProfileKey,
+    builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<String> get parentId => $composableBuilder(
@@ -6751,6 +6820,11 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get accountProfileKey => $composableBuilder(
+    column: $table.accountProfileKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get parentId => $composableBuilder(
     column: $table.parentId,
     builder: (column) => ColumnOrderings(column),
@@ -6854,6 +6928,11 @@ class $$AccountsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get accountProfileKey => $composableBuilder(
+    column: $table.accountProfileKey,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get parentId =>
       $composableBuilder(column: $table.parentId, builder: (column) => column);
 
@@ -6945,6 +7024,7 @@ class $$AccountsTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<AccountType> accountType = const Value.absent(),
                 Value<AccountSubtype?> accountSubtype = const Value.absent(),
+                Value<String?> accountProfileKey = const Value.absent(),
                 Value<String?> parentId = const Value.absent(),
                 Value<int> balanceMinor = const Value.absent(),
                 Value<String?> iconKey = const Value.absent(),
@@ -6966,6 +7046,7 @@ class $$AccountsTableTableManager
                 name: name,
                 accountType: accountType,
                 accountSubtype: accountSubtype,
+                accountProfileKey: accountProfileKey,
                 parentId: parentId,
                 balanceMinor: balanceMinor,
                 iconKey: iconKey,
@@ -6989,6 +7070,7 @@ class $$AccountsTableTableManager
                 required String name,
                 required AccountType accountType,
                 Value<AccountSubtype?> accountSubtype = const Value.absent(),
+                Value<String?> accountProfileKey = const Value.absent(),
                 Value<String?> parentId = const Value.absent(),
                 Value<int> balanceMinor = const Value.absent(),
                 Value<String?> iconKey = const Value.absent(),
@@ -7010,6 +7092,7 @@ class $$AccountsTableTableManager
                 name: name,
                 accountType: accountType,
                 accountSubtype: accountSubtype,
+                accountProfileKey: accountProfileKey,
                 parentId: parentId,
                 balanceMinor: balanceMinor,
                 iconKey: iconKey,

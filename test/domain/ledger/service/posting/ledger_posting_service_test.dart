@@ -18,7 +18,7 @@ void main() {
   group('LedgerPostingService.postExpense', () {
     test('returns posting result directly for valid daily expense', () async {
       final accountRepository = _FakeAccountRepository([
-        _account('cash', AccountType.asset, subtype: AccountSubtype.cash),
+        _account('cash', AccountType.asset),
         _account('food', AccountType.expense),
       ]);
       final service = _service(accountRepository);
@@ -41,8 +41,8 @@ void main() {
 
     test('throws business exception for expected posting failures', () async {
       final accountRepository = _FakeAccountRepository([
-        _account('cash', AccountType.asset, subtype: AccountSubtype.cash),
-        _account('food', AccountType.asset, subtype: AccountSubtype.cash),
+        _account('cash', AccountType.asset),
+        _account('food', AccountType.asset),
       ]);
       final service = _service(accountRepository);
 

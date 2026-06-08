@@ -7,6 +7,7 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
+import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
@@ -18,10 +19,14 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
   @override
   Future<RepaymentFormState> build(RepaymentFormArgs args) async {
     final liabilityAccounts = await ref.watch(
-      accountsForUsageProvider(AccountUsage.repaymentTarget).future,
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.repaymentTarget,
+      ).future,
     );
     final repaymentSourceAccounts = await ref.watch(
-      accountsForUsageProvider(AccountUsage.repaymentSource).future,
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.repaymentSource,
+      ).future,
     );
 
     final editTransactionId = args.editTransactionId;
@@ -186,8 +191,16 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
     required String newTransactionId,
   }) {
     ref.invalidate(accountsByIdProvider);
-    ref.invalidate(accountsForUsageProvider(AccountUsage.repaymentTarget));
-    ref.invalidate(accountsForUsageProvider(AccountUsage.repaymentSource));
+    ref.invalidate(
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.repaymentTarget,
+      ),
+    );
+    ref.invalidate(
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.repaymentSource,
+      ),
+    );
     ref.invalidate(installmentContractsByAccountProvider(liabilityAccountId));
     if (transactionId != null) {
       ref.invalidate(transactionDetailProvider(transactionId));

@@ -88,7 +88,7 @@ class AccountRoleContext {
     return AccountRoleContext([
       AccountRoleRequirement(
         accountId: receivableAccountId,
-        requiredUsage: AccountUsage.reimbursement,
+        requiredUsage: AccountUsage.reimbursementReceivable,
       ),
       AccountRoleRequirement(
         accountId: paidFromAccountId,
@@ -112,7 +112,7 @@ class AccountRoleContext {
       ),
       AccountRoleRequirement(
         accountId: receivableAccountId,
-        requiredUsage: AccountUsage.reimbursement,
+        requiredUsage: AccountUsage.reimbursementReceivable,
       ),
     ]);
   }
@@ -130,7 +130,7 @@ class AccountRoleContext {
         ),
       AccountRoleRequirement(
         accountId: receivableAccountId,
-        requiredUsage: AccountUsage.reimbursement,
+        requiredUsage: AccountUsage.reimbursementReceivable,
       ),
     ]);
   }

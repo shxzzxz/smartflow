@@ -6,6 +6,7 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
+import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_form_presentation.dart';
@@ -17,7 +18,9 @@ class RefundFormViewModel extends _$RefundFormViewModel {
   @override
   Future<RefundFormState> build(String parentTransactionId) async {
     final accounts = await ref.watch(
-      accountsForUsageProvider(AccountUsage.settlement).future,
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.settlement,
+      ).future,
     );
     final accountsById = await ref.watch(accountsByIdProvider.future);
     final detail = await ref.watch(
@@ -83,7 +86,9 @@ class RefundFormViewModel extends _$RefundFormViewModel {
           );
       ref.invalidate(transactionDetailProvider(parentTransactionId));
       ref.invalidate(accountsByIdProvider);
-      ref.invalidate(accountsForUsageProvider(AccountUsage.settlement));
+      ref.invalidate(
+        accountsForSelectionPurposeProvider(AccountSelectionPurpose.settlement),
+      );
       return const SubmitOutcome.success();
     } on AppException catch (exception) {
       return SubmitOutcome.failure(UiError.fromException(exception));

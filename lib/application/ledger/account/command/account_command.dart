@@ -8,6 +8,7 @@ class CreateAccountCommand {
     required this.type,
     this.openingBalance = const Money(minorUnits: 0),
     this.subtype,
+    this.profileKey,
     this.iconKey,
     this.note,
     this.creditLimit,
@@ -21,6 +22,7 @@ class CreateAccountCommand {
   final AccountType type;
   final Money openingBalance;
   final AccountSubtype? subtype;
+  final String? profileKey;
   final String? iconKey;
   final String? note;
   final Money? creditLimit;
@@ -37,6 +39,7 @@ class EditAccountCommand {
     this.sortOrder,
     this.isHidden,
     this.subtype,
+    this.profileKey,
     this.iconKey,
     this.note,
     this.creditLimit,
@@ -50,6 +53,7 @@ class EditAccountCommand {
   final int? sortOrder;
   final bool? isHidden;
   final Patch<AccountSubtype>? subtype;
+  final Patch<String>? profileKey;
   final Patch<String>? iconKey;
   final Patch<String>? note;
   final Patch<Money>? creditLimit;

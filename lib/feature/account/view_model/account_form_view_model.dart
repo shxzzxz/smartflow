@@ -7,11 +7,10 @@ import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
+import '../../../shared/account_profile/account_profile_kind.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 
 part 'account_form_view_model.g.dart';
-
-enum AccountFormKind { fund, credit, loan, reimbursement }
 
 @riverpod
 class AccountFormViewModel extends _$AccountFormViewModel {
@@ -22,22 +21,22 @@ class AccountFormViewModel extends _$AccountFormViewModel {
 
   void initializeForEdit(Account account) {
     if (state.initializedAccountId == account.id) return;
-    final kind = accountFormKindForAccount(account);
+    final kind = accountProfileKindForAccount(account);
     state = state.copyWith(
       kind: kind,
-      iconKey: account.iconKey ?? defaultAccountIconKey(kind),
+      iconKey: account.iconKey ?? kind.iconKey,
       billingDay: account.billingDay,
       repaymentDay: account.repaymentDay,
       initializedAccountId: account.id,
     );
   }
 
-  void setKind(AccountFormKind value) {
+  void setKind(AccountProfileKind value) {
     if (state.kind == value) return;
     state = state.copyWith(
       kind: value,
-      iconKey: defaultAccountIconKey(value),
-      billingDay: value == AccountFormKind.credit ? state.billingDay : null,
+      iconKey: value.iconKey,
+      billingDay: value == AccountProfileKind.credit ? state.billingDay : null,
       repaymentDay: isLiabilityAccountKind(value) ? state.repaymentDay : null,
     );
   }
@@ -77,14 +76,17 @@ class AccountFormViewModel extends _$AccountFormViewModel {
         await service.createAccount(
           CreateAccountCommand(
             name: name,
-            type: accountTypeForKind(state.kind),
-            subtype: accountSubtypeForKind(state.kind),
+            type: state.kind.accountType,
+            subtype: state.kind.accountSubtype,
+            profileKey: state.kind.key,
             iconKey: state.iconKey,
             openingBalance: openingBalance,
             note: note,
             creditLimit: creditLimit,
             billingDay:
-                state.kind == AccountFormKind.credit ? state.billingDay : null,
+                state.kind == AccountProfileKind.credit
+                    ? state.billingDay
+                    : null,
             repaymentDay:
                 isLiabilityAccountKind(state.kind) ? state.repaymentDay : null,
           ),
@@ -97,6 +99,11 @@ class AccountFormViewModel extends _$AccountFormViewModel {
           EditAccountCommand(
             id: editAccountId,
             name: name,
+            subtype:
+                state.kind.accountSubtype == null
+                    ? const Patch<AccountSubtype>.clear()
+                    : Patch.set(state.kind.accountSubtype!),
+            profileKey: Patch.set(state.kind.key),
             iconKey: Patch.set(state.iconKey),
             note: note == null ? const Patch<String>.clear() : Patch.set(note),
             creditLimit:
@@ -104,7 +111,8 @@ class AccountFormViewModel extends _$AccountFormViewModel {
                     ? const Patch<Money>.clear()
                     : Patch.set(creditLimit),
             billingDay:
-                state.kind == AccountFormKind.credit && state.billingDay != null
+                state.kind == AccountProfileKind.credit &&
+                        state.billingDay != null
                     ? Patch.set(state.billingDay!)
                     : const Patch<int>.clear(),
             repaymentDay:
@@ -164,13 +172,13 @@ class AccountFormState {
 
   factory AccountFormState.initial() {
     return AccountFormState(
-      kind: AccountFormKind.fund,
-      iconKey: defaultAccountIconKey(AccountFormKind.fund),
+      kind: AccountProfileKind.fund,
+      iconKey: AccountProfileKind.fund.iconKey,
       submitting: false,
     );
   }
 
-  final AccountFormKind kind;
+  final AccountProfileKind kind;
   final String iconKey;
   final int? billingDay;
   final int? repaymentDay;
@@ -178,7 +186,7 @@ class AccountFormState {
   final String? initializedAccountId;
 
   AccountFormState copyWith({
-    AccountFormKind? kind,
+    AccountProfileKind? kind,
     String? iconKey,
     Object? billingDay = _sentinel,
     Object? repaymentDay = _sentinel,
@@ -201,41 +209,16 @@ class AccountFormState {
   }
 }
 
-AccountType accountTypeForKind(AccountFormKind kind) {
-  return switch (kind) {
-    AccountFormKind.fund || AccountFormKind.reimbursement => AccountType.asset,
-    AccountFormKind.credit || AccountFormKind.loan => AccountType.liability,
-  };
+bool isLiabilityAccountKind(AccountProfileKind kind) {
+  return kind.accountType == AccountType.liability;
 }
 
-AccountSubtype? accountSubtypeForKind(AccountFormKind kind) {
-  return switch (kind) {
-    AccountFormKind.reimbursement => AccountSubtype.reimbursement,
-    AccountFormKind.credit => AccountSubtype.consumerCredit,
-    AccountFormKind.loan => AccountSubtype.loan,
-    _ => null,
-  };
-}
-
-String defaultAccountIconKey(AccountFormKind kind) {
-  return switch (kind) {
-    AccountFormKind.fund => 'alipay',
-    AccountFormKind.reimbursement => 'reimburse',
-    AccountFormKind.credit => 'cmb_credit_card',
-    AccountFormKind.loan => 'loan',
-  };
-}
-
-bool isLiabilityAccountKind(AccountFormKind kind) {
-  return kind == AccountFormKind.credit || kind == AccountFormKind.loan;
-}
-
-bool showsManualBalanceField(AccountFormKind kind) {
-  return kind == AccountFormKind.fund || isLiabilityAccountKind(kind);
+bool showsManualBalanceField(AccountProfileKind kind) {
+  return kind == AccountProfileKind.fund || isLiabilityAccountKind(kind);
 }
 
 String manualBalanceLabel({
-  required AccountFormKind kind,
+  required AccountProfileKind kind,
   required bool isEdit,
 }) {
   if (isLiabilityAccountKind(kind)) return isEdit ? '当前欠款' : '初始欠款';
@@ -243,22 +226,19 @@ String manualBalanceLabel({
 }
 
 String manualBalanceHint({
-  required AccountFormKind kind,
+  required AccountProfileKind kind,
   required bool isEdit,
 }) {
   if (isLiabilityAccountKind(kind)) return isEdit ? '请输入当前欠款' : '请输入初始欠款';
   return isEdit ? '请输入当前余额' : '请输入初始余额';
 }
 
-AccountFormKind accountFormKindForAccount(Account account) {
-  if (account.type == AccountType.liability) {
-    return account.subtype == AccountSubtype.loan
-        ? AccountFormKind.loan
-        : AccountFormKind.credit;
-  }
-  return account.subtype == AccountSubtype.reimbursement
-      ? AccountFormKind.reimbursement
-      : AccountFormKind.fund;
+AccountProfileKind accountProfileKindForAccount(Account account) {
+  return accountProfileKindForAccountType(
+    type: account.type,
+    subtype: account.subtype,
+    profileKey: account.profileKey,
+  );
 }
 
 const Object _sentinel = Object();

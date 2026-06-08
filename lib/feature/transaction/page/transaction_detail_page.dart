@@ -12,6 +12,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
 import 'package:smartflow/widget/business/account/account_endpoint_view.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
@@ -218,8 +219,8 @@ class _DetailBody extends ConsumerWidget {
     WidgetRef ref,
     DetailAccountRow row,
   ) async {
-    final editUsage = row.editUsage;
-    if (editUsage == null) return;
+    final editPurpose = row.editPurpose;
+    if (editPurpose == null) return;
     switch (row.permission) {
       case DetailEditDenied(:final reason):
         _showMessage(context, reason);
@@ -230,7 +231,7 @@ class _DetailBody extends ConsumerWidget {
     final viewModel = ref.read(
       transactionDetailViewModelProvider(state.transactionId).notifier,
     );
-    final accounts = await viewModel.accountOptions(editUsage);
+    final accounts = await viewModel.accountOptions(editPurpose);
     if (!context.mounted) return;
     final selectedId = await showAccountPickerSheet(
       context: context,
@@ -239,7 +240,7 @@ class _DetailBody extends ConsumerWidget {
       selectedId: row.accountId,
     );
     if (selectedId == null || selectedId == row.accountId) return;
-    final outcome = await viewModel.changeAccount(editUsage, selectedId);
+    final outcome = await viewModel.changeAccount(editPurpose, selectedId);
     if (!context.mounted) return;
     _handleActionOutcome(context, outcome, successMessage: '${row.label}已更新');
   }
@@ -384,7 +385,7 @@ class _PrimaryMetaCard extends StatelessWidget {
         for (final row in state.accountRows)
           AppPlainValueRow(
             label: row.label,
-            onTap: row.editUsage == null ? null : () => onAccountTap(row),
+            onTap: row.editPurpose == null ? null : () => onAccountTap(row),
             child: AccountEndpointView(
               endpoint: AccountEndpoint(
                 label: row.endpoint.label,
@@ -599,7 +600,7 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
     _occurredAt = DateTime.now();
     _receiveAccountsFuture = ref
         .read(transactionDetailViewModelProvider(_state.transactionId).notifier)
-        .accountOptions(AccountUsage.settlement);
+        .accountOptions(AccountSelectionPurpose.settlement);
     final outstanding = _state.reimbursement?.outstanding;
     if (outstanding != null) {
       _amountController.text = outstanding.format();

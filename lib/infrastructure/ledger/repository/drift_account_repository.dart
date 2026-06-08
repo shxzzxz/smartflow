@@ -56,6 +56,7 @@ class DriftAccountRepository implements AccountRepository {
             name: account.name,
             accountType: account.type,
             accountSubtype: Value(account.subtype),
+            accountProfileKey: Value(account.profileKey),
             parentId: Value(account.parentId),
             balanceMinor: const Value(0),
             iconKey: Value(account.iconKey),
@@ -94,6 +95,7 @@ class DriftAccountRepository implements AccountRepository {
       AccountsCompanion(
         name: Value(account.name),
         accountSubtype: Value(account.subtype),
+        accountProfileKey: Value(account.profileKey),
         parentId: Value(account.parentId),
         balanceMinor: Value(account.balance.minorUnits),
         iconKey: Value(account.iconKey),

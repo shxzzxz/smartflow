@@ -142,10 +142,11 @@ final class AccountLookupProvider
 
 String _$accountLookupHash() => r'1e7f3ff1a838b081749c675acdf5c4be8a9f8505';
 
-@ProviderFor(accountsForUsage)
-final accountsForUsageProvider = AccountsForUsageFamily._();
+@ProviderFor(accountsForSelectionPurpose)
+final accountsForSelectionPurposeProvider =
+    AccountsForSelectionPurposeFamily._();
 
-final class AccountsForUsageProvider
+final class AccountsForSelectionPurposeProvider
     extends
         $FunctionalProvider<
           AsyncValue<List<Account>>,
@@ -153,23 +154,23 @@ final class AccountsForUsageProvider
           Stream<List<Account>>
         >
     with $FutureModifier<List<Account>>, $StreamProvider<List<Account>> {
-  AccountsForUsageProvider._({
-    required AccountsForUsageFamily super.from,
-    required AccountUsage super.argument,
+  AccountsForSelectionPurposeProvider._({
+    required AccountsForSelectionPurposeFamily super.from,
+    required AccountSelectionPurpose super.argument,
   }) : super(
          retry: null,
-         name: r'accountsForUsageProvider',
+         name: r'accountsForSelectionPurposeProvider',
          isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
 
   @override
-  String debugGetCreateSourceHash() => _$accountsForUsageHash();
+  String debugGetCreateSourceHash() => _$accountsForSelectionPurposeHash();
 
   @override
   String toString() {
-    return r'accountsForUsageProvider'
+    return r'accountsForSelectionPurposeProvider'
         ''
         '($argument)';
   }
@@ -182,13 +183,14 @@ final class AccountsForUsageProvider
 
   @override
   Stream<List<Account>> create(Ref ref) {
-    final argument = this.argument as AccountUsage;
-    return accountsForUsage(ref, argument);
+    final argument = this.argument as AccountSelectionPurpose;
+    return accountsForSelectionPurpose(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is AccountsForUsageProvider && other.argument == argument;
+    return other is AccountsForSelectionPurposeProvider &&
+        other.argument == argument;
   }
 
   @override
@@ -197,24 +199,29 @@ final class AccountsForUsageProvider
   }
 }
 
-String _$accountsForUsageHash() => r'e105ad9073c70372d99466d6eba1dcad997f6405';
+String _$accountsForSelectionPurposeHash() =>
+    r'3425b75f9f7150f6f28fe1c0867a1f5e3af5cd04';
 
-final class AccountsForUsageFamily extends $Family
-    with $FunctionalFamilyOverride<Stream<List<Account>>, AccountUsage> {
-  AccountsForUsageFamily._()
+final class AccountsForSelectionPurposeFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          Stream<List<Account>>,
+          AccountSelectionPurpose
+        > {
+  AccountsForSelectionPurposeFamily._()
     : super(
         retry: null,
-        name: r'accountsForUsageProvider',
+        name: r'accountsForSelectionPurposeProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
         isAutoDispose: true,
       );
 
-  AccountsForUsageProvider call(AccountUsage usage) =>
-      AccountsForUsageProvider._(argument: usage, from: this);
+  AccountsForSelectionPurposeProvider call(AccountSelectionPurpose purpose) =>
+      AccountsForSelectionPurposeProvider._(argument: purpose, from: this);
 
   @override
-  String toString() => r'accountsForUsageProvider';
+  String toString() => r'accountsForSelectionPurposeProvider';
 }
 
 @ProviderFor(accountsByTypes)

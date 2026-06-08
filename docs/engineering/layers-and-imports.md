@@ -123,6 +123,7 @@ lib/
 │   └── database/                         # Drift 单库装配、tables、migrations、seed、数据库工具
 ├── feature/                              # 页面与 UI 状态编排
 ├── design_system/                        # 项目级设计系统
+├── shared/                               # 跨 feature / application 复用的项目级业务语义，不放领域不变量
 ├── widget/business/                      # 跨 feature 复用的业务组件
 └── l10n/
 ```
@@ -188,5 +189,6 @@ lib/infrastructure/database/table/*
 - `application/*` 可以依赖一个或多个 `domain/*`；`application/<domain>/<capability>/query` 可定义纯读侧查询接口、查询参数与 read model。
 - `infrastructure/*` 实现 `domain/*/port` 和 application query interfaces，可以依赖对应接口和模型。
 - `feature/*` 不直接依赖 `domain/*` 或 `infrastructure/*`，通过 application provider / use case / query 使用业务能力。
+- `shared/*` 可承载跨 feature / application 复用的项目级业务语义；不得依赖 `feature/*`，不得承载账务核心不变量。
 - `domain/ledger` 不依赖 `domain/credit`、`domain/budget` 等兄弟业务域。
 - 兄弟业务域之间如需组合，由 application 用例编排。

@@ -9,6 +9,7 @@ import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_detail_page.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
+import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {
   testWidgets('renders detail state and forwards note edits', (tester) async {
@@ -22,11 +23,11 @@ void main() {
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(AccountLookup(_accounts)),
           ),
-          accountsForUsageProvider(
-            AccountUsage.settlement,
+          accountsForSelectionPurposeProvider(
+            AccountSelectionPurpose.settlement,
           ).overrideWith((ref) => Stream.value([_accounts['cash']!])),
-          accountsForUsageProvider(
-            AccountUsage.reimbursement,
+          accountsForSelectionPurposeProvider(
+            AccountSelectionPurpose.reimbursementReceivable,
           ).overrideWith((ref) => Stream.value(const <Account>[])),
           transactionUpdateAppServiceProvider.overrideWithValue(update),
         ],

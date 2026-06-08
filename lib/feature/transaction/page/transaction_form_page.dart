@@ -11,6 +11,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
@@ -84,16 +85,20 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     });
 
     final settlementAccountsAsync = ref.watch(
-      accountsForUsageProvider(AccountUsage.settlement),
+      accountsForSelectionPurposeProvider(AccountSelectionPurpose.settlement),
     );
     final fundAccountsAsync = ref.watch(
-      accountsForUsageProvider(AccountUsage.fund),
+      accountsForSelectionPurposeProvider(AccountSelectionPurpose.fund),
     );
     final liabilityAccountsAsync = ref.watch(
-      accountsForUsageProvider(AccountUsage.borrowingLiability),
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.borrowingLiability,
+      ),
     );
     final reimbursementAccountsAsync = ref.watch(
-      accountsForUsageProvider(AccountUsage.reimbursement),
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.reimbursementReceivable,
+      ),
     );
     final expenseTreeAsync = ref.watch(
       categoryTreeProvider(AccountType.expense),
@@ -493,19 +498,39 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     return TransactionFormSubmitOptions(
       editTransactionId: widget.editTransactionId,
       settlementAccounts:
-          ref.read(accountsForUsageProvider(AccountUsage.settlement)).value ??
+          ref
+              .read(
+                accountsForSelectionPurposeProvider(
+                  AccountSelectionPurpose.settlement,
+                ),
+              )
+              .value ??
           const <Account>[],
       fundAccounts:
-          ref.read(accountsForUsageProvider(AccountUsage.fund)).value ??
+          ref
+              .read(
+                accountsForSelectionPurposeProvider(
+                  AccountSelectionPurpose.fund,
+                ),
+              )
+              .value ??
           const <Account>[],
       liabilityAccounts:
           ref
-              .read(accountsForUsageProvider(AccountUsage.borrowingLiability))
+              .read(
+                accountsForSelectionPurposeProvider(
+                  AccountSelectionPurpose.borrowingLiability,
+                ),
+              )
               .value ??
           const <Account>[],
       reimbursementAccounts:
           ref
-              .read(accountsForUsageProvider(AccountUsage.reimbursement))
+              .read(
+                accountsForSelectionPurposeProvider(
+                  AccountSelectionPurpose.reimbursementReceivable,
+                ),
+              )
               .value ??
           const <Account>[],
     );

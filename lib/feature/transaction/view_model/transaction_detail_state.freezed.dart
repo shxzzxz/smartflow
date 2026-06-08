@@ -678,7 +678,7 @@ $DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount {
 /// @nodoc
 mixin _$DetailAccountRow {
 
- String get label; String get accountId; AccountEndpoint get endpoint; DetailEditPermission get permission; AccountUsage? get editUsage;
+ String get label; String get accountId; AccountEndpoint get endpoint; DetailEditPermission get permission; AccountSelectionPurpose? get editPurpose;
 /// Create a copy of DetailAccountRow
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -689,16 +689,16 @@ $DetailAccountRowCopyWith<DetailAccountRow> get copyWith => _$DetailAccountRowCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DetailAccountRow&&(identical(other.label, label) || other.label == label)&&(identical(other.accountId, accountId) || other.accountId == accountId)&&(identical(other.endpoint, endpoint) || other.endpoint == endpoint)&&(identical(other.permission, permission) || other.permission == permission)&&(identical(other.editUsage, editUsage) || other.editUsage == editUsage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DetailAccountRow&&(identical(other.label, label) || other.label == label)&&(identical(other.accountId, accountId) || other.accountId == accountId)&&(identical(other.endpoint, endpoint) || other.endpoint == endpoint)&&(identical(other.permission, permission) || other.permission == permission)&&(identical(other.editPurpose, editPurpose) || other.editPurpose == editPurpose));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,label,accountId,endpoint,permission,editUsage);
+int get hashCode => Object.hash(runtimeType,label,accountId,endpoint,permission,editPurpose);
 
 @override
 String toString() {
-  return 'DetailAccountRow(label: $label, accountId: $accountId, endpoint: $endpoint, permission: $permission, editUsage: $editUsage)';
+  return 'DetailAccountRow(label: $label, accountId: $accountId, endpoint: $endpoint, permission: $permission, editPurpose: $editPurpose)';
 }
 
 
@@ -709,7 +709,7 @@ abstract mixin class $DetailAccountRowCopyWith<$Res>  {
   factory $DetailAccountRowCopyWith(DetailAccountRow value, $Res Function(DetailAccountRow) _then) = _$DetailAccountRowCopyWithImpl;
 @useResult
 $Res call({
- String label, String accountId, AccountEndpoint endpoint, DetailEditPermission permission, AccountUsage? editUsage
+ String label, String accountId, AccountEndpoint endpoint, DetailEditPermission permission, AccountSelectionPurpose? editPurpose
 });
 
 
@@ -726,14 +726,14 @@ class _$DetailAccountRowCopyWithImpl<$Res>
 
 /// Create a copy of DetailAccountRow
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? label = null,Object? accountId = null,Object? endpoint = null,Object? permission = null,Object? editUsage = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? label = null,Object? accountId = null,Object? endpoint = null,Object? permission = null,Object? editPurpose = freezed,}) {
   return _then(_self.copyWith(
 label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
 as String,accountId: null == accountId ? _self.accountId : accountId // ignore: cast_nullable_to_non_nullable
 as String,endpoint: null == endpoint ? _self.endpoint : endpoint // ignore: cast_nullable_to_non_nullable
 as AccountEndpoint,permission: null == permission ? _self.permission : permission // ignore: cast_nullable_to_non_nullable
-as DetailEditPermission,editUsage: freezed == editUsage ? _self.editUsage : editUsage // ignore: cast_nullable_to_non_nullable
-as AccountUsage?,
+as DetailEditPermission,editPurpose: freezed == editPurpose ? _self.editPurpose : editPurpose // ignore: cast_nullable_to_non_nullable
+as AccountSelectionPurpose?,
   ));
 }
 /// Create a copy of DetailAccountRow
@@ -827,10 +827,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String label,  String accountId,  AccountEndpoint endpoint,  DetailEditPermission permission,  AccountUsage? editUsage)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String label,  String accountId,  AccountEndpoint endpoint,  DetailEditPermission permission,  AccountSelectionPurpose? editPurpose)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DetailAccountRow() when $default != null:
-return $default(_that.label,_that.accountId,_that.endpoint,_that.permission,_that.editUsage);case _:
+return $default(_that.label,_that.accountId,_that.endpoint,_that.permission,_that.editPurpose);case _:
   return orElse();
 
 }
@@ -848,10 +848,10 @@ return $default(_that.label,_that.accountId,_that.endpoint,_that.permission,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String label,  String accountId,  AccountEndpoint endpoint,  DetailEditPermission permission,  AccountUsage? editUsage)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String label,  String accountId,  AccountEndpoint endpoint,  DetailEditPermission permission,  AccountSelectionPurpose? editPurpose)  $default,) {final _that = this;
 switch (_that) {
 case _DetailAccountRow():
-return $default(_that.label,_that.accountId,_that.endpoint,_that.permission,_that.editUsage);case _:
+return $default(_that.label,_that.accountId,_that.endpoint,_that.permission,_that.editPurpose);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -868,10 +868,10 @@ return $default(_that.label,_that.accountId,_that.endpoint,_that.permission,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String label,  String accountId,  AccountEndpoint endpoint,  DetailEditPermission permission,  AccountUsage? editUsage)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String label,  String accountId,  AccountEndpoint endpoint,  DetailEditPermission permission,  AccountSelectionPurpose? editPurpose)?  $default,) {final _that = this;
 switch (_that) {
 case _DetailAccountRow() when $default != null:
-return $default(_that.label,_that.accountId,_that.endpoint,_that.permission,_that.editUsage);case _:
+return $default(_that.label,_that.accountId,_that.endpoint,_that.permission,_that.editPurpose);case _:
   return null;
 
 }
@@ -883,14 +883,14 @@ return $default(_that.label,_that.accountId,_that.endpoint,_that.permission,_tha
 
 
 class _DetailAccountRow implements DetailAccountRow {
-  const _DetailAccountRow({required this.label, required this.accountId, required this.endpoint, required this.permission, this.editUsage});
+  const _DetailAccountRow({required this.label, required this.accountId, required this.endpoint, required this.permission, this.editPurpose});
 
 
 @override final  String label;
 @override final  String accountId;
 @override final  AccountEndpoint endpoint;
 @override final  DetailEditPermission permission;
-@override final  AccountUsage? editUsage;
+@override final  AccountSelectionPurpose? editPurpose;
 
 /// Create a copy of DetailAccountRow
 /// with the given fields replaced by the non-null parameter values.
@@ -902,16 +902,16 @@ _$DetailAccountRowCopyWith<_DetailAccountRow> get copyWith => __$DetailAccountRo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DetailAccountRow&&(identical(other.label, label) || other.label == label)&&(identical(other.accountId, accountId) || other.accountId == accountId)&&(identical(other.endpoint, endpoint) || other.endpoint == endpoint)&&(identical(other.permission, permission) || other.permission == permission)&&(identical(other.editUsage, editUsage) || other.editUsage == editUsage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DetailAccountRow&&(identical(other.label, label) || other.label == label)&&(identical(other.accountId, accountId) || other.accountId == accountId)&&(identical(other.endpoint, endpoint) || other.endpoint == endpoint)&&(identical(other.permission, permission) || other.permission == permission)&&(identical(other.editPurpose, editPurpose) || other.editPurpose == editPurpose));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,label,accountId,endpoint,permission,editUsage);
+int get hashCode => Object.hash(runtimeType,label,accountId,endpoint,permission,editPurpose);
 
 @override
 String toString() {
-  return 'DetailAccountRow(label: $label, accountId: $accountId, endpoint: $endpoint, permission: $permission, editUsage: $editUsage)';
+  return 'DetailAccountRow(label: $label, accountId: $accountId, endpoint: $endpoint, permission: $permission, editPurpose: $editPurpose)';
 }
 
 
@@ -922,7 +922,7 @@ abstract mixin class _$DetailAccountRowCopyWith<$Res> implements $DetailAccountR
   factory _$DetailAccountRowCopyWith(_DetailAccountRow value, $Res Function(_DetailAccountRow) _then) = __$DetailAccountRowCopyWithImpl;
 @override @useResult
 $Res call({
- String label, String accountId, AccountEndpoint endpoint, DetailEditPermission permission, AccountUsage? editUsage
+ String label, String accountId, AccountEndpoint endpoint, DetailEditPermission permission, AccountSelectionPurpose? editPurpose
 });
 
 
@@ -939,14 +939,14 @@ class __$DetailAccountRowCopyWithImpl<$Res>
 
 /// Create a copy of DetailAccountRow
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? label = null,Object? accountId = null,Object? endpoint = null,Object? permission = null,Object? editUsage = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? label = null,Object? accountId = null,Object? endpoint = null,Object? permission = null,Object? editPurpose = freezed,}) {
   return _then(_DetailAccountRow(
 label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
 as String,accountId: null == accountId ? _self.accountId : accountId // ignore: cast_nullable_to_non_nullable
 as String,endpoint: null == endpoint ? _self.endpoint : endpoint // ignore: cast_nullable_to_non_nullable
 as AccountEndpoint,permission: null == permission ? _self.permission : permission // ignore: cast_nullable_to_non_nullable
-as DetailEditPermission,editUsage: freezed == editUsage ? _self.editUsage : editUsage // ignore: cast_nullable_to_non_nullable
-as AccountUsage?,
+as DetailEditPermission,editPurpose: freezed == editPurpose ? _self.editPurpose : editPurpose // ignore: cast_nullable_to_non_nullable
+as AccountSelectionPurpose?,
   ));
 }
 

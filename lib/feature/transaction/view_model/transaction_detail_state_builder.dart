@@ -1,5 +1,6 @@
 import '../../../application/credit/credit_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
 
@@ -62,23 +63,30 @@ List<DetailAccountRow> _accountRows(
           .where((entry) => accountLookup.isSettlement(entry.accountId))
           .toList();
 
-  DetailAccountRow info(String label, Entry entry, {AccountUsage? editUsage}) {
+  DetailAccountRow info(
+    String label,
+    Entry entry, {
+    AccountSelectionPurpose? editPurpose,
+  }) {
     return DetailAccountRow(
       label: label,
       accountId: entry.accountId,
       endpoint: accountLookup.endpointOf(entry.accountId),
-      editUsage: editUsage,
-      permission: _accountEditPermission(editUsage, behavior),
+      editPurpose: editPurpose,
+      permission: _accountEditPermission(editPurpose, behavior),
     );
   }
 
-  DetailAccountRow placeholder(String label, {AccountUsage? editUsage}) {
+  DetailAccountRow placeholder(
+    String label, {
+    AccountSelectionPurpose? editPurpose,
+  }) {
     return DetailAccountRow(
       label: label,
       accountId: '',
       endpoint: const AccountEndpoint(label: '—', iconKey: null),
-      editUsage: editUsage,
-      permission: _accountEditPermission(editUsage, behavior),
+      editPurpose: editPurpose,
+      permission: _accountEditPermission(editPurpose, behavior),
     );
   }
 
@@ -101,35 +109,44 @@ List<DetailAccountRow> _accountRows(
     case BusinessPurpose.reimbursementReceipt:
     case BusinessPurpose.reimbursementClose:
     case BusinessPurpose.borrowing:
-      final editUsage =
+      final editPurpose =
           purpose == BusinessPurpose.dailyIncome ||
                   purpose == BusinessPurpose.borrowing
-              ? AccountUsage.settlement
+              ? purpose == BusinessPurpose.borrowing
+                  ? AccountSelectionPurpose.fund
+                  : AccountSelectionPurpose.settlement
               : null;
       if (settlementEntries.isEmpty) {
-        return [placeholder('收支账户', editUsage: editUsage)];
+        return [placeholder('收支账户', editPurpose: editPurpose)];
       }
       final inAccount = settlementEntries.firstWhere(
         (entry) => entry.direction == EntryDirection.debit,
         orElse: () => settlementEntries.first,
       );
-      return [info('收支账户', inAccount, editUsage: editUsage)];
+      return [info('收支账户', inAccount, editPurpose: editPurpose)];
     case BusinessPurpose.dailyExpense:
     case BusinessPurpose.debtRepayment:
       final label = purpose == BusinessPurpose.debtRepayment ? '还款账户' : '收支账户';
+      final editPurpose =
+          purpose == BusinessPurpose.debtRepayment
+              ? AccountSelectionPurpose.repaymentSource
+              : AccountSelectionPurpose.settlement;
       if (settlementEntries.isEmpty) {
-        return [placeholder(label, editUsage: AccountUsage.settlement)];
+        return [placeholder(label, editPurpose: editPurpose)];
       }
       final outAccount = settlementEntries.firstWhere(
         (entry) => entry.direction == EntryDirection.credit,
         orElse: () => settlementEntries.first,
       );
-      return [info(label, outAccount, editUsage: AccountUsage.settlement)];
+      return [info(label, outAccount, editPurpose: editPurpose)];
     case BusinessPurpose.reimbursementAdvance:
       if (settlementEntries.isEmpty) {
         return [
-          placeholder('收支账户', editUsage: AccountUsage.settlement),
-          placeholder('报销账户', editUsage: AccountUsage.reimbursement),
+          placeholder('收支账户', editPurpose: AccountSelectionPurpose.settlement),
+          placeholder(
+            '报销账户',
+            editPurpose: AccountSelectionPurpose.reimbursementReceivable,
+          ),
         ];
       }
       final receivable = settlementEntries.firstWhere(
@@ -143,8 +160,12 @@ List<DetailAccountRow> _accountRows(
         orElse: () => settlementEntries.first,
       );
       return [
-        info('收支账户', paidFrom, editUsage: AccountUsage.settlement),
-        info('报销账户', receivable, editUsage: AccountUsage.reimbursement),
+        info('收支账户', paidFrom, editPurpose: AccountSelectionPurpose.settlement),
+        info(
+          '报销账户',
+          receivable,
+          editPurpose: AccountSelectionPurpose.reimbursementReceivable,
+        ),
       ];
     case BusinessPurpose.openingBalance:
     case BusinessPurpose.balanceAdjustment:
@@ -248,21 +269,20 @@ List<DetailActionButton> _actionButtons(
 }
 
 DetailEditPermission _accountEditPermission(
-  AccountUsage? editUsage,
+  AccountSelectionPurpose? editPurpose,
   DetailBehaviorConfig behavior,
 ) {
-  return switch (editUsage) {
+  return switch (editPurpose) {
     null => const DetailEditPermission.allowed(),
-    AccountUsage.settlement => behavior.canEditSettlementAccount,
-    AccountUsage.reimbursement => const DetailEditPermission.allowed(),
-    AccountUsage.fund ||
-    AccountUsage.credit ||
-    AccountUsage.loan ||
-    AccountUsage.repaymentTarget ||
-    AccountUsage.repaymentSource ||
-    AccountUsage.borrowingLiability => const DetailEditPermission.denied(
-      reason: '当前账户用途不能在交易详情页编辑',
-    ),
+    AccountSelectionPurpose.settlement ||
+    AccountSelectionPurpose.fund ||
+    AccountSelectionPurpose
+        .repaymentSource => behavior.canEditSettlementAccount,
+    AccountSelectionPurpose.reimbursementReceivable =>
+      const DetailEditPermission.allowed(),
+    AccountSelectionPurpose.repaymentTarget ||
+    AccountSelectionPurpose.borrowingLiability =>
+      const DetailEditPermission.denied(reason: '当前账户用途不能在交易详情页编辑'),
   };
 }
 

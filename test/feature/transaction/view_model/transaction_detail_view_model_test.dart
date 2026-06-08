@@ -13,6 +13,7 @@ import 'package:smartflow/feature/transaction/view_model/transaction_detail_stat
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_view_model.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
+import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {
   group('TransactionDetailViewModel', () {
@@ -67,7 +68,7 @@ void main() {
 
         final outcome = await container
             .read(transactionDetailViewModelProvider('tx-1').notifier)
-            .changeAccount(AccountUsage.settlement, 'bank');
+            .changeAccount(AccountSelectionPurpose.repaymentSource, 'bank');
 
         expect(outcome, isA<UiActionSuccess<void>>());
         final command = installment.editRepaymentCommands.single;
@@ -221,7 +222,7 @@ void main() {
 
       final accountOutcome = await container
           .read(transactionDetailViewModelProvider('tx-1').notifier)
-          .changeAccount(AccountUsage.settlement, 'bank');
+          .changeAccount(AccountSelectionPurpose.settlement, 'bank');
       expect(accountOutcome, isA<UiActionFailure<void>>());
 
       final noteOutcome = await container
@@ -260,11 +261,13 @@ ProviderContainer _container({
       accountLookupProvider.overrideWith(
         (ref) => Stream.value(AccountLookup(accounts)),
       ),
-      accountsForUsageProvider(AccountUsage.settlement).overrideWith(
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.settlement,
+      ).overrideWith(
         (ref) => Stream.value([accounts['cash']!, accounts['bank']!]),
       ),
-      accountsForUsageProvider(
-        AccountUsage.reimbursement,
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.reimbursementReceivable,
       ).overrideWith((ref) => Stream.value([accounts['company']!])),
       transactionUpdateAppServiceProvider.overrideWithValue(
         update ?? _FakeTransactionUpdateAppService(),

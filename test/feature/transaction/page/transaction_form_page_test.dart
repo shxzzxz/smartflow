@@ -8,6 +8,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_form_page.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
+import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {
   testWidgets('form validator blocks invalid daily expense submit', (
@@ -51,17 +52,17 @@ Future<void> _pumpTransactionForm(
     ProviderScope(
       overrides: [
         transactionPostingAppServiceProvider.overrideWithValue(fakeService),
-        accountsForUsageProvider(
-          AccountUsage.settlement,
+        accountsForSelectionPurposeProvider(
+          AccountSelectionPurpose.settlement,
         ).overrideWith((ref) => Stream.value([_account('cash')])),
-        accountsForUsageProvider(
-          AccountUsage.fund,
+        accountsForSelectionPurposeProvider(
+          AccountSelectionPurpose.fund,
         ).overrideWith((ref) => Stream.value(const <Account>[])),
-        accountsForUsageProvider(
-          AccountUsage.borrowingLiability,
+        accountsForSelectionPurposeProvider(
+          AccountSelectionPurpose.borrowingLiability,
         ).overrideWith((ref) => Stream.value(const <Account>[])),
-        accountsForUsageProvider(
-          AccountUsage.reimbursement,
+        accountsForSelectionPurposeProvider(
+          AccountSelectionPurpose.reimbursementReceivable,
         ).overrideWith((ref) => Stream.value(const <Account>[])),
         categoryTreeProvider(AccountType.expense).overrideWith(
           (ref) => Stream.value([CategoryNode(account: _category('food'))]),

@@ -6,6 +6,7 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
+import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_form_presentation.dart';
@@ -409,7 +410,9 @@ Future<_ReimbursementBase?> _loadBase(
   String advanceTransactionId,
 ) async {
   final accounts = await ref.watch(
-    accountsForUsageProvider(AccountUsage.settlement).future,
+    accountsForSelectionPurposeProvider(
+      AccountSelectionPurpose.settlement,
+    ).future,
   );
   final accountsById = await ref.watch(accountsByIdProvider.future);
   final detail = await ref.watch(
@@ -426,7 +429,9 @@ Future<_ReimbursementBase?> _loadBase(
 void _invalidateAfterSubmit(Ref ref, String advanceTransactionId) {
   ref.invalidate(transactionDetailProvider(advanceTransactionId));
   ref.invalidate(accountsByIdProvider);
-  ref.invalidate(accountsForUsageProvider(AccountUsage.settlement));
+  ref.invalidate(
+    accountsForSelectionPurposeProvider(AccountSelectionPurpose.settlement),
+  );
 }
 
 SubmitOutcome _invalidCommand(String message) {

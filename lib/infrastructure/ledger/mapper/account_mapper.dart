@@ -8,6 +8,7 @@ Account mapAccount(AccountRow row) {
     name: row.name,
     type: row.accountType,
     subtype: row.accountSubtype,
+    profileKey: row.accountProfileKey,
     parentId: row.parentId,
     balance: Money(minorUnits: row.balanceMinor),
     iconKey: row.iconKey,

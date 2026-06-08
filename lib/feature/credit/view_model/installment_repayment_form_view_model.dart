@@ -7,6 +7,7 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
+import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
@@ -28,7 +29,9 @@ class InstallmentRepaymentFormViewModel
       installmentSchedulesProvider(args.contractId).future,
     );
     final accounts = await ref.watch(
-      accountsForUsageProvider(AccountUsage.repaymentSource).future,
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.repaymentSource,
+      ).future,
     );
 
     if (contract == null) {
@@ -176,7 +179,11 @@ class InstallmentRepaymentFormViewModel
     ref.invalidate(
       installmentContractsByAccountProvider(contract.liabilityAccountId),
     );
-    ref.invalidate(accountsForUsageProvider(AccountUsage.repaymentSource));
+    ref.invalidate(
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.repaymentSource,
+      ),
+    );
   }
 
   void _update(

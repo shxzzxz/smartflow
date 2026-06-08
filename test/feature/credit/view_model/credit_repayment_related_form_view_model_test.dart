@@ -14,6 +14,7 @@ import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/view_model/refund_form_view_model.dart';
 import 'package:smartflow/feature/transaction/view_model/reimbursement_form_view_model.dart';
+import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {
   test('repayment form creates repayment command', () async {
@@ -148,11 +149,11 @@ ProviderContainer _container({
   ];
   final container = ProviderContainer(
     overrides: [
-      accountsForUsageProvider.overrideWith(
-        (ref, usage) => Stream.value(switch (usage) {
-          AccountUsage.repaymentTarget => [accounts[1]],
-          AccountUsage.repaymentSource => accounts,
-          AccountUsage.settlement => [accounts[0]],
+      accountsForSelectionPurposeProvider.overrideWith(
+        (ref, purpose) => Stream.value(switch (purpose) {
+          AccountSelectionPurpose.repaymentTarget => [accounts[1]],
+          AccountSelectionPurpose.repaymentSource => accounts,
+          AccountSelectionPurpose.settlement => [accounts[0]],
           _ => const <Account>[],
         }),
       ),

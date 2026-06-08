@@ -9,6 +9,7 @@ import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/business_icon_bubble.dart';
 import 'package:smartflow/widget/business/finance/finance_labels.dart';
@@ -153,23 +154,27 @@ class _AccountsContent extends StatelessWidget {
 }
 
 bool _isFundAccount(Account account) {
-  return account.type == AccountType.asset &&
-      account.subtype != AccountSubtype.reimbursement;
+  return _profileForAccount(account) == AccountProfileKind.fund;
 }
 
 bool _isCreditAccount(Account account) {
-  return account.type == AccountType.liability &&
-      account.subtype != AccountSubtype.loan;
+  return _profileForAccount(account) == AccountProfileKind.credit;
 }
 
 bool _isLoanAccount(Account account) {
-  return account.type == AccountType.liability &&
-      account.subtype == AccountSubtype.loan;
+  return _profileForAccount(account) == AccountProfileKind.loan;
 }
 
 bool _isReimbursementAccount(Account account) {
-  return account.type == AccountType.asset &&
-      account.subtype == AccountSubtype.reimbursement;
+  return _profileForAccount(account) == AccountProfileKind.reimbursement;
+}
+
+AccountProfileKind _profileForAccount(Account account) {
+  return accountProfileKindForAccountType(
+    type: account.type,
+    subtype: account.subtype,
+    profileKey: account.profileKey,
+  );
 }
 
 class _AssetsHeader extends StatelessWidget {
@@ -781,13 +786,8 @@ String _liabilityDateText(Account account) {
 }
 
 String _accountRowTypeLabel(Account account) {
-  if (account.type == AccountType.liability) {
-    return switch (account.subtype) {
-      AccountSubtype.loan => '贷款账户',
-      AccountSubtype.creditCard => '信用卡',
-      AccountSubtype.consumerCredit || null => '信用账户',
-      _ => accountSubtypeLabel(account.subtype!),
-    };
+  if (account.type.isUserAccount) {
+    return _profileForAccount(account).label;
   }
   return account.subtype == null
       ? accountTypeLabel(account.type)

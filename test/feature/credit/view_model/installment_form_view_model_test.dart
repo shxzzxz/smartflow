@@ -6,9 +6,11 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/feature/credit/view_model/installment_form_view_model.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
+import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {
   group('InstallmentFormViewModel', () {
@@ -164,16 +166,20 @@ InstallmentFormArgs _args(
 
 ProviderContainer _container({_FakeInstallmentService? service}) {
   final liabilities = [
-    _account('loan', AccountType.liability, subtype: AccountSubtype.loan),
+    _account(
+      'loan',
+      AccountType.liability,
+      profileKey: AccountProfileKind.loan.key,
+    ),
     _account('card', AccountType.liability),
   ];
   final funds = [_account('cash', AccountType.asset)];
   final container = ProviderContainer(
     overrides: [
-      accountsForUsageProvider.overrideWith(
-        (ref, usage) => Stream.value(switch (usage) {
-          AccountUsage.repaymentTarget => liabilities,
-          AccountUsage.fund => funds,
+      accountsForSelectionPurposeProvider.overrideWith(
+        (ref, purpose) => Stream.value(switch (purpose) {
+          AccountSelectionPurpose.repaymentTarget => liabilities,
+          AccountSelectionPurpose.fund => funds,
           _ => const <Account>[],
         }),
       ),
@@ -186,12 +192,18 @@ ProviderContainer _container({_FakeInstallmentService? service}) {
   return container;
 }
 
-Account _account(String id, AccountType type, {AccountSubtype? subtype}) {
+Account _account(
+  String id,
+  AccountType type, {
+  AccountSubtype? subtype,
+  String? profileKey,
+}) {
   return Account(
     id: id,
     name: id,
     type: type,
     subtype: subtype,
+    profileKey: profileKey,
     balance: Money.zero(),
   );
 }

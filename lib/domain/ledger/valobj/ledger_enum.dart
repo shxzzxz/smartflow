@@ -1,15 +1,6 @@
 enum AccountType { asset, liability, equity, income, expense }
 
-enum AccountSubtype {
-  cash,
-  bankCard,
-  thirdParty,
-  investment,
-  reimbursement,
-  creditCard,
-  loan,
-  consumerCredit,
-}
+enum AccountSubtype { reimbursement }
 
 enum EntryDirection { debit, credit }
 
