@@ -3,16 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../application/credit/credit_command_api.dart';
-import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/credit/credit_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
-import '../../../shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 import '../view_model/account_detail_view_model.dart';
+import '../view_model/account_view.dart';
 
 class AccountDetailPage extends ConsumerWidget {
   const AccountDetailPage({required this.accountId, super.key});
@@ -62,13 +61,13 @@ class _AccountDetailContent extends StatelessWidget {
     required this.contracts,
   });
 
-  final Account account;
+  final AccountView account;
   final List<TransactionDayGroup> transactionGroups;
   final AccountContractsState contracts;
 
   @override
   Widget build(BuildContext context) {
-    final showInstallments = account.type == AccountType.liability;
+    final showInstallments = account.isLiability;
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.space10,
@@ -100,7 +99,7 @@ class _AccountDetailContent extends StatelessWidget {
 class _AccountInfoSection extends StatelessWidget {
   const _AccountInfoSection({required this.account});
 
-  final Account account;
+  final AccountView account;
 
   @override
   Widget build(BuildContext context) {
@@ -162,7 +161,7 @@ class _AccountInfoSection extends StatelessWidget {
 class _AccountBalanceBlock extends StatelessWidget {
   const _AccountBalanceBlock({required this.account});
 
-  final Account account;
+  final AccountView account;
 
   @override
   Widget build(BuildContext context) {
@@ -212,45 +211,50 @@ class _AccountMetricsBlock extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Row(
-          children: [
-            Expanded(child: _InfoPair(item: items[0])),
-            const SizedBox(width: AppSpacing.space12),
-            Expanded(child: _InfoPair(item: items[1])),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.space12),
-        Row(
-          children: [
-            Expanded(child: _InfoPair(item: items[2])),
-            const SizedBox(width: AppSpacing.space12),
-            Expanded(child: _InfoPair(item: items[3])),
-          ],
-        ),
+        for (var i = 0; i < items.length; i += 2) ...[
+          Row(
+            children: [
+              Expanded(child: _InfoPair(item: items[i])),
+              const SizedBox(width: AppSpacing.space12),
+              Expanded(
+                child:
+                    i + 1 < items.length
+                        ? _InfoPair(item: items[i + 1])
+                        : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+          if (i + 2 < items.length) const SizedBox(height: AppSpacing.space12),
+        ],
       ],
     );
   }
 }
 
-String _balanceTitle(Account account) {
-  return account.type == AccountType.liability ? '当前欠款' : '当前余额';
+String _balanceTitle(AccountView account) {
+  return account.isLiability ? '当前欠款' : '当前余额';
 }
 
-List<_InfoItem> _rightInfoItems(Account account) {
-  if (account.type != AccountType.liability) {
+List<_InfoItem> _rightInfoItems(AccountView account) {
+  if (!account.isCreditLiability) {
     return const [];
   }
   final creditLimit = account.creditLimit;
-  return [
+  final items = [
     _InfoItem(label: '信用额度', value: creditLimit?.format() ?? '-'),
     _InfoItem(
       label: '剩余额度',
       value:
           creditLimit == null ? '-' : (creditLimit - account.balance).format(),
     ),
-    _InfoItem(label: '出账日', value: _monthlyDay(account.billingDay)),
-    _InfoItem(label: '还款日', value: _monthlyDay(account.repaymentDay)),
   ];
+  if (account.isCredit) {
+    items.addAll([
+      _InfoItem(label: '出账日', value: _monthlyDay(account.billingDay)),
+      _InfoItem(label: '还款日', value: _monthlyDay(account.repaymentDay)),
+    ]);
+  }
+  return items;
 }
 
 class _InfoItem {
@@ -302,12 +306,12 @@ String _monthlyDay(int? day) {
 class _AccountActionBar extends StatelessWidget {
   const _AccountActionBar({required this.account});
 
-  final Account account;
+  final AccountView account;
 
   @override
   Widget build(BuildContext context) {
-    final isLiability = account.type == AccountType.liability;
-    final isLoan = account.profileKey == AccountProfileKind.loan.key;
+    final isLiability = account.isLiability;
+    final isLoan = account.isLoan;
     final installmentSource = isLoan ? 'disbursement' : 'bill';
 
     return AppSurface(
@@ -699,7 +703,7 @@ String _formatContractDate(DateTime date) {
       '${date.day.toString().padLeft(2, '0')}';
 }
 
-void _openTransactionForm(BuildContext context, Account account) {
+void _openTransactionForm(BuildContext context, AccountView account) {
   final query =
       Uri(
         path: '/transaction/new',

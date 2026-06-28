@@ -141,6 +141,41 @@ void main() {
       _assertClean(violations);
     });
 
+    test('feature/widget 通过信贷 application facade 访问信贷域', () {
+      final violations = <_Violation>[];
+      const forbiddenRoots = <String>[
+        'domain/credit/',
+        'infrastructure/credit/',
+      ];
+      const allowedApplicationFacades = <String>{
+        'application/credit/credit_command_api.dart',
+        'application/credit/credit_query_api.dart',
+      };
+
+      for (final rootPath in ['lib/feature', 'lib/widget']) {
+        for (final file in _dartFiles(rootPath)) {
+          for (final importPath in _importPaths(file)) {
+            final target = _libPathForImport(file, importPath);
+            if (target == null) continue;
+            for (final root in forbiddenRoots) {
+              if (target.startsWith(root)) {
+                violations.add(
+                  _Violation(file, importPath, 'UI 层不能直接依赖 $root'),
+                );
+              }
+            }
+            if (target.startsWith('application/credit/') &&
+                !allowedApplicationFacades.contains(target)) {
+              violations.add(
+                _Violation(file, importPath, 'UI 层访问信贷 application 必须经 facade'),
+              );
+            }
+          }
+        }
+      }
+      _assertClean(violations);
+    });
+
     test('ledger domain 不依赖 credit domain', () {
       final violations = <_Violation>[];
       for (final file in _dartFiles('lib/domain/ledger')) {

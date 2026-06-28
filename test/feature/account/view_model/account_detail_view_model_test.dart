@@ -23,6 +23,9 @@ void main() {
           accountListProvider.overrideWith(
             (ref) => Stream.value([_account('cash', '现金')]),
           ),
+          creditLiabilityAccountsByAccountIdProvider.overrideWith(
+            (ref) => Stream.value(const {}),
+          ),
           transactionListProvider(
             accountId: 'cash',
           ).overrideWith((ref) => Stream.value([_item()])),
@@ -35,6 +38,7 @@ void main() {
       );
       addTearDown(sub.close);
       await container.read(accountListProvider.future);
+      await container.read(creditLiabilityAccountsByAccountIdProvider.future);
       await container.read(transactionListProvider(accountId: 'cash').future);
       await container.read(accountsByIdProvider.future);
       await container.pump();
@@ -62,6 +66,9 @@ void main() {
           accountListProvider.overrideWith(
             (ref) => Stream.value([_account('cash', '现金')]),
           ),
+          creditLiabilityAccountsByAccountIdProvider.overrideWith(
+            (ref) => Stream.value(const {}),
+          ),
           transactionListProvider(
             accountId: 'missing',
           ).overrideWith((ref) => Stream.value(const [])),
@@ -74,6 +81,7 @@ void main() {
       );
       addTearDown(sub.close);
       await container.read(accountListProvider.future);
+      await container.read(creditLiabilityAccountsByAccountIdProvider.future);
       await container.read(
         transactionListProvider(accountId: 'missing').future,
       );
@@ -104,6 +112,9 @@ void main() {
               _account('card', '信用卡', type: AccountType.liability),
             ]),
           ),
+          creditLiabilityAccountsByAccountIdProvider.overrideWith(
+            (ref) => Stream.value({'card': _creditLiabilityAccount('card')}),
+          ),
           transactionListProvider(
             accountId: 'card',
           ).overrideWith((ref) => Stream.value(const [])),
@@ -119,6 +130,7 @@ void main() {
       );
       addTearDown(sub.close);
       await container.read(accountListProvider.future);
+      await container.read(creditLiabilityAccountsByAccountIdProvider.future);
       await container.read(transactionListProvider(accountId: 'card').future);
       await container.read(accountsByIdProvider.future);
       await container.read(
@@ -210,6 +222,18 @@ Account _account(
     type: type,
     iconKey: iconKey,
     balance: const Money(minorUnits: 0),
+  );
+}
+
+CreditLiabilityAccount _creditLiabilityAccount(String accountId) {
+  return CreditLiabilityAccount(
+    id: 'credit-$accountId',
+    accountId: accountId,
+    kind: CreditLiabilityAccountKind.credit,
+    billingDay: 5,
+    repaymentDay: 25,
+    billingStartPeriod: BillPeriod.fromInt(202601),
+    billingDayToNext: true,
   );
 }
 

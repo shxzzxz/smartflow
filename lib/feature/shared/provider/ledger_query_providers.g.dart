@@ -48,6 +48,50 @@ final class AccountListProvider
 
 String _$accountListHash() => r'95dee3110f192c62457e962aca9bdbefc29c02c6';
 
+@ProviderFor(creditLiabilityAccountsByAccountId)
+final creditLiabilityAccountsByAccountIdProvider =
+    CreditLiabilityAccountsByAccountIdProvider._();
+
+final class CreditLiabilityAccountsByAccountIdProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Map<String, CreditLiabilityAccount>>,
+          Map<String, CreditLiabilityAccount>,
+          Stream<Map<String, CreditLiabilityAccount>>
+        >
+    with
+        $FutureModifier<Map<String, CreditLiabilityAccount>>,
+        $StreamProvider<Map<String, CreditLiabilityAccount>> {
+  CreditLiabilityAccountsByAccountIdProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'creditLiabilityAccountsByAccountIdProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() =>
+      _$creditLiabilityAccountsByAccountIdHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<Map<String, CreditLiabilityAccount>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<Map<String, CreditLiabilityAccount>> create(Ref ref) {
+    return creditLiabilityAccountsByAccountId(ref);
+  }
+}
+
+String _$creditLiabilityAccountsByAccountIdHash() =>
+    r'c8a18848b8536072815128196348e4ac6845c373';
+
 /// 全量账户索引。覆盖 5 种 account_type,供 UI 层把 entries 的 accountId
 /// 解析为 Account 元数据(type / name / iconKey 等)。
 ///

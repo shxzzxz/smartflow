@@ -16,9 +16,6 @@ class AccountFactory {
     String? profileKey,
     String? iconKey,
     String? note,
-    Money? creditLimit,
-    int? billingDay,
-    int? repaymentDay,
     int sortOrder = 0,
     bool isHidden = false,
   }) {
@@ -41,12 +38,6 @@ class AccountFactory {
         message: 'Account subtype does not match account type.',
       );
     }
-    _ensureCreditFields(
-      type: type,
-      creditLimit: creditLimit,
-      billingDay: billingDay,
-      repaymentDay: repaymentDay,
-    );
 
     return Account(
       id: id,
@@ -57,44 +48,8 @@ class AccountFactory {
       balance: const Money(minorUnits: 0),
       iconKey: trimToNull(iconKey),
       note: trimToNull(note),
-      creditLimit: creditLimit,
-      billingDay: billingDay,
-      repaymentDay: repaymentDay,
       sortOrder: sortOrder,
       isHidden: isHidden,
     );
-  }
-
-  void _ensureCreditFields({
-    required AccountType type,
-    required Money? creditLimit,
-    required int? billingDay,
-    required int? repaymentDay,
-  }) {
-    if (type != AccountType.liability &&
-        (creditLimit != null || billingDay != null || repaymentDay != null)) {
-      throw BusinessException(
-        LedgerErrorCode.accountInvalidCommand,
-        message: 'Credit profile is only supported for liability accounts.',
-      );
-    }
-    if (creditLimit != null && creditLimit.minorUnits < 0) {
-      throw BusinessException(
-        LedgerErrorCode.accountInvalidCommand,
-        message: 'Credit limit cannot be negative.',
-      );
-    }
-    if (billingDay != null && (billingDay < 1 || billingDay > 31)) {
-      throw BusinessException(
-        LedgerErrorCode.accountInvalidCommand,
-        message: 'Billing day must be between 1 and 31.',
-      );
-    }
-    if (repaymentDay != null && (repaymentDay < 1 || repaymentDay > 31)) {
-      throw BusinessException(
-        LedgerErrorCode.accountInvalidCommand,
-        message: 'Repayment day must be between 1 and 31.',
-      );
-    }
   }
 }

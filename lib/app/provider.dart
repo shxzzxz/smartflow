@@ -5,6 +5,7 @@ import '../infrastructure/ledger/repository/drift_account_query_repository.dart'
 import '../infrastructure/ledger/repository/drift_account_repository.dart';
 import '../infrastructure/ledger/repository/drift_balance_aggregate_repository.dart';
 import '../infrastructure/ledger/repository/drift_entry_read_repository.dart';
+import '../infrastructure/credit/repository/drift_credit_account_repository.dart';
 import '../infrastructure/credit/repository/drift_installment_repository.dart';
 import '../infrastructure/ledger/repository/drift_posting_repository.dart';
 import '../infrastructure/ledger/repository/drift_system_account_resolver.dart';
@@ -17,8 +18,10 @@ import '../application/ledger/ledger_command_api.dart';
 import '../application/ledger/ledger_query_api.dart';
 import '../application/ledger/ledger_query_port_api.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
+import '../application/credit/account/query/credit_account_query_service.dart';
 import '../application/credit/installment/query/installment_query_service.dart';
 import '../domain/ledger/port/account_repository.dart';
+import '../domain/credit/port/credit_account_repository.dart';
 import '../domain/credit/port/installment_repository.dart';
 import '../domain/ledger/port/system_account_resolver.dart';
 import '../domain/ledger/service/account/account_role_policy.dart';
@@ -187,6 +190,28 @@ TransactionQueryService transactionQueryService(Ref ref) {
 FinancialMetricsService financialMetricsService(Ref ref) {
   return FinancialMetricsServiceImpl(
     ref.watch(balanceAggregateRepositoryProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+CreditAccountRepository creditAccountRepository(Ref ref) {
+  return DriftCreditAccountRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+CreditAccountService creditAccountService(Ref ref) {
+  return CreditAccountServiceImpl(
+    accountAppService: ref.watch(accountAppServiceProvider),
+    creditAccounts: ref.watch(creditAccountRepositoryProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+CreditAccountQueryService creditAccountQueryService(Ref ref) {
+  return CreditAccountQueryServiceImpl(
+    creditAccounts: ref.watch(creditAccountRepositoryProvider),
   );
 }
 

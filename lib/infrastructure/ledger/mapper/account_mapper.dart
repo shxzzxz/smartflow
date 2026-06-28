@@ -13,12 +13,6 @@ Account mapAccount(AccountRow row) {
     balance: Money(minorUnits: row.balanceMinor),
     iconKey: row.iconKey,
     note: row.note,
-    creditLimit:
-        row.creditLimitMinor == null
-            ? null
-            : Money(minorUnits: row.creditLimitMinor!),
-    billingDay: row.billingDay,
-    repaymentDay: row.repaymentDay,
     sortOrder: row.sortOrder,
     isHidden: row.isHidden,
     archivedAt: row.archivedAt,

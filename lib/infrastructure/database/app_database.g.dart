@@ -4142,6 +4142,674 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
   }
 }
 
+class $CreditLiabilityAccountsTable extends CreditLiabilityAccounts
+    with TableInfo<$CreditLiabilityAccountsTable, CreditLiabilityAccountRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CreditLiabilityAccountsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<
+    CreditLiabilityAccountKind,
+    String
+  >
+  kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<CreditLiabilityAccountKind>(
+    $CreditLiabilityAccountsTable.$converterkind,
+  );
+  static const VerificationMeta _creditLimitMinorMeta = const VerificationMeta(
+    'creditLimitMinor',
+  );
+  @override
+  late final GeneratedColumn<int> creditLimitMinor = GeneratedColumn<int>(
+    'credit_limit_minor',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _billingDayMeta = const VerificationMeta(
+    'billingDay',
+  );
+  @override
+  late final GeneratedColumn<int> billingDay = GeneratedColumn<int>(
+    'billing_day',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _repaymentDayMeta = const VerificationMeta(
+    'repaymentDay',
+  );
+  @override
+  late final GeneratedColumn<int> repaymentDay = GeneratedColumn<int>(
+    'repayment_day',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _billingStartPeriodMeta =
+      const VerificationMeta('billingStartPeriod');
+  @override
+  late final GeneratedColumn<int> billingStartPeriod = GeneratedColumn<int>(
+    'billing_start_period',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _billingDayToNextMeta = const VerificationMeta(
+    'billingDayToNext',
+  );
+  @override
+  late final GeneratedColumn<bool> billingDayToNext = GeneratedColumn<bool>(
+    'billing_day_to_next',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("billing_day_to_next" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    accountId,
+    kind,
+    creditLimitMinor,
+    billingDay,
+    repaymentDay,
+    billingStartPeriod,
+    billingDayToNext,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'credit_liability_accounts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CreditLiabilityAccountRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('credit_limit_minor')) {
+      context.handle(
+        _creditLimitMinorMeta,
+        creditLimitMinor.isAcceptableOrUnknown(
+          data['credit_limit_minor']!,
+          _creditLimitMinorMeta,
+        ),
+      );
+    }
+    if (data.containsKey('billing_day')) {
+      context.handle(
+        _billingDayMeta,
+        billingDay.isAcceptableOrUnknown(data['billing_day']!, _billingDayMeta),
+      );
+    }
+    if (data.containsKey('repayment_day')) {
+      context.handle(
+        _repaymentDayMeta,
+        repaymentDay.isAcceptableOrUnknown(
+          data['repayment_day']!,
+          _repaymentDayMeta,
+        ),
+      );
+    }
+    if (data.containsKey('billing_start_period')) {
+      context.handle(
+        _billingStartPeriodMeta,
+        billingStartPeriod.isAcceptableOrUnknown(
+          data['billing_start_period']!,
+          _billingStartPeriodMeta,
+        ),
+      );
+    }
+    if (data.containsKey('billing_day_to_next')) {
+      context.handle(
+        _billingDayToNextMeta,
+        billingDayToNext.isAcceptableOrUnknown(
+          data['billing_day_to_next']!,
+          _billingDayToNextMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CreditLiabilityAccountRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CreditLiabilityAccountRow(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}id'],
+          )!,
+      accountId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}account_id'],
+          )!,
+      kind: $CreditLiabilityAccountsTable.$converterkind.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}kind'],
+        )!,
+      ),
+      creditLimitMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}credit_limit_minor'],
+      ),
+      billingDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}billing_day'],
+      ),
+      repaymentDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}repayment_day'],
+      ),
+      billingStartPeriod: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}billing_start_period'],
+      ),
+      billingDayToNext:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}billing_day_to_next'],
+          )!,
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+      updatedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}updated_at'],
+          )!,
+    );
+  }
+
+  @override
+  $CreditLiabilityAccountsTable createAlias(String alias) {
+    return $CreditLiabilityAccountsTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<CreditLiabilityAccountKind, String, String>
+  $converterkind = const EnumNameConverter<CreditLiabilityAccountKind>(
+    CreditLiabilityAccountKind.values,
+  );
+}
+
+class CreditLiabilityAccountRow extends DataClass
+    implements Insertable<CreditLiabilityAccountRow> {
+  final String id;
+  final String accountId;
+  final CreditLiabilityAccountKind kind;
+  final int? creditLimitMinor;
+  final int? billingDay;
+  final int? repaymentDay;
+  final int? billingStartPeriod;
+  final bool billingDayToNext;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const CreditLiabilityAccountRow({
+    required this.id,
+    required this.accountId,
+    required this.kind,
+    this.creditLimitMinor,
+    this.billingDay,
+    this.repaymentDay,
+    this.billingStartPeriod,
+    required this.billingDayToNext,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['account_id'] = Variable<String>(accountId);
+    {
+      map['kind'] = Variable<String>(
+        $CreditLiabilityAccountsTable.$converterkind.toSql(kind),
+      );
+    }
+    if (!nullToAbsent || creditLimitMinor != null) {
+      map['credit_limit_minor'] = Variable<int>(creditLimitMinor);
+    }
+    if (!nullToAbsent || billingDay != null) {
+      map['billing_day'] = Variable<int>(billingDay);
+    }
+    if (!nullToAbsent || repaymentDay != null) {
+      map['repayment_day'] = Variable<int>(repaymentDay);
+    }
+    if (!nullToAbsent || billingStartPeriod != null) {
+      map['billing_start_period'] = Variable<int>(billingStartPeriod);
+    }
+    map['billing_day_to_next'] = Variable<bool>(billingDayToNext);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  CreditLiabilityAccountsCompanion toCompanion(bool nullToAbsent) {
+    return CreditLiabilityAccountsCompanion(
+      id: Value(id),
+      accountId: Value(accountId),
+      kind: Value(kind),
+      creditLimitMinor:
+          creditLimitMinor == null && nullToAbsent
+              ? const Value.absent()
+              : Value(creditLimitMinor),
+      billingDay:
+          billingDay == null && nullToAbsent
+              ? const Value.absent()
+              : Value(billingDay),
+      repaymentDay:
+          repaymentDay == null && nullToAbsent
+              ? const Value.absent()
+              : Value(repaymentDay),
+      billingStartPeriod:
+          billingStartPeriod == null && nullToAbsent
+              ? const Value.absent()
+              : Value(billingStartPeriod),
+      billingDayToNext: Value(billingDayToNext),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory CreditLiabilityAccountRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CreditLiabilityAccountRow(
+      id: serializer.fromJson<String>(json['id']),
+      accountId: serializer.fromJson<String>(json['accountId']),
+      kind: $CreditLiabilityAccountsTable.$converterkind.fromJson(
+        serializer.fromJson<String>(json['kind']),
+      ),
+      creditLimitMinor: serializer.fromJson<int?>(json['creditLimitMinor']),
+      billingDay: serializer.fromJson<int?>(json['billingDay']),
+      repaymentDay: serializer.fromJson<int?>(json['repaymentDay']),
+      billingStartPeriod: serializer.fromJson<int?>(json['billingStartPeriod']),
+      billingDayToNext: serializer.fromJson<bool>(json['billingDayToNext']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'accountId': serializer.toJson<String>(accountId),
+      'kind': serializer.toJson<String>(
+        $CreditLiabilityAccountsTable.$converterkind.toJson(kind),
+      ),
+      'creditLimitMinor': serializer.toJson<int?>(creditLimitMinor),
+      'billingDay': serializer.toJson<int?>(billingDay),
+      'repaymentDay': serializer.toJson<int?>(repaymentDay),
+      'billingStartPeriod': serializer.toJson<int?>(billingStartPeriod),
+      'billingDayToNext': serializer.toJson<bool>(billingDayToNext),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  CreditLiabilityAccountRow copyWith({
+    String? id,
+    String? accountId,
+    CreditLiabilityAccountKind? kind,
+    Value<int?> creditLimitMinor = const Value.absent(),
+    Value<int?> billingDay = const Value.absent(),
+    Value<int?> repaymentDay = const Value.absent(),
+    Value<int?> billingStartPeriod = const Value.absent(),
+    bool? billingDayToNext,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => CreditLiabilityAccountRow(
+    id: id ?? this.id,
+    accountId: accountId ?? this.accountId,
+    kind: kind ?? this.kind,
+    creditLimitMinor:
+        creditLimitMinor.present
+            ? creditLimitMinor.value
+            : this.creditLimitMinor,
+    billingDay: billingDay.present ? billingDay.value : this.billingDay,
+    repaymentDay: repaymentDay.present ? repaymentDay.value : this.repaymentDay,
+    billingStartPeriod:
+        billingStartPeriod.present
+            ? billingStartPeriod.value
+            : this.billingStartPeriod,
+    billingDayToNext: billingDayToNext ?? this.billingDayToNext,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  CreditLiabilityAccountRow copyWithCompanion(
+    CreditLiabilityAccountsCompanion data,
+  ) {
+    return CreditLiabilityAccountRow(
+      id: data.id.present ? data.id.value : this.id,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      creditLimitMinor:
+          data.creditLimitMinor.present
+              ? data.creditLimitMinor.value
+              : this.creditLimitMinor,
+      billingDay:
+          data.billingDay.present ? data.billingDay.value : this.billingDay,
+      repaymentDay:
+          data.repaymentDay.present
+              ? data.repaymentDay.value
+              : this.repaymentDay,
+      billingStartPeriod:
+          data.billingStartPeriod.present
+              ? data.billingStartPeriod.value
+              : this.billingStartPeriod,
+      billingDayToNext:
+          data.billingDayToNext.present
+              ? data.billingDayToNext.value
+              : this.billingDayToNext,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CreditLiabilityAccountRow(')
+          ..write('id: $id, ')
+          ..write('accountId: $accountId, ')
+          ..write('kind: $kind, ')
+          ..write('creditLimitMinor: $creditLimitMinor, ')
+          ..write('billingDay: $billingDay, ')
+          ..write('repaymentDay: $repaymentDay, ')
+          ..write('billingStartPeriod: $billingStartPeriod, ')
+          ..write('billingDayToNext: $billingDayToNext, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    accountId,
+    kind,
+    creditLimitMinor,
+    billingDay,
+    repaymentDay,
+    billingStartPeriod,
+    billingDayToNext,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CreditLiabilityAccountRow &&
+          other.id == this.id &&
+          other.accountId == this.accountId &&
+          other.kind == this.kind &&
+          other.creditLimitMinor == this.creditLimitMinor &&
+          other.billingDay == this.billingDay &&
+          other.repaymentDay == this.repaymentDay &&
+          other.billingStartPeriod == this.billingStartPeriod &&
+          other.billingDayToNext == this.billingDayToNext &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CreditLiabilityAccountsCompanion
+    extends UpdateCompanion<CreditLiabilityAccountRow> {
+  final Value<String> id;
+  final Value<String> accountId;
+  final Value<CreditLiabilityAccountKind> kind;
+  final Value<int?> creditLimitMinor;
+  final Value<int?> billingDay;
+  final Value<int?> repaymentDay;
+  final Value<int?> billingStartPeriod;
+  final Value<bool> billingDayToNext;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const CreditLiabilityAccountsCompanion({
+    this.id = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.creditLimitMinor = const Value.absent(),
+    this.billingDay = const Value.absent(),
+    this.repaymentDay = const Value.absent(),
+    this.billingStartPeriod = const Value.absent(),
+    this.billingDayToNext = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CreditLiabilityAccountsCompanion.insert({
+    required String id,
+    required String accountId,
+    required CreditLiabilityAccountKind kind,
+    this.creditLimitMinor = const Value.absent(),
+    this.billingDay = const Value.absent(),
+    this.repaymentDay = const Value.absent(),
+    this.billingStartPeriod = const Value.absent(),
+    this.billingDayToNext = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       accountId = Value(accountId),
+       kind = Value(kind);
+  static Insertable<CreditLiabilityAccountRow> custom({
+    Expression<String>? id,
+    Expression<String>? accountId,
+    Expression<String>? kind,
+    Expression<int>? creditLimitMinor,
+    Expression<int>? billingDay,
+    Expression<int>? repaymentDay,
+    Expression<int>? billingStartPeriod,
+    Expression<bool>? billingDayToNext,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (accountId != null) 'account_id': accountId,
+      if (kind != null) 'kind': kind,
+      if (creditLimitMinor != null) 'credit_limit_minor': creditLimitMinor,
+      if (billingDay != null) 'billing_day': billingDay,
+      if (repaymentDay != null) 'repayment_day': repaymentDay,
+      if (billingStartPeriod != null)
+        'billing_start_period': billingStartPeriod,
+      if (billingDayToNext != null) 'billing_day_to_next': billingDayToNext,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CreditLiabilityAccountsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? accountId,
+    Value<CreditLiabilityAccountKind>? kind,
+    Value<int?>? creditLimitMinor,
+    Value<int?>? billingDay,
+    Value<int?>? repaymentDay,
+    Value<int?>? billingStartPeriod,
+    Value<bool>? billingDayToNext,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return CreditLiabilityAccountsCompanion(
+      id: id ?? this.id,
+      accountId: accountId ?? this.accountId,
+      kind: kind ?? this.kind,
+      creditLimitMinor: creditLimitMinor ?? this.creditLimitMinor,
+      billingDay: billingDay ?? this.billingDay,
+      repaymentDay: repaymentDay ?? this.repaymentDay,
+      billingStartPeriod: billingStartPeriod ?? this.billingStartPeriod,
+      billingDayToNext: billingDayToNext ?? this.billingDayToNext,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(
+        $CreditLiabilityAccountsTable.$converterkind.toSql(kind.value),
+      );
+    }
+    if (creditLimitMinor.present) {
+      map['credit_limit_minor'] = Variable<int>(creditLimitMinor.value);
+    }
+    if (billingDay.present) {
+      map['billing_day'] = Variable<int>(billingDay.value);
+    }
+    if (repaymentDay.present) {
+      map['repayment_day'] = Variable<int>(repaymentDay.value);
+    }
+    if (billingStartPeriod.present) {
+      map['billing_start_period'] = Variable<int>(billingStartPeriod.value);
+    }
+    if (billingDayToNext.present) {
+      map['billing_day_to_next'] = Variable<bool>(billingDayToNext.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CreditLiabilityAccountsCompanion(')
+          ..write('id: $id, ')
+          ..write('accountId: $accountId, ')
+          ..write('kind: $kind, ')
+          ..write('creditLimitMinor: $creditLimitMinor, ')
+          ..write('billingDay: $billingDay, ')
+          ..write('repaymentDay: $repaymentDay, ')
+          ..write('billingStartPeriod: $billingStartPeriod, ')
+          ..write('billingDayToNext: $billingDayToNext, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $InstallmentContractsTable extends InstallmentContracts
     with TableInfo<$InstallmentContractsTable, InstallmentContractRow> {
   @override
@@ -6605,6 +7273,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $TransactionDetailsTable(this);
   late final $EntriesTable entries = $EntriesTable(this);
   late final $BudgetsTable budgets = $BudgetsTable(this);
+  late final $CreditLiabilityAccountsTable creditLiabilityAccounts =
+      $CreditLiabilityAccountsTable(this);
   late final $InstallmentContractsTable installmentContracts =
       $InstallmentContractsTable(this);
   late final $InstallmentSchedulesTable installmentSchedules =
@@ -6622,6 +7292,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     transactionDetails,
     entries,
     budgets,
+    creditLiabilityAccounts,
     installmentContracts,
     installmentSchedules,
     installmentRepayments,
@@ -8609,6 +9280,343 @@ typedef $$BudgetsTableProcessedTableManager =
       BudgetRow,
       PrefetchHooks Function()
     >;
+typedef $$CreditLiabilityAccountsTableCreateCompanionBuilder =
+    CreditLiabilityAccountsCompanion Function({
+      required String id,
+      required String accountId,
+      required CreditLiabilityAccountKind kind,
+      Value<int?> creditLimitMinor,
+      Value<int?> billingDay,
+      Value<int?> repaymentDay,
+      Value<int?> billingStartPeriod,
+      Value<bool> billingDayToNext,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$CreditLiabilityAccountsTableUpdateCompanionBuilder =
+    CreditLiabilityAccountsCompanion Function({
+      Value<String> id,
+      Value<String> accountId,
+      Value<CreditLiabilityAccountKind> kind,
+      Value<int?> creditLimitMinor,
+      Value<int?> billingDay,
+      Value<int?> repaymentDay,
+      Value<int?> billingStartPeriod,
+      Value<bool> billingDayToNext,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$CreditLiabilityAccountsTableFilterComposer
+    extends Composer<_$AppDatabase, $CreditLiabilityAccountsTable> {
+  $$CreditLiabilityAccountsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    CreditLiabilityAccountKind,
+    CreditLiabilityAccountKind,
+    String
+  >
+  get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get creditLimitMinor => $composableBuilder(
+    column: $table.creditLimitMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get billingDay => $composableBuilder(
+    column: $table.billingDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get repaymentDay => $composableBuilder(
+    column: $table.repaymentDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get billingStartPeriod => $composableBuilder(
+    column: $table.billingStartPeriod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get billingDayToNext => $composableBuilder(
+    column: $table.billingDayToNext,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CreditLiabilityAccountsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CreditLiabilityAccountsTable> {
+  $$CreditLiabilityAccountsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get creditLimitMinor => $composableBuilder(
+    column: $table.creditLimitMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get billingDay => $composableBuilder(
+    column: $table.billingDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get repaymentDay => $composableBuilder(
+    column: $table.repaymentDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get billingStartPeriod => $composableBuilder(
+    column: $table.billingStartPeriod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get billingDayToNext => $composableBuilder(
+    column: $table.billingDayToNext,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CreditLiabilityAccountsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CreditLiabilityAccountsTable> {
+  $$CreditLiabilityAccountsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<CreditLiabilityAccountKind, String>
+  get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<int> get creditLimitMinor => $composableBuilder(
+    column: $table.creditLimitMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get billingDay => $composableBuilder(
+    column: $table.billingDay,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get repaymentDay => $composableBuilder(
+    column: $table.repaymentDay,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get billingStartPeriod => $composableBuilder(
+    column: $table.billingStartPeriod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get billingDayToNext => $composableBuilder(
+    column: $table.billingDayToNext,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$CreditLiabilityAccountsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CreditLiabilityAccountsTable,
+          CreditLiabilityAccountRow,
+          $$CreditLiabilityAccountsTableFilterComposer,
+          $$CreditLiabilityAccountsTableOrderingComposer,
+          $$CreditLiabilityAccountsTableAnnotationComposer,
+          $$CreditLiabilityAccountsTableCreateCompanionBuilder,
+          $$CreditLiabilityAccountsTableUpdateCompanionBuilder,
+          (
+            CreditLiabilityAccountRow,
+            BaseReferences<
+              _$AppDatabase,
+              $CreditLiabilityAccountsTable,
+              CreditLiabilityAccountRow
+            >,
+          ),
+          CreditLiabilityAccountRow,
+          PrefetchHooks Function()
+        > {
+  $$CreditLiabilityAccountsTableTableManager(
+    _$AppDatabase db,
+    $CreditLiabilityAccountsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$CreditLiabilityAccountsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer:
+              () => $$CreditLiabilityAccountsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer:
+              () => $$CreditLiabilityAccountsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> accountId = const Value.absent(),
+                Value<CreditLiabilityAccountKind> kind = const Value.absent(),
+                Value<int?> creditLimitMinor = const Value.absent(),
+                Value<int?> billingDay = const Value.absent(),
+                Value<int?> repaymentDay = const Value.absent(),
+                Value<int?> billingStartPeriod = const Value.absent(),
+                Value<bool> billingDayToNext = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CreditLiabilityAccountsCompanion(
+                id: id,
+                accountId: accountId,
+                kind: kind,
+                creditLimitMinor: creditLimitMinor,
+                billingDay: billingDay,
+                repaymentDay: repaymentDay,
+                billingStartPeriod: billingStartPeriod,
+                billingDayToNext: billingDayToNext,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String accountId,
+                required CreditLiabilityAccountKind kind,
+                Value<int?> creditLimitMinor = const Value.absent(),
+                Value<int?> billingDay = const Value.absent(),
+                Value<int?> repaymentDay = const Value.absent(),
+                Value<int?> billingStartPeriod = const Value.absent(),
+                Value<bool> billingDayToNext = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CreditLiabilityAccountsCompanion.insert(
+                id: id,
+                accountId: accountId,
+                kind: kind,
+                creditLimitMinor: creditLimitMinor,
+                billingDay: billingDay,
+                repaymentDay: repaymentDay,
+                billingStartPeriod: billingStartPeriod,
+                billingDayToNext: billingDayToNext,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CreditLiabilityAccountsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CreditLiabilityAccountsTable,
+      CreditLiabilityAccountRow,
+      $$CreditLiabilityAccountsTableFilterComposer,
+      $$CreditLiabilityAccountsTableOrderingComposer,
+      $$CreditLiabilityAccountsTableAnnotationComposer,
+      $$CreditLiabilityAccountsTableCreateCompanionBuilder,
+      $$CreditLiabilityAccountsTableUpdateCompanionBuilder,
+      (
+        CreditLiabilityAccountRow,
+        BaseReferences<
+          _$AppDatabase,
+          $CreditLiabilityAccountsTable,
+          CreditLiabilityAccountRow
+        >,
+      ),
+      CreditLiabilityAccountRow,
+      PrefetchHooks Function()
+    >;
 typedef $$InstallmentContractsTableCreateCompanionBuilder =
     InstallmentContractsCompanion Function({
       required String id,
@@ -9815,6 +10823,11 @@ class $AppDatabaseManager {
       $$EntriesTableTableManager(_db, _db.entries);
   $$BudgetsTableTableManager get budgets =>
       $$BudgetsTableTableManager(_db, _db.budgets);
+  $$CreditLiabilityAccountsTableTableManager get creditLiabilityAccounts =>
+      $$CreditLiabilityAccountsTableTableManager(
+        _db,
+        _db.creditLiabilityAccounts,
+      );
   $$InstallmentContractsTableTableManager get installmentContracts =>
       $$InstallmentContractsTableTableManager(_db, _db.installmentContracts);
   $$InstallmentSchedulesTableTableManager get installmentSchedules =>

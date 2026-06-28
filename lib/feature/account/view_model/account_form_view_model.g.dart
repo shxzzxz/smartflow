@@ -42,7 +42,7 @@ final class AccountFormViewModelProvider
 }
 
 String _$accountFormViewModelHash() =>
-    r'ee3e328c983afb02a4ad624e868eaf53ee2e2365';
+    r'b40e12a8d77163c920f93b7ffbae514513b5310a';
 
 abstract class _$AccountFormViewModel extends $Notifier<AccountFormState> {
   AccountFormState build();

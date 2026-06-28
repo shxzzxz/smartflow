@@ -65,8 +65,54 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         );
         await _migrateAccountProfileKeys(database);
       }
+      if (from < 12) {
+        await migrator.createTable(database.creditLiabilityAccounts);
+        await _migrateCreditLiabilityAccounts(database);
+      }
     },
   );
+}
+
+Future<void> _migrateCreditLiabilityAccounts(AppDatabase database) async {
+  await database.customStatement('''
+    INSERT OR IGNORE INTO credit_liability_accounts (
+      id,
+      account_id,
+      kind,
+      credit_limit_minor,
+      billing_day,
+      repayment_day,
+      billing_start_period,
+      billing_day_to_next,
+      created_at,
+      updated_at
+    )
+    SELECT
+      'credit-liability-account:' || id,
+      id,
+      CASE WHEN account_profile_key = 'credit.loan' THEN 'loan' ELSE 'credit' END,
+      credit_limit_minor,
+      CASE
+        WHEN account_profile_key = 'credit.loan' THEN NULL
+        WHEN billing_day BETWEEN 1 AND 28 THEN billing_day
+        ELSE 1
+      END,
+      CASE
+        WHEN account_profile_key = 'credit.loan' THEN NULL
+        WHEN repayment_day BETWEEN 1 AND 28 THEN repayment_day
+        ELSE 28
+      END,
+      CASE
+        WHEN account_profile_key = 'credit.loan' THEN NULL
+        ELSE CAST(strftime('%Y', created_at, 'unixepoch') AS INTEGER) * 100
+          + CAST(strftime('%m', created_at, 'unixepoch') AS INTEGER)
+      END,
+      1,
+      created_at,
+      updated_at
+    FROM accounts
+    WHERE account_type = 'liability'
+    ''');
 }
 
 Future<void> _migrateAccountProfileKeys(AppDatabase database) async {

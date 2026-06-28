@@ -1063,6 +1063,150 @@ final class FinancialMetricsServiceProvider
 String _$financialMetricsServiceHash() =>
     r'7482e97011511fa5fb010f3190c1f715dfc14acc';
 
+@ProviderFor(creditAccountRepository)
+final creditAccountRepositoryProvider = CreditAccountRepositoryProvider._();
+
+final class CreditAccountRepositoryProvider
+    extends
+        $FunctionalProvider<
+          CreditAccountRepository,
+          CreditAccountRepository,
+          CreditAccountRepository
+        >
+    with $Provider<CreditAccountRepository> {
+  CreditAccountRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'creditAccountRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$creditAccountRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<CreditAccountRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CreditAccountRepository create(Ref ref) {
+    return creditAccountRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CreditAccountRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CreditAccountRepository>(value),
+    );
+  }
+}
+
+String _$creditAccountRepositoryHash() =>
+    r'de521cd3583f4a04b218ecb6ecb7fd7f7242a163';
+
+@ProviderFor(creditAccountService)
+final creditAccountServiceProvider = CreditAccountServiceProvider._();
+
+final class CreditAccountServiceProvider
+    extends
+        $FunctionalProvider<
+          CreditAccountService,
+          CreditAccountService,
+          CreditAccountService
+        >
+    with $Provider<CreditAccountService> {
+  CreditAccountServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'creditAccountServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$creditAccountServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<CreditAccountService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CreditAccountService create(Ref ref) {
+    return creditAccountService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CreditAccountService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CreditAccountService>(value),
+    );
+  }
+}
+
+String _$creditAccountServiceHash() =>
+    r'252e158d6b00b4c3a625e69e4264fc6ca7cc56fe';
+
+@ProviderFor(creditAccountQueryService)
+final creditAccountQueryServiceProvider = CreditAccountQueryServiceProvider._();
+
+final class CreditAccountQueryServiceProvider
+    extends
+        $FunctionalProvider<
+          CreditAccountQueryService,
+          CreditAccountQueryService,
+          CreditAccountQueryService
+        >
+    with $Provider<CreditAccountQueryService> {
+  CreditAccountQueryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'creditAccountQueryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$creditAccountQueryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<CreditAccountQueryService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CreditAccountQueryService create(Ref ref) {
+    return creditAccountQueryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CreditAccountQueryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CreditAccountQueryService>(value),
+    );
+  }
+}
+
+String _$creditAccountQueryServiceHash() =>
+    r'836e607266bc085efcbbd0db61a35be26d37a03c';
+
 @ProviderFor(installmentRepository)
 final installmentRepositoryProvider = InstallmentRepositoryProvider._();
 

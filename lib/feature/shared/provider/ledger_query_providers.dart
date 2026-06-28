@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
+import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/time/month_key.dart';
 import '../../../shared/account_profile/account_selection_policy.dart';
@@ -15,6 +16,15 @@ Stream<List<Account>> accountList(Ref ref) {
     AccountType.asset,
     AccountType.liability,
   });
+}
+
+@riverpod
+Stream<Map<String, CreditLiabilityAccount>> creditLiabilityAccountsByAccountId(
+  Ref ref,
+) {
+  return ref
+      .watch(creditAccountQueryServiceProvider)
+      .watchCreditLiabilityAccountsByAccountId();
 }
 
 /// 全量账户索引。覆盖 5 种 account_type,供 UI 层把 entries 的 accountId

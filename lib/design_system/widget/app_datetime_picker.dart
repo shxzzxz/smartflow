@@ -69,12 +69,16 @@ Future<int?> showAppDayOfMonthPicker({
   required BuildContext context,
   required int? selectedDay,
   String title = '选择日期',
+  int maxDay = 31,
 }) async {
   final picked = await showDialog<int>(
     context: context,
     builder:
-        (context) =>
-            AppDayOfMonthPickerDialog(selectedDay: selectedDay, title: title),
+        (context) => AppDayOfMonthPickerDialog(
+          selectedDay: selectedDay,
+          title: title,
+          maxDay: maxDay,
+        ),
   );
   if (picked == null) {
     return selectedDay;
@@ -740,11 +744,13 @@ class AppDayOfMonthPickerDialog extends StatefulWidget {
   const AppDayOfMonthPickerDialog({
     required this.selectedDay,
     required this.title,
+    this.maxDay = 31,
     super.key,
   });
 
   final int? selectedDay;
   final String title;
+  final int maxDay;
 
   @override
   State<AppDayOfMonthPickerDialog> createState() =>
@@ -757,7 +763,7 @@ class _AppDayOfMonthPickerDialogState extends State<AppDayOfMonthPickerDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedDay = widget.selectedDay;
+    _selectedDay = widget.selectedDay?.clamp(1, widget.maxDay);
   }
 
   @override
@@ -800,7 +806,7 @@ class _AppDayOfMonthPickerDialogState extends State<AppDayOfMonthPickerDialog> {
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: 31,
+                itemCount: widget.maxDay,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 7,
                   mainAxisSpacing: AppSpacing.space2,

@@ -1,21 +1,22 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../application/credit/credit_query_api.dart';
-import '../../../application/ledger/ledger_query_api.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../credit/provider/installment_query_providers.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import 'account_view.dart';
+import 'account_views_provider.dart';
 
 part 'account_detail_view_model.g.dart';
 
 @riverpod
 AccountDetailPageState accountDetailViewModel(Ref ref, String accountId) {
-  final accounts = ref.watch(accountListProvider);
+  final account = ref.watch(accountViewProvider(accountId));
   final transactions = ref.watch(transactionListProvider(accountId: accountId));
   final accountsById = ref.watch(accountsByIdProvider);
 
-  if (accounts case AsyncError(:final error)) {
+  if (account case AsyncError(:final error)) {
     return AccountDetailPageState.error(message: '加载失败：$error');
   }
   if (transactions case AsyncError(:final error)) {
@@ -24,33 +25,31 @@ AccountDetailPageState accountDetailViewModel(Ref ref, String accountId) {
   if (accountsById case AsyncError(:final error)) {
     return AccountDetailPageState.error(message: '加载失败：$error');
   }
+  if (account case AsyncData(value: null)) {
+    return const AccountDetailPageState.notFound();
+  }
 
-  final accountValues = accounts.value;
+  final accountValue = account.value;
   final transactionValues = transactions.value;
   final accountLookupValues = accountsById.value;
-  if (accountValues == null ||
+  if (accountValue == null ||
       transactionValues == null ||
       accountLookupValues == null) {
     return const AccountDetailPageState.loading();
   }
 
-  final account = _findAccount(accountValues, accountId);
-  if (account == null) {
-    return const AccountDetailPageState.notFound();
-  }
-
   return AccountDetailPageState.loaded(
-    account: account,
+    account: accountValue,
     transactionGroups: groupTransactionsByDay(
       items: transactionValues,
       accountLookup: AccountLookup(accountLookupValues),
     ),
-    contracts: _contractsStateFor(ref, account),
+    contracts: _contractsStateFor(ref, accountValue),
   );
 }
 
-AccountContractsState _contractsStateFor(Ref ref, Account account) {
-  if (account.type != AccountType.liability) {
+AccountContractsState _contractsStateFor(Ref ref, AccountView account) {
+  if (!account.isLiability) {
     return const AccountContractsState.notApplicable();
   }
 
@@ -74,7 +73,7 @@ sealed class AccountDetailPageState {
   const factory AccountDetailPageState.notFound() = AccountDetailNotFound;
 
   const factory AccountDetailPageState.loaded({
-    required Account account,
+    required AccountView account,
     required List<TransactionDayGroup> transactionGroups,
     required AccountContractsState contracts,
   }) = AccountDetailLoaded;
@@ -101,7 +100,7 @@ final class AccountDetailLoaded extends AccountDetailPageState {
     required this.contracts,
   });
 
-  final Account account;
+  final AccountView account;
   final List<TransactionDayGroup> transactionGroups;
   final AccountContractsState contracts;
 }
@@ -140,13 +139,4 @@ final class AccountContractsLoaded extends AccountContractsState {
   const AccountContractsLoaded({required this.contracts});
 
   final List<InstallmentContract> contracts;
-}
-
-Account? _findAccount(List<Account> accounts, String id) {
-  for (final account in accounts) {
-    if (account.id == id) {
-      return account;
-    }
-  }
-  return null;
 }
