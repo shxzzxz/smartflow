@@ -21,3 +21,4 @@ export 'bill/command/credit_bill_generation_service.dart';
 export 'bill/command/credit_bill_generation_task.dart';
 export 'installment/command/installment_service.dart';
 export 'repayment/command/credit_service.dart';
+export 'repayment/command/repayment_service.dart';

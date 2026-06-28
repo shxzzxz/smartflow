@@ -242,6 +242,17 @@ RepaymentRepository repaymentRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+RepaymentService repaymentService(Ref ref) {
+  return RepaymentServiceImpl(
+    bills: ref.watch(billRepositoryProvider),
+    repayments: ref.watch(repaymentRepositoryProvider),
+    postingService: ref.watch(transactionPostingAppServiceProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
 InstallmentService installmentService(Ref ref) {
   return InstallmentServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),

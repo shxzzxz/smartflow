@@ -18,6 +18,8 @@ enum RepaymentType {
   }
 }
 
+const String creditRepaymentOwnerType = 'credit_repayment';
+
 enum RepaymentTargetType {
   bill('BILL', '账单'),
   contract('CONTRACT', '合同'),

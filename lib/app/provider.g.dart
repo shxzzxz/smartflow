@@ -1393,6 +1393,52 @@ final class RepaymentRepositoryProvider
 String _$repaymentRepositoryHash() =>
     r'4e0367be733a7a3427bf4ffd5cc592cc67011aab';
 
+@ProviderFor(repaymentService)
+final repaymentServiceProvider = RepaymentServiceProvider._();
+
+final class RepaymentServiceProvider
+    extends
+        $FunctionalProvider<
+          RepaymentService,
+          RepaymentService,
+          RepaymentService
+        >
+    with $Provider<RepaymentService> {
+  RepaymentServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'repaymentServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$repaymentServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<RepaymentService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  RepaymentService create(Ref ref) {
+    return repaymentService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(RepaymentService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<RepaymentService>(value),
+    );
+  }
+}
+
+String _$repaymentServiceHash() => r'0342769bbc26753f8b1de7e333cfa6009d383032';
+
 @ProviderFor(installmentService)
 final installmentServiceProvider = InstallmentServiceProvider._();
 

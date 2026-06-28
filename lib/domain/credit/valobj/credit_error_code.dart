@@ -39,6 +39,11 @@ enum CreditErrorCode implements AppErrorCode {
     code: 'credit.repayment.exceeds_available',
     defaultMessage: '还款本金超过可还额度。',
   ),
+  billNotFound(code: 'credit.bill.not_found', defaultMessage: '账单不存在。'),
+  billInvalidCommand(
+    code: 'credit.bill.invalid_command',
+    defaultMessage: '账单还款参数不完整或不合法。',
+  ),
   scheduleNotFound(
     code: 'credit.schedule.not_found',
     defaultMessage: '还款计划不存在。',
