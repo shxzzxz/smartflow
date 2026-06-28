@@ -1,13 +1,20 @@
+import 'package:smartflow/application/ledger/ledger_query_api.dart'
+    as ledger_query;
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
+import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
+import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
 import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
+import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 import '../command/credit_bill_generation_service.dart';
 
@@ -24,17 +31,23 @@ class BillQueryServiceImpl implements BillQueryService {
     required BillRepository bills,
     required CreditAccountRepository creditAccounts,
     required InstallmentRepository installments,
+    required RepaymentRepository repayments,
+    required ledger_query.TransactionQueryService transactionQueryService,
     required CreditBillGenerationService generationService,
     DateTime Function()? now,
   }) : _bills = bills,
        _creditAccounts = creditAccounts,
        _installments = installments,
+       _repayments = repayments,
+       _transactionQueryService = transactionQueryService,
        _generationService = generationService,
        _now = now;
 
   final BillRepository _bills;
   final CreditAccountRepository _creditAccounts;
   final InstallmentRepository _installments;
+  final RepaymentRepository _repayments;
+  final ledger_query.TransactionQueryService _transactionQueryService;
   final CreditBillGenerationService _generationService;
   final DateTime Function()? _now;
 
@@ -67,6 +80,7 @@ class BillQueryServiceImpl implements BillQueryService {
     if (bill == null) return null;
     final creditAccount = await _creditAccounts.findByAccountId(bill.accountId);
     final contracts = await _contractsById(bill.accountId);
+    final repayments = await _repaymentsForBill(bill);
     return BillDetailReadModel(
       summary: _summaryForBill(bill: bill, now: now, hasSourceDiff: false),
       items: [
@@ -78,6 +92,7 @@ class BillQueryServiceImpl implements BillQueryService {
             contract: contracts[item.contractId],
           ),
       ],
+      repayments: repayments,
     );
   }
 
@@ -175,6 +190,62 @@ class BillQueryServiceImpl implements BillQueryService {
     };
   }
 
+  Future<List<BillRepaymentReadModel>> _repaymentsForBill(Bill bill) async {
+    final repayments = await _repayments.listByTarget(
+      RepaymentTargetType.bill,
+      bill.id,
+    );
+    return [
+      for (final repayment in repayments)
+        await _repaymentForBill(repayment, fallbackTime: _currentTime()),
+    ];
+  }
+
+  Future<BillRepaymentReadModel> _repaymentForBill(
+    Repayment repayment, {
+    required DateTime fallbackTime,
+  }) async {
+    final total = repayment.totalAllocated();
+    final rootTransactionId = repayment.rootTransactionId;
+    final detail =
+        rootTransactionId == null
+            ? null
+            : await _transactionQueryService.findTransactionDetail(
+              rootTransactionId,
+            );
+    final transaction = detail?.transaction;
+    final usesTransaction =
+        transaction != null &&
+        transaction.businessState == BusinessState.current;
+    return BillRepaymentReadModel(
+      id: repayment.id,
+      repaymentType: repayment.repaymentType,
+      allocated: total,
+      displayTime:
+          usesTransaction
+              ? transaction.occurredAt
+              : repayment.createdAt ?? fallbackTime,
+      timeSource:
+          usesTransaction
+              ? BillRepaymentTimeSource.transaction
+              : BillRepaymentTimeSource.recordCreatedAt,
+      rootTransactionId: rootTransactionId,
+      paidFromAccountId:
+          usesTransaction && detail != null ? _paidFromAccountId(detail) : null,
+    );
+  }
+
+  String? _paidFromAccountId(ledger_query.TransactionDetail detail) {
+    final paidAmount = detail.transaction.primaryAmount;
+    for (final entry in detail.entries.reversed) {
+      if (entry.direction == EntryDirection.credit &&
+          entry.amount == paidAmount) {
+        return entry.accountId;
+      }
+    }
+    return null;
+  }
+
   DateTime? _earliestRepaymentDate(Bill bill) {
     if (bill.items.isEmpty) return null;
     final dates = bill.items.map((item) => item.repaymentDate).toList()..sort();
@@ -222,10 +293,15 @@ class BillSummaryReadModel {
 }
 
 class BillDetailReadModel {
-  const BillDetailReadModel({required this.summary, required this.items});
+  const BillDetailReadModel({
+    required this.summary,
+    required this.items,
+    required this.repayments,
+  });
 
   final BillSummaryReadModel summary;
   final List<BillItemReadModel> items;
+  final List<BillRepaymentReadModel> repayments;
 }
 
 class BillItemReadModel {
@@ -254,4 +330,32 @@ class BillItemReadModel {
   final bool isOverdue;
   final String? contractId;
   final String? scheduleId;
+}
+
+enum BillRepaymentTimeSource { transaction, recordCreatedAt }
+
+class BillRepaymentReadModel {
+  const BillRepaymentReadModel({
+    required this.id,
+    required this.repaymentType,
+    required this.allocated,
+    required this.displayTime,
+    required this.timeSource,
+    this.rootTransactionId,
+    this.paidFromAccountId,
+  });
+
+  final String id;
+  final RepaymentType repaymentType;
+  final RepaymentAmountBreakdown allocated;
+  final DateTime displayTime;
+  final BillRepaymentTimeSource timeSource;
+  final String? rootTransactionId;
+  final String? paidFromAccountId;
+
+  Money get cashPaid =>
+      allocated.principal +
+      allocated.interest +
+      allocated.fee -
+      allocated.discount;
 }

@@ -70,6 +70,31 @@ class _BillDetailContent extends StatelessWidget {
                     ],
                   ),
         ),
+        const SizedBox(height: AppSpacing.space12),
+        Text('还款记录', style: context.appTextStyles.dateSectionTitle),
+        const SizedBox(height: AppSpacing.space4),
+        AppSurface(
+          child:
+              detail.repayments.isEmpty
+                  ? const Padding(
+                    padding: EdgeInsets.all(AppSpacing.space20),
+                    child: Text('暂无还款记录'),
+                  )
+                  : Column(
+                    children: [
+                      for (var i = 0; i < detail.repayments.length; i++) ...[
+                        _BillRepaymentRow(repayment: detail.repayments[i]),
+                        if (i < detail.repayments.length - 1)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppSpacing.space16,
+                            ),
+                            child: Divider(height: 1),
+                          ),
+                      ],
+                    ],
+                  ),
+        ),
       ],
     );
   }
@@ -122,6 +147,47 @@ class _SummarySurface extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _BillRepaymentRow extends StatelessWidget {
+  const _BillRepaymentRow({required this.repayment});
+
+  final BillRepaymentReadModel repayment;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final styles = context.appTextStyles;
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space12,
+        vertical: AppSpacing.space12,
+      ),
+      child: Row(
+        children: [
+          Icon(RemixIcons.refund_2_line, size: 22, color: colors.primary),
+          const SizedBox(width: AppSpacing.space10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(repayment.repaymentType.label, style: styles.formLabel),
+                const SizedBox(height: AppSpacing.space2),
+                Text(
+                  _repaymentSupportingText(repayment),
+                  style: styles.listSupporting.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.space10),
+          Text(repayment.cashPaid.format(), style: styles.amountList),
+        ],
       ),
     );
   }
@@ -226,4 +292,15 @@ String _itemStatusLabel(BillItemReadModel item) {
     BillItemStatus.paid => '已核销',
     BillItemStatus.skipped => '已跳过',
   };
+}
+
+String _repaymentSupportingText(BillRepaymentReadModel repayment) {
+  final prefix =
+      repayment.timeSource == BillRepaymentTimeSource.transaction
+          ? '还款日'
+          : '记录于';
+  final account = repayment.paidFromAccountId;
+  final dateText = '$prefix ${_dateLabel(repayment.displayTime)}';
+  if (account == null) return dateText;
+  return '$dateText · $account';
 }

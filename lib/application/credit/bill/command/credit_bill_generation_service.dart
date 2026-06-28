@@ -9,6 +9,7 @@ import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_bill_source_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
+import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
 import 'package:smartflow/domain/credit/valobj/bill_window.dart';
@@ -30,6 +31,7 @@ class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
     required CreditAccountRepository creditAccounts,
     required AccountRepository ledgerAccounts,
     required InstallmentRepository installments,
+    required RepaymentRepository repayments,
     required BillRepository bills,
     required CreditBillSourceRepository billSources,
     required TransactionRunner transactionRunner,
@@ -37,6 +39,7 @@ class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
   }) : _creditAccounts = creditAccounts,
        _ledgerAccounts = ledgerAccounts,
        _installments = installments,
+       _repayments = repayments,
        _bills = bills,
        _billSources = billSources,
        _runner = transactionRunner,
@@ -45,6 +48,7 @@ class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
   final CreditAccountRepository _creditAccounts;
   final AccountRepository _ledgerAccounts;
   final InstallmentRepository _installments;
+  final RepaymentRepository _repayments;
   final BillRepository _bills;
   final CreditBillSourceRepository _billSources;
   final TransactionRunner _runner;
@@ -169,20 +173,21 @@ class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
         bill.items
             .where((item) => item.itemType == BillItemType.consumption)
             .firstOrNull;
+    final consumptionItemId = existingConsumption?.id ?? _idGenerator.newId();
 
     final items = <BillItem>[
       BillItem(
-        id: existingConsumption?.id ?? _idGenerator.newId(),
+        id: consumptionItemId,
         billId: bill.id,
         itemType: BillItemType.consumption,
         repaymentDate: window.repaymentDate,
         expectedPrincipal: Money(minorUnits: consumptionMinor),
         expectedInterest: Money.zero(),
         expectedFee: Money.zero(),
-        status:
-            consumptionMinor <= 0
-                ? BillItemStatus.paid
-                : BillItemStatus.pending,
+        status: await _statusForConsumption(
+          billItemId: consumptionItemId,
+          expectedPrincipalMinor: consumptionMinor,
+        ),
         createdAt: existingConsumption?.createdAt,
       ),
     ];
@@ -334,6 +339,21 @@ class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
       InstallmentScheduleStatus.paid => BillItemStatus.paid,
       InstallmentScheduleStatus.skipped => BillItemStatus.skipped,
     };
+  }
+
+  Future<BillItemStatus> _statusForConsumption({
+    required String billItemId,
+    required int expectedPrincipalMinor,
+  }) async {
+    if (expectedPrincipalMinor <= 0) return BillItemStatus.paid;
+    final repaymentItems = await _repayments.listItemsByBillItem(billItemId);
+    final paidPrincipalMinor = repaymentItems.fold<int>(
+      0,
+      (sum, item) => sum + item.allocated.principal.minorUnits,
+    );
+    return paidPrincipalMinor >= expectedPrincipalMinor
+        ? BillItemStatus.paid
+        : BillItemStatus.pending;
   }
 
   BillStatus _projectBillStatus(BillStatus baseStatus, List<BillItem> items) {

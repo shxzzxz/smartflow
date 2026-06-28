@@ -12,6 +12,7 @@ import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_bill_source_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repository.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_account_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_posting_repository.dart';
@@ -65,6 +66,51 @@ void main() {
         );
       },
     );
+
+    test('keeps open bill repayment status when bill becomes billed', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      final account = await fixture.createCreditAccount();
+      await fixture.createExpenseCategory();
+      await fixture.postExpense(
+        accountId: account.id,
+        amount: const Money(minorUnits: 10000),
+        occurredAt: DateTime(2026, 6, 1),
+      );
+
+      await fixture.generation.generateDueBills(now: DateTime(2026, 6, 4));
+      final openBill =
+          (await fixture.billRepository.listBillsByAccount(account.id)).single;
+      expect(openBill.status, BillStatus.open);
+      final openItemId = openBill.items.single.id;
+
+      await fixture.repaymentService.createBillRepayment(
+        CreateBillRepaymentCommand(
+          billId: openBill.id,
+          allocations: [
+            BillRepaymentAllocation(
+              billItemId: openItemId,
+              allocated: RepaymentAmountBreakdown(
+                principal: const Money(minorUnits: 10000),
+                interest: Money.zero(),
+                fee: Money.zero(),
+                discount: Money.zero(),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      await fixture.generation.generateDueBills(now: DateTime(2026, 6, 5));
+
+      final bills = await fixture.billRepository.listBillsByAccount(account.id);
+      final june = bills.singleWhere(
+        (bill) => bill.period == BillPeriod.fromInt(202606),
+      );
+      expect(june.status, BillStatus.settled);
+      expect(june.items.single.id, openItemId);
+      expect(june.items.single.status, BillItemStatus.paid);
+    });
 
     test(
       'freezes credit bill on billing day and opens the next period',
@@ -245,8 +291,17 @@ class _Fixture {
       creditAccounts: creditAccountRepository,
       ledgerAccounts: accountRepository,
       installments: installmentRepository,
+      repayments: repaymentRepository,
       bills: billRepository,
       billSources: DriftCreditBillSourceRepository(database),
+      transactionRunner: runner,
+      idGenerator: ids,
+    );
+    repaymentService = RepaymentServiceImpl(
+      bills: billRepository,
+      repayments: repaymentRepository,
+      installments: installmentRepository,
+      postingService: postingAppService,
       transactionRunner: runner,
       idGenerator: ids,
     );
@@ -262,6 +317,8 @@ class _Fixture {
       DriftCreditAccountRepository(database);
   late final DriftInstallmentRepository installmentRepository =
       DriftInstallmentRepository(database);
+  late final DriftRepaymentRepository repaymentRepository =
+      DriftRepaymentRepository(database);
   late final DriftBillRepository billRepository = DriftBillRepository(database);
   late final DriftPostingRepository postingRepository = DriftPostingRepository(
     database,
@@ -269,6 +326,7 @@ class _Fixture {
   late final CreditAccountService creditAccountService;
   late final TransactionPostingAppService postingAppService;
   late final CreditBillGenerationService generation;
+  late final RepaymentService repaymentService;
 
   Future<Account> createCreditAccount() {
     return creditAccountService.createAccount(

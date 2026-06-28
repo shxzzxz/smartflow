@@ -6,9 +6,11 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
+import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
+import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
@@ -72,17 +74,20 @@ class RepaymentServiceImpl implements RepaymentService {
   const RepaymentServiceImpl({
     required BillRepository bills,
     required RepaymentRepository repayments,
+    required InstallmentRepository installments,
     required ledger.TransactionPostingAppService postingService,
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
   }) : _bills = bills,
        _repayments = repayments,
+       _installments = installments,
        _postingService = postingService,
        _transactionRunner = transactionRunner,
        _idGenerator = idGenerator;
 
   final BillRepository _bills;
   final RepaymentRepository _repayments;
+  final InstallmentRepository _installments;
   final ledger.TransactionPostingAppService _postingService;
   final TransactionRunner _transactionRunner;
   final IdGenerator _idGenerator;
@@ -207,6 +212,7 @@ class RepaymentServiceImpl implements RepaymentService {
     final touched =
         allocations.map((allocation) => allocation.billItemId).toSet();
     final nextItems = <BillItem>[];
+    final paidScheduleIds = <String>{};
     for (final item in bill.items) {
       if (!touched.contains(item.id)) {
         nextItems.add(item);
@@ -221,13 +227,51 @@ class RepaymentServiceImpl implements RepaymentService {
           allocatedPrincipalMinor >= item.expectedPrincipal.minorUnits
               ? BillItemStatus.paid
               : BillItemStatus.pending;
+      if (nextStatus == BillItemStatus.paid && item.scheduleId != null) {
+        paidScheduleIds.add(item.scheduleId!);
+      }
       nextItems.add(item.copyWith(status: nextStatus));
     }
 
     await _bills.upsertBillItems(bill.id, nextItems);
+    await _refreshInstallmentStatuses(paidScheduleIds);
     await _bills.updateBill(
       bill.copyWith(status: _projectBillStatus(bill.status, nextItems)),
     );
+  }
+
+  Future<void> _refreshInstallmentStatuses(Set<String> paidScheduleIds) async {
+    if (paidScheduleIds.isEmpty) return;
+    final touchedContractIds = <String>{};
+    for (final scheduleId in paidScheduleIds) {
+      final schedule = await _installments.findSchedule(scheduleId);
+      if (schedule == null) continue;
+      if (schedule.status != InstallmentScheduleStatus.paid) {
+        await _installments.updateSchedule(
+          scheduleId,
+          const InstallmentSchedulePatch(
+            status: InstallmentScheduleStatus.paid,
+          ),
+        );
+      }
+      touchedContractIds.add(schedule.contractId);
+    }
+
+    for (final contractId in touchedContractIds) {
+      final schedules = await _installments.listSchedules(contractId);
+      if (schedules.isEmpty) continue;
+      final allSettled = schedules.every(
+        (schedule) =>
+            schedule.status == InstallmentScheduleStatus.paid ||
+            schedule.status == InstallmentScheduleStatus.skipped,
+      );
+      if (allSettled) {
+        await _installments.updateContractStatus(
+          contractId,
+          InstallmentContractStatus.settled,
+        );
+      }
+    }
   }
 
   BillStatus _projectBillStatus(BillStatus current, List<BillItem> items) {
