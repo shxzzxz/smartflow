@@ -6,6 +6,8 @@ import '../infrastructure/ledger/repository/drift_account_repository.dart';
 import '../infrastructure/ledger/repository/drift_balance_aggregate_repository.dart';
 import '../infrastructure/ledger/repository/drift_entry_read_repository.dart';
 import '../infrastructure/credit/repository/drift_credit_account_repository.dart';
+import '../infrastructure/credit/repository/drift_bill_repository.dart';
+import '../infrastructure/credit/repository/drift_credit_bill_source_repository.dart';
 import '../infrastructure/credit/repository/drift_installment_repository.dart';
 import '../infrastructure/ledger/repository/drift_posting_repository.dart';
 import '../infrastructure/ledger/repository/drift_system_account_resolver.dart';
@@ -18,10 +20,12 @@ import '../application/ledger/ledger_command_api.dart';
 import '../application/ledger/ledger_query_api.dart';
 import '../application/ledger/ledger_query_port_api.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
-import '../application/credit/account/query/credit_account_query_service.dart';
-import '../application/credit/installment/query/installment_query_service.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
+import '../application/shared/app_task.dart';
 import '../domain/ledger/port/account_repository.dart';
+import '../domain/credit/port/bill_repository.dart';
 import '../domain/credit/port/credit_account_repository.dart';
+import '../domain/credit/port/credit_bill_source_repository.dart';
 import '../domain/credit/port/installment_repository.dart';
 import '../domain/ledger/port/system_account_resolver.dart';
 import '../domain/ledger/service/account/account_role_policy.dart';
@@ -199,6 +203,16 @@ CreditAccountRepository creditAccountRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+BillRepository billRepository(Ref ref) {
+  return DriftBillRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+CreditBillSourceRepository creditBillSourceRepository(Ref ref) {
+  return DriftCreditBillSourceRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
 CreditAccountService creditAccountService(Ref ref) {
   return CreditAccountServiceImpl(
     accountAppService: ref.watch(accountAppServiceProvider),
@@ -237,6 +251,43 @@ InstallmentQueryService installmentQueryService(Ref ref) {
   return InstallmentQueryServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+CreditBillGenerationService creditBillGenerationService(Ref ref) {
+  return CreditBillGenerationServiceImpl(
+    creditAccounts: ref.watch(creditAccountRepositoryProvider),
+    ledgerAccounts: ref.watch(accountRepositoryProvider),
+    installments: ref.watch(installmentRepositoryProvider),
+    bills: ref.watch(billRepositoryProvider),
+    billSources: ref.watch(creditBillSourceRepositoryProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+CreditBillGenerationTask creditBillGenerationTask(Ref ref) {
+  return CreditBillGenerationTask(
+    ref.watch(creditBillGenerationServiceProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+PullTaskScheduler pullTaskScheduler(Ref ref) {
+  return PullTaskScheduler(
+    tasks: [ref.watch(creditBillGenerationTaskProvider)],
+  );
+}
+
+@Riverpod(keepAlive: true)
+BillQueryService billQueryService(Ref ref) {
+  return BillQueryServiceImpl(
+    bills: ref.watch(billRepositoryProvider),
+    creditAccounts: ref.watch(creditAccountRepositoryProvider),
+    installments: ref.watch(installmentRepositoryProvider),
+    generationService: ref.watch(creditBillGenerationServiceProvider),
   );
 }
 

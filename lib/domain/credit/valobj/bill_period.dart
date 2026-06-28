@@ -26,6 +26,20 @@ class BillPeriod implements Comparable<BillPeriod> {
 
   int toInt() => year * 100 + month;
 
+  BillPeriod next() {
+    if (month == 12) {
+      return BillPeriod(year: year + 1, month: 1);
+    }
+    return BillPeriod(year: year, month: month + 1);
+  }
+
+  BillPeriod previous() {
+    if (month == 1) {
+      return BillPeriod(year: year - 1, month: 12);
+    }
+    return BillPeriod(year: year, month: month - 1);
+  }
+
   @override
   int compareTo(BillPeriod other) {
     final yearCompare = year.compareTo(other.year);

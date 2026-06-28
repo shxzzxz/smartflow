@@ -121,7 +121,7 @@ final class AccountViewProvider
   }
 }
 
-String _$accountViewHash() => r'3a52d9789e47bd1d4bf6e9fbcf79c80df9e59e6d';
+String _$accountViewHash() => r'953fc08c84be0f3abbddc56b981f022e22d7fe4f';
 
 final class AccountViewFamily extends $Family
     with $FunctionalFamilyOverride<AsyncValue<AccountView?>, String> {
@@ -139,4 +139,74 @@ final class AccountViewFamily extends $Family
 
   @override
   String toString() => r'accountViewProvider';
+}
+
+@ProviderFor(accountById)
+final accountByIdProvider = AccountByIdFamily._();
+
+final class AccountByIdProvider
+    extends
+        $FunctionalProvider<AsyncValue<Account?>, Account?, FutureOr<Account?>>
+    with $FutureModifier<Account?>, $FutureProvider<Account?> {
+  AccountByIdProvider._({
+    required AccountByIdFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'accountByIdProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountByIdHash();
+
+  @override
+  String toString() {
+    return r'accountByIdProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<Account?> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<Account?> create(Ref ref) {
+    final argument = this.argument as String;
+    return accountById(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountByIdProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$accountByIdHash() => r'0aeade261cff0ff95ef1604575c9820cc1dab7d0';
+
+final class AccountByIdFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<Account?>, String> {
+  AccountByIdFamily._()
+    : super(
+        retry: null,
+        name: r'accountByIdProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  AccountByIdProvider call(String accountId) =>
+      AccountByIdProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'accountByIdProvider';
 }

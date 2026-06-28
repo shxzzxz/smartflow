@@ -4810,6 +4810,1344 @@ class CreditLiabilityAccountsCompanion
   }
 }
 
+class $BillsTable extends Bills with TableInfo<$BillsTable, BillRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BillsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _periodMeta = const VerificationMeta('period');
+  @override
+  late final GeneratedColumn<int> period = GeneratedColumn<int>(
+    'period',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startDateMeta = const VerificationMeta(
+    'startDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+    'start_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _billingDateMeta = const VerificationMeta(
+    'billingDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> billingDate = GeneratedColumn<DateTime>(
+    'billing_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _repaymentDateMeta = const VerificationMeta(
+    'repaymentDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> repaymentDate =
+      GeneratedColumn<DateTime>(
+        'repayment_date',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<BillStatus, String> status =
+      GeneratedColumn<String>(
+        'status',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<BillStatus>($BillsTable.$converterstatus);
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    accountId,
+    period,
+    startDate,
+    billingDate,
+    repaymentDate,
+    status,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'bills';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BillRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('period')) {
+      context.handle(
+        _periodMeta,
+        period.isAcceptableOrUnknown(data['period']!, _periodMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_periodMeta);
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(
+        _startDateMeta,
+        startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
+      );
+    }
+    if (data.containsKey('billing_date')) {
+      context.handle(
+        _billingDateMeta,
+        billingDate.isAcceptableOrUnknown(
+          data['billing_date']!,
+          _billingDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('repayment_date')) {
+      context.handle(
+        _repaymentDateMeta,
+        repaymentDate.isAcceptableOrUnknown(
+          data['repayment_date']!,
+          _repaymentDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  BillRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BillRow(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}id'],
+          )!,
+      accountId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}account_id'],
+          )!,
+      period:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}period'],
+          )!,
+      startDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_date'],
+      ),
+      billingDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}billing_date'],
+      ),
+      repaymentDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}repayment_date'],
+      ),
+      status: $BillsTable.$converterstatus.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}status'],
+        )!,
+      ),
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+      updatedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}updated_at'],
+          )!,
+    );
+  }
+
+  @override
+  $BillsTable createAlias(String alias) {
+    return $BillsTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<BillStatus, String, String> $converterstatus =
+      const EnumNameConverter<BillStatus>(BillStatus.values);
+}
+
+class BillRow extends DataClass implements Insertable<BillRow> {
+  final String id;
+  final String accountId;
+  final int period;
+  final DateTime? startDate;
+  final DateTime? billingDate;
+  final DateTime? repaymentDate;
+  final BillStatus status;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const BillRow({
+    required this.id,
+    required this.accountId,
+    required this.period,
+    this.startDate,
+    this.billingDate,
+    this.repaymentDate,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['account_id'] = Variable<String>(accountId);
+    map['period'] = Variable<int>(period);
+    if (!nullToAbsent || startDate != null) {
+      map['start_date'] = Variable<DateTime>(startDate);
+    }
+    if (!nullToAbsent || billingDate != null) {
+      map['billing_date'] = Variable<DateTime>(billingDate);
+    }
+    if (!nullToAbsent || repaymentDate != null) {
+      map['repayment_date'] = Variable<DateTime>(repaymentDate);
+    }
+    {
+      map['status'] = Variable<String>(
+        $BillsTable.$converterstatus.toSql(status),
+      );
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  BillsCompanion toCompanion(bool nullToAbsent) {
+    return BillsCompanion(
+      id: Value(id),
+      accountId: Value(accountId),
+      period: Value(period),
+      startDate:
+          startDate == null && nullToAbsent
+              ? const Value.absent()
+              : Value(startDate),
+      billingDate:
+          billingDate == null && nullToAbsent
+              ? const Value.absent()
+              : Value(billingDate),
+      repaymentDate:
+          repaymentDate == null && nullToAbsent
+              ? const Value.absent()
+              : Value(repaymentDate),
+      status: Value(status),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory BillRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BillRow(
+      id: serializer.fromJson<String>(json['id']),
+      accountId: serializer.fromJson<String>(json['accountId']),
+      period: serializer.fromJson<int>(json['period']),
+      startDate: serializer.fromJson<DateTime?>(json['startDate']),
+      billingDate: serializer.fromJson<DateTime?>(json['billingDate']),
+      repaymentDate: serializer.fromJson<DateTime?>(json['repaymentDate']),
+      status: $BillsTable.$converterstatus.fromJson(
+        serializer.fromJson<String>(json['status']),
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'accountId': serializer.toJson<String>(accountId),
+      'period': serializer.toJson<int>(period),
+      'startDate': serializer.toJson<DateTime?>(startDate),
+      'billingDate': serializer.toJson<DateTime?>(billingDate),
+      'repaymentDate': serializer.toJson<DateTime?>(repaymentDate),
+      'status': serializer.toJson<String>(
+        $BillsTable.$converterstatus.toJson(status),
+      ),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  BillRow copyWith({
+    String? id,
+    String? accountId,
+    int? period,
+    Value<DateTime?> startDate = const Value.absent(),
+    Value<DateTime?> billingDate = const Value.absent(),
+    Value<DateTime?> repaymentDate = const Value.absent(),
+    BillStatus? status,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => BillRow(
+    id: id ?? this.id,
+    accountId: accountId ?? this.accountId,
+    period: period ?? this.period,
+    startDate: startDate.present ? startDate.value : this.startDate,
+    billingDate: billingDate.present ? billingDate.value : this.billingDate,
+    repaymentDate:
+        repaymentDate.present ? repaymentDate.value : this.repaymentDate,
+    status: status ?? this.status,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  BillRow copyWithCompanion(BillsCompanion data) {
+    return BillRow(
+      id: data.id.present ? data.id.value : this.id,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      period: data.period.present ? data.period.value : this.period,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      billingDate:
+          data.billingDate.present ? data.billingDate.value : this.billingDate,
+      repaymentDate:
+          data.repaymentDate.present
+              ? data.repaymentDate.value
+              : this.repaymentDate,
+      status: data.status.present ? data.status.value : this.status,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BillRow(')
+          ..write('id: $id, ')
+          ..write('accountId: $accountId, ')
+          ..write('period: $period, ')
+          ..write('startDate: $startDate, ')
+          ..write('billingDate: $billingDate, ')
+          ..write('repaymentDate: $repaymentDate, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    accountId,
+    period,
+    startDate,
+    billingDate,
+    repaymentDate,
+    status,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BillRow &&
+          other.id == this.id &&
+          other.accountId == this.accountId &&
+          other.period == this.period &&
+          other.startDate == this.startDate &&
+          other.billingDate == this.billingDate &&
+          other.repaymentDate == this.repaymentDate &&
+          other.status == this.status &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class BillsCompanion extends UpdateCompanion<BillRow> {
+  final Value<String> id;
+  final Value<String> accountId;
+  final Value<int> period;
+  final Value<DateTime?> startDate;
+  final Value<DateTime?> billingDate;
+  final Value<DateTime?> repaymentDate;
+  final Value<BillStatus> status;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const BillsCompanion({
+    this.id = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.period = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.billingDate = const Value.absent(),
+    this.repaymentDate = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  BillsCompanion.insert({
+    required String id,
+    required String accountId,
+    required int period,
+    this.startDate = const Value.absent(),
+    this.billingDate = const Value.absent(),
+    this.repaymentDate = const Value.absent(),
+    required BillStatus status,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       accountId = Value(accountId),
+       period = Value(period),
+       status = Value(status);
+  static Insertable<BillRow> custom({
+    Expression<String>? id,
+    Expression<String>? accountId,
+    Expression<int>? period,
+    Expression<DateTime>? startDate,
+    Expression<DateTime>? billingDate,
+    Expression<DateTime>? repaymentDate,
+    Expression<String>? status,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (accountId != null) 'account_id': accountId,
+      if (period != null) 'period': period,
+      if (startDate != null) 'start_date': startDate,
+      if (billingDate != null) 'billing_date': billingDate,
+      if (repaymentDate != null) 'repayment_date': repaymentDate,
+      if (status != null) 'status': status,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  BillsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? accountId,
+    Value<int>? period,
+    Value<DateTime?>? startDate,
+    Value<DateTime?>? billingDate,
+    Value<DateTime?>? repaymentDate,
+    Value<BillStatus>? status,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return BillsCompanion(
+      id: id ?? this.id,
+      accountId: accountId ?? this.accountId,
+      period: period ?? this.period,
+      startDate: startDate ?? this.startDate,
+      billingDate: billingDate ?? this.billingDate,
+      repaymentDate: repaymentDate ?? this.repaymentDate,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (period.present) {
+      map['period'] = Variable<int>(period.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (billingDate.present) {
+      map['billing_date'] = Variable<DateTime>(billingDate.value);
+    }
+    if (repaymentDate.present) {
+      map['repayment_date'] = Variable<DateTime>(repaymentDate.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(
+        $BillsTable.$converterstatus.toSql(status.value),
+      );
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BillsCompanion(')
+          ..write('id: $id, ')
+          ..write('accountId: $accountId, ')
+          ..write('period: $period, ')
+          ..write('startDate: $startDate, ')
+          ..write('billingDate: $billingDate, ')
+          ..write('repaymentDate: $repaymentDate, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BillItemsTable extends BillItems
+    with TableInfo<$BillItemsTable, BillItemRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BillItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _billIdMeta = const VerificationMeta('billId');
+  @override
+  late final GeneratedColumn<String> billId = GeneratedColumn<String>(
+    'bill_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<BillItemType, String> itemType =
+      GeneratedColumn<String>(
+        'item_type',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<BillItemType>($BillItemsTable.$converteritemType);
+  static const VerificationMeta _contractIdMeta = const VerificationMeta(
+    'contractId',
+  );
+  @override
+  late final GeneratedColumn<String> contractId = GeneratedColumn<String>(
+    'contract_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _scheduleIdMeta = const VerificationMeta(
+    'scheduleId',
+  );
+  @override
+  late final GeneratedColumn<String> scheduleId = GeneratedColumn<String>(
+    'schedule_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _repaymentDateMeta = const VerificationMeta(
+    'repaymentDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> repaymentDate =
+      GeneratedColumn<DateTime>(
+        'repayment_date',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _expectedPrincipalMinorMeta =
+      const VerificationMeta('expectedPrincipalMinor');
+  @override
+  late final GeneratedColumn<int> expectedPrincipalMinor = GeneratedColumn<int>(
+    'expected_principal_minor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _expectedInterestMinorMeta =
+      const VerificationMeta('expectedInterestMinor');
+  @override
+  late final GeneratedColumn<int> expectedInterestMinor = GeneratedColumn<int>(
+    'expected_interest_minor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _expectedFeeMinorMeta = const VerificationMeta(
+    'expectedFeeMinor',
+  );
+  @override
+  late final GeneratedColumn<int> expectedFeeMinor = GeneratedColumn<int>(
+    'expected_fee_minor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<BillItemStatus, String> status =
+      GeneratedColumn<String>(
+        'status',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<BillItemStatus>($BillItemsTable.$converterstatus);
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    billId,
+    itemType,
+    contractId,
+    scheduleId,
+    repaymentDate,
+    expectedPrincipalMinor,
+    expectedInterestMinor,
+    expectedFeeMinor,
+    status,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'bill_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BillItemRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('bill_id')) {
+      context.handle(
+        _billIdMeta,
+        billId.isAcceptableOrUnknown(data['bill_id']!, _billIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_billIdMeta);
+    }
+    if (data.containsKey('contract_id')) {
+      context.handle(
+        _contractIdMeta,
+        contractId.isAcceptableOrUnknown(data['contract_id']!, _contractIdMeta),
+      );
+    }
+    if (data.containsKey('schedule_id')) {
+      context.handle(
+        _scheduleIdMeta,
+        scheduleId.isAcceptableOrUnknown(data['schedule_id']!, _scheduleIdMeta),
+      );
+    }
+    if (data.containsKey('repayment_date')) {
+      context.handle(
+        _repaymentDateMeta,
+        repaymentDate.isAcceptableOrUnknown(
+          data['repayment_date']!,
+          _repaymentDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_repaymentDateMeta);
+    }
+    if (data.containsKey('expected_principal_minor')) {
+      context.handle(
+        _expectedPrincipalMinorMeta,
+        expectedPrincipalMinor.isAcceptableOrUnknown(
+          data['expected_principal_minor']!,
+          _expectedPrincipalMinorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_expectedPrincipalMinorMeta);
+    }
+    if (data.containsKey('expected_interest_minor')) {
+      context.handle(
+        _expectedInterestMinorMeta,
+        expectedInterestMinor.isAcceptableOrUnknown(
+          data['expected_interest_minor']!,
+          _expectedInterestMinorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_expectedInterestMinorMeta);
+    }
+    if (data.containsKey('expected_fee_minor')) {
+      context.handle(
+        _expectedFeeMinorMeta,
+        expectedFeeMinor.isAcceptableOrUnknown(
+          data['expected_fee_minor']!,
+          _expectedFeeMinorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_expectedFeeMinorMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  BillItemRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BillItemRow(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}id'],
+          )!,
+      billId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}bill_id'],
+          )!,
+      itemType: $BillItemsTable.$converteritemType.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}item_type'],
+        )!,
+      ),
+      contractId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}contract_id'],
+      ),
+      scheduleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}schedule_id'],
+      ),
+      repaymentDate:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}repayment_date'],
+          )!,
+      expectedPrincipalMinor:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}expected_principal_minor'],
+          )!,
+      expectedInterestMinor:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}expected_interest_minor'],
+          )!,
+      expectedFeeMinor:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}expected_fee_minor'],
+          )!,
+      status: $BillItemsTable.$converterstatus.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}status'],
+        )!,
+      ),
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+      updatedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}updated_at'],
+          )!,
+    );
+  }
+
+  @override
+  $BillItemsTable createAlias(String alias) {
+    return $BillItemsTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<BillItemType, String, String> $converteritemType =
+      const EnumNameConverter<BillItemType>(BillItemType.values);
+  static JsonTypeConverter2<BillItemStatus, String, String> $converterstatus =
+      const EnumNameConverter<BillItemStatus>(BillItemStatus.values);
+}
+
+class BillItemRow extends DataClass implements Insertable<BillItemRow> {
+  final String id;
+  final String billId;
+  final BillItemType itemType;
+  final String? contractId;
+  final String? scheduleId;
+  final DateTime repaymentDate;
+  final int expectedPrincipalMinor;
+  final int expectedInterestMinor;
+  final int expectedFeeMinor;
+  final BillItemStatus status;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const BillItemRow({
+    required this.id,
+    required this.billId,
+    required this.itemType,
+    this.contractId,
+    this.scheduleId,
+    required this.repaymentDate,
+    required this.expectedPrincipalMinor,
+    required this.expectedInterestMinor,
+    required this.expectedFeeMinor,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['bill_id'] = Variable<String>(billId);
+    {
+      map['item_type'] = Variable<String>(
+        $BillItemsTable.$converteritemType.toSql(itemType),
+      );
+    }
+    if (!nullToAbsent || contractId != null) {
+      map['contract_id'] = Variable<String>(contractId);
+    }
+    if (!nullToAbsent || scheduleId != null) {
+      map['schedule_id'] = Variable<String>(scheduleId);
+    }
+    map['repayment_date'] = Variable<DateTime>(repaymentDate);
+    map['expected_principal_minor'] = Variable<int>(expectedPrincipalMinor);
+    map['expected_interest_minor'] = Variable<int>(expectedInterestMinor);
+    map['expected_fee_minor'] = Variable<int>(expectedFeeMinor);
+    {
+      map['status'] = Variable<String>(
+        $BillItemsTable.$converterstatus.toSql(status),
+      );
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  BillItemsCompanion toCompanion(bool nullToAbsent) {
+    return BillItemsCompanion(
+      id: Value(id),
+      billId: Value(billId),
+      itemType: Value(itemType),
+      contractId:
+          contractId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(contractId),
+      scheduleId:
+          scheduleId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(scheduleId),
+      repaymentDate: Value(repaymentDate),
+      expectedPrincipalMinor: Value(expectedPrincipalMinor),
+      expectedInterestMinor: Value(expectedInterestMinor),
+      expectedFeeMinor: Value(expectedFeeMinor),
+      status: Value(status),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory BillItemRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BillItemRow(
+      id: serializer.fromJson<String>(json['id']),
+      billId: serializer.fromJson<String>(json['billId']),
+      itemType: $BillItemsTable.$converteritemType.fromJson(
+        serializer.fromJson<String>(json['itemType']),
+      ),
+      contractId: serializer.fromJson<String?>(json['contractId']),
+      scheduleId: serializer.fromJson<String?>(json['scheduleId']),
+      repaymentDate: serializer.fromJson<DateTime>(json['repaymentDate']),
+      expectedPrincipalMinor: serializer.fromJson<int>(
+        json['expectedPrincipalMinor'],
+      ),
+      expectedInterestMinor: serializer.fromJson<int>(
+        json['expectedInterestMinor'],
+      ),
+      expectedFeeMinor: serializer.fromJson<int>(json['expectedFeeMinor']),
+      status: $BillItemsTable.$converterstatus.fromJson(
+        serializer.fromJson<String>(json['status']),
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'billId': serializer.toJson<String>(billId),
+      'itemType': serializer.toJson<String>(
+        $BillItemsTable.$converteritemType.toJson(itemType),
+      ),
+      'contractId': serializer.toJson<String?>(contractId),
+      'scheduleId': serializer.toJson<String?>(scheduleId),
+      'repaymentDate': serializer.toJson<DateTime>(repaymentDate),
+      'expectedPrincipalMinor': serializer.toJson<int>(expectedPrincipalMinor),
+      'expectedInterestMinor': serializer.toJson<int>(expectedInterestMinor),
+      'expectedFeeMinor': serializer.toJson<int>(expectedFeeMinor),
+      'status': serializer.toJson<String>(
+        $BillItemsTable.$converterstatus.toJson(status),
+      ),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  BillItemRow copyWith({
+    String? id,
+    String? billId,
+    BillItemType? itemType,
+    Value<String?> contractId = const Value.absent(),
+    Value<String?> scheduleId = const Value.absent(),
+    DateTime? repaymentDate,
+    int? expectedPrincipalMinor,
+    int? expectedInterestMinor,
+    int? expectedFeeMinor,
+    BillItemStatus? status,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => BillItemRow(
+    id: id ?? this.id,
+    billId: billId ?? this.billId,
+    itemType: itemType ?? this.itemType,
+    contractId: contractId.present ? contractId.value : this.contractId,
+    scheduleId: scheduleId.present ? scheduleId.value : this.scheduleId,
+    repaymentDate: repaymentDate ?? this.repaymentDate,
+    expectedPrincipalMinor:
+        expectedPrincipalMinor ?? this.expectedPrincipalMinor,
+    expectedInterestMinor: expectedInterestMinor ?? this.expectedInterestMinor,
+    expectedFeeMinor: expectedFeeMinor ?? this.expectedFeeMinor,
+    status: status ?? this.status,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  BillItemRow copyWithCompanion(BillItemsCompanion data) {
+    return BillItemRow(
+      id: data.id.present ? data.id.value : this.id,
+      billId: data.billId.present ? data.billId.value : this.billId,
+      itemType: data.itemType.present ? data.itemType.value : this.itemType,
+      contractId:
+          data.contractId.present ? data.contractId.value : this.contractId,
+      scheduleId:
+          data.scheduleId.present ? data.scheduleId.value : this.scheduleId,
+      repaymentDate:
+          data.repaymentDate.present
+              ? data.repaymentDate.value
+              : this.repaymentDate,
+      expectedPrincipalMinor:
+          data.expectedPrincipalMinor.present
+              ? data.expectedPrincipalMinor.value
+              : this.expectedPrincipalMinor,
+      expectedInterestMinor:
+          data.expectedInterestMinor.present
+              ? data.expectedInterestMinor.value
+              : this.expectedInterestMinor,
+      expectedFeeMinor:
+          data.expectedFeeMinor.present
+              ? data.expectedFeeMinor.value
+              : this.expectedFeeMinor,
+      status: data.status.present ? data.status.value : this.status,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BillItemRow(')
+          ..write('id: $id, ')
+          ..write('billId: $billId, ')
+          ..write('itemType: $itemType, ')
+          ..write('contractId: $contractId, ')
+          ..write('scheduleId: $scheduleId, ')
+          ..write('repaymentDate: $repaymentDate, ')
+          ..write('expectedPrincipalMinor: $expectedPrincipalMinor, ')
+          ..write('expectedInterestMinor: $expectedInterestMinor, ')
+          ..write('expectedFeeMinor: $expectedFeeMinor, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    billId,
+    itemType,
+    contractId,
+    scheduleId,
+    repaymentDate,
+    expectedPrincipalMinor,
+    expectedInterestMinor,
+    expectedFeeMinor,
+    status,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BillItemRow &&
+          other.id == this.id &&
+          other.billId == this.billId &&
+          other.itemType == this.itemType &&
+          other.contractId == this.contractId &&
+          other.scheduleId == this.scheduleId &&
+          other.repaymentDate == this.repaymentDate &&
+          other.expectedPrincipalMinor == this.expectedPrincipalMinor &&
+          other.expectedInterestMinor == this.expectedInterestMinor &&
+          other.expectedFeeMinor == this.expectedFeeMinor &&
+          other.status == this.status &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class BillItemsCompanion extends UpdateCompanion<BillItemRow> {
+  final Value<String> id;
+  final Value<String> billId;
+  final Value<BillItemType> itemType;
+  final Value<String?> contractId;
+  final Value<String?> scheduleId;
+  final Value<DateTime> repaymentDate;
+  final Value<int> expectedPrincipalMinor;
+  final Value<int> expectedInterestMinor;
+  final Value<int> expectedFeeMinor;
+  final Value<BillItemStatus> status;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const BillItemsCompanion({
+    this.id = const Value.absent(),
+    this.billId = const Value.absent(),
+    this.itemType = const Value.absent(),
+    this.contractId = const Value.absent(),
+    this.scheduleId = const Value.absent(),
+    this.repaymentDate = const Value.absent(),
+    this.expectedPrincipalMinor = const Value.absent(),
+    this.expectedInterestMinor = const Value.absent(),
+    this.expectedFeeMinor = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  BillItemsCompanion.insert({
+    required String id,
+    required String billId,
+    required BillItemType itemType,
+    this.contractId = const Value.absent(),
+    this.scheduleId = const Value.absent(),
+    required DateTime repaymentDate,
+    required int expectedPrincipalMinor,
+    required int expectedInterestMinor,
+    required int expectedFeeMinor,
+    required BillItemStatus status,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       billId = Value(billId),
+       itemType = Value(itemType),
+       repaymentDate = Value(repaymentDate),
+       expectedPrincipalMinor = Value(expectedPrincipalMinor),
+       expectedInterestMinor = Value(expectedInterestMinor),
+       expectedFeeMinor = Value(expectedFeeMinor),
+       status = Value(status);
+  static Insertable<BillItemRow> custom({
+    Expression<String>? id,
+    Expression<String>? billId,
+    Expression<String>? itemType,
+    Expression<String>? contractId,
+    Expression<String>? scheduleId,
+    Expression<DateTime>? repaymentDate,
+    Expression<int>? expectedPrincipalMinor,
+    Expression<int>? expectedInterestMinor,
+    Expression<int>? expectedFeeMinor,
+    Expression<String>? status,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (billId != null) 'bill_id': billId,
+      if (itemType != null) 'item_type': itemType,
+      if (contractId != null) 'contract_id': contractId,
+      if (scheduleId != null) 'schedule_id': scheduleId,
+      if (repaymentDate != null) 'repayment_date': repaymentDate,
+      if (expectedPrincipalMinor != null)
+        'expected_principal_minor': expectedPrincipalMinor,
+      if (expectedInterestMinor != null)
+        'expected_interest_minor': expectedInterestMinor,
+      if (expectedFeeMinor != null) 'expected_fee_minor': expectedFeeMinor,
+      if (status != null) 'status': status,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  BillItemsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? billId,
+    Value<BillItemType>? itemType,
+    Value<String?>? contractId,
+    Value<String?>? scheduleId,
+    Value<DateTime>? repaymentDate,
+    Value<int>? expectedPrincipalMinor,
+    Value<int>? expectedInterestMinor,
+    Value<int>? expectedFeeMinor,
+    Value<BillItemStatus>? status,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return BillItemsCompanion(
+      id: id ?? this.id,
+      billId: billId ?? this.billId,
+      itemType: itemType ?? this.itemType,
+      contractId: contractId ?? this.contractId,
+      scheduleId: scheduleId ?? this.scheduleId,
+      repaymentDate: repaymentDate ?? this.repaymentDate,
+      expectedPrincipalMinor:
+          expectedPrincipalMinor ?? this.expectedPrincipalMinor,
+      expectedInterestMinor:
+          expectedInterestMinor ?? this.expectedInterestMinor,
+      expectedFeeMinor: expectedFeeMinor ?? this.expectedFeeMinor,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (billId.present) {
+      map['bill_id'] = Variable<String>(billId.value);
+    }
+    if (itemType.present) {
+      map['item_type'] = Variable<String>(
+        $BillItemsTable.$converteritemType.toSql(itemType.value),
+      );
+    }
+    if (contractId.present) {
+      map['contract_id'] = Variable<String>(contractId.value);
+    }
+    if (scheduleId.present) {
+      map['schedule_id'] = Variable<String>(scheduleId.value);
+    }
+    if (repaymentDate.present) {
+      map['repayment_date'] = Variable<DateTime>(repaymentDate.value);
+    }
+    if (expectedPrincipalMinor.present) {
+      map['expected_principal_minor'] = Variable<int>(
+        expectedPrincipalMinor.value,
+      );
+    }
+    if (expectedInterestMinor.present) {
+      map['expected_interest_minor'] = Variable<int>(
+        expectedInterestMinor.value,
+      );
+    }
+    if (expectedFeeMinor.present) {
+      map['expected_fee_minor'] = Variable<int>(expectedFeeMinor.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(
+        $BillItemsTable.$converterstatus.toSql(status.value),
+      );
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BillItemsCompanion(')
+          ..write('id: $id, ')
+          ..write('billId: $billId, ')
+          ..write('itemType: $itemType, ')
+          ..write('contractId: $contractId, ')
+          ..write('scheduleId: $scheduleId, ')
+          ..write('repaymentDate: $repaymentDate, ')
+          ..write('expectedPrincipalMinor: $expectedPrincipalMinor, ')
+          ..write('expectedInterestMinor: $expectedInterestMinor, ')
+          ..write('expectedFeeMinor: $expectedFeeMinor, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $InstallmentContractsTable extends InstallmentContracts
     with TableInfo<$InstallmentContractsTable, InstallmentContractRow> {
   @override
@@ -7275,6 +8613,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $BudgetsTable budgets = $BudgetsTable(this);
   late final $CreditLiabilityAccountsTable creditLiabilityAccounts =
       $CreditLiabilityAccountsTable(this);
+  late final $BillsTable bills = $BillsTable(this);
+  late final $BillItemsTable billItems = $BillItemsTable(this);
   late final $InstallmentContractsTable installmentContracts =
       $InstallmentContractsTable(this);
   late final $InstallmentSchedulesTable installmentSchedules =
@@ -7293,6 +8633,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     entries,
     budgets,
     creditLiabilityAccounts,
+    bills,
+    billItems,
     installmentContracts,
     installmentSchedules,
     installmentRepayments,
@@ -9617,6 +10959,641 @@ typedef $$CreditLiabilityAccountsTableProcessedTableManager =
       CreditLiabilityAccountRow,
       PrefetchHooks Function()
     >;
+typedef $$BillsTableCreateCompanionBuilder =
+    BillsCompanion Function({
+      required String id,
+      required String accountId,
+      required int period,
+      Value<DateTime?> startDate,
+      Value<DateTime?> billingDate,
+      Value<DateTime?> repaymentDate,
+      required BillStatus status,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$BillsTableUpdateCompanionBuilder =
+    BillsCompanion Function({
+      Value<String> id,
+      Value<String> accountId,
+      Value<int> period,
+      Value<DateTime?> startDate,
+      Value<DateTime?> billingDate,
+      Value<DateTime?> repaymentDate,
+      Value<BillStatus> status,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$BillsTableFilterComposer extends Composer<_$AppDatabase, $BillsTable> {
+  $$BillsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get period => $composableBuilder(
+    column: $table.period,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get billingDate => $composableBuilder(
+    column: $table.billingDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get repaymentDate => $composableBuilder(
+    column: $table.repaymentDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<BillStatus, BillStatus, String> get status =>
+      $composableBuilder(
+        column: $table.status,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BillsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BillsTable> {
+  $$BillsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get period => $composableBuilder(
+    column: $table.period,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get billingDate => $composableBuilder(
+    column: $table.billingDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get repaymentDate => $composableBuilder(
+    column: $table.repaymentDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BillsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BillsTable> {
+  $$BillsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<int> get period =>
+      $composableBuilder(column: $table.period, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get billingDate => $composableBuilder(
+    column: $table.billingDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get repaymentDate => $composableBuilder(
+    column: $table.repaymentDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<BillStatus, String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$BillsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BillsTable,
+          BillRow,
+          $$BillsTableFilterComposer,
+          $$BillsTableOrderingComposer,
+          $$BillsTableAnnotationComposer,
+          $$BillsTableCreateCompanionBuilder,
+          $$BillsTableUpdateCompanionBuilder,
+          (BillRow, BaseReferences<_$AppDatabase, $BillsTable, BillRow>),
+          BillRow,
+          PrefetchHooks Function()
+        > {
+  $$BillsTableTableManager(_$AppDatabase db, $BillsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$BillsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$BillsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$BillsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> accountId = const Value.absent(),
+                Value<int> period = const Value.absent(),
+                Value<DateTime?> startDate = const Value.absent(),
+                Value<DateTime?> billingDate = const Value.absent(),
+                Value<DateTime?> repaymentDate = const Value.absent(),
+                Value<BillStatus> status = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BillsCompanion(
+                id: id,
+                accountId: accountId,
+                period: period,
+                startDate: startDate,
+                billingDate: billingDate,
+                repaymentDate: repaymentDate,
+                status: status,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String accountId,
+                required int period,
+                Value<DateTime?> startDate = const Value.absent(),
+                Value<DateTime?> billingDate = const Value.absent(),
+                Value<DateTime?> repaymentDate = const Value.absent(),
+                required BillStatus status,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BillsCompanion.insert(
+                id: id,
+                accountId: accountId,
+                period: period,
+                startDate: startDate,
+                billingDate: billingDate,
+                repaymentDate: repaymentDate,
+                status: status,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BillsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BillsTable,
+      BillRow,
+      $$BillsTableFilterComposer,
+      $$BillsTableOrderingComposer,
+      $$BillsTableAnnotationComposer,
+      $$BillsTableCreateCompanionBuilder,
+      $$BillsTableUpdateCompanionBuilder,
+      (BillRow, BaseReferences<_$AppDatabase, $BillsTable, BillRow>),
+      BillRow,
+      PrefetchHooks Function()
+    >;
+typedef $$BillItemsTableCreateCompanionBuilder =
+    BillItemsCompanion Function({
+      required String id,
+      required String billId,
+      required BillItemType itemType,
+      Value<String?> contractId,
+      Value<String?> scheduleId,
+      required DateTime repaymentDate,
+      required int expectedPrincipalMinor,
+      required int expectedInterestMinor,
+      required int expectedFeeMinor,
+      required BillItemStatus status,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$BillItemsTableUpdateCompanionBuilder =
+    BillItemsCompanion Function({
+      Value<String> id,
+      Value<String> billId,
+      Value<BillItemType> itemType,
+      Value<String?> contractId,
+      Value<String?> scheduleId,
+      Value<DateTime> repaymentDate,
+      Value<int> expectedPrincipalMinor,
+      Value<int> expectedInterestMinor,
+      Value<int> expectedFeeMinor,
+      Value<BillItemStatus> status,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$BillItemsTableFilterComposer
+    extends Composer<_$AppDatabase, $BillItemsTable> {
+  $$BillItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get billId => $composableBuilder(
+    column: $table.billId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<BillItemType, BillItemType, String>
+  get itemType => $composableBuilder(
+    column: $table.itemType,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get scheduleId => $composableBuilder(
+    column: $table.scheduleId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get repaymentDate => $composableBuilder(
+    column: $table.repaymentDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expectedPrincipalMinor => $composableBuilder(
+    column: $table.expectedPrincipalMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expectedInterestMinor => $composableBuilder(
+    column: $table.expectedInterestMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expectedFeeMinor => $composableBuilder(
+    column: $table.expectedFeeMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<BillItemStatus, BillItemStatus, String>
+  get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BillItemsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BillItemsTable> {
+  $$BillItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get billId => $composableBuilder(
+    column: $table.billId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get itemType => $composableBuilder(
+    column: $table.itemType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get scheduleId => $composableBuilder(
+    column: $table.scheduleId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get repaymentDate => $composableBuilder(
+    column: $table.repaymentDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expectedPrincipalMinor => $composableBuilder(
+    column: $table.expectedPrincipalMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expectedInterestMinor => $composableBuilder(
+    column: $table.expectedInterestMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expectedFeeMinor => $composableBuilder(
+    column: $table.expectedFeeMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BillItemsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BillItemsTable> {
+  $$BillItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get billId =>
+      $composableBuilder(column: $table.billId, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<BillItemType, String> get itemType =>
+      $composableBuilder(column: $table.itemType, builder: (column) => column);
+
+  GeneratedColumn<String> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get scheduleId => $composableBuilder(
+    column: $table.scheduleId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get repaymentDate => $composableBuilder(
+    column: $table.repaymentDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get expectedPrincipalMinor => $composableBuilder(
+    column: $table.expectedPrincipalMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get expectedInterestMinor => $composableBuilder(
+    column: $table.expectedInterestMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get expectedFeeMinor => $composableBuilder(
+    column: $table.expectedFeeMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<BillItemStatus, String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$BillItemsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BillItemsTable,
+          BillItemRow,
+          $$BillItemsTableFilterComposer,
+          $$BillItemsTableOrderingComposer,
+          $$BillItemsTableAnnotationComposer,
+          $$BillItemsTableCreateCompanionBuilder,
+          $$BillItemsTableUpdateCompanionBuilder,
+          (
+            BillItemRow,
+            BaseReferences<_$AppDatabase, $BillItemsTable, BillItemRow>,
+          ),
+          BillItemRow,
+          PrefetchHooks Function()
+        > {
+  $$BillItemsTableTableManager(_$AppDatabase db, $BillItemsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$BillItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$BillItemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$BillItemsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> billId = const Value.absent(),
+                Value<BillItemType> itemType = const Value.absent(),
+                Value<String?> contractId = const Value.absent(),
+                Value<String?> scheduleId = const Value.absent(),
+                Value<DateTime> repaymentDate = const Value.absent(),
+                Value<int> expectedPrincipalMinor = const Value.absent(),
+                Value<int> expectedInterestMinor = const Value.absent(),
+                Value<int> expectedFeeMinor = const Value.absent(),
+                Value<BillItemStatus> status = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BillItemsCompanion(
+                id: id,
+                billId: billId,
+                itemType: itemType,
+                contractId: contractId,
+                scheduleId: scheduleId,
+                repaymentDate: repaymentDate,
+                expectedPrincipalMinor: expectedPrincipalMinor,
+                expectedInterestMinor: expectedInterestMinor,
+                expectedFeeMinor: expectedFeeMinor,
+                status: status,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String billId,
+                required BillItemType itemType,
+                Value<String?> contractId = const Value.absent(),
+                Value<String?> scheduleId = const Value.absent(),
+                required DateTime repaymentDate,
+                required int expectedPrincipalMinor,
+                required int expectedInterestMinor,
+                required int expectedFeeMinor,
+                required BillItemStatus status,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BillItemsCompanion.insert(
+                id: id,
+                billId: billId,
+                itemType: itemType,
+                contractId: contractId,
+                scheduleId: scheduleId,
+                repaymentDate: repaymentDate,
+                expectedPrincipalMinor: expectedPrincipalMinor,
+                expectedInterestMinor: expectedInterestMinor,
+                expectedFeeMinor: expectedFeeMinor,
+                status: status,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BillItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BillItemsTable,
+      BillItemRow,
+      $$BillItemsTableFilterComposer,
+      $$BillItemsTableOrderingComposer,
+      $$BillItemsTableAnnotationComposer,
+      $$BillItemsTableCreateCompanionBuilder,
+      $$BillItemsTableUpdateCompanionBuilder,
+      (
+        BillItemRow,
+        BaseReferences<_$AppDatabase, $BillItemsTable, BillItemRow>,
+      ),
+      BillItemRow,
+      PrefetchHooks Function()
+    >;
 typedef $$InstallmentContractsTableCreateCompanionBuilder =
     InstallmentContractsCompanion Function({
       required String id,
@@ -10828,6 +12805,10 @@ class $AppDatabaseManager {
         _db,
         _db.creditLiabilityAccounts,
       );
+  $$BillsTableTableManager get bills =>
+      $$BillsTableTableManager(_db, _db.bills);
+  $$BillItemsTableTableManager get billItems =>
+      $$BillItemsTableTableManager(_db, _db.billItems);
   $$InstallmentContractsTableTableManager get installmentContracts =>
       $$InstallmentContractsTableTableManager(_db, _db.installmentContracts);
   $$InstallmentSchedulesTableTableManager get installmentSchedules =>

@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../application/credit/credit_query_api.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
+import '../../credit/provider/bill_query_providers.dart';
 import '../../credit/provider/installment_query_providers.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import 'account_view.dart';
@@ -45,6 +46,7 @@ AccountDetailPageState accountDetailViewModel(Ref ref, String accountId) {
       accountLookup: AccountLookup(accountLookupValues),
     ),
     contracts: _contractsStateFor(ref, accountValue),
+    bills: _billsStateFor(ref, accountValue),
   );
 }
 
@@ -62,6 +64,18 @@ AccountContractsState _contractsStateFor(Ref ref, AccountView account) {
   };
 }
 
+AccountBillsState _billsStateFor(Ref ref, AccountView account) {
+  if (!account.isCreditLiability) {
+    return const AccountBillsState.notApplicable();
+  }
+
+  return switch (ref.watch(billSummariesByAccountProvider(account.id))) {
+    AsyncData(value: final bills) => AccountBillsState.loaded(bills: bills),
+    AsyncError(:final error) => AccountBillsState.error(message: '$error'),
+    _ => const AccountBillsState.loading(),
+  };
+}
+
 sealed class AccountDetailPageState {
   const AccountDetailPageState();
 
@@ -76,6 +90,7 @@ sealed class AccountDetailPageState {
     required AccountView account,
     required List<TransactionDayGroup> transactionGroups,
     required AccountContractsState contracts,
+    required AccountBillsState bills,
   }) = AccountDetailLoaded;
 }
 
@@ -98,11 +113,13 @@ final class AccountDetailLoaded extends AccountDetailPageState {
     required this.account,
     required this.transactionGroups,
     required this.contracts,
+    required this.bills,
   });
 
   final AccountView account;
   final List<TransactionDayGroup> transactionGroups;
   final AccountContractsState contracts;
+  final AccountBillsState bills;
 }
 
 sealed class AccountContractsState {
@@ -139,4 +156,39 @@ final class AccountContractsLoaded extends AccountContractsState {
   const AccountContractsLoaded({required this.contracts});
 
   final List<InstallmentContract> contracts;
+}
+
+sealed class AccountBillsState {
+  const AccountBillsState();
+
+  const factory AccountBillsState.notApplicable() = AccountBillsNotApplicable;
+
+  const factory AccountBillsState.loading() = AccountBillsLoading;
+
+  const factory AccountBillsState.error({required String message}) =
+      AccountBillsError;
+
+  const factory AccountBillsState.loaded({
+    required List<BillSummaryReadModel> bills,
+  }) = AccountBillsLoaded;
+}
+
+final class AccountBillsNotApplicable extends AccountBillsState {
+  const AccountBillsNotApplicable();
+}
+
+final class AccountBillsLoading extends AccountBillsState {
+  const AccountBillsLoading();
+}
+
+final class AccountBillsError extends AccountBillsState {
+  const AccountBillsError({required this.message});
+
+  final String message;
+}
+
+final class AccountBillsLoaded extends AccountBillsState {
+  const AccountBillsLoaded({required this.bills});
+
+  final List<BillSummaryReadModel> bills;
 }

@@ -11,6 +11,7 @@ import '../feature/category/page/category_form_page.dart';
 import '../feature/calendar/page/calendar_page.dart';
 import '../feature/home/page/home_page.dart';
 import '../feature/credit/page/installment_contract_edit_page.dart';
+import '../feature/credit/page/bill_detail_page.dart';
 import '../feature/credit/page/installment_detail_page.dart';
 import '../feature/credit/page/installment_form_page.dart';
 import '../feature/credit/page/installment_repayment_form_page.dart';
@@ -141,6 +142,12 @@ final appRouter = GoRouter(
           lockedSourceType: lockedSourceType,
         );
       },
+    ),
+    GoRoute(
+      path: '/bills/:billId',
+      builder:
+          (context, state) =>
+              BillDetailPage(billId: state.pathParameters['billId']!),
     ),
     GoRoute(
       path: '/installments/:contractId',

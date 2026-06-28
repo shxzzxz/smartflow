@@ -54,6 +54,37 @@ class DriftInstallmentRepository implements InstallmentRepository {
   }
 
   @override
+  Future<List<InstallmentSchedule>> listSchedulesByLiabilityAccount(
+    String liabilityAccountId,
+  ) async {
+    final rows =
+        await (_database.select(_database.installmentSchedules).join([
+                innerJoin(
+                  _database.installmentContracts,
+                  _database.installmentContracts.id.equalsExp(
+                    _database.installmentSchedules.contractId,
+                  ),
+                ),
+              ])
+              ..where(
+                _database.installmentContracts.liabilityAccountId.equals(
+                  liabilityAccountId,
+                ),
+              )
+              ..orderBy([
+                OrderingTerm.asc(
+                  _database.installmentSchedules.expectedRepaymentDate,
+                ),
+                OrderingTerm.asc(_database.installmentSchedules.periodNo),
+              ]))
+            .get();
+    return [
+      for (final row in rows)
+        _mapSchedule(row.readTable(_database.installmentSchedules)),
+    ];
+  }
+
+  @override
   Future<InstallmentSchedule?> findSchedule(String scheduleId) async {
     final row =
         await (_database.select(_database.installmentSchedules)

@@ -7,6 +7,7 @@ import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/account/view_model/account_detail_view_model.dart';
+import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
@@ -121,6 +122,9 @@ void main() {
           installmentContractsByAccountProvider(
             'card',
           ).overrideWith((ref) async => [_contract()]),
+          billSummariesByAccountProvider(
+            'card',
+          ).overrideWith((ref) async => const []),
         ],
       );
 
@@ -290,6 +294,11 @@ class _FakeAccountQueryService implements AccountQueryService {
   final Map<String, Account>? _accountsById;
   final _accountsStreams = <_ReplayStream<List<Account>>>[];
   final _byIdStreams = <_ReplayStream<Map<String, Account>>>[];
+
+  @override
+  Future<Account?> findAccountById(String id) async {
+    return _accountsById?[id];
+  }
 
   @override
   Stream<List<Account>> watchAccounts(Set<AccountType> types) {

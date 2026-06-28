@@ -74,7 +74,7 @@ final class AccountDetailViewModelProvider
 }
 
 String _$accountDetailViewModelHash() =>
-    r'bf631b76dea5f425b1453f168d8a08c123b71b00';
+    r'83c0b2bda5b6ebe072fc6d57dbf7a8945d9e21a7';
 
 final class AccountDetailViewModelFamily extends $Family
     with $FunctionalFamilyOverride<AccountDetailPageState, String> {

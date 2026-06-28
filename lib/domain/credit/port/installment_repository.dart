@@ -119,6 +119,10 @@ abstract interface class InstallmentRepository {
 
   Future<List<InstallmentSchedule>> listSchedules(String contractId);
 
+  Future<List<InstallmentSchedule>> listSchedulesByLiabilityAccount(
+    String liabilityAccountId,
+  );
+
   Future<InstallmentSchedule?> findSchedule(String scheduleId);
 
   Future<List<InstallmentRepayment>> listRepayments(String contractId);

@@ -3,15 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
+import '../../../app/provider.dart';
 import '../../../application/credit/credit_query_api.dart';
+import '../../../application/ledger/ledger_command_api.dart';
+import '../../../application/shared/app_task.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
+import '../../credit/provider/bill_query_providers.dart';
 import '../view_model/account_detail_view_model.dart';
 import '../view_model/account_view.dart';
+import '../view_model/account_views_provider.dart';
 
 class AccountDetailPage extends ConsumerWidget {
   const AccountDetailPage({required this.accountId, super.key});
@@ -21,16 +26,30 @@ class AccountDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(accountDetailViewModelProvider(accountId));
+    final loadedAccount = state is AccountDetailLoaded ? state.account : null;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('账户详情'),
         actions: [
-          IconButton(
-            onPressed: () => context.push('/account/$accountId/edit'),
-            icon: const Icon(RemixIcons.edit_line),
-            tooltip: '编辑账户',
-          ),
+          if (loadedAccount != null && !loadedAccount.isArchived)
+            IconButton(
+              onPressed: () => context.push('/account/$accountId/edit'),
+              icon: const Icon(RemixIcons.edit_line),
+              tooltip: '编辑账户',
+            ),
+          if (loadedAccount != null && loadedAccount.isCreditLiability)
+            PopupMenuButton<_AccountMenuAction>(
+              onSelected:
+                  (action) => _handleMenuAction(context, ref, loadedAccount),
+              itemBuilder:
+                  (context) => [
+                    PopupMenuItem(
+                      value: _AccountMenuAction.archiveToggle,
+                      child: Text(loadedAccount.isArchived ? '取消归档' : '归档账户'),
+                    ),
+                  ],
+            ),
         ],
       ),
       body: switch (state) {
@@ -38,11 +57,13 @@ class AccountDetailPage extends ConsumerWidget {
           :final account,
           :final transactionGroups,
           :final contracts,
+          :final bills,
         ) =>
           _AccountDetailContent(
             account: account,
             transactionGroups: transactionGroups,
             contracts: contracts,
+            bills: bills,
           ),
         AccountDetailNotFound() => const Center(child: Text('账户不存在')),
         AccountDetailError(:final message) => Center(child: Text(message)),
@@ -52,18 +73,73 @@ class AccountDetailPage extends ConsumerWidget {
       },
     );
   }
+
+  Future<void> _handleMenuAction(
+    BuildContext context,
+    WidgetRef ref,
+    AccountView account,
+  ) async {
+    if (account.isArchived) {
+      await ref
+          .read(accountAppServiceProvider)
+          .unarchiveAccount(UnarchiveAccountCommand(id: account.id));
+      await ref
+          .read(pullTaskSchedulerProvider)
+          .trigger(trigger: TaskTrigger.beforeCreditWrite, force: true);
+      ref.invalidate(accountViewsProvider);
+      ref.invalidate(accountByIdProvider(account.id));
+      ref.invalidate(billSummariesByAccountProvider(account.id));
+      return;
+    }
+
+    final hasUnsettled = await ref
+        .read(billQueryServiceProvider)
+        .hasUnsettledObligations(account.id);
+    if (!context.mounted) return;
+    if (hasUnsettled) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: const Text('归档账户'),
+              content: const Text('该账户仍有未结清账单或计划。归档后不会继续生成新账单。'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('取消'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('归档'),
+                ),
+              ],
+            ),
+      );
+      if (confirmed != true) return;
+    }
+    await ref
+        .read(accountAppServiceProvider)
+        .archiveAccount(ArchiveAccountCommand(id: account.id));
+    ref.invalidate(accountViewsProvider);
+    ref.invalidate(accountByIdProvider(account.id));
+    ref.invalidate(billSummariesByAccountProvider(account.id));
+  }
 }
+
+enum _AccountMenuAction { archiveToggle }
 
 class _AccountDetailContent extends StatelessWidget {
   const _AccountDetailContent({
     required this.account,
     required this.transactionGroups,
     required this.contracts,
+    required this.bills,
   });
 
   final AccountView account;
   final List<TransactionDayGroup> transactionGroups;
   final AccountContractsState contracts;
+  final AccountBillsState bills;
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +157,8 @@ class _AccountDetailContent extends StatelessWidget {
         _AccountActionBar(account: account),
         const SizedBox(height: AppSpacing.space8),
         if (showInstallments) ...[
+          _BillSection(bills: bills),
+          const SizedBox(height: AppSpacing.space8),
           _InstallmentSection(contracts: contracts),
           const SizedBox(height: AppSpacing.space8),
         ],
@@ -502,6 +580,228 @@ class _EmptyAccountTransactions extends StatelessWidget {
       ),
     );
   }
+}
+
+class _BillSection extends StatefulWidget {
+  const _BillSection({required this.bills});
+
+  final AccountBillsState bills;
+
+  @override
+  State<_BillSection> createState() => _BillSectionState();
+}
+
+class _BillSectionState extends State<_BillSection> {
+  bool _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final styles = context.appTextStyles;
+    final colors = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          borderRadius: BorderRadius.circular(AppRadius.radiusSm),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space4,
+              AppSpacing.space2,
+              AppSpacing.space4,
+              AppSpacing.space4,
+            ),
+            child: Row(
+              children: [
+                Text('账单', style: styles.dateSectionTitle),
+                const Spacer(),
+                AnimatedRotation(
+                  duration: const Duration(milliseconds: 180),
+                  turns: _expanded ? 0.5 : 0,
+                  child: Icon(
+                    RemixIcons.arrow_down_s_line,
+                    color: colors.onSurfaceVariant,
+                    size: AppSpacing.space20,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 180),
+          alignment: Alignment.topCenter,
+          curve: Curves.easeInOut,
+          child:
+              _expanded
+                  ? _buildBody(context, styles)
+                  : const SizedBox(width: double.infinity),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBody(BuildContext context, AppTextStyles styles) {
+    return switch (widget.bills) {
+      AccountBillsLoaded(:final bills) =>
+        bills.isEmpty
+            ? AppSurface(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.space20),
+                child: Text(
+                  '暂无账单',
+                  style: styles.formLabel.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            )
+            : AppSurface(
+              child: Column(
+                children: [
+                  for (var i = 0; i < bills.length; i++) ...[
+                    _BillRow(bill: bills[i]),
+                    if (i < bills.length - 1)
+                      Container(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.space16,
+                        ),
+                        height: 1,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+      AccountBillsError(:final message) => AppSurface(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space12),
+          child: Text('账单加载失败：$message'),
+        ),
+      ),
+      AccountBillsLoading() => const AppSurface(
+        child: Padding(
+          padding: EdgeInsets.all(AppSpacing.space20),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+      AccountBillsNotApplicable() => const SizedBox.shrink(),
+    };
+  }
+}
+
+class _BillRow extends StatelessWidget {
+  const _BillRow({required this.bill});
+
+  final BillSummaryReadModel bill;
+
+  @override
+  Widget build(BuildContext context) {
+    final styles = context.appTextStyles;
+    final colors = Theme.of(context).colorScheme;
+    final pendingColor =
+        bill.pendingPrincipal.minorUnits > 0 ? colors.error : colors.onSurface;
+    return InkWell(
+      onTap: () => context.push('/bills/${bill.id}'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space12,
+          vertical: AppSpacing.space12,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              _billIcon(bill.status),
+              color: _billColor(context, bill.status),
+              size: AppSpacing.space20,
+            ),
+            const SizedBox(width: AppSpacing.space10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_billTitle(bill.period), style: styles.formLabel),
+                  const SizedBox(height: AppSpacing.space2),
+                  Text(
+                    _billSubtitle(bill),
+                    style: styles.listSupporting.copyWith(
+                      color:
+                          bill.overdueItemCount > 0
+                              ? colors.error
+                              : colors.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.space10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  bill.pendingPrincipal.format(),
+                  style: styles.amountList.copyWith(color: pendingColor),
+                ),
+                const SizedBox(height: AppSpacing.space2),
+                Text(
+                  _billStatusLabel(bill.status),
+                  style: styles.listSupporting.copyWith(
+                    color: _billColor(context, bill.status),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+IconData _billIcon(BillStatus status) {
+  return switch (status) {
+    BillStatus.open => RemixIcons.time_line,
+    BillStatus.billed => RemixIcons.bill_line,
+    BillStatus.settled => RemixIcons.checkbox_circle_line,
+  };
+}
+
+Color _billColor(BuildContext context, BillStatus status) {
+  final colors = Theme.of(context).colorScheme;
+  return switch (status) {
+    BillStatus.open => colors.primary,
+    BillStatus.billed => colors.error,
+    BillStatus.settled => colors.tertiary,
+  };
+}
+
+String _billTitle(BillPeriod period) {
+  return '${period.year}年${period.month.toString().padLeft(2, '0')}月';
+}
+
+String _billSubtitle(BillSummaryReadModel bill) {
+  final due =
+      bill.dueDate == null ? '无到期日' : '到期 ${_formatBillDate(bill.dueDate!)}';
+  if (bill.overdueItemCount > 0) {
+    return '$due · ${bill.overdueItemCount} 条逾期';
+  }
+  return '$due · ${bill.itemCount} 条明细';
+}
+
+String _billStatusLabel(BillStatus status) {
+  return switch (status) {
+    BillStatus.open => '累积中',
+    BillStatus.billed => '已出账',
+    BillStatus.settled => '已了结',
+  };
+}
+
+String _formatBillDate(DateTime date) {
+  return '${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 }
 
 class _InstallmentSection extends StatefulWidget {

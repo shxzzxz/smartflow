@@ -40,4 +40,10 @@ class _FakeAccountAppService implements AccountAppService {
 
   @override
   Future<void> editAccount(EditAccountCommand command) async {}
+
+  @override
+  Future<void> archiveAccount(ArchiveAccountCommand command) async {}
+
+  @override
+  Future<void> unarchiveAccount(UnarchiveAccountCommand command) async {}
 }

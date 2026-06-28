@@ -100,6 +100,7 @@ void main() {
           kind: AccountProfileKind.fund,
           balance: const Money(minorUnits: 1000),
           iconKey: AccountProfileKind.fund.iconKey,
+          isArchived: false,
         ),
       );
 
@@ -233,6 +234,12 @@ class _FakeAccountAppService implements AccountAppService {
     editCommands.add(command);
     _throwIfNeeded();
   }
+
+  @override
+  Future<void> archiveAccount(ArchiveAccountCommand command) async {}
+
+  @override
+  Future<void> unarchiveAccount(UnarchiveAccountCommand command) async {}
 
   void _throwIfNeeded() {
     final exception = this.exception;

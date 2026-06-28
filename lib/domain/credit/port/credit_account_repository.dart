@@ -45,6 +45,8 @@ class CreditLiabilityAccountPersistencePatch {
 abstract interface class CreditAccountRepository {
   Future<CreditLiabilityAccount?> findByAccountId(String accountId);
 
+  Future<List<CreditLiabilityAccount>> listAll();
+
   Stream<Map<String, CreditLiabilityAccount>> watchByAccountId();
 
   Future<void> insert(CreditLiabilityAccountDraft draft);

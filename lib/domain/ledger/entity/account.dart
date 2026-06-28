@@ -108,6 +108,26 @@ class Account {
     isHidden = patch.isHidden ?? isHidden;
   }
 
+  void archive(DateTime archivedAt) {
+    if (!type.isUserAccount) {
+      throw BusinessException(
+        LedgerErrorCode.accountUnavailable,
+        message: 'Only user accounts can be archived.',
+      );
+    }
+    this.archivedAt = archivedAt;
+  }
+
+  void unarchive() {
+    if (!type.isUserAccount) {
+      throw BusinessException(
+        LedgerErrorCode.accountUnavailable,
+        message: 'Only user accounts can be unarchived.',
+      );
+    }
+    archivedAt = null;
+  }
+
   void moveCategoryTo(Account? parent) {
     _ensureCategoryEditable();
     if (!type.isCategory) {

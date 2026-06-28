@@ -49,6 +49,7 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         'ON installment_contracts (disbursement_transaction_id) '
         'WHERE disbursement_transaction_id IS NOT NULL',
       );
+      await _createBillIndexes(database);
       await ensureBuiltinData(database);
     },
     beforeOpen: (_) async {
@@ -69,7 +70,33 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         await migrator.createTable(database.creditLiabilityAccounts);
         await _migrateCreditLiabilityAccounts(database);
       }
+      if (from < 13) {
+        await migrator.createTable(database.bills);
+        await migrator.createTable(database.billItems);
+        await _createBillIndexes(database);
+      }
     },
+  );
+}
+
+Future<void> _createBillIndexes(AppDatabase database) async {
+  await database.customStatement(
+    'CREATE INDEX bills_account_period_idx ON bills (account_id, period)',
+  );
+  await database.customStatement(
+    'CREATE INDEX bill_items_bill_idx ON bill_items (bill_id)',
+  );
+  await database.customStatement(
+    'CREATE INDEX bill_items_contract_idx ON bill_items (contract_id) '
+    'WHERE contract_id IS NOT NULL',
+  );
+  await database.customStatement(
+    'CREATE UNIQUE INDEX bill_items_consumption_unique '
+    'ON bill_items (bill_id) WHERE item_type = \'consumption\'',
+  );
+  await database.customStatement(
+    'CREATE UNIQUE INDEX bill_items_schedule_unique '
+    'ON bill_items (schedule_id) WHERE schedule_id IS NOT NULL',
   );
 }
 

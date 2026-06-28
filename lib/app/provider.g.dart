@@ -1111,6 +1111,96 @@ final class CreditAccountRepositoryProvider
 String _$creditAccountRepositoryHash() =>
     r'de521cd3583f4a04b218ecb6ecb7fd7f7242a163';
 
+@ProviderFor(billRepository)
+final billRepositoryProvider = BillRepositoryProvider._();
+
+final class BillRepositoryProvider
+    extends $FunctionalProvider<BillRepository, BillRepository, BillRepository>
+    with $Provider<BillRepository> {
+  BillRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'billRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$billRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<BillRepository> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  BillRepository create(Ref ref) {
+    return billRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BillRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BillRepository>(value),
+    );
+  }
+}
+
+String _$billRepositoryHash() => r'c7206b3abb40e50b5cb3aa5352fd75ea802cb988';
+
+@ProviderFor(creditBillSourceRepository)
+final creditBillSourceRepositoryProvider =
+    CreditBillSourceRepositoryProvider._();
+
+final class CreditBillSourceRepositoryProvider
+    extends
+        $FunctionalProvider<
+          CreditBillSourceRepository,
+          CreditBillSourceRepository,
+          CreditBillSourceRepository
+        >
+    with $Provider<CreditBillSourceRepository> {
+  CreditBillSourceRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'creditBillSourceRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$creditBillSourceRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<CreditBillSourceRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CreditBillSourceRepository create(Ref ref) {
+    return creditBillSourceRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CreditBillSourceRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CreditBillSourceRepository>(value),
+    );
+  }
+}
+
+String _$creditBillSourceRepositoryHash() =>
+    r'ad300c0bf14dc1a4ec411c717405d83f6fe76038';
+
 @ProviderFor(creditAccountService)
 final creditAccountServiceProvider = CreditAccountServiceProvider._();
 
@@ -1350,6 +1440,196 @@ final class InstallmentQueryServiceProvider
 
 String _$installmentQueryServiceHash() =>
     r'd6e3e57e99b7f99d53bcfd931f587d7bbed71139';
+
+@ProviderFor(creditBillGenerationService)
+final creditBillGenerationServiceProvider =
+    CreditBillGenerationServiceProvider._();
+
+final class CreditBillGenerationServiceProvider
+    extends
+        $FunctionalProvider<
+          CreditBillGenerationService,
+          CreditBillGenerationService,
+          CreditBillGenerationService
+        >
+    with $Provider<CreditBillGenerationService> {
+  CreditBillGenerationServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'creditBillGenerationServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$creditBillGenerationServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<CreditBillGenerationService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CreditBillGenerationService create(Ref ref) {
+    return creditBillGenerationService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CreditBillGenerationService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CreditBillGenerationService>(value),
+    );
+  }
+}
+
+String _$creditBillGenerationServiceHash() =>
+    r'3f9d79fe8f4e7da225429c2f1605700b96fcc230';
+
+@ProviderFor(creditBillGenerationTask)
+final creditBillGenerationTaskProvider = CreditBillGenerationTaskProvider._();
+
+final class CreditBillGenerationTaskProvider
+    extends
+        $FunctionalProvider<
+          CreditBillGenerationTask,
+          CreditBillGenerationTask,
+          CreditBillGenerationTask
+        >
+    with $Provider<CreditBillGenerationTask> {
+  CreditBillGenerationTaskProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'creditBillGenerationTaskProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$creditBillGenerationTaskHash();
+
+  @$internal
+  @override
+  $ProviderElement<CreditBillGenerationTask> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CreditBillGenerationTask create(Ref ref) {
+    return creditBillGenerationTask(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CreditBillGenerationTask value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CreditBillGenerationTask>(value),
+    );
+  }
+}
+
+String _$creditBillGenerationTaskHash() =>
+    r'0920a9c0cedaf9fd2cc6d8840a2d612a75e3d15d';
+
+@ProviderFor(pullTaskScheduler)
+final pullTaskSchedulerProvider = PullTaskSchedulerProvider._();
+
+final class PullTaskSchedulerProvider
+    extends
+        $FunctionalProvider<
+          PullTaskScheduler,
+          PullTaskScheduler,
+          PullTaskScheduler
+        >
+    with $Provider<PullTaskScheduler> {
+  PullTaskSchedulerProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'pullTaskSchedulerProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$pullTaskSchedulerHash();
+
+  @$internal
+  @override
+  $ProviderElement<PullTaskScheduler> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  PullTaskScheduler create(Ref ref) {
+    return pullTaskScheduler(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(PullTaskScheduler value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<PullTaskScheduler>(value),
+    );
+  }
+}
+
+String _$pullTaskSchedulerHash() => r'5f53eaa02c906a9ef6659c26025340fd76acfe95';
+
+@ProviderFor(billQueryService)
+final billQueryServiceProvider = BillQueryServiceProvider._();
+
+final class BillQueryServiceProvider
+    extends
+        $FunctionalProvider<
+          BillQueryService,
+          BillQueryService,
+          BillQueryService
+        >
+    with $Provider<BillQueryService> {
+  BillQueryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'billQueryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$billQueryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<BillQueryService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  BillQueryService create(Ref ref) {
+    return billQueryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BillQueryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BillQueryService>(value),
+    );
+  }
+}
+
+String _$billQueryServiceHash() => r'6de01457f16274215308eb900c43b28c073ad712';
 
 @ProviderFor(creditService)
 final creditServiceProvider = CreditServiceProvider._();

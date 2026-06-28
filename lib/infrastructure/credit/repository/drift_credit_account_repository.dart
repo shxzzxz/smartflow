@@ -24,6 +24,13 @@ class DriftCreditAccountRepository implements CreditAccountRepository {
   }
 
   @override
+  Future<List<CreditLiabilityAccount>> listAll() async {
+    final rows =
+        await _database.select(_database.creditLiabilityAccounts).get();
+    return rows.map(_map).toList();
+  }
+
+  @override
   Stream<Map<String, CreditLiabilityAccount>> watchByAccountId() {
     return _database.select(_database.creditLiabilityAccounts).watch().map((
       rows,
