@@ -208,6 +208,60 @@ void main() {
       },
     );
 
+    test(
+      'places bill conversion schedules into the next credit bill',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        final account = await fixture.createCreditAccount();
+        await fixture.createExpenseCategory();
+        await fixture.postExpense(
+          accountId: account.id,
+          amount: const Money(minorUnits: 5000),
+          occurredAt: DateTime(2026, 6, 1),
+        );
+        await fixture.generation.generateDueBills(now: DateTime(2026, 6, 5));
+        final june = (await fixture.billRepository.listBillsByAccount(
+          account.id,
+        )).singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
+
+        final result = await fixture.repaymentService
+            .createBillConversionInstallmentRepayment(
+              CreateBillConversionInstallmentRepaymentCommand(
+                billId: june.id,
+                allocations: [
+                  BillRepaymentAllocation(
+                    billItemId: june.items.single.id,
+                    allocated: RepaymentAmountBreakdown(
+                      principal: const Money(minorUnits: 5000),
+                      interest: Money.zero(),
+                      fee: Money.zero(),
+                      discount: Money.zero(),
+                    ),
+                  ),
+                ],
+                totalPeriods: 1,
+                repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+              ),
+            );
+
+        await fixture.generation.generateDueBills(now: DateTime(2026, 7, 4));
+
+        final july = (await fixture.billRepository.listBillsByAccount(
+          account.id,
+        )).singleWhere((bill) => bill.period == BillPeriod.fromInt(202607));
+        final installmentItem = july.items.singleWhere(
+          (item) => item.itemType == BillItemType.installment,
+        );
+        expect(installmentItem.contractId, result.contractId);
+        expect(
+          installmentItem.expectedPrincipal,
+          const Money(minorUnits: 5000),
+        );
+        expect(installmentItem.repaymentDate, DateTime(2026, 7, 25));
+      },
+    );
+
     test('excludes borrowing transactions from credit consumption', () async {
       final fixture = _Fixture();
       addTearDown(fixture.close);

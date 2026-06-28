@@ -12,6 +12,8 @@ class InstallmentContracts extends Table {
       text().named('disbursement_account_id').nullable()();
   TextColumn get disbursementTransactionId =>
       text().named('disbursement_transaction_id').nullable()();
+  TextColumn get sourceRepaymentId =>
+      text().named('source_repayment_id').nullable()();
   IntColumn get principalMinor => integer().named('principal_minor')();
   IntColumn get totalPeriods => integer().named('total_periods')();
 

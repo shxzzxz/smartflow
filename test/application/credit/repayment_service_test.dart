@@ -263,6 +263,212 @@ void main() {
       expect(bill!.items.single.status, credit.BillItemStatus.paid);
       expect(bill.status, credit.BillStatus.settled);
     });
+
+    test(
+      'creates bill conversion contract and mixes with cash allocation',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        await fixture.seedBill(
+          status: credit.BillStatus.billed,
+          itemType: credit.BillItemType.consumption,
+          expectedPrincipal: 10000,
+        );
+
+        await fixture.service.createBillRepayment(
+          credit.CreateBillRepaymentCommand(
+            billId: 'bill-1',
+            allocations: [
+              _allocation(billItemId: 'bill-item-1', principal: 4000),
+            ],
+            transactionInfo: credit.RepaymentTransactionInfo(
+              paidFromAccountId: 'cash-1',
+              occurredAt: DateTime(2026, 6, 20),
+            ),
+          ),
+        );
+        final result = await fixture.service
+            .createBillConversionInstallmentRepayment(
+              credit.CreateBillConversionInstallmentRepaymentCommand(
+                billId: 'bill-1',
+                allocations: [
+                  _allocation(billItemId: 'bill-item-1', principal: 6000),
+                ],
+                totalPeriods: 2,
+                firstRepaymentDate: DateTime(2026, 7, 25),
+                repaymentMethod:
+                    credit.InstallmentRepaymentMethod.equalPrincipal,
+              ),
+            );
+
+        expect(result.transactionId, isNull);
+        expect(result.rootTransactionId, isNull);
+        expect(result.contractId, isNotNull);
+        final repayment = await fixture.repayments.findRepayment(
+          result.repaymentId,
+        );
+        expect(repayment!.repaymentType, credit.RepaymentType.installment);
+        expect(repayment.targetId, 'bill-1');
+        expect(repayment.items.single.billItemId, 'bill-item-1');
+
+        final contract = await fixture.installments.findContract(
+          result.contractId!,
+        );
+        expect(
+          contract!.sourceType,
+          credit.InstallmentSourceType.billConversion,
+        );
+        expect(contract.sourceRepaymentId, result.repaymentId);
+        expect(contract.principal, const Money(minorUnits: 6000));
+        final schedules = await fixture.installments.listSchedules(
+          result.contractId!,
+        );
+        expect(schedules.map((schedule) => schedule.expectedRepaymentDate), [
+          DateTime(2026, 7, 25),
+          DateTime(2026, 8, 25),
+        ]);
+        expect(schedules.map((schedule) => schedule.expectedPrincipal), [
+          const Money(minorUnits: 3000),
+          const Money(minorUnits: 3000),
+        ]);
+
+        final bill = await fixture.bills.findBill('bill-1');
+        expect(bill!.items.single.status, credit.BillItemStatus.paid);
+        expect(bill.status, credit.BillStatus.settled);
+      },
+    );
+
+    test(
+      'creates no-transaction extra principal repayment and recalculates pending schedules',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        final contractId = await fixture.seedContractWithSchedules(
+          principal: 120000,
+          schedulePrincipals: [40000, 40000, 40000],
+        );
+        final schedules = await fixture.installments.listSchedules(contractId);
+        await fixture.installments.updateSchedule(
+          schedules[0].id,
+          const InstallmentSchedulePatch(
+            status: credit.InstallmentScheduleStatus.paid,
+          ),
+        );
+        await fixture.seedBillItems(
+          status: credit.BillStatus.billed,
+          items: [
+            _BillItemSeed(
+              id: 'bill-item-installment',
+              itemType: credit.BillItemType.installment,
+              expectedPrincipal: 40000,
+              contractId: contractId,
+              scheduleId: schedules[1].id,
+            ),
+          ],
+        );
+
+        final result = await fixture.service.createExtraPrincipalRepayment(
+          credit.CreateExtraPrincipalRepaymentCommand(
+            contractId: contractId,
+            principal: const Money(minorUnits: 20000),
+          ),
+        );
+
+        expect(result.transactionId, isNull);
+        final repayment = await fixture.repayments.findRepayment(
+          result.repaymentId,
+        );
+        expect(repayment!.repaymentType, credit.RepaymentType.extraPrincipal);
+        expect(repayment.targetId, contractId);
+        expect(repayment.items.single.billItemId, isNull);
+        expect(
+          repayment.items.single.allocated.principal,
+          const Money(minorUnits: 20000),
+        );
+
+        final recalculated = await fixture.installments.listSchedules(
+          contractId,
+        );
+        expect(
+          recalculated[0].expectedPrincipal,
+          const Money(minorUnits: 40000),
+        );
+        expect(
+          recalculated[1].expectedPrincipal,
+          const Money(minorUnits: 30000),
+        );
+        expect(
+          recalculated[2].expectedPrincipal,
+          const Money(minorUnits: 30000),
+        );
+        expect(
+          recalculated[1].status,
+          credit.InstallmentScheduleStatus.pending,
+        );
+
+        final bill = await fixture.bills.findBill('bill-1');
+        expect(
+          bill!.items.single.expectedPrincipal,
+          const Money(minorUnits: 40000),
+        );
+        expect(bill.items.single.status, credit.BillItemStatus.pending);
+      },
+    );
+
+    test(
+      'creates no-transaction early settlement and skips pending rows',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        final contractId = await fixture.seedContractWithSchedules(
+          principal: 80000,
+          schedulePrincipals: [40000, 40000],
+        );
+        final schedules = await fixture.installments.listSchedules(contractId);
+        await fixture.seedBillItems(
+          status: credit.BillStatus.billed,
+          items: [
+            _BillItemSeed(
+              id: 'bill-item-installment',
+              itemType: credit.BillItemType.installment,
+              expectedPrincipal: 40000,
+              contractId: contractId,
+              scheduleId: schedules[0].id,
+            ),
+          ],
+        );
+
+        final result = await fixture.service.createEarlySettlementRepayment(
+          credit.CreateEarlySettlementRepaymentCommand(
+            contractId: contractId,
+            principal: const Money(minorUnits: 80000),
+            fee: const Money(minorUnits: 500),
+          ),
+        );
+
+        expect(result.transactionId, isNull);
+        final repayment = await fixture.repayments.findRepayment(
+          result.repaymentId,
+        );
+        expect(repayment!.repaymentType, credit.RepaymentType.earlySettlement);
+        expect(
+          repayment.items.single.allocated.fee,
+          const Money(minorUnits: 500),
+        );
+
+        final settledSchedules = await fixture.installments.listSchedules(
+          contractId,
+        );
+        expect(settledSchedules.map((schedule) => schedule.status).toSet(), {
+          credit.InstallmentScheduleStatus.skipped,
+        });
+        final contract = await fixture.installments.findContract(contractId);
+        expect(contract!.status, credit.InstallmentContractStatus.closed);
+        final bill = await fixture.bills.findBill('bill-1');
+        expect(bill!.items.single.status, credit.BillItemStatus.skipped);
+        expect(bill.status, credit.BillStatus.settled);
+      },
+    );
   });
 }
 
@@ -393,6 +599,48 @@ class _Fixture {
     ]);
     final schedule = (await installments.listSchedules(contractId)).single;
     return (contractId: contractId, scheduleId: schedule.id);
+  }
+
+  Future<String> seedContractWithSchedules({
+    required int principal,
+    required List<int> schedulePrincipals,
+  }) async {
+    final firstDate = DateTime(2026, 7, 25);
+    final contractId = await installments.insertContract(
+      InstallmentContractDraft(
+        liabilityAccountId: 'credit-1',
+        sourceType: credit.InstallmentSourceType.disbursement,
+        disbursementAccountId: 'cash-1',
+        disbursementTransactionId: 'borrow-tx',
+        principal: Money(minorUnits: principal),
+        totalPeriods: schedulePrincipals.length,
+        borrowingDate: DateTime(2026, 6, 25),
+        firstRepaymentDate: firstDate,
+        lastRepaymentDate: DateTime(
+          firstDate.year,
+          firstDate.month + schedulePrincipals.length - 1,
+          firstDate.day,
+        ),
+        repaymentMethod: credit.InstallmentRepaymentMethod.equalPrincipal,
+        interestAccrualMethod: credit.InterestAccrualMethod.monthly,
+        status: credit.InstallmentContractStatus.active,
+      ),
+    );
+    await installments.replaceSchedules(contractId, [
+      for (var index = 0; index < schedulePrincipals.length; index++)
+        credit.InstallmentScheduleDraft(
+          periodNo: index + 1,
+          expectedRepaymentDate: DateTime(
+            firstDate.year,
+            firstDate.month + index,
+            firstDate.day,
+          ),
+          expectedPrincipal: Money(minorUnits: schedulePrincipals[index]),
+          expectedInterest: Money.zero(),
+          expectedFee: Money.zero(),
+        ),
+    ]);
+    return contractId;
   }
 
   Future<void> close() => database.close();

@@ -18,6 +18,7 @@ class InstallmentContract {
     required this.createdAt,
     this.disbursementAccountId,
     this.disbursementTransactionId,
+    this.sourceRepaymentId,
     this.interestRatePeriod,
     this.interestRatePpm,
     this.note,
@@ -28,6 +29,7 @@ class InstallmentContract {
   final InstallmentSourceType sourceType;
   final String? disbursementAccountId;
   final String? disbursementTransactionId;
+  final String? sourceRepaymentId;
   final Money principal;
   final int totalPeriods;
 

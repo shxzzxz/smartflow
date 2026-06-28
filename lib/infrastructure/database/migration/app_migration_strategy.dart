@@ -49,6 +49,7 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         'ON installment_contracts (disbursement_transaction_id) '
         'WHERE disbursement_transaction_id IS NOT NULL',
       );
+      await _createInstallmentSourceRepaymentIndex(database);
       await _createBillIndexes(database);
       await _createRepaymentIndexes(database);
       await ensureBuiltinData(database);
@@ -81,7 +82,37 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         await migrator.createTable(database.repaymentItems);
         await _createRepaymentIndexes(database);
       }
+      if (from < 15) {
+        if (await _tableExists(database, 'installment_contracts')) {
+          await migrator.addColumn(
+            database.installmentContracts,
+            database.installmentContracts.sourceRepaymentId,
+          );
+          await _createInstallmentSourceRepaymentIndex(database);
+        }
+      }
     },
+  );
+}
+
+Future<bool> _tableExists(AppDatabase database, String tableName) async {
+  final rows =
+      await database
+          .customSelect(
+            'SELECT name FROM sqlite_master WHERE type = ? AND name = ?',
+            variables: [Variable<String>('table'), Variable<String>(tableName)],
+          )
+          .get();
+  return rows.isNotEmpty;
+}
+
+Future<void> _createInstallmentSourceRepaymentIndex(
+  AppDatabase database,
+) async {
+  await database.customStatement(
+    'CREATE INDEX installment_contracts_source_repayment_idx '
+    'ON installment_contracts (source_repayment_id) '
+    'WHERE source_repayment_id IS NOT NULL',
   );
 }
 

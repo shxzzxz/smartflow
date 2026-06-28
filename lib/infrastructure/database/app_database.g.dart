@@ -6207,6 +6207,18 @@ class $InstallmentContractsTable extends InstallmentContracts
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _sourceRepaymentIdMeta = const VerificationMeta(
+    'sourceRepaymentId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceRepaymentId =
+      GeneratedColumn<String>(
+        'source_repayment_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _principalMinorMeta = const VerificationMeta(
     'principalMinor',
   );
@@ -6375,6 +6387,7 @@ class $InstallmentContractsTable extends InstallmentContracts
     sourceType,
     disbursementAccountId,
     disbursementTransactionId,
+    sourceRepaymentId,
     principalMinor,
     totalPeriods,
     borrowingDate,
@@ -6433,6 +6446,15 @@ class $InstallmentContractsTable extends InstallmentContracts
         disbursementTransactionId.isAcceptableOrUnknown(
           data['disbursement_transaction_id']!,
           _disbursementTransactionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source_repayment_id')) {
+      context.handle(
+        _sourceRepaymentIdMeta,
+        sourceRepaymentId.isAcceptableOrUnknown(
+          data['source_repayment_id']!,
+          _sourceRepaymentIdMeta,
         ),
       );
     }
@@ -6560,6 +6582,10 @@ class $InstallmentContractsTable extends InstallmentContracts
         DriftSqlType.string,
         data['${effectivePrefix}disbursement_transaction_id'],
       ),
+      sourceRepaymentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_repayment_id'],
+      ),
       principalMinor:
           attachedDatabase.typeMapping.read(
             DriftSqlType.int,
@@ -6680,6 +6706,7 @@ class InstallmentContractRow extends DataClass
   final InstallmentSourceType sourceType;
   final String? disbursementAccountId;
   final String? disbursementTransactionId;
+  final String? sourceRepaymentId;
   final int principalMinor;
   final int totalPeriods;
 
@@ -6710,6 +6737,7 @@ class InstallmentContractRow extends DataClass
     required this.sourceType,
     this.disbursementAccountId,
     this.disbursementTransactionId,
+    this.sourceRepaymentId,
     required this.principalMinor,
     required this.totalPeriods,
     required this.borrowingDate,
@@ -6742,6 +6770,9 @@ class InstallmentContractRow extends DataClass
       map['disbursement_transaction_id'] = Variable<String>(
         disbursementTransactionId,
       );
+    }
+    if (!nullToAbsent || sourceRepaymentId != null) {
+      map['source_repayment_id'] = Variable<String>(sourceRepaymentId);
     }
     map['principal_minor'] = Variable<int>(principalMinor);
     map['total_periods'] = Variable<int>(totalPeriods);
@@ -6799,6 +6830,10 @@ class InstallmentContractRow extends DataClass
           disbursementTransactionId == null && nullToAbsent
               ? const Value.absent()
               : Value(disbursementTransactionId),
+      sourceRepaymentId:
+          sourceRepaymentId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(sourceRepaymentId),
       principalMinor: Value(principalMinor),
       totalPeriods: Value(totalPeriods),
       borrowingDate: Value(borrowingDate),
@@ -6840,6 +6875,9 @@ class InstallmentContractRow extends DataClass
       ),
       disbursementTransactionId: serializer.fromJson<String?>(
         json['disbursementTransactionId'],
+      ),
+      sourceRepaymentId: serializer.fromJson<String?>(
+        json['sourceRepaymentId'],
       ),
       principalMinor: serializer.fromJson<int>(json['principalMinor']),
       totalPeriods: serializer.fromJson<int>(json['totalPeriods']),
@@ -6883,6 +6921,7 @@ class InstallmentContractRow extends DataClass
       'disbursementTransactionId': serializer.toJson<String?>(
         disbursementTransactionId,
       ),
+      'sourceRepaymentId': serializer.toJson<String?>(sourceRepaymentId),
       'principalMinor': serializer.toJson<int>(principalMinor),
       'totalPeriods': serializer.toJson<int>(totalPeriods),
       'borrowingDate': serializer.toJson<DateTime>(borrowingDate),
@@ -6920,6 +6959,7 @@ class InstallmentContractRow extends DataClass
     InstallmentSourceType? sourceType,
     Value<String?> disbursementAccountId = const Value.absent(),
     Value<String?> disbursementTransactionId = const Value.absent(),
+    Value<String?> sourceRepaymentId = const Value.absent(),
     int? principalMinor,
     int? totalPeriods,
     DateTime? borrowingDate,
@@ -6946,6 +6986,10 @@ class InstallmentContractRow extends DataClass
         disbursementTransactionId.present
             ? disbursementTransactionId.value
             : this.disbursementTransactionId,
+    sourceRepaymentId:
+        sourceRepaymentId.present
+            ? sourceRepaymentId.value
+            : this.sourceRepaymentId,
     principalMinor: principalMinor ?? this.principalMinor,
     totalPeriods: totalPeriods ?? this.totalPeriods,
     borrowingDate: borrowingDate ?? this.borrowingDate,
@@ -6982,6 +7026,10 @@ class InstallmentContractRow extends DataClass
           data.disbursementTransactionId.present
               ? data.disbursementTransactionId.value
               : this.disbursementTransactionId,
+      sourceRepaymentId:
+          data.sourceRepaymentId.present
+              ? data.sourceRepaymentId.value
+              : this.sourceRepaymentId,
       principalMinor:
           data.principalMinor.present
               ? data.principalMinor.value
@@ -7037,6 +7085,7 @@ class InstallmentContractRow extends DataClass
           ..write('sourceType: $sourceType, ')
           ..write('disbursementAccountId: $disbursementAccountId, ')
           ..write('disbursementTransactionId: $disbursementTransactionId, ')
+          ..write('sourceRepaymentId: $sourceRepaymentId, ')
           ..write('principalMinor: $principalMinor, ')
           ..write('totalPeriods: $totalPeriods, ')
           ..write('borrowingDate: $borrowingDate, ')
@@ -7062,6 +7111,7 @@ class InstallmentContractRow extends DataClass
     sourceType,
     disbursementAccountId,
     disbursementTransactionId,
+    sourceRepaymentId,
     principalMinor,
     totalPeriods,
     borrowingDate,
@@ -7086,6 +7136,7 @@ class InstallmentContractRow extends DataClass
           other.sourceType == this.sourceType &&
           other.disbursementAccountId == this.disbursementAccountId &&
           other.disbursementTransactionId == this.disbursementTransactionId &&
+          other.sourceRepaymentId == this.sourceRepaymentId &&
           other.principalMinor == this.principalMinor &&
           other.totalPeriods == this.totalPeriods &&
           other.borrowingDate == this.borrowingDate &&
@@ -7109,6 +7160,7 @@ class InstallmentContractsCompanion
   final Value<InstallmentSourceType> sourceType;
   final Value<String?> disbursementAccountId;
   final Value<String?> disbursementTransactionId;
+  final Value<String?> sourceRepaymentId;
   final Value<int> principalMinor;
   final Value<int> totalPeriods;
   final Value<DateTime> borrowingDate;
@@ -7130,6 +7182,7 @@ class InstallmentContractsCompanion
     this.sourceType = const Value.absent(),
     this.disbursementAccountId = const Value.absent(),
     this.disbursementTransactionId = const Value.absent(),
+    this.sourceRepaymentId = const Value.absent(),
     this.principalMinor = const Value.absent(),
     this.totalPeriods = const Value.absent(),
     this.borrowingDate = const Value.absent(),
@@ -7152,6 +7205,7 @@ class InstallmentContractsCompanion
     required InstallmentSourceType sourceType,
     this.disbursementAccountId = const Value.absent(),
     this.disbursementTransactionId = const Value.absent(),
+    this.sourceRepaymentId = const Value.absent(),
     required int principalMinor,
     required int totalPeriods,
     required DateTime borrowingDate,
@@ -7183,6 +7237,7 @@ class InstallmentContractsCompanion
     Expression<String>? sourceType,
     Expression<String>? disbursementAccountId,
     Expression<String>? disbursementTransactionId,
+    Expression<String>? sourceRepaymentId,
     Expression<int>? principalMinor,
     Expression<int>? totalPeriods,
     Expression<DateTime>? borrowingDate,
@@ -7208,6 +7263,7 @@ class InstallmentContractsCompanion
         'disbursement_account_id': disbursementAccountId,
       if (disbursementTransactionId != null)
         'disbursement_transaction_id': disbursementTransactionId,
+      if (sourceRepaymentId != null) 'source_repayment_id': sourceRepaymentId,
       if (principalMinor != null) 'principal_minor': principalMinor,
       if (totalPeriods != null) 'total_periods': totalPeriods,
       if (borrowingDate != null) 'start_date': borrowingDate,
@@ -7235,6 +7291,7 @@ class InstallmentContractsCompanion
     Value<InstallmentSourceType>? sourceType,
     Value<String?>? disbursementAccountId,
     Value<String?>? disbursementTransactionId,
+    Value<String?>? sourceRepaymentId,
     Value<int>? principalMinor,
     Value<int>? totalPeriods,
     Value<DateTime>? borrowingDate,
@@ -7259,6 +7316,7 @@ class InstallmentContractsCompanion
           disbursementAccountId ?? this.disbursementAccountId,
       disbursementTransactionId:
           disbursementTransactionId ?? this.disbursementTransactionId,
+      sourceRepaymentId: sourceRepaymentId ?? this.sourceRepaymentId,
       principalMinor: principalMinor ?? this.principalMinor,
       totalPeriods: totalPeriods ?? this.totalPeriods,
       borrowingDate: borrowingDate ?? this.borrowingDate,
@@ -7301,6 +7359,9 @@ class InstallmentContractsCompanion
       map['disbursement_transaction_id'] = Variable<String>(
         disbursementTransactionId.value,
       );
+    }
+    if (sourceRepaymentId.present) {
+      map['source_repayment_id'] = Variable<String>(sourceRepaymentId.value);
     }
     if (principalMinor.present) {
       map['principal_minor'] = Variable<int>(principalMinor.value);
@@ -7374,6 +7435,7 @@ class InstallmentContractsCompanion
           ..write('sourceType: $sourceType, ')
           ..write('disbursementAccountId: $disbursementAccountId, ')
           ..write('disbursementTransactionId: $disbursementTransactionId, ')
+          ..write('sourceRepaymentId: $sourceRepaymentId, ')
           ..write('principalMinor: $principalMinor, ')
           ..write('totalPeriods: $totalPeriods, ')
           ..write('borrowingDate: $borrowingDate, ')
@@ -12712,6 +12774,7 @@ typedef $$InstallmentContractsTableCreateCompanionBuilder =
       required InstallmentSourceType sourceType,
       Value<String?> disbursementAccountId,
       Value<String?> disbursementTransactionId,
+      Value<String?> sourceRepaymentId,
       required int principalMinor,
       required int totalPeriods,
       required DateTime borrowingDate,
@@ -12735,6 +12798,7 @@ typedef $$InstallmentContractsTableUpdateCompanionBuilder =
       Value<InstallmentSourceType> sourceType,
       Value<String?> disbursementAccountId,
       Value<String?> disbursementTransactionId,
+      Value<String?> sourceRepaymentId,
       Value<int> principalMinor,
       Value<int> totalPeriods,
       Value<DateTime> borrowingDate,
@@ -12788,6 +12852,11 @@ class $$InstallmentContractsTableFilterComposer
 
   ColumnFilters<String> get disbursementTransactionId => $composableBuilder(
     column: $table.disbursementTransactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceRepaymentId => $composableBuilder(
+    column: $table.sourceRepaymentId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12916,6 +12985,11 @@ class $$InstallmentContractsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get sourceRepaymentId => $composableBuilder(
+    column: $table.sourceRepaymentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get principalMinor => $composableBuilder(
     column: $table.principalMinor,
     builder: (column) => ColumnOrderings(column),
@@ -13017,6 +13091,11 @@ class $$InstallmentContractsTableAnnotationComposer
 
   GeneratedColumn<String> get disbursementTransactionId => $composableBuilder(
     column: $table.disbursementTransactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceRepaymentId => $composableBuilder(
+    column: $table.sourceRepaymentId,
     builder: (column) => column,
   );
 
@@ -13138,6 +13217,7 @@ class $$InstallmentContractsTableTableManager
                 Value<InstallmentSourceType> sourceType = const Value.absent(),
                 Value<String?> disbursementAccountId = const Value.absent(),
                 Value<String?> disbursementTransactionId = const Value.absent(),
+                Value<String?> sourceRepaymentId = const Value.absent(),
                 Value<int> principalMinor = const Value.absent(),
                 Value<int> totalPeriods = const Value.absent(),
                 Value<DateTime> borrowingDate = const Value.absent(),
@@ -13162,6 +13242,7 @@ class $$InstallmentContractsTableTableManager
                 sourceType: sourceType,
                 disbursementAccountId: disbursementAccountId,
                 disbursementTransactionId: disbursementTransactionId,
+                sourceRepaymentId: sourceRepaymentId,
                 principalMinor: principalMinor,
                 totalPeriods: totalPeriods,
                 borrowingDate: borrowingDate,
@@ -13185,6 +13266,7 @@ class $$InstallmentContractsTableTableManager
                 required InstallmentSourceType sourceType,
                 Value<String?> disbursementAccountId = const Value.absent(),
                 Value<String?> disbursementTransactionId = const Value.absent(),
+                Value<String?> sourceRepaymentId = const Value.absent(),
                 required int principalMinor,
                 required int totalPeriods,
                 required DateTime borrowingDate,
@@ -13208,6 +13290,7 @@ class $$InstallmentContractsTableTableManager
                 sourceType: sourceType,
                 disbursementAccountId: disbursementAccountId,
                 disbursementTransactionId: disbursementTransactionId,
+                sourceRepaymentId: sourceRepaymentId,
                 principalMinor: principalMinor,
                 totalPeriods: totalPeriods,
                 borrowingDate: borrowingDate,
