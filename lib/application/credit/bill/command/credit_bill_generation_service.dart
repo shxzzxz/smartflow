@@ -1,4 +1,5 @@
 import 'package:smartflow/application/shared/transaction_runner.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
@@ -14,6 +15,7 @@ import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
 import 'package:smartflow/domain/credit/valobj/bill_window.dart';
 import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
+import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 
@@ -24,6 +26,10 @@ abstract interface class CreditBillGenerationService {
     required String accountId,
     required DateTime now,
   });
+
+  Future<bool> hasSourceProjectionDiff(String billId);
+
+  Future<void> syncBillProjection(String billId);
 }
 
 class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
@@ -78,6 +84,51 @@ class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
         case CreditLiabilityAccountKind.loan:
           await _generateLoanBills(creditAccount, _dateOnly(now));
       }
+    });
+  }
+
+  @override
+  Future<bool> hasSourceProjectionDiff(String billId) async {
+    final bill = await _bills.findBill(billId);
+    if (bill == null || bill.status == BillStatus.open) return false;
+    final sourceItems = await _buildSourceItemsForBill(bill);
+    if (_projectBillStatus(bill.status, sourceItems) != bill.status) {
+      return true;
+    }
+    return _itemsDiffer(bill.items, sourceItems);
+  }
+
+  @override
+  Future<void> syncBillProjection(String billId) async {
+    await _runner.run<void>(() async {
+      final bill = await _bills.findBill(billId);
+      if (bill == null) {
+        throw BusinessException(
+          CreditErrorCode.billNotFound,
+          message: 'Bill does not exist.',
+        );
+      }
+      if (bill.status == BillStatus.open) return;
+      final account = await _creditAccounts.findByAccountId(bill.accountId);
+      if (account == null) {
+        throw BusinessException(
+          CreditErrorCode.accountNotFound,
+          message: 'Credit account does not exist.',
+        );
+      }
+      final sourceItems = await _buildSourceItemsForBill(bill);
+      await _moveScheduleItemsNoLongerProjected(
+        account: account,
+        bill: bill,
+        sourceItems: sourceItems,
+      );
+      await _bills.upsertBillItems(bill.id, sourceItems);
+      await _bills.updateBill(
+        bill.copyWith(
+          status: _projectBillStatus(bill.status, sourceItems),
+          items: sourceItems,
+        ),
+      );
     });
   }
 
@@ -211,6 +262,38 @@ class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
     return items;
   }
 
+  Future<List<BillItem>> _buildSourceItemsForBill(Bill bill) async {
+    final account = await _creditAccounts.findByAccountId(bill.accountId);
+    if (account == null) return bill.items;
+    return switch (account.kind) {
+      CreditLiabilityAccountKind.credit =>
+        bill.window == null
+            ? bill.items
+            : await _buildCreditItems(account, bill, bill.window!),
+      CreditLiabilityAccountKind.loan => await _buildLoanItems(account, bill),
+    };
+  }
+
+  Future<List<BillItem>> _buildLoanItems(
+    CreditLiabilityAccount account,
+    Bill bill,
+  ) async {
+    final schedules = await _loanSchedulesForPeriod(
+      accountId: account.accountId,
+      period: bill.period,
+    );
+    return [
+      for (final (:contract, :schedule) in schedules)
+        _itemForSchedule(
+          billId: bill.id,
+          contract: contract,
+          schedule: schedule,
+          repaymentDate: schedule.expectedRepaymentDate,
+          existing: _existingScheduleItem(bill, schedule.id),
+        ),
+    ];
+  }
+
   Future<List<({InstallmentContract contract, InstallmentSchedule schedule})>>
   _creditSchedulesForBill({
     required String accountId,
@@ -304,6 +387,198 @@ class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
     }
   }
 
+  Future<List<({InstallmentContract contract, InstallmentSchedule schedule})>>
+  _loanSchedulesForPeriod({
+    required String accountId,
+    required BillPeriod period,
+  }) async {
+    final result =
+        <({InstallmentContract contract, InstallmentSchedule schedule})>[];
+    final contracts = await _installments.listContractsByLiabilityAccount(
+      accountId,
+    );
+    for (final contract in contracts) {
+      final schedules = await _installments.listSchedules(contract.id);
+      for (final schedule in schedules) {
+        if (schedule.status == InstallmentScheduleStatus.skipped) continue;
+        if (BillPeriod.fromDate(schedule.expectedRepaymentDate) != period) {
+          continue;
+        }
+        result.add((contract: contract, schedule: schedule));
+      }
+    }
+    return result;
+  }
+
+  Future<void> _moveScheduleItemsNoLongerProjected({
+    required CreditLiabilityAccount account,
+    required Bill bill,
+    required List<BillItem> sourceItems,
+  }) async {
+    final sourceScheduleIds = {
+      for (final item in sourceItems)
+        if (item.scheduleId != null) item.scheduleId,
+    };
+    for (final item in bill.items) {
+      final scheduleId = item.scheduleId;
+      final contractId = item.contractId;
+      if (scheduleId == null ||
+          contractId == null ||
+          sourceScheduleIds.contains(scheduleId)) {
+        continue;
+      }
+      final schedule = await _installments.findSchedule(scheduleId);
+      final contract = await _installments.findContract(contractId);
+      if (schedule == null ||
+          contract == null ||
+          schedule.status == InstallmentScheduleStatus.skipped) {
+        continue;
+      }
+      final targetBill = await _ensureBillForSchedule(
+        account: account,
+        schedule: schedule,
+      );
+      if (targetBill.id == bill.id) continue;
+      final movedItem = _itemForSchedule(
+        billId: targetBill.id,
+        contract: contract,
+        schedule: schedule,
+        repaymentDate: _repaymentDateForSchedule(account, targetBill, schedule),
+        existing: item,
+      );
+      await _bills.upsertBillItems(targetBill.id, [movedItem]);
+      final refreshedTarget = await _bills.findBill(targetBill.id);
+      if (refreshedTarget != null) {
+        await _bills.updateBill(
+          refreshedTarget.copyWith(
+            status: _projectBillStatus(
+              refreshedTarget.status,
+              refreshedTarget.items,
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<Bill> _ensureBillForSchedule({
+    required CreditLiabilityAccount account,
+    required InstallmentSchedule schedule,
+  }) async {
+    return switch (account.kind) {
+      CreditLiabilityAccountKind.loan => await _ensureLoanBillForSchedule(
+        account: account,
+        schedule: schedule,
+      ),
+      CreditLiabilityAccountKind.credit => await _ensureCreditBillForSchedule(
+        account: account,
+        schedule: schedule,
+      ),
+    };
+  }
+
+  Future<Bill> _ensureLoanBillForSchedule({
+    required CreditLiabilityAccount account,
+    required InstallmentSchedule schedule,
+  }) async {
+    final period = BillPeriod.fromDate(schedule.expectedRepaymentDate);
+    final existing = await _bills.findByAccountAndPeriod(
+      account.accountId,
+      period,
+    );
+    if (existing != null) return existing;
+    return _bills.saveBill(
+      Bill(
+        id: _idGenerator.newId(),
+        accountId: account.accountId,
+        period: period,
+        status: BillStatus.billed,
+        items: const [],
+      ),
+    );
+  }
+
+  Future<Bill> _ensureCreditBillForSchedule({
+    required CreditLiabilityAccount account,
+    required InstallmentSchedule schedule,
+  }) async {
+    final target = await _findCreditBillByRepaymentMonth(
+      accountId: account.accountId,
+      repaymentDate: schedule.expectedRepaymentDate,
+    );
+    if (target != null) return target;
+    final window = await _creditWindowContainingRepaymentDate(
+      account: account,
+      repaymentDate: schedule.expectedRepaymentDate,
+    );
+    return _bills.saveBill(
+      Bill(
+        id: _idGenerator.newId(),
+        accountId: account.accountId,
+        period: window.period,
+        window: window,
+        status: BillStatus.billed,
+        items: const [],
+      ),
+    );
+  }
+
+  Future<Bill?> _findCreditBillByRepaymentMonth({
+    required String accountId,
+    required DateTime repaymentDate,
+  }) async {
+    final bills = await _bills.listBillsByAccount(accountId);
+    for (final bill in bills) {
+      final billRepaymentDate = bill.window?.repaymentDate;
+      if (billRepaymentDate != null &&
+          _sameMonth(billRepaymentDate, repaymentDate)) {
+        return bill;
+      }
+    }
+    return null;
+  }
+
+  Future<BillWindow> _creditWindowContainingRepaymentDate({
+    required CreditLiabilityAccount account,
+    required DateTime repaymentDate,
+  }) async {
+    final billingDay = account.billingDay;
+    final repaymentDay = account.repaymentDay;
+    final startPeriod = account.billingStartPeriod;
+    if (billingDay == null || repaymentDay == null || startPeriod == null) {
+      throw BusinessException(CreditErrorCode.accountInvalidCommand);
+    }
+    var period = startPeriod;
+    final maxPeriod = BillPeriod.fromDate(
+      DateTime(repaymentDate.year, repaymentDate.month + 2),
+    );
+    while (period.compareTo(maxPeriod) <= 0) {
+      final window = await _creditWindowFor(
+        account: account,
+        period: period,
+        billingDay: billingDay,
+        repaymentDay: repaymentDay,
+      );
+      if (_sameMonth(window.repaymentDate, repaymentDate)) {
+        return window;
+      }
+      period = period.next();
+    }
+    throw BusinessException(CreditErrorCode.billInvalidCommand);
+  }
+
+  DateTime _repaymentDateForSchedule(
+    CreditLiabilityAccount account,
+    Bill targetBill,
+    InstallmentSchedule schedule,
+  ) {
+    return switch (account.kind) {
+      CreditLiabilityAccountKind.credit =>
+        targetBill.window?.repaymentDate ?? schedule.expectedRepaymentDate,
+      CreditLiabilityAccountKind.loan => schedule.expectedRepaymentDate,
+    };
+  }
+
   BillItem _itemForSchedule({
     required String billId,
     required InstallmentContract contract,
@@ -363,6 +638,35 @@ class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
         : BillStatus.settled;
   }
 
+  bool _itemsDiffer(List<BillItem> stored, List<BillItem> source) {
+    if (stored.length != source.length) return true;
+    final storedByKey = {for (final item in stored) _itemKey(item): item};
+    for (final sourceItem in source) {
+      final storedItem = storedByKey[_itemKey(sourceItem)];
+      if (storedItem == null || _itemDiffers(storedItem, sourceItem)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _itemDiffers(BillItem left, BillItem right) {
+    return left.itemType != right.itemType ||
+        left.contractId != right.contractId ||
+        left.scheduleId != right.scheduleId ||
+        !_sameDay(left.repaymentDate, right.repaymentDate) ||
+        left.expectedPrincipal != right.expectedPrincipal ||
+        left.expectedInterest != right.expectedInterest ||
+        left.expectedFee != right.expectedFee ||
+        left.status != right.status;
+  }
+
+  String _itemKey(BillItem item) {
+    return item.scheduleId == null
+        ? 'consumption:${item.billId}'
+        : 'schedule:${item.scheduleId}';
+  }
+
   Future<BillWindow> _creditWindowFor({
     required CreditLiabilityAccount account,
     required BillPeriod period,
@@ -419,6 +723,12 @@ class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
 
   bool _sameMonth(DateTime left, DateTime right) {
     return left.year == right.year && left.month == right.month;
+  }
+
+  bool _sameDay(DateTime left, DateTime right) {
+    return left.year == right.year &&
+        left.month == right.month &&
+        left.day == right.day;
   }
 
   DateTime _dateOnly(DateTime value) {

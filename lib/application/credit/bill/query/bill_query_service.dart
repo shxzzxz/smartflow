@@ -61,10 +61,17 @@ class BillQueryServiceImpl implements BillQueryService {
       now: now,
     );
     final bills = await _bills.listBillsByAccount(accountId);
-    return [
-      for (final bill in bills)
-        _summaryForBill(bill: bill, now: now, hasSourceDiff: false),
-    ];
+    final result = <BillSummaryReadModel>[];
+    for (final bill in bills) {
+      result.add(
+        _summaryForBill(
+          bill: bill,
+          now: now,
+          hasSourceDiff: await _hasSourceDiff(bill),
+        ),
+      );
+    }
+    return result;
   }
 
   @override
@@ -82,7 +89,11 @@ class BillQueryServiceImpl implements BillQueryService {
     final contracts = await _contractsById(bill.accountId);
     final repayments = await _repaymentsForBill(bill);
     return BillDetailReadModel(
-      summary: _summaryForBill(bill: bill, now: now, hasSourceDiff: false),
+      summary: _summaryForBill(
+        bill: bill,
+        now: now,
+        hasSourceDiff: await _hasSourceDiff(bill),
+      ),
       items: [
         for (final item in bill.items)
           _itemForBill(
@@ -116,6 +127,11 @@ class BillQueryServiceImpl implements BillQueryService {
       accountId,
     );
     return {for (final contract in contracts) contract.id: contract};
+  }
+
+  Future<bool> _hasSourceDiff(Bill bill) {
+    if (bill.status == BillStatus.open) return Future.value(false);
+    return _generationService.hasSourceProjectionDiff(bill.id);
   }
 
   BillSummaryReadModel _summaryForBill({

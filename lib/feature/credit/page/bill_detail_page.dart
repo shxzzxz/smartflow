@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
+import '../../../app/provider.dart';
 import '../../../application/credit/credit_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
@@ -16,8 +18,19 @@ class BillDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(billDetailProvider(billId));
+    final value = detail.asData?.value;
     return Scaffold(
-      appBar: AppBar(title: const Text('账单详情')),
+      appBar: AppBar(
+        title: const Text('账单详情'),
+        actions: [
+          if (value?.summary.hasSourceDiff ?? false)
+            IconButton(
+              tooltip: '同步',
+              icon: const Icon(Icons.sync),
+              onPressed: () => _syncProjection(context, ref),
+            ),
+        ],
+      ),
       body: switch (detail) {
         AsyncData(value: final bill?) => _BillDetailContent(detail: bill),
         AsyncData(value: null) => const Center(child: Text('账单不存在')),
@@ -25,6 +38,23 @@ class BillDetailPage extends ConsumerWidget {
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
+  }
+
+  Future<void> _syncProjection(BuildContext context, WidgetRef ref) async {
+    try {
+      await ref
+          .read(creditBillGenerationServiceProvider)
+          .syncBillProjection(billId);
+      ref.invalidate(billDetailProvider(billId));
+    } on Exception catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('同步失败：$error'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }
 
@@ -145,6 +175,13 @@ class _SummarySurface extends StatelessWidget {
                         : colors.onSurfaceVariant,
               ),
             ),
+            if (summary.hasSourceDiff) ...[
+              const SizedBox(height: AppSpacing.space8),
+              Text(
+                '与来源不一致',
+                style: styles.listSupporting.copyWith(color: colors.error),
+              ),
+            ],
           ],
         ),
       ),
@@ -206,34 +243,42 @@ class _BillItemRow extends StatelessWidget {
         item.itemType == BillItemType.consumption
             ? RemixIcons.shopping_bag_3_line
             : RemixIcons.calendar_schedule_line;
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space12,
-        vertical: AppSpacing.space12,
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 22, color: colors.primary),
-          const SizedBox(width: AppSpacing.space10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.label, style: styles.formLabel),
-                const SizedBox(height: AppSpacing.space2),
-                Text(
-                  '${_dateLabel(item.repaymentDate)} · ${_itemStatusLabel(item)}',
-                  style: styles.listSupporting.copyWith(
-                    color:
-                        item.isOverdue ? colors.error : colors.onSurfaceVariant,
+    return InkWell(
+      onTap:
+          item.contractId == null
+              ? null
+              : () => context.push('/installments/${item.contractId}/edit'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space12,
+          vertical: AppSpacing.space12,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 22, color: colors.primary),
+            const SizedBox(width: AppSpacing.space10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.label, style: styles.formLabel),
+                  const SizedBox(height: AppSpacing.space2),
+                  Text(
+                    '${_dateLabel(item.repaymentDate)} · ${_itemStatusLabel(item)}',
+                    style: styles.listSupporting.copyWith(
+                      color:
+                          item.isOverdue
+                              ? colors.error
+                              : colors.onSurfaceVariant,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: AppSpacing.space10),
-          Text(item.expectedPrincipal.format(), style: styles.amountList),
-        ],
+            const SizedBox(width: AppSpacing.space10),
+            Text(item.expectedPrincipal.format(), style: styles.amountList),
+          ],
+        ),
       ),
     );
   }
