@@ -8601,6 +8601,1113 @@ class InstallmentRepaymentsCompanion
   }
 }
 
+class $RepaymentsTable extends Repayments
+    with TableInfo<$RepaymentsTable, RepaymentRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RepaymentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _repaymentTypeMeta = const VerificationMeta(
+    'repaymentType',
+  );
+  @override
+  late final GeneratedColumn<String> repaymentType = GeneratedColumn<String>(
+    'repayment_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetTypeMeta = const VerificationMeta(
+    'targetType',
+  );
+  @override
+  late final GeneratedColumn<String> targetType = GeneratedColumn<String>(
+    'target_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetIdMeta = const VerificationMeta(
+    'targetId',
+  );
+  @override
+  late final GeneratedColumn<String> targetId = GeneratedColumn<String>(
+    'target_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rootTransactionIdMeta = const VerificationMeta(
+    'rootTransactionId',
+  );
+  @override
+  late final GeneratedColumn<String> rootTransactionId =
+      GeneratedColumn<String>(
+        'root_transaction_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    repaymentType,
+    targetType,
+    targetId,
+    rootTransactionId,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'repayments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RepaymentRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('repayment_type')) {
+      context.handle(
+        _repaymentTypeMeta,
+        repaymentType.isAcceptableOrUnknown(
+          data['repayment_type']!,
+          _repaymentTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_repaymentTypeMeta);
+    }
+    if (data.containsKey('target_type')) {
+      context.handle(
+        _targetTypeMeta,
+        targetType.isAcceptableOrUnknown(data['target_type']!, _targetTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetTypeMeta);
+    }
+    if (data.containsKey('target_id')) {
+      context.handle(
+        _targetIdMeta,
+        targetId.isAcceptableOrUnknown(data['target_id']!, _targetIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetIdMeta);
+    }
+    if (data.containsKey('root_transaction_id')) {
+      context.handle(
+        _rootTransactionIdMeta,
+        rootTransactionId.isAcceptableOrUnknown(
+          data['root_transaction_id']!,
+          _rootTransactionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RepaymentRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RepaymentRow(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}id'],
+          )!,
+      repaymentType:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}repayment_type'],
+          )!,
+      targetType:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}target_type'],
+          )!,
+      targetId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}target_id'],
+          )!,
+      rootTransactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}root_transaction_id'],
+      ),
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+      updatedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}updated_at'],
+          )!,
+    );
+  }
+
+  @override
+  $RepaymentsTable createAlias(String alias) {
+    return $RepaymentsTable(attachedDatabase, alias);
+  }
+}
+
+class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
+  final String id;
+  final String repaymentType;
+  final String targetType;
+  final String targetId;
+  final String? rootTransactionId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const RepaymentRow({
+    required this.id,
+    required this.repaymentType,
+    required this.targetType,
+    required this.targetId,
+    this.rootTransactionId,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['repayment_type'] = Variable<String>(repaymentType);
+    map['target_type'] = Variable<String>(targetType);
+    map['target_id'] = Variable<String>(targetId);
+    if (!nullToAbsent || rootTransactionId != null) {
+      map['root_transaction_id'] = Variable<String>(rootTransactionId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  RepaymentsCompanion toCompanion(bool nullToAbsent) {
+    return RepaymentsCompanion(
+      id: Value(id),
+      repaymentType: Value(repaymentType),
+      targetType: Value(targetType),
+      targetId: Value(targetId),
+      rootTransactionId:
+          rootTransactionId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(rootTransactionId),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory RepaymentRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RepaymentRow(
+      id: serializer.fromJson<String>(json['id']),
+      repaymentType: serializer.fromJson<String>(json['repaymentType']),
+      targetType: serializer.fromJson<String>(json['targetType']),
+      targetId: serializer.fromJson<String>(json['targetId']),
+      rootTransactionId: serializer.fromJson<String?>(
+        json['rootTransactionId'],
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'repaymentType': serializer.toJson<String>(repaymentType),
+      'targetType': serializer.toJson<String>(targetType),
+      'targetId': serializer.toJson<String>(targetId),
+      'rootTransactionId': serializer.toJson<String?>(rootTransactionId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  RepaymentRow copyWith({
+    String? id,
+    String? repaymentType,
+    String? targetType,
+    String? targetId,
+    Value<String?> rootTransactionId = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => RepaymentRow(
+    id: id ?? this.id,
+    repaymentType: repaymentType ?? this.repaymentType,
+    targetType: targetType ?? this.targetType,
+    targetId: targetId ?? this.targetId,
+    rootTransactionId:
+        rootTransactionId.present
+            ? rootTransactionId.value
+            : this.rootTransactionId,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  RepaymentRow copyWithCompanion(RepaymentsCompanion data) {
+    return RepaymentRow(
+      id: data.id.present ? data.id.value : this.id,
+      repaymentType:
+          data.repaymentType.present
+              ? data.repaymentType.value
+              : this.repaymentType,
+      targetType:
+          data.targetType.present ? data.targetType.value : this.targetType,
+      targetId: data.targetId.present ? data.targetId.value : this.targetId,
+      rootTransactionId:
+          data.rootTransactionId.present
+              ? data.rootTransactionId.value
+              : this.rootTransactionId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RepaymentRow(')
+          ..write('id: $id, ')
+          ..write('repaymentType: $repaymentType, ')
+          ..write('targetType: $targetType, ')
+          ..write('targetId: $targetId, ')
+          ..write('rootTransactionId: $rootTransactionId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    repaymentType,
+    targetType,
+    targetId,
+    rootTransactionId,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RepaymentRow &&
+          other.id == this.id &&
+          other.repaymentType == this.repaymentType &&
+          other.targetType == this.targetType &&
+          other.targetId == this.targetId &&
+          other.rootTransactionId == this.rootTransactionId &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
+  final Value<String> id;
+  final Value<String> repaymentType;
+  final Value<String> targetType;
+  final Value<String> targetId;
+  final Value<String?> rootTransactionId;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const RepaymentsCompanion({
+    this.id = const Value.absent(),
+    this.repaymentType = const Value.absent(),
+    this.targetType = const Value.absent(),
+    this.targetId = const Value.absent(),
+    this.rootTransactionId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RepaymentsCompanion.insert({
+    required String id,
+    required String repaymentType,
+    required String targetType,
+    required String targetId,
+    this.rootTransactionId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       repaymentType = Value(repaymentType),
+       targetType = Value(targetType),
+       targetId = Value(targetId);
+  static Insertable<RepaymentRow> custom({
+    Expression<String>? id,
+    Expression<String>? repaymentType,
+    Expression<String>? targetType,
+    Expression<String>? targetId,
+    Expression<String>? rootTransactionId,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (repaymentType != null) 'repayment_type': repaymentType,
+      if (targetType != null) 'target_type': targetType,
+      if (targetId != null) 'target_id': targetId,
+      if (rootTransactionId != null) 'root_transaction_id': rootTransactionId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RepaymentsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? repaymentType,
+    Value<String>? targetType,
+    Value<String>? targetId,
+    Value<String?>? rootTransactionId,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return RepaymentsCompanion(
+      id: id ?? this.id,
+      repaymentType: repaymentType ?? this.repaymentType,
+      targetType: targetType ?? this.targetType,
+      targetId: targetId ?? this.targetId,
+      rootTransactionId: rootTransactionId ?? this.rootTransactionId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (repaymentType.present) {
+      map['repayment_type'] = Variable<String>(repaymentType.value);
+    }
+    if (targetType.present) {
+      map['target_type'] = Variable<String>(targetType.value);
+    }
+    if (targetId.present) {
+      map['target_id'] = Variable<String>(targetId.value);
+    }
+    if (rootTransactionId.present) {
+      map['root_transaction_id'] = Variable<String>(rootTransactionId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RepaymentsCompanion(')
+          ..write('id: $id, ')
+          ..write('repaymentType: $repaymentType, ')
+          ..write('targetType: $targetType, ')
+          ..write('targetId: $targetId, ')
+          ..write('rootTransactionId: $rootTransactionId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RepaymentItemsTable extends RepaymentItems
+    with TableInfo<$RepaymentItemsTable, RepaymentItemRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RepaymentItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _repaymentIdMeta = const VerificationMeta(
+    'repaymentId',
+  );
+  @override
+  late final GeneratedColumn<String> repaymentId = GeneratedColumn<String>(
+    'repayment_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _billItemIdMeta = const VerificationMeta(
+    'billItemId',
+  );
+  @override
+  late final GeneratedColumn<String> billItemId = GeneratedColumn<String>(
+    'bill_item_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _allocatedPrincipalMinorMeta =
+      const VerificationMeta('allocatedPrincipalMinor');
+  @override
+  late final GeneratedColumn<int> allocatedPrincipalMinor =
+      GeneratedColumn<int>(
+        'allocated_principal_minor',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _allocatedInterestMinorMeta =
+      const VerificationMeta('allocatedInterestMinor');
+  @override
+  late final GeneratedColumn<int> allocatedInterestMinor = GeneratedColumn<int>(
+    'allocated_interest_minor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _allocatedFeeMinorMeta = const VerificationMeta(
+    'allocatedFeeMinor',
+  );
+  @override
+  late final GeneratedColumn<int> allocatedFeeMinor = GeneratedColumn<int>(
+    'allocated_fee_minor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _allocatedDiscountMinorMeta =
+      const VerificationMeta('allocatedDiscountMinor');
+  @override
+  late final GeneratedColumn<int> allocatedDiscountMinor = GeneratedColumn<int>(
+    'allocated_discount_minor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    repaymentId,
+    billItemId,
+    allocatedPrincipalMinor,
+    allocatedInterestMinor,
+    allocatedFeeMinor,
+    allocatedDiscountMinor,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'repayment_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RepaymentItemRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('repayment_id')) {
+      context.handle(
+        _repaymentIdMeta,
+        repaymentId.isAcceptableOrUnknown(
+          data['repayment_id']!,
+          _repaymentIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_repaymentIdMeta);
+    }
+    if (data.containsKey('bill_item_id')) {
+      context.handle(
+        _billItemIdMeta,
+        billItemId.isAcceptableOrUnknown(
+          data['bill_item_id']!,
+          _billItemIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('allocated_principal_minor')) {
+      context.handle(
+        _allocatedPrincipalMinorMeta,
+        allocatedPrincipalMinor.isAcceptableOrUnknown(
+          data['allocated_principal_minor']!,
+          _allocatedPrincipalMinorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_allocatedPrincipalMinorMeta);
+    }
+    if (data.containsKey('allocated_interest_minor')) {
+      context.handle(
+        _allocatedInterestMinorMeta,
+        allocatedInterestMinor.isAcceptableOrUnknown(
+          data['allocated_interest_minor']!,
+          _allocatedInterestMinorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_allocatedInterestMinorMeta);
+    }
+    if (data.containsKey('allocated_fee_minor')) {
+      context.handle(
+        _allocatedFeeMinorMeta,
+        allocatedFeeMinor.isAcceptableOrUnknown(
+          data['allocated_fee_minor']!,
+          _allocatedFeeMinorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_allocatedFeeMinorMeta);
+    }
+    if (data.containsKey('allocated_discount_minor')) {
+      context.handle(
+        _allocatedDiscountMinorMeta,
+        allocatedDiscountMinor.isAcceptableOrUnknown(
+          data['allocated_discount_minor']!,
+          _allocatedDiscountMinorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_allocatedDiscountMinorMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RepaymentItemRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RepaymentItemRow(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}id'],
+          )!,
+      repaymentId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}repayment_id'],
+          )!,
+      billItemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bill_item_id'],
+      ),
+      allocatedPrincipalMinor:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}allocated_principal_minor'],
+          )!,
+      allocatedInterestMinor:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}allocated_interest_minor'],
+          )!,
+      allocatedFeeMinor:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}allocated_fee_minor'],
+          )!,
+      allocatedDiscountMinor:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}allocated_discount_minor'],
+          )!,
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+      updatedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}updated_at'],
+          )!,
+    );
+  }
+
+  @override
+  $RepaymentItemsTable createAlias(String alias) {
+    return $RepaymentItemsTable(attachedDatabase, alias);
+  }
+}
+
+class RepaymentItemRow extends DataClass
+    implements Insertable<RepaymentItemRow> {
+  final String id;
+  final String repaymentId;
+  final String? billItemId;
+  final int allocatedPrincipalMinor;
+  final int allocatedInterestMinor;
+  final int allocatedFeeMinor;
+  final int allocatedDiscountMinor;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const RepaymentItemRow({
+    required this.id,
+    required this.repaymentId,
+    this.billItemId,
+    required this.allocatedPrincipalMinor,
+    required this.allocatedInterestMinor,
+    required this.allocatedFeeMinor,
+    required this.allocatedDiscountMinor,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['repayment_id'] = Variable<String>(repaymentId);
+    if (!nullToAbsent || billItemId != null) {
+      map['bill_item_id'] = Variable<String>(billItemId);
+    }
+    map['allocated_principal_minor'] = Variable<int>(allocatedPrincipalMinor);
+    map['allocated_interest_minor'] = Variable<int>(allocatedInterestMinor);
+    map['allocated_fee_minor'] = Variable<int>(allocatedFeeMinor);
+    map['allocated_discount_minor'] = Variable<int>(allocatedDiscountMinor);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  RepaymentItemsCompanion toCompanion(bool nullToAbsent) {
+    return RepaymentItemsCompanion(
+      id: Value(id),
+      repaymentId: Value(repaymentId),
+      billItemId:
+          billItemId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(billItemId),
+      allocatedPrincipalMinor: Value(allocatedPrincipalMinor),
+      allocatedInterestMinor: Value(allocatedInterestMinor),
+      allocatedFeeMinor: Value(allocatedFeeMinor),
+      allocatedDiscountMinor: Value(allocatedDiscountMinor),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory RepaymentItemRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RepaymentItemRow(
+      id: serializer.fromJson<String>(json['id']),
+      repaymentId: serializer.fromJson<String>(json['repaymentId']),
+      billItemId: serializer.fromJson<String?>(json['billItemId']),
+      allocatedPrincipalMinor: serializer.fromJson<int>(
+        json['allocatedPrincipalMinor'],
+      ),
+      allocatedInterestMinor: serializer.fromJson<int>(
+        json['allocatedInterestMinor'],
+      ),
+      allocatedFeeMinor: serializer.fromJson<int>(json['allocatedFeeMinor']),
+      allocatedDiscountMinor: serializer.fromJson<int>(
+        json['allocatedDiscountMinor'],
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'repaymentId': serializer.toJson<String>(repaymentId),
+      'billItemId': serializer.toJson<String?>(billItemId),
+      'allocatedPrincipalMinor': serializer.toJson<int>(
+        allocatedPrincipalMinor,
+      ),
+      'allocatedInterestMinor': serializer.toJson<int>(allocatedInterestMinor),
+      'allocatedFeeMinor': serializer.toJson<int>(allocatedFeeMinor),
+      'allocatedDiscountMinor': serializer.toJson<int>(allocatedDiscountMinor),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  RepaymentItemRow copyWith({
+    String? id,
+    String? repaymentId,
+    Value<String?> billItemId = const Value.absent(),
+    int? allocatedPrincipalMinor,
+    int? allocatedInterestMinor,
+    int? allocatedFeeMinor,
+    int? allocatedDiscountMinor,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => RepaymentItemRow(
+    id: id ?? this.id,
+    repaymentId: repaymentId ?? this.repaymentId,
+    billItemId: billItemId.present ? billItemId.value : this.billItemId,
+    allocatedPrincipalMinor:
+        allocatedPrincipalMinor ?? this.allocatedPrincipalMinor,
+    allocatedInterestMinor:
+        allocatedInterestMinor ?? this.allocatedInterestMinor,
+    allocatedFeeMinor: allocatedFeeMinor ?? this.allocatedFeeMinor,
+    allocatedDiscountMinor:
+        allocatedDiscountMinor ?? this.allocatedDiscountMinor,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  RepaymentItemRow copyWithCompanion(RepaymentItemsCompanion data) {
+    return RepaymentItemRow(
+      id: data.id.present ? data.id.value : this.id,
+      repaymentId:
+          data.repaymentId.present ? data.repaymentId.value : this.repaymentId,
+      billItemId:
+          data.billItemId.present ? data.billItemId.value : this.billItemId,
+      allocatedPrincipalMinor:
+          data.allocatedPrincipalMinor.present
+              ? data.allocatedPrincipalMinor.value
+              : this.allocatedPrincipalMinor,
+      allocatedInterestMinor:
+          data.allocatedInterestMinor.present
+              ? data.allocatedInterestMinor.value
+              : this.allocatedInterestMinor,
+      allocatedFeeMinor:
+          data.allocatedFeeMinor.present
+              ? data.allocatedFeeMinor.value
+              : this.allocatedFeeMinor,
+      allocatedDiscountMinor:
+          data.allocatedDiscountMinor.present
+              ? data.allocatedDiscountMinor.value
+              : this.allocatedDiscountMinor,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RepaymentItemRow(')
+          ..write('id: $id, ')
+          ..write('repaymentId: $repaymentId, ')
+          ..write('billItemId: $billItemId, ')
+          ..write('allocatedPrincipalMinor: $allocatedPrincipalMinor, ')
+          ..write('allocatedInterestMinor: $allocatedInterestMinor, ')
+          ..write('allocatedFeeMinor: $allocatedFeeMinor, ')
+          ..write('allocatedDiscountMinor: $allocatedDiscountMinor, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    repaymentId,
+    billItemId,
+    allocatedPrincipalMinor,
+    allocatedInterestMinor,
+    allocatedFeeMinor,
+    allocatedDiscountMinor,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RepaymentItemRow &&
+          other.id == this.id &&
+          other.repaymentId == this.repaymentId &&
+          other.billItemId == this.billItemId &&
+          other.allocatedPrincipalMinor == this.allocatedPrincipalMinor &&
+          other.allocatedInterestMinor == this.allocatedInterestMinor &&
+          other.allocatedFeeMinor == this.allocatedFeeMinor &&
+          other.allocatedDiscountMinor == this.allocatedDiscountMinor &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class RepaymentItemsCompanion extends UpdateCompanion<RepaymentItemRow> {
+  final Value<String> id;
+  final Value<String> repaymentId;
+  final Value<String?> billItemId;
+  final Value<int> allocatedPrincipalMinor;
+  final Value<int> allocatedInterestMinor;
+  final Value<int> allocatedFeeMinor;
+  final Value<int> allocatedDiscountMinor;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const RepaymentItemsCompanion({
+    this.id = const Value.absent(),
+    this.repaymentId = const Value.absent(),
+    this.billItemId = const Value.absent(),
+    this.allocatedPrincipalMinor = const Value.absent(),
+    this.allocatedInterestMinor = const Value.absent(),
+    this.allocatedFeeMinor = const Value.absent(),
+    this.allocatedDiscountMinor = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RepaymentItemsCompanion.insert({
+    required String id,
+    required String repaymentId,
+    this.billItemId = const Value.absent(),
+    required int allocatedPrincipalMinor,
+    required int allocatedInterestMinor,
+    required int allocatedFeeMinor,
+    required int allocatedDiscountMinor,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       repaymentId = Value(repaymentId),
+       allocatedPrincipalMinor = Value(allocatedPrincipalMinor),
+       allocatedInterestMinor = Value(allocatedInterestMinor),
+       allocatedFeeMinor = Value(allocatedFeeMinor),
+       allocatedDiscountMinor = Value(allocatedDiscountMinor);
+  static Insertable<RepaymentItemRow> custom({
+    Expression<String>? id,
+    Expression<String>? repaymentId,
+    Expression<String>? billItemId,
+    Expression<int>? allocatedPrincipalMinor,
+    Expression<int>? allocatedInterestMinor,
+    Expression<int>? allocatedFeeMinor,
+    Expression<int>? allocatedDiscountMinor,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (repaymentId != null) 'repayment_id': repaymentId,
+      if (billItemId != null) 'bill_item_id': billItemId,
+      if (allocatedPrincipalMinor != null)
+        'allocated_principal_minor': allocatedPrincipalMinor,
+      if (allocatedInterestMinor != null)
+        'allocated_interest_minor': allocatedInterestMinor,
+      if (allocatedFeeMinor != null) 'allocated_fee_minor': allocatedFeeMinor,
+      if (allocatedDiscountMinor != null)
+        'allocated_discount_minor': allocatedDiscountMinor,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RepaymentItemsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? repaymentId,
+    Value<String?>? billItemId,
+    Value<int>? allocatedPrincipalMinor,
+    Value<int>? allocatedInterestMinor,
+    Value<int>? allocatedFeeMinor,
+    Value<int>? allocatedDiscountMinor,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return RepaymentItemsCompanion(
+      id: id ?? this.id,
+      repaymentId: repaymentId ?? this.repaymentId,
+      billItemId: billItemId ?? this.billItemId,
+      allocatedPrincipalMinor:
+          allocatedPrincipalMinor ?? this.allocatedPrincipalMinor,
+      allocatedInterestMinor:
+          allocatedInterestMinor ?? this.allocatedInterestMinor,
+      allocatedFeeMinor: allocatedFeeMinor ?? this.allocatedFeeMinor,
+      allocatedDiscountMinor:
+          allocatedDiscountMinor ?? this.allocatedDiscountMinor,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (repaymentId.present) {
+      map['repayment_id'] = Variable<String>(repaymentId.value);
+    }
+    if (billItemId.present) {
+      map['bill_item_id'] = Variable<String>(billItemId.value);
+    }
+    if (allocatedPrincipalMinor.present) {
+      map['allocated_principal_minor'] = Variable<int>(
+        allocatedPrincipalMinor.value,
+      );
+    }
+    if (allocatedInterestMinor.present) {
+      map['allocated_interest_minor'] = Variable<int>(
+        allocatedInterestMinor.value,
+      );
+    }
+    if (allocatedFeeMinor.present) {
+      map['allocated_fee_minor'] = Variable<int>(allocatedFeeMinor.value);
+    }
+    if (allocatedDiscountMinor.present) {
+      map['allocated_discount_minor'] = Variable<int>(
+        allocatedDiscountMinor.value,
+      );
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RepaymentItemsCompanion(')
+          ..write('id: $id, ')
+          ..write('repaymentId: $repaymentId, ')
+          ..write('billItemId: $billItemId, ')
+          ..write('allocatedPrincipalMinor: $allocatedPrincipalMinor, ')
+          ..write('allocatedInterestMinor: $allocatedInterestMinor, ')
+          ..write('allocatedFeeMinor: $allocatedFeeMinor, ')
+          ..write('allocatedDiscountMinor: $allocatedDiscountMinor, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8621,6 +9728,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $InstallmentSchedulesTable(this);
   late final $InstallmentRepaymentsTable installmentRepayments =
       $InstallmentRepaymentsTable(this);
+  late final $RepaymentsTable repayments = $RepaymentsTable(this);
+  late final $RepaymentItemsTable repaymentItems = $RepaymentItemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8638,6 +9747,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     installmentContracts,
     installmentSchedules,
     installmentRepayments,
+    repayments,
+    repaymentItems,
   ];
 }
 
@@ -12784,6 +13895,562 @@ typedef $$InstallmentRepaymentsTableProcessedTableManager =
       InstallmentRepaymentRow,
       PrefetchHooks Function()
     >;
+typedef $$RepaymentsTableCreateCompanionBuilder =
+    RepaymentsCompanion Function({
+      required String id,
+      required String repaymentType,
+      required String targetType,
+      required String targetId,
+      Value<String?> rootTransactionId,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$RepaymentsTableUpdateCompanionBuilder =
+    RepaymentsCompanion Function({
+      Value<String> id,
+      Value<String> repaymentType,
+      Value<String> targetType,
+      Value<String> targetId,
+      Value<String?> rootTransactionId,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$RepaymentsTableFilterComposer
+    extends Composer<_$AppDatabase, $RepaymentsTable> {
+  $$RepaymentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get repaymentType => $composableBuilder(
+    column: $table.repaymentType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetType => $composableBuilder(
+    column: $table.targetType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetId => $composableBuilder(
+    column: $table.targetId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rootTransactionId => $composableBuilder(
+    column: $table.rootTransactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RepaymentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RepaymentsTable> {
+  $$RepaymentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get repaymentType => $composableBuilder(
+    column: $table.repaymentType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetType => $composableBuilder(
+    column: $table.targetType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetId => $composableBuilder(
+    column: $table.targetId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rootTransactionId => $composableBuilder(
+    column: $table.rootTransactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RepaymentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RepaymentsTable> {
+  $$RepaymentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get repaymentType => $composableBuilder(
+    column: $table.repaymentType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetType => $composableBuilder(
+    column: $table.targetType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetId =>
+      $composableBuilder(column: $table.targetId, builder: (column) => column);
+
+  GeneratedColumn<String> get rootTransactionId => $composableBuilder(
+    column: $table.rootTransactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$RepaymentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RepaymentsTable,
+          RepaymentRow,
+          $$RepaymentsTableFilterComposer,
+          $$RepaymentsTableOrderingComposer,
+          $$RepaymentsTableAnnotationComposer,
+          $$RepaymentsTableCreateCompanionBuilder,
+          $$RepaymentsTableUpdateCompanionBuilder,
+          (
+            RepaymentRow,
+            BaseReferences<_$AppDatabase, $RepaymentsTable, RepaymentRow>,
+          ),
+          RepaymentRow,
+          PrefetchHooks Function()
+        > {
+  $$RepaymentsTableTableManager(_$AppDatabase db, $RepaymentsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$RepaymentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$RepaymentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$RepaymentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> repaymentType = const Value.absent(),
+                Value<String> targetType = const Value.absent(),
+                Value<String> targetId = const Value.absent(),
+                Value<String?> rootTransactionId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RepaymentsCompanion(
+                id: id,
+                repaymentType: repaymentType,
+                targetType: targetType,
+                targetId: targetId,
+                rootTransactionId: rootTransactionId,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String repaymentType,
+                required String targetType,
+                required String targetId,
+                Value<String?> rootTransactionId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RepaymentsCompanion.insert(
+                id: id,
+                repaymentType: repaymentType,
+                targetType: targetType,
+                targetId: targetId,
+                rootTransactionId: rootTransactionId,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RepaymentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RepaymentsTable,
+      RepaymentRow,
+      $$RepaymentsTableFilterComposer,
+      $$RepaymentsTableOrderingComposer,
+      $$RepaymentsTableAnnotationComposer,
+      $$RepaymentsTableCreateCompanionBuilder,
+      $$RepaymentsTableUpdateCompanionBuilder,
+      (
+        RepaymentRow,
+        BaseReferences<_$AppDatabase, $RepaymentsTable, RepaymentRow>,
+      ),
+      RepaymentRow,
+      PrefetchHooks Function()
+    >;
+typedef $$RepaymentItemsTableCreateCompanionBuilder =
+    RepaymentItemsCompanion Function({
+      required String id,
+      required String repaymentId,
+      Value<String?> billItemId,
+      required int allocatedPrincipalMinor,
+      required int allocatedInterestMinor,
+      required int allocatedFeeMinor,
+      required int allocatedDiscountMinor,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$RepaymentItemsTableUpdateCompanionBuilder =
+    RepaymentItemsCompanion Function({
+      Value<String> id,
+      Value<String> repaymentId,
+      Value<String?> billItemId,
+      Value<int> allocatedPrincipalMinor,
+      Value<int> allocatedInterestMinor,
+      Value<int> allocatedFeeMinor,
+      Value<int> allocatedDiscountMinor,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$RepaymentItemsTableFilterComposer
+    extends Composer<_$AppDatabase, $RepaymentItemsTable> {
+  $$RepaymentItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get repaymentId => $composableBuilder(
+    column: $table.repaymentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get billItemId => $composableBuilder(
+    column: $table.billItemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get allocatedPrincipalMinor => $composableBuilder(
+    column: $table.allocatedPrincipalMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get allocatedInterestMinor => $composableBuilder(
+    column: $table.allocatedInterestMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get allocatedFeeMinor => $composableBuilder(
+    column: $table.allocatedFeeMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get allocatedDiscountMinor => $composableBuilder(
+    column: $table.allocatedDiscountMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RepaymentItemsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RepaymentItemsTable> {
+  $$RepaymentItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get repaymentId => $composableBuilder(
+    column: $table.repaymentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get billItemId => $composableBuilder(
+    column: $table.billItemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get allocatedPrincipalMinor => $composableBuilder(
+    column: $table.allocatedPrincipalMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get allocatedInterestMinor => $composableBuilder(
+    column: $table.allocatedInterestMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get allocatedFeeMinor => $composableBuilder(
+    column: $table.allocatedFeeMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get allocatedDiscountMinor => $composableBuilder(
+    column: $table.allocatedDiscountMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RepaymentItemsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RepaymentItemsTable> {
+  $$RepaymentItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get repaymentId => $composableBuilder(
+    column: $table.repaymentId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get billItemId => $composableBuilder(
+    column: $table.billItemId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get allocatedPrincipalMinor => $composableBuilder(
+    column: $table.allocatedPrincipalMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get allocatedInterestMinor => $composableBuilder(
+    column: $table.allocatedInterestMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get allocatedFeeMinor => $composableBuilder(
+    column: $table.allocatedFeeMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get allocatedDiscountMinor => $composableBuilder(
+    column: $table.allocatedDiscountMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$RepaymentItemsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RepaymentItemsTable,
+          RepaymentItemRow,
+          $$RepaymentItemsTableFilterComposer,
+          $$RepaymentItemsTableOrderingComposer,
+          $$RepaymentItemsTableAnnotationComposer,
+          $$RepaymentItemsTableCreateCompanionBuilder,
+          $$RepaymentItemsTableUpdateCompanionBuilder,
+          (
+            RepaymentItemRow,
+            BaseReferences<
+              _$AppDatabase,
+              $RepaymentItemsTable,
+              RepaymentItemRow
+            >,
+          ),
+          RepaymentItemRow,
+          PrefetchHooks Function()
+        > {
+  $$RepaymentItemsTableTableManager(
+    _$AppDatabase db,
+    $RepaymentItemsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$RepaymentItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () =>
+                  $$RepaymentItemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$RepaymentItemsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> repaymentId = const Value.absent(),
+                Value<String?> billItemId = const Value.absent(),
+                Value<int> allocatedPrincipalMinor = const Value.absent(),
+                Value<int> allocatedInterestMinor = const Value.absent(),
+                Value<int> allocatedFeeMinor = const Value.absent(),
+                Value<int> allocatedDiscountMinor = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RepaymentItemsCompanion(
+                id: id,
+                repaymentId: repaymentId,
+                billItemId: billItemId,
+                allocatedPrincipalMinor: allocatedPrincipalMinor,
+                allocatedInterestMinor: allocatedInterestMinor,
+                allocatedFeeMinor: allocatedFeeMinor,
+                allocatedDiscountMinor: allocatedDiscountMinor,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String repaymentId,
+                Value<String?> billItemId = const Value.absent(),
+                required int allocatedPrincipalMinor,
+                required int allocatedInterestMinor,
+                required int allocatedFeeMinor,
+                required int allocatedDiscountMinor,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RepaymentItemsCompanion.insert(
+                id: id,
+                repaymentId: repaymentId,
+                billItemId: billItemId,
+                allocatedPrincipalMinor: allocatedPrincipalMinor,
+                allocatedInterestMinor: allocatedInterestMinor,
+                allocatedFeeMinor: allocatedFeeMinor,
+                allocatedDiscountMinor: allocatedDiscountMinor,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RepaymentItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RepaymentItemsTable,
+      RepaymentItemRow,
+      $$RepaymentItemsTableFilterComposer,
+      $$RepaymentItemsTableOrderingComposer,
+      $$RepaymentItemsTableAnnotationComposer,
+      $$RepaymentItemsTableCreateCompanionBuilder,
+      $$RepaymentItemsTableUpdateCompanionBuilder,
+      (
+        RepaymentItemRow,
+        BaseReferences<_$AppDatabase, $RepaymentItemsTable, RepaymentItemRow>,
+      ),
+      RepaymentItemRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -12815,4 +14482,8 @@ class $AppDatabaseManager {
       $$InstallmentSchedulesTableTableManager(_db, _db.installmentSchedules);
   $$InstallmentRepaymentsTableTableManager get installmentRepayments =>
       $$InstallmentRepaymentsTableTableManager(_db, _db.installmentRepayments);
+  $$RepaymentsTableTableManager get repayments =>
+      $$RepaymentsTableTableManager(_db, _db.repayments);
+  $$RepaymentItemsTableTableManager get repaymentItems =>
+      $$RepaymentItemsTableTableManager(_db, _db.repaymentItems);
 }

@@ -50,6 +50,7 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         'WHERE disbursement_transaction_id IS NOT NULL',
       );
       await _createBillIndexes(database);
+      await _createRepaymentIndexes(database);
       await ensureBuiltinData(database);
     },
     beforeOpen: (_) async {
@@ -75,6 +76,11 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         await migrator.createTable(database.billItems);
         await _createBillIndexes(database);
       }
+      if (from < 14) {
+        await migrator.createTable(database.repayments);
+        await migrator.createTable(database.repaymentItems);
+        await _createRepaymentIndexes(database);
+      }
     },
   );
 }
@@ -97,6 +103,27 @@ Future<void> _createBillIndexes(AppDatabase database) async {
   await database.customStatement(
     'CREATE UNIQUE INDEX bill_items_schedule_unique '
     'ON bill_items (schedule_id) WHERE schedule_id IS NOT NULL',
+  );
+}
+
+Future<void> _createRepaymentIndexes(AppDatabase database) async {
+  await database.customStatement(
+    'CREATE INDEX repayments_target_idx '
+    'ON repayments (target_type, target_id, created_at)',
+  );
+  await database.customStatement(
+    'CREATE UNIQUE INDEX repayments_root_transaction_unique '
+    'ON repayments (root_transaction_id) '
+    'WHERE root_transaction_id IS NOT NULL',
+  );
+  await database.customStatement(
+    'CREATE INDEX repayment_items_repayment_idx '
+    'ON repayment_items (repayment_id)',
+  );
+  await database.customStatement(
+    'CREATE INDEX repayment_items_bill_item_idx '
+    'ON repayment_items (bill_item_id) '
+    'WHERE bill_item_id IS NOT NULL',
   );
 }
 

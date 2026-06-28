@@ -9,6 +9,7 @@ import '../infrastructure/credit/repository/drift_credit_account_repository.dart
 import '../infrastructure/credit/repository/drift_bill_repository.dart';
 import '../infrastructure/credit/repository/drift_credit_bill_source_repository.dart';
 import '../infrastructure/credit/repository/drift_installment_repository.dart';
+import '../infrastructure/credit/repository/drift_repayment_repository.dart';
 import '../infrastructure/ledger/repository/drift_posting_repository.dart';
 import '../infrastructure/ledger/repository/drift_system_account_resolver.dart';
 import '../infrastructure/ledger/repository/drift_transaction_detail_read_repository.dart';
@@ -27,6 +28,7 @@ import '../domain/credit/port/bill_repository.dart';
 import '../domain/credit/port/credit_account_repository.dart';
 import '../domain/credit/port/credit_bill_source_repository.dart';
 import '../domain/credit/port/installment_repository.dart';
+import '../domain/credit/port/repayment_repository.dart';
 import '../domain/ledger/port/system_account_resolver.dart';
 import '../domain/ledger/service/account/account_role_policy.dart';
 import '../domain/ledger/service/posting/account_posting_service.dart';
@@ -232,6 +234,11 @@ CreditAccountQueryService creditAccountQueryService(Ref ref) {
 @Riverpod(keepAlive: true)
 InstallmentRepository installmentRepository(Ref ref) {
   return DriftInstallmentRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+RepaymentRepository repaymentRepository(Ref ref) {
+  return DriftRepaymentRepository(ref.watch(appDatabaseProvider));
 }
 
 @Riverpod(keepAlive: true)
