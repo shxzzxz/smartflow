@@ -100,18 +100,19 @@ class InstallmentContractEditViewModel
             ? _parseOptionalOverride(overrideInstallmentText)
             : null;
 
-    final allDates = _generator.generateDates(
-      firstRepaymentDate: loaded.firstRepaymentDate,
-      lastRepaymentDate: loaded.lastRepaymentDate,
-      totalPeriods: totalPeriods,
-    );
-    final pendingDates = allDates.sublist(loaded.paidCount);
-
     final paidRows =
         loaded.draft
             .where((r) => r.status == InstallmentScheduleStatus.paid)
             .toList()
           ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
+    final pendingRows =
+        loaded.draft
+            .where((r) => r.status == InstallmentScheduleStatus.pending)
+            .toList()
+          ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
+    if (pendingRows.isEmpty) {
+      return _invalidAction('没有可重算的待还期次');
+    }
 
     final paidPrincipalMinor = paidRows.fold<int>(
       0,
@@ -131,7 +132,7 @@ class InstallmentContractEditViewModel
     final allocations = _generator.allocate(
       remainingPrincipal: Money(minorUnits: remainingMinor),
       anchorDate: anchorDate,
-      pendingDates: pendingDates,
+      pendingDates: [for (final row in pendingRows) row.date],
       method: loaded.method,
       accrualMethod: loaded.accrualMethod,
       ratePeriod: ratePpm == null ? null : loaded.ratePeriod,
@@ -140,32 +141,27 @@ class InstallmentContractEditViewModel
       equalInstallmentOverrideMinor: overrideMinor,
     );
 
-    final nextDraft = <InstallmentContractDraftRow>[...paidRows];
-    for (var i = 0; i < pendingDates.length; i++) {
-      final periodNo = paidRows.length + i + 1;
-      final existing =
-          loaded.draft
-              .where(
-                (row) =>
-                    row.status != InstallmentScheduleStatus.paid &&
-                    row.periodNo == periodNo,
-              )
-              .firstOrNull;
-      nextDraft.add(
-        InstallmentContractDraftRow(
-          scheduleId: existing?.scheduleId,
-          periodNo: periodNo,
-          date: pendingDates[i],
-          principal: allocations[i].principal,
-          interest: allocations[i].interest,
-          fee: allocations[i].fee,
-          status: InstallmentScheduleStatus.pending,
-        ),
-      );
-    }
+    final allocationByPeriod = {
+      for (var i = 0; i < pendingRows.length; i++)
+        pendingRows[i].periodNo: allocations[i],
+    };
+    final nextDraft = [
+      for (final row in loaded.draft)
+        if (allocationByPeriod[row.periodNo] case final allocation?)
+          row.copyWith(
+            principal: allocation.principal,
+            interest: allocation.interest,
+            fee: allocation.fee,
+          )
+        else
+          row,
+    ];
 
     _setLoaded(
-      loaded.copyWith(draft: nextDraft, manualPatchedPeriodNos: const {}),
+      loaded.copyWith(
+        draft: nextDraft,
+        manualPatchedPeriodNos: {for (final row in pendingRows) row.periodNo},
+      ),
     );
     return const UiActionOutcome.success(null);
   }

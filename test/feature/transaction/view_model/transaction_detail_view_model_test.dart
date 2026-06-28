@@ -564,6 +564,30 @@ class _FakeInstallmentService implements InstallmentService {
   }
 
   @override
+  Future<List<RecalculatedSchedulePreview>> previewContractRecalculation(
+    RecalculateContractSchedulesCommand command,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> recalculateContractSchedules(
+    RecalculateContractSchedulesCommand command,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> skipSchedule(SkipInstallmentScheduleCommand command) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> restoreSchedule(RestoreInstallmentScheduleCommand command) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<void> editRepayment(EditRepaymentCommand command) async {
     editRepaymentCommands.add(command);
   }

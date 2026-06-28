@@ -256,6 +256,7 @@ RepaymentService repaymentService(Ref ref) {
 InstallmentService installmentService(Ref ref) {
   return InstallmentServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),
+    creditAccounts: ref.watch(creditAccountRepositoryProvider),
     postingService: ref.watch(transactionPostingAppServiceProvider),
     correctionService: ref.watch(transactionCorrectionAppServiceProvider),
     updateService: ref.watch(transactionUpdateAppServiceProvider),

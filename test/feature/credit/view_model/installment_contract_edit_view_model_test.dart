@@ -30,38 +30,47 @@ void main() {
       expect(loaded.ratePeriod, InterestRatePeriod.monthly);
     });
 
-    test('recalculates pending draft rows and clears manual patches', () async {
-      final service = _FakeInstallmentService(
-        contract: _contract(),
-        schedules: [_schedule(1), _schedule(2)],
-      );
-      final container = _container(service);
-      final viewModel = container.read(
-        installmentContractEditViewModelProvider('contract-1').notifier,
-      );
-      await _readState(container);
-      viewModel.applyAmount(
-        _scheduleRow(container, 1),
-        InstallmentAmountField.fee,
-        const Money(minorUnits: 100),
-      );
+    test(
+      'recalculates existing pending rows and marks them for submit',
+      () async {
+        final service = _FakeInstallmentService(
+          contract: _contract(),
+          schedules: [_schedule(1), _schedule(2)],
+        );
+        final container = _container(service);
+        final viewModel = container.read(
+          installmentContractEditViewModelProvider('contract-1').notifier,
+        );
+        await _readState(container);
+        viewModel.applyAmount(
+          _scheduleRow(container, 1),
+          InstallmentAmountField.fee,
+          const Money(minorUnits: 100),
+        );
 
-      final outcome = viewModel.recalculate(
-        totalPeriodsText: '3',
-        rateText: '12',
-        feeText: '',
-        overrideInstallmentText: '',
-      );
+        final outcome = viewModel.recalculate(
+          totalPeriodsText: '3',
+          rateText: '12',
+          feeText: '',
+          overrideInstallmentText: '',
+        );
 
-      expect(outcome, isA<UiActionSuccess<void>>());
-      final loaded =
-          container
-                  .read(installmentContractEditViewModelProvider('contract-1'))
-                  .value!
-              as InstallmentContractEditLoaded;
-      expect(loaded.draft.length, 3);
-      expect(loaded.manualPatchedPeriodNos, isEmpty);
-    });
+        expect(outcome, isA<UiActionSuccess<void>>());
+        final loaded =
+            container
+                    .read(
+                      installmentContractEditViewModelProvider('contract-1'),
+                    )
+                    .value!
+                as InstallmentContractEditLoaded;
+        expect(loaded.draft.length, 2);
+        expect(loaded.draft.map((row) => row.date), [
+          DateTime(2026, 2, 1),
+          DateTime(2026, 3, 1),
+        ]);
+        expect(loaded.manualPatchedPeriodNos, {1, 2});
+      },
+    );
 
     test('edits draft row amount and date', () async {
       final service = _FakeInstallmentService(
@@ -330,6 +339,30 @@ class _FakeInstallmentService implements InstallmentService {
     updateCommands.add(command);
     final exception = updateException;
     if (exception != null) throw exception;
+  }
+
+  @override
+  Future<List<RecalculatedSchedulePreview>> previewContractRecalculation(
+    RecalculateContractSchedulesCommand command,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> recalculateContractSchedules(
+    RecalculateContractSchedulesCommand command,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> skipSchedule(SkipInstallmentScheduleCommand command) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> restoreSchedule(RestoreInstallmentScheduleCommand command) {
+    throw UnimplementedError();
   }
 
   @override

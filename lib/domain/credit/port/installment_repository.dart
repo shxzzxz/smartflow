@@ -171,6 +171,6 @@ abstract interface class InstallmentRepository {
   );
 
   /// 物理删除合同：连同 schedules 与 repayments 一并清理。
-  /// 调用方负责先把对应的放款 / 还款交易撤回，本方法不动 transaction 表。
+  /// 调用方负责确保合同无关联还款且无放款交易，本方法不动 transaction 表。
   Future<void> deleteContract(String contractId);
 }

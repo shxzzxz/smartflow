@@ -104,6 +104,36 @@ void main() {
       },
     );
 
+    test('excludes borrowing transactions from credit consumption', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      final account = await fixture.createCreditAccount();
+      await fixture.accountRepository.create(
+        Account(
+          id: 'asset-cash',
+          name: 'Cash',
+          type: AccountType.asset,
+          balance: Money.zero(),
+          source: AccountSource.user,
+        ),
+      );
+      await fixture.postingAppService.createBorrowing(
+        CreateBorrowingCommand(
+          amount: const Money(minorUnits: 50000),
+          liabilityAccountId: account.id,
+          receiveAccountId: 'asset-cash',
+          occurredAt: DateTime(2026, 6, 1),
+        ),
+      );
+
+      await fixture.generation.generateDueBills(now: DateTime(2026, 6, 4));
+
+      final bills = await fixture.billRepository.listBillsByAccount(account.id);
+      expect(bills.single.items.single.itemType, BillItemType.consumption);
+      expect(bills.single.items.single.expectedPrincipal, Money.zero());
+      expect(bills.single.items.single.status, BillItemStatus.paid);
+    });
+
     test('groups loan schedules by month and skips empty months', () async {
       final fixture = _Fixture();
       addTearDown(fixture.close);
@@ -115,7 +145,7 @@ void main() {
           disbursementAccountId: 'asset-account',
           disbursementTransactionId: 'tx-borrowing',
           principal: const Money(minorUnits: 120000),
-          totalPeriods: 2,
+          totalPeriods: 3,
           borrowingDate: DateTime(2026, 6, 1),
           firstRepaymentDate: DateTime(2026, 7, 1),
           lastRepaymentDate: DateTime(2026, 9, 1),
@@ -134,12 +164,29 @@ void main() {
         ),
         InstallmentScheduleDraft(
           periodNo: 2,
+          expectedRepaymentDate: DateTime(2026, 8, 1),
+          expectedPrincipal: const Money(minorUnits: 0),
+          expectedInterest: const Money(minorUnits: 0),
+          expectedFee: Money.zero(),
+        ),
+        InstallmentScheduleDraft(
+          periodNo: 3,
           expectedRepaymentDate: DateTime(2026, 9, 1),
           expectedPrincipal: const Money(minorUnits: 60000),
           expectedInterest: const Money(minorUnits: 500),
           expectedFee: Money.zero(),
         ),
       ]);
+      final skippedSchedule = (await fixture.installmentRepository
+          .listSchedules(
+            contractId,
+          )).singleWhere((schedule) => schedule.periodNo == 2);
+      await fixture.installmentRepository.updateSchedule(
+        skippedSchedule.id,
+        const InstallmentSchedulePatch(
+          status: InstallmentScheduleStatus.skipped,
+        ),
+      );
 
       await fixture.generation.generateDueBills(now: DateTime(2026, 8, 15));
 

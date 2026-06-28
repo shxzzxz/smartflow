@@ -4,17 +4,19 @@ import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
-import 'package:smartflow/domain/credit/entity/installment_contract.dart';
+import 'package:smartflow/domain/credit/entity/credit_liability_account.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
+import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/service/installment_schedule_generator.dart';
+import 'package:smartflow/domain/credit/valobj/bill_period.dart';
+import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
 class CreateDisbursementContractCommand {
   const CreateDisbursementContractCommand({
     required this.liabilityAccountId,
-    required this.disbursementAccountId,
     required this.principal,
     required this.totalPeriods,
     required this.borrowingDate,
@@ -26,12 +28,15 @@ class CreateDisbursementContractCommand {
     this.interestAccrualMethod = InterestAccrualMethod.daily,
     this.totalFeeMinor = 0,
     this.equalInstallmentOverrideMinor,
+    this.disbursementAccountId,
     this.note,
     this.counterpartyName,
   });
 
   final String liabilityAccountId;
-  final String disbursementAccountId;
+
+  /// 放款入账账户。为空时用于迁移场景：只创建合同和计划，不创建放款交易。
+  final String? disbursementAccountId;
   final Money principal;
   final int totalPeriods;
 
@@ -178,6 +183,56 @@ class DeleteContractCommand {
   final String contractId;
 }
 
+class RecalculateContractSchedulesCommand {
+  const RecalculateContractSchedulesCommand({
+    required this.contractId,
+    this.equalInstallmentOverrideMinor,
+  });
+
+  final String contractId;
+
+  /// 等额本息下用户给定的每期还款额 A，仅用于本次显式重算，不落库。
+  final int? equalInstallmentOverrideMinor;
+}
+
+class RecalculatedSchedulePreview {
+  const RecalculatedSchedulePreview({
+    required this.scheduleId,
+    required this.periodNo,
+    required this.expectedRepaymentDate,
+    required this.expectedPrincipal,
+    required this.expectedInterest,
+    required this.expectedFee,
+  });
+
+  final String scheduleId;
+  final int periodNo;
+  final DateTime expectedRepaymentDate;
+  final Money expectedPrincipal;
+  final Money expectedInterest;
+  final Money expectedFee;
+}
+
+class SkipInstallmentScheduleCommand {
+  const SkipInstallmentScheduleCommand({
+    required this.contractId,
+    required this.scheduleId,
+  });
+
+  final String contractId;
+  final String scheduleId;
+}
+
+class RestoreInstallmentScheduleCommand {
+  const RestoreInstallmentScheduleCommand({
+    required this.contractId,
+    required this.scheduleId,
+  });
+
+  final String contractId;
+  final String scheduleId;
+}
+
 /// pending 期次的单行手工编辑值（不会改 paid / skipped 行）。
 class SchedulePendingPatch {
   const SchedulePendingPatch({
@@ -198,22 +253,14 @@ class SchedulePendingPatch {
 /// 合同编辑命令。
 ///
 /// 编辑范围由 service 校验：
-/// - 借款日期可以改（会触发 schedule 重算 + 联动 disbursement 交易的 occurredAt）。
-/// - 若已有 paid 期次，首期还款日不可改（动了会和已发生的 paid 行错位）。
-/// - 期数可改，但必须 >= 已 paid 期次数 + 1（保证至少有 1 个 pending 行）。
-/// - 末期还款日始终可改（仅影响最后一期）。
-/// - method / 利率 / 手续费 可改，重算 pending 金额。
-/// - [schedulePatches] 在按配置重算后覆盖到对应 pending 行。
+/// - 借款日期可以改；若有放款交易，会联动 disbursement 交易的 occurredAt。
+/// - 参数字段只写回合同快照，不会自动重算 schedule。
+/// - [schedulePatches] 只覆盖对应 pending 行；paid / skipped 行不可编辑。
 ///
 /// Partial update 约定：
 /// - 普通 nullable 字段（`T?`）：`null` 表示"不改"，传值表示"设置"。
 /// - 三态字段（`Patch<T>?`）：`null`=不改，`Patch.set`=设置，`Patch.clear`=清除。
-/// - `disbursementAccountId`：仅对放款合同有效；业务上禁止清除（不允许跨 sourceType）。
-///
-/// 重算触发：任一"重算敏感字段"（totalPeriods / firstRepaymentDate /
-/// lastRepaymentDate / borrowingDate / repaymentMethod / 利率 /
-/// interestAccrualMethod / totalFeeMinor / equalInstallmentOverrideMinor /
-/// schedulePatches）被显式传入时，service 会重算 pending 期次。
+/// - `disbursementAccountId`：仅对已有放款交易的放款合同有效；业务上禁止清除。
 class UpdateContractCommand {
   const UpdateContractCommand({
     required this.contractId,
@@ -299,6 +346,20 @@ abstract interface class InstallmentService {
 
   Future<void> updateContract(UpdateContractCommand command);
 
+  /// 预览按当前合同参数重算后的 pending 金额；日期保持现有 schedule 日期不变。
+  Future<List<RecalculatedSchedulePreview>> previewContractRecalculation(
+    RecalculateContractSchedulesCommand command,
+  );
+
+  /// 确认显式重算：只覆盖 pending 行金额，日期和 paid / skipped 行保持不变。
+  Future<void> recalculateContractSchedules(
+    RecalculateContractSchedulesCommand command,
+  );
+
+  Future<void> skipSchedule(SkipInstallmentScheduleCommand command);
+
+  Future<void> restoreSchedule(RestoreInstallmentScheduleCommand command);
+
   /// 编辑受分期管理的还款交易（scheduled / extraPrincipal / earlySettlement）。
   /// 通用 UI 在还款交易上的 universal 编辑入口；service 内部校验归属、
   /// 再委托账务应用服务完成 transaction 表的写入。
@@ -318,13 +379,14 @@ abstract interface class InstallmentService {
 
   Future<void> revertRepayment(RevertRepaymentCommand command);
 
-  /// 删除合同：先回滚已发生的还款交易与放款交易，再级联删除 schedules / repayments / contract。
+  /// 删除合同：仅允许无关联还款且无放款交易的合同被物理删除。
   Future<void> deleteContract(DeleteContractCommand command);
 }
 
 class InstallmentServiceImpl implements InstallmentService {
   InstallmentServiceImpl({
     required InstallmentRepository repository,
+    required CreditAccountRepository creditAccounts,
     required TransactionPostingAppService postingService,
     required TransactionCorrectionAppService correctionService,
     required TransactionUpdateAppService updateService,
@@ -333,6 +395,7 @@ class InstallmentServiceImpl implements InstallmentService {
     InstallmentScheduleGenerator generator =
         const InstallmentScheduleGenerator(),
   }) : _repository = repository,
+       _creditAccounts = creditAccounts,
        _postingService = postingService,
        _correctionService = correctionService,
        _updateService = updateService,
@@ -341,6 +404,7 @@ class InstallmentServiceImpl implements InstallmentService {
        _generator = generator;
 
   final InstallmentRepository _repository;
+  final CreditAccountRepository _creditAccounts;
   final TransactionPostingAppService _postingService;
   final TransactionCorrectionAppService _correctionService;
   final TransactionUpdateAppService _updateService;
@@ -352,32 +416,46 @@ class InstallmentServiceImpl implements InstallmentService {
   Future<CreateContractResult> createDisbursementContract(
     CreateDisbursementContractCommand command,
   ) async {
+    final creditAccount = await _creditAccounts.findByAccountId(
+      command.liabilityAccountId,
+    );
+    final cycleDates = _cycleScheduleBoundsForDisbursement(
+      creditAccount,
+      borrowingDate: command.borrowingDate,
+      totalPeriods: command.totalPeriods,
+    );
+    final firstDate = cycleDates?.first ?? command.firstRepaymentDate;
+    final lastDate =
+        cycleDates?.last ??
+        command.lastRepaymentDate ??
+        _defaultLastDate(firstDate, command.totalPeriods);
+
     _requireValidCreate(
       principal: command.principal,
       totalPeriods: command.totalPeriods,
-      firstRepaymentDate: command.firstRepaymentDate,
-      lastRepaymentDate: command.lastRepaymentDate,
+      firstRepaymentDate: firstDate,
+      lastRepaymentDate: lastDate,
     );
 
-    final lastDate =
-        command.lastRepaymentDate ??
-        _defaultLastDate(command.firstRepaymentDate, command.totalPeriods);
-
     return _runner.run<CreateContractResult>(() async {
-      final borrowing = await _postingService.createBorrowing(
-        CreateBorrowingCommand(
-          amount: command.principal,
-          liabilityAccountId: command.liabilityAccountId,
-          occurredAt: command.borrowingDate,
-          receiveAccountId: command.disbursementAccountId,
-          counterpartyName: command.counterpartyName,
-          note: command.note,
-        ),
-      );
+      final disbursementAccountId = command.disbursementAccountId;
+      final borrowing =
+          disbursementAccountId == null
+              ? null
+              : await _postingService.createBorrowing(
+                CreateBorrowingCommand(
+                  amount: command.principal,
+                  liabilityAccountId: command.liabilityAccountId,
+                  occurredAt: command.borrowingDate,
+                  receiveAccountId: disbursementAccountId,
+                  counterpartyName: command.counterpartyName,
+                  note: command.note,
+                ),
+              );
       final drafts = _generator.generate(
         principal: command.principal,
         borrowingDate: command.borrowingDate,
-        firstRepaymentDate: command.firstRepaymentDate,
+        firstRepaymentDate: firstDate,
         lastRepaymentDate: lastDate,
         totalPeriods: command.totalPeriods,
         method: command.repaymentMethod,
@@ -391,12 +469,12 @@ class InstallmentServiceImpl implements InstallmentService {
         InstallmentContractDraft(
           liabilityAccountId: command.liabilityAccountId,
           sourceType: InstallmentSourceType.disbursement,
-          disbursementAccountId: command.disbursementAccountId,
-          disbursementTransactionId: borrowing.transactionId,
+          disbursementAccountId: disbursementAccountId,
+          disbursementTransactionId: borrowing?.transactionId,
           principal: command.principal,
           totalPeriods: command.totalPeriods,
           borrowingDate: command.borrowingDate,
-          firstRepaymentDate: command.firstRepaymentDate,
+          firstRepaymentDate: firstDate,
           lastRepaymentDate: lastDate,
           repaymentMethod: command.repaymentMethod,
           interestRatePeriod: command.interestRatePeriod,
@@ -407,19 +485,21 @@ class InstallmentServiceImpl implements InstallmentService {
           note: command.note,
         ),
       );
-      await _updateService.updateOwnership(
-        UpdateTransactionOwnershipCommand(
-          transactionId: borrowing.transactionId,
-          ownership: _installmentOwnership(
-            contractId,
-            InstallmentOwnerRole.disbursement,
+      if (borrowing != null) {
+        await _updateService.updateOwnership(
+          UpdateTransactionOwnershipCommand(
+            transactionId: borrowing.transactionId,
+            ownership: _installmentOwnership(
+              contractId,
+              InstallmentOwnerRole.disbursement,
+            ),
           ),
-        ),
-      );
+        );
+      }
       await _repository.replaceSchedules(contractId, drafts);
       return CreateContractResult(
         contractId: contractId,
-        disbursementTransactionId: borrowing.transactionId,
+        disbursementTransactionId: borrowing?.transactionId,
       );
     });
   }
@@ -501,6 +581,14 @@ class InstallmentServiceImpl implements InstallmentService {
         message: 'Only disbursement contracts carry a disbursement account.',
       );
     }
+    if (command.disbursementAccountId != null &&
+        contract.disbursementTransactionId == null) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message:
+            'A contract without a disbursement transaction cannot carry a disbursement account.',
+      );
+    }
 
     // 解析 effective 值：command 显式传入则用 command，否则维持合同当前值。
     final effectiveTotalPeriods = command.totalPeriods ?? contract.totalPeriods;
@@ -508,22 +596,6 @@ class InstallmentServiceImpl implements InstallmentService {
         command.firstRepaymentDate ?? contract.firstRepaymentDate;
     final effectiveLastRepaymentDate =
         command.lastRepaymentDate ?? contract.lastRepaymentDate;
-    final effectiveBorrowingDate =
-        command.borrowingDate ?? contract.borrowingDate;
-    final effectiveRepaymentMethod =
-        command.repaymentMethod ?? contract.repaymentMethod;
-    final effectiveAccrualMethod =
-        command.interestAccrualMethod ?? contract.interestAccrualMethod;
-    final effectiveTotalFeeMinor =
-        command.totalFeeMinor ?? contract.totalFeeMinor;
-    final effectiveRatePeriod = _resolvePatch(
-      command.interestRatePeriod,
-      contract.interestRatePeriod,
-    );
-    final effectiveRatePpm = _resolvePatch(
-      command.interestRatePpm,
-      contract.interestRatePpm,
-    );
 
     if (effectiveTotalPeriods <= 0) {
       throw BusinessException(
@@ -539,36 +611,11 @@ class InstallmentServiceImpl implements InstallmentService {
       );
     }
 
-    // 重算敏感字段：任一被显式传入都要重算 pending 期次。
-    final needsRecalc =
-        command.totalPeriods != null ||
-        command.firstRepaymentDate != null ||
-        command.lastRepaymentDate != null ||
-        command.borrowingDate != null ||
-        command.repaymentMethod != null ||
-        command.interestRatePeriod != null ||
-        command.interestRatePpm != null ||
-        command.interestAccrualMethod != null ||
-        command.totalFeeMinor != null ||
-        command.equalInstallmentOverrideMinor != null ||
-        command.schedulePatches.isNotEmpty;
-
     await _runner.run<void>(() async {
-      if (needsRecalc) {
-        await _recalculateForUpdate(
-          command: command,
-          contract: contract,
-          effectiveTotalPeriods: effectiveTotalPeriods,
-          effectiveFirstRepaymentDate: effectiveFirstRepaymentDate,
-          effectiveLastRepaymentDate: effectiveLastRepaymentDate,
-          effectiveBorrowingDate: effectiveBorrowingDate,
-          effectiveRepaymentMethod: effectiveRepaymentMethod,
-          effectiveAccrualMethod: effectiveAccrualMethod,
-          effectiveTotalFeeMinor: effectiveTotalFeeMinor,
-          effectiveRatePeriod: effectiveRatePeriod,
-          effectiveRatePpm: effectiveRatePpm,
-        );
-      }
+      await _applyPendingSchedulePatches(
+        command.contractId,
+        command.schedulePatches,
+      );
 
       // 联动放款交易（仅对放款合同存在 disbursement transaction）。
       if (contract.sourceType == InstallmentSourceType.disbursement) {
@@ -615,57 +662,157 @@ class InstallmentServiceImpl implements InstallmentService {
     });
   }
 
-  Future<void> _recalculateForUpdate({
-    required UpdateContractCommand command,
-    required InstallmentContract contract,
-    required int effectiveTotalPeriods,
-    required DateTime effectiveFirstRepaymentDate,
-    required DateTime effectiveLastRepaymentDate,
-    required DateTime effectiveBorrowingDate,
-    required InstallmentRepaymentMethod effectiveRepaymentMethod,
-    required InterestAccrualMethod effectiveAccrualMethod,
-    required int effectiveTotalFeeMinor,
-    required InterestRatePeriod? effectiveRatePeriod,
-    required int? effectiveRatePpm,
+  @override
+  Future<List<RecalculatedSchedulePreview>> previewContractRecalculation(
+    RecalculateContractSchedulesCommand command,
+  ) {
+    return _buildPendingRecalculationPreview(
+      command.contractId,
+      equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
+    );
+  }
+
+  @override
+  Future<void> recalculateContractSchedules(
+    RecalculateContractSchedulesCommand command,
+  ) {
+    return _runner.run<void>(() async {
+      final preview = await _buildPendingRecalculationPreview(
+        command.contractId,
+        equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
+      );
+      for (final row in preview) {
+        await _repository.updateSchedule(
+          row.scheduleId,
+          InstallmentSchedulePatch(
+            expectedPrincipal: row.expectedPrincipal,
+            expectedInterest: row.expectedInterest,
+            expectedFee: row.expectedFee,
+          ),
+        );
+      }
+    });
+  }
+
+  @override
+  Future<void> skipSchedule(SkipInstallmentScheduleCommand command) async {
+    final schedule = await _requireOwnedSchedule(
+      command.contractId,
+      command.scheduleId,
+    );
+    if (schedule.status != InstallmentScheduleStatus.pending) {
+      throw BusinessException(
+        CreditErrorCode.scheduleNotPending,
+        message: 'Only pending schedules can be skipped.',
+      );
+    }
+
+    await _runner.run<void>(() async {
+      await _repository.updateSchedule(
+        command.scheduleId,
+        const InstallmentSchedulePatch(
+          status: InstallmentScheduleStatus.skipped,
+        ),
+      );
+      await _maybeMarkContractSettled(command.contractId);
+    });
+  }
+
+  @override
+  Future<void> restoreSchedule(
+    RestoreInstallmentScheduleCommand command,
+  ) async {
+    final schedule = await _requireOwnedSchedule(
+      command.contractId,
+      command.scheduleId,
+    );
+    if (schedule.status != InstallmentScheduleStatus.skipped) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: 'Only skipped schedules can be restored.',
+      );
+    }
+
+    await _runner.run<void>(() async {
+      await _repository.updateSchedule(
+        command.scheduleId,
+        const InstallmentSchedulePatch(
+          status: InstallmentScheduleStatus.pending,
+        ),
+      );
+      await _maybeUnmarkContractSettled(command.contractId);
+    });
+  }
+
+  Future<void> _applyPendingSchedulePatches(
+    String contractId,
+    List<SchedulePendingPatch> patches,
+  ) async {
+    if (patches.isEmpty) return;
+    final schedules = await _repository.listSchedules(contractId);
+    final byPeriod = {for (final s in schedules) s.periodNo: s};
+    for (final patch in patches) {
+      final target = byPeriod[patch.periodNo];
+      if (target == null) {
+        throw BusinessException(
+          CreditErrorCode.scheduleNotFound,
+          message: 'Schedule period does not belong to the contract.',
+        );
+      }
+      if (target.status != InstallmentScheduleStatus.pending) {
+        throw BusinessException(
+          CreditErrorCode.scheduleNotPending,
+          message: 'Only pending schedules can be edited.',
+        );
+      }
+      await _repository.updateSchedule(
+        target.id,
+        InstallmentSchedulePatch(
+          expectedPrincipal: patch.expectedPrincipal,
+          expectedInterest: patch.expectedInterest,
+          expectedFee: patch.expectedFee,
+          expectedRepaymentDate: patch.expectedRepaymentDate,
+        ),
+      );
+    }
+  }
+
+  Future<List<RecalculatedSchedulePreview>> _buildPendingRecalculationPreview(
+    String contractId, {
+    int? equalInstallmentOverrideMinor,
   }) async {
-    final schedules = await _repository.listSchedules(command.contractId);
+    final contract = await _repository.findContract(contractId);
+    if (contract == null) {
+      throw BusinessException(
+        CreditErrorCode.contractNotFound,
+        message: 'Installment contract does not exist.',
+      );
+    }
+    if (contract.status != InstallmentContractStatus.active) {
+      throw BusinessException(
+        CreditErrorCode.contractNotActive,
+        message: 'Only active contracts can be recalculated.',
+      );
+    }
+
+    final schedules = await _repository.listSchedules(contractId);
     final paid =
         schedules
             .where((s) => s.status == InstallmentScheduleStatus.paid)
             .toList()
           ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
-    final paidCount = paid.length;
+    final pending =
+        schedules
+            .where((s) => s.status == InstallmentScheduleStatus.pending)
+            .toList()
+          ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
+    if (pending.isEmpty) return const [];
 
-    if (paidCount > 0 &&
-        effectiveFirstRepaymentDate != contract.firstRepaymentDate) {
-      throw BusinessException(
-        CreditErrorCode.contractInvalidCommand,
-        message: 'First repayment date cannot change after any period is paid.',
-      );
-    }
-    if (effectiveTotalPeriods < paidCount + 1) {
-      throw BusinessException(
-        CreditErrorCode.contractInvalidCommand,
-        message: 'Total periods must be at least paidCount + 1.',
-      );
-    }
-
-    // 计算 pending 期次的目标日期。
-    final allDates = _generator.generateDates(
-      firstRepaymentDate: effectiveFirstRepaymentDate,
-      lastRepaymentDate: effectiveLastRepaymentDate,
-      totalPeriods: effectiveTotalPeriods,
-    );
-    final pendingDates = allDates.sublist(paidCount);
-
-    // 剩余本金 = 总本金 − 已 paid 本金合计 − 已 extraPrincipal 合计
     final paidPrincipalMinor = paid.fold<int>(
       0,
       (acc, s) => acc + s.expectedPrincipal.minorUnits,
     );
-    final extraPrincipalMinor = await _extraPrincipalSumMinor(
-      command.contractId,
-    );
+    final extraPrincipalMinor = await _extraPrincipalSumMinor(contractId);
     final remainingMinor =
         contract.principal.minorUnits -
         paidPrincipalMinor -
@@ -681,92 +828,46 @@ class InstallmentServiceImpl implements InstallmentService {
       0,
       (acc, s) => acc + s.expectedFee.minorUnits,
     );
-    final remainingFeeMinor = effectiveTotalFeeMinor - paidFeeMinor;
-
+    final remainingFeeMinor = contract.totalFeeMinor - paidFeeMinor;
     final anchorDate =
-        paid.isEmpty ? effectiveBorrowingDate : paid.last.expectedRepaymentDate;
-
+        paid.isEmpty ? contract.borrowingDate : paid.last.expectedRepaymentDate;
     final allocations = _generator.allocate(
       remainingPrincipal: Money(minorUnits: remainingMinor),
       anchorDate: anchorDate,
-      pendingDates: pendingDates,
-      method: effectiveRepaymentMethod,
-      accrualMethod: effectiveAccrualMethod,
-      ratePeriod: effectiveRatePeriod,
-      ratePpm: effectiveRatePpm,
+      pendingDates: [for (final p in pending) p.expectedRepaymentDate],
+      method: contract.repaymentMethod,
+      accrualMethod: contract.interestAccrualMethod,
+      ratePeriod: contract.interestRatePeriod,
+      ratePpm: contract.interestRatePpm,
       remainingFeeMinor: remainingFeeMinor < 0 ? 0 : remainingFeeMinor,
-      equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
+      equalInstallmentOverrideMinor: equalInstallmentOverrideMinor,
     );
 
-    final pendingSchedules =
-        schedules
-            .where((s) => s.status == InstallmentScheduleStatus.pending)
-            .toList()
-          ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
-
-    final desiredPendingCount = effectiveTotalPeriods - paidCount;
-
-    if (pendingSchedules.length > desiredPendingCount) {
-      for (var i = desiredPendingCount; i < pendingSchedules.length; i++) {
-        final s = pendingSchedules[i];
-        await _repository.updateSchedule(
-          s.id,
-          InstallmentSchedulePatch(
-            expectedPrincipal: Money.zero(),
-            expectedInterest: Money.zero(),
-            expectedFee: Money.zero(),
-            status: InstallmentScheduleStatus.skipped,
-          ),
-        );
-      }
-    }
-
-    final usableLen =
-        pendingSchedules.length < desiredPendingCount
-            ? pendingSchedules.length
-            : desiredPendingCount;
-    for (var i = 0; i < usableLen; i++) {
-      final s = pendingSchedules[i];
-      final alloc = allocations[i];
-      final date = pendingDates[i];
-      await _repository.updateSchedule(
-        s.id,
-        InstallmentSchedulePatch(
-          expectedRepaymentDate: date,
-          expectedPrincipal: alloc.principal,
-          expectedInterest: alloc.interest,
-          expectedFee: alloc.fee,
+    return [
+      for (var i = 0; i < pending.length; i++)
+        RecalculatedSchedulePreview(
+          scheduleId: pending[i].id,
+          periodNo: pending[i].periodNo,
+          expectedRepaymentDate: pending[i].expectedRepaymentDate,
+          expectedPrincipal: allocations[i].principal,
+          expectedInterest: allocations[i].interest,
+          expectedFee: allocations[i].fee,
         ),
-      );
-    }
-    if (pendingSchedules.length < desiredPendingCount) {
-      await _rebuildSchedulesPreservingPaid(
-        contractId: command.contractId,
-        contract: contract,
-        paid: paid,
-        pendingDates: pendingDates,
-        allocations: allocations,
-      );
-    }
+    ];
+  }
 
-    if (command.schedulePatches.isNotEmpty) {
-      final refreshed = await _repository.listSchedules(command.contractId);
-      final byPeriod = {for (final s in refreshed) s.periodNo: s};
-      for (final patch in command.schedulePatches) {
-        final target = byPeriod[patch.periodNo];
-        if (target == null) continue;
-        if (target.status != InstallmentScheduleStatus.pending) continue;
-        await _repository.updateSchedule(
-          target.id,
-          InstallmentSchedulePatch(
-            expectedPrincipal: patch.expectedPrincipal,
-            expectedInterest: patch.expectedInterest,
-            expectedFee: patch.expectedFee,
-            expectedRepaymentDate: patch.expectedRepaymentDate,
-          ),
-        );
-      }
+  Future<InstallmentSchedule> _requireOwnedSchedule(
+    String contractId,
+    String scheduleId,
+  ) async {
+    final schedule = await _repository.findSchedule(scheduleId);
+    if (schedule == null || schedule.contractId != contractId) {
+      throw BusinessException(
+        CreditErrorCode.scheduleNotFound,
+        message: 'Schedule does not belong to the contract.',
+      );
     }
+    return schedule;
   }
 
   @override
@@ -814,14 +915,6 @@ class InstallmentServiceImpl implements InstallmentService {
         );
       }
     });
-  }
-
-  T? _resolvePatch<T>(Patch<T>? patch, T? current) {
-    return switch (patch) {
-      null => current,
-      PatchSet<T>(:final value) => value,
-      PatchClear<T>() => null,
-    };
   }
 
   Patch<String?>? _nullableStringPatch(Patch<String>? patch) {
@@ -1062,27 +1155,23 @@ class InstallmentServiceImpl implements InstallmentService {
       );
     }
 
-    // 1. 回滚每一笔还款交易（按时间倒序更稳妥：晚于放款的先撤）。
     final repayments = await _repository.listRepayments(command.contractId);
-    final sortedRepayments = [...repayments]
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    if (repayments.isNotEmpty) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message:
+            'Contracts with repayments cannot be deleted directly; settle early or revert repayments first.',
+      );
+    }
+    if (contract.disbursementTransactionId != null) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message:
+            'Contracts with a disbursement transaction cannot be deleted directly.',
+      );
+    }
 
     return _runner.run<void>(() async {
-      for (final repayment in sortedRepayments) {
-        await _correctionService.deleteTransaction(
-          DeleteTransactionCommand(transactionId: repayment.transactionId),
-        );
-      }
-
-      // 2. 放款合同需要撤回放款交易；账单分期没有放款交易，跳过。
-      final disbursementTxId = contract.disbursementTransactionId;
-      if (disbursementTxId != null) {
-        await _correctionService.deleteTransaction(
-          DeleteTransactionCommand(transactionId: disbursementTxId),
-        );
-      }
-
-      // 3. 物理删除合同与子表。
       await _repository.deleteContract(command.contractId);
     });
   }
@@ -1189,76 +1278,6 @@ class InstallmentServiceImpl implements InstallmentService {
     }
   }
 
-  /// 当 totalPeriods 增加导致 pending 行不足时，按 paid 不变 + pending 全新分配
-  /// 来重建 schedule 表。
-  Future<void> _rebuildSchedulesPreservingPaid({
-    required String contractId,
-    required InstallmentContract contract,
-    required List<InstallmentSchedule> paid,
-    required List<DateTime> pendingDates,
-    required List<InstallmentAmountAllocation> allocations,
-  }) async {
-    final drafts = <InstallmentScheduleDraft>[];
-    for (var i = 0; i < paid.length; i++) {
-      final s = paid[i];
-      drafts.add(
-        InstallmentScheduleDraft(
-          periodNo: i + 1,
-          expectedRepaymentDate: s.expectedRepaymentDate,
-          expectedPrincipal: s.expectedPrincipal,
-          expectedInterest: s.expectedInterest,
-          expectedFee: s.expectedFee,
-        ),
-      );
-    }
-    for (var i = 0; i < pendingDates.length; i++) {
-      drafts.add(
-        InstallmentScheduleDraft(
-          periodNo: paid.length + i + 1,
-          expectedRepaymentDate: pendingDates[i],
-          expectedPrincipal: allocations[i].principal,
-          expectedInterest: allocations[i].interest,
-          expectedFee: allocations[i].fee,
-        ),
-      );
-    }
-    // replaceSchedules 会先删后插，paid 行需要重新建立和 paid repayment 的关联：
-    // 由于 installment_repayments.schedule_id 引用 schedule 的旧 id，
-    // 删除会破坏关联。这里采用渐进式 update + insert 而不是 replace。
-    // (TODO: 真正的期数增加场景较少且属编辑高级用法；当前实现先保证 paid 不变。)
-    // 简化：对已 paid 部分跳过插入，仅追加 pending 行。
-    final existingSchedules = await _repository.listSchedules(contractId);
-    final maxPeriodNo =
-        existingSchedules.isEmpty
-            ? 0
-            : existingSchedules
-                .map((s) => s.periodNo)
-                .reduce((a, b) => a > b ? a : b);
-    // 计算需要补几行
-    final desiredPending = pendingDates.length;
-    final existingPending =
-        existingSchedules
-            .where((s) => s.status == InstallmentScheduleStatus.pending)
-            .length;
-    final toAdd = desiredPending - existingPending;
-    if (toAdd <= 0) return;
-    final newDrafts = <InstallmentScheduleDraft>[];
-    for (var i = 0; i < toAdd; i++) {
-      final allocIdx = existingPending + i;
-      newDrafts.add(
-        InstallmentScheduleDraft(
-          periodNo: maxPeriodNo + i + 1,
-          expectedRepaymentDate: pendingDates[allocIdx],
-          expectedPrincipal: allocations[allocIdx].principal,
-          expectedInterest: allocations[allocIdx].interest,
-          expectedFee: allocations[allocIdx].fee,
-        ),
-      );
-    }
-    // 用 repository 的批量插入能力 — 改 repository 暴露 appendSchedules。
-    await _repository.appendSchedules(contractId, newDrafts);
-  }
-
   Future<int> _extraPrincipalSumMinor(String contractId) async {
     final repayments = await _repository.listRepayments(contractId);
     return _transactionQueryService.getDetailAmountSum(
@@ -1305,6 +1324,69 @@ class InstallmentServiceImpl implements InstallmentService {
       firstDate.month + totalPeriods - 1,
       firstDate.day,
     );
+  }
+
+  ({DateTime first, DateTime last})? _cycleScheduleBoundsForDisbursement(
+    CreditLiabilityAccount? account, {
+    required DateTime borrowingDate,
+    required int totalPeriods,
+  }) {
+    if (account == null || account.kind != CreditLiabilityAccountKind.credit) {
+      return null;
+    }
+    final billingDay = account.billingDay;
+    final repaymentDay = account.repaymentDay;
+    if (billingDay == null || repaymentDay == null) return null;
+
+    final currentPeriod = _creditPeriodForDate(
+      borrowingDate,
+      billingDay: billingDay,
+      billingDayToNext: account.billingDayToNext,
+    );
+    final firstPeriod = currentPeriod.next();
+    final lastPeriod = _advancePeriod(firstPeriod, totalPeriods - 1);
+    return (
+      first: _creditRepaymentDateForPeriod(
+        firstPeriod,
+        billingDay: billingDay,
+        repaymentDay: repaymentDay,
+      ),
+      last: _creditRepaymentDateForPeriod(
+        lastPeriod,
+        billingDay: billingDay,
+        repaymentDay: repaymentDay,
+      ),
+    );
+  }
+
+  BillPeriod _creditPeriodForDate(
+    DateTime date, {
+    required int billingDay,
+    required bool billingDayToNext,
+  }) {
+    final day = date.day;
+    if (day < billingDay || (!billingDayToNext && day == billingDay)) {
+      return BillPeriod(year: date.year, month: date.month);
+    }
+    final next = DateTime(date.year, date.month + 1);
+    return BillPeriod(year: next.year, month: next.month);
+  }
+
+  BillPeriod _advancePeriod(BillPeriod period, int months) {
+    var result = period;
+    for (var i = 0; i < months; i++) {
+      result = result.next();
+    }
+    return result;
+  }
+
+  DateTime _creditRepaymentDateForPeriod(
+    BillPeriod period, {
+    required int billingDay,
+    required int repaymentDay,
+  }) {
+    final repaymentPeriod = repaymentDay > billingDay ? period : period.next();
+    return DateTime(repaymentPeriod.year, repaymentPeriod.month, repaymentDay);
   }
 
   TransactionOwnership _installmentOwnership(
