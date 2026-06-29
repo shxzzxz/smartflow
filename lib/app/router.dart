@@ -5,6 +5,7 @@ import '../application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../feature/account/page/account_detail_page.dart';
 import '../feature/account/page/account_form_page.dart';
+import '../feature/account/page/account_transactions_page.dart';
 import '../feature/account/page/accounts_page.dart';
 import '../feature/category/page/categories_page.dart';
 import '../feature/category/page/category_form_page.dart';
@@ -124,6 +125,12 @@ final appRouter = GoRouter(
       builder:
           (context, state) =>
               AccountFormPage(accountId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/account/:id/transactions',
+      builder:
+          (context, state) =>
+              AccountTransactionsPage(accountId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/account/:id/repayment',

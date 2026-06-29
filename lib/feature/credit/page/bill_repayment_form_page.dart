@@ -9,13 +9,13 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
-import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/bill_repayment_allocation_view_model.dart';
 import '../view_model/bill_repayment_form_view_model.dart';
+import '../widget/repayment_form_fields.dart';
 
 class BillRepaymentFormPage extends ConsumerStatefulWidget {
   const BillRepaymentFormPage({required this.billId, super.key});
@@ -121,90 +121,51 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
       key: _formKey,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(
-          AppSpacing.space28,
+          AppSpacing.space16,
           AppSpacing.space18,
-          AppSpacing.space28,
+          AppSpacing.space16,
           AppSpacing.space24,
         ),
         children: [
-          AppSurface(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space10,
-                vertical: AppSpacing.space4,
+          CreditRepaymentFormSection(
+            title: '还款信息',
+            children: [
+              CreditRepaymentAmountFields(
+                principalController: _principalController,
+                interestController: _interestController,
+                feeController: _feeController,
+                discountController: _discountController,
               ),
-              child: AppPlainFormSection(
-                children: [
-                  MoneyPlainFormRow(
-                    label: '本金',
-                    controller: _principalController,
-                    hintText: '请输入还款本金',
-                    validator: validatePositiveMoneyText,
-                  ),
-                  MoneyPlainFormRow(
-                    label: '利息',
-                    controller: _interestController,
-                    hintText: '请输入利息（可选）',
-                    validator: validateOptionalNonNegativeMoneyText,
-                  ),
-                  MoneyPlainFormRow(
-                    label: '手续费',
-                    controller: _feeController,
-                    hintText: '请输入手续费（可选）',
-                    validator: validateOptionalNonNegativeMoneyText,
-                  ),
-                  MoneyPlainFormRow(
-                    label: '优惠',
-                    controller: _discountController,
-                    hintText: '请输入优惠（可选）',
-                    validator: validateOptionalNonNegativeMoneyText,
-                  ),
-                  DropdownPlainFormRow<BillRepaymentAllocationMode>(
-                    label: '分摊方式',
-                    value: state.allocationMode,
-                    items: billRepaymentAllocationModeItems,
-                    onChanged:
-                        (value) => ref
-                            .read(provider.notifier)
-                            .setAllocationMode(value),
-                  ),
-                  AppPlainSwitchRow(
-                    label: '生成交易',
-                    value: state.createTransaction,
-                    onChanged:
-                        (value) => ref
-                            .read(provider.notifier)
-                            .setCreateTransaction(value),
-                  ),
-                  if (state.createTransaction) ...[
-                    DateTimePlainFormRow(
-                      label: '还款日期',
-                      value: _formatDateTime(state.occurredAt),
-                      onTap: () => _pickDate(provider, state.occurredAt),
-                    ),
-                    AccountPlainFormRow(
-                      label: '还款账户',
-                      account: paidFromAccount,
+              DropdownPlainFormRow<BillRepaymentAllocationMode>(
+                label: '分摊方式',
+                value: state.allocationMode,
+                items: billRepaymentAllocationModeItems,
+                onChanged:
+                    (value) =>
+                        ref.read(provider.notifier).setAllocationMode(value),
+              ),
+              CreditRepaymentTransactionFields(
+                createTransaction: state.createTransaction,
+                onCreateTransactionChanged:
+                    (value) =>
+                        ref.read(provider.notifier).setCreateTransaction(value),
+                occurredAtText: _formatDateTime(state.occurredAt),
+                onPickDate: () => _pickDate(provider, state.occurredAt),
+                repaymentAccount: paidFromAccount,
+                selectedRepaymentAccountId: state.paidFromAccountId,
+                repaymentAccounts: state.repaymentAccounts,
+                onPickAccount:
+                    () => _pickAccount(
+                      accounts: state.repaymentAccounts,
                       selectedId: state.paidFromAccountId,
-                      placeholder: '请选择还款账户',
-                      onTap:
-                          state.repaymentAccounts.isEmpty
-                              ? null
-                              : () => _pickAccount(
-                                accounts: state.repaymentAccounts,
-                                selectedId: state.paidFromAccountId,
-                                onSelected:
-                                    (id) => ref
-                                        .read(provider.notifier)
-                                        .setPaidFromAccountId(id),
-                              ),
-                      validator: (value) => value == null ? '请选择还款账户' : null,
+                      onSelected:
+                          (id) => ref
+                              .read(provider.notifier)
+                              .setPaidFromAccountId(id),
                     ),
-                  ],
-                  NotePlainFormRow(controller: _noteController),
-                ],
               ),
-            ),
+              NotePlainFormRow(controller: _noteController),
+            ],
           ),
           if (warning != null) ...[
             const SizedBox(height: AppSpacing.space12),
@@ -362,86 +323,87 @@ class _AllocationResultSection extends StatelessWidget {
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
     final unallocated = review?.unallocated;
-    return AppSurface(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space10,
-          vertical: AppSpacing.space8,
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(
-                left: AppSpacing.space4,
-                right: AppSpacing.space4,
-                bottom: AppSpacing.space6,
-              ),
-              child: Row(
-                children: [
-                  Expanded(child: Text('分摊结果', style: styles.dateSectionTitle)),
-                  if (onCalculate != null)
-                    TextButton.icon(
-                      onPressed: onCalculate,
-                      style: TextButton.styleFrom(
-                        minimumSize: const Size(0, 30),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.space8,
-                          vertical: AppSpacing.space4,
-                        ),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                        textStyle: styles.listSupporting,
-                      ),
-                      icon: const Icon(Icons.calculate_outlined, size: 16),
-                      label: const Text('计算分摊'),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space4,
+            0,
+            AppSpacing.space4,
+            AppSpacing.space6,
+          ),
+          child: Row(
+            children: [
+              Expanded(child: Text('分摊结果', style: styles.dateSectionTitle)),
+              if (onCalculate != null)
+                TextButton.icon(
+                  onPressed: onCalculate,
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 30),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space8,
+                      vertical: AppSpacing.space4,
                     ),
-                ],
-              ),
-            ),
-            Divider(
-              height: 1,
-              color: colors.outlineVariant.withValues(alpha: 0.55),
-            ),
-            const SizedBox(height: AppSpacing.space4),
-            _AllocationHeader(),
-            Divider(
-              height: 1,
-              color: colors.outlineVariant.withValues(alpha: 0.55),
-            ),
-            for (var i = 0; i < state.lines.length; i++) ...[
-              _AllocationResultRow(
-                line: state.lines[i],
-                breakdown: _allocationBreakdown(
-                  state.manualAllocationText(state.lines[i].billItemId),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    textStyle: styles.listSupporting,
+                  ),
+                  icon: const Icon(Icons.calculate_outlined, size: 16),
+                  label: const Text('计算分摊'),
                 ),
-                onChanged: onChanged,
-              ),
-              Divider(
-                height: 1,
-                color: colors.outlineVariant.withValues(alpha: 0.35),
-              ),
             ],
-            if (unallocated != null && _hasNonZeroAmount(unallocated)) ...[
-              _AllocationSummaryRow(
-                label: '未分摊',
-                breakdown: unallocated,
-                color: colors.error,
-              ),
-              Divider(
-                height: 1,
-                color: colors.outlineVariant.withValues(alpha: 0.35),
-              ),
-            ],
-            _AllocationSummaryRow(
-              label: '合计',
-              breakdown:
-                  review?.totalAllocated ??
-                  credit.RepaymentAmountBreakdown.zero,
-              emphasize: true,
-            ),
-          ],
+          ),
         ),
-      ),
+        AppSurface(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space10,
+              vertical: AppSpacing.space8,
+            ),
+            child: Column(
+              children: [
+                _AllocationHeader(),
+                Divider(
+                  height: 1,
+                  color: colors.outlineVariant.withValues(alpha: 0.55),
+                ),
+                for (var i = 0; i < state.lines.length; i++) ...[
+                  _AllocationResultRow(
+                    line: state.lines[i],
+                    breakdown: _allocationBreakdown(
+                      state.manualAllocationText(state.lines[i].billItemId),
+                    ),
+                    onChanged: onChanged,
+                  ),
+                  Divider(
+                    height: 1,
+                    color: colors.outlineVariant.withValues(alpha: 0.35),
+                  ),
+                ],
+                if (unallocated != null && _hasNonZeroAmount(unallocated)) ...[
+                  _AllocationSummaryRow(
+                    label: '未分摊',
+                    breakdown: unallocated,
+                    color: colors.error,
+                  ),
+                  Divider(
+                    height: 1,
+                    color: colors.outlineVariant.withValues(alpha: 0.35),
+                  ),
+                ],
+                _AllocationSummaryRow(
+                  label: '合计',
+                  breakdown:
+                      review?.totalAllocated ??
+                      credit.RepaymentAmountBreakdown.zero,
+                  emphasize: true,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

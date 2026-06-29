@@ -48,14 +48,23 @@ class UnattributedRepaymentFormViewModel
     return UnattributedRepaymentFormState.loaded(
       overview: overview,
       repaymentSourceAccounts: repaymentSourceAccounts,
-      amountText: overview.buckets.unattributedDebt.format(),
+      principalText: overview.buckets.unattributedDebt.format(),
       occurredAt: DateTime.now(),
       paidFromAccountId: _selectedId(null, repaymentAccounts),
     );
   }
 
-  void setAmountText(String value) =>
-      _update((state) => state.copyWith(amountText: value));
+  void setPrincipalText(String value) =>
+      _update((state) => state.copyWith(principalText: value));
+
+  void setInterestText(String value) =>
+      _update((state) => state.copyWith(interestText: value));
+
+  void setFeeText(String value) =>
+      _update((state) => state.copyWith(feeText: value));
+
+  void setDiscountText(String value) =>
+      _update((state) => state.copyWith(discountText: value));
 
   void setNoteText(String value) =>
       _update((state) => state.copyWith(noteText: value));
@@ -72,13 +81,23 @@ class UnattributedRepaymentFormViewModel
   Future<SubmitOutcome> submit() async {
     final current = state.asData?.value;
     if (current == null || !current.isLoaded || current.overview == null) {
-      return _invalidCommand('账单外还款表单尚未加载');
+      return _invalidCommand('未归属还款表单尚未加载');
     }
-    final amount = _parsePositiveMoney(current.amountText);
-    if (amount == null) return _invalidCommand('请输入有效还款金额');
-    if (amount.minorUnits >
+    final principal = _parsePositiveMoney(current.principalText);
+    if (principal == null) return _invalidCommand('请输入有效本金');
+    final interest = _parseOptionalNonNegativeMoney(current.interestText);
+    if (interest == null) return _invalidCommand('请输入有效利息');
+    final fee = _parseOptionalNonNegativeMoney(current.feeText);
+    if (fee == null) return _invalidCommand('请输入有效手续费');
+    final discount = _parseOptionalNonNegativeMoney(current.discountText);
+    if (discount == null) return _invalidCommand('请输入有效优惠');
+    final cashPaid = principal + interest + fee - discount;
+    if (cashPaid.minorUnits <= 0) {
+      return _invalidCommand('实付金额必须大于 0');
+    }
+    if (principal.minorUnits >
         current.overview!.buckets.unattributedDebt.minorUnits) {
-      return _invalidCommand('还款金额不能超过账单外欠款');
+      return _invalidCommand('还款本金不能超过未归属欠款');
     }
 
     final paidFromAccountId =
@@ -96,7 +115,10 @@ class UnattributedRepaymentFormViewModel
           .createUnattributedRepayment(
             credit.CreateUnattributedRepaymentCommand(
               accountId: accountId,
-              amount: amount,
+              amount: principal,
+              interest: _positiveOrNull(interest),
+              fee: _positiveOrNull(fee),
+              discount: _positiveOrNull(discount),
               transactionInfo:
                   paidFromAccountId == null
                       ? null
@@ -154,7 +176,10 @@ class UnattributedRepaymentFormState {
   const UnattributedRepaymentFormState({
     required this.status,
     required this.repaymentSourceAccounts,
-    required this.amountText,
+    required this.principalText,
+    required this.interestText,
+    required this.feeText,
+    required this.discountText,
     required this.noteText,
     required this.occurredAt,
     required this.createTransaction,
@@ -167,7 +192,10 @@ class UnattributedRepaymentFormState {
     required credit_query.CreditAccountOverviewReadModel overview,
     required List<Account> repaymentSourceAccounts,
     required DateTime occurredAt,
-    String amountText = '',
+    String principalText = '',
+    String interestText = '',
+    String feeText = '',
+    String discountText = '',
     String noteText = '',
     String? paidFromAccountId,
   }) {
@@ -175,7 +203,10 @@ class UnattributedRepaymentFormState {
       status: UnattributedRepaymentFormLoadStatus.loaded,
       overview: overview,
       repaymentSourceAccounts: repaymentSourceAccounts,
-      amountText: amountText,
+      principalText: principalText,
+      interestText: interestText,
+      feeText: feeText,
+      discountText: discountText,
       noteText: noteText,
       occurredAt: occurredAt,
       paidFromAccountId: paidFromAccountId,
@@ -190,7 +221,10 @@ class UnattributedRepaymentFormState {
     return UnattributedRepaymentFormState(
       status: UnattributedRepaymentFormLoadStatus.notFound,
       repaymentSourceAccounts: repaymentSourceAccounts,
-      amountText: '',
+      principalText: '',
+      interestText: '',
+      feeText: '',
+      discountText: '',
       noteText: '',
       occurredAt: DateTime.now(),
       createTransaction: true,
@@ -206,7 +240,10 @@ class UnattributedRepaymentFormState {
       status: UnattributedRepaymentFormLoadStatus.noDebt,
       overview: overview,
       repaymentSourceAccounts: repaymentSourceAccounts,
-      amountText: '',
+      principalText: '',
+      interestText: '',
+      feeText: '',
+      discountText: '',
       noteText: '',
       occurredAt: DateTime.now(),
       createTransaction: true,
@@ -217,7 +254,10 @@ class UnattributedRepaymentFormState {
   final UnattributedRepaymentFormLoadStatus status;
   final credit_query.CreditAccountOverviewReadModel? overview;
   final List<Account> repaymentSourceAccounts;
-  final String amountText;
+  final String principalText;
+  final String interestText;
+  final String feeText;
+  final String discountText;
   final String noteText;
   final DateTime occurredAt;
   final String? paidFromAccountId;
@@ -234,7 +274,10 @@ class UnattributedRepaymentFormState {
   }
 
   UnattributedRepaymentFormState copyWith({
-    String? amountText,
+    String? principalText,
+    String? interestText,
+    String? feeText,
+    String? discountText,
     String? noteText,
     DateTime? occurredAt,
     Object? paidFromAccountId = _sentinel,
@@ -245,7 +288,10 @@ class UnattributedRepaymentFormState {
       status: status,
       overview: overview,
       repaymentSourceAccounts: repaymentSourceAccounts,
-      amountText: amountText ?? this.amountText,
+      principalText: principalText ?? this.principalText,
+      interestText: interestText ?? this.interestText,
+      feeText: feeText ?? this.feeText,
+      discountText: discountText ?? this.discountText,
       noteText: noteText ?? this.noteText,
       occurredAt: occurredAt ?? this.occurredAt,
       paidFromAccountId:
@@ -270,6 +316,17 @@ String? _selectedId(String? id, List<Account> accounts) {
 Money? _parsePositiveMoney(String value) {
   final money = Money.tryParse(value);
   return money != null && money.minorUnits > 0 ? money : null;
+}
+
+Money? _parseOptionalNonNegativeMoney(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return Money.zero();
+  final money = Money.tryParse(trimmed);
+  return money != null && money.minorUnits >= 0 ? money : null;
+}
+
+Money? _positiveOrNull(Money value) {
+  return value.minorUnits > 0 ? value : null;
 }
 
 const Object _sentinel = Object();

@@ -95,6 +95,7 @@ class CreateContractPrepaymentRepaymentCommand {
     required this.principal,
     this.interest,
     this.fee,
+    this.discount,
     this.transactionInfo,
     this.note,
   });
@@ -103,6 +104,7 @@ class CreateContractPrepaymentRepaymentCommand {
   final Money principal;
   final Money? interest;
   final Money? fee;
+  final Money? discount;
   final RepaymentTransactionInfo? transactionInfo;
   final String? note;
 }
@@ -111,12 +113,18 @@ class CreateUnattributedRepaymentCommand {
   const CreateUnattributedRepaymentCommand({
     required this.accountId,
     required this.amount,
+    this.interest,
+    this.fee,
+    this.discount,
     this.transactionInfo,
     this.note,
   });
 
   final String accountId;
   final Money amount;
+  final Money? interest;
+  final Money? fee;
+  final Money? discount;
   final RepaymentTransactionInfo? transactionInfo;
   final String? note;
 }
@@ -343,6 +351,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       principal: command.principal,
       interest: command.interest,
       fee: command.fee,
+      discount: command.discount,
     );
 
     final repaymentId = _idGenerator.newId();
@@ -350,7 +359,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       principal: command.principal,
       interest: command.interest ?? Money.zero(),
       fee: command.fee ?? Money.zero(),
-      discount: Money.zero(),
+      discount: command.discount ?? Money.zero(),
     );
 
     return _transactionRunner.run(() async {
@@ -403,7 +412,15 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         message: 'Credit liability account does not exist.',
       );
     }
-    if (command.amount.minorUnits <= 0) {
+    final total = RepaymentAmountBreakdown(
+      principal: command.amount,
+      interest: command.interest ?? Money.zero(),
+      fee: command.fee ?? Money.zero(),
+      discount: command.discount ?? Money.zero(),
+    );
+    if (command.amount.minorUnits <= 0 ||
+        total.hasNegativePart ||
+        _cashPaid(total).minorUnits <= 0) {
       throw BusinessException(CreditErrorCode.repaymentInvalidCommand);
     }
 
@@ -413,12 +430,6 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     }
 
     final repaymentId = _idGenerator.newId();
-    final total = RepaymentAmountBreakdown(
-      principal: command.amount,
-      interest: Money.zero(),
-      fee: Money.zero(),
-      discount: Money.zero(),
-    );
 
     return _transactionRunner.run(() async {
       final post = await _postLedgerTransactionIfNeeded(
@@ -743,6 +754,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     required Money principal,
     Money? interest,
     Money? fee,
+    Money? discount,
   }) {
     if (status != InstallmentContractStatus.active) {
       throw BusinessException(
@@ -750,9 +762,15 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         message: 'Only active contracts allow contract-side repayment.',
       );
     }
+    final total = RepaymentAmountBreakdown(
+      principal: principal,
+      interest: interest ?? Money.zero(),
+      fee: fee ?? Money.zero(),
+      discount: discount ?? Money.zero(),
+    );
     if (principal.minorUnits <= 0 ||
-        (interest?.minorUnits ?? 0) < 0 ||
-        (fee?.minorUnits ?? 0) < 0) {
+        total.hasNegativePart ||
+        _cashPaid(total).minorUnits <= 0) {
       throw BusinessException(CreditErrorCode.repaymentInvalidCommand);
     }
   }
@@ -1123,6 +1141,10 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       RepaymentAmountBreakdown.zero,
       (sum, allocation) => sum + allocation.allocated,
     );
+  }
+
+  Money _cashPaid(RepaymentAmountBreakdown value) {
+    return value.principal + value.interest + value.fee - value.discount;
   }
 
   Money? _positiveOrNull(Money value) {

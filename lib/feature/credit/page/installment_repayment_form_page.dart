@@ -6,12 +6,12 @@ import '../../../application/ledger/ledger_command_api.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
-import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/installment_repayment_form_view_model.dart';
 import '../view_model/installment_repayment_mode.dart';
+import '../widget/repayment_form_fields.dart';
 
 export '../view_model/installment_repayment_mode.dart';
 
@@ -115,85 +115,51 @@ class _InstallmentRepaymentFormPageState
       key: _formKey,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(
-          AppSpacing.space28,
+          AppSpacing.space16,
           AppSpacing.space18,
-          AppSpacing.space28,
+          AppSpacing.space16,
           AppSpacing.space24,
         ),
         children: [
-          AppPlainFormSection(
+          CreditRepaymentFormSection(
+            title: '还款信息',
             children: [
-              MoneyPlainFormRow(
-                label: '本金',
-                controller: _principalController,
-                hintText: '请输入还款本金',
-                validator: validatePositiveMoneyText,
+              CreditRepaymentAmountFields(
+                principalController: _principalController,
+                interestController: _interestController,
+                feeController: _feeController,
+                discountController: _discountController,
               ),
-              MoneyPlainFormRow(
-                label: '利息',
-                controller: _interestController,
-                hintText: '请输入利息（可选）',
-                validator: validateOptionalNonNegativeMoneyText,
-              ),
-              MoneyPlainFormRow(
-                label: '手续费',
-                controller: _feeController,
-                hintText: '请输入手续费（可选）',
-                validator: validateOptionalNonNegativeMoneyText,
-              ),
-              if (widget.mode == InstallmentRepaymentMode.scheduled)
-                MoneyPlainFormRow(
-                  label: '优惠',
-                  controller: _discountController,
-                  hintText: '请输入优惠（可选）',
-                  validator: validateOptionalNonNegativeMoneyText,
-                ),
-              AppPlainSwitchRow(
-                label: '生成流水',
-                value: state.createTransaction,
-                onChanged:
+              CreditRepaymentTransactionFields(
+                createTransaction: state.createTransaction,
+                onCreateTransactionChanged:
                     (value) =>
                         ref.read(provider.notifier).setCreateTransaction(value),
+                occurredAtText: _formatDateTime(state.occurredAt),
+                onPickDate: () => _pickDate(provider, state.occurredAt),
+                repaymentAccount: _findAccount(
+                  state.accounts,
+                  state.paidFromAccountId,
+                ),
+                selectedRepaymentAccountId: state.paidFromAccountId,
+                repaymentAccounts: state.accounts,
+                onPickAccount:
+                    () => _pickAccount(
+                      accounts: state.accounts,
+                      selectedId: state.paidFromAccountId,
+                      onSelected:
+                          (id) => ref
+                              .read(provider.notifier)
+                              .setPaidFromAccountId(id),
+                    ),
               ),
-              if (state.createTransaction) ...[
-                DateTimePlainFormRow(
-                  label: '还款日期',
-                  value: _formatDateTime(state.occurredAt),
-                  onTap: () => _pickDate(provider, state.occurredAt),
-                ),
-                AccountPlainFormRow(
-                  label: '还款账户',
-                  account: _findAccount(
-                    state.accounts,
-                    state.paidFromAccountId,
-                  ),
-                  selectedId: state.paidFromAccountId,
-                  placeholder: '请选择还款账户',
-                  onTap:
-                      state.accounts.isEmpty
-                          ? null
-                          : () => _pickAccount(
-                            accounts: state.accounts,
-                            selectedId: state.paidFromAccountId,
-                            onSelected:
-                                (id) => ref
-                                    .read(provider.notifier)
-                                    .setPaidFromAccountId(id),
-                          ),
-                  validator: (value) => value == null ? '请选择还款账户' : null,
-                ),
-              ],
               NotePlainFormRow(controller: _noteController),
             ],
           ),
           const SizedBox(height: AppSpacing.space24),
           if (widget.mode == InstallmentRepaymentMode.prepayment)
-            const Padding(
-              padding: EdgeInsets.only(bottom: AppSpacing.space12),
-              child: Text(
-                '提交后，发生日之后的待还期次金额将按剩余本金重新计算。',
-                style: TextStyle(fontSize: 12),
-              ),
+            const CreditRepaymentSubmitHint(
+              text: '提交后，发生日之后的待还期次金额将按剩余本金重新计算。',
             ),
           AppSubmitButton(
             label: _submitLabel(widget.mode),

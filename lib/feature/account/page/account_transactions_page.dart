@@ -16,11 +16,11 @@ class AccountTransactionsPage extends ConsumerWidget {
     final state = ref.watch(accountTransactionsViewModelProvider(accountId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('账户流水')),
+      appBar: AppBar(title: const Text('账户交易')),
       body: switch (state) {
         AccountTransactionsLoaded(:final rows) =>
           rows.isEmpty
-              ? const Center(child: Text('暂无账户流水'))
+              ? const Center(child: Text('暂无账户交易'))
               : ListView.separated(
                 padding: const EdgeInsets.all(AppSpacing.space16),
                 itemCount: rows.length,

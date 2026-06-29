@@ -7,11 +7,11 @@ import '../../../core/money/money.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
-import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/unattributed_repayment_form_view_model.dart';
+import '../widget/repayment_form_fields.dart';
 
 class UnattributedRepaymentFormPage extends ConsumerStatefulWidget {
   const UnattributedRepaymentFormPage({required this.accountId, super.key});
@@ -26,17 +26,35 @@ class UnattributedRepaymentFormPage extends ConsumerStatefulWidget {
 class _UnattributedRepaymentFormPageState
     extends ConsumerState<UnattributedRepaymentFormPage> {
   final _formKey = GlobalKey<FormState>();
-  final _amountController = TextEditingController();
+  final _principalController = TextEditingController();
+  final _interestController = TextEditingController();
+  final _feeController = TextEditingController();
+  final _discountController = TextEditingController();
   final _noteController = TextEditingController();
   bool _syncing = false;
 
   @override
   void initState() {
     super.initState();
-    _amountController.addListener(
+    _principalController.addListener(
       () => _setText(
-        (vm, value) => vm.setAmountText(value),
-        _amountController.text,
+        (vm, value) => vm.setPrincipalText(value),
+        _principalController.text,
+      ),
+    );
+    _interestController.addListener(
+      () => _setText(
+        (vm, value) => vm.setInterestText(value),
+        _interestController.text,
+      ),
+    );
+    _feeController.addListener(
+      () => _setText((vm, value) => vm.setFeeText(value), _feeController.text),
+    );
+    _discountController.addListener(
+      () => _setText(
+        (vm, value) => vm.setDiscountText(value),
+        _discountController.text,
       ),
     );
     _noteController.addListener(
@@ -47,7 +65,10 @@ class _UnattributedRepaymentFormPageState
 
   @override
   void dispose() {
-    _amountController.dispose();
+    _principalController.dispose();
+    _interestController.dispose();
+    _feeController.dispose();
+    _discountController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -60,7 +81,7 @@ class _UnattributedRepaymentFormPageState
     final asyncState = ref.watch(provider);
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(title: const Text('账单外还款')),
+      appBar: AppBar(title: const Text('未归属还款')),
       body: switch (asyncState) {
         AsyncData(value: final state) => _buildState(provider, state),
         AsyncError(:final error) => Center(child: Text('加载失败：$error')),
@@ -77,7 +98,7 @@ class _UnattributedRepaymentFormPageState
       case UnattributedRepaymentFormLoadStatus.notFound:
         return const Center(child: Text('信贷账户不存在'));
       case UnattributedRepaymentFormLoadStatus.noDebt:
-        return const Center(child: Text('没有可偿还的账单外欠款'));
+        return const Center(child: Text('没有可偿还的未归属欠款'));
       case UnattributedRepaymentFormLoadStatus.loaded:
         return _buildForm(provider, state);
     }
@@ -97,56 +118,41 @@ class _UnattributedRepaymentFormPageState
       key: _formKey,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(
-          AppSpacing.space28,
+          AppSpacing.space16,
           AppSpacing.space18,
-          AppSpacing.space28,
+          AppSpacing.space16,
           AppSpacing.space24,
         ),
         children: [
-          AppPlainFormSection(
+          CreditRepaymentFormSection(
+            title: '还款信息',
             children: [
-              AppPlainValueRow(
-                label: '账单外欠款',
-                value: state.overview!.buckets.unattributedDebt.format(),
+              CreditRepaymentAmountFields(
+                principalController: _principalController,
+                interestController: _interestController,
+                feeController: _feeController,
+                discountController: _discountController,
               ),
-              MoneyPlainFormRow(
-                label: '金额',
-                controller: _amountController,
-                hintText: '请输入还款金额',
-                validator: validatePositiveMoneyText,
-              ),
-              AppPlainSwitchRow(
-                label: '生成流水',
-                value: state.createTransaction,
-                onChanged:
+              CreditRepaymentTransactionFields(
+                createTransaction: state.createTransaction,
+                onCreateTransactionChanged:
                     (value) =>
                         ref.read(provider.notifier).setCreateTransaction(value),
+                occurredAtText: _formatDateTime(state.occurredAt),
+                onPickDate: () => _pickDate(provider, state.occurredAt),
+                repaymentAccount: paidFromAccount,
+                selectedRepaymentAccountId: state.paidFromAccountId,
+                repaymentAccounts: state.repaymentAccounts,
+                onPickAccount:
+                    () => _pickAccount(
+                      accounts: state.repaymentAccounts,
+                      selectedId: state.paidFromAccountId,
+                      onSelected:
+                          (id) => ref
+                              .read(provider.notifier)
+                              .setPaidFromAccountId(id),
+                    ),
               ),
-              if (state.createTransaction) ...[
-                DateTimePlainFormRow(
-                  label: '还款日期',
-                  value: _formatDateTime(state.occurredAt),
-                  onTap: () => _pickDate(provider, state.occurredAt),
-                ),
-                AccountPlainFormRow(
-                  label: '还款账户',
-                  account: paidFromAccount,
-                  selectedId: state.paidFromAccountId,
-                  placeholder: '请选择还款账户',
-                  onTap:
-                      state.repaymentAccounts.isEmpty
-                          ? null
-                          : () => _pickAccount(
-                            accounts: state.repaymentAccounts,
-                            selectedId: state.paidFromAccountId,
-                            onSelected:
-                                (id) => ref
-                                    .read(provider.notifier)
-                                    .setPaidFromAccountId(id),
-                          ),
-                  validator: (value) => value == null ? '请选择还款账户' : null,
-                ),
-              ],
               NotePlainFormRow(controller: _noteController),
             ],
           ),
@@ -193,11 +199,11 @@ class _UnattributedRepaymentFormPageState
     UnattributedRepaymentFormViewModelProvider provider,
   ) async {
     if (!_formKey.currentState!.validate()) return;
-    final amount = Money.tryParse(_amountController.text);
+    final amount = Money.tryParse(_principalController.text);
     final max =
         ref.read(provider).asData?.value.overview?.buckets.unattributedDebt;
     if (amount != null && max != null && amount.minorUnits > max.minorUnits) {
-      _showError('还款金额不能超过账单外欠款');
+      _showError('还款本金不能超过未归属欠款');
       return;
     }
 
@@ -213,7 +219,10 @@ class _UnattributedRepaymentFormPageState
 
   void _syncControllers(UnattributedRepaymentFormState state) {
     _syncing = true;
-    syncTextControllerText(_amountController, state.amountText);
+    syncTextControllerText(_principalController, state.principalText);
+    syncTextControllerText(_interestController, state.interestText);
+    syncTextControllerText(_feeController, state.feeText);
+    syncTextControllerText(_discountController, state.discountText);
     syncTextControllerText(_noteController, state.noteText);
     _syncing = false;
   }

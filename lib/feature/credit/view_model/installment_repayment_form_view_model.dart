@@ -114,6 +114,16 @@ class InstallmentRepaymentFormViewModel
     }
     final principal = _parsePositiveMoney(current.principalText);
     if (principal == null) return _invalidCommand('请输入有效本金');
+    final interest = _parseOptionalNonNegativeMoney(current.interestText);
+    if (interest == null) return _invalidCommand('请输入有效利息');
+    final fee = _parseOptionalNonNegativeMoney(current.feeText);
+    if (fee == null) return _invalidCommand('请输入有效手续费');
+    final discount = _parseOptionalNonNegativeMoney(current.discountText);
+    if (discount == null) return _invalidCommand('请输入有效优惠');
+    final cashPaid = principal + interest + fee - discount;
+    if (cashPaid.minorUnits <= 0) {
+      return _invalidCommand('实付金额必须大于 0');
+    }
     final paidFromAccountId =
         current.createTransaction
             ? _selectedId(current.paidFromAccountId, current.accounts)
@@ -133,8 +143,9 @@ class InstallmentRepaymentFormViewModel
             CreateContractPrepaymentRepaymentCommand(
               contractId: current.contract!.id,
               principal: principal,
-              interest: _parseOptionalMoney(current.interestText),
-              fee: _parseOptionalMoney(current.feeText),
+              interest: _positiveOrNull(interest),
+              fee: _positiveOrNull(fee),
+              discount: _positiveOrNull(discount),
               transactionInfo:
                   paidFromAccountId == null
                       ? null
@@ -388,11 +399,15 @@ Money? _parsePositiveMoney(String value) {
   return money != null && money.minorUnits > 0 ? money : null;
 }
 
-Money? _parseOptionalMoney(String value) {
+Money? _parseOptionalNonNegativeMoney(String value) {
   final trimmed = value.trim();
-  if (trimmed.isEmpty) return null;
+  if (trimmed.isEmpty) return Money.zero();
   final money = Money.tryParse(trimmed);
-  return money != null && money.minorUnits > 0 ? money : null;
+  return money != null && money.minorUnits >= 0 ? money : null;
+}
+
+Money? _positiveOrNull(Money value) {
+  return value.minorUnits > 0 ? value : null;
 }
 
 const Object _sentinel = Object();

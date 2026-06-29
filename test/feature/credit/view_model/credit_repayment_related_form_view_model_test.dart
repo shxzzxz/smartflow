@@ -93,8 +93,10 @@ void main() {
       addTearDown(subscription.close);
 
       final state = await container.read(provider.future);
-      final notifier = container.read(provider.notifier)
-        ..setPrincipalText('10');
+      final notifier =
+          container.read(provider.notifier)
+            ..setPrincipalText('10')
+            ..setDiscountText('1');
       final outcome = await notifier.submit();
 
       expect(state.principalText, '100.00');
@@ -103,6 +105,10 @@ void main() {
       expect(
         repayment.prepaymentCommands.single.principal,
         const Money(minorUnits: 1000),
+      );
+      expect(
+        repayment.prepaymentCommands.single.discount,
+        const Money(minorUnits: 100),
       );
       expect(
         repayment.prepaymentCommands.single.transactionInfo!.paidFromAccountId,
@@ -318,13 +324,21 @@ void main() {
     addTearDown(subscription.close);
 
     final state = await container.read(provider.future);
-    final outcome = await container.read(provider.notifier).submit();
+    final notifier =
+        container.read(provider.notifier)
+          ..setInterestText('1')
+          ..setFeeText('2')
+          ..setDiscountText('0.50');
+    final outcome = await notifier.submit();
 
-    expect(state.amountText, '25.00');
+    expect(state.principalText, '25.00');
     expect(outcome, isA<SubmitSuccess>());
     final command = repayment.unattributedCommands.single;
     expect(command.accountId, 'loan');
     expect(command.amount, const Money(minorUnits: 2500));
+    expect(command.interest, const Money(minorUnits: 100));
+    expect(command.fee, const Money(minorUnits: 200));
+    expect(command.discount, const Money(minorUnits: 50));
     expect(command.transactionInfo!.paidFromAccountId, 'cash');
   });
 
