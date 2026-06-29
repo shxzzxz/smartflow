@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../application/credit/credit_query_api.dart' show BillPeriod;
+import '../../../application/credit/credit_command_api.dart' as credit;
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
+import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
+import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/bill_repayment_allocation_view_model.dart';
@@ -108,12 +110,12 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
     BillRepaymentFormState state,
   ) {
     _syncControllers(state);
-    final summary = state.summary!;
     final paidFromAccount = _findAccount(
       state.repaymentAccounts,
       state.paidFromAccountId,
     );
-    final warning = state.allocationReview?.warningMessage;
+    final review = state.allocationReview;
+    final warning = review?.warningMessage;
 
     return Form(
       key: _formKey,
@@ -125,86 +127,84 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
           AppSpacing.space24,
         ),
         children: [
-          AppPlainFormSection(
-            children: [
-              AppPlainValueRow(
-                label: '账单',
-                value: _periodLabel(summary.period),
+          AppSurface(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space10,
+                vertical: AppSpacing.space4,
               ),
-              AppPlainValueRow(
-                label: '剩余本金',
-                value: state.pendingBreakdown.principal.format(),
+              child: AppPlainFormSection(
+                children: [
+                  MoneyPlainFormRow(
+                    label: '本金',
+                    controller: _principalController,
+                    hintText: '请输入还款本金',
+                    validator: validatePositiveMoneyText,
+                  ),
+                  MoneyPlainFormRow(
+                    label: '利息',
+                    controller: _interestController,
+                    hintText: '请输入利息（可选）',
+                    validator: validateOptionalNonNegativeMoneyText,
+                  ),
+                  MoneyPlainFormRow(
+                    label: '手续费',
+                    controller: _feeController,
+                    hintText: '请输入手续费（可选）',
+                    validator: validateOptionalNonNegativeMoneyText,
+                  ),
+                  MoneyPlainFormRow(
+                    label: '优惠',
+                    controller: _discountController,
+                    hintText: '请输入优惠（可选）',
+                    validator: validateOptionalNonNegativeMoneyText,
+                  ),
+                  DropdownPlainFormRow<BillRepaymentAllocationMode>(
+                    label: '分摊方式',
+                    value: state.allocationMode,
+                    items: billRepaymentAllocationModeItems,
+                    onChanged:
+                        (value) => ref
+                            .read(provider.notifier)
+                            .setAllocationMode(value),
+                  ),
+                  AppPlainSwitchRow(
+                    label: '生成交易',
+                    value: state.createTransaction,
+                    onChanged:
+                        (value) => ref
+                            .read(provider.notifier)
+                            .setCreateTransaction(value),
+                  ),
+                  if (state.createTransaction) ...[
+                    DateTimePlainFormRow(
+                      label: '还款日期',
+                      value: _formatDateTime(state.occurredAt),
+                      onTap: () => _pickDate(provider, state.occurredAt),
+                    ),
+                    AccountPlainFormRow(
+                      label: '还款账户',
+                      account: paidFromAccount,
+                      selectedId: state.paidFromAccountId,
+                      placeholder: '请选择还款账户',
+                      onTap:
+                          state.repaymentAccounts.isEmpty
+                              ? null
+                              : () => _pickAccount(
+                                accounts: state.repaymentAccounts,
+                                selectedId: state.paidFromAccountId,
+                                onSelected:
+                                    (id) => ref
+                                        .read(provider.notifier)
+                                        .setPaidFromAccountId(id),
+                              ),
+                      validator: (value) => value == null ? '请选择还款账户' : null,
+                    ),
+                  ],
+                  NotePlainFormRow(controller: _noteController),
+                ],
               ),
-              MoneyPlainFormRow(
-                label: '本金',
-                controller: _principalController,
-                hintText: '请输入还款本金',
-                validator: validatePositiveMoneyText,
-              ),
-              MoneyPlainFormRow(
-                label: '利息',
-                controller: _interestController,
-                hintText: '请输入利息（可选）',
-                validator: validateOptionalNonNegativeMoneyText,
-              ),
-              MoneyPlainFormRow(
-                label: '手续费',
-                controller: _feeController,
-                hintText: '请输入手续费（可选）',
-                validator: validateOptionalNonNegativeMoneyText,
-              ),
-              MoneyPlainFormRow(
-                label: '优惠',
-                controller: _discountController,
-                hintText: '请输入优惠（可选）',
-                validator: validateOptionalNonNegativeMoneyText,
-              ),
-              AppPlainValueRow(
-                label: '实付',
-                value: _cashPaidText(state.cashPaid),
-              ),
-              DropdownPlainFormRow<BillRepaymentAllocationMode>(
-                label: '分摊方式',
-                value: state.allocationMode,
-                items: billRepaymentAllocationModeItems,
-                onChanged:
-                    (value) =>
-                        ref.read(provider.notifier).setAllocationMode(value),
-              ),
-              AppPlainSwitchRow(
-                label: '生成流水',
-                value: state.createTransaction,
-                onChanged:
-                    (value) =>
-                        ref.read(provider.notifier).setCreateTransaction(value),
-              ),
-              if (state.createTransaction) ...[
-                DateTimePlainFormRow(
-                  label: '还款日期',
-                  value: _formatDateTime(state.occurredAt),
-                  onTap: () => _pickDate(provider, state.occurredAt),
-                ),
-                AccountPlainFormRow(
-                  label: '还款账户',
-                  account: paidFromAccount,
-                  selectedId: state.paidFromAccountId,
-                  placeholder: '请选择还款账户',
-                  onTap:
-                      state.repaymentAccounts.isEmpty
-                          ? null
-                          : () => _pickAccount(
-                            accounts: state.repaymentAccounts,
-                            selectedId: state.paidFromAccountId,
-                            onSelected:
-                                (id) => ref
-                                    .read(provider.notifier)
-                                    .setPaidFromAccountId(id),
-                          ),
-                  validator: (value) => value == null ? '请选择还款账户' : null,
-                ),
-              ],
-              NotePlainFormRow(controller: _noteController),
-            ],
+            ),
           ),
           if (warning != null) ...[
             const SizedBox(height: AppSpacing.space12),
@@ -215,28 +215,34 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
               ),
             ),
           ],
-          if (state.allocationMode == BillRepaymentAllocationMode.manual) ...[
-            const SizedBox(height: AppSpacing.space16),
-            _ManualAllocationSection(
-              state: state,
-              onChanged:
-                  ({
-                    required String billItemId,
-                    String? principalText,
-                    String? interestText,
-                    String? feeText,
-                    String? discountText,
-                  }) => ref
-                      .read(provider.notifier)
-                      .setManualAllocationText(
-                        billItemId: billItemId,
-                        principalText: principalText,
-                        interestText: interestText,
-                        feeText: feeText,
-                        discountText: discountText,
-                      ),
-            ),
-          ],
+          const SizedBox(height: AppSpacing.space16),
+          _AllocationResultSection(
+            state: state,
+            review: review,
+            onCalculate:
+                state.allocationMode == BillRepaymentAllocationMode.manual
+                    ? null
+                    : () => ref.read(provider.notifier).calculateAllocation(),
+            onChanged: ({
+              required String billItemId,
+              required _AllocationAmountField field,
+              required Money value,
+            }) {
+              final text = value.format();
+              ref
+                  .read(provider.notifier)
+                  .setManualAllocationText(
+                    billItemId: billItemId,
+                    principalText:
+                        field == _AllocationAmountField.principal ? text : null,
+                    interestText:
+                        field == _AllocationAmountField.interest ? text : null,
+                    feeText: field == _AllocationAmountField.fee ? text : null,
+                    discountText:
+                        field == _AllocationAmountField.discount ? text : null,
+                  );
+            },
+          ),
           const SizedBox(height: AppSpacing.space24),
           AppSubmitButton(
             label: '保存',
@@ -329,100 +335,461 @@ billRepaymentAllocationModeItems = [
   ),
 ];
 
-class _ManualAllocationSection extends StatelessWidget {
-  const _ManualAllocationSection({
+typedef _ApplyAllocationAmount =
+    void Function({
+      required String billItemId,
+      required _AllocationAmountField field,
+      required Money value,
+    });
+
+enum _AllocationAmountField { principal, interest, fee, discount }
+
+class _AllocationResultSection extends StatelessWidget {
+  const _AllocationResultSection({
     required this.state,
+    required this.review,
     required this.onChanged,
+    this.onCalculate,
   });
 
   final BillRepaymentFormState state;
-  final void Function({
-    required String billItemId,
-    String? principalText,
-    String? interestText,
-    String? feeText,
-    String? discountText,
-  })
-  onChanged;
+  final BillRepaymentAllocationReview? review;
+  final VoidCallback? onCalculate;
+  final _ApplyAllocationAmount onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return AppPlainFormSection(
-      children: [
-        for (final line in state.lines) ...[
-          AppPlainValueRow(label: '明细', value: _lineTitle(line)),
-          _ManualMoneyRow(
-            fieldKey: '${line.billItemId}-principal',
-            label: '本金',
-            initialValue:
-                state.manualAllocationText(line.billItemId).principalText,
-            onChanged:
-                (value) => onChanged(
-                  billItemId: line.billItemId,
-                  principalText: value,
+    final styles = context.appTextStyles;
+    final colors = Theme.of(context).colorScheme;
+    final unallocated = review?.unallocated;
+    return AppSurface(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space10,
+          vertical: AppSpacing.space8,
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(
+                left: AppSpacing.space4,
+                right: AppSpacing.space4,
+                bottom: AppSpacing.space6,
+              ),
+              child: Row(
+                children: [
+                  Expanded(child: Text('分摊结果', style: styles.dateSectionTitle)),
+                  if (onCalculate != null)
+                    TextButton.icon(
+                      onPressed: onCalculate,
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(0, 30),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.space8,
+                          vertical: AppSpacing.space4,
+                        ),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                        textStyle: styles.listSupporting,
+                      ),
+                      icon: const Icon(Icons.calculate_outlined, size: 16),
+                      label: const Text('计算分摊'),
+                    ),
+                ],
+              ),
+            ),
+            Divider(
+              height: 1,
+              color: colors.outlineVariant.withValues(alpha: 0.55),
+            ),
+            const SizedBox(height: AppSpacing.space4),
+            _AllocationHeader(),
+            Divider(
+              height: 1,
+              color: colors.outlineVariant.withValues(alpha: 0.55),
+            ),
+            for (var i = 0; i < state.lines.length; i++) ...[
+              _AllocationResultRow(
+                line: state.lines[i],
+                breakdown: _allocationBreakdown(
+                  state.manualAllocationText(state.lines[i].billItemId),
                 ),
-          ),
-          _ManualMoneyRow(
-            fieldKey: '${line.billItemId}-interest',
-            label: '利息',
-            initialValue:
-                state.manualAllocationText(line.billItemId).interestText,
-            onChanged:
-                (value) =>
-                    onChanged(billItemId: line.billItemId, interestText: value),
-          ),
-          _ManualMoneyRow(
-            fieldKey: '${line.billItemId}-fee',
-            label: '手续费',
-            initialValue: state.manualAllocationText(line.billItemId).feeText,
-            onChanged:
-                (value) =>
-                    onChanged(billItemId: line.billItemId, feeText: value),
-          ),
-          _ManualMoneyRow(
-            fieldKey: '${line.billItemId}-discount',
-            label: '优惠',
-            initialValue:
-                state.manualAllocationText(line.billItemId).discountText,
-            onChanged:
-                (value) =>
-                    onChanged(billItemId: line.billItemId, discountText: value),
-          ),
-        ],
-      ],
+                onChanged: onChanged,
+              ),
+              Divider(
+                height: 1,
+                color: colors.outlineVariant.withValues(alpha: 0.35),
+              ),
+            ],
+            if (unallocated != null && _hasNonZeroAmount(unallocated)) ...[
+              _AllocationSummaryRow(
+                label: '未分摊',
+                breakdown: unallocated,
+                color: colors.error,
+              ),
+              Divider(
+                height: 1,
+                color: colors.outlineVariant.withValues(alpha: 0.35),
+              ),
+            ],
+            _AllocationSummaryRow(
+              label: '合计',
+              breakdown:
+                  review?.totalAllocated ??
+                  credit.RepaymentAmountBreakdown.zero,
+              emphasize: true,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
-class _ManualMoneyRow extends StatelessWidget {
-  const _ManualMoneyRow({
-    required this.fieldKey,
-    required this.label,
-    required this.initialValue,
+class _AllocationHeader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final styles = context.appTextStyles;
+    final colors = Theme.of(context).colorScheme;
+    final labelStyle = styles.listSupporting.copyWith(
+      color: colors.onSurfaceVariant,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4,
+        vertical: AppSpacing.space6,
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: _allocationLineCellWidth,
+            child: Text('明细', style: labelStyle),
+          ),
+          Expanded(
+            child: Text('本', style: labelStyle, textAlign: TextAlign.right),
+          ),
+          Expanded(
+            child: Text('息', style: labelStyle, textAlign: TextAlign.right),
+          ),
+          Expanded(
+            child: Text('费', style: labelStyle, textAlign: TextAlign.right),
+          ),
+          Expanded(
+            child: Text('优', style: labelStyle, textAlign: TextAlign.right),
+          ),
+          SizedBox(
+            width: _allocationTotalCellWidth,
+            child: Text('合计', style: labelStyle, textAlign: TextAlign.right),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+const double _allocationLineCellWidth = 82;
+const double _allocationTotalCellWidth = 54;
+
+class _AllocationResultRow extends StatelessWidget {
+  const _AllocationResultRow({
+    required this.line,
+    required this.breakdown,
     required this.onChanged,
   });
 
-  final String fieldKey;
-  final String label;
-  final String initialValue;
-  final ValueChanged<String> onChanged;
+  final BillRepaymentAllocationLine line;
+  final credit.RepaymentAmountBreakdown breakdown;
+  final _ApplyAllocationAmount onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return AppPlainFormRow(
-      label: label,
-      child: TextFormField(
-        key: ValueKey(fieldKey),
-        initialValue: initialValue,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [moneyInputFormatter],
-        decoration: const InputDecoration(
-          hintText: '0.00',
-          isDense: true,
-          border: InputBorder.none,
+    final styles = context.appTextStyles;
+    final colors = Theme.of(context).colorScheme;
+    final cellStyle = styles.listSupporting.copyWith(color: colors.onSurface);
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4,
+        vertical: AppSpacing.space2,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: _allocationLineCellWidth,
+            child: Text(
+              _lineTitle(line),
+              style: cellStyle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
+            child: _EditableAllocationMoneyCell(
+              key: ValueKey('${line.billItemId}-principal'),
+              value: breakdown.principal,
+              style: cellStyle,
+              onCommit:
+                  (value) => onChanged(
+                    billItemId: line.billItemId,
+                    field: _AllocationAmountField.principal,
+                    value: value,
+                  ),
+            ),
+          ),
+          Expanded(
+            child: _EditableAllocationMoneyCell(
+              key: ValueKey('${line.billItemId}-interest'),
+              value: breakdown.interest,
+              style: cellStyle,
+              onCommit:
+                  (value) => onChanged(
+                    billItemId: line.billItemId,
+                    field: _AllocationAmountField.interest,
+                    value: value,
+                  ),
+            ),
+          ),
+          Expanded(
+            child: _EditableAllocationMoneyCell(
+              key: ValueKey('${line.billItemId}-fee'),
+              value: breakdown.fee,
+              style: cellStyle,
+              onCommit:
+                  (value) => onChanged(
+                    billItemId: line.billItemId,
+                    field: _AllocationAmountField.fee,
+                    value: value,
+                  ),
+            ),
+          ),
+          Expanded(
+            child: _EditableAllocationMoneyCell(
+              key: ValueKey('${line.billItemId}-discount'),
+              value: breakdown.discount,
+              style: cellStyle,
+              onCommit:
+                  (value) => onChanged(
+                    billItemId: line.billItemId,
+                    field: _AllocationAmountField.discount,
+                    value: value,
+                  ),
+            ),
+          ),
+          SizedBox(
+            width: _allocationTotalCellWidth,
+            child: _AllocationTextCell(
+              text: _allocationCashTotal(breakdown).format(),
+              style: cellStyle.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AllocationSummaryRow extends StatelessWidget {
+  const _AllocationSummaryRow({
+    required this.label,
+    required this.breakdown,
+    this.color,
+    this.emphasize = false,
+  });
+
+  final String label;
+  final credit.RepaymentAmountBreakdown breakdown;
+  final Color? color;
+  final bool emphasize;
+
+  @override
+  Widget build(BuildContext context) {
+    final styles = context.appTextStyles;
+    final colors = Theme.of(context).colorScheme;
+    final cellStyle = (emphasize ? styles.formLabel : styles.listSupporting)
+        .copyWith(color: color ?? colors.onSurface);
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4,
+        vertical: AppSpacing.space2,
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: _allocationLineCellWidth,
+            child: Text(label, style: cellStyle),
+          ),
+          Expanded(
+            child: _AllocationTextCell(
+              text: breakdown.principal.format(),
+              style: cellStyle,
+            ),
+          ),
+          Expanded(
+            child: _AllocationTextCell(
+              text: breakdown.interest.format(),
+              style: cellStyle,
+            ),
+          ),
+          Expanded(
+            child: _AllocationTextCell(
+              text: breakdown.fee.format(),
+              style: cellStyle,
+            ),
+          ),
+          Expanded(
+            child: _AllocationTextCell(
+              text: breakdown.discount.format(),
+              style: cellStyle,
+            ),
+          ),
+          SizedBox(
+            width: _allocationTotalCellWidth,
+            child: _AllocationTextCell(
+              text: _allocationCashTotal(breakdown).format(),
+              style: cellStyle.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditableAllocationMoneyCell extends StatefulWidget {
+  const _EditableAllocationMoneyCell({
+    required this.value,
+    required this.style,
+    required this.onCommit,
+    super.key,
+  });
+
+  final Money value;
+  final TextStyle style;
+  final ValueChanged<Money> onCommit;
+
+  @override
+  State<_EditableAllocationMoneyCell> createState() =>
+      _EditableAllocationMoneyCellState();
+}
+
+class _EditableAllocationMoneyCellState
+    extends State<_EditableAllocationMoneyCell> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+  bool _isEditing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus && _isEditing) {
+      _commit();
+    }
+  }
+
+  void _startEdit() {
+    if (_isEditing) return;
+    final text =
+        widget.value.minorUnits == 0 ? '' : widget.value.major.toString();
+    _controller.text = text;
+    _controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: text.length,
+    );
+    setState(() => _isEditing = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
+  void _commit() {
+    if (!_isEditing) return;
+    final text = _controller.text.trim();
+    Money? next;
+    if (text.isEmpty) {
+      next = Money.zero();
+    } else {
+      final parsed = Money.tryParse(text);
+      if (parsed != null && parsed.minorUnits >= 0) {
+        next = parsed;
+      }
+    }
+    setState(() => _isEditing = false);
+    if (next != null && next != widget.value) {
+      widget.onCommit(next);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    if (_isEditing) {
+      return Container(
+        decoration: BoxDecoration(
+          color: colors.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(4),
         ),
-        validator: validateOptionalNonNegativeMoneyText,
-        onChanged: onChanged,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space2),
+        child: TextField(
+          controller: _controller,
+          focusNode: _focusNode,
+          textAlign: TextAlign.right,
+          style: widget.style,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          textInputAction: TextInputAction.done,
+          inputFormatters: [moneyInputFormatter],
+          decoration: const InputDecoration(
+            isDense: true,
+            contentPadding: EdgeInsets.symmetric(vertical: AppSpacing.space6),
+            border: InputBorder.none,
+            isCollapsed: false,
+          ),
+          onSubmitted: (_) => _commit(),
+        ),
+      );
+    }
+    return InkWell(
+      onTap: _startEdit,
+      child: _AllocationTextCell(
+        text: widget.value.format(),
+        style: widget.style,
+      ),
+    );
+  }
+}
+
+class _AllocationTextCell extends StatelessWidget {
+  const _AllocationTextCell({required this.text, required this.style});
+
+  final String text;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space2,
+        vertical: AppSpacing.space6,
+      ),
+      child: Text(
+        text,
+        style: style,
+        textAlign: TextAlign.right,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -436,17 +803,37 @@ Account? _findAccount(List<Account> accounts, String? id) {
   return null;
 }
 
-String _periodLabel(BillPeriod period) {
-  return '${period.year}年${period.month.toString().padLeft(2, '0')}月账单';
-}
-
-String _cashPaidText(Money? value) {
-  return value == null ? '-' : value.format();
-}
-
 String _lineTitle(BillRepaymentAllocationLine line) {
   if (line.label.isNotEmpty) return line.label;
   return line.billItemId;
+}
+
+credit.RepaymentAmountBreakdown _allocationBreakdown(
+  BillRepaymentManualAllocationText text,
+) {
+  return credit.RepaymentAmountBreakdown(
+    principal: _moneyFromAllocationText(text.principalText),
+    interest: _moneyFromAllocationText(text.interestText),
+    fee: _moneyFromAllocationText(text.feeText),
+    discount: _moneyFromAllocationText(text.discountText),
+  );
+}
+
+Money _moneyFromAllocationText(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return Money.zero();
+  return Money.tryParse(trimmed) ?? Money.zero();
+}
+
+Money _allocationCashTotal(credit.RepaymentAmountBreakdown value) {
+  return value.principal + value.interest + value.fee - value.discount;
+}
+
+bool _hasNonZeroAmount(credit.RepaymentAmountBreakdown value) {
+  return value.principal.minorUnits != 0 ||
+      value.interest.minorUnits != 0 ||
+      value.fee.minorUnits != 0 ||
+      value.discount.minorUnits != 0;
 }
 
 String _formatDateTime(DateTime date) {

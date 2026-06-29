@@ -47,6 +47,11 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
       repaymentSourceAccounts,
       detail.summary.accountId,
     );
+    final defaultReview = _allocationReview(
+      lines: lines,
+      mode: BillRepaymentAllocationMode.fifo,
+      amount: pending,
+    );
     return BillRepaymentFormState.loaded(
       summary: detail.summary,
       lines: lines,
@@ -57,6 +62,7 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
       discountText: '',
       paidFromAccountId: _selectedId(null, repaymentAccounts),
       occurredAt: DateTime.now(),
+      manualAllocations: _manualTextsFromAllocations(defaultReview.allocations),
     );
   }
 
@@ -84,20 +90,22 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
   void setCreateTransaction(bool value) =>
       _update((state) => state.copyWith(createTransaction: value));
 
-  void setAllocationMode(BillRepaymentAllocationMode value) => _update((state) {
-    if (value != BillRepaymentAllocationMode.manual ||
-        state.manualAllocations.isNotEmpty) {
-      return state.copyWith(allocationMode: value);
+  void setAllocationMode(BillRepaymentAllocationMode value) =>
+      _update((state) => state.copyWith(allocationMode: value));
+
+  void calculateAllocation() => _update((state) {
+    if (state.allocationMode == BillRepaymentAllocationMode.manual) {
+      return state;
     }
-    final review = _allocationReviewFromState(
-      state.copyWith(allocationMode: BillRepaymentAllocationMode.fifo),
+    final amount = _amountFromState(state);
+    if (amount == null) return state;
+    final review = _allocationReview(
+      lines: state.lines,
+      mode: state.allocationMode,
+      amount: amount,
     );
     return state.copyWith(
-      allocationMode: value,
-      manualAllocations:
-          review == null
-              ? const {}
-              : _manualTextsFromAllocations(review.allocations),
+      manualAllocations: _manualTextsFromAllocations(review.allocations),
     );
   });
 
@@ -158,14 +166,13 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
       discount: discount,
     );
     final review = _allocationReviewFromState(current, amount: amount);
-    if (review == null) return _invalidCommand('请输入有效手工分摊金额');
+    if (review == null) return _invalidCommand('请输入有效分摊金额');
     if (review.allocations.isEmpty ||
         review.totalAllocated.principal.minorUnits <= 0) {
       return _invalidCommand('账单没有可还明细');
     }
-    if (current.allocationMode == BillRepaymentAllocationMode.manual &&
-        _hasNonZeroPart(review.unallocated)) {
-      return _invalidCommand('手工分摊合计必须等于还款金额');
+    if (_hasNonZeroPart(review.unallocated)) {
+      return _invalidCommand('分摊合计必须等于还款金额');
     }
 
     _update((state) => state.copyWith(submitting: true));
@@ -258,6 +265,7 @@ class BillRepaymentFormState {
     String discountText = '',
     String noteText = '',
     String? paidFromAccountId,
+    Map<String, BillRepaymentManualAllocationText> manualAllocations = const {},
   }) {
     return BillRepaymentFormState(
       status: BillRepaymentFormLoadStatus.loaded,
@@ -273,7 +281,7 @@ class BillRepaymentFormState {
       paidFromAccountId: paidFromAccountId,
       createTransaction: true,
       allocationMode: BillRepaymentAllocationMode.fifo,
-      manualAllocations: const {},
+      manualAllocations: manualAllocations,
       submitting: false,
     );
   }
@@ -512,13 +520,6 @@ BillRepaymentAllocationReview? _allocationReviewFromState(
 }) {
   final effectiveAmount = amount ?? _amountFromState(state);
   if (effectiveAmount == null) return null;
-  if (state.allocationMode != BillRepaymentAllocationMode.manual) {
-    return _allocationReview(
-      lines: state.lines,
-      mode: state.allocationMode,
-      amount: effectiveAmount,
-    );
-  }
 
   final allocations = <credit.BillRepaymentAllocation>[];
   for (final line in state.lines) {

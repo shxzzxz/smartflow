@@ -167,11 +167,12 @@ void main() {
     addTearDown(subscription.close);
 
     await container.read(provider.future);
-    final outcome =
-        await (container.read(provider.notifier)
-              ..setPrincipalText('60')
-              ..setAllocationMode(BillRepaymentAllocationMode.equal))
-            .submit();
+    final notifier =
+        container.read(provider.notifier)
+          ..setPrincipalText('60')
+          ..setAllocationMode(BillRepaymentAllocationMode.equal)
+          ..calculateAllocation();
+    final outcome = await notifier.submit();
 
     expect(outcome, isA<SubmitSuccess>());
     final allocations = repayment.billRepaymentCommands.single.allocations;
@@ -181,6 +182,44 @@ void main() {
     expect(allocations[1].billItemId, 'bill-item-2');
     expect(allocations[1].allocated.principal, const Money(minorUnits: 3000));
   });
+
+  test(
+    'bill repayment form allows manual edits after calculated allocation',
+    () async {
+      final repayment = _FakeRepaymentService();
+      final container = _container(
+        repaymentService: repayment,
+        billDetail: _billDetailWithTwoConsumptionItems(),
+      );
+      final provider = billRepaymentFormViewModelProvider('bill');
+      final subscription = container.listen(provider, (_, _) {});
+      addTearDown(subscription.close);
+
+      await container.read(provider.future);
+      final notifier =
+          container.read(provider.notifier)
+            ..setPrincipalText('60')
+            ..setAllocationMode(BillRepaymentAllocationMode.equal)
+            ..calculateAllocation()
+            ..setManualAllocationText(
+              billItemId: 'bill-item-1',
+              principalText: '20',
+            )
+            ..setManualAllocationText(
+              billItemId: 'bill-item-2',
+              principalText: '40',
+            );
+      final outcome = await notifier.submit();
+
+      expect(outcome, isA<SubmitSuccess>());
+      final allocations = repayment.billRepaymentCommands.single.allocations;
+      expect(allocations, hasLength(2));
+      expect(allocations[0].billItemId, 'bill-item-1');
+      expect(allocations[0].allocated.principal, const Money(minorUnits: 2000));
+      expect(allocations[1].billItemId, 'bill-item-2');
+      expect(allocations[1].allocated.principal, const Money(minorUnits: 4000));
+    },
+  );
 
   test('bill repayment form supports manual allocation mode', () async {
     final repayment = _FakeRepaymentService();
