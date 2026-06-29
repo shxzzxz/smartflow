@@ -6,6 +6,7 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart'
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
@@ -523,6 +524,342 @@ void main() {
       },
     );
 
+    test('deletes bill repayment and reopens the bill item', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      await fixture.seedBill(
+        status: credit.BillStatus.billed,
+        itemType: credit.BillItemType.consumption,
+        expectedPrincipal: 1000,
+      );
+      final result = await fixture.service.createBillRepayment(
+        credit.CreateBillRepaymentCommand(
+          billId: 'bill-1',
+          allocations: [
+            _allocation(billItemId: 'bill-item-1', principal: 1000),
+          ],
+        ),
+      );
+
+      await fixture.service.deleteRepayment(
+        credit.DeleteCreditRepaymentCommand(repaymentId: result.repaymentId),
+      );
+
+      expect(
+        await fixture.repayments.findRepayment(result.repaymentId),
+        isNull,
+      );
+      final bill = await fixture.bills.findBill('bill-1');
+      expect(bill!.items.single.status, credit.BillItemStatus.pending);
+      expect(bill.status, credit.BillStatus.billed);
+    });
+
+    test(
+      'deletes bill conversion repayment and cascades the created contract',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        await fixture.seedBill(
+          status: credit.BillStatus.billed,
+          itemType: credit.BillItemType.consumption,
+          expectedPrincipal: 6000,
+        );
+        final result = await fixture.service
+            .createBillConversionInstallmentRepayment(
+              credit.CreateBillConversionInstallmentRepaymentCommand(
+                billId: 'bill-1',
+                allocations: [
+                  _allocation(billItemId: 'bill-item-1', principal: 6000),
+                ],
+                totalPeriods: 2,
+                firstRepaymentDate: DateTime(2026, 7, 25),
+                repaymentMethod:
+                    credit.InstallmentRepaymentMethod.equalPrincipal,
+              ),
+            );
+
+        await fixture.service.deleteRepayment(
+          credit.DeleteCreditRepaymentCommand(repaymentId: result.repaymentId),
+        );
+
+        expect(
+          await fixture.repayments.findRepayment(result.repaymentId),
+          isNull,
+        );
+        expect(
+          await fixture.installments.findContract(result.contractId!),
+          isNull,
+        );
+        final bill = await fixture.bills.findBill('bill-1');
+        expect(bill!.items.single.status, credit.BillItemStatus.pending);
+        expect(bill.status, credit.BillStatus.billed);
+      },
+    );
+
+    test(
+      'blocks bill conversion deletion while created contract has repayments',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        await fixture.seedBill(
+          status: credit.BillStatus.billed,
+          itemType: credit.BillItemType.consumption,
+          expectedPrincipal: 6000,
+        );
+        final result = await fixture.service
+            .createBillConversionInstallmentRepayment(
+              credit.CreateBillConversionInstallmentRepaymentCommand(
+                billId: 'bill-1',
+                allocations: [
+                  _allocation(billItemId: 'bill-item-1', principal: 6000),
+                ],
+                totalPeriods: 2,
+                firstRepaymentDate: DateTime(2026, 7, 25),
+                repaymentMethod:
+                    credit.InstallmentRepaymentMethod.equalPrincipal,
+              ),
+            );
+        await fixture.service.createExtraPrincipalRepayment(
+          credit.CreateExtraPrincipalRepaymentCommand(
+            contractId: result.contractId!,
+            principal: const Money(minorUnits: 1000),
+          ),
+        );
+
+        await expectLater(
+          () => fixture.service.deleteRepayment(
+            credit.DeleteCreditRepaymentCommand(
+              repaymentId: result.repaymentId,
+            ),
+          ),
+          throwsA(
+            isA<BusinessException>().having(
+              (exception) => exception.code,
+              'code',
+              CreditErrorCode.repaymentNotEditable.code,
+            ),
+          ),
+        );
+        expect(
+          await fixture.repayments.findRepayment(result.repaymentId),
+          isNotNull,
+        );
+        expect(
+          await fixture.installments.findContract(result.contractId!),
+          isNotNull,
+        );
+      },
+    );
+
+    test(
+      'deletes extra principal repayment and restores pending schedules',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        final contractId = await fixture.seedContractWithSchedules(
+          principal: 120000,
+          schedulePrincipals: [40000, 40000, 40000],
+        );
+        final schedules = await fixture.installments.listSchedules(contractId);
+        await fixture.installments.updateSchedule(
+          schedules[0].id,
+          const InstallmentSchedulePatch(
+            status: credit.InstallmentScheduleStatus.paid,
+          ),
+        );
+        final result = await fixture.service.createExtraPrincipalRepayment(
+          credit.CreateExtraPrincipalRepaymentCommand(
+            contractId: contractId,
+            principal: const Money(minorUnits: 80000),
+          ),
+        );
+        expect(
+          (await fixture.installments.listSchedules(contractId))
+              .where(
+                (schedule) =>
+                    schedule.status == credit.InstallmentScheduleStatus.skipped,
+              )
+              .length,
+          2,
+        );
+
+        await fixture.service.deleteRepayment(
+          credit.DeleteCreditRepaymentCommand(repaymentId: result.repaymentId),
+        );
+
+        expect(
+          await fixture.repayments.findRepayment(result.repaymentId),
+          isNull,
+        );
+        final restored = await fixture.installments.listSchedules(contractId);
+        expect(restored.map((schedule) => schedule.status), [
+          credit.InstallmentScheduleStatus.paid,
+          credit.InstallmentScheduleStatus.pending,
+          credit.InstallmentScheduleStatus.pending,
+        ]);
+        expect(restored.map((schedule) => schedule.expectedPrincipal), [
+          const Money(minorUnits: 40000),
+          const Money(minorUnits: 40000),
+          const Money(minorUnits: 40000),
+        ]);
+      },
+    );
+
+    test(
+      'deletes early settlement and restores contract schedules and bill items',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        final contractId = await fixture.seedContractWithSchedules(
+          principal: 80000,
+          schedulePrincipals: [40000, 40000],
+        );
+        final schedules = await fixture.installments.listSchedules(contractId);
+        await fixture.seedBillItems(
+          status: credit.BillStatus.billed,
+          items: [
+            _BillItemSeed(
+              id: 'bill-item-installment',
+              itemType: credit.BillItemType.installment,
+              expectedPrincipal: 40000,
+              contractId: contractId,
+              scheduleId: schedules[0].id,
+            ),
+          ],
+        );
+        final result = await fixture.service.createEarlySettlementRepayment(
+          credit.CreateEarlySettlementRepaymentCommand(
+            contractId: contractId,
+            principal: const Money(minorUnits: 80000),
+          ),
+        );
+
+        await fixture.service.deleteRepayment(
+          credit.DeleteCreditRepaymentCommand(repaymentId: result.repaymentId),
+        );
+
+        expect(
+          await fixture.repayments.findRepayment(result.repaymentId),
+          isNull,
+        );
+        final contract = await fixture.installments.findContract(contractId);
+        expect(contract!.status, credit.InstallmentContractStatus.active);
+        final restored = await fixture.installments.listSchedules(contractId);
+        expect(restored.map((schedule) => schedule.status).toSet(), {
+          credit.InstallmentScheduleStatus.pending,
+        });
+        final bill = await fixture.bills.findBill('bill-1');
+        expect(bill!.items.single.status, credit.BillItemStatus.pending);
+        expect(bill.status, credit.BillStatus.billed);
+      },
+    );
+
+    test(
+      'deletes unattributed repayment without touching bill or contract',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        fixture.accountQuery.accounts['credit-1'] = ledger.Account(
+          id: 'credit-1',
+          name: 'Credit',
+          type: ledger.AccountType.liability,
+          balance: const Money(minorUnits: 5000),
+        );
+        final contractId = await fixture.seedContractWithSchedules(
+          principal: 2000,
+          schedulePrincipals: [2000],
+        );
+        await fixture.seedBill(
+          status: credit.BillStatus.billed,
+          itemType: credit.BillItemType.consumption,
+          expectedPrincipal: 1000,
+        );
+        final result = await fixture.service.createUnattributedRepayment(
+          credit.CreateUnattributedRepaymentCommand(
+            accountId: 'credit-1',
+            amount: const Money(minorUnits: 2000),
+          ),
+        );
+
+        await fixture.service.deleteRepayment(
+          credit.DeleteCreditRepaymentCommand(repaymentId: result.repaymentId),
+        );
+
+        expect(
+          await fixture.repayments.findRepayment(result.repaymentId),
+          isNull,
+        );
+        final bill = await fixture.bills.findBill('bill-1');
+        expect(bill!.items.single.status, credit.BillItemStatus.pending);
+        final schedules = await fixture.installments.listSchedules(contractId);
+        expect(
+          schedules.single.status,
+          credit.InstallmentScheduleStatus.pending,
+        );
+      },
+    );
+
+    test(
+      'edits repayment transaction metadata and settlement account',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        await fixture.seedBill(
+          status: credit.BillStatus.billed,
+          itemType: credit.BillItemType.consumption,
+          expectedPrincipal: 1000,
+        );
+        final result = await fixture.service.createBillRepayment(
+          credit.CreateBillRepaymentCommand(
+            billId: 'bill-1',
+            allocations: [
+              _allocation(
+                billItemId: 'bill-item-1',
+                principal: 1000,
+                interest: 50,
+              ),
+            ],
+            transactionInfo: credit.RepaymentTransactionInfo(
+              paidFromAccountId: 'cash-1',
+              occurredAt: DateTime(2026, 6, 20),
+            ),
+          ),
+        );
+        fixture.transactionQuery.details['tx-root'] = _transactionDetail(
+          transactionId: 'tx-root',
+          occurredAt: DateTime(2026, 6, 20),
+        );
+
+        await fixture.service.editRepaymentTransaction(
+          credit.EditCreditRepaymentTransactionCommand(
+            repaymentId: result.repaymentId,
+            occurredAt: DateTime(2026, 6, 21),
+            note: const Patch<String?>.set('updated'),
+          ),
+        );
+        await fixture.service.editRepaymentTransaction(
+          credit.EditCreditRepaymentTransactionCommand(
+            repaymentId: result.repaymentId,
+            paidFromAccountId: 'bank-1',
+          ),
+        );
+
+        final basicInfo = fixture.update.basicInfoCommands.single;
+        expect(basicInfo.transactionId, 'tx-root');
+        expect(basicInfo.occurredAt, DateTime(2026, 6, 21));
+        expect((basicInfo.note as PatchSet<String?>).value, 'updated');
+        final correction = fixture.correction.repaymentCommands.single;
+        expect(correction.transactionId, 'tx-root');
+        expect(correction.liabilityAccountId, 'credit-1');
+        expect(correction.paidFromAccountId, 'bank-1');
+        expect(correction.principal, const Money(minorUnits: 1000));
+        expect(
+          (correction.interest as PatchSet<Money?>).value,
+          const Money(minorUnits: 50),
+        );
+      },
+    );
+
     test(
       'rejects unattributed repayment above unattributed debt bucket',
       () async {
@@ -582,6 +919,29 @@ credit.BillRepaymentAllocation _allocation({
   );
 }
 
+ledger_query.TransactionDetail _transactionDetail({
+  required String transactionId,
+  required DateTime occurredAt,
+}) {
+  return ledger_query.TransactionDetail(
+    transaction: ledger_query.Transaction(
+      id: transactionId,
+      rootTransactionId: transactionId,
+      businessPurpose: ledger_query.BusinessPurpose.debtRepayment,
+      occurredAt: occurredAt,
+      primaryAmount: const Money(minorUnits: 1050),
+      mutationKind: ledger_query.MutationKind.original,
+      businessState: ledger_query.BusinessState.current,
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+      sourceKind: ledger_query.SourceKind.manual,
+    ),
+    createdAt: occurredAt,
+    details: const [],
+    entries: const [],
+  );
+}
+
 class _Fixture {
   _Fixture() {
     runner = DriftTransactionRunner(database);
@@ -591,6 +951,9 @@ class _Fixture {
       installments: installments,
       accountQueryService: accountQuery,
       postingService: posting,
+      correctionService: correction,
+      updateService: update,
+      transactionQueryService: transactionQuery,
       transactionRunner: runner,
       idGenerator: ids,
     );
@@ -599,6 +962,9 @@ class _Fixture {
   final database = createTestDatabase();
   final ids = SequentialIdGenerator(prefix: 'repayment');
   final posting = _FakePostingService();
+  final correction = _FakeCorrectionService();
+  final update = _FakeUpdateService();
+  final transactionQuery = _FakeTransactionQueryService();
   final accountQuery = _FakeAccountQueryService();
   late final TransactionRunner runner;
   late final DriftBillRepository bills = DriftBillRepository(database);
@@ -764,6 +1130,65 @@ class _BillItemSeed {
   final int expectedPrincipal;
   final String? contractId;
   final String? scheduleId;
+}
+
+class _FakeCorrectionService implements ledger.TransactionCorrectionAppService {
+  final deletedTransactionIds = <String>[];
+  final repaymentCommands = <ledger.CorrectRepaymentCommand>[];
+
+  @override
+  Future<void> deleteTransaction(
+    ledger.DeleteTransactionCommand command,
+  ) async {
+    deletedTransactionIds.add(command.transactionId);
+  }
+
+  @override
+  Future<ledger.PostedTransactionResult> correctRepayment(
+    ledger.CorrectRepaymentCommand command,
+  ) async {
+    repaymentCommands.add(command);
+    return const ledger.PostedTransactionResult(
+      transactionId: 'tx-current',
+      rootTransactionId: 'tx-root',
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeUpdateService implements ledger.TransactionUpdateAppService {
+  final basicInfoCommands = <ledger.UpdateTransactionBasicInfoCommand>[];
+
+  @override
+  Future<ledger.PostedTransactionResult> updateBasicInfo(
+    ledger.UpdateTransactionBasicInfoCommand command,
+  ) async {
+    basicInfoCommands.add(command);
+    return const ledger.PostedTransactionResult(
+      transactionId: 'tx-current',
+      rootTransactionId: 'tx-root',
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeTransactionQueryService
+    implements ledger_query.TransactionQueryService {
+  final details = <String, ledger_query.TransactionDetail>{};
+
+  @override
+  Future<ledger_query.TransactionDetail?> findTransactionDetail(
+    String transactionId,
+  ) async {
+    return details[transactionId];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakePostingService implements ledger.TransactionPostingAppService {

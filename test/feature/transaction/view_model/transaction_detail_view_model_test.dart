@@ -7,6 +7,7 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_state.dart';
@@ -109,6 +110,66 @@ void main() {
           CreditErrorCode.contractPersistenceConflict.code,
         );
         expect(failure.error.message, '合同数据已变化，请刷新后重试。');
+      },
+    );
+
+    test(
+      'routes credit repayment owner edits and delete to repayment service',
+      () async {
+        final repayment = _FakeRepaymentService();
+        final detail = _detail(
+          purpose: BusinessPurpose.debtRepayment,
+          ownership: const TransactionOwnership(
+            ownerType: creditRepaymentOwnerType,
+            ownerId: 'repayment-1',
+            ownerRole: 'BILL',
+          ),
+          entries: [
+            _entry('cash', EntryDirection.credit),
+            _entry('loan', EntryDirection.debit),
+          ],
+        );
+        final container = _container(detail: detail, repayment: repayment);
+
+        final state = await _readState(container);
+        final loaded = state as TransactionDetailLoaded;
+        expect(loaded.behavior.bannerText, contains('金额调整请在信贷页面处理'));
+        expect(loaded.behavior.canEditOccurredAt, isA<DetailEditAllowed>());
+        expect(loaded.behavior.canEditNote, isA<DetailEditAllowed>());
+        final accountRow = loaded.accountRows.singleWhere(
+          (row) => row.label == '还款账户',
+        );
+        expect(accountRow.permission, isA<DetailEditAllowed>());
+
+        final notifier = container.read(
+          transactionDetailViewModelProvider('tx-1').notifier,
+        );
+        expect(
+          await notifier.changeOccurredAt(DateTime(2026, 2, 1)),
+          isA<UiActionSuccess<void>>(),
+        );
+        expect(
+          await notifier.changeNote(' repayment note '),
+          isA<UiActionSuccess<void>>(),
+        );
+        expect(
+          await notifier.changeAccount(
+            AccountSelectionPurpose.repaymentSource,
+            'bank',
+          ),
+          isA<UiActionSuccess<void>>(),
+        );
+        expect(await notifier.delete(), isA<UiActionSuccess<void>>());
+
+        expect(repayment.editCommands, hasLength(3));
+        expect(repayment.editCommands[0].repaymentId, 'repayment-1');
+        expect(repayment.editCommands[0].occurredAt, DateTime(2026, 2, 1));
+        expect(
+          (repayment.editCommands[1].note as PatchSet<String?>).value,
+          'repayment note',
+        );
+        expect(repayment.editCommands[2].paidFromAccountId, 'bank');
+        expect(repayment.deleteCommands.single.repaymentId, 'repayment-1');
       },
     );
 
@@ -240,6 +301,7 @@ ProviderContainer _container({
   _FakeTransactionCorrectionAppService? correction,
   _FakeTransactionPostingAppService? posting,
   _FakeInstallmentService? installment,
+  _FakeRepaymentService? repayment,
 }) {
   final accounts = <String, Account>{
     'cash': _account('cash', '现金', iconKey: 'cash'),
@@ -280,6 +342,9 @@ ProviderContainer _container({
       ),
       installmentServiceProvider.overrideWithValue(
         installment ?? _FakeInstallmentService(),
+      ),
+      repaymentServiceProvider.overrideWithValue(
+        repayment ?? _FakeRepaymentService(),
       ),
     ],
   );
@@ -636,4 +701,24 @@ class _FakeInstallmentService implements InstallmentService {
   ) {
     throw UnimplementedError();
   }
+}
+
+class _FakeRepaymentService implements RepaymentService {
+  final editCommands = <EditCreditRepaymentTransactionCommand>[];
+  final deleteCommands = <DeleteCreditRepaymentCommand>[];
+
+  @override
+  Future<void> editRepaymentTransaction(
+    EditCreditRepaymentTransactionCommand command,
+  ) async {
+    editCommands.add(command);
+  }
+
+  @override
+  Future<void> deleteRepayment(DeleteCreditRepaymentCommand command) async {
+    deleteCommands.add(command);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

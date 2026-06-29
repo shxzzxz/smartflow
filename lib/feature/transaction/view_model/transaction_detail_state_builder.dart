@@ -321,6 +321,19 @@ DetailBehaviorConfig _behaviorConfigFor(Transaction transaction) {
     }
   }
 
+  if (ownership.ownerType == creditRepaymentOwnerType &&
+      ownership.ownerId != null) {
+    final repaymentType = _repaymentTypeFromOwnerRole(ownership.ownerRole);
+    if (repaymentType != null) {
+      return DetailBehaviorConfig(
+        bannerText: '此为信贷${repaymentType.label}交易，金额调整请在信贷页面处理',
+        canEditOccurredAt: const DetailEditPermission.allowed(),
+        canEditNote: const DetailEditPermission.allowed(),
+        canEditSettlementAccount: const DetailEditPermission.allowed(),
+      );
+    }
+  }
+
   return DetailBehaviorConfig(
     bannerText: '该交易属于当前版本未识别的业务来源：${ownership.ownerType}',
     canEditOccurredAt: const DetailEditPermission.denied(
@@ -331,4 +344,13 @@ DetailBehaviorConfig _behaviorConfigFor(Transaction transaction) {
       reason: '该交易属于当前版本未识别的业务来源，仅允许修改备注',
     ),
   );
+}
+
+RepaymentType? _repaymentTypeFromOwnerRole(String? ownerRole) {
+  if (ownerRole == null) return null;
+  try {
+    return RepaymentType.fromCode(ownerRole);
+  } on ArgumentError {
+    return null;
+  }
 }

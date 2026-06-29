@@ -53,14 +53,14 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     }
   }
 
-  Future<UiActionOutcome<void>> revertRepayment(String transactionId) async {
+  Future<UiActionOutcome<void>> revertRepayment(String repaymentId) async {
     final loaded = _loadedOrNull();
     if (loaded == null) return _invalidAction('合同尚未加载');
     try {
       await ref
-          .read(installmentServiceProvider)
-          .revertRepayment(
-            RevertRepaymentCommand(transactionId: transactionId),
+          .read(repaymentServiceProvider)
+          .deleteRepayment(
+            DeleteCreditRepaymentCommand(repaymentId: repaymentId),
           );
       _invalidateContract(loaded.contract);
       return const UiActionOutcome.success(null);
@@ -80,7 +80,6 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     ref
       ..invalidate(installmentContractProvider(contract.id))
       ..invalidate(installmentSchedulesProvider(contract.id))
-      ..invalidate(installmentRepaymentsProvider(contract.id))
       ..invalidate(installmentRepaymentCashflowsProvider(contract.id))
       ..invalidate(installmentMetricsProvider(contract.id))
       ..invalidate(

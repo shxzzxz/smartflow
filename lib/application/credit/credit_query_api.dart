@@ -4,7 +4,6 @@ library;
 export '../../domain/credit/entity/credit_liability_account.dart';
 export '../../domain/credit/entity/bill.dart';
 export '../../domain/credit/entity/installment_contract.dart';
-export '../../domain/credit/entity/installment_repayment.dart';
 export '../../domain/credit/entity/installment_schedule.dart';
 export '../../domain/credit/entity/repayment.dart';
 export '../../domain/credit/service/installment_metrics.dart';

@@ -119,44 +119,35 @@ class InstallmentRepaymentFormViewModel
 
     _update((state) => state.copyWith(submitting: true));
     try {
-      final service = ref.read(installmentServiceProvider);
+      final service = ref.read(repaymentServiceProvider);
       switch (args.mode) {
         case InstallmentRepaymentMode.scheduled:
-          final schedule = current.schedule;
-          if (schedule == null) return _invalidCommand('计划行不存在');
-          await service.createScheduledRepayment(
-            CreateScheduledRepaymentCommand(
+          return _invalidCommand('期次还款请从账单还款处理');
+        case InstallmentRepaymentMode.extraPrincipal:
+          await service.createExtraPrincipalRepayment(
+            CreateExtraPrincipalRepaymentCommand(
               contractId: current.contract!.id,
-              scheduleId: schedule.id,
               principal: principal,
               interest: _parseOptionalMoney(current.interestText),
               fee: _parseOptionalMoney(current.feeText),
-              discount: _parseOptionalMoney(current.discountText),
-              paidFromAccountId: paidFromAccountId,
-              occurredAt: current.occurredAt,
-              note: trimToNull(current.noteText),
-            ),
-          );
-        case InstallmentRepaymentMode.extraPrincipal:
-          await service.createPrincipalPrepayment(
-            CreatePrincipalPrepaymentCommand(
-              contractId: current.contract!.id,
-              principal: principal,
-              fee: _parseOptionalMoney(current.feeText),
-              paidFromAccountId: paidFromAccountId,
-              occurredAt: current.occurredAt,
+              transactionInfo: RepaymentTransactionInfo(
+                paidFromAccountId: paidFromAccountId,
+                occurredAt: current.occurredAt,
+              ),
               note: trimToNull(current.noteText),
             ),
           );
         case InstallmentRepaymentMode.earlySettlement:
-          await service.createEarlySettlement(
-            CreateEarlySettlementCommand(
+          await service.createEarlySettlementRepayment(
+            CreateEarlySettlementRepaymentCommand(
               contractId: current.contract!.id,
               principal: principal,
               interest: _parseOptionalMoney(current.interestText),
               fee: _parseOptionalMoney(current.feeText),
-              paidFromAccountId: paidFromAccountId,
-              occurredAt: current.occurredAt,
+              transactionInfo: RepaymentTransactionInfo(
+                paidFromAccountId: paidFromAccountId,
+                occurredAt: current.occurredAt,
+              ),
               note: trimToNull(current.noteText),
             ),
           );
@@ -175,7 +166,7 @@ class InstallmentRepaymentFormViewModel
   void _invalidate(InstallmentContract contract) {
     ref.invalidate(installmentContractProvider(contract.id));
     ref.invalidate(installmentSchedulesProvider(contract.id));
-    ref.invalidate(installmentRepaymentsProvider(contract.id));
+    ref.invalidate(installmentRepaymentCashflowsProvider(contract.id));
     ref.invalidate(
       installmentContractsByAccountProvider(contract.liabilityAccountId),
     );

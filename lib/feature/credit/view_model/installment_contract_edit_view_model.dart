@@ -299,7 +299,7 @@ class InstallmentContractEditViewModel
     ref
       ..invalidate(installmentContractProvider(contractId))
       ..invalidate(installmentSchedulesProvider(contractId))
-      ..invalidate(installmentRepaymentsProvider(contractId))
+      ..invalidate(installmentRepaymentCashflowsProvider(contractId))
       ..invalidate(installmentMetricsProvider(contractId))
       ..invalidate(installmentContractsByAccountProvider(liabilityAccountId));
   }

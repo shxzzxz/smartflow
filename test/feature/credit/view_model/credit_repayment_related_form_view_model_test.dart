@@ -71,27 +71,39 @@ void main() {
   });
 
   test(
-    'installment scheduled repayment uses schedule defaults and submits',
+    'installment extra principal repayment submits through repayment service',
     () async {
-      final installment = _FakeInstallmentService();
-      final container = _container(installmentService: installment);
+      final repayment = _FakeRepaymentService();
+      final container = _container(repaymentService: repayment);
       final provider = installmentRepaymentFormViewModelProvider(
         const InstallmentRepaymentFormArgs(
           contractId: 'contract',
-          mode: InstallmentRepaymentMode.scheduled,
-          scheduleId: 'schedule',
+          mode: InstallmentRepaymentMode.extraPrincipal,
         ),
       );
       final subscription = container.listen(provider, (_, _) {});
       addTearDown(subscription.close);
 
       final state = await container.read(provider.future);
-      final outcome = await container.read(provider.notifier).submit();
+      final notifier = container.read(provider.notifier)
+        ..setPrincipalText('10');
+      final outcome = await notifier.submit();
 
-      expect(state.principalText, '10.00');
+      expect(state.principalText, '');
       expect(outcome, isA<SubmitSuccess>());
-      expect(installment.scheduledCommands.single.scheduleId, 'schedule');
-      expect(installment.scheduledCommands.single.paidFromAccountId, 'cash');
+      expect(repayment.extraPrincipalCommands.single.contractId, 'contract');
+      expect(
+        repayment.extraPrincipalCommands.single.principal,
+        const Money(minorUnits: 1000),
+      );
+      expect(
+        repayment
+            .extraPrincipalCommands
+            .single
+            .transactionInfo!
+            .paidFromAccountId,
+        'cash',
+      );
     },
   );
 
@@ -140,6 +152,7 @@ void main() {
 ProviderContainer _container({
   _FakeCreditService? creditService,
   _FakeInstallmentService? installmentService,
+  _FakeRepaymentService? repaymentService,
   _FakePostingService? postingService,
 }) {
   final accounts = [
@@ -168,7 +181,9 @@ ProviderContainer _container({
       installmentSchedulesProvider.overrideWith(
         (ref, id) async => [_schedule()],
       ),
-      installmentRepaymentsProvider.overrideWith((ref, id) async => const []),
+      installmentRepaymentCashflowsProvider.overrideWith(
+        (ref, id) async => const [],
+      ),
       installmentContractsByAccountProvider.overrideWith(
         (ref, id) async => const [],
       ),
@@ -177,6 +192,9 @@ ProviderContainer _container({
       ),
       installmentServiceProvider.overrideWithValue(
         installmentService ?? _FakeInstallmentService(),
+      ),
+      repaymentServiceProvider.overrideWithValue(
+        repaymentService ?? _FakeRepaymentService(),
       ),
       transactionPostingAppServiceProvider.overrideWithValue(
         postingService ?? _FakePostingService(),
@@ -216,6 +234,26 @@ class _FakeInstallmentService implements credit.InstallmentService {
   ) async {
     scheduledCommands.add(command);
     return _posted();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeRepaymentService implements credit.RepaymentService {
+  final extraPrincipalCommands =
+      <credit.CreateExtraPrincipalRepaymentCommand>[];
+
+  @override
+  Future<credit.CreateRepaymentResult> createExtraPrincipalRepayment(
+    credit.CreateExtraPrincipalRepaymentCommand command,
+  ) async {
+    extraPrincipalCommands.add(command);
+    return const credit.CreateRepaymentResult(
+      repaymentId: 'repayment',
+      transactionId: 'transaction',
+      rootTransactionId: 'root',
+    );
   }
 
   @override

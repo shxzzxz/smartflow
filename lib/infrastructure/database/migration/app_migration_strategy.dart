@@ -36,15 +36,6 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         'ON installment_schedules (contract_id, period_no)',
       );
       await database.customStatement(
-        'CREATE UNIQUE INDEX installment_repayments_contract_schedule_unique '
-        'ON installment_repayments (contract_id, schedule_id) '
-        'WHERE schedule_id IS NOT NULL',
-      );
-      await database.customStatement(
-        'CREATE INDEX installment_repayments_transaction_idx '
-        'ON installment_repayments (transaction_id)',
-      );
-      await database.customStatement(
         'CREATE INDEX installment_contracts_disbursement_tx_idx '
         'ON installment_contracts (disbursement_transaction_id) '
         'WHERE disbursement_transaction_id IS NOT NULL',
@@ -90,6 +81,17 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
           );
           await _createInstallmentSourceRepaymentIndex(database);
         }
+      }
+      if (from < 16) {
+        await database.customStatement(
+          'DROP INDEX IF EXISTS installment_repayments_contract_schedule_unique',
+        );
+        await database.customStatement(
+          'DROP INDEX IF EXISTS installment_repayments_transaction_idx',
+        );
+        await database.customStatement(
+          'DROP TABLE IF EXISTS installment_repayments',
+        );
       }
     },
   );

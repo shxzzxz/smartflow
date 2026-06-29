@@ -1,5 +1,4 @@
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
-import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -8,11 +7,13 @@ import 'package:smartflow/domain/credit/entity/credit_liability_account.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
+import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/service/installment_schedule_generator.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
 import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 class CreateDisbursementContractCommand {
   const CreateDisbursementContractCommand({
@@ -387,28 +388,28 @@ class InstallmentServiceImpl implements InstallmentService {
   InstallmentServiceImpl({
     required InstallmentRepository repository,
     required CreditAccountRepository creditAccounts,
+    required RepaymentRepository repayments,
     required TransactionPostingAppService postingService,
     required TransactionCorrectionAppService correctionService,
     required TransactionUpdateAppService updateService,
-    required TransactionQueryService transactionQueryService,
     required TransactionRunner transactionRunner,
     InstallmentScheduleGenerator generator =
         const InstallmentScheduleGenerator(),
   }) : _repository = repository,
        _creditAccounts = creditAccounts,
+       _repayments = repayments,
        _postingService = postingService,
        _correctionService = correctionService,
        _updateService = updateService,
-       _transactionQueryService = transactionQueryService,
        _runner = transactionRunner,
        _generator = generator;
 
   final InstallmentRepository _repository;
   final CreditAccountRepository _creditAccounts;
+  final RepaymentRepository _repayments;
   final TransactionPostingAppService _postingService;
   final TransactionCorrectionAppService _correctionService;
   final TransactionUpdateAppService _updateService;
-  final TransactionQueryService _transactionQueryService;
   final TransactionRunner _runner;
   final InstallmentScheduleGenerator _generator;
 
@@ -878,23 +879,6 @@ class InstallmentServiceImpl implements InstallmentService {
       return;
     }
 
-    final repayment = await _repository.findRepaymentByTransaction(
-      command.transactionId,
-    );
-    if (repayment == null) {
-      throw BusinessException(
-        CreditErrorCode.repaymentNotFound,
-        message: 'No installment repayment is linked to this transaction.',
-      );
-    }
-    if (command.contractId != null &&
-        command.contractId != repayment.contractId) {
-      throw BusinessException(
-        CreditErrorCode.repaymentInvalidCommand,
-        message: 'Provided contract id does not match the repayment owner.',
-      );
-    }
-
     return _runner.run<void>(() async {
       if (command.paidFromAccountId != null || command.occurredAt != null) {
         await _correctionService.correctRepayment(
@@ -929,220 +913,38 @@ class InstallmentServiceImpl implements InstallmentService {
   Future<PostedTransactionResult> createScheduledRepayment(
     CreateScheduledRepaymentCommand command,
   ) async {
-    final contract = await _repository.findContract(command.contractId);
-    if (contract == null) {
-      throw BusinessException(
-        CreditErrorCode.contractNotFound,
-        message: 'Installment contract does not exist.',
-      );
-    }
-    final schedule = await _repository.findSchedule(command.scheduleId);
-    if (schedule == null || schedule.contractId != command.contractId) {
-      throw BusinessException(
-        CreditErrorCode.scheduleNotFound,
-        message: 'Schedule does not belong to the contract.',
-      );
-    }
-    if (schedule.status != InstallmentScheduleStatus.pending) {
-      throw BusinessException(
-        CreditErrorCode.scheduleNotPending,
-        message: 'Schedule is not pending.',
-      );
-    }
-
-    return _runner.run<PostedTransactionResult>(() async {
-      final post = await _postingService.createRepayment(
-        CreateRepaymentCommand(
-          principal: command.principal,
-          interest: command.interest,
-          fee: command.fee,
-          discount: command.discount,
-          liabilityAccountId: contract.liabilityAccountId,
-          paidFromAccountId: command.paidFromAccountId,
-          occurredAt: command.occurredAt,
-          counterpartyName: command.counterpartyName,
-          note: command.note,
-          ownership: _installmentOwnership(
-            command.contractId,
-            InstallmentOwnerRole.scheduledRepayment,
-          ),
-        ),
-      );
-      await _repository.insertRepayment(
-        InstallmentRepaymentDraft(
-          contractId: command.contractId,
-          repaymentType: InstallmentRepaymentType.scheduled,
-          scheduleId: command.scheduleId,
-          transactionId: post.transactionId,
-        ),
-      );
-      await _repository.updateSchedule(
-        command.scheduleId,
-        const InstallmentSchedulePatch(status: InstallmentScheduleStatus.paid),
-      );
-      await _maybeMarkContractSettled(command.contractId);
-      return post;
-    });
+    throw BusinessException(
+      CreditErrorCode.repaymentNotEditable,
+      message: 'Scheduled installment repayment must be handled from bills.',
+    );
   }
 
   @override
   Future<PostedTransactionResult> createPrincipalPrepayment(
     CreatePrincipalPrepaymentCommand command,
   ) async {
-    final contract = await _repository.findContract(command.contractId);
-    if (contract == null) {
-      throw BusinessException(
-        CreditErrorCode.contractNotFound,
-        message: 'Installment contract does not exist.',
-      );
-    }
-    if (contract.status != InstallmentContractStatus.active) {
-      throw BusinessException(
-        CreditErrorCode.contractNotActive,
-        message: 'Only active contracts allow extra principal repayment.',
-      );
-    }
-
-    return _runner.run<PostedTransactionResult>(() async {
-      final post = await _postingService.createRepayment(
-        CreateRepaymentCommand(
-          principal: command.principal,
-          interest: command.interest,
-          fee: command.fee,
-          liabilityAccountId: contract.liabilityAccountId,
-          paidFromAccountId: command.paidFromAccountId,
-          occurredAt: command.occurredAt,
-          counterpartyName: command.counterpartyName,
-          note: command.note,
-          ownership: _installmentOwnership(
-            command.contractId,
-            InstallmentOwnerRole.extraPrincipal,
-          ),
-        ),
-      );
-      await _repository.insertRepayment(
-        InstallmentRepaymentDraft(
-          contractId: command.contractId,
-          repaymentType: InstallmentRepaymentType.extraPrincipal,
-          transactionId: post.transactionId,
-        ),
-      );
-      await _recalculatePendingSchedules(command.contractId);
-      return post;
-    });
+    throw BusinessException(
+      CreditErrorCode.repaymentNotEditable,
+      message: 'Contract-side repayments are handled by RepaymentService.',
+    );
   }
 
   @override
   Future<PostedTransactionResult> createEarlySettlement(
     CreateEarlySettlementCommand command,
   ) async {
-    final contract = await _repository.findContract(command.contractId);
-    if (contract == null) {
-      throw BusinessException(
-        CreditErrorCode.contractNotFound,
-        message: 'Installment contract does not exist.',
-      );
-    }
-    if (contract.status != InstallmentContractStatus.active) {
-      throw BusinessException(
-        CreditErrorCode.contractNotActive,
-        message: 'Only active contracts can be settled early.',
-      );
-    }
-
-    return _runner.run<PostedTransactionResult>(() async {
-      final post = await _postingService.createRepayment(
-        CreateRepaymentCommand(
-          principal: command.principal,
-          interest: command.interest,
-          fee: command.fee,
-          liabilityAccountId: contract.liabilityAccountId,
-          paidFromAccountId: command.paidFromAccountId,
-          occurredAt: command.occurredAt,
-          counterpartyName: command.counterpartyName,
-          note: command.note,
-          ownership: _installmentOwnership(
-            command.contractId,
-            InstallmentOwnerRole.earlySettlement,
-          ),
-        ),
-      );
-      await _repository.insertRepayment(
-        InstallmentRepaymentDraft(
-          contractId: command.contractId,
-          repaymentType: InstallmentRepaymentType.earlySettlement,
-          transactionId: post.transactionId,
-        ),
-      );
-      final schedules = await _repository.listSchedules(command.contractId);
-      for (final s in schedules) {
-        if (s.status == InstallmentScheduleStatus.pending) {
-          await _repository.updateSchedule(
-            s.id,
-            const InstallmentSchedulePatch(
-              status: InstallmentScheduleStatus.skipped,
-            ),
-          );
-        }
-      }
-      await _repository.updateContractStatus(
-        command.contractId,
-        InstallmentContractStatus.closed,
-      );
-      return post;
-    });
+    throw BusinessException(
+      CreditErrorCode.repaymentNotEditable,
+      message: 'Contract-side repayments are handled by RepaymentService.',
+    );
   }
 
   @override
   Future<void> revertRepayment(RevertRepaymentCommand command) async {
-    final repayment = await _repository.findRepaymentByTransaction(
-      command.transactionId,
+    throw BusinessException(
+      CreditErrorCode.repaymentNotEditable,
+      message: 'Credit repayments are reverted by RepaymentService.',
     );
-    if (repayment == null) {
-      throw BusinessException(
-        CreditErrorCode.repaymentNotFound,
-        message: 'No installment repayment is linked to this transaction.',
-      );
-    }
-
-    return _runner.run<void>(() async {
-      await _correctionService.deleteTransaction(
-        DeleteTransactionCommand(transactionId: command.transactionId),
-      );
-      await _repository.deleteRepayment(repayment.id);
-      switch (repayment.repaymentType) {
-        case InstallmentRepaymentType.scheduled:
-          if (repayment.scheduleId != null) {
-            await _repository.updateSchedule(
-              repayment.scheduleId!,
-              const InstallmentSchedulePatch(
-                status: InstallmentScheduleStatus.pending,
-              ),
-            );
-          }
-          await _maybeUnmarkContractSettled(repayment.contractId);
-        case InstallmentRepaymentType.extraPrincipal:
-          await _recalculatePendingSchedules(repayment.contractId);
-        case InstallmentRepaymentType.earlySettlement:
-          final schedules = await _repository.listSchedules(
-            repayment.contractId,
-          );
-          for (final s in schedules) {
-            if (s.status == InstallmentScheduleStatus.skipped) {
-              await _repository.updateSchedule(
-                s.id,
-                const InstallmentSchedulePatch(
-                  status: InstallmentScheduleStatus.pending,
-                ),
-              );
-            }
-          }
-          await _repository.updateContractStatus(
-            repayment.contractId,
-            InstallmentContractStatus.active,
-          );
-      }
-    });
   }
 
   @override
@@ -1155,7 +957,10 @@ class InstallmentServiceImpl implements InstallmentService {
       );
     }
 
-    final repayments = await _repository.listRepayments(command.contractId);
+    final repayments = await _repayments.listByTarget(
+      RepaymentTargetType.contract,
+      command.contractId,
+    );
     if (repayments.isNotEmpty) {
       throw BusinessException(
         CreditErrorCode.contractInvalidCommand,
@@ -1202,92 +1007,18 @@ class InstallmentServiceImpl implements InstallmentService {
     }
   }
 
-  /// 重算 pending 期次的金额（日期保持不变）。提前还本 / 撤销提前还本时调用。
-  Future<void> _recalculatePendingSchedules(String contractId) async {
-    final contract = await _repository.findContract(contractId);
-    if (contract == null) return;
-
-    final schedules = await _repository.listSchedules(contractId);
-    final paid =
-        schedules
-            .where((s) => s.status == InstallmentScheduleStatus.paid)
-            .toList()
-          ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
-    final pending =
-        schedules
-            .where((s) => s.status == InstallmentScheduleStatus.pending)
-            .toList()
-          ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
-    if (pending.isEmpty) return;
-
-    final paidPrincipalMinor = paid.fold<int>(
-      0,
-      (acc, s) => acc + s.expectedPrincipal.minorUnits,
-    );
-    final extraPrincipalMinor = await _extraPrincipalSumMinor(contractId);
-    final remainingMinor =
-        contract.principal.minorUnits -
-        paidPrincipalMinor -
-        extraPrincipalMinor;
-
-    if (remainingMinor <= 0) {
-      // 剩余本金归零 → pending 行清零并标 skipped。
-      for (final s in pending) {
-        await _repository.updateSchedule(
-          s.id,
-          InstallmentSchedulePatch(
-            expectedPrincipal: Money.zero(),
-            expectedInterest: Money.zero(),
-            expectedFee: Money.zero(),
-            status: InstallmentScheduleStatus.skipped,
-          ),
-        );
-      }
-      return;
-    }
-
-    final paidFeeMinor = paid.fold<int>(
-      0,
-      (acc, s) => acc + s.expectedFee.minorUnits,
-    );
-    final remainingFeeMinor = contract.totalFeeMinor - paidFeeMinor;
-    final anchorDate =
-        paid.isEmpty ? contract.borrowingDate : paid.last.expectedRepaymentDate;
-
-    final allocations = _generator.allocate(
-      remainingPrincipal: Money(minorUnits: remainingMinor),
-      anchorDate: anchorDate,
-      pendingDates: [for (final p in pending) p.expectedRepaymentDate],
-      method: contract.repaymentMethod,
-      accrualMethod: contract.interestAccrualMethod,
-      ratePeriod: contract.interestRatePeriod,
-      ratePpm: contract.interestRatePpm,
-      remainingFeeMinor: remainingFeeMinor < 0 ? 0 : remainingFeeMinor,
-    );
-    for (var i = 0; i < pending.length; i++) {
-      final s = pending[i];
-      final a = allocations[i];
-      await _repository.updateSchedule(
-        s.id,
-        InstallmentSchedulePatch(
-          expectedPrincipal: a.principal,
-          expectedInterest: a.interest,
-          expectedFee: a.fee,
-        ),
-      );
-    }
-  }
-
   Future<int> _extraPrincipalSumMinor(String contractId) async {
-    final repayments = await _repository.listRepayments(contractId);
-    return _transactionQueryService.getDetailAmountSum(
-      transactionIds: repayments
-          .where(
-            (r) => r.repaymentType == InstallmentRepaymentType.extraPrincipal,
-          )
-          .map((r) => r.transactionId),
-      detailType: TransactionDetailType.repaymentPrincipal,
+    final repayments = await _repayments.listByTarget(
+      RepaymentTargetType.contract,
+      contractId,
     );
+    return repayments
+        .where((r) => r.repaymentType == RepaymentType.extraPrincipal)
+        .fold<int>(
+          0,
+          (sum, repayment) =>
+              sum + repayment.totalAllocated().principal.minorUnits,
+        );
   }
 
   void _requireValidCreate({

@@ -21,6 +21,7 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
   required TransactionCorrectionAppService correctionService,
   required TransactionUpdateAppService updateService,
   required InstallmentService installmentService,
+  required RepaymentService repaymentService,
 }) {
   final ownership = transaction.ownership;
   if (ownership == null) {
@@ -44,10 +45,31 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
     }
   }
 
+  if (ownership.ownerType == creditRepaymentOwnerType &&
+      ownership.ownerId != null) {
+    final repaymentType = _repaymentTypeFromOwnerRole(ownership.ownerRole);
+    if (repaymentType != null) {
+      return _CreditRepaymentActionDispatcher(
+        transaction: transaction,
+        repaymentService: repaymentService,
+        repaymentId: ownership.ownerId!,
+      );
+    }
+  }
+
   return _UnknownActionDispatcher(
     transaction: transaction,
     updateService: updateService,
   );
+}
+
+RepaymentType? _repaymentTypeFromOwnerRole(String? ownerRole) {
+  if (ownerRole == null) return null;
+  try {
+    return RepaymentType.fromCode(ownerRole);
+  } on ArgumentError {
+    return null;
+  }
 }
 
 Future<UiActionOutcome<void>> detailVoidOutcomeFromAction(
@@ -234,6 +256,66 @@ final class _InstallmentActionDispatcher
         EditRepaymentCommand(
           transactionId: transaction.id,
           contractId: contractId,
+          paidFromAccountId: accountId,
+        ),
+      );
+    });
+  }
+}
+
+final class _CreditRepaymentActionDispatcher
+    implements TransactionDetailActionDispatcher {
+  const _CreditRepaymentActionDispatcher({
+    required this.transaction,
+    required this.repaymentService,
+    required this.repaymentId,
+  });
+
+  final Transaction transaction;
+  final RepaymentService repaymentService;
+  final String repaymentId;
+
+  @override
+  Future<UiActionOutcome<void>> delete() async {
+    return detailVoidOutcomeFromAction(() {
+      return repaymentService.deleteRepayment(
+        DeleteCreditRepaymentCommand(repaymentId: repaymentId),
+      );
+    });
+  }
+
+  @override
+  Future<UiActionOutcome<void>> changeNote(String? value) async {
+    return detailVoidOutcomeFromAction(() {
+      return repaymentService.editRepaymentTransaction(
+        EditCreditRepaymentTransactionCommand(
+          repaymentId: repaymentId,
+          note: _nullableStringPatch(value),
+        ),
+      );
+    });
+  }
+
+  @override
+  Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
+    return detailVoidOutcomeFromAction(() {
+      return repaymentService.editRepaymentTransaction(
+        EditCreditRepaymentTransactionCommand(
+          repaymentId: repaymentId,
+          occurredAt: value,
+        ),
+      );
+    });
+  }
+
+  @override
+  Future<UiActionOutcome<void>> changeSettlementAccount(
+    String accountId,
+  ) async {
+    return detailVoidOutcomeFromAction(() {
+      return repaymentService.editRepaymentTransaction(
+        EditCreditRepaymentTransactionCommand(
+          repaymentId: repaymentId,
           paidFromAccountId: accountId,
         ),
       );

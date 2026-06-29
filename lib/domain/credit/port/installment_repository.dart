@@ -1,7 +1,6 @@
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../entity/installment_contract.dart';
-import '../entity/installment_repayment.dart';
 import '../entity/installment_schedule.dart';
 import '../valobj/installment_enums.dart';
 import '../service/installment_schedule_generator.dart';
@@ -98,20 +97,6 @@ class InstallmentSchedulePatch {
   final Patch<String>? note;
 }
 
-class InstallmentRepaymentDraft {
-  const InstallmentRepaymentDraft({
-    required this.contractId,
-    required this.repaymentType,
-    required this.transactionId,
-    this.scheduleId,
-  });
-
-  final String contractId;
-  final InstallmentRepaymentType repaymentType;
-  final String? scheduleId;
-  final String transactionId;
-}
-
 abstract interface class InstallmentRepository {
   Future<InstallmentContract?> findContract(String id);
 
@@ -126,12 +111,6 @@ abstract interface class InstallmentRepository {
   );
 
   Future<InstallmentSchedule?> findSchedule(String scheduleId);
-
-  Future<List<InstallmentRepayment>> listRepayments(String contractId);
-
-  Future<InstallmentRepayment?> findRepaymentByTransaction(
-    String transactionId,
-  );
 
   /// 反查：transaction 是否为某合同的放款交易；若是返回该合同，否则返回 null。
   /// 仅 `sourceType == disbursement` 的合同会命中。
@@ -162,10 +141,6 @@ abstract interface class InstallmentRepository {
     String scheduleId,
     InstallmentSchedulePatch patch,
   );
-
-  Future<String> insertRepayment(InstallmentRepaymentDraft draft);
-
-  Future<void> deleteRepayment(String repaymentId);
 
   Future<void> updateContractStatus(
     String contractId,

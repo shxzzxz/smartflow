@@ -15,7 +15,6 @@ import 'table/credit/credit_liability_accounts.dart';
 import 'table/credit/bill_items.dart';
 import 'table/credit/bills.dart';
 import 'table/credit/installment_contracts.dart';
-import 'table/credit/installment_repayments.dart';
 import 'table/credit/installment_schedules.dart';
 import 'table/credit/repayment_items.dart';
 import 'table/credit/repayments.dart';
@@ -37,7 +36,6 @@ part 'app_database.g.dart';
     BillItems,
     InstallmentContracts,
     InstallmentSchedules,
-    InstallmentRepayments,
     Repayments,
     RepaymentItems,
   ],
@@ -46,7 +44,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

@@ -17,8 +17,12 @@ import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repos
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_account_query_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_account_repository.dart';
+import 'package:smartflow/infrastructure/ledger/repository/drift_balance_aggregate_repository.dart';
+import 'package:smartflow/infrastructure/ledger/repository/drift_entry_read_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_posting_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_system_account_resolver.dart';
+import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_detail_read_repository.dart';
+import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 
 import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
@@ -454,11 +458,7 @@ class _Fixture {
       accountRepository: accountRepository,
       rootGroupRepository: postingRepository,
       systemAccountResolver: DriftSystemAccountResolver(database),
-      ledgerWriter: TransactionLedgerWriter(
-        transactionRunner: runner,
-        transactionRepository: postingRepository,
-        accountRepository: accountRepository,
-      ),
+      ledgerWriter: ledgerWriter,
       idGenerator: ids,
     );
     generation = CreditBillGenerationServiceImpl(
@@ -477,6 +477,9 @@ class _Fixture {
       installments: installmentRepository,
       accountQueryService: accountQueryService,
       postingService: postingAppService,
+      correctionService: correctionAppService,
+      updateService: updateAppService,
+      transactionQueryService: transactionQueryService,
       transactionRunner: runner,
       idGenerator: ids,
     );
@@ -501,6 +504,32 @@ class _Fixture {
   late final DriftPostingRepository postingRepository = DriftPostingRepository(
     database,
   );
+  late final TransactionLedgerWriter ledgerWriter = TransactionLedgerWriter(
+    transactionRunner: runner,
+    transactionRepository: postingRepository,
+    accountRepository: accountRepository,
+  );
+  late final TransactionCorrectionAppService correctionAppService =
+      TransactionCorrectionAppServiceImpl(
+        accountRepository: accountRepository,
+        rootGroupRepository: postingRepository,
+        systemAccountResolver: DriftSystemAccountResolver(database),
+        ledgerWriter: ledgerWriter,
+        idGenerator: ids,
+      );
+  late final TransactionUpdateAppService updateAppService =
+      TransactionUpdateAppServiceImpl(
+        transactionRepository: postingRepository,
+        rootGroupRepository: postingRepository,
+        ledgerWriter: ledgerWriter,
+      );
+  late final TransactionQueryService transactionQueryService =
+      TransactionQueryServiceImpl(
+        transactionRead: DriftTransactionReadRepository(database),
+        entryRead: DriftEntryReadRepository(database),
+        detailRead: DriftTransactionDetailReadRepository(database),
+        balanceAggregate: DriftBalanceAggregateRepository(database),
+      );
   late final CreditAccountService creditAccountService;
   late final TransactionPostingAppService postingAppService;
   late final CreditBillGenerationService generation;

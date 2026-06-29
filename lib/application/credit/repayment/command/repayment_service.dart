@@ -5,7 +5,9 @@ import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
+import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
@@ -151,6 +153,29 @@ class CreateRepaymentResult {
   final String? contractId;
 }
 
+class DeleteCreditRepaymentCommand {
+  const DeleteCreditRepaymentCommand({this.repaymentId, this.rootTransactionId});
+
+  final String? repaymentId;
+  final String? rootTransactionId;
+}
+
+class EditCreditRepaymentTransactionCommand {
+  const EditCreditRepaymentTransactionCommand({
+    this.repaymentId,
+    this.rootTransactionId,
+    this.paidFromAccountId,
+    this.occurredAt,
+    this.note,
+  });
+
+  final String? repaymentId;
+  final String? rootTransactionId;
+  final String? paidFromAccountId;
+  final DateTime? occurredAt;
+  final Patch<String?>? note;
+}
+
 abstract interface class RepaymentService {
   Future<CreateRepaymentResult> createBillRepayment(
     CreateBillRepaymentCommand command,
@@ -171,6 +196,12 @@ abstract interface class RepaymentService {
   Future<CreateRepaymentResult> createUnattributedRepayment(
     CreateUnattributedRepaymentCommand command,
   );
+
+  Future<void> editRepaymentTransaction(
+    EditCreditRepaymentTransactionCommand command,
+  );
+
+  Future<void> deleteRepayment(DeleteCreditRepaymentCommand command);
 }
 
 class RepaymentServiceImpl implements RepaymentService {
@@ -180,6 +211,9 @@ class RepaymentServiceImpl implements RepaymentService {
     required InstallmentRepository installments,
     required ledger_query.AccountQueryService accountQueryService,
     required ledger.TransactionPostingAppService postingService,
+    required ledger.TransactionCorrectionAppService correctionService,
+    required ledger.TransactionUpdateAppService updateService,
+    required ledger_query.TransactionQueryService transactionQueryService,
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
     InstallmentScheduleGenerator generator =
@@ -187,17 +221,23 @@ class RepaymentServiceImpl implements RepaymentService {
   }) : _bills = bills,
        _repayments = repayments,
        _installments = installments,
-       _accountQueryService = accountQueryService,
-       _postingService = postingService,
-       _transactionRunner = transactionRunner,
-       _idGenerator = idGenerator,
-       _generator = generator;
+        _accountQueryService = accountQueryService,
+        _postingService = postingService,
+        _correctionService = correctionService,
+        _updateService = updateService,
+        _transactionQueryService = transactionQueryService,
+        _transactionRunner = transactionRunner,
+        _idGenerator = idGenerator,
+        _generator = generator;
 
   final BillRepository _bills;
   final RepaymentRepository _repayments;
   final InstallmentRepository _installments;
   final ledger_query.AccountQueryService _accountQueryService;
   final ledger.TransactionPostingAppService _postingService;
+  final ledger.TransactionCorrectionAppService _correctionService;
+  final ledger.TransactionUpdateAppService _updateService;
+  final ledger_query.TransactionQueryService _transactionQueryService;
   final TransactionRunner _transactionRunner;
   final IdGenerator _idGenerator;
   final InstallmentScheduleGenerator _generator;
@@ -495,6 +535,218 @@ class RepaymentServiceImpl implements RepaymentService {
     });
   }
 
+  @override
+  Future<void> editRepaymentTransaction(
+    EditCreditRepaymentTransactionCommand command,
+  ) async {
+    final repayment = await _findRepaymentForCommand(
+      repaymentId: command.repaymentId,
+      rootTransactionId: command.rootTransactionId,
+    );
+    final rootTransactionId = repayment.rootTransactionId;
+    if (rootTransactionId == null) {
+      throw BusinessException(CreditErrorCode.repaymentNotEditable);
+    }
+
+    if (command.paidFromAccountId == null) {
+      await _updateService.updateBasicInfo(
+        ledger.UpdateTransactionBasicInfoCommand(
+          transactionId: rootTransactionId,
+          occurredAt: command.occurredAt,
+          note: command.note,
+        ),
+      );
+      return;
+    }
+
+    final detail = await _transactionQueryService.findTransactionDetail(
+      rootTransactionId,
+    );
+    if (detail == null) {
+      throw BusinessException(CreditErrorCode.repaymentNotFound);
+    }
+    final liabilityAccountId = await _liabilityAccountIdForRepayment(repayment);
+    await _correctionService.correctRepayment(
+      ledger.CorrectRepaymentCommand(
+        transactionId: rootTransactionId,
+        principal: repayment.totalAllocated().principal,
+        interest: Patch<Money?>.set(
+          _positiveOrNull(repayment.totalAllocated().interest),
+        ),
+        fee: Patch<Money?>.set(_positiveOrNull(repayment.totalAllocated().fee)),
+        discount: Patch<Money?>.set(
+          _positiveOrNull(repayment.totalAllocated().discount),
+        ),
+        liabilityAccountId: liabilityAccountId,
+        paidFromAccountId: command.paidFromAccountId,
+        occurredAt: command.occurredAt ?? detail.transaction.occurredAt,
+        note: command.note,
+      ),
+    );
+  }
+
+  @override
+  Future<void> deleteRepayment(DeleteCreditRepaymentCommand command) async {
+    final repayment = await _findRepaymentForCommand(
+      repaymentId: command.repaymentId,
+      rootTransactionId: command.rootTransactionId,
+    );
+
+    if (repayment.rootTransactionId != null) {
+      await _correctionService.deleteTransaction(
+        ledger.DeleteTransactionCommand(
+          transactionId: repayment.rootTransactionId!,
+        ),
+      );
+    }
+
+    return _transactionRunner.run<void>(() async {
+      switch (repayment.repaymentType) {
+        case RepaymentType.bill:
+          await _deleteBillRepayment(repayment);
+        case RepaymentType.installment:
+          await _deleteBillConversionInstallmentRepayment(repayment);
+        case RepaymentType.extraPrincipal:
+          await _deleteExtraPrincipalRepayment(repayment);
+        case RepaymentType.earlySettlement:
+          await _deleteEarlySettlementRepayment(repayment);
+        case RepaymentType.unattributed:
+          await _repayments.deleteRepayment(repayment.id);
+      }
+    });
+  }
+
+  Future<Repayment> _findRepaymentForCommand({
+    required String? repaymentId,
+    required String? rootTransactionId,
+  }) async {
+    if ((repaymentId == null) == (rootTransactionId == null)) {
+      throw BusinessException(CreditErrorCode.repaymentInvalidCommand);
+    }
+    final repayment =
+        repaymentId != null
+            ? await _repayments.findRepayment(repaymentId)
+            : await _repayments.findByRootTransaction(rootTransactionId!);
+    if (repayment == null) {
+      throw BusinessException(CreditErrorCode.repaymentNotFound);
+    }
+    return repayment;
+  }
+
+  Future<void> _deleteBillRepayment(Repayment repayment) async {
+    final bill = await _bills.findBill(repayment.targetId);
+    if (bill == null) {
+      throw BusinessException(CreditErrorCode.billNotFound);
+    }
+    final allocations = _allocationsFromItems(repayment.items);
+    await _repayments.deleteRepayment(repayment.id);
+    await _refreshBillStatuses(bill, allocations);
+  }
+
+  Future<void> _deleteBillConversionInstallmentRepayment(
+    Repayment repayment,
+  ) async {
+    final bill = await _bills.findBill(repayment.targetId);
+    if (bill == null) {
+      throw BusinessException(CreditErrorCode.billNotFound);
+    }
+    final contract = await _findBillConversionContract(repayment.id, bill);
+    if (contract != null) {
+      final contractRepayments = await _repayments.listByTarget(
+        RepaymentTargetType.contract,
+        contract.id,
+      );
+      if (contractRepayments.isNotEmpty) {
+        throw BusinessException(
+          CreditErrorCode.repaymentNotEditable,
+          message: 'Bill conversion contract has repayments. Delete them first.',
+        );
+      }
+    }
+
+    final allocations = _allocationsFromItems(repayment.items);
+    await _repayments.deleteRepayment(repayment.id);
+    await _refreshBillStatuses(bill, allocations);
+    if (contract != null) {
+      await _installments.deleteContract(contract.id);
+    }
+  }
+
+  Future<void> _deleteExtraPrincipalRepayment(Repayment repayment) async {
+    final contract = await _installments.findContract(repayment.targetId);
+    if (contract == null) {
+      throw BusinessException(CreditErrorCode.contractNotFound);
+    }
+    await _repayments.deleteRepayment(repayment.id);
+    await _restoreSkippedSchedules(contract.id);
+    await _recalculatePendingSchedules(contract.id);
+    await _refreshContractStatus(contract.id);
+  }
+
+  Future<void> _deleteEarlySettlementRepayment(Repayment repayment) async {
+    final contract = await _installments.findContract(repayment.targetId);
+    if (contract == null) {
+      throw BusinessException(CreditErrorCode.contractNotFound);
+    }
+    await _repayments.deleteRepayment(repayment.id);
+    await _restoreSkippedSchedules(contract.id);
+    await _restoreSkippedBillItemsForContract(
+      contract.id,
+      contract.liabilityAccountId,
+    );
+    await _installments.updateContractStatus(
+      contract.id,
+      InstallmentContractStatus.active,
+    );
+    await _recalculatePendingSchedules(contract.id);
+  }
+
+  Future<InstallmentContract?> _findBillConversionContract(
+    String sourceRepaymentId,
+    Bill bill,
+  ) async {
+    final contracts = await _installments.listContractsByLiabilityAccount(
+      bill.accountId,
+    );
+    for (final contract in contracts) {
+      if (contract.sourceType == InstallmentSourceType.billConversion &&
+          contract.sourceRepaymentId == sourceRepaymentId) {
+        return contract;
+      }
+    }
+    return null;
+  }
+
+  Future<String> _liabilityAccountIdForRepayment(Repayment repayment) async {
+    switch (repayment.targetType) {
+      case RepaymentTargetType.account:
+        return repayment.targetId;
+      case RepaymentTargetType.bill:
+        final bill = await _bills.findBill(repayment.targetId);
+        if (bill == null) throw BusinessException(CreditErrorCode.billNotFound);
+        return bill.accountId;
+      case RepaymentTargetType.contract:
+        final contract = await _installments.findContract(repayment.targetId);
+        if (contract == null) {
+          throw BusinessException(CreditErrorCode.contractNotFound);
+        }
+        return contract.liabilityAccountId;
+    }
+  }
+
+  List<BillRepaymentAllocation> _allocationsFromItems(
+    List<RepaymentItem> items,
+  ) {
+    return [
+      for (final item in items)
+        if (item.billItemId != null)
+          BillRepaymentAllocation(
+            billItemId: item.billItemId!,
+            allocated: item.allocated,
+          ),
+    ];
+  }
+
   void _validateBillRepaymentCommand(
     Bill bill,
     CreateBillRepaymentCommand command,
@@ -706,7 +958,7 @@ class RepaymentServiceImpl implements RepaymentService {
     final touched =
         allocations.map((allocation) => allocation.billItemId).toSet();
     final nextItems = <BillItem>[];
-    final paidScheduleIds = <String>{};
+    final scheduleStatuses = <String, BillItemStatus>{};
     for (final item in bill.items) {
       if (!touched.contains(item.id)) {
         nextItems.add(item);
@@ -721,50 +973,44 @@ class RepaymentServiceImpl implements RepaymentService {
           allocatedPrincipalMinor >= item.expectedPrincipal.minorUnits
               ? BillItemStatus.paid
               : BillItemStatus.pending;
-      if (nextStatus == BillItemStatus.paid && item.scheduleId != null) {
-        paidScheduleIds.add(item.scheduleId!);
+      if (item.scheduleId != null) {
+        scheduleStatuses[item.scheduleId!] = nextStatus;
       }
       nextItems.add(item.copyWith(status: nextStatus));
     }
 
     await _bills.upsertBillItems(bill.id, nextItems);
-    await _refreshInstallmentStatuses(paidScheduleIds);
+    await _refreshInstallmentStatuses(scheduleStatuses);
     await _bills.updateBill(
       bill.copyWith(status: _projectBillStatus(bill.status, nextItems)),
     );
   }
 
-  Future<void> _refreshInstallmentStatuses(Set<String> paidScheduleIds) async {
-    if (paidScheduleIds.isEmpty) return;
+  Future<void> _refreshInstallmentStatuses(
+    Map<String, BillItemStatus> scheduleStatuses,
+  ) async {
+    if (scheduleStatuses.isEmpty) return;
     final touchedContractIds = <String>{};
-    for (final scheduleId in paidScheduleIds) {
+    for (final entry in scheduleStatuses.entries) {
+      final scheduleId = entry.key;
       final schedule = await _installments.findSchedule(scheduleId);
       if (schedule == null) continue;
-      if (schedule.status != InstallmentScheduleStatus.paid) {
+      final nextStatus = switch (entry.value) {
+        BillItemStatus.paid => InstallmentScheduleStatus.paid,
+        BillItemStatus.pending => InstallmentScheduleStatus.pending,
+        BillItemStatus.skipped => InstallmentScheduleStatus.skipped,
+      };
+      if (schedule.status != nextStatus) {
         await _installments.updateSchedule(
           scheduleId,
-          const InstallmentSchedulePatch(
-            status: InstallmentScheduleStatus.paid,
-          ),
+          InstallmentSchedulePatch(status: nextStatus),
         );
       }
       touchedContractIds.add(schedule.contractId);
     }
 
     for (final contractId in touchedContractIds) {
-      final schedules = await _installments.listSchedules(contractId);
-      if (schedules.isEmpty) continue;
-      final allSettled = schedules.every(
-        (schedule) =>
-            schedule.status == InstallmentScheduleStatus.paid ||
-            schedule.status == InstallmentScheduleStatus.skipped,
-      );
-      if (allSettled) {
-        await _installments.updateContractStatus(
-          contractId,
-          InstallmentContractStatus.settled,
-        );
-      }
+      await _refreshContractStatus(contractId);
     }
   }
 
@@ -878,6 +1124,20 @@ class RepaymentServiceImpl implements RepaymentService {
     }
   }
 
+  Future<void> _restoreSkippedSchedules(String contractId) async {
+    final schedules = await _installments.listSchedules(contractId);
+    for (final schedule in schedules) {
+      if (schedule.status == InstallmentScheduleStatus.skipped) {
+        await _installments.updateSchedule(
+          schedule.id,
+          const InstallmentSchedulePatch(
+            status: InstallmentScheduleStatus.pending,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _skipPendingBillItemsForContract(
     String contractId,
     String liabilityAccountId,
@@ -906,15 +1166,59 @@ class RepaymentServiceImpl implements RepaymentService {
     }
   }
 
+  Future<void> _restoreSkippedBillItemsForContract(
+    String contractId,
+    String liabilityAccountId,
+  ) async {
+    final bills = await _bills.listBillsByAccount(liabilityAccountId);
+    for (final bill in bills) {
+      var changed = false;
+      final nextItems = <BillItem>[];
+      for (final item in bill.items) {
+        if (item.contractId == contractId &&
+            item.status == BillItemStatus.skipped) {
+          changed = true;
+          nextItems.add(item.copyWith(status: BillItemStatus.pending));
+        } else {
+          nextItems.add(item);
+        }
+      }
+      if (!changed) continue;
+      await _bills.upsertBillItems(bill.id, nextItems);
+      await _bills.updateBill(
+        bill.copyWith(
+          items: nextItems,
+          status: _projectBillStatus(bill.status, nextItems),
+        ),
+      );
+    }
+  }
+
   Future<void> _maybeMarkContractSettled(String contractId) async {
+    await _refreshContractStatus(contractId);
+  }
+
+  Future<void> _refreshContractStatus(String contractId) async {
+    final contract = await _installments.findContract(contractId);
+    if (contract == null) return;
     final schedules = await _installments.listSchedules(contractId);
     if (schedules.isEmpty) return;
+    final hasPending = schedules.any(
+      (schedule) => schedule.status == InstallmentScheduleStatus.pending,
+    );
+    if (hasPending && contract.status != InstallmentContractStatus.active) {
+      await _installments.updateContractStatus(
+        contractId,
+        InstallmentContractStatus.active,
+      );
+      return;
+    }
     final allDone = schedules.every(
       (schedule) =>
           schedule.status == InstallmentScheduleStatus.paid ||
           schedule.status == InstallmentScheduleStatus.skipped,
     );
-    if (allDone) {
+    if (allDone && contract.status != InstallmentContractStatus.settled) {
       await _installments.updateContractStatus(
         contractId,
         InstallmentContractStatus.settled,

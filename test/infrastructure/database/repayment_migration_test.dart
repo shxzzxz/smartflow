@@ -67,6 +67,26 @@ void main() {
       expect(updated.single.sourceRepaymentId, 'repayment-1');
     },
   );
+
+  test('schema v16 drops legacy installment repayments table', () async {
+    final database = AppDatabase(
+      DatabaseConnection(
+        NativeDatabase.memory(setup: _createV15InstallmentRepaymentsDatabase),
+        closeStreamsSynchronously: true,
+      ),
+    );
+    addTearDown(database.close);
+
+    final rows =
+        await database
+            .customSelect(
+              "SELECT name FROM sqlite_master "
+              "WHERE type = 'table' AND name = 'installment_repayments'",
+            )
+            .get();
+
+    expect(rows, isEmpty);
+  });
 }
 
 void _createV13Database(dynamic database) {
@@ -131,4 +151,39 @@ void _createV14InstallmentDatabase(dynamic database) {
     ")",
   );
   database.execute('PRAGMA user_version = 14');
+}
+
+void _createV15InstallmentRepaymentsDatabase(dynamic database) {
+  database.execute('''
+    CREATE TABLE app_metadata (
+      key TEXT NOT NULL PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  ''');
+  database.execute(
+    "INSERT INTO app_metadata (key, value, updated_at) "
+    "VALUES ('builtin_data_version', '8', 0)",
+  );
+  database.execute('''
+    CREATE TABLE installment_repayments (
+      id TEXT NOT NULL PRIMARY KEY,
+      contract_id TEXT NOT NULL,
+      repayment_type TEXT NOT NULL,
+      schedule_id TEXT NULL,
+      transaction_id TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  ''');
+  database.execute(
+    'CREATE UNIQUE INDEX installment_repayments_contract_schedule_unique '
+    'ON installment_repayments (contract_id, schedule_id) '
+    'WHERE schedule_id IS NOT NULL',
+  );
+  database.execute(
+    'CREATE INDEX installment_repayments_transaction_idx '
+    'ON installment_repayments (transaction_id)',
+  );
+  database.execute('PRAGMA user_version = 15');
 }

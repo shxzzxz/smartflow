@@ -174,6 +174,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
       correctionService: ref.read(transactionCorrectionAppServiceProvider),
       updateService: ref.read(transactionUpdateAppServiceProvider),
       installmentService: ref.read(installmentServiceProvider),
+      repaymentService: ref.read(repaymentServiceProvider),
     );
   }
 

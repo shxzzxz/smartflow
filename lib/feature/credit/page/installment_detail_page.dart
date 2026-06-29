@@ -387,17 +387,8 @@ class _ScheduleRow extends StatelessWidget {
         schedule.expectedPrincipal +
         schedule.expectedInterest +
         schedule.expectedFee;
-    final canRepay =
-        schedule.status == InstallmentScheduleStatus.pending &&
-        contract.status == InstallmentContractStatus.active;
-
     return InkWell(
-      onTap:
-          canRepay
-              ? () => context.push(
-                '/installments/${contract.id}/repay?mode=regular&scheduleId=${schedule.id}',
-              )
-              : null,
+      onTap: null,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space12,
@@ -459,7 +450,10 @@ class _RepaymentRow extends ConsumerWidget {
     final colors = Theme.of(context).colorScheme;
     final total = cashflow.principal + cashflow.interest + cashflow.fee;
     return InkWell(
-      onTap: () => context.push('/transaction/${cashflow.transactionId}'),
+      onTap:
+          cashflow.transactionId == null
+              ? null
+              : () => context.push('/transaction/${cashflow.transactionId}'),
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space12,
@@ -535,7 +529,7 @@ class _RepaymentRow extends ConsumerWidget {
     if (confirmed != true) return;
     final outcome = await ref
         .read(installmentDetailViewModelProvider(contract.id).notifier)
-        .revertRepayment(cashflow.transactionId);
+        .revertRepayment(cashflow.id);
     if (!context.mounted) return;
     switch (outcome) {
       case UiActionSuccess<void>():
@@ -577,19 +571,23 @@ Color _scheduleStatusColor(
   };
 }
 
-String _repaymentTypeLabel(InstallmentRepaymentType type) {
+String _repaymentTypeLabel(RepaymentType type) {
   return switch (type) {
-    InstallmentRepaymentType.scheduled => '正常还款',
-    InstallmentRepaymentType.extraPrincipal => '提前还本',
-    InstallmentRepaymentType.earlySettlement => '提前结清',
+    RepaymentType.bill => '账单还款',
+    RepaymentType.installment => '分期还款',
+    RepaymentType.extraPrincipal => '提前还本',
+    RepaymentType.earlySettlement => '提前结清',
+    RepaymentType.unattributed => '未归属',
   };
 }
 
-Color _repaymentTypeColor(InstallmentRepaymentType type, ColorScheme colors) {
+Color _repaymentTypeColor(RepaymentType type, ColorScheme colors) {
   return switch (type) {
-    InstallmentRepaymentType.scheduled => colors.tertiary,
-    InstallmentRepaymentType.extraPrincipal => colors.primary,
-    InstallmentRepaymentType.earlySettlement => colors.secondary,
+    RepaymentType.bill => colors.tertiary,
+    RepaymentType.installment => colors.tertiary,
+    RepaymentType.extraPrincipal => colors.primary,
+    RepaymentType.earlySettlement => colors.secondary,
+    RepaymentType.unattributed => colors.outline,
   };
 }
 

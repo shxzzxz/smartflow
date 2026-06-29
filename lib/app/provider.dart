@@ -254,6 +254,9 @@ RepaymentService repaymentService(Ref ref) {
     installments: ref.watch(installmentRepositoryProvider),
     accountQueryService: ref.watch(accountQueryServiceProvider),
     postingService: ref.watch(transactionPostingAppServiceProvider),
+    correctionService: ref.watch(transactionCorrectionAppServiceProvider),
+    updateService: ref.watch(transactionUpdateAppServiceProvider),
+    transactionQueryService: ref.watch(transactionQueryServiceProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
     idGenerator: ref.watch(idGeneratorProvider),
   );
@@ -264,10 +267,10 @@ InstallmentService installmentService(Ref ref) {
   return InstallmentServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),
     creditAccounts: ref.watch(creditAccountRepositoryProvider),
+    repayments: ref.watch(repaymentRepositoryProvider),
     postingService: ref.watch(transactionPostingAppServiceProvider),
     correctionService: ref.watch(transactionCorrectionAppServiceProvider),
     updateService: ref.watch(transactionUpdateAppServiceProvider),
-    transactionQueryService: ref.watch(transactionQueryServiceProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
   );
 }
@@ -276,7 +279,6 @@ InstallmentService installmentService(Ref ref) {
 InstallmentQueryService installmentQueryService(Ref ref) {
   return InstallmentQueryServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),
-    transactionQueryService: ref.watch(transactionQueryServiceProvider),
   );
 }
 

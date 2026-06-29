@@ -4,7 +4,6 @@ import 'package:uuid/uuid.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../domain/credit/entity/installment_contract.dart';
-import '../../../domain/credit/entity/installment_repayment.dart';
 import '../../../domain/credit/entity/installment_schedule.dart';
 import '../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
@@ -90,27 +89,6 @@ class DriftInstallmentRepository implements InstallmentRepository {
         await (_database.select(_database.installmentSchedules)
           ..where((s) => s.id.equals(scheduleId))).getSingleOrNull();
     return row == null ? null : _mapSchedule(row);
-  }
-
-  @override
-  Future<List<InstallmentRepayment>> listRepayments(String contractId) async {
-    final rows =
-        await (_database.select(_database.installmentRepayments)
-              ..where((r) => r.contractId.equals(contractId))
-              ..orderBy([(r) => OrderingTerm.asc(r.createdAt)]))
-            .get();
-    return rows.map(_mapRepayment).toList();
-  }
-
-  @override
-  Future<InstallmentRepayment?> findRepaymentByTransaction(
-    String transactionId,
-  ) async {
-    final row =
-        await (_database.select(_database.installmentRepayments)..where(
-          (r) => r.transactionId.equals(transactionId),
-        )).getSingleOrNull();
-    return row == null ? null : _mapRepayment(row);
   }
 
   @override
@@ -299,32 +277,6 @@ class DriftInstallmentRepository implements InstallmentRepository {
   }
 
   @override
-  Future<String> insertRepayment(InstallmentRepaymentDraft draft) async {
-    final id = _uuid.v7();
-    final now = DateTime.now();
-    await _database
-        .into(_database.installmentRepayments)
-        .insert(
-          InstallmentRepaymentsCompanion.insert(
-            id: id,
-            contractId: draft.contractId,
-            repaymentType: draft.repaymentType,
-            scheduleId: Value(draft.scheduleId),
-            transactionId: draft.transactionId,
-            createdAt: Value(now),
-            updatedAt: Value(now),
-          ),
-        );
-    return id;
-  }
-
-  @override
-  Future<void> deleteRepayment(String repaymentId) async {
-    await (_database.delete(_database.installmentRepayments)
-      ..where((r) => r.id.equals(repaymentId))).go();
-  }
-
-  @override
   Future<void> updateContractStatus(
     String contractId,
     InstallmentContractStatus status,
@@ -340,8 +292,6 @@ class DriftInstallmentRepository implements InstallmentRepository {
 
   @override
   Future<void> deleteContract(String contractId) async {
-    await (_database.delete(_database.installmentRepayments)
-      ..where((r) => r.contractId.equals(contractId))).go();
     await (_database.delete(_database.installmentSchedules)
       ..where((s) => s.contractId.equals(contractId))).go();
     await (_database.delete(_database.installmentContracts)
@@ -387,14 +337,4 @@ class DriftInstallmentRepository implements InstallmentRepository {
     );
   }
 
-  InstallmentRepayment _mapRepayment(InstallmentRepaymentRow row) {
-    return InstallmentRepayment(
-      id: row.id,
-      contractId: row.contractId,
-      repaymentType: row.repaymentType,
-      scheduleId: row.scheduleId,
-      transactionId: row.transactionId,
-      createdAt: row.createdAt,
-    );
-  }
 }

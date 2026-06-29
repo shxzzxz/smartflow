@@ -4,24 +4,25 @@ import '../../../core/money/money.dart';
 import '../entity/installment_contract.dart';
 import '../entity/installment_schedule.dart';
 import '../valobj/installment_enums.dart';
+import '../valobj/repayment_enums.dart';
 
 /// 一笔实际还款的"现金流口径"快照，metrics 模块只依赖这个轻量结构，
 /// 不直接依赖 transaction_details，避免把仓储耦合进 metrics 模块。
 class RepaymentCashflow {
   const RepaymentCashflow({
     required this.id,
-    required this.transactionId,
     required this.repaymentType,
     required this.occurredAt,
     required this.principal,
     required this.interest,
     required this.fee,
+    this.transactionId,
     this.scheduleId,
   });
 
   final String id;
-  final String transactionId;
-  final InstallmentRepaymentType repaymentType;
+  final String? transactionId;
+  final RepaymentType repaymentType;
   final DateTime occurredAt;
   final Money principal;
   final Money interest;
@@ -164,7 +165,7 @@ class InstallmentMetricsCalculator {
     // 索引：scheduleId -> 实际 repayment（scheduled）
     final actualByScheduleId = <String, RepaymentCashflow>{
       for (final r in repayments)
-        if (r.repaymentType == InstallmentRepaymentType.scheduled &&
+        if (r.repaymentType == RepaymentType.bill &&
             r.scheduleId != null)
           r.scheduleId!: r,
     };
@@ -199,8 +200,8 @@ class InstallmentMetricsCalculator {
 
     // 提前还本 / 提前结清：始终用实际金额（保证本金合计正确）
     for (final r in repayments) {
-      if (r.repaymentType == InstallmentRepaymentType.extraPrincipal ||
-          r.repaymentType == InstallmentRepaymentType.earlySettlement) {
+      if (r.repaymentType == RepaymentType.extraPrincipal ||
+          r.repaymentType == RepaymentType.earlySettlement) {
         out.add(
           _Breakdown(
             date: r.occurredAt,

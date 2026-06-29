@@ -9,6 +9,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
+import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 
 void main() {
   group('InstallmentServiceImpl', () {
@@ -261,16 +262,30 @@ void main() {
             _contract(id: 'with-tx', disbursementTransactionId: 'tx-borrowing'),
           )
           ..putContract(_contract(id: 'with-repayment'))
-          ..putRepayment(
-            InstallmentRepayment(
-              id: 'repayment-1',
-              contractId: 'with-repayment',
-              repaymentType: InstallmentRepaymentType.scheduled,
-              transactionId: 'tx-repay',
-              createdAt: DateTime(2026, 6, 1),
-            ),
-          )
           ..putContract(_contract(id: 'deletable'));
+        fixture.repayments.putRepayment(
+          Repayment(
+            id: 'repayment-1',
+            repaymentType: RepaymentType.extraPrincipal,
+            targetType: RepaymentTargetType.contract,
+            targetId: 'with-repayment',
+            rootTransactionId: 'tx-repay',
+            items: [
+              RepaymentItem(
+                id: 'repayment-item-1',
+                repaymentId: 'repayment-1',
+                allocated: const RepaymentAmountBreakdown(
+                  principal: Money(minorUnits: 1000),
+                  interest: Money(minorUnits: 0),
+                  fee: Money(minorUnits: 0),
+                  discount: Money(minorUnits: 0),
+                ),
+                createdAt: DateTime(2026, 6, 1),
+              ),
+            ],
+            createdAt: DateTime(2026, 6, 1),
+          ),
+        );
 
         await expectLater(
           fixture.service.deleteContract(
@@ -373,6 +388,7 @@ InstallmentSchedule _schedule({
 
 class _Fixture {
   final installments = _FakeInstallmentRepository();
+  final repayments = _FakeRepaymentRepository();
   final creditAccounts = _FakeCreditAccountRepository();
   final posting = _FakePostingService();
   final correction = _FakeCorrectionService();
@@ -385,7 +401,7 @@ class _Fixture {
     postingService: posting,
     correctionService: correction,
     updateService: update,
-    transactionQueryService: query,
+    repayments: repayments,
     transactionRunner: const _ImmediateRunner(),
   );
 }
@@ -438,9 +454,7 @@ class _FakeCreditAccountRepository implements CreditAccountRepository {
 class _FakeInstallmentRepository implements InstallmentRepository {
   final contracts = <String, InstallmentContract>{};
   final _schedules = <String, List<InstallmentSchedule>>{};
-  final _repayments = <String, List<InstallmentRepayment>>{};
   int _nextContractId = 0;
-  int _nextRepaymentId = 0;
 
   void putContract(InstallmentContract contract) {
     contracts[contract.id] = contract;
@@ -448,10 +462,6 @@ class _FakeInstallmentRepository implements InstallmentRepository {
 
   void putSchedules(String contractId, List<InstallmentSchedule> schedules) {
     _schedules[contractId] = [...schedules];
-  }
-
-  void putRepayment(InstallmentRepayment repayment) {
-    _repayments.putIfAbsent(repayment.contractId, () => []).add(repayment);
   }
 
   List<InstallmentSchedule> schedulesFor(String contractId) {
@@ -494,23 +504,6 @@ class _FakeInstallmentRepository implements InstallmentRepository {
     for (final schedules in _schedules.values) {
       for (final schedule in schedules) {
         if (schedule.id == scheduleId) return schedule;
-      }
-    }
-    return null;
-  }
-
-  @override
-  Future<List<InstallmentRepayment>> listRepayments(String contractId) async {
-    return [...?_repayments[contractId]];
-  }
-
-  @override
-  Future<InstallmentRepayment?> findRepaymentByTransaction(
-    String transactionId,
-  ) async {
-    for (final repayments in _repayments.values) {
-      for (final repayment in repayments) {
-        if (repayment.transactionId == transactionId) return repayment;
       }
     }
     return null;
@@ -652,29 +645,6 @@ class _FakeInstallmentRepository implements InstallmentRepository {
   }
 
   @override
-  Future<String> insertRepayment(InstallmentRepaymentDraft draft) async {
-    final id = 'repayment-${++_nextRepaymentId}';
-    putRepayment(
-      InstallmentRepayment(
-        id: id,
-        contractId: draft.contractId,
-        repaymentType: draft.repaymentType,
-        scheduleId: draft.scheduleId,
-        transactionId: draft.transactionId,
-        createdAt: DateTime(2026, 6, 1),
-      ),
-    );
-    return id;
-  }
-
-  @override
-  Future<void> deleteRepayment(String repaymentId) async {
-    for (final repayments in _repayments.values) {
-      repayments.removeWhere((repayment) => repayment.id == repaymentId);
-    }
-  }
-
-  @override
   Future<void> updateContractStatus(
     String contractId,
     InstallmentContractStatus status,
@@ -706,7 +676,78 @@ class _FakeInstallmentRepository implements InstallmentRepository {
   Future<void> deleteContract(String contractId) async {
     contracts.remove(contractId);
     _schedules.remove(contractId);
-    _repayments.remove(contractId);
+  }
+}
+
+class _FakeRepaymentRepository implements RepaymentRepository {
+  final repayments = <String, Repayment>{};
+  final items = <String, List<RepaymentItem>>{};
+
+  void putRepayment(Repayment repayment) {
+    repayments[repayment.id] = repayment;
+    items[repayment.id] = [...repayment.items];
+  }
+
+  @override
+  Future<Repayment?> findRepayment(String repaymentId) async {
+    return repayments[repaymentId];
+  }
+
+  @override
+  Future<Repayment?> findByRootTransaction(String rootTransactionId) async {
+    for (final repayment in repayments.values) {
+      if (repayment.rootTransactionId == rootTransactionId) {
+        return repayment;
+      }
+    }
+    return null;
+  }
+
+  @override
+  Future<List<Repayment>> listByTarget(
+    RepaymentTargetType targetType,
+    String targetId,
+  ) async {
+    return repayments.values
+        .where((r) => r.targetType == targetType && r.targetId == targetId)
+        .toList();
+  }
+
+  @override
+  Future<List<RepaymentItem>> listItems(String repaymentId) async {
+    return [...?items[repaymentId]];
+  }
+
+  @override
+  Future<List<RepaymentItem>> listItemsByBillItem(String billItemId) async {
+    return [
+      for (final repaymentItems in items.values)
+        for (final item in repaymentItems)
+          if (item.billItemId == billItemId) item,
+    ];
+  }
+
+  @override
+  Future<void> saveRepayment(Repayment repayment) async {
+    putRepayment(repayment);
+  }
+
+  @override
+  Future<void> replaceRepaymentItems(
+    String repaymentId,
+    List<RepaymentItem> nextItems,
+  ) async {
+    final repayment = repayments[repaymentId];
+    if (repayment != null) {
+      repayment.replaceItems(nextItems);
+    }
+    items[repaymentId] = [...nextItems];
+  }
+
+  @override
+  Future<void> deleteRepayment(String repaymentId) async {
+    repayments.remove(repaymentId);
+    items.remove(repaymentId);
   }
 }
 

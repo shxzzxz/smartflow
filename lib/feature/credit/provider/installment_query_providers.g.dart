@@ -247,97 +247,15 @@ final class InstallmentSchedulesFamily extends $Family
   String toString() => r'installmentSchedulesProvider';
 }
 
-@ProviderFor(installmentRepayments)
-final installmentRepaymentsProvider = InstallmentRepaymentsFamily._();
-
-final class InstallmentRepaymentsProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<List<InstallmentRepayment>>,
-          List<InstallmentRepayment>,
-          FutureOr<List<InstallmentRepayment>>
-        >
-    with
-        $FutureModifier<List<InstallmentRepayment>>,
-        $FutureProvider<List<InstallmentRepayment>> {
-  InstallmentRepaymentsProvider._({
-    required InstallmentRepaymentsFamily super.from,
-    required String super.argument,
-  }) : super(
-         retry: null,
-         name: r'installmentRepaymentsProvider',
-         isAutoDispose: true,
-         dependencies: null,
-         $allTransitiveDependencies: null,
-       );
-
-  @override
-  String debugGetCreateSourceHash() => _$installmentRepaymentsHash();
-
-  @override
-  String toString() {
-    return r'installmentRepaymentsProvider'
-        ''
-        '($argument)';
-  }
-
-  @$internal
-  @override
-  $FutureProviderElement<List<InstallmentRepayment>> $createElement(
-    $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
-
-  @override
-  FutureOr<List<InstallmentRepayment>> create(Ref ref) {
-    final argument = this.argument as String;
-    return installmentRepayments(ref, argument);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is InstallmentRepaymentsProvider && other.argument == argument;
-  }
-
-  @override
-  int get hashCode {
-    return argument.hashCode;
-  }
-}
-
-String _$installmentRepaymentsHash() =>
-    r'8b2f9717d36c308e76f2df38ae155b75386a10d4';
-
-final class InstallmentRepaymentsFamily extends $Family
-    with
-        $FunctionalFamilyOverride<
-          FutureOr<List<InstallmentRepayment>>,
-          String
-        > {
-  InstallmentRepaymentsFamily._()
-    : super(
-        retry: null,
-        name: r'installmentRepaymentsProvider',
-        dependencies: null,
-        $allTransitiveDependencies: null,
-        isAutoDispose: true,
-      );
-
-  InstallmentRepaymentsProvider call(String contractId) =>
-      InstallmentRepaymentsProvider._(argument: contractId, from: this);
-
-  @override
-  String toString() => r'installmentRepaymentsProvider';
-}
-
 /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
-/// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。
+/// 读取 v2 repayment 聚合；有账务交易时用交易时间，无交易时用记录创建时间。
 
 @ProviderFor(installmentRepaymentCashflows)
 final installmentRepaymentCashflowsProvider =
     InstallmentRepaymentCashflowsFamily._();
 
 /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
-/// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。
+/// 读取 v2 repayment 聚合；有账务交易时用交易时间，无交易时用记录创建时间。
 
 final class InstallmentRepaymentCashflowsProvider
     extends
@@ -350,7 +268,7 @@ final class InstallmentRepaymentCashflowsProvider
         $FutureModifier<List<RepaymentCashflow>>,
         $FutureProvider<List<RepaymentCashflow>> {
   /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
-  /// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。
+  /// 读取 v2 repayment 聚合；有账务交易时用交易时间，无交易时用记录创建时间。
   InstallmentRepaymentCashflowsProvider._({
     required InstallmentRepaymentCashflowsFamily super.from,
     required String super.argument,
@@ -397,10 +315,10 @@ final class InstallmentRepaymentCashflowsProvider
 }
 
 String _$installmentRepaymentCashflowsHash() =>
-    r'787633331214432ed6430e64103971c39fcb6fc0';
+    r'e326326ded3f51087964ce3612457b0d30fe8b00';
 
 /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
-/// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。
+/// 读取 v2 repayment 聚合；有账务交易时用交易时间，无交易时用记录创建时间。
 
 final class InstallmentRepaymentCashflowsFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<List<RepaymentCashflow>>, String> {
@@ -414,7 +332,7 @@ final class InstallmentRepaymentCashflowsFamily extends $Family
       );
 
   /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
-  /// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。
+  /// 读取 v2 repayment 聚合；有账务交易时用交易时间，无交易时用记录创建时间。
 
   InstallmentRepaymentCashflowsProvider call(String contractId) =>
       InstallmentRepaymentCashflowsProvider._(argument: contractId, from: this);

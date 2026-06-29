@@ -59,8 +59,11 @@ void main() {
     });
 
     test('revert delegates to command service', () async {
-      final service = _FakeInstallmentService();
-      final container = _container(contract: _contract(), service: service);
+      final repaymentService = _FakeRepaymentService();
+      final container = _container(
+        contract: _contract(),
+        repaymentService: repaymentService,
+      );
       await container.read(
         installmentDetailViewModelProvider('contract-1').future,
       );
@@ -70,7 +73,7 @@ void main() {
           .revertRepayment('tx-repay');
 
       expect(outcome, isA<UiActionSuccess<void>>());
-      expect(service.revertCommands.single.transactionId, 'tx-repay');
+      expect(repaymentService.deleteCommands.single.repaymentId, 'tx-repay');
     });
 
     test('maps AppException to UI failure', () async {
@@ -100,10 +103,13 @@ void main() {
     });
 
     test('maps regular Exception to unknown UI failure', () async {
-      final service = _FakeInstallmentService(
-        revertException: Exception('database failed'),
+      final repaymentService = _FakeRepaymentService(
+        deleteException: Exception('database failed'),
       );
-      final container = _container(contract: _contract(), service: service);
+      final container = _container(
+        contract: _contract(),
+        repaymentService: repaymentService,
+      );
       await container.read(
         installmentDetailViewModelProvider('contract-1').future,
       );
@@ -123,6 +129,7 @@ ProviderContainer _container({
   List<InstallmentSchedule> schedules = const [],
   List<RepaymentCashflow> cashflows = const [],
   _FakeInstallmentService? service,
+  _FakeRepaymentService? repaymentService,
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -137,6 +144,9 @@ ProviderContainer _container({
       ),
       installmentServiceProvider.overrideWithValue(
         service ?? _FakeInstallmentService(),
+      ),
+      repaymentServiceProvider.overrideWithValue(
+        repaymentService ?? _FakeRepaymentService(),
       ),
     ],
   );
@@ -185,7 +195,7 @@ RepaymentCashflow _cashflow() {
   return RepaymentCashflow(
     id: 'repayment-1',
     transactionId: 'tx-repay',
-    repaymentType: InstallmentRepaymentType.scheduled,
+    repaymentType: RepaymentType.extraPrincipal,
     scheduleId: 'schedule-1',
     occurredAt: DateTime(2026, 2, 1),
     principal: const Money(minorUnits: 4000),
@@ -195,12 +205,10 @@ RepaymentCashflow _cashflow() {
 }
 
 class _FakeInstallmentService implements InstallmentService {
-  _FakeInstallmentService({this.deleteException, this.revertException});
+  _FakeInstallmentService({this.deleteException});
 
   final Object? deleteException;
-  final Object? revertException;
   final deleteCommands = <DeleteContractCommand>[];
-  final revertCommands = <RevertRepaymentCommand>[];
 
   @override
   Future<void> deleteContract(DeleteContractCommand command) async {
@@ -210,9 +218,19 @@ class _FakeInstallmentService implements InstallmentService {
   }
 
   @override
-  Future<void> revertRepayment(RevertRepaymentCommand command) async {
-    revertCommands.add(command);
-    final exception = revertException;
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeRepaymentService implements RepaymentService {
+  _FakeRepaymentService({this.deleteException});
+
+  final Object? deleteException;
+  final deleteCommands = <DeleteCreditRepaymentCommand>[];
+
+  @override
+  Future<void> deleteRepayment(DeleteCreditRepaymentCommand command) async {
+    deleteCommands.add(command);
+    final exception = deleteException;
     if (exception != null) throw exception;
   }
 
