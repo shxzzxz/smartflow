@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../app/provider.dart';
+import '../../../application/credit/credit_command_api.dart' as credit_command;
 import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/shared/app_task.dart';
@@ -14,6 +15,8 @@ import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 import '../../credit/provider/bill_query_providers.dart';
+import '../../credit/provider/credit_account_query_providers.dart';
+import '../../shared/provider/ledger_query_providers.dart';
 import '../view_model/account_detail_view_model.dart';
 import '../view_model/account_view.dart';
 import '../view_model/account_views_provider.dart';
@@ -156,13 +159,16 @@ class _AccountDetailContent extends StatelessWidget {
         AppSpacing.space16,
       ),
       children: [
-        _AccountInfoSection(account: account),
+        _AccountInfoSection(account: account, creditOverview: creditOverview),
         const SizedBox(height: AppSpacing.space8),
         _AccountActionBar(account: account),
-        const SizedBox(height: AppSpacing.space8),
-        _CreditOverviewSection(overview: creditOverview),
-        if (creditOverview is! AccountCreditOverviewNotApplicable)
+        if (_hasUnattributedRepayments(creditOverview)) ...[
           const SizedBox(height: AppSpacing.space8),
+          _UnattributedRepaymentSection(
+            accountId: account.id,
+            overview: creditOverview,
+          ),
+        ],
         if (showInstallments) ...[
           _BillSection(bills: bills),
           const SizedBox(height: AppSpacing.space8),
@@ -182,17 +188,16 @@ class _AccountDetailContent extends StatelessWidget {
 }
 
 class _AccountInfoSection extends StatelessWidget {
-  const _AccountInfoSection({required this.account});
+  const _AccountInfoSection({
+    required this.account,
+    required this.creditOverview,
+  });
 
   final AccountView account;
+  final AccountCreditOverviewState creditOverview;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final rightItems = _rightInfoItems(account);
-    final balanceBlock = _AccountBalanceBlock(account: account);
-    final metricsBlock = _AccountMetricsBlock(items: rightItems);
-
     return AppSurface(
       border: true,
       child: Padding(
@@ -200,45 +205,39 @@ class _AccountInfoSection extends StatelessWidget {
           horizontal: AppSpacing.space12,
           vertical: AppSpacing.space12,
         ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            if (rightItems.isEmpty) {
-              return balanceBlock;
-            }
-
-            if (constraints.maxWidth < 380) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  balanceBlock,
-                  Divider(
-                    height: AppSpacing.space20,
-                    color: colors.outlineVariant.withValues(alpha: 0.7),
-                  ),
-                  metricsBlock,
-                ],
-              );
-            }
-
-            return IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(flex: 4, child: balanceBlock),
-                  const SizedBox(width: AppSpacing.space12),
-                  VerticalDivider(
-                    width: 1,
-                    thickness: 1,
-                    color: colors.outlineVariant.withValues(alpha: 0.7),
-                  ),
-                  const SizedBox(width: AppSpacing.space12),
-                  Expanded(flex: 9, child: metricsBlock),
-                ],
-              ),
-            );
-          },
-        ),
+        child:
+            account.isCreditLiability
+                ? _CreditInfoBlock(
+                  account: account,
+                  creditOverview: creditOverview,
+                )
+                : _AccountBalanceBlock(account: account),
       ),
+    );
+  }
+}
+
+class _CreditInfoBlock extends StatelessWidget {
+  const _CreditInfoBlock({required this.account, required this.creditOverview});
+
+  final AccountView account;
+  final AccountCreditOverviewState creditOverview;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _TopMetricRow(items: _creditDebtMetrics(account, creditOverview)),
+        Divider(
+          height: AppSpacing.space24,
+          color: colors.outlineVariant.withValues(alpha: 0.7),
+        ),
+        _AccountMetricsBlock(
+          items: _creditAccountMetrics(account, creditOverview),
+        ),
+      ],
     );
   }
 }
@@ -286,6 +285,10 @@ class _AccountBalanceBlock extends StatelessWidget {
   }
 }
 
+String _balanceTitle(AccountView account) {
+  return account.isLiability ? '当前欠款' : '当前余额';
+}
+
 class _AccountMetricsBlock extends StatelessWidget {
   const _AccountMetricsBlock({required this.items});
 
@@ -316,22 +319,22 @@ class _AccountMetricsBlock extends StatelessWidget {
   }
 }
 
-String _balanceTitle(AccountView account) {
-  return account.isLiability ? '当前欠款' : '当前余额';
-}
-
-List<_InfoItem> _rightInfoItems(AccountView account) {
-  if (!account.isCreditLiability) {
-    return const [];
-  }
-  final creditLimit = account.creditLimit;
+List<_InfoItem> _creditAccountMetrics(
+  AccountView account,
+  AccountCreditOverviewState creditOverview,
+) {
+  final loadedOverview =
+      creditOverview is AccountCreditOverviewLoaded
+          ? creditOverview.overview
+          : null;
+  final creditLimit =
+      loadedOverview?.creditAccount.creditLimit ?? account.creditLimit;
+  final availableCredit =
+      loadedOverview?.availableCredit ??
+      (creditLimit == null ? null : creditLimit - account.balance);
   final items = [
     _InfoItem(label: '信用额度', value: creditLimit?.format() ?? '-'),
-    _InfoItem(
-      label: '剩余额度',
-      value:
-          creditLimit == null ? '-' : (creditLimit - account.balance).format(),
-    ),
+    _InfoItem(label: '剩余额度', value: availableCredit?.format() ?? '-'),
   ];
   if (account.isCredit) {
     items.addAll([
@@ -340,6 +343,33 @@ List<_InfoItem> _rightInfoItems(AccountView account) {
     ]);
   }
   return items;
+}
+
+List<_InfoItem> _creditDebtMetrics(
+  AccountView account,
+  AccountCreditOverviewState creditOverview,
+) {
+  if (!account.isCreditLiability) return const [];
+  final loadedOverview =
+      creditOverview is AccountCreditOverviewLoaded
+          ? creditOverview.overview
+          : null;
+  return [
+    _InfoItem(label: '总欠款', value: account.balance.format()),
+    _InfoItem(
+      label: '账单欠款',
+      value: loadedOverview?.buckets.billDebt.format() ?? '-',
+    ),
+    _InfoItem(
+      label: '未归属欠款',
+      value: loadedOverview?.buckets.unattributedDebt.format() ?? '-',
+    ),
+  ];
+}
+
+bool _hasUnattributedRepayments(AccountCreditOverviewState overview) {
+  return overview is AccountCreditOverviewLoaded &&
+      overview.overview.unattributedRepayments.isNotEmpty;
 }
 
 class _InfoItem {
@@ -381,13 +411,74 @@ class _InfoPair extends StatelessWidget {
   }
 }
 
-class _CreditOverviewSection extends StatelessWidget {
-  const _CreditOverviewSection({required this.overview});
+class _TopMetricRow extends StatelessWidget {
+  const _TopMetricRow({required this.items});
 
-  final AccountCreditOverviewState overview;
+  final List<_InfoItem> items;
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return IntrinsicHeight(
+      child: Row(
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0)
+              Container(
+                width: 1,
+                margin: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.space12,
+                  vertical: AppSpacing.space4,
+                ),
+                color: colors.outlineVariant.withValues(alpha: 0.6),
+              ),
+            Expanded(child: _TopMetric(item: items[i])),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TopMetric extends StatelessWidget {
+  const _TopMetric({required this.item});
+
+  final _InfoItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final styles = context.appTextStyles;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          item.label,
+          style: styles.metricLabel,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: AppSpacing.space6),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(item.value, style: styles.metricValue, maxLines: 1),
+        ),
+      ],
+    );
+  }
+}
+
+class _UnattributedRepaymentSection extends ConsumerWidget {
+  const _UnattributedRepaymentSection({
+    required this.accountId,
+    required this.overview,
+  });
+
+  final String accountId;
+  final AccountCreditOverviewState overview;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     return switch (overview) {
       AccountCreditOverviewLoaded(:final overview) => AppSurface(
         child: Padding(
@@ -395,40 +486,15 @@ class _CreditOverviewSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('信贷概览', style: context.appTextStyles.dateSectionTitle),
-              const SizedBox(height: AppSpacing.space10),
-              _AccountMetricsBlock(
-                items: [
-                  _InfoItem(
-                    label: '账单欠款',
-                    value: overview.buckets.billDebt.format(),
-                  ),
-                  _InfoItem(
-                    label: '未来合同',
-                    value: overview.buckets.futureContractDebt.format(),
-                  ),
-                  _InfoItem(
-                    label: '未归属',
-                    value: overview.buckets.unattributedDebt.format(),
-                  ),
-                  _InfoItem(
-                    label: '可用额度',
-                    value: overview.availableCredit?.format() ?? '-',
-                  ),
-                ],
-              ),
-              if (overview.unattributedRepayments.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.space12),
-                Divider(
-                  height: 1,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+              Text('账单外还款记录', style: context.appTextStyles.dateSectionTitle),
+              const SizedBox(height: AppSpacing.space8),
+              for (final repayment in overview.unattributedRepayments)
+                _UnattributedRepaymentRow(
+                  repayment: repayment,
+                  onDelete:
+                      () =>
+                          _deleteUnattributedRepayment(context, ref, repayment),
                 ),
-                const SizedBox(height: AppSpacing.space8),
-                for (final repayment in overview.unattributedRepayments)
-                  _UnattributedRepaymentRow(repayment: repayment),
-              ],
             ],
           ),
         ),
@@ -436,7 +502,7 @@ class _CreditOverviewSection extends StatelessWidget {
       AccountCreditOverviewError(:final message) => AppSurface(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.space12),
-          child: Text('信贷概览加载失败：$message'),
+          child: Text('账单外还款记录加载失败：$message'),
         ),
       ),
       AccountCreditOverviewLoading() => const AppSurface(
@@ -448,12 +514,62 @@ class _CreditOverviewSection extends StatelessWidget {
       AccountCreditOverviewNotApplicable() => const SizedBox.shrink(),
     };
   }
+
+  Future<void> _deleteUnattributedRepayment(
+    BuildContext context,
+    WidgetRef ref,
+    CreditRepaymentRecordReadModel repayment,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('删除账单外还款'),
+            content: const Text('将删除该还款记录；若有关联流水，也会一并冲销。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('删除'),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref
+          .read(repaymentServiceProvider)
+          .deleteRepayment(
+            credit_command.DeleteCreditRepaymentCommand(
+              repaymentId: repayment.id,
+            ),
+          );
+      ref.invalidate(creditAccountOverviewProvider(accountId));
+      ref.invalidate(transactionListProvider(accountId: accountId));
+      ref.invalidate(accountsByIdProvider);
+    } on Exception catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('删除失败：$error'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
 }
 
 class _UnattributedRepaymentRow extends StatelessWidget {
-  const _UnattributedRepaymentRow({required this.repayment});
+  const _UnattributedRepaymentRow({
+    required this.repayment,
+    required this.onDelete,
+  });
 
   final CreditRepaymentRecordReadModel repayment;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -483,6 +599,15 @@ class _UnattributedRepaymentRow extends StatelessWidget {
             repayment.allocated.principal.format(),
             style: styles.amountList.copyWith(color: colors.onSurface),
           ),
+          IconButton(
+            tooltip: '删除',
+            icon: Icon(
+              RemixIcons.delete_bin_line,
+              color: colors.onSurfaceVariant,
+              size: AppSpacing.space20,
+            ),
+            onPressed: onDelete,
+          ),
         ],
       ),
     );
@@ -504,8 +629,7 @@ class _AccountActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLiability = account.isLiability;
-    final isLoan = account.isLoan;
-    final installmentSource = isLoan ? 'disbursement' : 'bill';
+    const installmentSource = 'disbursement';
 
     return AppSurface(
       child: Padding(
@@ -527,15 +651,20 @@ class _AccountActionBar extends StatelessWidget {
               Expanded(
                 child: _ActionButton(
                   icon: RemixIcons.bank_card_line,
-                  label: '还款',
-                  onTap: () => context.push('/account/${account.id}/repayment'),
+                  label: account.isCreditLiability ? '账单外还款' : '还款',
+                  onTap:
+                      () => context.push(
+                        account.isCreditLiability
+                            ? '/account/${account.id}/unattributed-repayment'
+                            : '/account/${account.id}/repayment',
+                      ),
                 ),
               ),
               const SizedBox(width: AppSpacing.space6),
               Expanded(
                 child: _ActionButton(
                   icon: RemixIcons.calendar_schedule_line,
-                  label: '分期',
+                  label: account.isCredit ? '现金分期' : '分期',
                   onTap:
                       () => context.push(
                         '/account/${account.id}/installments/new'

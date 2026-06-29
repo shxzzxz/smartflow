@@ -11,11 +11,14 @@ import '../feature/category/page/category_form_page.dart';
 import '../feature/calendar/page/calendar_page.dart';
 import '../feature/home/page/home_page.dart';
 import '../feature/credit/page/installment_contract_edit_page.dart';
+import '../feature/credit/page/bill_conversion_installment_form_page.dart';
 import '../feature/credit/page/bill_detail_page.dart';
+import '../feature/credit/page/bill_repayment_form_page.dart';
 import '../feature/credit/page/installment_detail_page.dart';
 import '../feature/credit/page/installment_form_page.dart';
 import '../feature/credit/page/installment_repayment_form_page.dart';
 import '../feature/credit/page/repayment_form_page.dart';
+import '../feature/credit/page/unattributed_repayment_form_page.dart';
 import '../feature/placeholder/page/placeholder_page.dart';
 import '../feature/profile/page/installment_guide_page.dart';
 import '../feature/profile/page/profile_page.dart';
@@ -130,6 +133,13 @@ final appRouter = GoRouter(
           ),
     ),
     GoRoute(
+      path: '/account/:id/unattributed-repayment',
+      builder:
+          (context, state) => UnattributedRepaymentFormPage(
+            accountId: state.pathParameters['id']!,
+          ),
+    ),
+    GoRoute(
       path: '/account/:id/installments/new',
       builder: (context, state) {
         final lockedSourceType = switch (state.uri.queryParameters['source']) {
@@ -148,6 +158,19 @@ final appRouter = GoRouter(
       builder:
           (context, state) =>
               BillDetailPage(billId: state.pathParameters['billId']!),
+    ),
+    GoRoute(
+      path: '/bills/:billId/repay',
+      builder:
+          (context, state) =>
+              BillRepaymentFormPage(billId: state.pathParameters['billId']!),
+    ),
+    GoRoute(
+      path: '/bills/:billId/installment',
+      builder:
+          (context, state) => BillConversionInstallmentFormPage(
+            billId: state.pathParameters['billId']!,
+          ),
     ),
     GoRoute(
       path: '/installments/:contractId',

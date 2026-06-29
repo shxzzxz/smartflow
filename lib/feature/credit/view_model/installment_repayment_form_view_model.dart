@@ -104,6 +104,9 @@ class InstallmentRepaymentFormViewModel
   void setPaidFromAccountId(String? value) =>
       _update((state) => state.copyWith(paidFromAccountId: value));
 
+  void setCreateTransaction(bool value) =>
+      _update((state) => state.copyWith(createTransaction: value));
+
   Future<SubmitOutcome> submit() async {
     final current = state.asData?.value;
     if (current == null || !current.isLoaded || current.contract == null) {
@@ -111,11 +114,13 @@ class InstallmentRepaymentFormViewModel
     }
     final principal = _parsePositiveMoney(current.principalText);
     if (principal == null) return _invalidCommand('请输入有效本金');
-    final paidFromAccountId = _selectedId(
-      current.paidFromAccountId,
-      current.accounts,
-    );
-    if (paidFromAccountId == null) return _invalidCommand('请选择还款账户');
+    final paidFromAccountId =
+        current.createTransaction
+            ? _selectedId(current.paidFromAccountId, current.accounts)
+            : null;
+    if (current.createTransaction && paidFromAccountId == null) {
+      return _invalidCommand('请选择还款账户');
+    }
 
     _update((state) => state.copyWith(submitting: true));
     try {
@@ -130,10 +135,13 @@ class InstallmentRepaymentFormViewModel
               principal: principal,
               interest: _parseOptionalMoney(current.interestText),
               fee: _parseOptionalMoney(current.feeText),
-              transactionInfo: RepaymentTransactionInfo(
-                paidFromAccountId: paidFromAccountId,
-                occurredAt: current.occurredAt,
-              ),
+              transactionInfo:
+                  paidFromAccountId == null
+                      ? null
+                      : RepaymentTransactionInfo(
+                        paidFromAccountId: paidFromAccountId,
+                        occurredAt: current.occurredAt,
+                      ),
               note: trimToNull(current.noteText),
             ),
           );
@@ -218,6 +226,7 @@ class InstallmentRepaymentFormState {
     required this.discountText,
     required this.noteText,
     required this.occurredAt,
+    required this.createTransaction,
     required this.submitting,
     this.contract,
     this.schedule,
@@ -250,6 +259,7 @@ class InstallmentRepaymentFormState {
       noteText: noteText,
       occurredAt: occurredAt,
       paidFromAccountId: paidFromAccountId,
+      createTransaction: true,
       submitting: false,
     );
   }
@@ -268,6 +278,7 @@ class InstallmentRepaymentFormState {
       discountText: '',
       noteText: '',
       occurredAt: DateTime.now(),
+      createTransaction: true,
       submitting: false,
     );
   }
@@ -298,6 +309,7 @@ class InstallmentRepaymentFormState {
   final String noteText;
   final DateTime occurredAt;
   final String? paidFromAccountId;
+  final bool createTransaction;
   final bool submitting;
 
   bool get isLoaded => status == InstallmentRepaymentFormStatus.loaded;
@@ -312,6 +324,7 @@ class InstallmentRepaymentFormState {
     String? noteText,
     DateTime? occurredAt,
     Object? paidFromAccountId = _sentinel,
+    bool? createTransaction,
     bool? submitting,
   }) {
     return InstallmentRepaymentFormState(
@@ -333,6 +346,7 @@ class InstallmentRepaymentFormState {
           paidFromAccountId == _sentinel
               ? this.paidFromAccountId
               : paidFromAccountId as String?,
+      createTransaction: createTransaction ?? this.createTransaction,
       submitting: submitting ?? this.submitting,
     );
   }

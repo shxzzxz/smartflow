@@ -11,12 +11,14 @@ class BillRepaymentAllocationLine {
     required this.itemType,
     required this.expected,
     this.alreadyAllocated = credit.RepaymentAmountBreakdown.zero,
+    this.label = '',
   });
 
   final String billItemId;
   final credit.BillItemType itemType;
   final credit.RepaymentAmountBreakdown expected;
   final credit.RepaymentAmountBreakdown alreadyAllocated;
+  final String label;
 
   int get remainingPrincipal => _remaining(
     expected.principal.minorUnits,

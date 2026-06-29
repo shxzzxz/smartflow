@@ -88,21 +88,25 @@ class BillQueryServiceImpl implements BillQueryService {
     final creditAccount = await _creditAccounts.findByAccountId(bill.accountId);
     final contracts = await _contractsById(bill.accountId);
     final repayments = await _repaymentsForBill(bill);
+    final items = <BillItemReadModel>[];
+    for (final item in bill.items) {
+      items.add(
+        await _itemForBill(
+          item: item,
+          now: now,
+          accountKind: creditAccount?.kind,
+          contract: contracts[item.contractId],
+        ),
+      );
+    }
+
     return BillDetailReadModel(
       summary: await _summaryForBill(
         bill: bill,
         now: now,
         hasSourceDiff: await _hasSourceDiff(bill),
       ),
-      items: [
-        for (final item in bill.items)
-          _itemForBill(
-            item: item,
-            now: now,
-            accountKind: creditAccount?.kind,
-            contract: contracts[item.contractId],
-          ),
-      ],
+      items: items,
       repayments: repayments,
     );
   }
@@ -161,12 +165,12 @@ class BillQueryServiceImpl implements BillQueryService {
     );
   }
 
-  BillItemReadModel _itemForBill({
+  Future<BillItemReadModel> _itemForBill({
     required BillItem item,
     required DateTime now,
     required CreditLiabilityAccountKind? accountKind,
     required InstallmentContract? contract,
-  }) {
+  }) async {
     return BillItemReadModel(
       id: item.id,
       itemType: item.itemType,
@@ -180,11 +184,22 @@ class BillQueryServiceImpl implements BillQueryService {
       expectedPrincipal: item.expectedPrincipal,
       expectedInterest: item.expectedInterest,
       expectedFee: item.expectedFee,
+      allocated: await _allocatedForBillItem(item.id),
       contractId: item.contractId,
       scheduleId: item.scheduleId,
       isOverdue:
           item.status == BillItemStatus.pending &&
           _dateOnly(item.repaymentDate).isBefore(_dateOnly(now)),
+    );
+  }
+
+  Future<RepaymentAmountBreakdown> _allocatedForBillItem(
+    String billItemId,
+  ) async {
+    final allocated = await _repayments.listItemsByBillItem(billItemId);
+    return allocated.fold<RepaymentAmountBreakdown>(
+      RepaymentAmountBreakdown.zero,
+      (sum, item) => sum + item.allocated,
     );
   }
 
@@ -344,6 +359,7 @@ class BillItemReadModel {
     required this.expectedPrincipal,
     required this.expectedInterest,
     required this.expectedFee,
+    required this.allocated,
     required this.isOverdue,
     this.contractId,
     this.scheduleId,
@@ -357,6 +373,7 @@ class BillItemReadModel {
   final Money expectedPrincipal;
   final Money expectedInterest;
   final Money expectedFee;
+  final RepaymentAmountBreakdown allocated;
   final bool isOverdue;
   final String? contractId;
   final String? scheduleId;

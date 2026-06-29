@@ -1,10 +1,10 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../app/provider.dart';
 import '../../../application/credit/credit_query_api.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../credit/provider/bill_query_providers.dart';
+import '../../credit/provider/credit_account_query_providers.dart';
 import '../../credit/provider/installment_query_providers.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import 'account_view.dart';
@@ -50,14 +50,6 @@ AccountDetailPageState accountDetailViewModel(Ref ref, String accountId) {
     bills: _billsStateFor(ref, accountValue),
     creditOverview: _creditOverviewStateFor(ref, accountValue),
   );
-}
-
-@riverpod
-Future<CreditAccountOverviewReadModel?> creditAccountOverview(
-  Ref ref,
-  String accountId,
-) {
-  return ref.watch(creditAccountQueryServiceProvider).findOverview(accountId);
 }
 
 AccountContractsState _contractsStateFor(Ref ref, AccountView account) {
