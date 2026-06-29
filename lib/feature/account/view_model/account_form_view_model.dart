@@ -158,7 +158,7 @@ class AccountFormViewModel extends _$AccountFormViewModel {
           .then((_) {});
     }
     return ref
-        .read(creditAccountServiceProvider)
+        .read(creditAccountAppServiceProvider)
         .createAccount(
           CreateCreditLiabilityAccountCommand(
             name: name,
@@ -213,7 +213,7 @@ class AccountFormViewModel extends _$AccountFormViewModel {
           );
     }
     return ref
-        .read(creditAccountServiceProvider)
+        .read(creditAccountAppServiceProvider)
         .editAccount(
           EditCreditLiabilityAccountCommand(
             accountId: id,

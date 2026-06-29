@@ -19,7 +19,7 @@ import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 
-abstract interface class CreditBillGenerationService {
+abstract interface class CreditBillGenerationAppService {
   Future<void> generateDueBills({required DateTime now});
 
   Future<void> generateDueBillsForAccount({
@@ -32,8 +32,9 @@ abstract interface class CreditBillGenerationService {
   Future<void> syncBillProjection(String billId);
 }
 
-class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
-  const CreditBillGenerationServiceImpl({
+class CreditBillGenerationAppServiceImpl
+    implements CreditBillGenerationAppService {
+  const CreditBillGenerationAppServiceImpl({
     required CreditAccountRepository creditAccounts,
     required AccountRepository ledgerAccounts,
     required InstallmentRepository installments,

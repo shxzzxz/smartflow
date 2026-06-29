@@ -35,10 +35,10 @@ void main() {
     });
 
     test('creates credit account through credit account service', () async {
-      final creditService = _FakeCreditAccountService();
+      final creditAppService = _FakeCreditAccountAppService();
       final container = _container(
         _FakeAccountAppService(),
-        creditService: creditService,
+        creditAppService: creditAppService,
       );
       final viewModel =
           container.read(accountFormViewModelProvider.notifier)
@@ -55,7 +55,7 @@ void main() {
       );
 
       expect(outcome, isA<SubmitSuccess>());
-      final command = creditService.createCommands.single;
+      final command = creditAppService.createCommands.single;
       expect(command.kind, CreditLiabilityAccountKind.credit);
       expect(command.creditLimit, const Money(minorUnits: 100000));
       expect(command.billingDay, 5);
@@ -64,10 +64,10 @@ void main() {
     });
 
     test('creates loan account without cycle parameters', () async {
-      final creditService = _FakeCreditAccountService();
+      final creditAppService = _FakeCreditAccountAppService();
       final container = _container(
         _FakeAccountAppService(),
-        creditService: creditService,
+        creditAppService: creditAppService,
       );
       final viewModel = container.read(accountFormViewModelProvider.notifier)
         ..setKind(AccountProfileKind.loan);
@@ -80,7 +80,7 @@ void main() {
       );
 
       expect(outcome, isA<SubmitSuccess>());
-      final command = creditService.createCommands.single;
+      final command = creditAppService.createCommands.single;
       expect(command.kind, CreditLiabilityAccountKind.loan);
       expect(command.creditLimit, const Money(minorUnits: 300000));
       expect(command.billingDay, isNull);
@@ -165,13 +165,13 @@ void main() {
 
 ProviderContainer _container(
   _FakeAccountAppService service, {
-  _FakeCreditAccountService? creditService,
+  _FakeCreditAccountAppService? creditAppService,
 }) {
   final container = ProviderContainer(
     overrides: [
       accountAppServiceProvider.overrideWith((ref) => service),
-      creditAccountServiceProvider.overrideWith(
-        (ref) => creditService ?? _FakeCreditAccountService(),
+      creditAccountAppServiceProvider.overrideWith(
+        (ref) => creditAppService ?? _FakeCreditAccountAppService(),
       ),
     ],
   );
@@ -179,7 +179,7 @@ ProviderContainer _container(
   return container;
 }
 
-class _FakeCreditAccountService implements CreditAccountService {
+class _FakeCreditAccountAppService implements CreditAccountAppService {
   final createCommands = <CreateCreditLiabilityAccountCommand>[];
   final editCommands = <EditCreditLiabilityAccountCommand>[];
 

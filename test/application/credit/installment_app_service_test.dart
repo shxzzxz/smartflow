@@ -12,7 +12,7 @@ import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 
 void main() {
-  group('InstallmentServiceImpl', () {
+  group('InstallmentAppServiceImpl', () {
     test(
       'creates disbursement contract without borrowing transaction',
       () async {
@@ -395,7 +395,7 @@ class _Fixture {
   final update = _FakeUpdateService();
   final query = _FakeTransactionQueryService();
 
-  late final InstallmentService service = InstallmentServiceImpl(
+  late final InstallmentAppService service = InstallmentAppServiceImpl(
     repository: installments,
     creditAccounts: creditAccounts,
     postingService: posting,

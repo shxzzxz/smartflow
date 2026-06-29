@@ -161,7 +161,7 @@ class EditCreditRepaymentTransactionCommand {
   final Patch<String?>? note;
 }
 
-abstract interface class RepaymentService {
+abstract interface class RepaymentAppService {
   Future<CreateRepaymentResult> createBillRepayment(
     CreateBillRepaymentCommand command,
   );
@@ -185,8 +185,8 @@ abstract interface class RepaymentService {
   Future<void> deleteRepayment(DeleteCreditRepaymentCommand command);
 }
 
-class RepaymentServiceImpl implements RepaymentService {
-  const RepaymentServiceImpl({
+class RepaymentAppServiceImpl implements RepaymentAppService {
+  const RepaymentAppServiceImpl({
     required BillRepository bills,
     required RepaymentRepository repayments,
     required InstallmentRepository installments,

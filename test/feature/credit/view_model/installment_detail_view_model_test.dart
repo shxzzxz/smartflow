@@ -43,7 +43,7 @@ void main() {
     });
 
     test('delete delegates to command service', () async {
-      final service = _FakeInstallmentService();
+      final service = _FakeInstallmentAppService();
       final container = _container(contract: _contract(), service: service);
       await container.read(
         installmentDetailViewModelProvider('contract-1').future,
@@ -59,10 +59,10 @@ void main() {
     });
 
     test('revert delegates to command service', () async {
-      final repaymentService = _FakeRepaymentService();
+      final repaymentAppService = _FakeRepaymentAppService();
       final container = _container(
         contract: _contract(),
-        repaymentService: repaymentService,
+        repaymentAppService: repaymentAppService,
       );
       await container.read(
         installmentDetailViewModelProvider('contract-1').future,
@@ -73,11 +73,11 @@ void main() {
           .revertRepayment('tx-repay');
 
       expect(outcome, isA<UiActionSuccess<void>>());
-      expect(repaymentService.deleteCommands.single.repaymentId, 'tx-repay');
+      expect(repaymentAppService.deleteCommands.single.repaymentId, 'tx-repay');
     });
 
     test('maps AppException to UI failure', () async {
-      final service = _FakeInstallmentService(
+      final service = _FakeInstallmentAppService(
         deleteException: BusinessException(
           CreditErrorCode.contractPersistenceConflict,
           message: '合同数据已变化，请刷新后重试。',
@@ -103,12 +103,12 @@ void main() {
     });
 
     test('maps regular Exception to unknown UI failure', () async {
-      final repaymentService = _FakeRepaymentService(
+      final repaymentAppService = _FakeRepaymentAppService(
         deleteException: Exception('database failed'),
       );
       final container = _container(
         contract: _contract(),
-        repaymentService: repaymentService,
+        repaymentAppService: repaymentAppService,
       );
       await container.read(
         installmentDetailViewModelProvider('contract-1').future,
@@ -128,8 +128,8 @@ ProviderContainer _container({
   required InstallmentContract? contract,
   List<InstallmentSchedule> schedules = const [],
   List<RepaymentCashflow> cashflows = const [],
-  _FakeInstallmentService? service,
-  _FakeRepaymentService? repaymentService,
+  _FakeInstallmentAppService? service,
+  _FakeRepaymentAppService? repaymentAppService,
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -142,11 +142,11 @@ ProviderContainer _container({
       installmentRepaymentCashflowsProvider.overrideWith(
         (ref, contractId) async => cashflows,
       ),
-      installmentServiceProvider.overrideWithValue(
-        service ?? _FakeInstallmentService(),
+      installmentAppServiceProvider.overrideWithValue(
+        service ?? _FakeInstallmentAppService(),
       ),
-      repaymentServiceProvider.overrideWithValue(
-        repaymentService ?? _FakeRepaymentService(),
+      repaymentAppServiceProvider.overrideWithValue(
+        repaymentAppService ?? _FakeRepaymentAppService(),
       ),
     ],
   );
@@ -204,8 +204,8 @@ RepaymentCashflow _cashflow() {
   );
 }
 
-class _FakeInstallmentService implements InstallmentService {
-  _FakeInstallmentService({this.deleteException});
+class _FakeInstallmentAppService implements InstallmentAppService {
+  _FakeInstallmentAppService({this.deleteException});
 
   final Object? deleteException;
   final deleteCommands = <DeleteContractCommand>[];
@@ -221,8 +221,8 @@ class _FakeInstallmentService implements InstallmentService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeRepaymentService implements RepaymentService {
-  _FakeRepaymentService({this.deleteException});
+class _FakeRepaymentAppService implements RepaymentAppService {
+  _FakeRepaymentAppService({this.deleteException});
 
   final Object? deleteException;
   final deleteCommands = <DeleteCreditRepaymentCommand>[];

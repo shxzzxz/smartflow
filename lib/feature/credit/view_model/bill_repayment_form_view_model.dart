@@ -178,7 +178,7 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
     _update((state) => state.copyWith(submitting: true));
     try {
       await ref
-          .read(repaymentServiceProvider)
+          .read(repaymentAppServiceProvider)
           .createBillRepayment(
             credit.CreateBillRepaymentCommand(
               billId: billId,

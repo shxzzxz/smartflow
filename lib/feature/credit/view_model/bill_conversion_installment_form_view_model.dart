@@ -138,7 +138,7 @@ class BillConversionInstallmentFormViewModel
     _setLoaded(current.copyWith(submitting: true));
     try {
       final result = await ref
-          .read(repaymentServiceProvider)
+          .read(repaymentAppServiceProvider)
           .createBillConversionInstallmentRepayment(
             credit.CreateBillConversionInstallmentRepaymentCommand(
               billId: billId,

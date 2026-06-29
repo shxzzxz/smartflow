@@ -215,8 +215,8 @@ CreditBillSourceRepository creditBillSourceRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-CreditAccountService creditAccountService(Ref ref) {
-  return CreditAccountServiceImpl(
+CreditAccountAppService creditAccountAppService(Ref ref) {
+  return CreditAccountAppServiceImpl(
     accountAppService: ref.watch(accountAppServiceProvider),
     creditAccounts: ref.watch(creditAccountRepositoryProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
@@ -247,8 +247,8 @@ RepaymentRepository repaymentRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-RepaymentService repaymentService(Ref ref) {
-  return RepaymentServiceImpl(
+RepaymentAppService repaymentAppService(Ref ref) {
+  return RepaymentAppServiceImpl(
     bills: ref.watch(billRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
     installments: ref.watch(installmentRepositoryProvider),
@@ -263,8 +263,8 @@ RepaymentService repaymentService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-InstallmentService installmentService(Ref ref) {
-  return InstallmentServiceImpl(
+InstallmentAppService installmentAppService(Ref ref) {
+  return InstallmentAppServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),
     creditAccounts: ref.watch(creditAccountRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
@@ -283,8 +283,8 @@ InstallmentQueryService installmentQueryService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-CreditBillGenerationService creditBillGenerationService(Ref ref) {
-  return CreditBillGenerationServiceImpl(
+CreditBillGenerationAppService creditBillGenerationAppService(Ref ref) {
+  return CreditBillGenerationAppServiceImpl(
     creditAccounts: ref.watch(creditAccountRepositoryProvider),
     ledgerAccounts: ref.watch(accountRepositoryProvider),
     installments: ref.watch(installmentRepositoryProvider),
@@ -299,7 +299,7 @@ CreditBillGenerationService creditBillGenerationService(Ref ref) {
 @Riverpod(keepAlive: true)
 CreditBillGenerationTask creditBillGenerationTask(Ref ref) {
   return CreditBillGenerationTask(
-    ref.watch(creditBillGenerationServiceProvider),
+    ref.watch(creditBillGenerationAppServiceProvider),
   );
 }
 
@@ -318,13 +318,13 @@ BillQueryService billQueryService(Ref ref) {
     installments: ref.watch(installmentRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
-    generationService: ref.watch(creditBillGenerationServiceProvider),
+    generationService: ref.watch(creditBillGenerationAppServiceProvider),
   );
 }
 
 @Riverpod(keepAlive: true)
-CreditService creditService(Ref ref) {
-  return CreditServiceImpl(
+CreditAppService creditAppService(Ref ref) {
+  return CreditAppServiceImpl(
     installmentQueryService: ref.watch(installmentQueryServiceProvider),
     postingService: ref.watch(transactionPostingAppServiceProvider),
     correctionService: ref.watch(transactionCorrectionAppServiceProvider),

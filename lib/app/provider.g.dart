@@ -1201,53 +1201,53 @@ final class CreditBillSourceRepositoryProvider
 String _$creditBillSourceRepositoryHash() =>
     r'ad300c0bf14dc1a4ec411c717405d83f6fe76038';
 
-@ProviderFor(creditAccountService)
-final creditAccountServiceProvider = CreditAccountServiceProvider._();
+@ProviderFor(creditAccountAppService)
+final creditAccountAppServiceProvider = CreditAccountAppServiceProvider._();
 
-final class CreditAccountServiceProvider
+final class CreditAccountAppServiceProvider
     extends
         $FunctionalProvider<
-          CreditAccountService,
-          CreditAccountService,
-          CreditAccountService
+          CreditAccountAppService,
+          CreditAccountAppService,
+          CreditAccountAppService
         >
-    with $Provider<CreditAccountService> {
-  CreditAccountServiceProvider._()
+    with $Provider<CreditAccountAppService> {
+  CreditAccountAppServiceProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'creditAccountServiceProvider',
+        name: r'creditAccountAppServiceProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$creditAccountServiceHash();
+  String debugGetCreateSourceHash() => _$creditAccountAppServiceHash();
 
   @$internal
   @override
-  $ProviderElement<CreditAccountService> $createElement(
+  $ProviderElement<CreditAccountAppService> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  CreditAccountService create(Ref ref) {
-    return creditAccountService(ref);
+  CreditAccountAppService create(Ref ref) {
+    return creditAccountAppService(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(CreditAccountService value) {
+  Override overrideWithValue(CreditAccountAppService value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<CreditAccountService>(value),
+      providerOverride: $SyncValueProvider<CreditAccountAppService>(value),
     );
   }
 }
 
-String _$creditAccountServiceHash() =>
-    r'252e158d6b00b4c3a625e69e4264fc6ca7cc56fe';
+String _$creditAccountAppServiceHash() =>
+    r'169e256ec4e3ec908461f339f4976d037306eedd';
 
 @ProviderFor(creditAccountQueryService)
 final creditAccountQueryServiceProvider = CreditAccountQueryServiceProvider._();
@@ -1393,99 +1393,101 @@ final class RepaymentRepositoryProvider
 String _$repaymentRepositoryHash() =>
     r'4e0367be733a7a3427bf4ffd5cc592cc67011aab';
 
-@ProviderFor(repaymentService)
-final repaymentServiceProvider = RepaymentServiceProvider._();
+@ProviderFor(repaymentAppService)
+final repaymentAppServiceProvider = RepaymentAppServiceProvider._();
 
-final class RepaymentServiceProvider
+final class RepaymentAppServiceProvider
     extends
         $FunctionalProvider<
-          RepaymentService,
-          RepaymentService,
-          RepaymentService
+          RepaymentAppService,
+          RepaymentAppService,
+          RepaymentAppService
         >
-    with $Provider<RepaymentService> {
-  RepaymentServiceProvider._()
+    with $Provider<RepaymentAppService> {
+  RepaymentAppServiceProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'repaymentServiceProvider',
+        name: r'repaymentAppServiceProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$repaymentServiceHash();
+  String debugGetCreateSourceHash() => _$repaymentAppServiceHash();
 
   @$internal
   @override
-  $ProviderElement<RepaymentService> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
-
-  @override
-  RepaymentService create(Ref ref) {
-    return repaymentService(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(RepaymentService value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<RepaymentService>(value),
-    );
-  }
-}
-
-String _$repaymentServiceHash() => r'989ed9a6d198da74b2a44fd143f31dda00cccfd1';
-
-@ProviderFor(installmentService)
-final installmentServiceProvider = InstallmentServiceProvider._();
-
-final class InstallmentServiceProvider
-    extends
-        $FunctionalProvider<
-          InstallmentService,
-          InstallmentService,
-          InstallmentService
-        >
-    with $Provider<InstallmentService> {
-  InstallmentServiceProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'installmentServiceProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$installmentServiceHash();
-
-  @$internal
-  @override
-  $ProviderElement<InstallmentService> $createElement(
+  $ProviderElement<RepaymentAppService> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  InstallmentService create(Ref ref) {
-    return installmentService(ref);
+  RepaymentAppService create(Ref ref) {
+    return repaymentAppService(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(InstallmentService value) {
+  Override overrideWithValue(RepaymentAppService value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<InstallmentService>(value),
+      providerOverride: $SyncValueProvider<RepaymentAppService>(value),
     );
   }
 }
 
-String _$installmentServiceHash() =>
-    r'7533930402a52f2f76a5062f5632f68771ad6ecb';
+String _$repaymentAppServiceHash() =>
+    r'48d5a402bca7adfeb899ab0cad204e8d2c9e340e';
+
+@ProviderFor(installmentAppService)
+final installmentAppServiceProvider = InstallmentAppServiceProvider._();
+
+final class InstallmentAppServiceProvider
+    extends
+        $FunctionalProvider<
+          InstallmentAppService,
+          InstallmentAppService,
+          InstallmentAppService
+        >
+    with $Provider<InstallmentAppService> {
+  InstallmentAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'installmentAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$installmentAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<InstallmentAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  InstallmentAppService create(Ref ref) {
+    return installmentAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(InstallmentAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<InstallmentAppService>(value),
+    );
+  }
+}
+
+String _$installmentAppServiceHash() =>
+    r'517ccc77f65bcea89b6ab873cb49580639c8d596';
 
 @ProviderFor(installmentQueryService)
 final installmentQueryServiceProvider = InstallmentQueryServiceProvider._();
@@ -1535,54 +1537,56 @@ final class InstallmentQueryServiceProvider
 String _$installmentQueryServiceHash() =>
     r'ed37f40ae719e4e434531e311910a2796e21c552';
 
-@ProviderFor(creditBillGenerationService)
-final creditBillGenerationServiceProvider =
-    CreditBillGenerationServiceProvider._();
+@ProviderFor(creditBillGenerationAppService)
+final creditBillGenerationAppServiceProvider =
+    CreditBillGenerationAppServiceProvider._();
 
-final class CreditBillGenerationServiceProvider
+final class CreditBillGenerationAppServiceProvider
     extends
         $FunctionalProvider<
-          CreditBillGenerationService,
-          CreditBillGenerationService,
-          CreditBillGenerationService
+          CreditBillGenerationAppService,
+          CreditBillGenerationAppService,
+          CreditBillGenerationAppService
         >
-    with $Provider<CreditBillGenerationService> {
-  CreditBillGenerationServiceProvider._()
+    with $Provider<CreditBillGenerationAppService> {
+  CreditBillGenerationAppServiceProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'creditBillGenerationServiceProvider',
+        name: r'creditBillGenerationAppServiceProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$creditBillGenerationServiceHash();
+  String debugGetCreateSourceHash() => _$creditBillGenerationAppServiceHash();
 
   @$internal
   @override
-  $ProviderElement<CreditBillGenerationService> $createElement(
+  $ProviderElement<CreditBillGenerationAppService> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  CreditBillGenerationService create(Ref ref) {
-    return creditBillGenerationService(ref);
+  CreditBillGenerationAppService create(Ref ref) {
+    return creditBillGenerationAppService(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(CreditBillGenerationService value) {
+  Override overrideWithValue(CreditBillGenerationAppService value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<CreditBillGenerationService>(value),
+      providerOverride: $SyncValueProvider<CreditBillGenerationAppService>(
+        value,
+      ),
     );
   }
 }
 
-String _$creditBillGenerationServiceHash() =>
-    r'f55b3d3d4a2dcbaaaec654a5fd83573e21a295b1';
+String _$creditBillGenerationAppServiceHash() =>
+    r'53e57b466a3c2a5ced7f200049053d39e482220b';
 
 @ProviderFor(creditBillGenerationTask)
 final creditBillGenerationTaskProvider = CreditBillGenerationTaskProvider._();
@@ -1630,7 +1634,7 @@ final class CreditBillGenerationTaskProvider
 }
 
 String _$creditBillGenerationTaskHash() =>
-    r'0920a9c0cedaf9fd2cc6d8840a2d612a75e3d15d';
+    r'b55411597e562e5cea6926c7246195514b20f046';
 
 @ProviderFor(pullTaskScheduler)
 final pullTaskSchedulerProvider = PullTaskSchedulerProvider._();
@@ -1723,45 +1727,50 @@ final class BillQueryServiceProvider
   }
 }
 
-String _$billQueryServiceHash() => r'b9e7266433dce54cbb9951772526db1e10ea5e90';
+String _$billQueryServiceHash() => r'730eb83ac945501410e5d5f33993bc2584c939b5';
 
-@ProviderFor(creditService)
-final creditServiceProvider = CreditServiceProvider._();
+@ProviderFor(creditAppService)
+final creditAppServiceProvider = CreditAppServiceProvider._();
 
-final class CreditServiceProvider
-    extends $FunctionalProvider<CreditService, CreditService, CreditService>
-    with $Provider<CreditService> {
-  CreditServiceProvider._()
+final class CreditAppServiceProvider
+    extends
+        $FunctionalProvider<
+          CreditAppService,
+          CreditAppService,
+          CreditAppService
+        >
+    with $Provider<CreditAppService> {
+  CreditAppServiceProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'creditServiceProvider',
+        name: r'creditAppServiceProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$creditServiceHash();
+  String debugGetCreateSourceHash() => _$creditAppServiceHash();
 
   @$internal
   @override
-  $ProviderElement<CreditService> $createElement($ProviderPointer pointer) =>
+  $ProviderElement<CreditAppService> $createElement($ProviderPointer pointer) =>
       $ProviderElement(pointer);
 
   @override
-  CreditService create(Ref ref) {
-    return creditService(ref);
+  CreditAppService create(Ref ref) {
+    return creditAppService(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(CreditService value) {
+  Override overrideWithValue(CreditAppService value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<CreditService>(value),
+      providerOverride: $SyncValueProvider<CreditAppService>(value),
     );
   }
 }
 
-String _$creditServiceHash() => r'e9ea48e1f74e9f1d78fbb03a7426e6d29dbde42d';
+String _$creditAppServiceHash() => r'552456bd35bdf4a6c0fc12e5d2f86919d509358c';

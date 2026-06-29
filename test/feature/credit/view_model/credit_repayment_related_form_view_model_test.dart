@@ -26,8 +26,8 @@ import 'package:smartflow/shared/account_profile/account_selection_purpose.dart'
 
 void main() {
   test('repayment form creates repayment command', () async {
-    final creditSvc = _FakeCreditService();
-    final container = _container(creditService: creditSvc);
+    final creditSvc = _FakeCreditAppService();
+    final container = _container(creditAppService: creditSvc);
     final provider = repaymentFormViewModelProvider(
       const RepaymentFormArgs(liabilityAccountId: 'loan'),
     );
@@ -51,13 +51,13 @@ void main() {
   });
 
   test('repayment form maps business exception to failure', () async {
-    final creditSvc = _FakeCreditService(
+    final creditSvc = _FakeCreditAppService(
       exception: BusinessException(
         credit.CreditErrorCode.repaymentExceedsAvailable,
         message: '本金超过可还额度',
       ),
     );
-    final container = _container(creditService: creditSvc);
+    final container = _container(creditAppService: creditSvc);
     final provider = repaymentFormViewModelProvider(
       const RepaymentFormArgs(liabilityAccountId: 'loan'),
     );
@@ -78,38 +78,42 @@ void main() {
     );
   });
 
-  test('installment prepayment submits through repayment service', () async {
-    final repayment = _FakeRepaymentService();
-    final container = _container(repaymentService: repayment);
-    final provider = installmentRepaymentFormViewModelProvider(
-      const InstallmentRepaymentFormArgs(
-        contractId: 'contract',
-        mode: InstallmentRepaymentMode.prepayment,
-      ),
-    );
-    final subscription = container.listen(provider, (_, _) {});
-    addTearDown(subscription.close);
+  test(
+    'installment prepayment submits through repayment app service',
+    () async {
+      final repayment = _FakeRepaymentAppService();
+      final container = _container(repaymentAppService: repayment);
+      final provider = installmentRepaymentFormViewModelProvider(
+        const InstallmentRepaymentFormArgs(
+          contractId: 'contract',
+          mode: InstallmentRepaymentMode.prepayment,
+        ),
+      );
+      final subscription = container.listen(provider, (_, _) {});
+      addTearDown(subscription.close);
 
-    final state = await container.read(provider.future);
-    final notifier = container.read(provider.notifier)..setPrincipalText('10');
-    final outcome = await notifier.submit();
+      final state = await container.read(provider.future);
+      final notifier = container.read(provider.notifier)
+        ..setPrincipalText('10');
+      final outcome = await notifier.submit();
 
-    expect(state.principalText, '100.00');
-    expect(outcome, isA<SubmitSuccess>());
-    expect(repayment.prepaymentCommands.single.contractId, 'contract');
-    expect(
-      repayment.prepaymentCommands.single.principal,
-      const Money(minorUnits: 1000),
-    );
-    expect(
-      repayment.prepaymentCommands.single.transactionInfo!.paidFromAccountId,
-      'cash',
-    );
-  });
+      expect(state.principalText, '100.00');
+      expect(outcome, isA<SubmitSuccess>());
+      expect(repayment.prepaymentCommands.single.contractId, 'contract');
+      expect(
+        repayment.prepaymentCommands.single.principal,
+        const Money(minorUnits: 1000),
+      );
+      expect(
+        repayment.prepaymentCommands.single.transactionInfo!.paidFromAccountId,
+        'cash',
+      );
+    },
+  );
 
   test('bill repayment form submits remaining bill allocation', () async {
-    final repayment = _FakeRepaymentService();
-    final container = _container(repaymentService: repayment);
+    final repayment = _FakeRepaymentAppService();
+    final container = _container(repaymentAppService: repayment);
     final provider = billRepaymentFormViewModelProvider('bill');
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
@@ -141,8 +145,8 @@ void main() {
   });
 
   test('bill repayment form can submit without ledger transaction', () async {
-    final repayment = _FakeRepaymentService();
-    final container = _container(repaymentService: repayment);
+    final repayment = _FakeRepaymentAppService();
+    final container = _container(repaymentAppService: repayment);
     final provider = billRepaymentFormViewModelProvider('bill');
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
@@ -157,9 +161,9 @@ void main() {
   });
 
   test('bill repayment form supports equal allocation mode', () async {
-    final repayment = _FakeRepaymentService();
+    final repayment = _FakeRepaymentAppService();
     final container = _container(
-      repaymentService: repayment,
+      repaymentAppService: repayment,
       billDetail: _billDetailWithTwoConsumptionItems(),
     );
     final provider = billRepaymentFormViewModelProvider('bill');
@@ -186,9 +190,9 @@ void main() {
   test(
     'bill repayment form allows manual edits after calculated allocation',
     () async {
-      final repayment = _FakeRepaymentService();
+      final repayment = _FakeRepaymentAppService();
       final container = _container(
-        repaymentService: repayment,
+        repaymentAppService: repayment,
         billDetail: _billDetailWithTwoConsumptionItems(),
       );
       final provider = billRepaymentFormViewModelProvider('bill');
@@ -222,9 +226,9 @@ void main() {
   );
 
   test('bill repayment form supports manual allocation mode', () async {
-    final repayment = _FakeRepaymentService();
+    final repayment = _FakeRepaymentAppService();
     final container = _container(
-      repaymentService: repayment,
+      repaymentAppService: repayment,
       billDetail: _billDetailWithTwoConsumptionItems(),
     );
     final provider = billRepaymentFormViewModelProvider('bill');
@@ -256,9 +260,9 @@ void main() {
   });
 
   test('open bill repayment only allocates consumption items', () async {
-    final repayment = _FakeRepaymentService();
+    final repayment = _FakeRepaymentAppService();
     final container = _container(
-      repaymentService: repayment,
+      repaymentAppService: repayment,
       billDetail: _openBillDetailWithInstallment(),
     );
     final provider = billRepaymentFormViewModelProvider('bill');
@@ -280,8 +284,8 @@ void main() {
   });
 
   test('bill conversion installment form submits repayment command', () async {
-    final repayment = _FakeRepaymentService();
-    final container = _container(repaymentService: repayment);
+    final repayment = _FakeRepaymentAppService();
+    final container = _container(repaymentAppService: repayment);
     final provider = billConversionInstallmentFormViewModelProvider('bill');
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
@@ -307,8 +311,8 @@ void main() {
   });
 
   test('unattributed repayment form submits account repayment', () async {
-    final repayment = _FakeRepaymentService();
-    final container = _container(repaymentService: repayment);
+    final repayment = _FakeRepaymentAppService();
+    final container = _container(repaymentAppService: repayment);
     final provider = unattributedRepaymentFormViewModelProvider('loan');
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
@@ -327,8 +331,8 @@ void main() {
   test(
     'unattributed repayment form can submit without ledger transaction',
     () async {
-      final repayment = _FakeRepaymentService();
-      final container = _container(repaymentService: repayment);
+      final repayment = _FakeRepaymentAppService();
+      final container = _container(repaymentAppService: repayment);
       final provider = unattributedRepaymentFormViewModelProvider('loan');
       final subscription = container.listen(provider, (_, _) {});
       addTearDown(subscription.close);
@@ -386,9 +390,9 @@ void main() {
 }
 
 ProviderContainer _container({
-  _FakeCreditService? creditService,
-  _FakeInstallmentService? installmentService,
-  _FakeRepaymentService? repaymentService,
+  _FakeCreditAppService? creditAppService,
+  _FakeInstallmentAppService? installmentAppService,
+  _FakeRepaymentAppService? repaymentAppService,
   _FakePostingService? postingService,
   credit_query.BillDetailReadModel? billDetail,
   credit_query.CreditAccountOverviewReadModel? creditOverview,
@@ -431,14 +435,14 @@ ProviderContainer _container({
       installmentContractsByAccountProvider.overrideWith(
         (ref, id) async => const [],
       ),
-      creditServiceProvider.overrideWithValue(
-        creditService ?? _FakeCreditService(),
+      creditAppServiceProvider.overrideWithValue(
+        creditAppService ?? _FakeCreditAppService(),
       ),
-      installmentServiceProvider.overrideWithValue(
-        installmentService ?? _FakeInstallmentService(),
+      installmentAppServiceProvider.overrideWithValue(
+        installmentAppService ?? _FakeInstallmentAppService(),
       ),
-      repaymentServiceProvider.overrideWithValue(
-        repaymentService ?? _FakeRepaymentService(),
+      repaymentAppServiceProvider.overrideWithValue(
+        repaymentAppService ?? _FakeRepaymentAppService(),
       ),
       transactionPostingAppServiceProvider.overrideWithValue(
         postingService ?? _FakePostingService(),
@@ -449,8 +453,8 @@ ProviderContainer _container({
   return container;
 }
 
-class _FakeCreditService implements credit.CreditService {
-  _FakeCreditService({this.exception});
+class _FakeCreditAppService implements credit.CreditAppService {
+  _FakeCreditAppService({this.exception});
 
   final Object? exception;
   final createRepaymentCommands = <credit.CreateRepaymentCommand>[];
@@ -469,7 +473,7 @@ class _FakeCreditService implements credit.CreditService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeInstallmentService implements credit.InstallmentService {
+class _FakeInstallmentAppService implements credit.InstallmentAppService {
   final scheduledCommands = <credit.CreateScheduledRepaymentCommand>[];
 
   @override
@@ -484,7 +488,7 @@ class _FakeInstallmentService implements credit.InstallmentService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeRepaymentService implements credit.RepaymentService {
+class _FakeRepaymentAppService implements credit.RepaymentAppService {
   final prepaymentCommands =
       <credit.CreateContractPrepaymentRepaymentCommand>[];
   final billRepaymentCommands = <credit.CreateBillRepaymentCommand>[];

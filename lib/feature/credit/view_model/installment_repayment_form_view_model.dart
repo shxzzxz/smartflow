@@ -124,7 +124,7 @@ class InstallmentRepaymentFormViewModel
 
     _update((state) => state.copyWith(submitting: true));
     try {
-      final service = ref.read(repaymentServiceProvider);
+      final service = ref.read(repaymentAppServiceProvider);
       switch (args.mode) {
         case InstallmentRepaymentMode.scheduled:
           return _invalidCommand('期次还款请从账单还款处理');

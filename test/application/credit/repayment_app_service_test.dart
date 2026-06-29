@@ -20,7 +20,7 @@ import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
 
 void main() {
-  group('RepaymentService', () {
+  group('RepaymentAppService', () {
     test('creates no-transaction bill repayment and settles bill', () async {
       final fixture = _Fixture();
       addTearDown(fixture.close);
@@ -955,7 +955,7 @@ ledger_query.TransactionDetail _transactionDetail({
 class _Fixture {
   _Fixture() {
     runner = DriftTransactionRunner(database);
-    service = credit.RepaymentServiceImpl(
+    service = credit.RepaymentAppServiceImpl(
       bills: bills,
       repayments: repayments,
       installments: installments,
@@ -983,7 +983,7 @@ class _Fixture {
   late final DriftRepaymentRepository repayments = DriftRepaymentRepository(
     database,
   );
-  late final credit.RepaymentService service;
+  late final credit.RepaymentAppService service;
 
   Future<void> seedBill({
     required credit.BillStatus status,

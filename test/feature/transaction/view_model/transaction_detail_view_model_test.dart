@@ -49,9 +49,9 @@ void main() {
     });
 
     test(
-      'dispatches installment repayment account change to credit service',
+      'dispatches installment repayment account change to credit app service',
       () async {
-        final installment = _FakeInstallmentService();
+        final installment = _FakeInstallmentAppService();
         final detail = _detail(
           purpose: BusinessPurpose.debtRepayment,
           ownership: const TransactionOwnership(
@@ -82,7 +82,7 @@ void main() {
     test(
       'maps installment disbursement update exception to action failure',
       () async {
-        final installment = _FakeInstallmentService(
+        final installment = _FakeInstallmentAppService(
           updateContractException: BusinessException(
             CreditErrorCode.contractPersistenceConflict,
             message: '合同数据已变化，请刷新后重试。',
@@ -114,9 +114,9 @@ void main() {
     );
 
     test(
-      'routes credit repayment owner edits and delete to repayment service',
+      'routes credit repayment owner edits and delete to repayment app service',
       () async {
-        final repayment = _FakeRepaymentService();
+        final repayment = _FakeRepaymentAppService();
         final detail = _detail(
           purpose: BusinessPurpose.debtRepayment,
           ownership: const TransactionOwnership(
@@ -176,7 +176,7 @@ void main() {
     test(
       'maps installment disbursement regular exception to unknown failure',
       () async {
-        final installment = _FakeInstallmentService(
+        final installment = _FakeInstallmentAppService(
           updateContractException: Exception('database failed'),
         );
         final detail = _detail(
@@ -300,8 +300,8 @@ ProviderContainer _container({
   _FakeTransactionUpdateAppService? update,
   _FakeTransactionCorrectionAppService? correction,
   _FakeTransactionPostingAppService? posting,
-  _FakeInstallmentService? installment,
-  _FakeRepaymentService? repayment,
+  _FakeInstallmentAppService? installment,
+  _FakeRepaymentAppService? repayment,
 }) {
   final accounts = <String, Account>{
     'cash': _account('cash', '现金', iconKey: 'cash'),
@@ -340,11 +340,11 @@ ProviderContainer _container({
       transactionPostingAppServiceProvider.overrideWithValue(
         posting ?? _FakeTransactionPostingAppService(),
       ),
-      installmentServiceProvider.overrideWithValue(
-        installment ?? _FakeInstallmentService(),
+      installmentAppServiceProvider.overrideWithValue(
+        installment ?? _FakeInstallmentAppService(),
       ),
-      repaymentServiceProvider.overrideWithValue(
-        repayment ?? _FakeRepaymentService(),
+      repaymentAppServiceProvider.overrideWithValue(
+        repayment ?? _FakeRepaymentAppService(),
       ),
     ],
   );
@@ -612,8 +612,8 @@ class _FakeTransactionPostingAppService
   }
 }
 
-class _FakeInstallmentService implements InstallmentService {
-  _FakeInstallmentService({this.updateContractException});
+class _FakeInstallmentAppService implements InstallmentAppService {
+  _FakeInstallmentAppService({this.updateContractException});
 
   final Object? updateContractException;
   final updateContractCommands = <UpdateContractCommand>[];
@@ -689,7 +689,7 @@ class _FakeInstallmentService implements InstallmentService {
   }
 }
 
-class _FakeRepaymentService implements RepaymentService {
+class _FakeRepaymentAppService implements RepaymentAppService {
   final editCommands = <EditCreditRepaymentTransactionCommand>[];
   final deleteCommands = <DeleteCreditRepaymentCommand>[];
 

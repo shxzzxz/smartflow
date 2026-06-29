@@ -66,14 +66,14 @@ class EditCreditLiabilityAccountCommand {
   final Money? targetBalance;
 }
 
-abstract interface class CreditAccountService {
+abstract interface class CreditAccountAppService {
   Future<Account> createAccount(CreateCreditLiabilityAccountCommand command);
 
   Future<void> editAccount(EditCreditLiabilityAccountCommand command);
 }
 
-class CreditAccountServiceImpl implements CreditAccountService {
-  const CreditAccountServiceImpl({
+class CreditAccountAppServiceImpl implements CreditAccountAppService {
+  const CreditAccountAppServiceImpl({
     required AccountAppService accountAppService,
     required CreditAccountRepository creditAccounts,
     required TransactionRunner transactionRunner,

@@ -1,11 +1,11 @@
 import 'package:smartflow/application/shared/app_task.dart';
 
-import 'credit_bill_generation_service.dart';
+import 'credit_bill_generation_app_service.dart';
 
 class CreditBillGenerationTask implements AppTask {
   const CreditBillGenerationTask(this._service);
 
-  final CreditBillGenerationService _service;
+  final CreditBillGenerationAppService _service;
 
   @override
   String get key => 'credit.bill_generation';

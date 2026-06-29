@@ -255,7 +255,7 @@ class InstallmentContractEditViewModel
     _setLoaded(loaded.copyWith(submitting: true));
     try {
       await ref
-          .read(installmentServiceProvider)
+          .read(installmentAppServiceProvider)
           .updateContract(
             UpdateContractCommand(
               contractId: contractId,

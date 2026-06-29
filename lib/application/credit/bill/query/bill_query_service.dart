@@ -16,7 +16,7 @@ import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
-import '../command/credit_bill_generation_service.dart';
+import '../command/credit_bill_generation_app_service.dart';
 
 abstract interface class BillQueryService {
   Future<List<BillSummaryReadModel>> listBillsByAccount(String accountId);
@@ -33,7 +33,7 @@ class BillQueryServiceImpl implements BillQueryService {
     required InstallmentRepository installments,
     required RepaymentRepository repayments,
     required ledger_query.TransactionQueryService transactionQueryService,
-    required CreditBillGenerationService generationService,
+    required CreditBillGenerationAppService generationService,
     DateTime Function()? now,
   }) : _bills = bills,
        _creditAccounts = creditAccounts,
@@ -48,7 +48,7 @@ class BillQueryServiceImpl implements BillQueryService {
   final InstallmentRepository _installments;
   final RepaymentRepository _repayments;
   final ledger_query.TransactionQueryService _transactionQueryService;
-  final CreditBillGenerationService _generationService;
+  final CreditBillGenerationAppService _generationService;
   final DateTime Function()? _now;
 
   @override

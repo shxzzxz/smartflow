@@ -20,8 +20,8 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
   required Transaction transaction,
   required TransactionCorrectionAppService correctionService,
   required TransactionUpdateAppService updateService,
-  required InstallmentService installmentService,
-  required RepaymentService repaymentService,
+  required InstallmentAppService installmentAppService,
+  required RepaymentAppService repaymentAppService,
 }) {
   final ownership = transaction.ownership;
   if (ownership == null) {
@@ -38,7 +38,7 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
     if (role != null) {
       return _InstallmentActionDispatcher(
         transaction: transaction,
-        installmentService: installmentService,
+        installmentAppService: installmentAppService,
         contractId: ownership.ownerId!,
         role: role,
       );
@@ -51,7 +51,7 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
     if (repaymentType != null) {
       return _CreditRepaymentActionDispatcher(
         transaction: transaction,
-        repaymentService: repaymentService,
+        repaymentAppService: repaymentAppService,
         repaymentId: ownership.ownerId!,
       );
     }
@@ -164,13 +164,13 @@ final class _InstallmentActionDispatcher
     implements TransactionDetailActionDispatcher {
   const _InstallmentActionDispatcher({
     required this.transaction,
-    required this.installmentService,
+    required this.installmentAppService,
     required this.contractId,
     required this.role,
   });
 
   final Transaction transaction;
-  final InstallmentService installmentService;
+  final InstallmentAppService installmentAppService;
   final String contractId;
   final InstallmentOwnerRole role;
 
@@ -178,13 +178,13 @@ final class _InstallmentActionDispatcher
   Future<UiActionOutcome<void>> delete() async {
     return detailVoidOutcomeFromAction(() {
       return switch (role) {
-        InstallmentOwnerRole.disbursement => installmentService.deleteContract(
-          DeleteContractCommand(contractId: contractId),
-        ),
+        InstallmentOwnerRole.disbursement => installmentAppService
+            .deleteContract(DeleteContractCommand(contractId: contractId)),
         InstallmentOwnerRole.scheduledRepayment ||
-        InstallmentOwnerRole.prepayment => installmentService.revertRepayment(
-          RevertRepaymentCommand(transactionId: transaction.id),
-        ),
+        InstallmentOwnerRole.prepayment => installmentAppService
+            .revertRepayment(
+              RevertRepaymentCommand(transactionId: transaction.id),
+            ),
       };
     });
   }
@@ -193,7 +193,7 @@ final class _InstallmentActionDispatcher
   Future<UiActionOutcome<void>> changeNote(String? value) async {
     if (role == InstallmentOwnerRole.disbursement) {
       return detailVoidOutcomeFromAction(() {
-        return installmentService.updateContract(
+        return installmentAppService.updateContract(
           UpdateContractCommand(
             contractId: contractId,
             note:
@@ -205,7 +205,7 @@ final class _InstallmentActionDispatcher
       });
     }
     return detailVoidOutcomeFromAction(() {
-      return installmentService.editRepayment(
+      return installmentAppService.editRepayment(
         EditRepaymentCommand(
           transactionId: transaction.id,
           contractId: contractId,
@@ -219,13 +219,13 @@ final class _InstallmentActionDispatcher
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
     if (role == InstallmentOwnerRole.disbursement) {
       return detailVoidOutcomeFromAction(() {
-        return installmentService.updateContract(
+        return installmentAppService.updateContract(
           UpdateContractCommand(contractId: contractId, borrowingDate: value),
         );
       });
     }
     return detailVoidOutcomeFromAction(() {
-      return installmentService.editRepayment(
+      return installmentAppService.editRepayment(
         EditRepaymentCommand(
           transactionId: transaction.id,
           contractId: contractId,
@@ -241,7 +241,7 @@ final class _InstallmentActionDispatcher
   ) async {
     if (role == InstallmentOwnerRole.disbursement) {
       return detailVoidOutcomeFromAction(() {
-        return installmentService.updateContract(
+        return installmentAppService.updateContract(
           UpdateContractCommand(
             contractId: contractId,
             disbursementAccountId: accountId,
@@ -250,7 +250,7 @@ final class _InstallmentActionDispatcher
       });
     }
     return detailVoidOutcomeFromAction(() {
-      return installmentService.editRepayment(
+      return installmentAppService.editRepayment(
         EditRepaymentCommand(
           transactionId: transaction.id,
           contractId: contractId,
@@ -265,18 +265,18 @@ final class _CreditRepaymentActionDispatcher
     implements TransactionDetailActionDispatcher {
   const _CreditRepaymentActionDispatcher({
     required this.transaction,
-    required this.repaymentService,
+    required this.repaymentAppService,
     required this.repaymentId,
   });
 
   final Transaction transaction;
-  final RepaymentService repaymentService;
+  final RepaymentAppService repaymentAppService;
   final String repaymentId;
 
   @override
   Future<UiActionOutcome<void>> delete() async {
     return detailVoidOutcomeFromAction(() {
-      return repaymentService.deleteRepayment(
+      return repaymentAppService.deleteRepayment(
         DeleteCreditRepaymentCommand(repaymentId: repaymentId),
       );
     });
@@ -285,7 +285,7 @@ final class _CreditRepaymentActionDispatcher
   @override
   Future<UiActionOutcome<void>> changeNote(String? value) async {
     return detailVoidOutcomeFromAction(() {
-      return repaymentService.editRepaymentTransaction(
+      return repaymentAppService.editRepaymentTransaction(
         EditCreditRepaymentTransactionCommand(
           repaymentId: repaymentId,
           note: _nullableStringPatch(value),
@@ -297,7 +297,7 @@ final class _CreditRepaymentActionDispatcher
   @override
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
     return detailVoidOutcomeFromAction(() {
-      return repaymentService.editRepaymentTransaction(
+      return repaymentAppService.editRepaymentTransaction(
         EditCreditRepaymentTransactionCommand(
           repaymentId: repaymentId,
           occurredAt: value,
@@ -311,7 +311,7 @@ final class _CreditRepaymentActionDispatcher
     String accountId,
   ) async {
     return detailVoidOutcomeFromAction(() {
-      return repaymentService.editRepaymentTransaction(
+      return repaymentAppService.editRepaymentTransaction(
         EditCreditRepaymentTransactionCommand(
           repaymentId: repaymentId,
           paidFromAccountId: accountId,

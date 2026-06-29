@@ -25,7 +25,7 @@ void main() {
     });
 
     test('submits disbursement contract command', () async {
-      final service = _FakeInstallmentService();
+      final service = _FakeInstallmentAppService();
       final args = _args('loan');
       final container = _container(service: service);
       await _readState(container, args);
@@ -56,7 +56,7 @@ void main() {
     });
 
     test('submits bill conversion contract command', () async {
-      final service = _FakeInstallmentService();
+      final service = _FakeInstallmentAppService();
       final args = _args(
         'card',
         lockedSourceType: InstallmentSourceType.billConversion,
@@ -84,7 +84,7 @@ void main() {
     });
 
     test('maps AppException to UI failure', () async {
-      final service = _FakeInstallmentService(
+      final service = _FakeInstallmentAppService(
         createException: BusinessException(
           CreditErrorCode.contractInvalidCommand,
           message: '合同参数无效',
@@ -115,7 +115,7 @@ void main() {
     });
 
     test('maps regular Exception to unknown UI failure', () async {
-      final service = _FakeInstallmentService(
+      final service = _FakeInstallmentAppService(
         createException: Exception('database failed'),
       );
       final args = _args('loan');
@@ -164,7 +164,7 @@ InstallmentFormArgs _args(
   );
 }
 
-ProviderContainer _container({_FakeInstallmentService? service}) {
+ProviderContainer _container({_FakeInstallmentAppService? service}) {
   final liabilities = [
     _account(
       'loan',
@@ -183,8 +183,8 @@ ProviderContainer _container({_FakeInstallmentService? service}) {
           _ => const <Account>[],
         }),
       ),
-      installmentServiceProvider.overrideWithValue(
-        service ?? _FakeInstallmentService(),
+      installmentAppServiceProvider.overrideWithValue(
+        service ?? _FakeInstallmentAppService(),
       ),
     ],
   );
@@ -208,8 +208,8 @@ Account _account(
   );
 }
 
-class _FakeInstallmentService implements InstallmentService {
-  _FakeInstallmentService({this.createException});
+class _FakeInstallmentAppService implements InstallmentAppService {
+  _FakeInstallmentAppService({this.createException});
 
   final Object? createException;
   final disbursementCommands = <CreateDisbursementContractCommand>[];

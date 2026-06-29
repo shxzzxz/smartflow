@@ -186,7 +186,7 @@ ledger.TransactionDetail _transactionDetail() {
   );
 }
 
-class _FakeGenerationService implements credit.CreditBillGenerationService {
+class _FakeGenerationService implements credit.CreditBillGenerationAppService {
   const _FakeGenerationService(this.sourceDiffs);
 
   final Map<String, bool> sourceDiffs;

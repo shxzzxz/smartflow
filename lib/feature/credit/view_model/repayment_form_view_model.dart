@@ -59,7 +59,7 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
     }
     final accountsById = await ref.watch(accountsByIdProvider.future);
     final view = ref
-        .read(creditServiceProvider)
+        .read(creditAppServiceProvider)
         .parseRepaymentEditView(detail, accountsById: accountsById);
     if (view == null) {
       return RepaymentFormState.notEditable(
@@ -140,7 +140,7 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
 
     _update((state) => state.copyWith(submitting: true));
     try {
-      final service = ref.read(creditServiceProvider);
+      final service = ref.read(creditAppServiceProvider);
       final editTransactionId = args.editTransactionId;
       final note = trimToNull(current.noteText);
       final result =

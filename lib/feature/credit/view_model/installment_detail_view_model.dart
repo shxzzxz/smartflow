@@ -36,7 +36,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     if (loaded == null) return _invalidAction('合同尚未加载');
     try {
       await ref
-          .read(installmentServiceProvider)
+          .read(installmentAppServiceProvider)
           .deleteContract(
             DeleteContractCommand(contractId: loaded.contract.id),
           );
@@ -58,7 +58,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     if (loaded == null) return _invalidAction('合同尚未加载');
     try {
       await ref
-          .read(repaymentServiceProvider)
+          .read(repaymentAppServiceProvider)
           .deleteRepayment(
             DeleteCreditRepaymentCommand(repaymentId: repaymentId),
           );

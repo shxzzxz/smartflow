@@ -44,7 +44,7 @@ class BillDetailPage extends ConsumerWidget {
   Future<void> _syncProjection(BuildContext context, WidgetRef ref) async {
     try {
       await ref
-          .read(creditBillGenerationServiceProvider)
+          .read(creditBillGenerationAppServiceProvider)
           .syncBillProjection(billId);
       ref.invalidate(billDetailProvider(billId));
     } on Exception catch (error) {
@@ -98,7 +98,7 @@ class BillDetailPage extends ConsumerWidget {
     if (confirmed != true) return;
     try {
       await ref
-          .read(repaymentServiceProvider)
+          .read(repaymentAppServiceProvider)
           .deleteRepayment(
             credit_command.DeleteCreditRepaymentCommand(
               repaymentId: repayment.id,

@@ -92,7 +92,7 @@ class UnattributedRepaymentFormViewModel
     _update((state) => state.copyWith(submitting: true));
     try {
       await ref
-          .read(repaymentServiceProvider)
+          .read(repaymentAppServiceProvider)
           .createUnattributedRepayment(
             credit.CreateUnattributedRepaymentCommand(
               accountId: accountId,

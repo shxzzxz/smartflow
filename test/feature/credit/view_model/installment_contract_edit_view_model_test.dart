@@ -15,7 +15,7 @@ import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 void main() {
   group('InstallmentContractEditViewModel', () {
     test('loads contract and schedules into draft state', () async {
-      final service = _FakeInstallmentService(
+      final service = _FakeInstallmentAppService(
         contract: _contract(),
         schedules: [_schedule(1), _schedule(2)],
       );
@@ -33,7 +33,7 @@ void main() {
     test(
       'recalculates existing pending rows and marks them for submit',
       () async {
-        final service = _FakeInstallmentService(
+        final service = _FakeInstallmentAppService(
           contract: _contract(),
           schedules: [_schedule(1), _schedule(2)],
         );
@@ -73,7 +73,7 @@ void main() {
     );
 
     test('edits draft row amount and date', () async {
-      final service = _FakeInstallmentService(
+      final service = _FakeInstallmentAppService(
         contract: _contract(),
         schedules: [_schedule(1)],
       );
@@ -103,7 +103,7 @@ void main() {
     });
 
     test('submits update command and returns success', () async {
-      final service = _FakeInstallmentService(
+      final service = _FakeInstallmentAppService(
         contract: _contract(),
         schedules: [_schedule(1), _schedule(2)],
       );
@@ -151,7 +151,7 @@ void main() {
     });
 
     test('maps business exception to submit failure', () async {
-      final service = _FakeInstallmentService(
+      final service = _FakeInstallmentAppService(
         contract: _contract(),
         schedules: [_schedule(1)],
         updateException: BusinessException(
@@ -182,7 +182,7 @@ void main() {
     });
 
     test('maps regular exception to unknown submit failure', () async {
-      final service = _FakeInstallmentService(
+      final service = _FakeInstallmentAppService(
         contract: _contract(),
         schedules: [_schedule(1)],
         updateException: Exception('database failed'),
@@ -214,7 +214,7 @@ void main() {
 
     test('rethrows unexpected exception after resetting submitting', () async {
       final unexpected = StateError('unexpected');
-      final service = _FakeInstallmentService(
+      final service = _FakeInstallmentAppService(
         contract: _contract(),
         schedules: [_schedule(1)],
         updateException: unexpected,
@@ -244,7 +244,7 @@ void main() {
   });
 }
 
-ProviderContainer _container(_FakeInstallmentService service) {
+ProviderContainer _container(_FakeInstallmentAppService service) {
   final container = ProviderContainer(
     overrides: [
       installmentContractProvider.overrideWith(
@@ -253,7 +253,7 @@ ProviderContainer _container(_FakeInstallmentService service) {
       installmentSchedulesProvider.overrideWith(
         (ref, contractId) async => service.schedules,
       ),
-      installmentServiceProvider.overrideWithValue(service),
+      installmentAppServiceProvider.overrideWithValue(service),
     ],
   );
   addTearDown(container.dispose);
@@ -322,8 +322,8 @@ InstallmentSchedule _schedule(
   );
 }
 
-class _FakeInstallmentService implements InstallmentService {
-  _FakeInstallmentService({
+class _FakeInstallmentAppService implements InstallmentAppService {
+  _FakeInstallmentAppService({
     required this.contract,
     required this.schedules,
     this.updateException,

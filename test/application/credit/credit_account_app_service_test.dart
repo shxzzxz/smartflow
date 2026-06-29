@@ -18,7 +18,7 @@ import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
 
 void main() {
-  group('CreditAccountService', () {
+  group('CreditAccountAppService', () {
     test(
       'creates credit account with billing parameters in credit extension',
       () async {
@@ -162,7 +162,7 @@ class _Fixture {
       transactionRepository: DriftPostingRepository(database),
       idGenerator: ids,
     );
-    service = CreditAccountServiceImpl(
+    service = CreditAccountAppServiceImpl(
       accountAppService: accountAppService,
       creditAccounts: creditRepository,
       transactionRunner: runner,
@@ -177,7 +177,7 @@ class _Fixture {
   );
   late final DriftCreditAccountRepository creditRepository =
       DriftCreditAccountRepository(database);
-  late final CreditAccountService service;
+  late final CreditAccountAppService service;
 
   Future<void> close() => database.close();
 }

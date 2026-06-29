@@ -541,7 +541,7 @@ class _UnattributedRepaymentSection extends ConsumerWidget {
     if (confirmed != true) return;
     try {
       await ref
-          .read(repaymentServiceProvider)
+          .read(repaymentAppServiceProvider)
           .deleteRepayment(
             credit_command.DeleteCreditRepaymentCommand(
               repaymentId: repayment.id,

@@ -18,7 +18,7 @@ import '../../installment/query/installment_query_service.dart';
 
 /// 信贷域对外的通用入口。承载"非分期合同关联的普通还款"的创建、更正与编辑视图反解；
 /// 内部委托账务核心写入，并强制走额度校验（debt − 未还分期本金）。
-abstract interface class CreditService {
+abstract interface class CreditAppService {
   Future<PostedTransactionResult> createRepayment(
     CreateRepaymentCommand command,
   );
@@ -108,8 +108,8 @@ class RepaymentEditView {
   final String? note;
 }
 
-class CreditServiceImpl implements CreditService {
-  CreditServiceImpl({
+class CreditAppServiceImpl implements CreditAppService {
+  CreditAppServiceImpl({
     required InstallmentQueryService installmentQueryService,
     required tx.TransactionPostingAppService postingService,
     required tx.TransactionCorrectionAppService correctionService,
@@ -166,7 +166,8 @@ class CreditServiceImpl implements CreditService {
     if (detail.transaction.businessPurpose != BusinessPurpose.debtRepayment) {
       throw BusinessException(
         CreditErrorCode.repaymentNotEditable,
-        message: 'CreditService.correctRepayment only handles DEBT_REPAYMENT.',
+        message:
+            'CreditAppService.correctRepayment only handles DEBT_REPAYMENT.',
       );
     }
 

@@ -110,7 +110,7 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
 
     _setLoaded(current.copyWith(submitting: true));
     try {
-      final service = ref.read(installmentServiceProvider);
+      final service = ref.read(installmentAppServiceProvider);
       final note = trimToNull(noteText);
       final result =
           current.isDisbursement

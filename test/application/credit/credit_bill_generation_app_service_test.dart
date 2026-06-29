@@ -28,7 +28,7 @@ import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
 
 void main() {
-  group('CreditBillGenerationService', () {
+  group('CreditBillGenerationAppService', () {
     test(
       'keeps credit bill open and refreshes consumption before billing',
       () async {
@@ -90,7 +90,7 @@ void main() {
       expect(openBill.status, BillStatus.open);
       final openItemId = openBill.items.single.id;
 
-      await fixture.repaymentService.createBillRepayment(
+      await fixture.repaymentAppService.createBillRepayment(
         CreateBillRepaymentCommand(
           billId: openBill.id,
           allocations: [
@@ -135,7 +135,7 @@ void main() {
         final june = (await fixture.billRepository.listBillsByAccount(
           account.id,
         )).singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
-        await fixture.repaymentService.createBillRepayment(
+        await fixture.repaymentAppService.createBillRepayment(
           CreateBillRepaymentCommand(
             billId: june.id,
             allocations: [
@@ -231,7 +231,7 @@ void main() {
           account.id,
         )).singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
 
-        final result = await fixture.repaymentService
+        final result = await fixture.repaymentAppService
             .createBillConversionInstallmentRepayment(
               CreateBillConversionInstallmentRepaymentCommand(
                 billId: june.id,
@@ -447,7 +447,7 @@ class _Fixture {
       transactionRepository: postingRepository,
       idGenerator: ids,
     );
-    creditAccountService = CreditAccountServiceImpl(
+    creditAccountAppService = CreditAccountAppServiceImpl(
       accountAppService: accountAppService,
       creditAccounts: creditAccountRepository,
       transactionRunner: runner,
@@ -461,7 +461,7 @@ class _Fixture {
       ledgerWriter: ledgerWriter,
       idGenerator: ids,
     );
-    generation = CreditBillGenerationServiceImpl(
+    generation = CreditBillGenerationAppServiceImpl(
       creditAccounts: creditAccountRepository,
       ledgerAccounts: accountRepository,
       installments: installmentRepository,
@@ -471,7 +471,7 @@ class _Fixture {
       transactionRunner: runner,
       idGenerator: ids,
     );
-    repaymentService = RepaymentServiceImpl(
+    repaymentAppService = RepaymentAppServiceImpl(
       bills: billRepository,
       repayments: repaymentRepository,
       installments: installmentRepository,
@@ -530,13 +530,13 @@ class _Fixture {
         detailRead: DriftTransactionDetailReadRepository(database),
         balanceAggregate: DriftBalanceAggregateRepository(database),
       );
-  late final CreditAccountService creditAccountService;
+  late final CreditAccountAppService creditAccountAppService;
   late final TransactionPostingAppService postingAppService;
-  late final CreditBillGenerationService generation;
-  late final RepaymentService repaymentService;
+  late final CreditBillGenerationAppService generation;
+  late final RepaymentAppService repaymentAppService;
 
   Future<Account> createCreditAccount() {
-    return creditAccountService.createAccount(
+    return creditAccountAppService.createAccount(
       CreateCreditLiabilityAccountCommand(
         name: 'Huabei',
         kind: CreditLiabilityAccountKind.credit,
@@ -548,7 +548,7 @@ class _Fixture {
   }
 
   Future<Account> createLoanAccount() {
-    return creditAccountService.createAccount(
+    return creditAccountAppService.createAccount(
       const CreateCreditLiabilityAccountCommand(
         name: 'Jiebei',
         kind: CreditLiabilityAccountKind.loan,

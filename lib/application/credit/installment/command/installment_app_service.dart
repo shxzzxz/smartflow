@@ -287,7 +287,7 @@ class CreateContractResult {
   final String? disbursementTransactionId;
 }
 
-abstract interface class InstallmentService {
+abstract interface class InstallmentAppService {
   Future<CreateContractResult> createDisbursementContract(
     CreateDisbursementContractCommand command,
   );
@@ -327,8 +327,8 @@ abstract interface class InstallmentService {
   Future<void> deleteContract(DeleteContractCommand command);
 }
 
-class InstallmentServiceImpl implements InstallmentService {
-  InstallmentServiceImpl({
+class InstallmentAppServiceImpl implements InstallmentAppService {
+  InstallmentAppServiceImpl({
     required InstallmentRepository repository,
     required CreditAccountRepository creditAccounts,
     required RepaymentRepository repayments,
@@ -866,7 +866,7 @@ class InstallmentServiceImpl implements InstallmentService {
   Future<void> revertRepayment(RevertRepaymentCommand command) async {
     throw BusinessException(
       CreditErrorCode.repaymentNotEditable,
-      message: 'Credit repayments are reverted by RepaymentService.',
+      message: 'Credit repayments are reverted by RepaymentAppService.',
     );
   }
 
