@@ -38,7 +38,7 @@ class InstallmentAmountAllocation {
 /// - [allocate] 根据 (锚点日, dates 列表, 待还本金, method, rate, accrual, fee)
 ///   计算每期金额。
 ///
-/// 拆开的原因：提前还本后的重算只重新分配 pending 期次的金额，
+/// 拆开的原因：提前还款后的重算只重新分配 pending 期次的金额，
 /// 日期保持不变，此时只需要调用 [allocate]，不应该重新生成日期。
 class InstallmentScheduleGenerator {
   const InstallmentScheduleGenerator();

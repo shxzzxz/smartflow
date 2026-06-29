@@ -70,42 +70,34 @@ void main() {
     );
   });
 
-  test(
-    'installment extra principal repayment submits through repayment service',
-    () async {
-      final repayment = _FakeRepaymentService();
-      final container = _container(repaymentService: repayment);
-      final provider = installmentRepaymentFormViewModelProvider(
-        const InstallmentRepaymentFormArgs(
-          contractId: 'contract',
-          mode: InstallmentRepaymentMode.extraPrincipal,
-        ),
-      );
-      final subscription = container.listen(provider, (_, _) {});
-      addTearDown(subscription.close);
+  test('installment prepayment submits through repayment service', () async {
+    final repayment = _FakeRepaymentService();
+    final container = _container(repaymentService: repayment);
+    final provider = installmentRepaymentFormViewModelProvider(
+      const InstallmentRepaymentFormArgs(
+        contractId: 'contract',
+        mode: InstallmentRepaymentMode.prepayment,
+      ),
+    );
+    final subscription = container.listen(provider, (_, _) {});
+    addTearDown(subscription.close);
 
-      final state = await container.read(provider.future);
-      final notifier = container.read(provider.notifier)
-        ..setPrincipalText('10');
-      final outcome = await notifier.submit();
+    final state = await container.read(provider.future);
+    final notifier = container.read(provider.notifier)..setPrincipalText('10');
+    final outcome = await notifier.submit();
 
-      expect(state.principalText, '');
-      expect(outcome, isA<SubmitSuccess>());
-      expect(repayment.extraPrincipalCommands.single.contractId, 'contract');
-      expect(
-        repayment.extraPrincipalCommands.single.principal,
-        const Money(minorUnits: 1000),
-      );
-      expect(
-        repayment
-            .extraPrincipalCommands
-            .single
-            .transactionInfo!
-            .paidFromAccountId,
-        'cash',
-      );
-    },
-  );
+    expect(state.principalText, '100.00');
+    expect(outcome, isA<SubmitSuccess>());
+    expect(repayment.prepaymentCommands.single.contractId, 'contract');
+    expect(
+      repayment.prepaymentCommands.single.principal,
+      const Money(minorUnits: 1000),
+    );
+    expect(
+      repayment.prepaymentCommands.single.transactionInfo!.paidFromAccountId,
+      'cash',
+    );
+  });
 
   test('refund form submits refund command', () async {
     final posting = _FakePostingService();
@@ -241,14 +233,14 @@ class _FakeInstallmentService implements credit.InstallmentService {
 }
 
 class _FakeRepaymentService implements credit.RepaymentService {
-  final extraPrincipalCommands =
-      <credit.CreateExtraPrincipalRepaymentCommand>[];
+  final prepaymentCommands =
+      <credit.CreateContractPrepaymentRepaymentCommand>[];
 
   @override
-  Future<credit.CreateRepaymentResult> createExtraPrincipalRepayment(
-    credit.CreateExtraPrincipalRepaymentCommand command,
+  Future<credit.CreateRepaymentResult> createContractPrepaymentRepayment(
+    credit.CreateContractPrepaymentRepaymentCommand command,
   ) async {
-    extraPrincipalCommands.add(command);
+    prepaymentCommands.add(command);
     return const credit.CreateRepaymentResult(
       repaymentId: 'repayment',
       transactionId: 'transaction',

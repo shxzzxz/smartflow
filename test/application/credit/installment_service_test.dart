@@ -266,7 +266,7 @@ void main() {
         fixture.repayments.putRepayment(
           Repayment(
             id: 'repayment-1',
-            repaymentType: RepaymentType.extraPrincipal,
+            repaymentType: RepaymentType.prepayment,
             targetType: RepaymentTargetType.contract,
             targetId: 'with-repayment',
             rootTransactionId: 'tx-repay',

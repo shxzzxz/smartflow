@@ -25,6 +25,10 @@ abstract interface class TransactionQueryService {
   /// 写路径(correct / delete / updateBasics)取 original 快照用,无需 stream 订阅。
   Future<TransactionDetail?> findTransactionDetail(String transactionId);
 
+  Future<TransactionDetail?> findCurrentParentTransactionDetailByRoot(
+    String rootTransactionId,
+  );
+
   /// 批量取一组交易的会计事实(transaction + entries + details),不含子树 / 历史。
   /// 用于批量取消等只关心账本事实的场景。
   Future<List<TransactionDetail>> findTransactionFacts(
@@ -248,6 +252,16 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   @override
   Future<TransactionDetail?> findTransactionDetail(String transactionId) =>
       _loadDetail(transactionId);
+
+  @override
+  Future<TransactionDetail?> findCurrentParentTransactionDetailByRoot(
+    String rootTransactionId,
+  ) async {
+    final transaction = await _txRead.findCurrentParentByRoot(
+      rootTransactionId,
+    );
+    return transaction == null ? null : _loadDetail(transaction.id);
+  }
 
   @override
   Future<List<TransactionDetail>> findTransactionFacts(

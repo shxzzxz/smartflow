@@ -123,23 +123,9 @@ class InstallmentRepaymentFormViewModel
       switch (args.mode) {
         case InstallmentRepaymentMode.scheduled:
           return _invalidCommand('期次还款请从账单还款处理');
-        case InstallmentRepaymentMode.extraPrincipal:
-          await service.createExtraPrincipalRepayment(
-            CreateExtraPrincipalRepaymentCommand(
-              contractId: current.contract!.id,
-              principal: principal,
-              interest: _parseOptionalMoney(current.interestText),
-              fee: _parseOptionalMoney(current.feeText),
-              transactionInfo: RepaymentTransactionInfo(
-                paidFromAccountId: paidFromAccountId,
-                occurredAt: current.occurredAt,
-              ),
-              note: trimToNull(current.noteText),
-            ),
-          );
-        case InstallmentRepaymentMode.earlySettlement:
-          await service.createEarlySettlementRepayment(
-            CreateEarlySettlementRepaymentCommand(
+        case InstallmentRepaymentMode.prepayment:
+          await service.createContractPrepaymentRepayment(
+            CreateContractPrepaymentRepaymentCommand(
               contractId: current.contract!.id,
               principal: principal,
               interest: _parseOptionalMoney(current.interestText),
@@ -359,7 +345,7 @@ String _defaultPrincipalText(
   InstallmentRepaymentMode mode,
 ) {
   if (schedule != null) return schedule.expectedPrincipal.format();
-  if (mode != InstallmentRepaymentMode.earlySettlement) return '';
+  if (mode != InstallmentRepaymentMode.prepayment) return '';
   final paidPrincipalSum = schedules
       .where((s) => s.status == InstallmentScheduleStatus.paid)
       .fold<int>(0, (sum, s) => sum + s.expectedPrincipal.minorUnits);

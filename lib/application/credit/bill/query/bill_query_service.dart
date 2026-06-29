@@ -64,7 +64,7 @@ class BillQueryServiceImpl implements BillQueryService {
     final result = <BillSummaryReadModel>[];
     for (final bill in bills) {
       result.add(
-        _summaryForBill(
+        await _summaryForBill(
           bill: bill,
           now: now,
           hasSourceDiff: await _hasSourceDiff(bill),
@@ -89,7 +89,7 @@ class BillQueryServiceImpl implements BillQueryService {
     final contracts = await _contractsById(bill.accountId);
     final repayments = await _repaymentsForBill(bill);
     return BillDetailReadModel(
-      summary: _summaryForBill(
+      summary: await _summaryForBill(
         bill: bill,
         now: now,
         hasSourceDiff: await _hasSourceDiff(bill),
@@ -134,11 +134,11 @@ class BillQueryServiceImpl implements BillQueryService {
     return _generationService.hasSourceProjectionDiff(bill.id);
   }
 
-  BillSummaryReadModel _summaryForBill({
+  Future<BillSummaryReadModel> _summaryForBill({
     required Bill bill,
     required DateTime now,
     required bool hasSourceDiff,
-  }) {
+  }) async {
     final dueDate = bill.window?.repaymentDate ?? _earliestRepaymentDate(bill);
     final overdueCount =
         bill.items.where((item) {
@@ -154,7 +154,7 @@ class BillQueryServiceImpl implements BillQueryService {
       expectedPrincipal: bill.expectedPrincipal,
       expectedInterest: bill.expectedInterest,
       expectedFee: bill.expectedFee,
-      pendingPrincipal: bill.pendingPrincipal,
+      pendingPrincipal: await _pendingPrincipalForBill(bill),
       itemCount: bill.items.length,
       overdueItemCount: overdueCount,
       hasSourceDiff: hasSourceDiff,
@@ -226,9 +226,8 @@ class BillQueryServiceImpl implements BillQueryService {
     final detail =
         rootTransactionId == null
             ? null
-            : await _transactionQueryService.findTransactionDetail(
-              rootTransactionId,
-            );
+            : await _transactionQueryService
+                .findCurrentParentTransactionDetailByRoot(rootTransactionId);
     final transaction = detail?.transaction;
     final usesTransaction =
         transaction != null &&
@@ -260,6 +259,21 @@ class BillQueryServiceImpl implements BillQueryService {
       }
     }
     return null;
+  }
+
+  Future<Money> _pendingPrincipalForBill(Bill bill) async {
+    var total = 0;
+    for (final item in bill.items) {
+      if (item.status != BillItemStatus.pending) continue;
+      final allocated = await _repayments.listItemsByBillItem(item.id);
+      final allocatedPrincipal = allocated.fold<int>(
+        0,
+        (sum, allocation) => sum + allocation.allocated.principal.minorUnits,
+      );
+      final remaining = item.expectedPrincipal.minorUnits - allocatedPrincipal;
+      if (remaining > 0) total += remaining;
+    }
+    return Money(minorUnits: total);
   }
 
   DateTime? _earliestRepaymentDate(Bill bill) {

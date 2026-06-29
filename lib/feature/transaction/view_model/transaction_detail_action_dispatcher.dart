@@ -182,11 +182,9 @@ final class _InstallmentActionDispatcher
           DeleteContractCommand(contractId: contractId),
         ),
         InstallmentOwnerRole.scheduledRepayment ||
-        InstallmentOwnerRole.extraPrincipal ||
-        InstallmentOwnerRole.earlySettlement => installmentService
-            .revertRepayment(
-              RevertRepaymentCommand(transactionId: transaction.id),
-            ),
+        InstallmentOwnerRole.prepayment => installmentService.revertRepayment(
+          RevertRepaymentCommand(transactionId: transaction.id),
+        ),
       };
     });
   }

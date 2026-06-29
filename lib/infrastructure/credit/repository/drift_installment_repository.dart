@@ -336,5 +336,4 @@ class DriftInstallmentRepository implements InstallmentRepository {
       createdAt: row.createdAt,
     );
   }
-
 }

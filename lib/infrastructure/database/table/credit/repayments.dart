@@ -21,14 +21,13 @@ class Repayments extends Table {
     'CHECK (repayment_type IN ('
         '\'BILL\', '
         '\'INSTALLMENT\', '
-        '\'EXTRA_PRINCIPAL\', '
-        '\'EARLY_SETTLEMENT\', '
+        '\'PREPAYMENT\', '
         '\'UNATTRIBUTED\'))',
     'CHECK (target_type IN (\'BILL\', \'CONTRACT\', \'ACCOUNT\'))',
     'CHECK ('
         '(repayment_type IN (\'BILL\', \'INSTALLMENT\') '
         'AND target_type = \'BILL\') '
-        'OR (repayment_type IN (\'EXTRA_PRINCIPAL\', \'EARLY_SETTLEMENT\') '
+        'OR (repayment_type = \'PREPAYMENT\' '
         'AND target_type = \'CONTRACT\') '
         'OR (repayment_type = \'UNATTRIBUTED\' '
         'AND target_type = \'ACCOUNT\')'

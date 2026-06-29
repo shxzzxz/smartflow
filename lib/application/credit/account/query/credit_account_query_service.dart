@@ -283,7 +283,7 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
           expectedPrincipal: bill.expectedPrincipal,
           expectedInterest: bill.expectedInterest,
           expectedFee: bill.expectedFee,
-          pendingPrincipal: bill.pendingPrincipal,
+          pendingPrincipal: await _pendingPrincipalForBill(bill),
           itemCount: bill.items.length,
         ),
       );
@@ -314,17 +314,28 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
                   schedule.status == InstallmentScheduleStatus.pending,
             )
             .toList();
-    final pendingContractPrincipal = pendingSchedules.fold<int>(
-      0,
-      (sum, schedule) => sum + schedule.expectedPrincipal.minorUnits,
-    );
-    final billedConsumptionPrincipal = billedPendingItems
-        .where((item) => item.itemType == BillItemType.consumption)
-        .fold<int>(0, (sum, item) => sum + item.expectedPrincipal.minorUnits);
-    final billDebt = billedPendingItems.fold<int>(
-      0,
-      (sum, item) => sum + item.expectedPrincipal.minorUnits,
-    );
+    final billedRemainingPrincipalByScheduleId = <String, int>{};
+    var billedConsumptionPrincipal = 0;
+    var billDebt = 0;
+    for (final item in billedPendingItems) {
+      final remaining = await _remainingPrincipalForBillItem(item);
+      billDebt += remaining;
+      if (item.itemType == BillItemType.consumption) {
+        billedConsumptionPrincipal += remaining;
+      }
+      final scheduleId = item.scheduleId;
+      if (scheduleId != null) {
+        billedRemainingPrincipalByScheduleId[scheduleId] = remaining;
+      }
+    }
+    final pendingContractPrincipal = pendingSchedules.fold<int>(0, (
+      sum,
+      schedule,
+    ) {
+      return sum +
+          (billedRemainingPrincipalByScheduleId[schedule.id] ??
+              schedule.expectedPrincipal.minorUnits);
+    });
     final futureContractDebt = pendingSchedules
         .where((schedule) => !billedScheduleIds.contains(schedule.id))
         .fold<int>(
@@ -402,9 +413,8 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
   }) async {
     final rootTransactionId = repayment.rootTransactionId;
     if (rootTransactionId == null) return null;
-    final detail = await _transactionQueryService.findTransactionDetail(
-      rootTransactionId,
-    );
+    final detail = await _transactionQueryService
+        .findCurrentParentTransactionDetailByRoot(rootTransactionId);
     final transaction = detail?.transaction;
     if (transaction == null ||
         transaction.businessState != BusinessState.current) {
@@ -428,9 +438,8 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
     final detail =
         rootTransactionId == null
             ? null
-            : await _transactionQueryService.findTransactionDetail(
-              rootTransactionId,
-            );
+            : await _transactionQueryService
+                .findCurrentParentTransactionDetailByRoot(rootTransactionId);
     final transaction = detail?.transaction;
     final usesTransaction =
         transaction != null &&
@@ -472,6 +481,25 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
       }
     }
     return null;
+  }
+
+  Future<Money> _pendingPrincipalForBill(Bill bill) async {
+    var total = 0;
+    for (final item in bill.items) {
+      total += await _remainingPrincipalForBillItem(item);
+    }
+    return Money(minorUnits: total);
+  }
+
+  Future<int> _remainingPrincipalForBillItem(BillItem item) async {
+    if (item.status != BillItemStatus.pending) return 0;
+    final allocated = await _repayments.listItemsByBillItem(item.id);
+    final allocatedPrincipal = allocated.fold<int>(
+      0,
+      (sum, allocation) => sum + allocation.allocated.principal.minorUnits,
+    );
+    final remaining = item.expectedPrincipal.minorUnits - allocatedPrincipal;
+    return remaining < 0 ? 0 : remaining;
   }
 
   DateTime? _earliestRepaymentDate(Bill bill) {

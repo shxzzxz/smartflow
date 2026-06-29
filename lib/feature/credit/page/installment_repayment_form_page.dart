@@ -129,13 +129,12 @@ class _InstallmentRepaymentFormPageState
                 hintText: '请输入还款本金',
                 validator: validatePositiveMoneyText,
               ),
-              if (widget.mode != InstallmentRepaymentMode.extraPrincipal)
-                MoneyPlainFormRow(
-                  label: '利息',
-                  controller: _interestController,
-                  hintText: '请输入利息（可选）',
-                  validator: validateOptionalNonNegativeMoneyText,
-                ),
+              MoneyPlainFormRow(
+                label: '利息',
+                controller: _interestController,
+                hintText: '请输入利息（可选）',
+                validator: validateOptionalNonNegativeMoneyText,
+              ),
               MoneyPlainFormRow(
                 label: '手续费',
                 controller: _feeController,
@@ -176,11 +175,11 @@ class _InstallmentRepaymentFormPageState
             ],
           ),
           const SizedBox(height: AppSpacing.space24),
-          if (widget.mode == InstallmentRepaymentMode.extraPrincipal)
+          if (widget.mode == InstallmentRepaymentMode.prepayment)
             const Padding(
               padding: EdgeInsets.only(bottom: AppSpacing.space12),
               child: Text(
-                '提交后，所有待还期次的金额将按剩余本金重新计算。',
+                '提交后，发生日之后的待还期次金额将按剩余本金重新计算。',
                 style: TextStyle(fontSize: 12),
               ),
             ),
@@ -275,16 +274,14 @@ class _InstallmentRepaymentFormPageState
 String _titleForMode(InstallmentRepaymentMode mode) {
   return switch (mode) {
     InstallmentRepaymentMode.scheduled => '期次还款',
-    InstallmentRepaymentMode.extraPrincipal => '提前还本',
-    InstallmentRepaymentMode.earlySettlement => '提前结清',
+    InstallmentRepaymentMode.prepayment => '提前还款',
   };
 }
 
 String _submitLabel(InstallmentRepaymentMode mode) {
   return switch (mode) {
     InstallmentRepaymentMode.scheduled => '保存',
-    InstallmentRepaymentMode.extraPrincipal => '提交并重算',
-    InstallmentRepaymentMode.earlySettlement => '结清',
+    InstallmentRepaymentMode.prepayment => '提交并重算',
   };
 }
 

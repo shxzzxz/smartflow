@@ -145,7 +145,7 @@ void main() {
         await fixture.repayments.saveRepayment(
           Repayment(
             id: 'no-transaction-extra',
-            repaymentType: credit.RepaymentType.extraPrincipal,
+            repaymentType: credit.RepaymentType.prepayment,
             targetType: credit.RepaymentTargetType.contract,
             targetId: schedules.contractId,
             items: [
@@ -365,7 +365,7 @@ class _Fixture {
         items: const [],
       ),
     );
-    await bills.upsertBillItems(id, [
+    await bills.replaceBillItems(id, [
       for (final item in items)
         BillItem(
           id: item.id,
@@ -491,6 +491,13 @@ class _FakeTransactionQueryService implements ledger.TransactionQueryService {
     String transactionId,
   ) async {
     return details[transactionId];
+  }
+
+  @override
+  Future<ledger.TransactionDetail?> findCurrentParentTransactionDetailByRoot(
+    String rootTransactionId,
+  ) async {
+    return details[rootTransactionId];
   }
 
   @override

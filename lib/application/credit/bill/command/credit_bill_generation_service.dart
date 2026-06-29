@@ -117,17 +117,17 @@ class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
         );
       }
       final sourceItems = await _buildSourceItemsForBill(bill);
-      await _moveScheduleItemsNoLongerProjected(
-        account: account,
-        bill: bill,
-        sourceItems: sourceItems,
-      );
-      await _bills.upsertBillItems(bill.id, sourceItems);
+      await _bills.replaceBillItems(bill.id, sourceItems);
       await _bills.updateBill(
         bill.copyWith(
           status: _projectBillStatus(bill.status, sourceItems),
           items: sourceItems,
         ),
+      );
+      await _moveScheduleItemsNoLongerProjected(
+        account: account,
+        bill: bill,
+        sourceItems: sourceItems,
       );
     });
   }
@@ -200,7 +200,7 @@ class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
 
     final items = await _buildCreditItems(account, bill, window);
     final status = _projectBillStatus(baseStatus, items);
-    await _bills.upsertBillItems(bill.id, items);
+    await _bills.replaceBillItems(bill.id, items);
     await _bills.updateBill(bill.copyWith(window: window, status: status));
   }
 
@@ -382,7 +382,7 @@ class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
           ),
       ];
       final status = _projectBillStatus(BillStatus.billed, items);
-      await _bills.upsertBillItems(baseBill.id, items);
+      await _bills.replaceBillItems(baseBill.id, items);
       await _bills.updateBill(baseBill.copyWith(status: status));
     }
   }
@@ -446,7 +446,10 @@ class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
         repaymentDate: _repaymentDateForSchedule(account, targetBill, schedule),
         existing: item,
       );
-      await _bills.upsertBillItems(targetBill.id, [movedItem]);
+      await _bills.replaceBillItems(
+        targetBill.id,
+        _replaceItemByProjectionKey(targetBill.items, movedItem),
+      );
       final refreshedTarget = await _bills.findBill(targetBill.id);
       if (refreshedTarget != null) {
         await _bills.updateBill(
@@ -665,6 +668,25 @@ class CreditBillGenerationServiceImpl implements CreditBillGenerationService {
     return item.scheduleId == null
         ? 'consumption:${item.billId}'
         : 'schedule:${item.scheduleId}';
+  }
+
+  List<BillItem> _replaceItemByProjectionKey(
+    List<BillItem> items,
+    BillItem replacement,
+  ) {
+    final replacementKey = _itemKey(replacement);
+    var replaced = false;
+    final next = <BillItem>[];
+    for (final item in items) {
+      if (_itemKey(item) == replacementKey) {
+        next.add(replacement);
+        replaced = true;
+      } else {
+        next.add(item);
+      }
+    }
+    if (!replaced) next.add(replacement);
+    return next;
   }
 
   Future<BillWindow> _creditWindowFor({

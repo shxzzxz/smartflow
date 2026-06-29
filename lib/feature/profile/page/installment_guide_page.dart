@@ -108,7 +108,7 @@ class InstallmentGuidePage extends StatelessWidget {
             ],
             footnote:
                 '看 IRR / EAR 比看合同里的"名义月利率"更接近真实成本——'
-                '它会把手续费、不规则天数、提前还本一并算进去。',
+                '它会把手续费、不规则天数、提前还款一并算进去。',
           ),
         ],
       ),

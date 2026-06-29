@@ -108,7 +108,7 @@ class _Fixture {
         items: const [],
       ),
     );
-    await bills.upsertBillItems('bill-1', [
+    await bills.replaceBillItems('bill-1', [
       BillItem(
         id: 'bill-item-1',
         billId: 'bill-1',
@@ -219,6 +219,13 @@ class _FakeTransactionQueryService implements ledger.TransactionQueryService {
     String transactionId,
   ) {
     return Future.value(details[transactionId]);
+  }
+
+  @override
+  Future<ledger.TransactionDetail?> findCurrentParentTransactionDetailByRoot(
+    String rootTransactionId,
+  ) {
+    return Future.value(details[rootTransactionId]);
   }
 
   @override

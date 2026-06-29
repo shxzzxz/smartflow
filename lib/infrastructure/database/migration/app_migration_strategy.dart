@@ -93,6 +93,9 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
           'DROP TABLE IF EXISTS installment_repayments',
         );
       }
+      if (from < 17) {
+        await _migrateCreditRepaymentsToPrepayment(database);
+      }
     },
   );
 }
@@ -158,6 +161,96 @@ Future<void> _createRepaymentIndexes(AppDatabase database) async {
     'ON repayment_items (bill_item_id) '
     'WHERE bill_item_id IS NOT NULL',
   );
+}
+
+Future<void> _migrateCreditRepaymentsToPrepayment(AppDatabase database) async {
+  if (await _tableExists(database, 'repayments')) {
+    await database.customStatement(
+      "UPDATE repayments SET repayment_type = 'PREPAYMENT' "
+      "WHERE repayment_type IN ('EXTRA_PRINCIPAL', 'EARLY_SETTLEMENT')",
+    );
+    await database.customStatement(
+      'ALTER TABLE repayments RENAME TO repayments_v16',
+    );
+    await database.customStatement('''
+      CREATE TABLE repayments (
+        id TEXT NOT NULL PRIMARY KEY,
+        repayment_type TEXT NOT NULL,
+        target_type TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        root_transaction_id TEXT NULL,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+        CHECK (repayment_type IN (
+          'BILL',
+          'INSTALLMENT',
+          'PREPAYMENT',
+          'UNATTRIBUTED'
+        )),
+        CHECK (target_type IN ('BILL', 'CONTRACT', 'ACCOUNT')),
+        CHECK (
+          (repayment_type IN ('BILL', 'INSTALLMENT') AND target_type = 'BILL')
+          OR (repayment_type = 'PREPAYMENT' AND target_type = 'CONTRACT')
+          OR (repayment_type = 'UNATTRIBUTED' AND target_type = 'ACCOUNT')
+        ),
+        CHECK (repayment_type <> 'INSTALLMENT' OR root_transaction_id IS NULL)
+      )
+    ''');
+    await database.customStatement('''
+      INSERT INTO repayments (
+        id,
+        repayment_type,
+        target_type,
+        target_id,
+        root_transaction_id,
+        created_at,
+        updated_at
+      )
+      SELECT
+        id,
+        repayment_type,
+        target_type,
+        target_id,
+        root_transaction_id,
+        created_at,
+        updated_at
+      FROM repayments_v16
+    ''');
+    await database.customStatement('DROP TABLE repayments_v16');
+    await database.customStatement(
+      'CREATE INDEX repayments_target_idx '
+      'ON repayments (target_type, target_id, created_at)',
+    );
+    await database.customStatement(
+      'CREATE UNIQUE INDEX repayments_root_transaction_unique '
+      'ON repayments (root_transaction_id) '
+      'WHERE root_transaction_id IS NOT NULL',
+    );
+  }
+  if (await _tableExists(database, 'transactions')) {
+    await database.customStatement(
+      "UPDATE transactions SET owner_role = 'PREPAYMENT' "
+      "WHERE owner_type = 'credit_repayment' "
+      "AND owner_role IN ('EXTRA_PRINCIPAL', 'EARLY_SETTLEMENT')",
+    );
+  }
+  if (await _tableExists(database, 'installment_contracts') &&
+      await _tableExists(database, 'installment_schedules')) {
+    await database.customStatement('''
+      UPDATE installment_contracts
+      SET status = CASE
+        WHEN EXISTS (
+          SELECT 1
+          FROM installment_schedules
+          WHERE installment_schedules.contract_id = installment_contracts.id
+            AND installment_schedules.status = 'pending'
+        )
+        THEN 'active'
+        ELSE 'settled'
+      END
+      WHERE status = 'closed'
+    ''');
+  }
 }
 
 Future<void> _migrateCreditLiabilityAccounts(AppDatabase database) async {

@@ -33,8 +33,8 @@ class RepaymentCashflow {
 }
 
 /// 计算视图：
-/// - [designed] 合同设计 IRR：paid/pending 期次都用 schedule.expected；extra/settle 用实际
-/// - [actual] 实际履约 IRR：paid 用实际交易金额；pending 用 schedule.expected；extra/settle 用实际
+/// - [designed] 合同设计 IRR：paid/pending 期次都用 schedule.expected；prepayment 用实际
+/// - [actual] 实际履约 IRR：paid 用实际交易金额；pending 用 schedule.expected；prepayment 用实际
 enum ContractMetricsView { designed, actual }
 
 class ContractMetrics {
@@ -85,7 +85,7 @@ class InstallmentMetricsCalculator {
       view: view,
     );
 
-    // 总还款额 / 利息 / 手续费：合计已 paid 期次 + pending 期次 + extra/settle
+    // 总还款额 / 利息 / 手续费：合计已 paid 期次 + pending 期次 + prepayment
     var totalRepayMinor = 0;
     var totalInterestMinor = 0;
     var totalFeeMinor = 0;
@@ -165,8 +165,7 @@ class InstallmentMetricsCalculator {
     // 索引：scheduleId -> 实际 repayment（scheduled）
     final actualByScheduleId = <String, RepaymentCashflow>{
       for (final r in repayments)
-        if (r.repaymentType == RepaymentType.bill &&
-            r.scheduleId != null)
+        if (r.repaymentType == RepaymentType.bill && r.scheduleId != null)
           r.scheduleId!: r,
     };
 
@@ -198,10 +197,9 @@ class InstallmentMetricsCalculator {
       );
     }
 
-    // 提前还本 / 提前结清：始终用实际金额（保证本金合计正确）
+    // 提前还款：始终用实际金额（保证本金合计正确）
     for (final r in repayments) {
-      if (r.repaymentType == RepaymentType.extraPrincipal ||
-          r.repaymentType == RepaymentType.earlySettlement) {
+      if (r.repaymentType == RepaymentType.prepayment) {
         out.add(
           _Breakdown(
             date: r.occurredAt,

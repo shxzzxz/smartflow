@@ -1047,7 +1047,6 @@ class _ContractRow extends StatelessWidget {
     final (statusLabel, statusColor) = switch (contract.status) {
       InstallmentContractStatus.active => ('进行中', colors.primary),
       InstallmentContractStatus.settled => ('已结清', colors.tertiary),
-      InstallmentContractStatus.closed => ('已关闭', colors.outline),
     };
     final meta =
         '${_formatContractDate(contract.borrowingDate)} · '

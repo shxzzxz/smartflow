@@ -123,55 +123,6 @@ class CreateScheduledRepaymentCommand {
   final String? counterpartyName;
 }
 
-class CreatePrincipalPrepaymentCommand {
-  const CreatePrincipalPrepaymentCommand({
-    required this.contractId,
-    required this.principal,
-    required this.paidFromAccountId,
-    required this.occurredAt,
-    this.interest,
-    this.fee,
-    this.note,
-    this.counterpartyName,
-  });
-
-  final String contractId;
-  final Money principal;
-
-  /// 提前还本时一并支付的利息（含截至本日的应计利息）。
-  final Money? interest;
-
-  /// 提前还本手续费。
-  final Money? fee;
-
-  final String paidFromAccountId;
-  final DateTime occurredAt;
-  final String? note;
-  final String? counterpartyName;
-}
-
-class CreateEarlySettlementCommand {
-  const CreateEarlySettlementCommand({
-    required this.contractId,
-    required this.principal,
-    required this.paidFromAccountId,
-    required this.occurredAt,
-    this.fee,
-    this.interest,
-    this.note,
-    this.counterpartyName,
-  });
-
-  final String contractId;
-  final Money principal;
-  final Money? interest;
-  final Money? fee;
-  final String paidFromAccountId;
-  final DateTime occurredAt;
-  final String? note;
-  final String? counterpartyName;
-}
-
 class RevertRepaymentCommand {
   const RevertRepaymentCommand({required this.transactionId});
 
@@ -302,7 +253,7 @@ class UpdateContractCommand {
   final List<SchedulePendingPatch> schedulePatches;
 }
 
-/// 受分期管理的还款交易（scheduled / extraPrincipal / earlySettlement）的编辑命令。
+/// 受分期管理的还款交易（scheduled / prepayment）的编辑命令。
 ///
 /// 用于把通用 UI 对还款交易的"改账户 / 改时间 / 改备注"统一收口到分期 service。
 /// service 内部负责校验该 transaction 确实是分期还款，再委托账务应用服务
@@ -361,21 +312,13 @@ abstract interface class InstallmentService {
 
   Future<void> restoreSchedule(RestoreInstallmentScheduleCommand command);
 
-  /// 编辑受分期管理的还款交易（scheduled / extraPrincipal / earlySettlement）。
+  /// 编辑受分期管理的还款交易（scheduled / prepayment）。
   /// 通用 UI 在还款交易上的 universal 编辑入口；service 内部校验归属、
   /// 再委托账务应用服务完成 transaction 表的写入。
   Future<void> editRepayment(EditRepaymentCommand command);
 
   Future<PostedTransactionResult> createScheduledRepayment(
     CreateScheduledRepaymentCommand command,
-  );
-
-  Future<PostedTransactionResult> createPrincipalPrepayment(
-    CreatePrincipalPrepaymentCommand command,
-  );
-
-  Future<PostedTransactionResult> createEarlySettlement(
-    CreateEarlySettlementCommand command,
   );
 
   Future<void> revertRepayment(RevertRepaymentCommand command);
@@ -813,11 +756,11 @@ class InstallmentServiceImpl implements InstallmentService {
       0,
       (acc, s) => acc + s.expectedPrincipal.minorUnits,
     );
-    final extraPrincipalMinor = await _extraPrincipalSumMinor(contractId);
+    final prepaymentPrincipalMinor = await _prepaymentSumMinor(contractId);
     final remainingMinor =
         contract.principal.minorUnits -
         paidPrincipalMinor -
-        extraPrincipalMinor;
+        prepaymentPrincipalMinor;
     if (remainingMinor < 0) {
       throw BusinessException(
         CreditErrorCode.contractInvalidCommand,
@@ -920,26 +863,6 @@ class InstallmentServiceImpl implements InstallmentService {
   }
 
   @override
-  Future<PostedTransactionResult> createPrincipalPrepayment(
-    CreatePrincipalPrepaymentCommand command,
-  ) async {
-    throw BusinessException(
-      CreditErrorCode.repaymentNotEditable,
-      message: 'Contract-side repayments are handled by RepaymentService.',
-    );
-  }
-
-  @override
-  Future<PostedTransactionResult> createEarlySettlement(
-    CreateEarlySettlementCommand command,
-  ) async {
-    throw BusinessException(
-      CreditErrorCode.repaymentNotEditable,
-      message: 'Contract-side repayments are handled by RepaymentService.',
-    );
-  }
-
-  @override
   Future<void> revertRepayment(RevertRepaymentCommand command) async {
     throw BusinessException(
       CreditErrorCode.repaymentNotEditable,
@@ -1007,13 +930,13 @@ class InstallmentServiceImpl implements InstallmentService {
     }
   }
 
-  Future<int> _extraPrincipalSumMinor(String contractId) async {
+  Future<int> _prepaymentSumMinor(String contractId) async {
     final repayments = await _repayments.listByTarget(
       RepaymentTargetType.contract,
       contractId,
     );
     return repayments
-        .where((r) => r.repaymentType == RepaymentType.extraPrincipal)
+        .where((r) => r.repaymentType == RepaymentType.prepayment)
         .fold<int>(
           0,
           (sum, repayment) =>

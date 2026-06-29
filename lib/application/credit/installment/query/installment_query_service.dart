@@ -17,9 +17,8 @@ abstract interface class InstallmentQueryService {
 }
 
 class InstallmentQueryServiceImpl implements InstallmentQueryService {
-  const InstallmentQueryServiceImpl({
-    required InstallmentRepository repository,
-  }) : _repository = repository;
+  const InstallmentQueryServiceImpl({required InstallmentRepository repository})
+    : _repository = repository;
 
   final InstallmentRepository _repository;
 
@@ -55,8 +54,7 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
           )
           .fold<int>(
             0,
-            (total, schedule) =>
-                total + schedule.expectedPrincipal.minorUnits,
+            (total, schedule) => total + schedule.expectedPrincipal.minorUnits,
           );
     }
     return sum;

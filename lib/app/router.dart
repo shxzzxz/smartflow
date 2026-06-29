@@ -168,8 +168,7 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final contractId = state.pathParameters['contractId']!;
         final mode = switch (state.uri.queryParameters['mode']) {
-          'extra' => InstallmentRepaymentMode.extraPrincipal,
-          'settle' => InstallmentRepaymentMode.earlySettlement,
+          'prepay' || 'prepayment' => InstallmentRepaymentMode.prepayment,
           _ => InstallmentRepaymentMode.scheduled,
         };
         final scheduleId = state.uri.queryParameters['scheduleId'];

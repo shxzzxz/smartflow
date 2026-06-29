@@ -195,7 +195,7 @@ RepaymentCashflow _cashflow() {
   return RepaymentCashflow(
     id: 'repayment-1',
     transactionId: 'tx-repay',
-    repaymentType: RepaymentType.extraPrincipal,
+    repaymentType: RepaymentType.prepayment,
     scheduleId: 'schedule-1',
     occurredAt: DateTime(2026, 2, 1),
     principal: const Money(minorUnits: 4000),

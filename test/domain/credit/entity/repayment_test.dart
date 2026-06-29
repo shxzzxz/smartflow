@@ -89,7 +89,7 @@ void main() {
       expect(
         () => Repayment(
           id: 'repayment-1',
-          repaymentType: RepaymentType.extraPrincipal,
+          repaymentType: RepaymentType.prepayment,
           targetType: RepaymentTargetType.contract,
           targetId: 'contract-1',
           items: [

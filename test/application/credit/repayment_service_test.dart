@@ -342,7 +342,7 @@ void main() {
     );
 
     test(
-      'creates no-transaction extra principal repayment and recalculates pending schedules',
+      'creates no-transaction prepayment and recalculates pending schedules',
       () async {
         final fixture = _Fixture();
         addTearDown(fixture.close);
@@ -370,8 +370,8 @@ void main() {
           ],
         );
 
-        final result = await fixture.service.createExtraPrincipalRepayment(
-          credit.CreateExtraPrincipalRepaymentCommand(
+        final result = await fixture.service.createContractPrepaymentRepayment(
+          credit.CreateContractPrepaymentRepaymentCommand(
             contractId: contractId,
             principal: const Money(minorUnits: 20000),
           ),
@@ -381,7 +381,7 @@ void main() {
         final repayment = await fixture.repayments.findRepayment(
           result.repaymentId,
         );
-        expect(repayment!.repaymentType, credit.RepaymentType.extraPrincipal);
+        expect(repayment!.repaymentType, credit.RepaymentType.prepayment);
         expect(repayment.targetId, contractId);
         expect(repayment.items.single.billItemId, isNull);
         expect(
@@ -419,7 +419,7 @@ void main() {
     );
 
     test(
-      'creates no-transaction early settlement and skips pending rows',
+      'creates no-transaction prepayment without skipping pending rows',
       () async {
         final fixture = _Fixture();
         addTearDown(fixture.close);
@@ -441,8 +441,8 @@ void main() {
           ],
         );
 
-        final result = await fixture.service.createEarlySettlementRepayment(
-          credit.CreateEarlySettlementRepaymentCommand(
+        final result = await fixture.service.createContractPrepaymentRepayment(
+          credit.CreateContractPrepaymentRepaymentCommand(
             contractId: contractId,
             principal: const Money(minorUnits: 80000),
             fee: const Money(minorUnits: 500),
@@ -453,7 +453,7 @@ void main() {
         final repayment = await fixture.repayments.findRepayment(
           result.repaymentId,
         );
-        expect(repayment!.repaymentType, credit.RepaymentType.earlySettlement);
+        expect(repayment!.repaymentType, credit.RepaymentType.prepayment);
         expect(
           repayment.items.single.allocated.fee,
           const Money(minorUnits: 500),
@@ -463,13 +463,17 @@ void main() {
           contractId,
         );
         expect(settledSchedules.map((schedule) => schedule.status).toSet(), {
-          credit.InstallmentScheduleStatus.skipped,
+          credit.InstallmentScheduleStatus.pending,
         });
+        expect(settledSchedules.map((schedule) => schedule.expectedPrincipal), [
+          const Money(minorUnits: 0),
+          const Money(minorUnits: 0),
+        ]);
         final contract = await fixture.installments.findContract(contractId);
-        expect(contract!.status, credit.InstallmentContractStatus.closed);
+        expect(contract!.status, credit.InstallmentContractStatus.active);
         final bill = await fixture.bills.findBill('bill-1');
-        expect(bill!.items.single.status, credit.BillItemStatus.skipped);
-        expect(bill.status, credit.BillStatus.settled);
+        expect(bill!.items.single.status, credit.BillItemStatus.pending);
+        expect(bill.status, credit.BillStatus.billed);
       },
     );
 
@@ -619,8 +623,8 @@ void main() {
                     credit.InstallmentRepaymentMethod.equalPrincipal,
               ),
             );
-        await fixture.service.createExtraPrincipalRepayment(
-          credit.CreateExtraPrincipalRepaymentCommand(
+        await fixture.service.createContractPrepaymentRepayment(
+          credit.CreateContractPrepaymentRepaymentCommand(
             contractId: result.contractId!,
             principal: const Money(minorUnits: 1000),
           ),
@@ -652,7 +656,7 @@ void main() {
     );
 
     test(
-      'deletes extra principal repayment and restores pending schedules',
+      'deletes prepayment and recalculates affected pending schedules',
       () async {
         final fixture = _Fixture();
         addTearDown(fixture.close);
@@ -667,20 +671,21 @@ void main() {
             status: credit.InstallmentScheduleStatus.paid,
           ),
         );
-        final result = await fixture.service.createExtraPrincipalRepayment(
-          credit.CreateExtraPrincipalRepaymentCommand(
+        final result = await fixture.service.createContractPrepaymentRepayment(
+          credit.CreateContractPrepaymentRepaymentCommand(
             contractId: contractId,
             principal: const Money(minorUnits: 80000),
           ),
         );
         expect(
-          (await fixture.installments.listSchedules(contractId))
-              .where(
-                (schedule) =>
-                    schedule.status == credit.InstallmentScheduleStatus.skipped,
-              )
-              .length,
-          2,
+          (await fixture.installments.listSchedules(
+            contractId,
+          )).map((schedule) => schedule.status),
+          [
+            credit.InstallmentScheduleStatus.paid,
+            credit.InstallmentScheduleStatus.pending,
+            credit.InstallmentScheduleStatus.pending,
+          ],
         );
 
         await fixture.service.deleteRepayment(
@@ -705,54 +710,51 @@ void main() {
       },
     );
 
-    test(
-      'deletes early settlement and restores contract schedules and bill items',
-      () async {
-        final fixture = _Fixture();
-        addTearDown(fixture.close);
-        final contractId = await fixture.seedContractWithSchedules(
-          principal: 80000,
-          schedulePrincipals: [40000, 40000],
-        );
-        final schedules = await fixture.installments.listSchedules(contractId);
-        await fixture.seedBillItems(
-          status: credit.BillStatus.billed,
-          items: [
-            _BillItemSeed(
-              id: 'bill-item-installment',
-              itemType: credit.BillItemType.installment,
-              expectedPrincipal: 40000,
-              contractId: contractId,
-              scheduleId: schedules[0].id,
-            ),
-          ],
-        );
-        final result = await fixture.service.createEarlySettlementRepayment(
-          credit.CreateEarlySettlementRepaymentCommand(
+    test('deletes prepayment without changing historical bill items', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      final contractId = await fixture.seedContractWithSchedules(
+        principal: 80000,
+        schedulePrincipals: [40000, 40000],
+      );
+      final schedules = await fixture.installments.listSchedules(contractId);
+      await fixture.seedBillItems(
+        status: credit.BillStatus.billed,
+        items: [
+          _BillItemSeed(
+            id: 'bill-item-installment',
+            itemType: credit.BillItemType.installment,
+            expectedPrincipal: 40000,
             contractId: contractId,
-            principal: const Money(minorUnits: 80000),
+            scheduleId: schedules[0].id,
           ),
-        );
+        ],
+      );
+      final result = await fixture.service.createContractPrepaymentRepayment(
+        credit.CreateContractPrepaymentRepaymentCommand(
+          contractId: contractId,
+          principal: const Money(minorUnits: 80000),
+        ),
+      );
 
-        await fixture.service.deleteRepayment(
-          credit.DeleteCreditRepaymentCommand(repaymentId: result.repaymentId),
-        );
+      await fixture.service.deleteRepayment(
+        credit.DeleteCreditRepaymentCommand(repaymentId: result.repaymentId),
+      );
 
-        expect(
-          await fixture.repayments.findRepayment(result.repaymentId),
-          isNull,
-        );
-        final contract = await fixture.installments.findContract(contractId);
-        expect(contract!.status, credit.InstallmentContractStatus.active);
-        final restored = await fixture.installments.listSchedules(contractId);
-        expect(restored.map((schedule) => schedule.status).toSet(), {
-          credit.InstallmentScheduleStatus.pending,
-        });
-        final bill = await fixture.bills.findBill('bill-1');
-        expect(bill!.items.single.status, credit.BillItemStatus.pending);
-        expect(bill.status, credit.BillStatus.billed);
-      },
-    );
+      expect(
+        await fixture.repayments.findRepayment(result.repaymentId),
+        isNull,
+      );
+      final contract = await fixture.installments.findContract(contractId);
+      expect(contract!.status, credit.InstallmentContractStatus.active);
+      final restored = await fixture.installments.listSchedules(contractId);
+      expect(restored.map((schedule) => schedule.status).toSet(), {
+        credit.InstallmentScheduleStatus.pending,
+      });
+      final bill = await fixture.bills.findBill('bill-1');
+      expect(bill!.items.single.status, credit.BillItemStatus.pending);
+      expect(bill.status, credit.BillStatus.billed);
+    });
 
     test(
       'deletes unattributed repayment without touching bill or contract',
@@ -826,7 +828,8 @@ void main() {
           ),
         );
         fixture.transactionQuery.details['tx-root'] = _transactionDetail(
-          transactionId: 'tx-root',
+          transactionId: 'tx-current',
+          rootTransactionId: 'tx-root',
           occurredAt: DateTime(2026, 6, 20),
         );
 
@@ -845,11 +848,11 @@ void main() {
         );
 
         final basicInfo = fixture.update.basicInfoCommands.single;
-        expect(basicInfo.transactionId, 'tx-root');
+        expect(basicInfo.transactionId, 'tx-current');
         expect(basicInfo.occurredAt, DateTime(2026, 6, 21));
         expect((basicInfo.note as PatchSet<String?>).value, 'updated');
         final correction = fixture.correction.repaymentCommands.single;
-        expect(correction.transactionId, 'tx-root');
+        expect(correction.transactionId, 'tx-current');
         expect(correction.liabilityAccountId, 'credit-1');
         expect(correction.paidFromAccountId, 'bank-1');
         expect(correction.principal, const Money(minorUnits: 1000));
@@ -857,6 +860,12 @@ void main() {
           (correction.interest as PatchSet<Money?>).value,
           const Money(minorUnits: 50),
         );
+
+        await fixture.service.deleteRepayment(
+          credit.DeleteCreditRepaymentCommand(repaymentId: result.repaymentId),
+        );
+
+        expect(fixture.correction.deletedTransactionIds.single, 'tx-current');
       },
     );
 
@@ -922,11 +931,12 @@ credit.BillRepaymentAllocation _allocation({
 ledger_query.TransactionDetail _transactionDetail({
   required String transactionId,
   required DateTime occurredAt,
+  String? rootTransactionId,
 }) {
   return ledger_query.TransactionDetail(
     transaction: ledger_query.Transaction(
       id: transactionId,
-      rootTransactionId: transactionId,
+      rootTransactionId: rootTransactionId ?? transactionId,
       businessPurpose: ledger_query.BusinessPurpose.debtRepayment,
       occurredAt: occurredAt,
       primaryAmount: const Money(minorUnits: 1050),
@@ -1012,7 +1022,7 @@ class _Fixture {
       items: const [],
     );
     await bills.saveBill(bill);
-    await bills.upsertBillItems('bill-1', [
+    await bills.replaceBillItems('bill-1', [
       for (final item in items)
         BillItem(
           id: item.id,
@@ -1185,6 +1195,12 @@ class _FakeTransactionQueryService
     String transactionId,
   ) async {
     return details[transactionId];
+  }
+
+  @override
+  Future<ledger_query.TransactionDetail?>
+  findCurrentParentTransactionDetailByRoot(String rootTransactionId) async {
+    return details[rootTransactionId];
   }
 
   @override

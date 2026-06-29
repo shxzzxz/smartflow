@@ -12,7 +12,7 @@ abstract interface class BillRepository {
 
   Future<void> updateBill(Bill bill);
 
-  Future<void> upsertBillItems(String billId, List<BillItem> items);
+  Future<void> replaceBillItems(String billId, List<BillItem> items);
 
   Future<bool> hasUnsettledItems(String accountId);
 }

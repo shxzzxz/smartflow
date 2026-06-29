@@ -30,8 +30,7 @@ class Repayment {
     final valid = switch (repaymentType) {
       RepaymentType.bill ||
       RepaymentType.installment => targetType == RepaymentTargetType.bill,
-      RepaymentType.extraPrincipal || RepaymentType.earlySettlement =>
-        targetType == RepaymentTargetType.contract,
+      RepaymentType.prepayment => targetType == RepaymentTargetType.contract,
       RepaymentType.unattributed => targetType == RepaymentTargetType.account,
     };
     if (!valid) {

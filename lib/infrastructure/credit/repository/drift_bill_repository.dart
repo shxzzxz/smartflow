@@ -77,16 +77,16 @@ class DriftBillRepository implements BillRepository {
   }
 
   @override
-  Future<void> upsertBillItems(String billId, List<BillItem> items) async {
+  Future<void> replaceBillItems(String billId, List<BillItem> items) async {
     final now = DateTime.now();
-    await _database.batch((batch) {
-      for (final item in items) {
-        batch.insert(
-          _database.billItems,
-          _itemCompanion(item, now),
-          mode: InsertMode.insertOrReplace,
-        );
-      }
+    await _database.transaction(() async {
+      await (_database.delete(_database.billItems)
+        ..where((item) => item.billId.equals(billId))).go();
+      await _database.batch((batch) {
+        for (final item in items) {
+          batch.insert(_database.billItems, _itemCompanion(item, now));
+        }
+      });
     });
   }
 

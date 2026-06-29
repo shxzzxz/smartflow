@@ -1,1 +1,1 @@
-enum InstallmentRepaymentMode { scheduled, extraPrincipal, earlySettlement }
+enum InstallmentRepaymentMode { scheduled, prepayment }

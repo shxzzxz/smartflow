@@ -1,8 +1,7 @@
 enum RepaymentType {
   bill('BILL', '账单还款'),
   installment('INSTALLMENT', '分期还款'),
-  extraPrincipal('EXTRA_PRINCIPAL', '提前还本金'),
-  earlySettlement('EARLY_SETTLEMENT', '提前结清'),
+  prepayment('PREPAYMENT', '提前还款'),
   unattributed('UNATTRIBUTED', '未归属还款');
 
   const RepaymentType(this.code, this.label);
@@ -11,6 +10,9 @@ enum RepaymentType {
   final String label;
 
   static RepaymentType fromCode(String code) {
+    if (code == 'EXTRA_PRINCIPAL' || code == 'EARLY_SETTLEMENT') {
+      return RepaymentType.prepayment;
+    }
     for (final value in RepaymentType.values) {
       if (value.code == code) return value;
     }
