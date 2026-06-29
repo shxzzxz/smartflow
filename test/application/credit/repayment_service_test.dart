@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart' as credit;
 import 'package:smartflow/application/ledger/ledger_command_api.dart' as ledger;
+import 'package:smartflow/application/ledger/ledger_query_api.dart'
+    as ledger_query;
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -469,6 +471,96 @@ void main() {
         expect(bill.status, credit.BillStatus.settled);
       },
     );
+
+    test(
+      'creates unattributed repayment within bucket without touching bills or contracts',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        fixture.accountQuery.accounts['credit-1'] = ledger.Account(
+          id: 'credit-1',
+          name: 'Credit',
+          type: ledger.AccountType.liability,
+          balance: const Money(minorUnits: 5000),
+        );
+        final contractId = await fixture.seedContractWithSchedules(
+          principal: 2000,
+          schedulePrincipals: [2000],
+        );
+        await fixture.seedBill(
+          status: credit.BillStatus.billed,
+          itemType: credit.BillItemType.consumption,
+          expectedPrincipal: 1000,
+        );
+
+        final result = await fixture.service.createUnattributedRepayment(
+          credit.CreateUnattributedRepaymentCommand(
+            accountId: 'credit-1',
+            amount: const Money(minorUnits: 2000),
+          ),
+        );
+
+        expect(result.transactionId, isNull);
+        final repayment = await fixture.repayments.findRepayment(
+          result.repaymentId,
+        );
+        expect(repayment!.repaymentType, credit.RepaymentType.unattributed);
+        expect(repayment.targetType, credit.RepaymentTargetType.account);
+        expect(repayment.targetId, 'credit-1');
+        expect(repayment.items.single.billItemId, isNull);
+        expect(
+          repayment.items.single.allocated.principal,
+          const Money(minorUnits: 2000),
+        );
+
+        final bill = await fixture.bills.findBill('bill-1');
+        expect(bill!.items.single.status, credit.BillItemStatus.pending);
+        final schedules = await fixture.installments.listSchedules(contractId);
+        expect(
+          schedules.single.status,
+          credit.InstallmentScheduleStatus.pending,
+        );
+      },
+    );
+
+    test(
+      'rejects unattributed repayment above unattributed debt bucket',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        fixture.accountQuery.accounts['credit-1'] = ledger.Account(
+          id: 'credit-1',
+          name: 'Credit',
+          type: ledger.AccountType.liability,
+          balance: const Money(minorUnits: 5000),
+        );
+        await fixture.seedContractWithSchedules(
+          principal: 2000,
+          schedulePrincipals: [2000],
+        );
+        await fixture.seedBill(
+          status: credit.BillStatus.billed,
+          itemType: credit.BillItemType.consumption,
+          expectedPrincipal: 1000,
+        );
+
+        await expectLater(
+          () => fixture.service.createUnattributedRepayment(
+            credit.CreateUnattributedRepaymentCommand(
+              accountId: 'credit-1',
+              amount: const Money(minorUnits: 2001),
+            ),
+          ),
+          throwsA(
+            isA<BusinessException>().having(
+              (exception) => exception.code,
+              'code',
+              CreditErrorCode.repaymentExceedsAvailable.code,
+            ),
+          ),
+        );
+      },
+    );
   });
 }
 
@@ -497,6 +589,7 @@ class _Fixture {
       bills: bills,
       repayments: repayments,
       installments: installments,
+      accountQueryService: accountQuery,
       postingService: posting,
       transactionRunner: runner,
       idGenerator: ids,
@@ -506,6 +599,7 @@ class _Fixture {
   final database = createTestDatabase();
   final ids = SequentialIdGenerator(prefix: 'repayment');
   final posting = _FakePostingService();
+  final accountQuery = _FakeAccountQueryService();
   late final TransactionRunner runner;
   late final DriftBillRepository bills = DriftBillRepository(database);
   late final DriftInstallmentRepository installments =
@@ -644,6 +738,16 @@ class _Fixture {
   }
 
   Future<void> close() => database.close();
+}
+
+class _FakeAccountQueryService implements ledger_query.AccountQueryService {
+  final accounts = <String, ledger.Account>{};
+
+  @override
+  Future<ledger.Account?> findAccountById(String id) async => accounts[id];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _BillItemSeed {

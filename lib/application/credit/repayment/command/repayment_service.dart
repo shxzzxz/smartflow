@@ -1,4 +1,6 @@
 import 'package:smartflow/application/ledger/ledger_command_api.dart' as ledger;
+import 'package:smartflow/application/ledger/ledger_query_api.dart'
+    as ledger_query;
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/id/id_generator.dart';
@@ -121,6 +123,20 @@ class CreateEarlySettlementRepaymentCommand {
   final String? note;
 }
 
+class CreateUnattributedRepaymentCommand {
+  const CreateUnattributedRepaymentCommand({
+    required this.accountId,
+    required this.amount,
+    this.transactionInfo,
+    this.note,
+  });
+
+  final String accountId;
+  final Money amount;
+  final RepaymentTransactionInfo? transactionInfo;
+  final String? note;
+}
+
 class CreateRepaymentResult {
   const CreateRepaymentResult({
     required this.repaymentId,
@@ -151,6 +167,10 @@ abstract interface class RepaymentService {
   Future<CreateRepaymentResult> createEarlySettlementRepayment(
     CreateEarlySettlementRepaymentCommand command,
   );
+
+  Future<CreateRepaymentResult> createUnattributedRepayment(
+    CreateUnattributedRepaymentCommand command,
+  );
 }
 
 class RepaymentServiceImpl implements RepaymentService {
@@ -158,6 +178,7 @@ class RepaymentServiceImpl implements RepaymentService {
     required BillRepository bills,
     required RepaymentRepository repayments,
     required InstallmentRepository installments,
+    required ledger_query.AccountQueryService accountQueryService,
     required ledger.TransactionPostingAppService postingService,
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
@@ -166,6 +187,7 @@ class RepaymentServiceImpl implements RepaymentService {
   }) : _bills = bills,
        _repayments = repayments,
        _installments = installments,
+       _accountQueryService = accountQueryService,
        _postingService = postingService,
        _transactionRunner = transactionRunner,
        _idGenerator = idGenerator,
@@ -174,6 +196,7 @@ class RepaymentServiceImpl implements RepaymentService {
   final BillRepository _bills;
   final RepaymentRepository _repayments;
   final InstallmentRepository _installments;
+  final ledger_query.AccountQueryService _accountQueryService;
   final ledger.TransactionPostingAppService _postingService;
   final TransactionRunner _transactionRunner;
   final IdGenerator _idGenerator;
@@ -402,6 +425,68 @@ class RepaymentServiceImpl implements RepaymentService {
         contract.id,
         InstallmentContractStatus.closed,
       );
+      return CreateRepaymentResult(
+        repaymentId: repaymentId,
+        transactionId: post?.transactionId,
+        rootTransactionId: post?.rootTransactionId,
+      );
+    });
+  }
+
+  @override
+  Future<CreateRepaymentResult> createUnattributedRepayment(
+    CreateUnattributedRepaymentCommand command,
+  ) async {
+    final account = await _accountQueryService.findAccountById(
+      command.accountId,
+    );
+    if (account == null) {
+      throw BusinessException(
+        CreditErrorCode.accountNotFound,
+        message: 'Credit liability account does not exist.',
+      );
+    }
+    if (command.amount.minorUnits <= 0) {
+      throw BusinessException(CreditErrorCode.repaymentInvalidCommand);
+    }
+
+    final bucket = await _unattributedDebtBucket(command.accountId);
+    if (command.amount.minorUnits > bucket.minorUnits) {
+      throw BusinessException(CreditErrorCode.repaymentExceedsAvailable);
+    }
+
+    final repaymentId = _idGenerator.newId();
+    final total = RepaymentAmountBreakdown(
+      principal: command.amount,
+      interest: Money.zero(),
+      fee: Money.zero(),
+      discount: Money.zero(),
+    );
+
+    return _transactionRunner.run(() async {
+      final post = await _postLedgerTransactionIfNeeded(
+        liabilityAccountId: command.accountId,
+        repaymentId: repaymentId,
+        total: total,
+        transactionInfo: command.transactionInfo,
+        note: command.note,
+        repaymentType: RepaymentType.unattributed,
+      );
+      final repayment = Repayment(
+        id: repaymentId,
+        repaymentType: RepaymentType.unattributed,
+        targetType: RepaymentTargetType.account,
+        targetId: command.accountId,
+        rootTransactionId: post?.rootTransactionId,
+        items: [
+          RepaymentItem(
+            id: _idGenerator.newId(),
+            repaymentId: repaymentId,
+            allocated: total,
+          ),
+        ],
+      )..validateAgainstLedgerTransaction(total);
+      await _repayments.saveRepayment(repayment);
       return CreateRepaymentResult(
         repaymentId: repaymentId,
         transactionId: post?.transactionId,
@@ -835,6 +920,39 @@ class RepaymentServiceImpl implements RepaymentService {
         InstallmentContractStatus.settled,
       );
     }
+  }
+
+  Future<Money> _unattributedDebtBucket(String accountId) async {
+    final account = await _accountQueryService.findAccountById(accountId);
+    if (account == null) {
+      throw BusinessException(CreditErrorCode.accountNotFound);
+    }
+    final pendingContractPrincipal = (await _installments
+            .listSchedulesByLiabilityAccount(accountId))
+        .where(
+          (schedule) => schedule.status == InstallmentScheduleStatus.pending,
+        )
+        .fold<int>(
+          0,
+          (sum, schedule) => sum + schedule.expectedPrincipal.minorUnits,
+        );
+    final pendingBilledConsumptionPrincipal = (await _bills.listBillsByAccount(
+          accountId,
+        ))
+        .where((bill) => bill.status != BillStatus.open)
+        .expand((bill) => bill.items)
+        .where(
+          (item) =>
+              item.status == BillItemStatus.pending &&
+              item.itemType == BillItemType.consumption,
+        )
+        .fold<int>(0, (sum, item) => sum + item.expectedPrincipal.minorUnits);
+    return Money(
+      minorUnits:
+          account.balance.minorUnits -
+          pendingContractPrincipal -
+          pendingBilledConsumptionPrincipal,
+    );
   }
 
   BillStatus _projectBillStatus(BillStatus current, List<BillItem> items) {

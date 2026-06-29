@@ -309,6 +309,176 @@ final class CalendarDailyCashflowSummariesFamily extends $Family
   String toString() => r'calendarDailyCashflowSummariesProvider';
 }
 
+@ProviderFor(calendarCreditDueItems)
+final calendarCreditDueItemsProvider = CalendarCreditDueItemsFamily._();
+
+final class CalendarCreditDueItemsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<CreditDueCalendarItemReadModel>>,
+          List<CreditDueCalendarItemReadModel>,
+          FutureOr<List<CreditDueCalendarItemReadModel>>
+        >
+    with
+        $FutureModifier<List<CreditDueCalendarItemReadModel>>,
+        $FutureProvider<List<CreditDueCalendarItemReadModel>> {
+  CalendarCreditDueItemsProvider._({
+    required CalendarCreditDueItemsFamily super.from,
+    required DateTime super.argument,
+  }) : super(
+         retry: null,
+         name: r'calendarCreditDueItemsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$calendarCreditDueItemsHash();
+
+  @override
+  String toString() {
+    return r'calendarCreditDueItemsProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<CreditDueCalendarItemReadModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<CreditDueCalendarItemReadModel>> create(Ref ref) {
+    final argument = this.argument as DateTime;
+    return calendarCreditDueItems(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CalendarCreditDueItemsProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$calendarCreditDueItemsHash() =>
+    r'05f273b2324b6edb08c56f097469486b72bfc779';
+
+final class CalendarCreditDueItemsFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<List<CreditDueCalendarItemReadModel>>,
+          DateTime
+        > {
+  CalendarCreditDueItemsFamily._()
+    : super(
+        retry: null,
+        name: r'calendarCreditDueItemsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  CalendarCreditDueItemsProvider call(DateTime visibleMonth) =>
+      CalendarCreditDueItemsProvider._(argument: visibleMonth, from: this);
+
+  @override
+  String toString() => r'calendarCreditDueItemsProvider';
+}
+
+@ProviderFor(calendarMonthlyBillSummaries)
+final calendarMonthlyBillSummariesProvider =
+    CalendarMonthlyBillSummariesFamily._();
+
+final class CalendarMonthlyBillSummariesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<MonthlyBillSummaryReadModel>>,
+          List<MonthlyBillSummaryReadModel>,
+          FutureOr<List<MonthlyBillSummaryReadModel>>
+        >
+    with
+        $FutureModifier<List<MonthlyBillSummaryReadModel>>,
+        $FutureProvider<List<MonthlyBillSummaryReadModel>> {
+  CalendarMonthlyBillSummariesProvider._({
+    required CalendarMonthlyBillSummariesFamily super.from,
+    required DateTime super.argument,
+  }) : super(
+         retry: null,
+         name: r'calendarMonthlyBillSummariesProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$calendarMonthlyBillSummariesHash();
+
+  @override
+  String toString() {
+    return r'calendarMonthlyBillSummariesProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<MonthlyBillSummaryReadModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<MonthlyBillSummaryReadModel>> create(Ref ref) {
+    final argument = this.argument as DateTime;
+    return calendarMonthlyBillSummaries(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CalendarMonthlyBillSummariesProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$calendarMonthlyBillSummariesHash() =>
+    r'e36741f1153cb43b2c5d3f65b40beb5cb57e1057';
+
+final class CalendarMonthlyBillSummariesFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<List<MonthlyBillSummaryReadModel>>,
+          DateTime
+        > {
+  CalendarMonthlyBillSummariesFamily._()
+    : super(
+        retry: null,
+        name: r'calendarMonthlyBillSummariesProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  CalendarMonthlyBillSummariesProvider call(DateTime visibleMonth) =>
+      CalendarMonthlyBillSummariesProvider._(
+        argument: visibleMonth,
+        from: this,
+      );
+
+  @override
+  String toString() => r'calendarMonthlyBillSummariesProvider';
+}
+
 @ProviderFor(calendarContent)
 final calendarContentProvider = CalendarContentFamily._();
 
@@ -377,7 +547,7 @@ final class CalendarContentProvider
   }
 }
 
-String _$calendarContentHash() => r'2645c5001614955532728ec41cd9a4501d88dc21';
+String _$calendarContentHash() => r'260f5a46d661ac6ee2b09e8ed88cb00cae1f8cc3';
 
 final class CalendarContentFamily extends $Family
     with

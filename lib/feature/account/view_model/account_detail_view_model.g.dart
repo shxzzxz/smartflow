@@ -74,7 +74,7 @@ final class AccountDetailViewModelProvider
 }
 
 String _$accountDetailViewModelHash() =>
-    r'83c0b2bda5b6ebe072fc6d57dbf7a8945d9e21a7';
+    r'8add2a40ea966dac16fada62c27aeff68bb45e3e';
 
 final class AccountDetailViewModelFamily extends $Family
     with $FunctionalFamilyOverride<AccountDetailPageState, String> {
@@ -92,4 +92,86 @@ final class AccountDetailViewModelFamily extends $Family
 
   @override
   String toString() => r'accountDetailViewModelProvider';
+}
+
+@ProviderFor(creditAccountOverview)
+final creditAccountOverviewProvider = CreditAccountOverviewFamily._();
+
+final class CreditAccountOverviewProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<CreditAccountOverviewReadModel?>,
+          CreditAccountOverviewReadModel?,
+          FutureOr<CreditAccountOverviewReadModel?>
+        >
+    with
+        $FutureModifier<CreditAccountOverviewReadModel?>,
+        $FutureProvider<CreditAccountOverviewReadModel?> {
+  CreditAccountOverviewProvider._({
+    required CreditAccountOverviewFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'creditAccountOverviewProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$creditAccountOverviewHash();
+
+  @override
+  String toString() {
+    return r'creditAccountOverviewProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<CreditAccountOverviewReadModel?> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<CreditAccountOverviewReadModel?> create(Ref ref) {
+    final argument = this.argument as String;
+    return creditAccountOverview(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CreditAccountOverviewProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$creditAccountOverviewHash() =>
+    r'264c9c387fc384043fb532db0bc2598651e17fa2';
+
+final class CreditAccountOverviewFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<CreditAccountOverviewReadModel?>,
+          String
+        > {
+  CreditAccountOverviewFamily._()
+    : super(
+        retry: null,
+        name: r'creditAccountOverviewProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  CreditAccountOverviewProvider call(String accountId) =>
+      CreditAccountOverviewProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'creditAccountOverviewProvider';
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/calendar/view_model/calendar_view_model.dart';
@@ -169,6 +170,9 @@ ProviderContainer _container(
       transactionQueryServiceProvider.overrideWithValue(transactionService),
       financialMetricsServiceProvider.overrideWithValue(metricsService),
       accountQueryServiceProvider.overrideWithValue(accountService),
+      creditAccountQueryServiceProvider.overrideWithValue(
+        const _FakeCreditAccountQueryService(),
+      ),
       ...overrides,
     ],
   );
@@ -317,6 +321,27 @@ class _FakeAccountQueryService implements AccountQueryService {
     for (final stream in _byIdStreams) {
       stream.close();
     }
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeCreditAccountQueryService implements CreditAccountQueryService {
+  const _FakeCreditAccountQueryService();
+
+  @override
+  Future<List<CreditDueCalendarItemReadModel>> listDueCalendarItems(
+    CreditDueCalendarQuery query,
+  ) async {
+    return const [];
+  }
+
+  @override
+  Future<List<MonthlyBillSummaryReadModel>> listMonthlyBillSummaries(
+    MonthlyBillSummaryQuery query,
+  ) async {
+    return const [];
   }
 
   @override

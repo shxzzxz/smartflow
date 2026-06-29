@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../app/provider.dart';
 import '../../../application/credit/credit_query_api.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
@@ -47,7 +48,16 @@ AccountDetailPageState accountDetailViewModel(Ref ref, String accountId) {
     ),
     contracts: _contractsStateFor(ref, accountValue),
     bills: _billsStateFor(ref, accountValue),
+    creditOverview: _creditOverviewStateFor(ref, accountValue),
   );
+}
+
+@riverpod
+Future<CreditAccountOverviewReadModel?> creditAccountOverview(
+  Ref ref,
+  String accountId,
+) {
+  return ref.watch(creditAccountQueryServiceProvider).findOverview(accountId);
 }
 
 AccountContractsState _contractsStateFor(Ref ref, AccountView account) {
@@ -76,6 +86,26 @@ AccountBillsState _billsStateFor(Ref ref, AccountView account) {
   };
 }
 
+AccountCreditOverviewState _creditOverviewStateFor(
+  Ref ref,
+  AccountView account,
+) {
+  if (!account.isCreditLiability) {
+    return const AccountCreditOverviewState.notApplicable();
+  }
+
+  return switch (ref.watch(creditAccountOverviewProvider(account.id))) {
+    AsyncData(value: final overview) =>
+      overview == null
+          ? const AccountCreditOverviewState.notApplicable()
+          : AccountCreditOverviewState.loaded(overview: overview),
+    AsyncError(:final error) => AccountCreditOverviewState.error(
+      message: '$error',
+    ),
+    _ => const AccountCreditOverviewState.loading(),
+  };
+}
+
 sealed class AccountDetailPageState {
   const AccountDetailPageState();
 
@@ -91,6 +121,7 @@ sealed class AccountDetailPageState {
     required List<TransactionDayGroup> transactionGroups,
     required AccountContractsState contracts,
     required AccountBillsState bills,
+    required AccountCreditOverviewState creditOverview,
   }) = AccountDetailLoaded;
 }
 
@@ -114,12 +145,14 @@ final class AccountDetailLoaded extends AccountDetailPageState {
     required this.transactionGroups,
     required this.contracts,
     required this.bills,
+    required this.creditOverview,
   });
 
   final AccountView account;
   final List<TransactionDayGroup> transactionGroups;
   final AccountContractsState contracts;
   final AccountBillsState bills;
+  final AccountCreditOverviewState creditOverview;
 }
 
 sealed class AccountContractsState {
@@ -191,4 +224,42 @@ final class AccountBillsLoaded extends AccountBillsState {
   const AccountBillsLoaded({required this.bills});
 
   final List<BillSummaryReadModel> bills;
+}
+
+sealed class AccountCreditOverviewState {
+  const AccountCreditOverviewState();
+
+  const factory AccountCreditOverviewState.notApplicable() =
+      AccountCreditOverviewNotApplicable;
+
+  const factory AccountCreditOverviewState.loading() =
+      AccountCreditOverviewLoading;
+
+  const factory AccountCreditOverviewState.error({required String message}) =
+      AccountCreditOverviewError;
+
+  const factory AccountCreditOverviewState.loaded({
+    required CreditAccountOverviewReadModel overview,
+  }) = AccountCreditOverviewLoaded;
+}
+
+final class AccountCreditOverviewNotApplicable
+    extends AccountCreditOverviewState {
+  const AccountCreditOverviewNotApplicable();
+}
+
+final class AccountCreditOverviewLoading extends AccountCreditOverviewState {
+  const AccountCreditOverviewLoading();
+}
+
+final class AccountCreditOverviewError extends AccountCreditOverviewState {
+  const AccountCreditOverviewError({required this.message});
+
+  final String message;
+}
+
+final class AccountCreditOverviewLoaded extends AccountCreditOverviewState {
+  const AccountCreditOverviewLoaded({required this.overview});
+
+  final CreditAccountOverviewReadModel overview;
 }

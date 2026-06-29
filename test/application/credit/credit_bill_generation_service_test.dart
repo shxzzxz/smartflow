@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
+import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
@@ -14,6 +15,7 @@ import 'package:smartflow/infrastructure/credit/repository/drift_credit_bill_sou
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repository.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
+import 'package:smartflow/infrastructure/ledger/repository/drift_account_query_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_account_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_posting_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_system_account_resolver.dart';
@@ -473,6 +475,7 @@ class _Fixture {
       bills: billRepository,
       repayments: repaymentRepository,
       installments: installmentRepository,
+      accountQueryService: accountQueryService,
       postingService: postingAppService,
       transactionRunner: runner,
       idGenerator: ids,
@@ -492,6 +495,9 @@ class _Fixture {
   late final DriftRepaymentRepository repaymentRepository =
       DriftRepaymentRepository(database);
   late final DriftBillRepository billRepository = DriftBillRepository(database);
+  late final AccountQueryService accountQueryService = AccountQueryServiceImpl(
+    accounts: DriftAccountQueryRepository(database),
+  );
   late final DriftPostingRepository postingRepository = DriftPostingRepository(
     database,
   );

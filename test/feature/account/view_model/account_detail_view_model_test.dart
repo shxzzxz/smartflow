@@ -164,6 +164,9 @@ ProviderContainer _container(
     overrides: [
       transactionQueryServiceProvider.overrideWithValue(transactionService),
       accountQueryServiceProvider.overrideWithValue(accountService),
+      creditAccountQueryServiceProvider.overrideWithValue(
+        const _FakeCreditAccountQueryService(),
+      ),
       ...overrides,
     ],
   );
@@ -333,6 +336,18 @@ class _FakeAccountQueryService implements AccountQueryService {
     for (final stream in _byIdStreams) {
       stream.close();
     }
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeCreditAccountQueryService implements CreditAccountQueryService {
+  const _FakeCreditAccountQueryService();
+
+  @override
+  Future<CreditAccountOverviewReadModel?> findOverview(String accountId) async {
+    return null;
   }
 
   @override

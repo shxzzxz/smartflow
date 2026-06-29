@@ -58,12 +58,14 @@ class AccountDetailPage extends ConsumerWidget {
           :final transactionGroups,
           :final contracts,
           :final bills,
+          :final creditOverview,
         ) =>
           _AccountDetailContent(
             account: account,
             transactionGroups: transactionGroups,
             contracts: contracts,
             bills: bills,
+            creditOverview: creditOverview,
           ),
         AccountDetailNotFound() => const Center(child: Text('账户不存在')),
         AccountDetailError(:final message) => Center(child: Text(message)),
@@ -134,12 +136,14 @@ class _AccountDetailContent extends StatelessWidget {
     required this.transactionGroups,
     required this.contracts,
     required this.bills,
+    required this.creditOverview,
   });
 
   final AccountView account;
   final List<TransactionDayGroup> transactionGroups;
   final AccountContractsState contracts;
   final AccountBillsState bills;
+  final AccountCreditOverviewState creditOverview;
 
   @override
   Widget build(BuildContext context) {
@@ -156,6 +160,9 @@ class _AccountDetailContent extends StatelessWidget {
         const SizedBox(height: AppSpacing.space8),
         _AccountActionBar(account: account),
         const SizedBox(height: AppSpacing.space8),
+        _CreditOverviewSection(overview: creditOverview),
+        if (creditOverview is! AccountCreditOverviewNotApplicable)
+          const SizedBox(height: AppSpacing.space8),
         if (showInstallments) ...[
           _BillSection(bills: bills),
           const SizedBox(height: AppSpacing.space8),
@@ -370,6 +377,114 @@ class _InfoPair extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _CreditOverviewSection extends StatelessWidget {
+  const _CreditOverviewSection({required this.overview});
+
+  final AccountCreditOverviewState overview;
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (overview) {
+      AccountCreditOverviewLoaded(:final overview) => AppSurface(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('信贷概览', style: context.appTextStyles.dateSectionTitle),
+              const SizedBox(height: AppSpacing.space10),
+              _AccountMetricsBlock(
+                items: [
+                  _InfoItem(
+                    label: '账单欠款',
+                    value: overview.buckets.billDebt.format(),
+                  ),
+                  _InfoItem(
+                    label: '未来合同',
+                    value: overview.buckets.futureContractDebt.format(),
+                  ),
+                  _InfoItem(
+                    label: '未归属',
+                    value: overview.buckets.unattributedDebt.format(),
+                  ),
+                  _InfoItem(
+                    label: '可用额度',
+                    value: overview.availableCredit?.format() ?? '-',
+                  ),
+                ],
+              ),
+              if (overview.unattributedRepayments.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.space12),
+                Divider(
+                  height: 1,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: AppSpacing.space8),
+                for (final repayment in overview.unattributedRepayments)
+                  _UnattributedRepaymentRow(repayment: repayment),
+              ],
+            ],
+          ),
+        ),
+      ),
+      AccountCreditOverviewError(:final message) => AppSurface(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space12),
+          child: Text('信贷概览加载失败：$message'),
+        ),
+      ),
+      AccountCreditOverviewLoading() => const AppSurface(
+        child: Padding(
+          padding: EdgeInsets.all(AppSpacing.space20),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+      AccountCreditOverviewNotApplicable() => const SizedBox.shrink(),
+    };
+  }
+}
+
+class _UnattributedRepaymentRow extends StatelessWidget {
+  const _UnattributedRepaymentRow({required this.repayment});
+
+  final CreditRepaymentRecordReadModel repayment;
+
+  @override
+  Widget build(BuildContext context) {
+    final styles = context.appTextStyles;
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.space6),
+      child: Row(
+        children: [
+          Icon(
+            RemixIcons.refund_2_line,
+            size: AppSpacing.space18,
+            color: colors.onSurfaceVariant,
+          ),
+          const SizedBox(width: AppSpacing.space8),
+          Expanded(
+            child: Text(
+              _repaymentTimeText(repayment.displayTime),
+              style: styles.listSupporting.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Text(
+            repayment.allocated.principal.format(),
+            style: styles.amountList.copyWith(color: colors.onSurface),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -790,6 +905,12 @@ String _billSubtitle(BillSummaryReadModel bill) {
     return '$due · ${bill.overdueItemCount} 条逾期';
   }
   return '$due · ${bill.itemCount} 条明细';
+}
+
+String _repaymentTimeText(DateTime value) {
+  final month = value.month.toString().padLeft(2, '0');
+  final day = value.day.toString().padLeft(2, '0');
+  return '${value.year}-$month-$day';
 }
 
 String _billStatusLabel(BillStatus status) {

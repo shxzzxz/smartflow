@@ -228,6 +228,11 @@ CreditAccountService creditAccountService(Ref ref) {
 CreditAccountQueryService creditAccountQueryService(Ref ref) {
   return CreditAccountQueryServiceImpl(
     creditAccounts: ref.watch(creditAccountRepositoryProvider),
+    bills: ref.watch(billRepositoryProvider),
+    installments: ref.watch(installmentRepositoryProvider),
+    repayments: ref.watch(repaymentRepositoryProvider),
+    accountQueryService: ref.watch(accountQueryServiceProvider),
+    transactionQueryService: ref.watch(transactionQueryServiceProvider),
   );
 }
 
@@ -247,6 +252,7 @@ RepaymentService repaymentService(Ref ref) {
     bills: ref.watch(billRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
     installments: ref.watch(installmentRepositoryProvider),
+    accountQueryService: ref.watch(accountQueryServiceProvider),
     postingService: ref.watch(transactionPostingAppServiceProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
     idGenerator: ref.watch(idGeneratorProvider),
