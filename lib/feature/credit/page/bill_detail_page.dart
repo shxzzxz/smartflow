@@ -42,11 +42,18 @@ class BillDetailPage extends ConsumerWidget {
   }
 
   Future<void> _syncProjection(BuildContext context, WidgetRef ref) async {
+    final accountId =
+        ref.read(billDetailProvider(billId)).asData?.value?.summary.accountId;
     try {
       await ref
           .read(creditBillGenerationAppServiceProvider)
-          .syncBillProjection(billId);
+          .refreshBill(billId);
       ref.invalidate(billDetailProvider(billId));
+      if (accountId != null) {
+        ref.invalidate(billSummariesByAccountProvider(accountId));
+        ref.invalidate(creditAccountOverviewProvider(accountId));
+        ref.invalidate(installmentContractsByAccountProvider(accountId));
+      }
     } on Exception catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -266,13 +273,6 @@ class _SummarySurface extends StatelessWidget {
                         : colors.onSurfaceVariant,
               ),
             ),
-            if (summary.hasSourceDiff) ...[
-              const SizedBox(height: AppSpacing.space8),
-              Text(
-                '与来源不一致',
-                style: styles.listSupporting.copyWith(color: colors.error),
-              ),
-            ],
           ],
         ),
       ),
@@ -323,14 +323,14 @@ class _BillActionBar extends StatelessWidget {
                 ),
               ),
             ],
-            if (detail.summary.hasSourceDiff) ...[
+            if (_canRefreshBill(detail)) ...[
               if (detail.summary.pendingPrincipal.minorUnits > 0 ||
                   _canConvertToInstallment(detail))
                 const SizedBox(width: AppSpacing.space6),
               Expanded(
                 child: _ActionButton(
                   icon: RemixIcons.refresh_line,
-                  label: '同步',
+                  label: '刷新',
                   onTap: onSync,
                 ),
               ),
@@ -542,6 +542,7 @@ String _itemStatusLabel(BillItemReadModel item) {
   if (item.isOverdue) return '已逾期';
   return switch (item.status) {
     BillItemStatus.pending => '待还',
+    BillItemStatus.partiallyPaid => '部分已还',
     BillItemStatus.paid => '已核销',
     BillItemStatus.skipped => '已跳过',
   };
@@ -552,14 +553,19 @@ bool _canConvertToInstallment(BillDetailReadModel detail) {
       detail.items.any(
         (item) =>
             item.itemType == BillItemType.consumption &&
-            item.status == BillItemStatus.pending,
+            (item.status == BillItemStatus.pending ||
+                item.status == BillItemStatus.partiallyPaid),
       );
+}
+
+bool _canRefreshBill(BillDetailReadModel detail) {
+  return true;
 }
 
 bool _hasBillActions(BillDetailReadModel detail) {
   return detail.summary.pendingPrincipal.minorUnits > 0 ||
       _canConvertToInstallment(detail) ||
-      detail.summary.hasSourceDiff;
+      _canRefreshBill(detail);
 }
 
 String _repaymentSupportingText(BillRepaymentReadModel repayment) {

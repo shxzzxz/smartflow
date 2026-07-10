@@ -84,15 +84,43 @@ class DriftRepaymentRepository implements RepaymentRepository {
   }
 
   @override
+  Future<Map<String, RepaymentAmountBreakdown>> aggregateItemsByBillItemIds(
+    Iterable<String> billItemIds,
+  ) async {
+    final ids = billItemIds.toSet();
+    if (ids.isEmpty) return const {};
+
+    final item = _database.repaymentItems;
+    final principal = item.allocatedPrincipalMinor.sum();
+    final interest = item.allocatedInterestMinor.sum();
+    final fee = item.allocatedFeeMinor.sum();
+    final discount = item.allocatedDiscountMinor.sum();
+    final query =
+        _database.selectOnly(item)
+          ..addColumns([item.billItemId, principal, interest, fee, discount])
+          ..where(item.billItemId.isIn(ids))
+          ..groupBy([item.billItemId]);
+    final rows = await query.get();
+    return {
+      for (final row in rows)
+        if (row.read(item.billItemId) case final String billItemId)
+          billItemId: RepaymentAmountBreakdown(
+            principal: Money(minorUnits: row.read(principal) ?? 0),
+            interest: Money(minorUnits: row.read(interest) ?? 0),
+            fee: Money(minorUnits: row.read(fee) ?? 0),
+            discount: Money(minorUnits: row.read(discount) ?? 0),
+          ),
+    };
+  }
+
+  @override
   Future<void> saveRepayment(Repayment repayment) async {
     repayment.validateTarget();
-    await _database.transaction(() async {
-      final now = DateTime.now();
-      await _database
-          .into(_database.repayments)
-          .insert(_repaymentCompanion(repayment, now));
-      await _insertItems(repayment.items, now);
-    });
+    final now = DateTime.now();
+    await _database
+        .into(_database.repayments)
+        .insert(_repaymentCompanion(repayment, now));
+    await _insertItems(repayment.items, now);
   }
 
   @override
@@ -109,24 +137,21 @@ class DriftRepaymentRepository implements RepaymentRepository {
     }
     final repayment = _mapRepayment(row, items);
 
-    await _database.transaction(() async {
-      await (_database.delete(_database.repaymentItems)
-        ..where((item) => item.repaymentId.equals(repaymentId))).go();
-      await _insertItems(repayment.items, DateTime.now());
-      await (_database.update(_database.repayments)..where(
-        (item) => item.id.equals(repaymentId),
-      )).write(RepaymentsCompanion(updatedAt: Value(DateTime.now())));
-    });
+    final now = DateTime.now();
+    await (_database.delete(_database.repaymentItems)
+      ..where((item) => item.repaymentId.equals(repaymentId))).go();
+    await _insertItems(repayment.items, now);
+    await (_database.update(_database.repayments)..where(
+      (item) => item.id.equals(repaymentId),
+    )).write(RepaymentsCompanion(updatedAt: Value(now)));
   }
 
   @override
   Future<void> deleteRepayment(String repaymentId) async {
-    await _database.transaction(() async {
-      await (_database.delete(_database.repaymentItems)
-        ..where((item) => item.repaymentId.equals(repaymentId))).go();
-      await (_database.delete(_database.repayments)
-        ..where((repayment) => repayment.id.equals(repaymentId))).go();
-    });
+    await (_database.delete(_database.repaymentItems)
+      ..where((item) => item.repaymentId.equals(repaymentId))).go();
+    await (_database.delete(_database.repayments)
+      ..where((repayment) => repayment.id.equals(repaymentId))).go();
   }
 
   Future<void> _insertItems(List<RepaymentItem> items, DateTime now) async {

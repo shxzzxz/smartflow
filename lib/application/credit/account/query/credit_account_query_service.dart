@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:smartflow/application/ledger/ledger_query_api.dart'
     as ledger_query;
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
 import 'package:smartflow/domain/credit/entity/credit_liability_account.dart';
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
@@ -13,12 +12,16 @@ import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
+import 'package:smartflow/domain/credit/service/debt/credit_debt_bucket_service.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
+
+import 'credit_account_queries.dart';
+import 'credit_account_read_models.dart';
 
 abstract interface class CreditAccountQueryService {
   Stream<Map<String, CreditLiabilityAccount>>
@@ -49,12 +52,14 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
     required RepaymentRepository repayments,
     required ledger_query.AccountQueryService accountQueryService,
     required ledger_query.TransactionQueryService transactionQueryService,
+    CreditDebtBucketService debtBuckets = const CreditDebtBucketService(),
   }) : _creditAccounts = creditAccounts,
        _bills = bills,
        _installments = installments,
        _repayments = repayments,
        _accountQueryService = accountQueryService,
-       _transactionQueryService = transactionQueryService;
+       _transactionQueryService = transactionQueryService,
+       _debtBuckets = debtBuckets;
 
   final CreditAccountRepository _creditAccounts;
   final BillRepository _bills;
@@ -62,6 +67,7 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
   final RepaymentRepository _repayments;
   final ledger_query.AccountQueryService _accountQueryService;
   final ledger_query.TransactionQueryService _transactionQueryService;
+  final CreditDebtBucketService _debtBuckets;
 
   @override
   Stream<Map<String, CreditLiabilityAccount>>
@@ -81,9 +87,12 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
     final account = await _accountQueryService.findAccountById(accountId);
     if (account == null) return null;
 
-    final buckets = await _debtBuckets(
+    final buckets = await _debtBuckets.bucketsForAccount(
       accountId: accountId,
       liabilityBalance: account.balance,
+      bills: _bills,
+      installments: _installments,
+      repayments: _repayments,
     );
     final repayments = await _repayments.listByTarget(
       RepaymentTargetType.account,
@@ -208,7 +217,8 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
       final billedScheduleIds = <String>{};
       for (final bill in bills) {
         for (final item in bill.items) {
-          if (item.status != BillItemStatus.pending ||
+          if ((item.status != BillItemStatus.pending &&
+                  item.status != BillItemStatus.partiallyPaid) ||
               !_inWindow(item.repaymentDate, query.from, query.until)) {
             continue;
           }
@@ -234,7 +244,8 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
         account.accountId,
       );
       for (final schedule in schedules) {
-        if (schedule.status != InstallmentScheduleStatus.pending ||
+        if ((schedule.status != InstallmentScheduleStatus.pending &&
+                schedule.status != InstallmentScheduleStatus.partiallyPaid) ||
             billedScheduleIds.contains(schedule.id) ||
             !_inWindow(
               schedule.expectedRepaymentDate,
@@ -266,13 +277,28 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
   ) async {
     final accounts = await _matchingCreditAccounts(query.accountId);
     final period = BillPeriod(year: query.month.year, month: query.month.month);
-    final result = <MonthlyBillSummaryReadModel>[];
+    final accountBills = <({CreditLiabilityAccount account, Bill bill})>[];
     for (final account in accounts) {
       final bill = await _bills.findByAccountAndPeriod(
         account.accountId,
         period,
       );
       if (bill == null) continue;
+      accountBills.add((account: account, bill: bill));
+    }
+    final allocatedByItemId = await _repayments.aggregateItemsByBillItemIds(
+      accountBills.expand((entry) => entry.bill.items).map((item) => item.id),
+    );
+    final result = <MonthlyBillSummaryReadModel>[];
+    for (final (:account, :bill) in accountBills) {
+      var pendingPrincipalMinor = 0;
+      for (final item in bill.items) {
+        pendingPrincipalMinor += _debtBuckets.remainingPrincipalForBillItem(
+          item,
+          allocatedPrincipalMinor:
+              allocatedByItemId[item.id]?.principal.minorUnits ?? 0,
+        );
+      }
       result.add(
         MonthlyBillSummaryReadModel(
           accountId: account.accountId,
@@ -283,75 +309,13 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
           expectedPrincipal: bill.expectedPrincipal,
           expectedInterest: bill.expectedInterest,
           expectedFee: bill.expectedFee,
-          pendingPrincipal: await _pendingPrincipalForBill(bill),
+          pendingPrincipal: Money(minorUnits: pendingPrincipalMinor),
           itemCount: bill.items.length,
         ),
       );
     }
     result.sort((a, b) => a.accountId.compareTo(b.accountId));
     return result;
-  }
-
-  Future<CreditDebtBuckets> _debtBuckets({
-    required String accountId,
-    required Money liabilityBalance,
-  }) async {
-    final bills = await _bills.listBillsByAccount(accountId);
-    final billedPendingItems = [
-      for (final bill in bills)
-        if (bill.status != BillStatus.open)
-          for (final item in bill.items)
-            if (item.status == BillItemStatus.pending) item,
-    ];
-    final billedScheduleIds = {
-      for (final item in billedPendingItems)
-        if (item.scheduleId != null) item.scheduleId!,
-    };
-    final pendingSchedules =
-        (await _installments.listSchedulesByLiabilityAccount(accountId))
-            .where(
-              (schedule) =>
-                  schedule.status == InstallmentScheduleStatus.pending,
-            )
-            .toList();
-    final billedRemainingPrincipalByScheduleId = <String, int>{};
-    var billedConsumptionPrincipal = 0;
-    var billDebt = 0;
-    for (final item in billedPendingItems) {
-      final remaining = await _remainingPrincipalForBillItem(item);
-      billDebt += remaining;
-      if (item.itemType == BillItemType.consumption) {
-        billedConsumptionPrincipal += remaining;
-      }
-      final scheduleId = item.scheduleId;
-      if (scheduleId != null) {
-        billedRemainingPrincipalByScheduleId[scheduleId] = remaining;
-      }
-    }
-    final pendingContractPrincipal = pendingSchedules.fold<int>(0, (
-      sum,
-      schedule,
-    ) {
-      return sum +
-          (billedRemainingPrincipalByScheduleId[schedule.id] ??
-              schedule.expectedPrincipal.minorUnits);
-    });
-    final futureContractDebt = pendingSchedules
-        .where((schedule) => !billedScheduleIds.contains(schedule.id))
-        .fold<int>(
-          0,
-          (sum, schedule) => sum + schedule.expectedPrincipal.minorUnits,
-        );
-    return CreditDebtBuckets(
-      billDebt: Money(minorUnits: billDebt),
-      futureContractDebt: Money(minorUnits: futureContractDebt),
-      unattributedDebt: Money(
-        minorUnits:
-            liabilityBalance.minorUnits -
-            pendingContractPrincipal -
-            billedConsumptionPrincipal,
-      ),
-    );
   }
 
   Future<List<_ActualContractCashflow>> _actualContractCashflows(
@@ -483,25 +447,6 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
     return null;
   }
 
-  Future<Money> _pendingPrincipalForBill(Bill bill) async {
-    var total = 0;
-    for (final item in bill.items) {
-      total += await _remainingPrincipalForBillItem(item);
-    }
-    return Money(minorUnits: total);
-  }
-
-  Future<int> _remainingPrincipalForBillItem(BillItem item) async {
-    if (item.status != BillItemStatus.pending) return 0;
-    final allocated = await _repayments.listItemsByBillItem(item.id);
-    final allocatedPrincipal = allocated.fold<int>(
-      0,
-      (sum, allocation) => sum + allocation.allocated.principal.minorUnits,
-    );
-    final remaining = item.expectedPrincipal.minorUnits - allocatedPrincipal;
-    return remaining < 0 ? 0 : remaining;
-  }
-
   DateTime? _earliestRepaymentDate(Bill bill) {
     if (bill.items.isEmpty) return null;
     final dates = bill.items.map((item) => item.repaymentDate).toList()..sort();
@@ -585,229 +530,6 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
     }
     return _XirrResult(rate: (lo + hi) / 2, converged: false);
   }
-}
-
-class CreditDebtBuckets {
-  const CreditDebtBuckets({
-    required this.billDebt,
-    required this.futureContractDebt,
-    required this.unattributedDebt,
-  });
-
-  final Money billDebt;
-  final Money futureContractDebt;
-  final Money unattributedDebt;
-}
-
-class CreditAccountOverviewReadModel {
-  const CreditAccountOverviewReadModel({
-    required this.creditAccount,
-    required this.liabilityBalance,
-    required this.buckets,
-    required this.unattributedRepayments,
-    this.availableCredit,
-  });
-
-  final CreditLiabilityAccount creditAccount;
-  final Money liabilityBalance;
-  final Money? availableCredit;
-  final CreditDebtBuckets buckets;
-  final List<CreditRepaymentRecordReadModel> unattributedRepayments;
-}
-
-enum CreditRepaymentTimeSource { transaction, recordCreatedAt }
-
-class CreditRepaymentRecordReadModel {
-  const CreditRepaymentRecordReadModel({
-    required this.id,
-    required this.repaymentType,
-    required this.allocated,
-    required this.displayTime,
-    required this.timeSource,
-    this.rootTransactionId,
-    this.paidFromAccountId,
-  });
-
-  final String id;
-  final RepaymentType repaymentType;
-  final RepaymentAmountBreakdown allocated;
-  final DateTime displayTime;
-  final CreditRepaymentTimeSource timeSource;
-  final String? rootTransactionId;
-  final String? paidFromAccountId;
-}
-
-enum ContractEffectiveRateUnavailableReason { principalMismatch, notConverged }
-
-class ContractEffectiveRateReadModel {
-  const ContractEffectiveRateReadModel._({
-    required this.contractId,
-    required this.isCalculable,
-    this.unavailableReason,
-    this.monthlyIrr,
-    this.nominalApr,
-    this.effectiveApr,
-    this.totalRepayment,
-  });
-
-  factory ContractEffectiveRateReadModel.available({
-    required String contractId,
-    required double monthlyIrr,
-    required double nominalApr,
-    required double effectiveApr,
-    required Money totalRepayment,
-  }) {
-    return ContractEffectiveRateReadModel._(
-      contractId: contractId,
-      isCalculable: true,
-      monthlyIrr: monthlyIrr,
-      nominalApr: nominalApr,
-      effectiveApr: effectiveApr,
-      totalRepayment: totalRepayment,
-    );
-  }
-
-  factory ContractEffectiveRateReadModel.unavailable({
-    required String contractId,
-    required ContractEffectiveRateUnavailableReason reason,
-  }) {
-    return ContractEffectiveRateReadModel._(
-      contractId: contractId,
-      isCalculable: false,
-      unavailableReason: reason,
-    );
-  }
-
-  final String contractId;
-  final bool isCalculable;
-  final ContractEffectiveRateUnavailableReason? unavailableReason;
-  final double? monthlyIrr;
-  final double? nominalApr;
-  final double? effectiveApr;
-  final Money? totalRepayment;
-}
-
-class CreditDueCalendarQuery {
-  const CreditDueCalendarQuery({
-    required this.from,
-    required this.until,
-    this.accountId,
-  });
-
-  final DateTime from;
-  final DateTime until;
-  final String? accountId;
-}
-
-enum CreditDueCalendarItemSource { billItem, schedule }
-
-class CreditDueCalendarItemReadModel {
-  const CreditDueCalendarItemReadModel._({
-    required this.source,
-    required this.accountId,
-    required this.dueDate,
-    required this.principal,
-    required this.interest,
-    required this.fee,
-    this.billId,
-    this.billItemId,
-    this.itemType,
-    this.contractId,
-    this.scheduleId,
-  });
-
-  factory CreditDueCalendarItemReadModel.billItem({
-    required String accountId,
-    required String billId,
-    required String billItemId,
-    required DateTime dueDate,
-    required BillItemType itemType,
-    required Money principal,
-    required Money interest,
-    required Money fee,
-    String? contractId,
-    String? scheduleId,
-  }) {
-    return CreditDueCalendarItemReadModel._(
-      source: CreditDueCalendarItemSource.billItem,
-      accountId: accountId,
-      billId: billId,
-      billItemId: billItemId,
-      itemType: itemType,
-      dueDate: dueDate,
-      principal: principal,
-      interest: interest,
-      fee: fee,
-      contractId: contractId,
-      scheduleId: scheduleId,
-    );
-  }
-
-  factory CreditDueCalendarItemReadModel.schedule({
-    required String accountId,
-    required String contractId,
-    required String scheduleId,
-    required DateTime dueDate,
-    required Money principal,
-    required Money interest,
-    required Money fee,
-  }) {
-    return CreditDueCalendarItemReadModel._(
-      source: CreditDueCalendarItemSource.schedule,
-      accountId: accountId,
-      dueDate: dueDate,
-      principal: principal,
-      interest: interest,
-      fee: fee,
-      contractId: contractId,
-      scheduleId: scheduleId,
-    );
-  }
-
-  final CreditDueCalendarItemSource source;
-  final String accountId;
-  final String? billId;
-  final String? billItemId;
-  final BillItemType? itemType;
-  final String? contractId;
-  final String? scheduleId;
-  final DateTime dueDate;
-  final Money principal;
-  final Money interest;
-  final Money fee;
-}
-
-class MonthlyBillSummaryQuery {
-  const MonthlyBillSummaryQuery({required this.month, this.accountId});
-
-  final MonthKey month;
-  final String? accountId;
-}
-
-class MonthlyBillSummaryReadModel {
-  const MonthlyBillSummaryReadModel({
-    required this.accountId,
-    required this.billId,
-    required this.period,
-    required this.status,
-    required this.expectedPrincipal,
-    required this.expectedInterest,
-    required this.expectedFee,
-    required this.pendingPrincipal,
-    required this.itemCount,
-    this.dueDate,
-  });
-
-  final String accountId;
-  final String billId;
-  final BillPeriod period;
-  final DateTime? dueDate;
-  final BillStatus status;
-  final Money expectedPrincipal;
-  final Money expectedInterest;
-  final Money expectedFee;
-  final Money pendingPrincipal;
-  final int itemCount;
 }
 
 class _ActualContractCashflow {

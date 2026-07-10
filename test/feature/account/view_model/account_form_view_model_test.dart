@@ -44,8 +44,7 @@ void main() {
           container.read(accountFormViewModelProvider.notifier)
             ..setKind(AccountProfileKind.credit)
             ..setBillingDay(5)
-            ..setRepaymentDay(25)
-            ..setBillingStartPeriod(BillPeriod.fromInt(202606));
+            ..setRepaymentDay(25);
 
       final outcome = await viewModel.submit(
         nameText: 'Card',
@@ -60,7 +59,6 @@ void main() {
       expect(command.creditLimit, const Money(minorUnits: 100000));
       expect(command.billingDay, 5);
       expect(command.repaymentDay, 25);
-      expect(command.billingStartPeriod, BillPeriod.fromInt(202606));
     });
 
     test('creates loan account without cycle parameters', () async {
@@ -85,7 +83,6 @@ void main() {
       expect(command.creditLimit, const Money(minorUnits: 300000));
       expect(command.billingDay, isNull);
       expect(command.repaymentDay, isNull);
-      expect(command.billingStartPeriod, isNull);
     });
 
     test('edits loaded account through edit command', () async {

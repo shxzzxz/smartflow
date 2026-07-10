@@ -11,8 +11,6 @@ class CreditLiabilityAccounts extends Table {
       integer().named('credit_limit_minor').nullable()();
   IntColumn get billingDay => integer().named('billing_day').nullable()();
   IntColumn get repaymentDay => integer().named('repayment_day').nullable()();
-  IntColumn get billingStartPeriod =>
-      integer().named('billing_start_period').nullable()();
   BoolColumn get billingDayToNext =>
       boolean()
           .named('billing_day_to_next')
@@ -31,16 +29,13 @@ class CreditLiabilityAccounts extends Table {
     'CHECK (credit_limit_minor IS NULL OR credit_limit_minor >= 0)',
     'CHECK (billing_day IS NULL OR billing_day BETWEEN 1 AND 28)',
     'CHECK (repayment_day IS NULL OR repayment_day BETWEEN 1 AND 28)',
-    'CHECK (billing_start_period IS NULL OR billing_start_period % 100 BETWEEN 1 AND 12)',
     'CHECK ('
         '(kind = \'credit\' '
         'AND billing_day IS NOT NULL '
-        'AND repayment_day IS NOT NULL '
-        'AND billing_start_period IS NOT NULL) '
+        'AND repayment_day IS NOT NULL) '
         'OR (kind = \'loan\' '
         'AND billing_day IS NULL '
-        'AND repayment_day IS NULL '
-        'AND billing_start_period IS NULL)'
+        'AND repayment_day IS NULL)'
         ')',
   ];
 }

@@ -1,9 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
-import 'package:smartflow/application/credit/credit_command_api.dart'
-    hide CreateRepaymentCommand;
-import 'package:smartflow/application/ledger/ledger_command_api.dart';
+import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
@@ -366,13 +364,6 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   }
 
   @override
-  Future<CreateContractResult> createBillConversionContract(
-    CreateBillConversionContractCommand command,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
   Future<CreateContractResult> createDisbursementContract(
     CreateDisbursementContractCommand command,
   ) {
@@ -380,24 +371,7 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   }
 
   @override
-  Future<PostedTransactionResult> createScheduledRepayment(
-    CreateScheduledRepaymentCommand command,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
   Future<void> deleteContract(DeleteContractCommand command) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> editRepayment(EditRepaymentCommand command) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> revertRepayment(RevertRepaymentCommand command) {
     throw UnimplementedError();
   }
 }

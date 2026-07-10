@@ -55,33 +55,40 @@ void main() {
       expect(command.note, 'note');
     });
 
-    test('submits bill conversion contract command', () async {
-      final service = _FakeInstallmentAppService();
-      final args = _args(
-        'card',
-        lockedSourceType: InstallmentSourceType.billConversion,
-      );
-      final container = _container(service: service);
-      await _readState(container, args);
+    test(
+      'submits credit account installment as disbursement command',
+      () async {
+        final service = _FakeInstallmentAppService();
+        final args = _args(
+          'card',
+          lockedSourceType: InstallmentSourceType.billConversion,
+        );
+        final container = _container(service: service);
+        await _readState(container, args);
+        container
+            .read(installmentFormViewModelProvider(args).notifier)
+            .setDisbursementAccountId('cash');
 
-      final outcome = await container
-          .read(installmentFormViewModelProvider(args).notifier)
-          .submit(
-            principalText: '100',
-            totalPeriodsText: '6',
-            rateText: '',
-            totalFeeText: '3',
-            overrideInstallmentText: '',
-            noteText: '',
-          );
+        final outcome = await container
+            .read(installmentFormViewModelProvider(args).notifier)
+            .submit(
+              principalText: '100',
+              totalPeriodsText: '6',
+              rateText: '',
+              totalFeeText: '3',
+              overrideInstallmentText: '',
+              noteText: '',
+            );
 
-      expect(outcome, isA<UiActionSuccess<String>>());
-      final command = service.billConversionCommands.single;
-      expect(command.liabilityAccountId, 'card');
-      expect(command.principal, const Money(minorUnits: 10000));
-      expect(command.totalFeeMinor, 300);
-      expect(command.interestRatePeriod, isNull);
-    });
+        expect(outcome, isA<UiActionSuccess<String>>());
+        final command = service.disbursementCommands.single;
+        expect(command.liabilityAccountId, 'card');
+        expect(command.disbursementAccountId, 'cash');
+        expect(command.principal, const Money(minorUnits: 10000));
+        expect(command.totalFeeMinor, 300);
+        expect(command.interestRatePeriod, isNull);
+      },
+    );
 
     test('maps AppException to UI failure', () async {
       final service = _FakeInstallmentAppService(
@@ -213,23 +220,12 @@ class _FakeInstallmentAppService implements InstallmentAppService {
 
   final Object? createException;
   final disbursementCommands = <CreateDisbursementContractCommand>[];
-  final billConversionCommands = <CreateBillConversionContractCommand>[];
 
   @override
   Future<CreateContractResult> createDisbursementContract(
     CreateDisbursementContractCommand command,
   ) async {
     disbursementCommands.add(command);
-    final exception = createException;
-    if (exception != null) throw exception;
-    return const CreateContractResult(contractId: 'contract-created');
-  }
-
-  @override
-  Future<CreateContractResult> createBillConversionContract(
-    CreateBillConversionContractCommand command,
-  ) async {
-    billConversionCommands.add(command);
     final exception = createException;
     if (exception != null) throw exception;
     return const CreateContractResult(contractId: 'contract-created');

@@ -9,7 +9,13 @@ part 'bill_query_providers.g.dart';
 Future<List<BillSummaryReadModel>> billSummariesByAccount(
   Ref ref,
   String accountId,
-) {
+) async {
+  await ref
+      .watch(creditBillGenerationAppServiceProvider)
+      .refreshDisplayedBillsForAccount(
+        accountId: accountId,
+        now: DateTime.now(),
+      );
   return ref.watch(billQueryServiceProvider).listBillsByAccount(accountId);
 }
 

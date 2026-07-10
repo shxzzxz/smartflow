@@ -47,7 +47,6 @@ void main() {
         expect(creditAccount.creditLimit, const Money(minorUnits: 100000));
         expect(creditAccount.billingDay, 5);
         expect(creditAccount.repaymentDay, 25);
-        expect(creditAccount.billingStartPeriod, BillPeriod.fromInt(202606));
         expect(creditAccount.billingDayToNext, true);
         expect(account.id, 'account-1');
         expect(ledgerAccount.id, creditAccount.accountId);
@@ -78,7 +77,6 @@ void main() {
       expect(creditAccount.creditLimit, const Money(minorUnits: 300000));
       expect(creditAccount.billingDay, isNull);
       expect(creditAccount.repaymentDay, isNull);
-      expect(creditAccount.billingStartPeriod, isNull);
     });
 
     test(
@@ -167,7 +165,6 @@ class _Fixture {
       creditAccounts: creditRepository,
       transactionRunner: runner,
       idGenerator: ids,
-      now: () => DateTime(2026, 6, 15),
     );
   }
 

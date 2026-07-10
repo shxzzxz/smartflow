@@ -5,6 +5,7 @@ import '../../../application/credit/credit_command_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
+import '../../../domain/credit/service/installment/installment_plan_engine.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
 import 'installment_contract_edit_state.dart';
@@ -14,7 +15,7 @@ part 'installment_contract_edit_view_model.g.dart';
 @riverpod
 class InstallmentContractEditViewModel
     extends _$InstallmentContractEditViewModel {
-  static const _generator = InstallmentScheduleGenerator();
+  static const _planner = InstallmentPlanEngine();
 
   @override
   Future<InstallmentContractEditState> build(String contractId) async {
@@ -129,7 +130,7 @@ class InstallmentContractEditViewModel
     final anchorDate =
         paidRows.isEmpty ? loaded.contract.borrowingDate : paidRows.last.date;
     final remainingFeeMinor = feeMinor - paidFeeMinor;
-    final allocations = _generator.allocate(
+    final allocations = _planner.allocate(
       remainingPrincipal: Money(minorUnits: remainingMinor),
       anchorDate: anchorDate,
       pendingDates: [for (final row in pendingRows) row.date],

@@ -10,6 +10,7 @@ import 'package:smartflow/domain/ledger/service/posting/account_posting_service.
 import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
+import 'package:smartflow/infrastructure/credit/adapter/ledger_credit_ledger_port.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_bill_source_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
@@ -51,11 +52,13 @@ void main() {
         await fixture.generation.generateDueBills(now: DateTime(2026, 6, 4));
 
         var bills = await fixture.billRepository.listBillsByAccount(account.id);
-        expect(bills, hasLength(1));
-        expect(bills.single.period, BillPeriod.fromInt(202606));
-        expect(bills.single.status, BillStatus.open);
+        expect(bills, hasLength(2));
+        var june = bills.singleWhere(
+          (bill) => bill.period == BillPeriod.fromInt(202606),
+        );
+        expect(june.status, BillStatus.open);
         expect(
-          bills.single.items.single.expectedPrincipal,
+          june.items.single.expectedPrincipal,
           const Money(minorUnits: 7000),
         );
 
@@ -66,8 +69,23 @@ void main() {
         );
         await fixture.generation.generateDueBills(now: DateTime(2026, 6, 4));
         bills = await fixture.billRepository.listBillsByAccount(account.id);
+        june = bills.singleWhere(
+          (bill) => bill.period == BillPeriod.fromInt(202606),
+        );
         expect(
-          bills.single.items.single.expectedPrincipal,
+          june.items.single.expectedPrincipal,
+          const Money(minorUnits: 7000),
+        );
+
+        await fixture.generation.refreshDisplayedBillsForAccount(
+          accountId: account.id,
+          now: DateTime(2026, 6, 4),
+        );
+        june = (await fixture.billRepository.listBillsByAccount(
+          account.id,
+        )).singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
+        expect(
+          june.items.single.expectedPrincipal,
           const Money(minorUnits: 9000),
         );
       },
@@ -85,8 +103,9 @@ void main() {
       );
 
       await fixture.generation.generateDueBills(now: DateTime(2026, 6, 4));
-      final openBill =
-          (await fixture.billRepository.listBillsByAccount(account.id)).single;
+      final openBill = (await fixture.billRepository.listBillsByAccount(
+        account.id,
+      )).singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
       expect(openBill.status, BillStatus.open);
       final openItemId = openBill.items.single.id;
 
@@ -162,16 +181,14 @@ void main() {
           occurredAt: DateTime(2026, 6, 2),
         );
 
-        expect(await fixture.generation.hasSourceProjectionDiff(june.id), true);
-
-        await fixture.generation.syncBillProjection(june.id);
+        await fixture.generation.refreshBill(june.id);
 
         final synced = await fixture.billRepository.findBill(june.id);
         expect(
           synced!.items.single.expectedPrincipal,
           const Money(minorUnits: 7000),
         );
-        expect(synced.items.single.status, BillItemStatus.pending);
+        expect(synced.items.single.status, BillItemStatus.partiallyPaid);
         expect(synced.status, BillStatus.billed);
       },
     );
@@ -251,7 +268,10 @@ void main() {
               ),
             );
 
-        await fixture.generation.generateDueBills(now: DateTime(2026, 7, 4));
+        await fixture.generation.refreshDisplayedBillsForAccount(
+          accountId: account.id,
+          now: DateTime(2026, 7, 4),
+        );
 
         final july = (await fixture.billRepository.listBillsByAccount(
           account.id,
@@ -293,85 +313,106 @@ void main() {
       await fixture.generation.generateDueBills(now: DateTime(2026, 6, 4));
 
       final bills = await fixture.billRepository.listBillsByAccount(account.id);
-      expect(bills.single.items.single.itemType, BillItemType.consumption);
-      expect(bills.single.items.single.expectedPrincipal, Money.zero());
-      expect(bills.single.items.single.status, BillItemStatus.paid);
+      final june = bills.singleWhere(
+        (bill) => bill.period == BillPeriod.fromInt(202606),
+      );
+      expect(june.items.single.itemType, BillItemType.consumption);
+      expect(june.items.single.expectedPrincipal, Money.zero());
+      expect(june.items.single.status, BillItemStatus.paid);
     });
 
-    test('groups loan schedules by month and skips empty months', () async {
+    test(
+      'generates only the current loan bill, including when empty',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        final account = await fixture.createLoanAccount();
+        final contractId = fixture.ids.newId();
+        await fixture.installmentRepository.saveContract(
+          InstallmentContract(
+            id: contractId,
+            liabilityAccountId: account.id,
+            sourceType: InstallmentSourceType.disbursement,
+            disbursementAccountId: 'asset-account',
+            disbursementTransactionId: 'tx-borrowing',
+            principal: const Money(minorUnits: 120000),
+            totalPeriods: 3,
+            borrowingDate: DateTime(2026, 6, 1),
+            firstRepaymentDate: DateTime(2026, 7, 1),
+            lastRepaymentDate: DateTime(2026, 9, 1),
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+            interestAccrualMethod: InterestAccrualMethod.daily,
+            totalFeeMinor: 0,
+            status: InstallmentContractStatus.active,
+            createdAt: DateTime(2026, 6, 1),
+          ),
+        );
+        await fixture.installmentRepository.replaceSchedules(contractId, [
+          InstallmentSchedule(
+            id: fixture.ids.newId(),
+            contractId: contractId,
+            periodNo: 1,
+            expectedRepaymentDate: DateTime(2026, 7, 1),
+            expectedPrincipal: const Money(minorUnits: 60000),
+            expectedInterest: const Money(minorUnits: 1000),
+            expectedFee: Money.zero(),
+            status: InstallmentScheduleStatus.pending,
+            createdAt: DateTime(2026, 6, 1),
+          ),
+          InstallmentSchedule(
+            id: fixture.ids.newId(),
+            contractId: contractId,
+            periodNo: 2,
+            expectedRepaymentDate: DateTime(2026, 8, 1),
+            expectedPrincipal: const Money(minorUnits: 0),
+            expectedInterest: const Money(minorUnits: 0),
+            expectedFee: Money.zero(),
+            status: InstallmentScheduleStatus.pending,
+            createdAt: DateTime(2026, 6, 1),
+          ),
+          InstallmentSchedule(
+            id: fixture.ids.newId(),
+            contractId: contractId,
+            periodNo: 3,
+            expectedRepaymentDate: DateTime(2026, 9, 1),
+            expectedPrincipal: const Money(minorUnits: 60000),
+            expectedInterest: const Money(minorUnits: 500),
+            expectedFee: Money.zero(),
+            status: InstallmentScheduleStatus.pending,
+            createdAt: DateTime(2026, 6, 1),
+          ),
+        ]);
+        final skippedSchedule = (await fixture.installmentRepository
+            .listSchedules(
+              contractId,
+            )).singleWhere((schedule) => schedule.periodNo == 2);
+        await fixture.installmentRepository.updateSchedule(
+          skippedSchedule.id,
+          const InstallmentSchedulePatch(
+            status: InstallmentScheduleStatus.skipped,
+          ),
+        );
+
+        await fixture.generation.generateDueBills(now: DateTime(2026, 8, 15));
+
+        final bills = await fixture.billRepository.listBillsByAccount(
+          account.id,
+        );
+        expect(bills, hasLength(1));
+        expect(bills.single.period, BillPeriod.fromInt(202608));
+        expect(bills.single.items, isEmpty);
+        expect(bills.single.status, BillStatus.settled);
+      },
+    );
+
+    test('cross-month schedule creates a new bill item identity', () async {
       final fixture = _Fixture();
       addTearDown(fixture.close);
       final account = await fixture.createLoanAccount();
-      final contractId = await fixture.installmentRepository.insertContract(
-        InstallmentContractDraft(
-          liabilityAccountId: account.id,
-          sourceType: InstallmentSourceType.disbursement,
-          disbursementAccountId: 'asset-account',
-          disbursementTransactionId: 'tx-borrowing',
-          principal: const Money(minorUnits: 120000),
-          totalPeriods: 3,
-          borrowingDate: DateTime(2026, 6, 1),
-          firstRepaymentDate: DateTime(2026, 7, 1),
-          lastRepaymentDate: DateTime(2026, 9, 1),
-          repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-          interestAccrualMethod: InterestAccrualMethod.daily,
-          status: InstallmentContractStatus.active,
-        ),
-      );
-      await fixture.installmentRepository.replaceSchedules(contractId, [
-        InstallmentScheduleDraft(
-          periodNo: 1,
-          expectedRepaymentDate: DateTime(2026, 7, 1),
-          expectedPrincipal: const Money(minorUnits: 60000),
-          expectedInterest: const Money(minorUnits: 1000),
-          expectedFee: Money.zero(),
-        ),
-        InstallmentScheduleDraft(
-          periodNo: 2,
-          expectedRepaymentDate: DateTime(2026, 8, 1),
-          expectedPrincipal: const Money(minorUnits: 0),
-          expectedInterest: const Money(minorUnits: 0),
-          expectedFee: Money.zero(),
-        ),
-        InstallmentScheduleDraft(
-          periodNo: 3,
-          expectedRepaymentDate: DateTime(2026, 9, 1),
-          expectedPrincipal: const Money(minorUnits: 60000),
-          expectedInterest: const Money(minorUnits: 500),
-          expectedFee: Money.zero(),
-        ),
-      ]);
-      final skippedSchedule = (await fixture.installmentRepository
-          .listSchedules(
-            contractId,
-          )).singleWhere((schedule) => schedule.periodNo == 2);
-      await fixture.installmentRepository.updateSchedule(
-        skippedSchedule.id,
-        const InstallmentSchedulePatch(
-          status: InstallmentScheduleStatus.skipped,
-        ),
-      );
-
-      await fixture.generation.generateDueBills(now: DateTime(2026, 8, 15));
-
-      final bills = await fixture.billRepository.listBillsByAccount(account.id);
-      expect(bills.map((bill) => bill.period).toSet(), {
-        BillPeriod.fromInt(202607),
-        BillPeriod.fromInt(202609),
-      });
-      expect(
-        bills.any((bill) => bill.period == BillPeriod.fromInt(202608)),
-        false,
-      );
-      expect(bills.every((bill) => bill.status == BillStatus.billed), true);
-    });
-
-    test('sync moves changed loan schedule to target month bill', () async {
-      final fixture = _Fixture();
-      addTearDown(fixture.close);
-      final account = await fixture.createLoanAccount();
-      final contractId = await fixture.installmentRepository.insertContract(
-        InstallmentContractDraft(
+      final contractId = fixture.ids.newId();
+      await fixture.installmentRepository.saveContract(
+        InstallmentContract(
+          id: contractId,
           liabilityAccountId: account.id,
           sourceType: InstallmentSourceType.disbursement,
           disbursementAccountId: 'asset-account',
@@ -383,16 +424,22 @@ void main() {
           lastRepaymentDate: DateTime(2026, 7, 1),
           repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
           interestAccrualMethod: InterestAccrualMethod.daily,
+          totalFeeMinor: 0,
           status: InstallmentContractStatus.active,
+          createdAt: DateTime(2026, 6, 1),
         ),
       );
       await fixture.installmentRepository.replaceSchedules(contractId, [
-        InstallmentScheduleDraft(
+        InstallmentSchedule(
+          id: fixture.ids.newId(),
+          contractId: contractId,
           periodNo: 1,
           expectedRepaymentDate: DateTime(2026, 7, 1),
           expectedPrincipal: const Money(minorUnits: 60000),
           expectedInterest: Money.zero(),
           expectedFee: Money.zero(),
+          status: InstallmentScheduleStatus.pending,
+          createdAt: DateTime(2026, 6, 1),
         ),
       ]);
       final schedule =
@@ -400,7 +447,7 @@ void main() {
             contractId,
           )).single;
 
-      await fixture.generation.generateDueBills(now: DateTime(2026, 8, 15));
+      await fixture.generation.generateDueBills(now: DateTime(2026, 7, 15));
       final july = (await fixture.billRepository.listBillsByAccount(
         account.id,
       )).singleWhere((bill) => bill.period == BillPeriod.fromInt(202607));
@@ -411,19 +458,18 @@ void main() {
         InstallmentSchedulePatch(expectedRepaymentDate: DateTime(2026, 8, 1)),
       );
 
-      expect(await fixture.generation.hasSourceProjectionDiff(july.id), true);
-
-      await fixture.generation.syncBillProjection(july.id);
-
-      final syncedJuly = await fixture.billRepository.findBill(july.id);
+      await fixture.generation.generateDueBills(now: DateTime(2026, 8, 15));
       final august = (await fixture.billRepository.listBillsByAccount(
         account.id,
       )).singleWhere((bill) => bill.period == BillPeriod.fromInt(202608));
+      expect(august.items.single.id, isNot(originalItemId));
+      expect(august.items.single.scheduleId, schedule.id);
+
+      await fixture.generation.refreshBill(july.id);
+
+      final syncedJuly = await fixture.billRepository.findBill(july.id);
       expect(syncedJuly!.items, isEmpty);
       expect(syncedJuly.status, BillStatus.settled);
-      expect(august.items.single.id, originalItemId);
-      expect(august.items.single.scheduleId, schedule.id);
-      expect(august.items.single.repaymentDate, DateTime(2026, 8, 1));
     });
   });
 }
@@ -452,7 +498,6 @@ class _Fixture {
       creditAccounts: creditAccountRepository,
       transactionRunner: runner,
       idGenerator: ids,
-      now: () => DateTime(2026, 6, 1),
     );
     postingAppService = TransactionPostingAppServiceImpl(
       accountRepository: accountRepository,
@@ -463,7 +508,7 @@ class _Fixture {
     );
     generation = CreditBillGenerationAppServiceImpl(
       creditAccounts: creditAccountRepository,
-      ledgerAccounts: accountRepository,
+      ledger: creditLedgerPort,
       installments: installmentRepository,
       repayments: repaymentRepository,
       bills: billRepository,
@@ -475,11 +520,7 @@ class _Fixture {
       bills: billRepository,
       repayments: repaymentRepository,
       installments: installmentRepository,
-      accountQueryService: accountQueryService,
-      postingService: postingAppService,
-      correctionService: correctionAppService,
-      updateService: updateAppService,
-      transactionQueryService: transactionQueryService,
+      ledger: creditLedgerPort,
       transactionRunner: runner,
       idGenerator: ids,
     );
@@ -523,6 +564,13 @@ class _Fixture {
         rootGroupRepository: postingRepository,
         ledgerWriter: ledgerWriter,
       );
+  late final LedgerCreditLedgerPort creditLedgerPort = LedgerCreditLedgerPort(
+    accountQueryService: accountQueryService,
+    postingService: postingAppService,
+    correctionService: correctionAppService,
+    updateService: updateAppService,
+    transactionQueryService: transactionQueryService,
+  );
   late final TransactionQueryService transactionQueryService =
       TransactionQueryServiceImpl(
         transactionRead: DriftTransactionReadRepository(database),
@@ -542,7 +590,6 @@ class _Fixture {
         kind: CreditLiabilityAccountKind.credit,
         billingDay: 5,
         repaymentDay: 25,
-        billingStartPeriod: BillPeriod(year: 2026, month: 6),
       ),
     );
   }

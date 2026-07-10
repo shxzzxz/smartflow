@@ -11,7 +11,6 @@ import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
-import 'installment_repayment_mode.dart';
 
 part 'installment_repayment_form_view_model.g.dart';
 
@@ -41,18 +40,6 @@ class InstallmentRepaymentFormViewModel
       );
     }
 
-    final schedule =
-        args.mode == InstallmentRepaymentMode.scheduled
-            ? _findSchedule(schedules, args.scheduleId)
-            : null;
-    if (args.mode == InstallmentRepaymentMode.scheduled && schedule == null) {
-      return InstallmentRepaymentFormState.scheduleNotFound(
-        contract: contract,
-        schedules: schedules,
-        accounts: accounts,
-      );
-    }
-
     final paidFromAccountId =
         contract.disbursementAccountId != null &&
                 accounts.any((a) => a.id == contract.disbursementAccountId)
@@ -63,21 +50,7 @@ class InstallmentRepaymentFormViewModel
       contract: contract,
       schedules: schedules,
       accounts: accounts,
-      schedule: schedule,
-      principalText: _defaultPrincipalText(
-        contract,
-        schedules,
-        schedule,
-        args.mode,
-      ),
-      interestText:
-          schedule != null && schedule.expectedInterest.minorUnits > 0
-              ? schedule.expectedInterest.format()
-              : '',
-      feeText:
-          schedule != null && schedule.expectedFee.minorUnits > 0
-              ? schedule.expectedFee.format()
-              : '',
+      principalText: _defaultPrincipalText(contract, schedules),
       occurredAt: DateTime.now(),
       paidFromAccountId: paidFromAccountId,
     );
@@ -135,28 +108,23 @@ class InstallmentRepaymentFormViewModel
     _update((state) => state.copyWith(submitting: true));
     try {
       final service = ref.read(repaymentAppServiceProvider);
-      switch (args.mode) {
-        case InstallmentRepaymentMode.scheduled:
-          return _invalidCommand('期次还款请从账单还款处理');
-        case InstallmentRepaymentMode.prepayment:
-          await service.createContractPrepaymentRepayment(
-            CreateContractPrepaymentRepaymentCommand(
-              contractId: current.contract!.id,
-              principal: principal,
-              interest: _positiveOrNull(interest),
-              fee: _positiveOrNull(fee),
-              discount: _positiveOrNull(discount),
-              transactionInfo:
-                  paidFromAccountId == null
-                      ? null
-                      : RepaymentTransactionInfo(
-                        paidFromAccountId: paidFromAccountId,
-                        occurredAt: current.occurredAt,
-                      ),
-              note: trimToNull(current.noteText),
-            ),
-          );
-      }
+      await service.createContractPrepaymentRepayment(
+        CreateContractPrepaymentRepaymentCommand(
+          contractId: current.contract!.id,
+          principal: principal,
+          interest: _positiveOrNull(interest),
+          fee: _positiveOrNull(fee),
+          discount: _positiveOrNull(discount),
+          transactionInfo:
+              paidFromAccountId == null
+                  ? null
+                  : RepaymentTransactionInfo(
+                    paidFromAccountId: paidFromAccountId,
+                    occurredAt: current.occurredAt,
+                  ),
+          note: trimToNull(current.noteText),
+        ),
+      );
       _invalidate(current.contract!);
       return const SubmitOutcome.success();
     } on AppException catch (exception) {
@@ -202,29 +170,21 @@ class InstallmentRepaymentFormViewModel
 }
 
 class InstallmentRepaymentFormArgs {
-  const InstallmentRepaymentFormArgs({
-    required this.contractId,
-    required this.mode,
-    this.scheduleId,
-  });
+  const InstallmentRepaymentFormArgs({required this.contractId});
 
   final String contractId;
-  final InstallmentRepaymentMode mode;
-  final String? scheduleId;
 
   @override
   bool operator ==(Object other) {
     return other is InstallmentRepaymentFormArgs &&
-        other.contractId == contractId &&
-        other.mode == mode &&
-        other.scheduleId == scheduleId;
+        other.contractId == contractId;
   }
 
   @override
-  int get hashCode => Object.hash(contractId, mode, scheduleId);
+  int get hashCode => contractId.hashCode;
 }
 
-enum InstallmentRepaymentFormStatus { loaded, notFound, scheduleNotFound }
+enum InstallmentRepaymentFormStatus { loaded, notFound }
 
 class InstallmentRepaymentFormState {
   const InstallmentRepaymentFormState({
@@ -240,7 +200,6 @@ class InstallmentRepaymentFormState {
     required this.createTransaction,
     required this.submitting,
     this.contract,
-    this.schedule,
     this.paidFromAccountId,
   });
 
@@ -249,7 +208,6 @@ class InstallmentRepaymentFormState {
     required List<InstallmentSchedule> schedules,
     required List<Account> accounts,
     required DateTime occurredAt,
-    InstallmentSchedule? schedule,
     String principalText = '',
     String interestText = '',
     String feeText = '',
@@ -260,7 +218,6 @@ class InstallmentRepaymentFormState {
     return InstallmentRepaymentFormState(
       status: InstallmentRepaymentFormStatus.loaded,
       contract: contract,
-      schedule: schedule,
       schedules: schedules,
       accounts: accounts,
       principalText: principalText,
@@ -294,23 +251,8 @@ class InstallmentRepaymentFormState {
     );
   }
 
-  factory InstallmentRepaymentFormState.scheduleNotFound({
-    required InstallmentContract contract,
-    required List<InstallmentSchedule> schedules,
-    required List<Account> accounts,
-  }) {
-    return InstallmentRepaymentFormState.notFound(
-      schedules: schedules,
-      accounts: accounts,
-    ).copyWith(
-      status: InstallmentRepaymentFormStatus.scheduleNotFound,
-      contract: contract,
-    );
-  }
-
   final InstallmentRepaymentFormStatus status;
   final InstallmentContract? contract;
-  final InstallmentSchedule? schedule;
   final List<InstallmentSchedule> schedules;
   final List<Account> accounts;
   final String principalText;
@@ -344,7 +286,6 @@ class InstallmentRepaymentFormState {
           contract == _sentinel
               ? this.contract
               : contract as InstallmentContract?,
-      schedule: schedule,
       schedules: schedules,
       accounts: accounts,
       principalText: principalText ?? this.principalText,
@@ -366,27 +307,12 @@ class InstallmentRepaymentFormState {
 String _defaultPrincipalText(
   InstallmentContract contract,
   List<InstallmentSchedule> schedules,
-  InstallmentSchedule? schedule,
-  InstallmentRepaymentMode mode,
 ) {
-  if (schedule != null) return schedule.expectedPrincipal.format();
-  if (mode != InstallmentRepaymentMode.prepayment) return '';
   final paidPrincipalSum = schedules
       .where((s) => s.status == InstallmentScheduleStatus.paid)
       .fold<int>(0, (sum, s) => sum + s.expectedPrincipal.minorUnits);
   final remaining = contract.principal.minorUnits - paidPrincipalSum;
   return Money(minorUnits: remaining < 0 ? 0 : remaining).format();
-}
-
-InstallmentSchedule? _findSchedule(
-  List<InstallmentSchedule> schedules,
-  String? id,
-) {
-  if (id == null) return null;
-  for (final schedule in schedules) {
-    if (schedule.id == id) return schedule;
-  }
-  return null;
 }
 
 String? _selectedId(String? id, List<Account> accounts) {

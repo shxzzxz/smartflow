@@ -465,7 +465,8 @@ List<BillRepaymentAllocationLine> _allocationLines(
 ) {
   return [
     for (final item in detail.items)
-      if (item.status == credit.BillItemStatus.pending)
+      if (item.status == credit.BillItemStatus.pending ||
+          item.status == credit.BillItemStatus.partiallyPaid)
         if (detail.summary.status != credit.BillStatus.open ||
             item.itemType == credit.BillItemType.consumption)
           BillRepaymentAllocationLine(

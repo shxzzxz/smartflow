@@ -79,14 +79,12 @@ class DriftBillRepository implements BillRepository {
   @override
   Future<void> replaceBillItems(String billId, List<BillItem> items) async {
     final now = DateTime.now();
-    await _database.transaction(() async {
-      await (_database.delete(_database.billItems)
-        ..where((item) => item.billId.equals(billId))).go();
-      await _database.batch((batch) {
-        for (final item in items) {
-          batch.insert(_database.billItems, _itemCompanion(item, now));
-        }
-      });
+    await (_database.delete(_database.billItems)
+      ..where((item) => item.billId.equals(billId))).go();
+    await _database.batch((batch) {
+      for (final item in items) {
+        batch.insert(_database.billItems, _itemCompanion(item, now));
+      }
     });
   }
 
@@ -103,7 +101,10 @@ class DriftBillRepository implements BillRepository {
               ..addColumns([countExpr])
               ..where(_database.bills.accountId.equals(accountId))
               ..where(
-                _database.billItems.status.equalsValue(BillItemStatus.pending),
+                _database.billItems.status.isInValues({
+                  BillItemStatus.pending,
+                  BillItemStatus.partiallyPaid,
+                }),
               ))
             .getSingle();
     return (row.read(countExpr) ?? 0) > 0;

@@ -10,6 +10,7 @@ import '../infrastructure/credit/repository/drift_bill_repository.dart';
 import '../infrastructure/credit/repository/drift_credit_bill_source_repository.dart';
 import '../infrastructure/credit/repository/drift_installment_repository.dart';
 import '../infrastructure/credit/repository/drift_repayment_repository.dart';
+import '../infrastructure/credit/adapter/ledger_credit_ledger_port.dart';
 import '../infrastructure/ledger/repository/drift_posting_repository.dart';
 import '../infrastructure/ledger/repository/drift_system_account_resolver.dart';
 import '../infrastructure/ledger/repository/drift_transaction_detail_read_repository.dart';
@@ -20,6 +21,7 @@ import '../infrastructure/shared/uuid_id_generator.dart';
 import '../application/ledger/ledger_command_api.dart';
 import '../application/ledger/ledger_query_api.dart';
 import '../application/ledger/ledger_query_port_api.dart';
+import 'package:smartflow/application/credit/credit_port_api.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../application/shared/app_task.dart';
@@ -247,16 +249,23 @@ RepaymentRepository repaymentRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-RepaymentAppService repaymentAppService(Ref ref) {
-  return RepaymentAppServiceImpl(
-    bills: ref.watch(billRepositoryProvider),
-    repayments: ref.watch(repaymentRepositoryProvider),
-    installments: ref.watch(installmentRepositoryProvider),
+CreditLedgerPort creditLedgerPort(Ref ref) {
+  return LedgerCreditLedgerPort(
     accountQueryService: ref.watch(accountQueryServiceProvider),
     postingService: ref.watch(transactionPostingAppServiceProvider),
     correctionService: ref.watch(transactionCorrectionAppServiceProvider),
     updateService: ref.watch(transactionUpdateAppServiceProvider),
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+RepaymentAppService repaymentAppService(Ref ref) {
+  return RepaymentAppServiceImpl(
+    bills: ref.watch(billRepositoryProvider),
+    repayments: ref.watch(repaymentRepositoryProvider),
+    installments: ref.watch(installmentRepositoryProvider),
+    ledger: ref.watch(creditLedgerPortProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
     idGenerator: ref.watch(idGeneratorProvider),
   );
@@ -266,12 +275,12 @@ RepaymentAppService repaymentAppService(Ref ref) {
 InstallmentAppService installmentAppService(Ref ref) {
   return InstallmentAppServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),
+    bills: ref.watch(billRepositoryProvider),
     creditAccounts: ref.watch(creditAccountRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
-    postingService: ref.watch(transactionPostingAppServiceProvider),
-    correctionService: ref.watch(transactionCorrectionAppServiceProvider),
-    updateService: ref.watch(transactionUpdateAppServiceProvider),
+    ledger: ref.watch(creditLedgerPortProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
   );
 }
 
@@ -286,7 +295,7 @@ InstallmentQueryService installmentQueryService(Ref ref) {
 CreditBillGenerationAppService creditBillGenerationAppService(Ref ref) {
   return CreditBillGenerationAppServiceImpl(
     creditAccounts: ref.watch(creditAccountRepositoryProvider),
-    ledgerAccounts: ref.watch(accountRepositoryProvider),
+    ledger: ref.watch(creditLedgerPortProvider),
     installments: ref.watch(installmentRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
     bills: ref.watch(billRepositoryProvider),
@@ -318,17 +327,5 @@ BillQueryService billQueryService(Ref ref) {
     installments: ref.watch(installmentRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
-    generationService: ref.watch(creditBillGenerationAppServiceProvider),
-  );
-}
-
-@Riverpod(keepAlive: true)
-CreditAppService creditAppService(Ref ref) {
-  return CreditAppServiceImpl(
-    installmentQueryService: ref.watch(installmentQueryServiceProvider),
-    postingService: ref.watch(transactionPostingAppServiceProvider),
-    correctionService: ref.watch(transactionCorrectionAppServiceProvider),
-    transactionQueryService: ref.watch(transactionQueryServiceProvider),
-    accountQueryService: ref.watch(accountQueryServiceProvider),
   );
 }

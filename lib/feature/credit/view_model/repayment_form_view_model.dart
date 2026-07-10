@@ -48,25 +48,24 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
       );
     }
 
-    final detail = await ref.watch(
-      transactionDetailProvider(editTransactionId).future,
-    );
-    if (detail == null) {
-      return RepaymentFormState.notFound(
-        liabilityAccounts: liabilityAccounts,
-        repaymentSourceAccounts: repaymentSourceAccounts,
-      );
+    final editResult = await ref
+        .read(repaymentAppServiceProvider)
+        .loadLiabilityRepaymentEditView(editTransactionId);
+    switch (editResult.status) {
+      case credit.LiabilityRepaymentEditViewLoadStatus.notFound:
+        return RepaymentFormState.notFound(
+          liabilityAccounts: liabilityAccounts,
+          repaymentSourceAccounts: repaymentSourceAccounts,
+        );
+      case credit.LiabilityRepaymentEditViewLoadStatus.notEditable:
+        return RepaymentFormState.notEditable(
+          liabilityAccounts: liabilityAccounts,
+          repaymentSourceAccounts: repaymentSourceAccounts,
+        );
+      case credit.LiabilityRepaymentEditViewLoadStatus.loaded:
+        break;
     }
-    final accountsById = await ref.watch(accountsByIdProvider.future);
-    final view = ref
-        .read(creditAppServiceProvider)
-        .parseRepaymentEditView(detail, accountsById: accountsById);
-    if (view == null) {
-      return RepaymentFormState.notEditable(
-        liabilityAccounts: liabilityAccounts,
-        repaymentSourceAccounts: repaymentSourceAccounts,
-      );
-    }
+    final view = editResult.view!;
     return RepaymentFormState.loaded(
       liabilityAccounts: liabilityAccounts,
       repaymentSourceAccounts: repaymentSourceAccounts,
@@ -140,13 +139,13 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
 
     _update((state) => state.copyWith(submitting: true));
     try {
-      final service = ref.read(creditAppServiceProvider);
+      final service = ref.read(repaymentAppServiceProvider);
       final editTransactionId = args.editTransactionId;
       final note = trimToNull(current.noteText);
       final result =
           editTransactionId == null
-              ? await service.createRepayment(
-                credit.CreateRepaymentCommand(
+              ? await service.createLiabilityRepayment(
+                credit.CreateLiabilityRepaymentCommand(
                   liabilityAccountId: liabilityAccountId,
                   paidFromAccountId: paidFromAccountId,
                   principal: principal,
@@ -157,8 +156,8 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
                   note: note,
                 ),
               )
-              : await service.correctRepayment(
-                credit.CorrectRepaymentCommand(
+              : await service.correctLiabilityRepayment(
+                credit.CorrectLiabilityRepaymentCommand(
                   transactionId: editTransactionId,
                   liabilityAccountId: liabilityAccountId,
                   paidFromAccountId: paidFromAccountId,

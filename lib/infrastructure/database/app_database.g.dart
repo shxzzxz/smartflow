@@ -4215,16 +4215,6 @@ class $CreditLiabilityAccountsTable extends CreditLiabilityAccounts
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _billingStartPeriodMeta =
-      const VerificationMeta('billingStartPeriod');
-  @override
-  late final GeneratedColumn<int> billingStartPeriod = GeneratedColumn<int>(
-    'billing_start_period',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _billingDayToNextMeta = const VerificationMeta(
     'billingDayToNext',
   );
@@ -4272,7 +4262,6 @@ class $CreditLiabilityAccountsTable extends CreditLiabilityAccounts
     creditLimitMinor,
     billingDay,
     repaymentDay,
-    billingStartPeriod,
     billingDayToNext,
     createdAt,
     updatedAt,
@@ -4323,15 +4312,6 @@ class $CreditLiabilityAccountsTable extends CreditLiabilityAccounts
         repaymentDay.isAcceptableOrUnknown(
           data['repayment_day']!,
           _repaymentDayMeta,
-        ),
-      );
-    }
-    if (data.containsKey('billing_start_period')) {
-      context.handle(
-        _billingStartPeriodMeta,
-        billingStartPeriod.isAcceptableOrUnknown(
-          data['billing_start_period']!,
-          _billingStartPeriodMeta,
         ),
       );
     }
@@ -4396,10 +4376,6 @@ class $CreditLiabilityAccountsTable extends CreditLiabilityAccounts
         DriftSqlType.int,
         data['${effectivePrefix}repayment_day'],
       ),
-      billingStartPeriod: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}billing_start_period'],
-      ),
       billingDayToNext:
           attachedDatabase.typeMapping.read(
             DriftSqlType.bool,
@@ -4437,7 +4413,6 @@ class CreditLiabilityAccountRow extends DataClass
   final int? creditLimitMinor;
   final int? billingDay;
   final int? repaymentDay;
-  final int? billingStartPeriod;
   final bool billingDayToNext;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -4448,7 +4423,6 @@ class CreditLiabilityAccountRow extends DataClass
     this.creditLimitMinor,
     this.billingDay,
     this.repaymentDay,
-    this.billingStartPeriod,
     required this.billingDayToNext,
     required this.createdAt,
     required this.updatedAt,
@@ -4471,9 +4445,6 @@ class CreditLiabilityAccountRow extends DataClass
     }
     if (!nullToAbsent || repaymentDay != null) {
       map['repayment_day'] = Variable<int>(repaymentDay);
-    }
-    if (!nullToAbsent || billingStartPeriod != null) {
-      map['billing_start_period'] = Variable<int>(billingStartPeriod);
     }
     map['billing_day_to_next'] = Variable<bool>(billingDayToNext);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -4498,10 +4469,6 @@ class CreditLiabilityAccountRow extends DataClass
           repaymentDay == null && nullToAbsent
               ? const Value.absent()
               : Value(repaymentDay),
-      billingStartPeriod:
-          billingStartPeriod == null && nullToAbsent
-              ? const Value.absent()
-              : Value(billingStartPeriod),
       billingDayToNext: Value(billingDayToNext),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -4522,7 +4489,6 @@ class CreditLiabilityAccountRow extends DataClass
       creditLimitMinor: serializer.fromJson<int?>(json['creditLimitMinor']),
       billingDay: serializer.fromJson<int?>(json['billingDay']),
       repaymentDay: serializer.fromJson<int?>(json['repaymentDay']),
-      billingStartPeriod: serializer.fromJson<int?>(json['billingStartPeriod']),
       billingDayToNext: serializer.fromJson<bool>(json['billingDayToNext']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -4540,7 +4506,6 @@ class CreditLiabilityAccountRow extends DataClass
       'creditLimitMinor': serializer.toJson<int?>(creditLimitMinor),
       'billingDay': serializer.toJson<int?>(billingDay),
       'repaymentDay': serializer.toJson<int?>(repaymentDay),
-      'billingStartPeriod': serializer.toJson<int?>(billingStartPeriod),
       'billingDayToNext': serializer.toJson<bool>(billingDayToNext),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -4554,7 +4519,6 @@ class CreditLiabilityAccountRow extends DataClass
     Value<int?> creditLimitMinor = const Value.absent(),
     Value<int?> billingDay = const Value.absent(),
     Value<int?> repaymentDay = const Value.absent(),
-    Value<int?> billingStartPeriod = const Value.absent(),
     bool? billingDayToNext,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -4568,10 +4532,6 @@ class CreditLiabilityAccountRow extends DataClass
             : this.creditLimitMinor,
     billingDay: billingDay.present ? billingDay.value : this.billingDay,
     repaymentDay: repaymentDay.present ? repaymentDay.value : this.repaymentDay,
-    billingStartPeriod:
-        billingStartPeriod.present
-            ? billingStartPeriod.value
-            : this.billingStartPeriod,
     billingDayToNext: billingDayToNext ?? this.billingDayToNext,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -4593,10 +4553,6 @@ class CreditLiabilityAccountRow extends DataClass
           data.repaymentDay.present
               ? data.repaymentDay.value
               : this.repaymentDay,
-      billingStartPeriod:
-          data.billingStartPeriod.present
-              ? data.billingStartPeriod.value
-              : this.billingStartPeriod,
       billingDayToNext:
           data.billingDayToNext.present
               ? data.billingDayToNext.value
@@ -4615,7 +4571,6 @@ class CreditLiabilityAccountRow extends DataClass
           ..write('creditLimitMinor: $creditLimitMinor, ')
           ..write('billingDay: $billingDay, ')
           ..write('repaymentDay: $repaymentDay, ')
-          ..write('billingStartPeriod: $billingStartPeriod, ')
           ..write('billingDayToNext: $billingDayToNext, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -4631,7 +4586,6 @@ class CreditLiabilityAccountRow extends DataClass
     creditLimitMinor,
     billingDay,
     repaymentDay,
-    billingStartPeriod,
     billingDayToNext,
     createdAt,
     updatedAt,
@@ -4646,7 +4600,6 @@ class CreditLiabilityAccountRow extends DataClass
           other.creditLimitMinor == this.creditLimitMinor &&
           other.billingDay == this.billingDay &&
           other.repaymentDay == this.repaymentDay &&
-          other.billingStartPeriod == this.billingStartPeriod &&
           other.billingDayToNext == this.billingDayToNext &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -4660,7 +4613,6 @@ class CreditLiabilityAccountsCompanion
   final Value<int?> creditLimitMinor;
   final Value<int?> billingDay;
   final Value<int?> repaymentDay;
-  final Value<int?> billingStartPeriod;
   final Value<bool> billingDayToNext;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -4672,7 +4624,6 @@ class CreditLiabilityAccountsCompanion
     this.creditLimitMinor = const Value.absent(),
     this.billingDay = const Value.absent(),
     this.repaymentDay = const Value.absent(),
-    this.billingStartPeriod = const Value.absent(),
     this.billingDayToNext = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -4685,7 +4636,6 @@ class CreditLiabilityAccountsCompanion
     this.creditLimitMinor = const Value.absent(),
     this.billingDay = const Value.absent(),
     this.repaymentDay = const Value.absent(),
-    this.billingStartPeriod = const Value.absent(),
     this.billingDayToNext = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -4700,7 +4650,6 @@ class CreditLiabilityAccountsCompanion
     Expression<int>? creditLimitMinor,
     Expression<int>? billingDay,
     Expression<int>? repaymentDay,
-    Expression<int>? billingStartPeriod,
     Expression<bool>? billingDayToNext,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -4713,8 +4662,6 @@ class CreditLiabilityAccountsCompanion
       if (creditLimitMinor != null) 'credit_limit_minor': creditLimitMinor,
       if (billingDay != null) 'billing_day': billingDay,
       if (repaymentDay != null) 'repayment_day': repaymentDay,
-      if (billingStartPeriod != null)
-        'billing_start_period': billingStartPeriod,
       if (billingDayToNext != null) 'billing_day_to_next': billingDayToNext,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -4729,7 +4676,6 @@ class CreditLiabilityAccountsCompanion
     Value<int?>? creditLimitMinor,
     Value<int?>? billingDay,
     Value<int?>? repaymentDay,
-    Value<int?>? billingStartPeriod,
     Value<bool>? billingDayToNext,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -4742,7 +4688,6 @@ class CreditLiabilityAccountsCompanion
       creditLimitMinor: creditLimitMinor ?? this.creditLimitMinor,
       billingDay: billingDay ?? this.billingDay,
       repaymentDay: repaymentDay ?? this.repaymentDay,
-      billingStartPeriod: billingStartPeriod ?? this.billingStartPeriod,
       billingDayToNext: billingDayToNext ?? this.billingDayToNext,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -4773,9 +4718,6 @@ class CreditLiabilityAccountsCompanion
     if (repaymentDay.present) {
       map['repayment_day'] = Variable<int>(repaymentDay.value);
     }
-    if (billingStartPeriod.present) {
-      map['billing_start_period'] = Variable<int>(billingStartPeriod.value);
-    }
     if (billingDayToNext.present) {
       map['billing_day_to_next'] = Variable<bool>(billingDayToNext.value);
     }
@@ -4800,7 +4742,6 @@ class CreditLiabilityAccountsCompanion
           ..write('creditLimitMinor: $creditLimitMinor, ')
           ..write('billingDay: $billingDay, ')
           ..write('repaymentDay: $repaymentDay, ')
-          ..write('billingStartPeriod: $billingStartPeriod, ')
           ..write('billingDayToNext: $billingDayToNext, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -11300,7 +11241,6 @@ typedef $$CreditLiabilityAccountsTableCreateCompanionBuilder =
       Value<int?> creditLimitMinor,
       Value<int?> billingDay,
       Value<int?> repaymentDay,
-      Value<int?> billingStartPeriod,
       Value<bool> billingDayToNext,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -11314,7 +11254,6 @@ typedef $$CreditLiabilityAccountsTableUpdateCompanionBuilder =
       Value<int?> creditLimitMinor,
       Value<int?> billingDay,
       Value<int?> repaymentDay,
-      Value<int?> billingStartPeriod,
       Value<bool> billingDayToNext,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -11362,11 +11301,6 @@ class $$CreditLiabilityAccountsTableFilterComposer
 
   ColumnFilters<int> get repaymentDay => $composableBuilder(
     column: $table.repaymentDay,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get billingStartPeriod => $composableBuilder(
-    column: $table.billingStartPeriod,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11425,11 +11359,6 @@ class $$CreditLiabilityAccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get billingStartPeriod => $composableBuilder(
-    column: $table.billingStartPeriod,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<bool> get billingDayToNext => $composableBuilder(
     column: $table.billingDayToNext,
     builder: (column) => ColumnOrderings(column),
@@ -11477,11 +11406,6 @@ class $$CreditLiabilityAccountsTableAnnotationComposer
 
   GeneratedColumn<int> get repaymentDay => $composableBuilder(
     column: $table.repaymentDay,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get billingStartPeriod => $composableBuilder(
-    column: $table.billingStartPeriod,
     builder: (column) => column,
   );
 
@@ -11549,7 +11473,6 @@ class $$CreditLiabilityAccountsTableTableManager
                 Value<int?> creditLimitMinor = const Value.absent(),
                 Value<int?> billingDay = const Value.absent(),
                 Value<int?> repaymentDay = const Value.absent(),
-                Value<int?> billingStartPeriod = const Value.absent(),
                 Value<bool> billingDayToNext = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -11561,7 +11484,6 @@ class $$CreditLiabilityAccountsTableTableManager
                 creditLimitMinor: creditLimitMinor,
                 billingDay: billingDay,
                 repaymentDay: repaymentDay,
-                billingStartPeriod: billingStartPeriod,
                 billingDayToNext: billingDayToNext,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -11575,7 +11497,6 @@ class $$CreditLiabilityAccountsTableTableManager
                 Value<int?> creditLimitMinor = const Value.absent(),
                 Value<int?> billingDay = const Value.absent(),
                 Value<int?> repaymentDay = const Value.absent(),
-                Value<int?> billingStartPeriod = const Value.absent(),
                 Value<bool> billingDayToNext = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -11587,7 +11508,6 @@ class $$CreditLiabilityAccountsTableTableManager
                 creditLimitMinor: creditLimitMinor,
                 billingDay: billingDay,
                 repaymentDay: repaymentDay,
-                billingStartPeriod: billingStartPeriod,
                 billingDayToNext: billingDayToNext,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

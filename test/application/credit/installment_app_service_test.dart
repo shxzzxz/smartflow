@@ -1,15 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:smartflow/application/credit/credit_command_api.dart'
-    hide CreateRepaymentCommand;
+import 'package:smartflow/application/credit/credit_command_api.dart';
+import 'package:smartflow/application/credit/credit_port_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
+import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
+import '../../helper/sequential_id_generator.dart';
 
 void main() {
   group('InstallmentAppServiceImpl', () {
@@ -70,7 +72,6 @@ void main() {
           kind: CreditLiabilityAccountKind.credit,
           billingDay: 5,
           repaymentDay: 25,
-          billingStartPeriod: BillPeriod(year: 2026, month: 6),
           billingDayToNext: true,
         );
 
@@ -254,7 +255,7 @@ void main() {
     });
 
     test(
-      'deletes only contracts without repayments or disbursement transaction',
+      'deletes source transaction but rejects contracts with prepayments',
       () async {
         final fixture = _Fixture();
         fixture.installments
@@ -287,11 +288,8 @@ void main() {
           ),
         );
 
-        await expectLater(
-          fixture.service.deleteContract(
-            const DeleteContractCommand(contractId: 'with-tx'),
-          ),
-          throwsA(isA<BusinessException>()),
+        await fixture.service.deleteContract(
+          const DeleteContractCommand(contractId: 'with-tx'),
         );
         await expectLater(
           fixture.service.deleteContract(
@@ -303,7 +301,8 @@ void main() {
           const DeleteContractCommand(contractId: 'deletable'),
         );
 
-        expect(fixture.installments.contracts.containsKey('with-tx'), true);
+        expect(fixture.installments.contracts.containsKey('with-tx'), false);
+        expect(fixture.ledger.deletedTransactionIds, ['tx-borrowing']);
         expect(
           fixture.installments.contracts.containsKey('with-repayment'),
           true,
@@ -389,21 +388,74 @@ InstallmentSchedule _schedule({
 class _Fixture {
   final installments = _FakeInstallmentRepository();
   final repayments = _FakeRepaymentRepository();
+  final bills = _FakeBillRepository();
   final creditAccounts = _FakeCreditAccountRepository();
   final posting = _FakePostingService();
   final correction = _FakeCorrectionService();
   final update = _FakeUpdateService();
   final query = _FakeTransactionQueryService();
+  late final ledger = _FakeCreditLedgerPort(
+    posting: posting,
+    correction: correction,
+    update: update,
+  );
 
   late final InstallmentAppService service = InstallmentAppServiceImpl(
     repository: installments,
+    bills: bills,
     creditAccounts: creditAccounts,
-    postingService: posting,
-    correctionService: correction,
-    updateService: update,
+    ledger: ledger,
     repayments: repayments,
     transactionRunner: const _ImmediateRunner(),
+    idGenerator: SequentialIdGenerator(prefix: 'contract-test'),
   );
+}
+
+class _FakeBillRepository implements BillRepository {
+  final bills = <String, Bill>{};
+
+  @override
+  Future<Bill?> findBill(String billId) async => bills[billId];
+
+  @override
+  Future<Bill?> findByAccountAndPeriod(
+    String accountId,
+    BillPeriod period,
+  ) async {
+    return bills.values
+        .where((bill) => bill.accountId == accountId && bill.period == period)
+        .firstOrNull;
+  }
+
+  @override
+  Future<bool> hasUnsettledItems(String accountId) async => false;
+
+  @override
+  Future<List<Bill>> listBillsByAccount(String accountId) async {
+    return bills.values.where((bill) => bill.accountId == accountId).toList();
+  }
+
+  @override
+  Future<void> replaceBillItems(String billId, List<BillItem> items) async {
+    final bill = bills[billId];
+    if (bill == null) return;
+    if (bill.status == BillStatus.open) {
+      bill.refreshOpenProjection(window: bill.window!, sourceItems: items);
+    } else {
+      bill.synchronizeBilledItems(items);
+    }
+  }
+
+  @override
+  Future<Bill> saveBill(Bill bill) async {
+    bills[bill.id] = bill;
+    return bill;
+  }
+
+  @override
+  Future<void> updateBill(Bill bill) async {
+    bills[bill.id] = bill;
+  }
 }
 
 class _ImmediateRunner implements TransactionRunner {
@@ -439,7 +491,6 @@ class _FakeCreditAccountRepository implements CreditAccountRepository {
       creditLimit: draft.creditLimit,
       billingDay: draft.billingDay,
       repaymentDay: draft.repaymentDay,
-      billingStartPeriod: draft.billingStartPeriod,
       billingDayToNext: draft.billingDayToNext,
     );
   }
@@ -454,7 +505,6 @@ class _FakeCreditAccountRepository implements CreditAccountRepository {
 class _FakeInstallmentRepository implements InstallmentRepository {
   final contracts = <String, InstallmentContract>{};
   final _schedules = <String, List<InstallmentSchedule>>{};
-  int _nextContractId = 0;
 
   void putContract(InstallmentContract contract) {
     contracts[contract.id] = contract;
@@ -520,29 +570,8 @@ class _FakeInstallmentRepository implements InstallmentRepository {
   }
 
   @override
-  Future<String> insertContract(InstallmentContractDraft draft) async {
-    final id = 'contract-${++_nextContractId}';
-    contracts[id] = InstallmentContract(
-      id: id,
-      liabilityAccountId: draft.liabilityAccountId,
-      sourceType: draft.sourceType,
-      disbursementAccountId: draft.disbursementAccountId,
-      disbursementTransactionId: draft.disbursementTransactionId,
-      principal: draft.principal,
-      totalPeriods: draft.totalPeriods,
-      borrowingDate: draft.borrowingDate,
-      firstRepaymentDate: draft.firstRepaymentDate,
-      lastRepaymentDate: draft.lastRepaymentDate,
-      repaymentMethod: draft.repaymentMethod,
-      interestRatePeriod: draft.interestRatePeriod,
-      interestRatePpm: draft.interestRatePpm,
-      interestAccrualMethod: draft.interestAccrualMethod,
-      totalFeeMinor: draft.totalFeeMinor,
-      status: draft.status,
-      note: draft.note,
-      createdAt: DateTime(2026, 6, 1),
-    );
-    return id;
+  Future<void> saveContract(InstallmentContract contract) async {
+    contracts[contract.id] = contract;
   }
 
   @override
@@ -581,39 +610,17 @@ class _FakeInstallmentRepository implements InstallmentRepository {
   @override
   Future<void> replaceSchedules(
     String contractId,
-    List<InstallmentScheduleDraft> drafts,
+    List<InstallmentSchedule> schedules,
   ) async {
-    _schedules[contractId] = [
-      for (final draft in drafts)
-        _schedule(
-          id: '$contractId-schedule-${draft.periodNo}',
-          contractId: contractId,
-          periodNo: draft.periodNo,
-          principal: draft.expectedPrincipal,
-          interest: draft.expectedInterest,
-          fee: draft.expectedFee,
-          date: draft.expectedRepaymentDate,
-        ),
-    ];
+    _schedules[contractId] = [...schedules];
   }
 
   @override
   Future<void> appendSchedules(
     String contractId,
-    List<InstallmentScheduleDraft> drafts,
+    List<InstallmentSchedule> schedules,
   ) async {
-    _schedules.putIfAbsent(contractId, () => []).addAll([
-      for (final draft in drafts)
-        _schedule(
-          id: '$contractId-schedule-${draft.periodNo}',
-          contractId: contractId,
-          periodNo: draft.periodNo,
-          principal: draft.expectedPrincipal,
-          interest: draft.expectedInterest,
-          fee: draft.expectedFee,
-          date: draft.expectedRepaymentDate,
-        ),
-    ]);
+    _schedules.putIfAbsent(contractId, () => []).addAll(schedules);
   }
 
   @override
@@ -728,6 +735,22 @@ class _FakeRepaymentRepository implements RepaymentRepository {
   }
 
   @override
+  Future<Map<String, RepaymentAmountBreakdown>> aggregateItemsByBillItemIds(
+    Iterable<String> billItemIds,
+  ) async {
+    final result = <String, RepaymentAmountBreakdown>{};
+    for (final billItemId in billItemIds.toSet()) {
+      final allocations = await listItemsByBillItem(billItemId);
+      if (allocations.isEmpty) continue;
+      result[billItemId] = allocations.fold(
+        RepaymentAmountBreakdown.zero,
+        (sum, item) => sum + item.allocated,
+      );
+    }
+    return result;
+  }
+
+  @override
   Future<void> saveRepayment(Repayment repayment) async {
     putRepayment(repayment);
   }
@@ -775,6 +798,128 @@ class _FakePostingService implements TransactionPostingAppService {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeCreditLedgerPort implements CreditLedgerPort {
+  _FakeCreditLedgerPort({
+    required _FakePostingService posting,
+    required _FakeCorrectionService correction,
+    required _FakeUpdateService update,
+  }) : _posting = posting,
+       _correction = correction,
+       _update = update;
+
+  final _FakePostingService _posting;
+  final _FakeCorrectionService _correction;
+  final _FakeUpdateService _update;
+  final deletedTransactionIds = <String>[];
+
+  @override
+  Future<CreditLedgerPostedTransaction> postBorrowing(
+    CreditLedgerPostBorrowingCommand command,
+  ) async {
+    final result = await _posting.createBorrowing(
+      CreateBorrowingCommand(
+        amount: command.amount,
+        liabilityAccountId: command.liabilityAccountId,
+        receiveAccountId: command.receiveAccountId,
+        occurredAt: command.occurredAt,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+      ),
+    );
+    return CreditLedgerPostedTransaction(
+      transactionId: result.transactionId,
+      rootTransactionId: result.rootTransactionId,
+    );
+  }
+
+  @override
+  Future<void> updateOwnership({
+    required String transactionId,
+    required CreditLedgerOwnership ownership,
+  }) {
+    return _update.updateOwnership(
+      UpdateTransactionOwnershipCommand(
+        transactionId: transactionId,
+        ownership: TransactionOwnership(
+          ownerType: ownership.ownerType,
+          ownerId: ownership.ownerId,
+          ownerRole: ownership.ownerRole,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Future<void> correctBorrowing(CreditLedgerCorrectBorrowingCommand command) {
+    return _correction.correctBorrowing(
+      CorrectBorrowingCommand(
+        transactionId: command.transactionId,
+        receiveAccountId: command.receiveAccountId,
+        occurredAt: command.occurredAt,
+      ),
+    );
+  }
+
+  @override
+  Future<CreditLedgerPostedTransaction> correctRepayment(
+    CreditLedgerCorrectRepaymentCommand command,
+  ) async {
+    final result = await _correction.correctRepayment(
+      CorrectRepaymentCommand(
+        transactionId: command.transactionId,
+        paidFromAccountId: command.paidFromAccountId,
+        occurredAt: command.occurredAt,
+      ),
+    );
+    return CreditLedgerPostedTransaction(
+      transactionId: result.transactionId,
+      rootTransactionId: result.rootTransactionId,
+    );
+  }
+
+  @override
+  Future<void> updateBasicInfo(CreditLedgerUpdateBasicInfoCommand command) {
+    return _update.updateBasicInfo(
+      UpdateTransactionBasicInfoCommand(
+        transactionId: command.transactionId,
+        occurredAt: command.occurredAt,
+        note: command.note,
+      ),
+    );
+  }
+
+  @override
+  Future<CreditLedgerAccountSnapshot?> findAccount(String accountId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<CreditLedgerTransactionSnapshot?> findCurrentParentTransactionByRoot(
+    String rootTransactionId,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<CreditLedgerRepaymentSnapshot?> findRepaymentTransaction(
+    String transactionId,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteTransaction(String transactionId) async {
+    deletedTransactionIds.add(transactionId);
+  }
+
+  @override
+  Future<CreditLedgerPostedTransaction> postRepayment(
+    CreditLedgerPostRepaymentCommand command,
+  ) {
+    throw UnimplementedError();
+  }
 }
 
 class _FakeCorrectionService implements TransactionCorrectionAppService {

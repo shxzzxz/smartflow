@@ -10,22 +10,12 @@ import '../../../design_system/widget/app_submit_button.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/installment_repayment_form_view_model.dart';
-import '../view_model/installment_repayment_mode.dart';
 import '../widget/repayment_form_fields.dart';
 
-export '../view_model/installment_repayment_mode.dart';
-
 class InstallmentRepaymentFormPage extends ConsumerStatefulWidget {
-  const InstallmentRepaymentFormPage({
-    required this.contractId,
-    required this.mode,
-    this.scheduleId,
-    super.key,
-  });
+  const InstallmentRepaymentFormPage({required this.contractId, super.key});
 
   final String contractId;
-  final InstallmentRepaymentMode mode;
-  final String? scheduleId;
 
   @override
   ConsumerState<InstallmentRepaymentFormPage> createState() =>
@@ -88,7 +78,7 @@ class _InstallmentRepaymentFormPageState
     final asyncState = ref.watch(provider);
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(title: Text(_titleForMode(widget.mode))),
+      appBar: AppBar(title: const Text('提前还款')),
       body: switch (asyncState) {
         AsyncData(value: final state) => _buildLoaded(provider, state),
         AsyncError(:final error) => Center(child: Text('加载失败：$error')),
@@ -104,8 +94,6 @@ class _InstallmentRepaymentFormPageState
     switch (state.status) {
       case InstallmentRepaymentFormStatus.notFound:
         return const Center(child: Text('合同不存在'));
-      case InstallmentRepaymentFormStatus.scheduleNotFound:
-        return const Center(child: Text('计划行不存在'));
       case InstallmentRepaymentFormStatus.loaded:
         break;
     }
@@ -157,12 +145,9 @@ class _InstallmentRepaymentFormPageState
             ],
           ),
           const SizedBox(height: AppSpacing.space24),
-          if (widget.mode == InstallmentRepaymentMode.prepayment)
-            const CreditRepaymentSubmitHint(
-              text: '提交后，发生日之后的待还期次金额将按剩余本金重新计算。',
-            ),
+          const CreditRepaymentSubmitHint(text: '提交后，发生日之后的待还期次金额将按剩余本金重新计算。'),
           AppSubmitButton(
-            label: _submitLabel(widget.mode),
+            label: '提交并重算',
             loading: state.submitting,
             onPressed: () => _submit(provider),
           ),
@@ -241,26 +226,8 @@ class _InstallmentRepaymentFormPageState
   }
 
   InstallmentRepaymentFormArgs get _args {
-    return InstallmentRepaymentFormArgs(
-      contractId: widget.contractId,
-      mode: widget.mode,
-      scheduleId: widget.scheduleId,
-    );
+    return InstallmentRepaymentFormArgs(contractId: widget.contractId);
   }
-}
-
-String _titleForMode(InstallmentRepaymentMode mode) {
-  return switch (mode) {
-    InstallmentRepaymentMode.scheduled => '期次还款',
-    InstallmentRepaymentMode.prepayment => '提前还款',
-  };
-}
-
-String _submitLabel(InstallmentRepaymentMode mode) {
-  return switch (mode) {
-    InstallmentRepaymentMode.scheduled => '保存',
-    InstallmentRepaymentMode.prepayment => '提交并重算',
-  };
 }
 
 Account? _findAccount(List<Account> accounts, String? id) {

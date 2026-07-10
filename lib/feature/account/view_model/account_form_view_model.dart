@@ -28,7 +28,6 @@ class AccountFormViewModel extends _$AccountFormViewModel {
       iconKey: account.iconKey ?? account.kind.iconKey,
       billingDay: account.billingDay,
       repaymentDay: account.repaymentDay,
-      billingStartPeriod: account.billingStartPeriod,
       billingDayToNext: account.billingDayToNext ?? true,
       initializedAccountId: account.id,
     );
@@ -42,10 +41,6 @@ class AccountFormViewModel extends _$AccountFormViewModel {
       billingDay: value == AccountProfileKind.credit ? state.billingDay : null,
       repaymentDay:
           value == AccountProfileKind.credit ? state.repaymentDay : null,
-      billingStartPeriod:
-          value == AccountProfileKind.credit
-              ? state.billingStartPeriod ?? BillPeriod.fromDate(DateTime.now())
-              : null,
       billingDayToNext: true,
     );
   }
@@ -61,10 +56,6 @@ class AccountFormViewModel extends _$AccountFormViewModel {
 
   void setRepaymentDay(int? value) {
     state = state.copyWith(repaymentDay: value);
-  }
-
-  void setBillingStartPeriod(BillPeriod value) {
-    state = state.copyWith(billingStartPeriod: value);
   }
 
   void setBillingDayToNext(bool value) {
@@ -175,10 +166,6 @@ class AccountFormViewModel extends _$AccountFormViewModel {
                 state.kind == AccountProfileKind.credit
                     ? state.repaymentDay
                     : null,
-            billingStartPeriod:
-                state.kind == AccountProfileKind.credit
-                    ? state.billingStartPeriod
-                    : null,
             billingDayToNext: state.billingDayToNext,
           ),
         )
@@ -234,11 +221,6 @@ class AccountFormViewModel extends _$AccountFormViewModel {
                         state.repaymentDay != null
                     ? Patch.set(state.repaymentDay!)
                     : const Patch<int>.clear(),
-            billingStartPeriod:
-                state.kind == AccountProfileKind.credit &&
-                        state.billingStartPeriod != null
-                    ? Patch.set(state.billingStartPeriod!)
-                    : const Patch<BillPeriod>.clear(),
             billingDayToNext: state.billingDayToNext,
             targetBalance: openingBalance,
           ),
@@ -267,9 +249,6 @@ class AccountFormViewModel extends _$AccountFormViewModel {
         repaymentDay > 28) {
       return '出账日和还款日只能选择 1-28 日';
     }
-    if (state.billingStartPeriod == null) {
-      return '请选择账单起始期';
-    }
     return null;
   }
 }
@@ -281,7 +260,6 @@ class AccountFormState {
     required this.submitting,
     this.billingDay,
     this.repaymentDay,
-    this.billingStartPeriod,
     this.billingDayToNext = true,
     this.initializedAccountId,
   });
@@ -298,7 +276,6 @@ class AccountFormState {
   final String iconKey;
   final int? billingDay;
   final int? repaymentDay;
-  final BillPeriod? billingStartPeriod;
   final bool billingDayToNext;
   final bool submitting;
   final String? initializedAccountId;
@@ -308,7 +285,6 @@ class AccountFormState {
     String? iconKey,
     Object? billingDay = _sentinel,
     Object? repaymentDay = _sentinel,
-    Object? billingStartPeriod = _sentinel,
     bool? billingDayToNext,
     bool? submitting,
     Object? initializedAccountId = _sentinel,
@@ -320,10 +296,6 @@ class AccountFormState {
           billingDay == _sentinel ? this.billingDay : billingDay as int?,
       repaymentDay:
           repaymentDay == _sentinel ? this.repaymentDay : repaymentDay as int?,
-      billingStartPeriod:
-          billingStartPeriod == _sentinel
-              ? this.billingStartPeriod
-              : billingStartPeriod as BillPeriod?,
       billingDayToNext: billingDayToNext ?? this.billingDayToNext,
       submitting: submitting ?? this.submitting,
       initializedAccountId:

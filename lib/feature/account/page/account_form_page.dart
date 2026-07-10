@@ -3,14 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../application/credit/credit_command_api.dart';
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
-import '../../../design_system/widget/app_month_picker.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
@@ -208,14 +206,6 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                           ),
                         ),
                         const Divider(height: 1),
-                        AppPlainFormRow(
-                          label: '账单起始期',
-                          child: _BillingStartPeriodField(
-                            period: formState.billingStartPeriod,
-                            onTap: _pickBillingStartPeriod,
-                          ),
-                        ),
-                        const Divider(height: 1),
                         SwitchListTile.adaptive(
                           contentPadding: EdgeInsets.zero,
                           title: const Text('出账日交易计入下期'),
@@ -269,25 +259,6 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
     );
     if (!mounted) return;
     onChanged(selected);
-  }
-
-  Future<void> _pickBillingStartPeriod() async {
-    final notifier = ref.read(accountFormViewModelProvider.notifier);
-    final current = ref.read(accountFormViewModelProvider).billingStartPeriod;
-    final now = DateTime.now();
-    final initial =
-        current == null
-            ? DateTime(now.year, now.month)
-            : DateTime(current.year, current.month);
-    final picked = await showAppMonthPicker(
-      context: context,
-      initialMonth: initial,
-      title: '选择账单起始期',
-    );
-    if (picked == null || !mounted) return;
-    notifier.setBillingStartPeriod(
-      BillPeriod(year: picked.year, month: picked.month),
-    );
   }
 
   void _setKind(AccountProfileKind kind) {
@@ -492,23 +463,6 @@ class _BillingRepaymentFields extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-class _BillingStartPeriodField extends StatelessWidget {
-  const _BillingStartPeriodField({required this.period, required this.onTap});
-
-  final BillPeriod? period;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final period = this.period;
-    final text =
-        period == null
-            ? '账单起始期'
-            : '${period.year}年${period.month.toString().padLeft(2, '0')}月';
-    return InkWell(onTap: onTap, child: AppPlainValueText(text: text));
   }
 }
 

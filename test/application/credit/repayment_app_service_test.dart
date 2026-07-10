@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart' as credit;
+import 'package:smartflow/application/credit/credit_port_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart' as ledger;
 import 'package:smartflow/application/ledger/ledger_query_api.dart'
     as ledger_query;
@@ -55,7 +56,7 @@ void main() {
     });
 
     test(
-      'creates ledger transaction for bill repayment and keeps partial pending',
+      'creates ledger transaction and marks partial bill item partially paid',
       () async {
         final fixture = _Fixture();
         addTearDown(fixture.close);
@@ -115,7 +116,7 @@ void main() {
         expect(repayment!.rootTransactionId, 'tx-root');
 
         final bill = await fixture.bills.findBill('bill-1');
-        expect(bill!.items.single.status, credit.BillItemStatus.pending);
+        expect(bill!.items.single.status, credit.BillItemStatus.partiallyPaid);
         expect(bill.status, credit.BillStatus.billed);
       },
     );
@@ -203,46 +204,52 @@ void main() {
       },
     );
 
-    test('keeps installment schedule pending on partial principal', () async {
-      final fixture = _Fixture();
-      addTearDown(fixture.close);
-      final installment = await fixture.seedInstallmentContract(
-        expectedPrincipal: 1000,
-      );
-      await fixture.seedBillItems(
-        status: credit.BillStatus.billed,
-        items: [
-          _BillItemSeed(
-            id: 'bill-item-installment',
-            itemType: credit.BillItemType.installment,
-            expectedPrincipal: 1000,
-            contractId: installment.contractId,
-            scheduleId: installment.scheduleId,
-          ),
-        ],
-      );
-
-      await fixture.service.createBillRepayment(
-        credit.CreateBillRepaymentCommand(
-          billId: 'bill-1',
-          allocations: [
-            _allocation(billItemId: 'bill-item-installment', principal: 400),
+    test(
+      'marks installment schedule partially paid on partial principal',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        final installment = await fixture.seedInstallmentContract(
+          expectedPrincipal: 1000,
+        );
+        await fixture.seedBillItems(
+          status: credit.BillStatus.billed,
+          items: [
+            _BillItemSeed(
+              id: 'bill-item-installment',
+              itemType: credit.BillItemType.installment,
+              expectedPrincipal: 1000,
+              contractId: installment.contractId,
+              scheduleId: installment.scheduleId,
+            ),
           ],
-        ),
-      );
+        );
 
-      final bill = await fixture.bills.findBill('bill-1');
-      expect(bill!.items.single.status, credit.BillItemStatus.pending);
-      expect(bill.status, credit.BillStatus.billed);
-      final schedule = await fixture.installments.findSchedule(
-        installment.scheduleId,
-      );
-      final contract = await fixture.installments.findContract(
-        installment.contractId,
-      );
-      expect(schedule!.status, credit.InstallmentScheduleStatus.pending);
-      expect(contract!.status, credit.InstallmentContractStatus.active);
-    });
+        await fixture.service.createBillRepayment(
+          credit.CreateBillRepaymentCommand(
+            billId: 'bill-1',
+            allocations: [
+              _allocation(billItemId: 'bill-item-installment', principal: 400),
+            ],
+          ),
+        );
+
+        final bill = await fixture.bills.findBill('bill-1');
+        expect(bill!.items.single.status, credit.BillItemStatus.partiallyPaid);
+        expect(bill.status, credit.BillStatus.billed);
+        final schedule = await fixture.installments.findSchedule(
+          installment.scheduleId,
+        );
+        final contract = await fixture.installments.findContract(
+          installment.contractId,
+        );
+        expect(
+          schedule!.status,
+          credit.InstallmentScheduleStatus.partiallyPaid,
+        );
+        expect(contract!.status, credit.InstallmentContractStatus.active);
+      },
+    );
 
     test('allows manual principal over-allocation and settles item', () async {
       final fixture = _Fixture();
@@ -870,6 +877,61 @@ void main() {
     );
 
     test(
+      'rolls back ledger deletion when later credit validation fails',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        await fixture.seedBill(
+          status: credit.BillStatus.billed,
+          itemType: credit.BillItemType.consumption,
+          expectedPrincipal: 1000,
+        );
+        final result = await fixture.service.createBillRepayment(
+          credit.CreateBillRepaymentCommand(
+            billId: 'bill-1',
+            allocations: [
+              _allocation(billItemId: 'bill-item-1', principal: 1000),
+            ],
+            transactionInfo: credit.RepaymentTransactionInfo(
+              paidFromAccountId: 'cash-1',
+              occurredAt: DateTime(2026, 6, 20),
+            ),
+          ),
+        );
+        fixture.transactionQuery.details['tx-root'] = _transactionDetail(
+          transactionId: 'tx-current',
+          rootTransactionId: 'tx-root',
+          occurredAt: DateTime(2026, 6, 20),
+        );
+        await fixture.database.customStatement(
+          "DELETE FROM bills WHERE id = 'bill-1'",
+        );
+
+        await expectLater(
+          () => fixture.service.deleteRepayment(
+            credit.DeleteCreditRepaymentCommand(
+              repaymentId: result.repaymentId,
+            ),
+          ),
+          throwsA(
+            isA<BusinessException>().having(
+              (exception) => exception.code,
+              'code',
+              CreditErrorCode.billNotFound.code,
+            ),
+          ),
+        );
+
+        expect(fixture.correction.deletedTransactionIds, ['tx-current']);
+        expect(await fixture.deletedTransactionMarkerExists(), false);
+        expect(
+          await fixture.repayments.findRepayment(result.repaymentId),
+          isNotNull,
+        );
+      },
+    );
+
+    test(
       'rejects unattributed repayment above unattributed debt bucket',
       () async {
         final fixture = _Fixture();
@@ -907,6 +969,38 @@ void main() {
         );
       },
     );
+
+    test('rejects unattributed repayment for open bill consumption', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      fixture.accountQuery.accounts['credit-1'] = ledger.Account(
+        id: 'credit-1',
+        name: 'Credit',
+        type: ledger.AccountType.liability,
+        balance: const Money(minorUnits: 5000),
+      );
+      await fixture.seedBill(
+        status: credit.BillStatus.open,
+        itemType: credit.BillItemType.consumption,
+        expectedPrincipal: 5000,
+      );
+
+      await expectLater(
+        () => fixture.service.createUnattributedRepayment(
+          credit.CreateUnattributedRepaymentCommand(
+            accountId: 'credit-1',
+            amount: const Money(minorUnits: 1),
+          ),
+        ),
+        throwsA(
+          isA<BusinessException>().having(
+            (exception) => exception.code,
+            'code',
+            CreditErrorCode.repaymentExceedsAvailable.code,
+          ),
+        ),
+      );
+    });
   });
 }
 
@@ -955,15 +1049,18 @@ ledger_query.TransactionDetail _transactionDetail({
 class _Fixture {
   _Fixture() {
     runner = DriftTransactionRunner(database);
+    correction.onDeleteTransaction = _recordDeletedTransactionInDatabase;
     service = credit.RepaymentAppServiceImpl(
       bills: bills,
       repayments: repayments,
       installments: installments,
-      accountQueryService: accountQuery,
-      postingService: posting,
-      correctionService: correction,
-      updateService: update,
-      transactionQueryService: transactionQuery,
+      ledger: _FakeCreditLedgerPort(
+        accountQuery: accountQuery,
+        posting: posting,
+        correction: correction,
+        update: update,
+        transactionQuery: transactionQuery,
+      ),
       transactionRunner: runner,
       idGenerator: ids,
     );
@@ -984,6 +1081,24 @@ class _Fixture {
     database,
   );
   late final credit.RepaymentAppService service;
+
+  Future<void> _recordDeletedTransactionInDatabase(String transactionId) {
+    return database.customStatement(
+      "INSERT INTO app_metadata (key, value, updated_at) "
+      "VALUES ('test.deleted_transaction', '$transactionId', 0)",
+    );
+  }
+
+  Future<bool> deletedTransactionMarkerExists() async {
+    final rows =
+        await database
+            .customSelect(
+              "SELECT key FROM app_metadata "
+              "WHERE key = 'test.deleted_transaction'",
+            )
+            .get();
+    return rows.isNotEmpty;
+  }
 
   Future<void> seedBill({
     required credit.BillStatus status,
@@ -1042,8 +1157,10 @@ class _Fixture {
   Future<({String contractId, String scheduleId})> seedInstallmentContract({
     required int expectedPrincipal,
   }) async {
-    final contractId = await installments.insertContract(
-      InstallmentContractDraft(
+    final contractId = ids.newId();
+    await installments.saveContract(
+      credit.InstallmentContract(
+        id: contractId,
         liabilityAccountId: 'credit-1',
         sourceType: credit.InstallmentSourceType.disbursement,
         disbursementAccountId: 'cash-1',
@@ -1055,16 +1172,22 @@ class _Fixture {
         lastRepaymentDate: DateTime(2026, 6, 25),
         repaymentMethod: credit.InstallmentRepaymentMethod.equalPrincipal,
         interestAccrualMethod: credit.InterestAccrualMethod.monthly,
+        totalFeeMinor: 0,
         status: credit.InstallmentContractStatus.active,
+        createdAt: DateTime(2026, 6, 1),
       ),
     );
     await installments.replaceSchedules(contractId, [
-      credit.InstallmentScheduleDraft(
+      credit.InstallmentSchedule(
+        id: ids.newId(),
+        contractId: contractId,
         periodNo: 1,
         expectedRepaymentDate: DateTime(2026, 6, 25),
         expectedPrincipal: Money(minorUnits: expectedPrincipal),
         expectedInterest: Money.zero(),
         expectedFee: Money.zero(),
+        status: credit.InstallmentScheduleStatus.pending,
+        createdAt: DateTime(2026, 6, 1),
       ),
     ]);
     final schedule = (await installments.listSchedules(contractId)).single;
@@ -1076,8 +1199,10 @@ class _Fixture {
     required List<int> schedulePrincipals,
   }) async {
     final firstDate = DateTime(2026, 7, 25);
-    final contractId = await installments.insertContract(
-      InstallmentContractDraft(
+    final contractId = ids.newId();
+    await installments.saveContract(
+      credit.InstallmentContract(
+        id: contractId,
         liabilityAccountId: 'credit-1',
         sourceType: credit.InstallmentSourceType.disbursement,
         disbursementAccountId: 'cash-1',
@@ -1093,12 +1218,16 @@ class _Fixture {
         ),
         repaymentMethod: credit.InstallmentRepaymentMethod.equalPrincipal,
         interestAccrualMethod: credit.InterestAccrualMethod.monthly,
+        totalFeeMinor: 0,
         status: credit.InstallmentContractStatus.active,
+        createdAt: DateTime(2026, 6, 1),
       ),
     );
     await installments.replaceSchedules(contractId, [
       for (var index = 0; index < schedulePrincipals.length; index++)
-        credit.InstallmentScheduleDraft(
+        credit.InstallmentSchedule(
+          id: ids.newId(),
+          contractId: contractId,
           periodNo: index + 1,
           expectedRepaymentDate: DateTime(
             firstDate.year,
@@ -1108,12 +1237,171 @@ class _Fixture {
           expectedPrincipal: Money(minorUnits: schedulePrincipals[index]),
           expectedInterest: Money.zero(),
           expectedFee: Money.zero(),
+          status: credit.InstallmentScheduleStatus.pending,
+          createdAt: DateTime(2026, 6, 1),
         ),
     ]);
     return contractId;
   }
 
   Future<void> close() => database.close();
+}
+
+class _FakeCreditLedgerPort implements CreditLedgerPort {
+  const _FakeCreditLedgerPort({
+    required _FakeAccountQueryService accountQuery,
+    required _FakePostingService posting,
+    required _FakeCorrectionService correction,
+    required _FakeUpdateService update,
+    required _FakeTransactionQueryService transactionQuery,
+  }) : _accountQuery = accountQuery,
+       _posting = posting,
+       _correction = correction,
+       _update = update,
+       _transactionQuery = transactionQuery;
+
+  final _FakeAccountQueryService _accountQuery;
+  final _FakePostingService _posting;
+  final _FakeCorrectionService _correction;
+  final _FakeUpdateService _update;
+  final _FakeTransactionQueryService _transactionQuery;
+
+  @override
+  Future<CreditLedgerAccountSnapshot?> findAccount(String accountId) async {
+    final account = await _accountQuery.findAccountById(accountId);
+    if (account == null) return null;
+    return CreditLedgerAccountSnapshot(
+      id: account.id,
+      balance: account.balance,
+      isArchived: account.isArchived,
+    );
+  }
+
+  @override
+  Future<CreditLedgerPostedTransaction> postRepayment(
+    CreditLedgerPostRepaymentCommand command,
+  ) async {
+    final result = await _posting.createRepayment(
+      ledger.CreateRepaymentCommand(
+        principal: command.amount.principal,
+        interest: _positiveOrNull(command.amount.interest),
+        fee: _positiveOrNull(command.amount.fee),
+        discount: _positiveOrNull(command.amount.discount),
+        liabilityAccountId: command.liabilityAccountId,
+        paidFromAccountId: command.paidFromAccountId,
+        occurredAt: command.occurredAt,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+        ownership:
+            command.ownership == null
+                ? null
+                : ledger.TransactionOwnership(
+                  ownerType: command.ownership!.ownerType,
+                  ownerId: command.ownership!.ownerId,
+                  ownerRole: command.ownership!.ownerRole,
+                ),
+      ),
+    );
+    return CreditLedgerPostedTransaction(
+      transactionId: result.transactionId,
+      rootTransactionId: result.rootTransactionId,
+    );
+  }
+
+  @override
+  Future<CreditLedgerPostedTransaction> correctRepayment(
+    CreditLedgerCorrectRepaymentCommand command,
+  ) async {
+    final amount = command.amount;
+    final result = await _correction.correctRepayment(
+      ledger.CorrectRepaymentCommand(
+        transactionId: command.transactionId,
+        principal: amount?.principal,
+        interest:
+            amount == null
+                ? null
+                : Patch<Money?>.set(_positiveOrNull(amount.interest)),
+        fee:
+            amount == null
+                ? null
+                : Patch<Money?>.set(_positiveOrNull(amount.fee)),
+        discount:
+            amount == null
+                ? null
+                : Patch<Money?>.set(_positiveOrNull(amount.discount)),
+        liabilityAccountId: command.liabilityAccountId,
+        paidFromAccountId: command.paidFromAccountId,
+        occurredAt: command.occurredAt,
+        note: command.note,
+      ),
+    );
+    return CreditLedgerPostedTransaction(
+      transactionId: result.transactionId,
+      rootTransactionId: result.rootTransactionId,
+    );
+  }
+
+  @override
+  Future<void> updateBasicInfo(CreditLedgerUpdateBasicInfoCommand command) {
+    return _update.updateBasicInfo(
+      ledger.UpdateTransactionBasicInfoCommand(
+        transactionId: command.transactionId,
+        occurredAt: command.occurredAt,
+        note: command.note,
+      ),
+    );
+  }
+
+  @override
+  Future<void> deleteTransaction(String transactionId) {
+    return _correction.deleteTransaction(
+      ledger.DeleteTransactionCommand(transactionId: transactionId),
+    );
+  }
+
+  @override
+  Future<CreditLedgerTransactionSnapshot?> findCurrentParentTransactionByRoot(
+    String rootTransactionId,
+  ) async {
+    final detail = await _transactionQuery
+        .findCurrentParentTransactionDetailByRoot(rootTransactionId);
+    if (detail == null) return null;
+    return CreditLedgerTransactionSnapshot(
+      transactionId: detail.transaction.id,
+      occurredAt: detail.transaction.occurredAt,
+    );
+  }
+
+  @override
+  Future<CreditLedgerRepaymentSnapshot?> findRepaymentTransaction(
+    String transactionId,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> correctBorrowing(CreditLedgerCorrectBorrowingCommand command) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<CreditLedgerPostedTransaction> postBorrowing(
+    CreditLedgerPostBorrowingCommand command,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> updateOwnership({
+    required String transactionId,
+    required CreditLedgerOwnership ownership,
+  }) {
+    throw UnimplementedError();
+  }
+
+  Money? _positiveOrNull(Money value) {
+    return value.minorUnits > 0 ? value : null;
+  }
 }
 
 class _FakeAccountQueryService implements ledger_query.AccountQueryService {
@@ -1145,12 +1433,14 @@ class _BillItemSeed {
 class _FakeCorrectionService implements ledger.TransactionCorrectionAppService {
   final deletedTransactionIds = <String>[];
   final repaymentCommands = <ledger.CorrectRepaymentCommand>[];
+  Future<void> Function(String transactionId)? onDeleteTransaction;
 
   @override
   Future<void> deleteTransaction(
     ledger.DeleteTransactionCommand command,
   ) async {
     deletedTransactionIds.add(command.transactionId);
+    await onDeleteTransaction?.call(command.transactionId);
   }
 
   @override

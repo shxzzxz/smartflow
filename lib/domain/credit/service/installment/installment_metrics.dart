@@ -1,10 +1,10 @@
 import 'dart:math' as math;
 
-import '../../../core/money/money.dart';
-import '../entity/installment_contract.dart';
-import '../entity/installment_schedule.dart';
-import '../valobj/installment_enums.dart';
-import '../valobj/repayment_enums.dart';
+import '../../../../core/money/money.dart';
+import '../../entity/installment_contract.dart';
+import '../../entity/installment_schedule.dart';
+import '../../valobj/installment_enums.dart';
+import '../../valobj/repayment_enums.dart';
 
 /// 一笔实际还款的"现金流口径"快照，metrics 模块只依赖这个轻量结构，
 /// 不直接依赖 transaction_details，避免把仓储耦合进 metrics 模块。

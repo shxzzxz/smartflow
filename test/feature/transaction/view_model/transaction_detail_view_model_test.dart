@@ -1,8 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
-import 'package:smartflow/application/credit/credit_command_api.dart'
-    hide CorrectRepaymentCommand, CreateRepaymentCommand;
+import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
@@ -49,19 +48,19 @@ void main() {
     });
 
     test(
-      'dispatches installment repayment account change to credit app service',
+      'dispatches installment disbursement account change to credit app service',
       () async {
         final installment = _FakeInstallmentAppService();
         final detail = _detail(
-          purpose: BusinessPurpose.debtRepayment,
+          purpose: BusinessPurpose.borrowing,
           ownership: const TransactionOwnership(
             ownerType: installmentOwnerType,
             ownerId: 'contract-1',
-            ownerRole: 'scheduled_repayment',
+            ownerRole: 'disbursement',
           ),
           entries: [
-            _entry('cash', EntryDirection.credit),
-            _entry('loan', EntryDirection.debit),
+            _entry('loan', EntryDirection.credit),
+            _entry('cash', EntryDirection.debit),
           ],
         );
         final container = _container(detail: detail, installment: installment);
@@ -72,10 +71,9 @@ void main() {
             .changeAccount(AccountSelectionPurpose.repaymentSource, 'bank');
 
         expect(outcome, isA<UiActionSuccess<void>>());
-        final command = installment.editRepaymentCommands.single;
-        expect(command.transactionId, 'tx-1');
+        final command = installment.updateContractCommands.single;
         expect(command.contractId, 'contract-1');
-        expect(command.paidFromAccountId, 'bank');
+        expect(command.disbursementAccountId, 'bank');
       },
     );
 
@@ -617,9 +615,7 @@ class _FakeInstallmentAppService implements InstallmentAppService {
 
   final Object? updateContractException;
   final updateContractCommands = <UpdateContractCommand>[];
-  final editRepaymentCommands = <EditRepaymentCommand>[];
   final deleteContractCommands = <DeleteContractCommand>[];
-  final revertRepaymentCommands = <RevertRepaymentCommand>[];
 
   @override
   Future<void> updateContract(UpdateContractCommand command) async {
@@ -653,37 +649,13 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   }
 
   @override
-  Future<void> editRepayment(EditRepaymentCommand command) async {
-    editRepaymentCommands.add(command);
-  }
-
-  @override
   Future<void> deleteContract(DeleteContractCommand command) async {
     deleteContractCommands.add(command);
   }
 
   @override
-  Future<void> revertRepayment(RevertRepaymentCommand command) async {
-    revertRepaymentCommands.add(command);
-  }
-
-  @override
-  Future<CreateContractResult> createBillConversionContract(
-    CreateBillConversionContractCommand command,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
   Future<CreateContractResult> createDisbursementContract(
     CreateDisbursementContractCommand command,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<PostedTransactionResult> createScheduledRepayment(
-    CreateScheduledRepaymentCommand command,
   ) {
     throw UnimplementedError();
   }

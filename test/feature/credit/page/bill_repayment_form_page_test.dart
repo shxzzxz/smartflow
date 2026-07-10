@@ -85,7 +85,6 @@ credit_query.BillDetailReadModel _billDetailWithTwoConsumptionItems() {
     pendingPrincipal: const Money(minorUnits: 10000),
     itemCount: 2,
     overdueItemCount: 0,
-    hasSourceDiff: false,
   );
   return credit_query.BillDetailReadModel(
     summary: summary,

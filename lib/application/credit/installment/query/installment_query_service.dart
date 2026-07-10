@@ -50,7 +50,9 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
       final schedules = await _repository.listSchedules(contract.id);
       sum += schedules
           .where(
-            (schedule) => schedule.status == InstallmentScheduleStatus.pending,
+            (schedule) =>
+                schedule.status == InstallmentScheduleStatus.pending ||
+                schedule.status == InstallmentScheduleStatus.partiallyPaid,
           )
           .fold<int>(
             0,

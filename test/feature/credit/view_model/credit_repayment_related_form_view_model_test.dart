@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart' as credit;
+import 'package:smartflow/application/credit/credit_port_api.dart'
+    as credit_port;
 import 'package:smartflow/application/credit/credit_query_api.dart'
     as credit_query;
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
@@ -15,7 +17,6 @@ import 'package:smartflow/feature/credit/view_model/bill_conversion_installment_
 import 'package:smartflow/feature/credit/view_model/bill_repayment_allocation_view_model.dart';
 import 'package:smartflow/feature/credit/view_model/bill_repayment_form_view_model.dart';
 import 'package:smartflow/feature/credit/view_model/installment_repayment_form_view_model.dart';
-import 'package:smartflow/feature/credit/view_model/installment_repayment_mode.dart';
 import 'package:smartflow/feature/credit/view_model/repayment_form_view_model.dart';
 import 'package:smartflow/feature/credit/view_model/unattributed_repayment_form_view_model.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
@@ -26,8 +27,8 @@ import 'package:smartflow/shared/account_profile/account_selection_purpose.dart'
 
 void main() {
   test('repayment form creates repayment command', () async {
-    final creditSvc = _FakeCreditAppService();
-    final container = _container(creditAppService: creditSvc);
+    final repayment = _FakeRepaymentAppService();
+    final container = _container(repaymentAppService: repayment);
     final provider = repaymentFormViewModelProvider(
       const RepaymentFormArgs(liabilityAccountId: 'loan'),
     );
@@ -43,21 +44,27 @@ void main() {
 
     expect(outcome, isA<SubmitSuccess>());
     expect(
-      creditSvc.createRepaymentCommands.single.principal,
+      repayment.liabilityRepaymentCommands.single.principal,
       const Money(minorUnits: 1234),
     );
-    expect(creditSvc.createRepaymentCommands.single.liabilityAccountId, 'loan');
-    expect(creditSvc.createRepaymentCommands.single.paidFromAccountId, 'cash');
+    expect(
+      repayment.liabilityRepaymentCommands.single.liabilityAccountId,
+      'loan',
+    );
+    expect(
+      repayment.liabilityRepaymentCommands.single.paidFromAccountId,
+      'cash',
+    );
   });
 
   test('repayment form maps business exception to failure', () async {
-    final creditSvc = _FakeCreditAppService(
+    final repayment = _FakeRepaymentAppService(
       exception: BusinessException(
         credit.CreditErrorCode.repaymentExceedsAvailable,
         message: '本金超过可还额度',
       ),
     );
-    final container = _container(creditAppService: creditSvc);
+    final container = _container(repaymentAppService: repayment);
     final provider = repaymentFormViewModelProvider(
       const RepaymentFormArgs(liabilityAccountId: 'loan'),
     );
@@ -84,10 +91,7 @@ void main() {
       final repayment = _FakeRepaymentAppService();
       final container = _container(repaymentAppService: repayment);
       final provider = installmentRepaymentFormViewModelProvider(
-        const InstallmentRepaymentFormArgs(
-          contractId: 'contract',
-          mode: InstallmentRepaymentMode.prepayment,
-        ),
+        const InstallmentRepaymentFormArgs(contractId: 'contract'),
       );
       final subscription = container.listen(provider, (_, _) {});
       addTearDown(subscription.close);
@@ -404,7 +408,6 @@ void main() {
 }
 
 ProviderContainer _container({
-  _FakeCreditAppService? creditAppService,
   _FakeInstallmentAppService? installmentAppService,
   _FakeRepaymentAppService? repaymentAppService,
   _FakePostingService? postingService,
@@ -449,9 +452,6 @@ ProviderContainer _container({
       installmentContractsByAccountProvider.overrideWith(
         (ref, id) async => const [],
       ),
-      creditAppServiceProvider.overrideWithValue(
-        creditAppService ?? _FakeCreditAppService(),
-      ),
       installmentAppServiceProvider.overrideWithValue(
         installmentAppService ?? _FakeInstallmentAppService(),
       ),
@@ -467,42 +467,16 @@ ProviderContainer _container({
   return container;
 }
 
-class _FakeCreditAppService implements credit.CreditAppService {
-  _FakeCreditAppService({this.exception});
-
-  final Object? exception;
-  final createRepaymentCommands = <credit.CreateRepaymentCommand>[];
-
-  @override
-  Future<PostedTransactionResult> createRepayment(
-    credit.CreateRepaymentCommand command,
-  ) async {
-    createRepaymentCommands.add(command);
-    final exception = this.exception;
-    if (exception != null) throw exception;
-    return _posted();
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
 class _FakeInstallmentAppService implements credit.InstallmentAppService {
-  final scheduledCommands = <credit.CreateScheduledRepaymentCommand>[];
-
-  @override
-  Future<PostedTransactionResult> createScheduledRepayment(
-    credit.CreateScheduledRepaymentCommand command,
-  ) async {
-    scheduledCommands.add(command);
-    return _posted();
-  }
-
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeRepaymentAppService implements credit.RepaymentAppService {
+  _FakeRepaymentAppService({this.exception});
+
+  final Object? exception;
+  final liabilityRepaymentCommands = <credit.CreateLiabilityRepaymentCommand>[];
   final prepaymentCommands =
       <credit.CreateContractPrepaymentRepaymentCommand>[];
   final billRepaymentCommands = <credit.CreateBillRepaymentCommand>[];
@@ -510,6 +484,19 @@ class _FakeRepaymentAppService implements credit.RepaymentAppService {
       <credit.CreateBillConversionInstallmentRepaymentCommand>[];
   final unattributedCommands = <credit.CreateUnattributedRepaymentCommand>[];
   final deleteCommands = <credit.DeleteCreditRepaymentCommand>[];
+
+  @override
+  Future<credit_port.CreditLedgerPostedTransaction> createLiabilityRepayment(
+    credit.CreateLiabilityRepaymentCommand command,
+  ) async {
+    liabilityRepaymentCommands.add(command);
+    final exception = this.exception;
+    if (exception != null) throw exception;
+    return const credit_port.CreditLedgerPostedTransaction(
+      transactionId: 'transaction',
+      rootTransactionId: 'root',
+    );
+  }
 
   @override
   Future<credit.CreateRepaymentResult> createBillRepayment(
@@ -659,7 +646,6 @@ credit_query.BillDetailReadModel _billDetail() {
       pendingPrincipal: const Money(minorUnits: 6000),
       itemCount: 1,
       overdueItemCount: 0,
-      hasSourceDiff: false,
       dueDate: DateTime(2026, 6, 20),
     ),
     items: [
@@ -693,7 +679,6 @@ credit_query.BillDetailReadModel _billDetailWithTwoConsumptionItems() {
     pendingPrincipal: const Money(minorUnits: 10000),
     itemCount: 2,
     overdueItemCount: 0,
-    hasSourceDiff: false,
   );
   return credit_query.BillDetailReadModel(
     summary: summary,
@@ -740,7 +725,6 @@ credit_query.BillDetailReadModel _openBillDetailWithInstallment() {
     pendingPrincipal: const Money(minorUnits: 8000),
     itemCount: 2,
     overdueItemCount: 0,
-    hasSourceDiff: false,
   );
   return credit_query.BillDetailReadModel(
     summary: summary,
@@ -784,7 +768,6 @@ credit_query.CreditAccountOverviewReadModel _creditOverview() {
       creditLimit: const Money(minorUnits: 100000),
       billingDay: 5,
       repaymentDay: 25,
-      billingStartPeriod: credit_query.BillPeriod(year: 2026, month: 1),
     ),
     liabilityBalance: const Money(minorUnits: 2500),
     availableCredit: const Money(minorUnits: 97500),

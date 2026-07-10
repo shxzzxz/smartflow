@@ -9,14 +9,13 @@ import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
-import 'package:smartflow/domain/credit/valobj/bill_period.dart';
 import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
-import '../command/credit_bill_generation_app_service.dart';
+import 'bill_read_models.dart';
 
 abstract interface class BillQueryService {
   Future<List<BillSummaryReadModel>> listBillsByAccount(String accountId);
@@ -33,14 +32,12 @@ class BillQueryServiceImpl implements BillQueryService {
     required InstallmentRepository installments,
     required RepaymentRepository repayments,
     required ledger_query.TransactionQueryService transactionQueryService,
-    required CreditBillGenerationAppService generationService,
     DateTime Function()? now,
   }) : _bills = bills,
        _creditAccounts = creditAccounts,
        _installments = installments,
        _repayments = repayments,
        _transactionQueryService = transactionQueryService,
-       _generationService = generationService,
        _now = now;
 
   final BillRepository _bills;
@@ -48,7 +45,6 @@ class BillQueryServiceImpl implements BillQueryService {
   final InstallmentRepository _installments;
   final RepaymentRepository _repayments;
   final ledger_query.TransactionQueryService _transactionQueryService;
-  final CreditBillGenerationAppService _generationService;
   final DateTime Function()? _now;
 
   @override
@@ -56,18 +52,17 @@ class BillQueryServiceImpl implements BillQueryService {
     String accountId,
   ) async {
     final now = _currentTime();
-    await _generationService.generateDueBillsForAccount(
-      accountId: accountId,
-      now: now,
-    );
     final bills = await _bills.listBillsByAccount(accountId);
+    final allocatedByItemId = await _repayments.aggregateItemsByBillItemIds(
+      bills.expand((bill) => bill.items).map((item) => item.id),
+    );
     final result = <BillSummaryReadModel>[];
     for (final bill in bills) {
       result.add(
-        await _summaryForBill(
+        _summaryForBill(
           bill: bill,
           now: now,
-          hasSourceDiff: await _hasSourceDiff(bill),
+          allocatedByItemId: allocatedByItemId,
         ),
       );
     }
@@ -76,35 +71,34 @@ class BillQueryServiceImpl implements BillQueryService {
 
   @override
   Future<BillDetailReadModel?> findBillDetail(String billId) async {
-    final initial = await _bills.findBill(billId);
-    if (initial == null) return null;
-    final now = _currentTime();
-    await _generationService.generateDueBillsForAccount(
-      accountId: initial.accountId,
-      now: now,
-    );
     final bill = await _bills.findBill(billId);
     if (bill == null) return null;
+    final now = _currentTime();
+    final allocatedByItemId = await _repayments.aggregateItemsByBillItemIds(
+      bill.items.map((item) => item.id),
+    );
     final creditAccount = await _creditAccounts.findByAccountId(bill.accountId);
     final contracts = await _contractsById(bill.accountId);
     final repayments = await _repaymentsForBill(bill);
     final items = <BillItemReadModel>[];
     for (final item in bill.items) {
       items.add(
-        await _itemForBill(
+        _itemForBill(
           item: item,
           now: now,
           accountKind: creditAccount?.kind,
           contract: contracts[item.contractId],
+          allocated:
+              allocatedByItemId[item.id] ?? RepaymentAmountBreakdown.zero,
         ),
       );
     }
 
     return BillDetailReadModel(
-      summary: await _summaryForBill(
+      summary: _summaryForBill(
         bill: bill,
         now: now,
-        hasSourceDiff: await _hasSourceDiff(bill),
+        allocatedByItemId: allocatedByItemId,
       ),
       items: items,
       repayments: repayments,
@@ -120,7 +114,9 @@ class BillQueryServiceImpl implements BillQueryService {
       accountId,
     );
     return schedules.any(
-      (schedule) => schedule.status == InstallmentScheduleStatus.pending,
+      (schedule) =>
+          schedule.status == InstallmentScheduleStatus.pending ||
+          schedule.status == InstallmentScheduleStatus.partiallyPaid,
     );
   }
 
@@ -133,20 +129,15 @@ class BillQueryServiceImpl implements BillQueryService {
     return {for (final contract in contracts) contract.id: contract};
   }
 
-  Future<bool> _hasSourceDiff(Bill bill) {
-    if (bill.status == BillStatus.open) return Future.value(false);
-    return _generationService.hasSourceProjectionDiff(bill.id);
-  }
-
-  Future<BillSummaryReadModel> _summaryForBill({
+  BillSummaryReadModel _summaryForBill({
     required Bill bill,
     required DateTime now,
-    required bool hasSourceDiff,
-  }) async {
+    required Map<String, RepaymentAmountBreakdown> allocatedByItemId,
+  }) {
     final dueDate = bill.window?.repaymentDate ?? _earliestRepaymentDate(bill);
     final overdueCount =
         bill.items.where((item) {
-          return item.status == BillItemStatus.pending &&
+          return _isOutstanding(item.status) &&
               _dateOnly(item.repaymentDate).isBefore(_dateOnly(now));
         }).length;
     return BillSummaryReadModel(
@@ -158,19 +149,19 @@ class BillQueryServiceImpl implements BillQueryService {
       expectedPrincipal: bill.expectedPrincipal,
       expectedInterest: bill.expectedInterest,
       expectedFee: bill.expectedFee,
-      pendingPrincipal: await _pendingPrincipalForBill(bill),
+      pendingPrincipal: _pendingPrincipalForBill(bill, allocatedByItemId),
       itemCount: bill.items.length,
       overdueItemCount: overdueCount,
-      hasSourceDiff: hasSourceDiff,
     );
   }
 
-  Future<BillItemReadModel> _itemForBill({
+  BillItemReadModel _itemForBill({
     required BillItem item,
     required DateTime now,
     required CreditLiabilityAccountKind? accountKind,
     required InstallmentContract? contract,
-  }) async {
+    required RepaymentAmountBreakdown allocated,
+  }) {
     return BillItemReadModel(
       id: item.id,
       itemType: item.itemType,
@@ -184,23 +175,33 @@ class BillQueryServiceImpl implements BillQueryService {
       expectedPrincipal: item.expectedPrincipal,
       expectedInterest: item.expectedInterest,
       expectedFee: item.expectedFee,
-      allocated: await _allocatedForBillItem(item.id),
+      allocated: allocated,
       contractId: item.contractId,
       scheduleId: item.scheduleId,
       isOverdue:
-          item.status == BillItemStatus.pending &&
+          _isOutstanding(item.status) &&
           _dateOnly(item.repaymentDate).isBefore(_dateOnly(now)),
     );
   }
 
-  Future<RepaymentAmountBreakdown> _allocatedForBillItem(
-    String billItemId,
-  ) async {
-    final allocated = await _repayments.listItemsByBillItem(billItemId);
-    return allocated.fold<RepaymentAmountBreakdown>(
-      RepaymentAmountBreakdown.zero,
-      (sum, item) => sum + item.allocated,
-    );
+  Money _pendingPrincipalForBill(
+    Bill bill,
+    Map<String, RepaymentAmountBreakdown> allocatedByItemId,
+  ) {
+    var total = 0;
+    for (final item in bill.items) {
+      if (!_isOutstanding(item.status)) continue;
+      final allocatedPrincipal =
+          allocatedByItemId[item.id]?.principal.minorUnits ?? 0;
+      final remaining = item.expectedPrincipal.minorUnits - allocatedPrincipal;
+      if (remaining > 0) total += remaining;
+    }
+    return Money(minorUnits: total);
+  }
+
+  bool _isOutstanding(BillItemStatus status) {
+    return status == BillItemStatus.pending ||
+        status == BillItemStatus.partiallyPaid;
   }
 
   String _itemLabel({
@@ -276,21 +277,6 @@ class BillQueryServiceImpl implements BillQueryService {
     return null;
   }
 
-  Future<Money> _pendingPrincipalForBill(Bill bill) async {
-    var total = 0;
-    for (final item in bill.items) {
-      if (item.status != BillItemStatus.pending) continue;
-      final allocated = await _repayments.listItemsByBillItem(item.id);
-      final allocatedPrincipal = allocated.fold<int>(
-        0,
-        (sum, allocation) => sum + allocation.allocated.principal.minorUnits,
-      );
-      final remaining = item.expectedPrincipal.minorUnits - allocatedPrincipal;
-      if (remaining > 0) total += remaining;
-    }
-    return Money(minorUnits: total);
-  }
-
   DateTime? _earliestRepaymentDate(Bill bill) {
     if (bill.items.isEmpty) return null;
     final dates = bill.items.map((item) => item.repaymentDate).toList()..sort();
@@ -305,104 +291,4 @@ class BillQueryServiceImpl implements BillQueryService {
   DateTime _dateOnly(DateTime value) {
     return DateTime(value.year, value.month, value.day);
   }
-}
-
-class BillSummaryReadModel {
-  const BillSummaryReadModel({
-    required this.id,
-    required this.accountId,
-    required this.period,
-    required this.status,
-    required this.expectedPrincipal,
-    required this.expectedInterest,
-    required this.expectedFee,
-    required this.pendingPrincipal,
-    required this.itemCount,
-    required this.overdueItemCount,
-    required this.hasSourceDiff,
-    this.dueDate,
-  });
-
-  final String id;
-  final String accountId;
-  final BillPeriod period;
-  final BillStatus status;
-  final DateTime? dueDate;
-  final Money expectedPrincipal;
-  final Money expectedInterest;
-  final Money expectedFee;
-  final Money pendingPrincipal;
-  final int itemCount;
-  final int overdueItemCount;
-  final bool hasSourceDiff;
-}
-
-class BillDetailReadModel {
-  const BillDetailReadModel({
-    required this.summary,
-    required this.items,
-    required this.repayments,
-  });
-
-  final BillSummaryReadModel summary;
-  final List<BillItemReadModel> items;
-  final List<BillRepaymentReadModel> repayments;
-}
-
-class BillItemReadModel {
-  const BillItemReadModel({
-    required this.id,
-    required this.itemType,
-    required this.label,
-    required this.status,
-    required this.repaymentDate,
-    required this.expectedPrincipal,
-    required this.expectedInterest,
-    required this.expectedFee,
-    required this.allocated,
-    required this.isOverdue,
-    this.contractId,
-    this.scheduleId,
-  });
-
-  final String id;
-  final BillItemType itemType;
-  final String label;
-  final BillItemStatus status;
-  final DateTime repaymentDate;
-  final Money expectedPrincipal;
-  final Money expectedInterest;
-  final Money expectedFee;
-  final RepaymentAmountBreakdown allocated;
-  final bool isOverdue;
-  final String? contractId;
-  final String? scheduleId;
-}
-
-enum BillRepaymentTimeSource { transaction, recordCreatedAt }
-
-class BillRepaymentReadModel {
-  const BillRepaymentReadModel({
-    required this.id,
-    required this.repaymentType,
-    required this.allocated,
-    required this.displayTime,
-    required this.timeSource,
-    this.rootTransactionId,
-    this.paidFromAccountId,
-  });
-
-  final String id;
-  final RepaymentType repaymentType;
-  final RepaymentAmountBreakdown allocated;
-  final DateTime displayTime;
-  final BillRepaymentTimeSource timeSource;
-  final String? rootTransactionId;
-  final String? paidFromAccountId;
-
-  Money get cashPaid =>
-      allocated.principal +
-      allocated.interest +
-      allocated.fee -
-      allocated.discount;
 }

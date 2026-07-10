@@ -68,7 +68,7 @@ final class BillSummariesByAccountProvider
 }
 
 String _$billSummariesByAccountHash() =>
-    r'25992be4fc2a8c0f67e6b1ad71b2a67589d26d49';
+    r'9b36caa7a8f417fb27afa726a4b8ee9c40fe517b';
 
 final class BillSummariesByAccountFamily extends $Family
     with

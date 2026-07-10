@@ -1,4 +1,5 @@
 import '../entity/repayment.dart';
+import '../valobj/repayment_amount_breakdown.dart';
 import '../valobj/repayment_enums.dart';
 
 abstract interface class RepaymentRepository {
@@ -14,6 +15,10 @@ abstract interface class RepaymentRepository {
   Future<List<RepaymentItem>> listItems(String repaymentId);
 
   Future<List<RepaymentItem>> listItemsByBillItem(String billItemId);
+
+  Future<Map<String, RepaymentAmountBreakdown>> aggregateItemsByBillItemIds(
+    Iterable<String> billItemIds,
+  );
 
   Future<void> saveRepayment(Repayment repayment);
 

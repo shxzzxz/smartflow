@@ -59,21 +59,24 @@ void main() {
     },
   );
 
-  test('bill detail exposes billed source projection diff', () async {
-    final fixture = _Fixture(sourceDiffs: {'bill-1': true});
-    addTearDown(fixture.close);
-    await fixture.seedBill();
+  test(
+    'bill detail reads stored bill state without refreshing sources',
+    () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      await fixture.seedBill();
 
-    final detail = await fixture.query.findBillDetail('bill-1');
+      final detail = await fixture.query.findBillDetail('bill-1');
 
-    expect(detail!.summary.hasSourceDiff, true);
-  });
+      expect(detail!.summary.expectedPrincipal, const Money(minorUnits: 1000));
+      expect(detail.summary.status, credit.BillStatus.billed);
+    },
+  );
 }
 
 class _Fixture {
   _Fixture({
     Map<String, ledger.TransactionDetail> transactionDetails = const {},
-    Map<String, bool> sourceDiffs = const {},
   }) : transactions = _FakeTransactionQueryService(transactionDetails) {
     query = credit_query.BillQueryServiceImpl(
       bills: bills,
@@ -81,7 +84,6 @@ class _Fixture {
       installments: installments,
       repayments: repayments,
       transactionQueryService: transactions,
-      generationService: _FakeGenerationService(sourceDiffs),
       now: () => DateTime(2026, 7, 1),
     );
   }
@@ -184,29 +186,6 @@ ledger.TransactionDetail _transactionDetail() {
       ),
     ],
   );
-}
-
-class _FakeGenerationService implements credit.CreditBillGenerationAppService {
-  const _FakeGenerationService(this.sourceDiffs);
-
-  final Map<String, bool> sourceDiffs;
-
-  @override
-  Future<void> generateDueBills({required DateTime now}) async {}
-
-  @override
-  Future<void> generateDueBillsForAccount({
-    required String accountId,
-    required DateTime now,
-  }) async {}
-
-  @override
-  Future<bool> hasSourceProjectionDiff(String billId) async {
-    return sourceDiffs[billId] ?? false;
-  }
-
-  @override
-  Future<void> syncBillProjection(String billId) async {}
 }
 
 class _FakeTransactionQueryService implements ledger.TransactionQueryService {

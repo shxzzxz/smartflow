@@ -4,7 +4,6 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../domain/credit/entity/credit_liability_account.dart';
 import '../../../domain/credit/port/credit_account_repository.dart';
-import '../../../domain/credit/valobj/bill_period.dart';
 import '../../../domain/credit/valobj/credit_error_code.dart';
 import '../../database/app_database.dart';
 import '../../database/patch_value.dart';
@@ -48,7 +47,6 @@ class DriftCreditAccountRepository implements CreditAccountRepository {
       creditLimit: draft.creditLimit,
       billingDay: draft.billingDay,
       repaymentDay: draft.repaymentDay,
-      billingStartPeriod: draft.billingStartPeriod,
       billingDayToNext: draft.billingDayToNext,
     );
     final now = DateTime.now();
@@ -62,7 +60,6 @@ class DriftCreditAccountRepository implements CreditAccountRepository {
             creditLimitMinor: Value(account.creditLimit?.minorUnits),
             billingDay: Value(account.billingDay),
             repaymentDay: Value(account.repaymentDay),
-            billingStartPeriod: Value(account.billingStartPeriod?.toInt()),
             billingDayToNext: Value(account.billingDayToNext),
             createdAt: Value(now),
             updatedAt: Value(now),
@@ -83,9 +80,6 @@ class DriftCreditAccountRepository implements CreditAccountRepository {
         ),
         billingDay: patch.billingDay.toValue(),
         repaymentDay: patch.repaymentDay.toValue(),
-        billingStartPeriod: patch.billingStartPeriod.toMappedValue(
-          (period) => period.toInt(),
-        ),
         billingDayToNext:
             patch.billingDayToNext == null
                 ? const Value.absent()
@@ -109,10 +103,6 @@ class DriftCreditAccountRepository implements CreditAccountRepository {
               : Money(minorUnits: row.creditLimitMinor!),
       billingDay: row.billingDay,
       repaymentDay: row.repaymentDay,
-      billingStartPeriod:
-          row.billingStartPeriod == null
-              ? null
-              : BillPeriod.fromInt(row.billingStartPeriod!),
       billingDayToNext: row.billingDayToNext,
     );
   }

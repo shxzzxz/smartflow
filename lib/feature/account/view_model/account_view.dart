@@ -15,7 +15,6 @@ class AccountView {
     this.creditLimit,
     this.billingDay,
     this.repaymentDay,
-    this.billingStartPeriod,
     this.billingDayToNext,
   });
 
@@ -29,7 +28,6 @@ class AccountView {
   final Money? creditLimit;
   final int? billingDay;
   final int? repaymentDay;
-  final BillPeriod? billingStartPeriod;
   final bool? billingDayToNext;
 
   bool get isCredit => kind == AccountProfileKind.credit;
@@ -64,7 +62,6 @@ AccountView buildAccountView(
     creditLimit: creditAccount?.creditLimit,
     billingDay: creditAccount?.billingDay,
     repaymentDay: creditAccount?.repaymentDay,
-    billingStartPeriod: creditAccount?.billingStartPeriod,
     billingDayToNext: creditAccount?.billingDayToNext,
   );
 }

@@ -67,6 +67,31 @@ void main() {
         billItemAllocations.single.allocated.fee,
         const Money(minorUnits: 50),
       );
+
+      final aggregated = await repository.aggregateItemsByBillItemIds([
+        'bill-item-1',
+        'bill-item-2',
+        'missing',
+      ]);
+      expect(aggregated.keys, {'bill-item-1', 'bill-item-2'});
+      expect(
+        aggregated['bill-item-1'],
+        const RepaymentAmountBreakdown(
+          principal: Money(minorUnits: 1000),
+          interest: Money(minorUnits: 100),
+          fee: Money(minorUnits: 0),
+          discount: Money(minorUnits: 0),
+        ),
+      );
+      expect(
+        aggregated['bill-item-2'],
+        const RepaymentAmountBreakdown(
+          principal: Money(minorUnits: 500),
+          interest: Money(minorUnits: 0),
+          fee: Money(minorUnits: 50),
+          discount: Money(minorUnits: 20),
+        ),
+      );
     });
 
     test('replaces and deletes repayment items with the aggregate', () async {

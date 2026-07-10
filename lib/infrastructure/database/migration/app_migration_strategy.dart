@@ -48,67 +48,10 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
     beforeOpen: (_) async {
       await ensureBuiltinData(database);
     },
-    onUpgrade: (migrator, from, to) async {
-      if (from < 10) {
-        await migrator.addColumn(database.accounts, database.accounts.version);
-      }
-      if (from < 11) {
-        await migrator.addColumn(
-          database.accounts,
-          database.accounts.accountProfileKey,
-        );
-        await _migrateAccountProfileKeys(database);
-      }
-      if (from < 12) {
-        await migrator.createTable(database.creditLiabilityAccounts);
-        await _migrateCreditLiabilityAccounts(database);
-      }
-      if (from < 13) {
-        await migrator.createTable(database.bills);
-        await migrator.createTable(database.billItems);
-        await _createBillIndexes(database);
-      }
-      if (from < 14) {
-        await migrator.createTable(database.repayments);
-        await migrator.createTable(database.repaymentItems);
-        await _createRepaymentIndexes(database);
-      }
-      if (from < 15) {
-        if (await _tableExists(database, 'installment_contracts')) {
-          await migrator.addColumn(
-            database.installmentContracts,
-            database.installmentContracts.sourceRepaymentId,
-          );
-          await _createInstallmentSourceRepaymentIndex(database);
-        }
-      }
-      if (from < 16) {
-        await database.customStatement(
-          'DROP INDEX IF EXISTS installment_repayments_contract_schedule_unique',
-        );
-        await database.customStatement(
-          'DROP INDEX IF EXISTS installment_repayments_transaction_idx',
-        );
-        await database.customStatement(
-          'DROP TABLE IF EXISTS installment_repayments',
-        );
-      }
-      if (from < 17) {
-        await _migrateCreditRepaymentsToPrepayment(database);
-      }
+    onUpgrade: (_, _, _) async {
+      // Development builds reset/recreate the database between schema versions.
     },
   );
-}
-
-Future<bool> _tableExists(AppDatabase database, String tableName) async {
-  final rows =
-      await database
-          .customSelect(
-            'SELECT name FROM sqlite_master WHERE type = ? AND name = ?',
-            variables: [Variable<String>('table'), Variable<String>(tableName)],
-          )
-          .get();
-  return rows.isNotEmpty;
 }
 
 Future<void> _createInstallmentSourceRepaymentIndex(
@@ -136,10 +79,6 @@ Future<void> _createBillIndexes(AppDatabase database) async {
     'CREATE UNIQUE INDEX bill_items_consumption_unique '
     'ON bill_items (bill_id) WHERE item_type = \'consumption\'',
   );
-  await database.customStatement(
-    'CREATE UNIQUE INDEX bill_items_schedule_unique '
-    'ON bill_items (schedule_id) WHERE schedule_id IS NOT NULL',
-  );
 }
 
 Future<void> _createRepaymentIndexes(AppDatabase database) async {
@@ -160,167 +99,6 @@ Future<void> _createRepaymentIndexes(AppDatabase database) async {
     'CREATE INDEX repayment_items_bill_item_idx '
     'ON repayment_items (bill_item_id) '
     'WHERE bill_item_id IS NOT NULL',
-  );
-}
-
-Future<void> _migrateCreditRepaymentsToPrepayment(AppDatabase database) async {
-  if (await _tableExists(database, 'repayments')) {
-    await database.customStatement(
-      "UPDATE repayments SET repayment_type = 'PREPAYMENT' "
-      "WHERE repayment_type IN ('EXTRA_PRINCIPAL', 'EARLY_SETTLEMENT')",
-    );
-    await database.customStatement(
-      'ALTER TABLE repayments RENAME TO repayments_v16',
-    );
-    await database.customStatement('''
-      CREATE TABLE repayments (
-        id TEXT NOT NULL PRIMARY KEY,
-        repayment_type TEXT NOT NULL,
-        target_type TEXT NOT NULL,
-        target_id TEXT NOT NULL,
-        root_transaction_id TEXT NULL,
-        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-        updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-        CHECK (repayment_type IN (
-          'BILL',
-          'INSTALLMENT',
-          'PREPAYMENT',
-          'UNATTRIBUTED'
-        )),
-        CHECK (target_type IN ('BILL', 'CONTRACT', 'ACCOUNT')),
-        CHECK (
-          (repayment_type IN ('BILL', 'INSTALLMENT') AND target_type = 'BILL')
-          OR (repayment_type = 'PREPAYMENT' AND target_type = 'CONTRACT')
-          OR (repayment_type = 'UNATTRIBUTED' AND target_type = 'ACCOUNT')
-        ),
-        CHECK (repayment_type <> 'INSTALLMENT' OR root_transaction_id IS NULL)
-      )
-    ''');
-    await database.customStatement('''
-      INSERT INTO repayments (
-        id,
-        repayment_type,
-        target_type,
-        target_id,
-        root_transaction_id,
-        created_at,
-        updated_at
-      )
-      SELECT
-        id,
-        repayment_type,
-        target_type,
-        target_id,
-        root_transaction_id,
-        created_at,
-        updated_at
-      FROM repayments_v16
-    ''');
-    await database.customStatement('DROP TABLE repayments_v16');
-    await database.customStatement(
-      'CREATE INDEX repayments_target_idx '
-      'ON repayments (target_type, target_id, created_at)',
-    );
-    await database.customStatement(
-      'CREATE UNIQUE INDEX repayments_root_transaction_unique '
-      'ON repayments (root_transaction_id) '
-      'WHERE root_transaction_id IS NOT NULL',
-    );
-  }
-  if (await _tableExists(database, 'transactions')) {
-    await database.customStatement(
-      "UPDATE transactions SET owner_role = 'PREPAYMENT' "
-      "WHERE owner_type = 'credit_repayment' "
-      "AND owner_role IN ('EXTRA_PRINCIPAL', 'EARLY_SETTLEMENT')",
-    );
-  }
-  if (await _tableExists(database, 'installment_contracts') &&
-      await _tableExists(database, 'installment_schedules')) {
-    await database.customStatement('''
-      UPDATE installment_contracts
-      SET status = CASE
-        WHEN EXISTS (
-          SELECT 1
-          FROM installment_schedules
-          WHERE installment_schedules.contract_id = installment_contracts.id
-            AND installment_schedules.status = 'pending'
-        )
-        THEN 'active'
-        ELSE 'settled'
-      END
-      WHERE status = 'closed'
-    ''');
-  }
-}
-
-Future<void> _migrateCreditLiabilityAccounts(AppDatabase database) async {
-  await database.customStatement('''
-    INSERT OR IGNORE INTO credit_liability_accounts (
-      id,
-      account_id,
-      kind,
-      credit_limit_minor,
-      billing_day,
-      repayment_day,
-      billing_start_period,
-      billing_day_to_next,
-      created_at,
-      updated_at
-    )
-    SELECT
-      'credit-liability-account:' || id,
-      id,
-      CASE WHEN account_profile_key = 'credit.loan' THEN 'loan' ELSE 'credit' END,
-      credit_limit_minor,
-      CASE
-        WHEN account_profile_key = 'credit.loan' THEN NULL
-        WHEN billing_day BETWEEN 1 AND 28 THEN billing_day
-        ELSE 1
-      END,
-      CASE
-        WHEN account_profile_key = 'credit.loan' THEN NULL
-        WHEN repayment_day BETWEEN 1 AND 28 THEN repayment_day
-        ELSE 28
-      END,
-      CASE
-        WHEN account_profile_key = 'credit.loan' THEN NULL
-        ELSE CAST(strftime('%Y', created_at, 'unixepoch') AS INTEGER) * 100
-          + CAST(strftime('%m', created_at, 'unixepoch') AS INTEGER)
-      END,
-      1,
-      created_at,
-      updated_at
-    FROM accounts
-    WHERE account_type = 'liability'
-    ''');
-}
-
-Future<void> _migrateAccountProfileKeys(AppDatabase database) async {
-  await database.customStatement(
-    "UPDATE accounts SET account_profile_key = 'ledger.reimbursement' "
-    "WHERE account_type = 'asset' AND account_subtype = 'reimbursement'",
-  );
-  await database.customStatement(
-    "UPDATE accounts SET account_profile_key = 'ledger.fund' "
-    "WHERE account_type = 'asset' AND "
-    "(account_subtype IS NULL OR account_subtype <> 'reimbursement')",
-  );
-  await database.customStatement(
-    "UPDATE accounts SET account_profile_key = 'credit.loan' "
-    "WHERE account_type = 'liability' AND account_subtype = 'loan'",
-  );
-  await database.customStatement(
-    "UPDATE accounts SET account_profile_key = 'credit.credit' "
-    "WHERE account_type = 'liability' AND "
-    "(account_subtype IS NULL OR account_subtype <> 'loan')",
-  );
-  await database.customStatement(
-    "UPDATE accounts SET account_subtype = NULL "
-    "WHERE account_subtype IS NOT NULL AND account_subtype <> 'reimbursement'",
-  );
-  await database.customStatement(
-    "UPDATE accounts SET account_subtype = NULL, account_profile_key = NULL "
-    "WHERE account_type IN ('equity', 'income', 'expense')",
   );
 }
 

@@ -118,7 +118,11 @@ class InstallmentDetailLoaded extends InstallmentDetailState {
 
   int get remainingPrincipalMinor {
     final remaining = schedules
-        .where((s) => s.status == InstallmentScheduleStatus.pending)
+        .where(
+          (s) =>
+              s.status == InstallmentScheduleStatus.pending ||
+              s.status == InstallmentScheduleStatus.partiallyPaid,
+        )
         .fold<int>(0, (sum, schedule) {
           return sum + schedule.expectedPrincipal.minorUnits;
         });

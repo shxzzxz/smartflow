@@ -331,7 +331,8 @@ List<BillRepaymentAllocationLine> _conversionLines(
   return [
     for (final item in detail.items)
       if (item.itemType == credit.BillItemType.consumption &&
-          item.status == credit.BillItemStatus.pending)
+          (item.status == credit.BillItemStatus.pending ||
+              item.status == credit.BillItemStatus.partiallyPaid))
         BillRepaymentAllocationLine(
           billItemId: item.id,
           itemType: item.itemType,

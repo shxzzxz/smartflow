@@ -342,10 +342,7 @@ class _ActionBar extends StatelessWidget {
               child: _ActionButton(
                 icon: RemixIcons.bank_card_line,
                 label: '提前还款',
-                onTap:
-                    () => context.push(
-                      '/installments/${contract.id}/repay?mode=prepay',
-                    ),
+                onTap: () => context.push('/installments/${contract.id}/repay'),
               ),
             ),
             const SizedBox(width: AppSpacing.space6),
@@ -590,6 +587,7 @@ String _methodLabel(InstallmentRepaymentMethod method) {
 String _scheduleStatusLabel(InstallmentScheduleStatus status) {
   return switch (status) {
     InstallmentScheduleStatus.pending => '待还',
+    InstallmentScheduleStatus.partiallyPaid => '部分已还',
     InstallmentScheduleStatus.paid => '已还',
     InstallmentScheduleStatus.skipped => '已跳过',
   };
@@ -601,6 +599,7 @@ Color _scheduleStatusColor(
 ) {
   return switch (status) {
     InstallmentScheduleStatus.pending => colors.primary,
+    InstallmentScheduleStatus.partiallyPaid => colors.error,
     InstallmentScheduleStatus.paid => colors.tertiary,
     InstallmentScheduleStatus.skipped => colors.outline,
   };

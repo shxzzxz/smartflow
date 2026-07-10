@@ -239,7 +239,6 @@ CreditLiabilityAccount _creditLiabilityAccount(String accountId) {
     kind: CreditLiabilityAccountKind.credit,
     billingDay: 5,
     repaymentDay: 25,
-    billingStartPeriod: BillPeriod.fromInt(202601),
     billingDayToNext: true,
   );
 }

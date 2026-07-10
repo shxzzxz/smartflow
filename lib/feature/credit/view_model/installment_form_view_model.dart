@@ -6,7 +6,6 @@ import '../../../application/ledger/ledger_command_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
-import '../../../shared/account_profile/account_profile_kind.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -39,14 +38,11 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
       liabilityAccounts: liabilityAccounts,
       fundAccounts: fundAccounts,
       liability: liability,
-      sourceType: args.lockedSourceType ?? _defaultSourceType(liability),
+      sourceType: InstallmentSourceType.disbursement,
       borrowingDate: now,
       firstRepaymentDate: DateTime(now.year, now.month + 1, now.day),
     );
   }
-
-  void setSourceType(InstallmentSourceType value) =>
-      _updateLoaded((state) => state.copyWith(sourceType: value));
 
   void setBorrowingDate(DateTime value) {
     _updateLoaded((state) {
@@ -112,43 +108,23 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
     try {
       final service = ref.read(installmentAppServiceProvider);
       final note = trimToNull(noteText);
-      final result =
-          current.isDisbursement
-              ? await service.createDisbursementContract(
-                CreateDisbursementContractCommand(
-                  liabilityAccountId: current.liability.id,
-                  disbursementAccountId: current.disbursementAccountId!,
-                  principal: principal,
-                  totalPeriods: totalPeriods,
-                  borrowingDate: current.borrowingDate,
-                  firstRepaymentDate: current.firstRepaymentDate,
-                  repaymentMethod: current.method,
-                  interestRatePeriod:
-                      ratePpm == null ? null : current.ratePeriod,
-                  interestRatePpm: ratePpm,
-                  interestAccrualMethod: current.accrualMethod,
-                  totalFeeMinor: totalFee.minorUnits,
-                  equalInstallmentOverrideMinor: overrideMinor,
-                  note: note,
-                ),
-              )
-              : await service.createBillConversionContract(
-                CreateBillConversionContractCommand(
-                  liabilityAccountId: current.liability.id,
-                  principal: principal,
-                  totalPeriods: totalPeriods,
-                  borrowingDate: current.borrowingDate,
-                  firstRepaymentDate: current.firstRepaymentDate,
-                  repaymentMethod: current.method,
-                  interestRatePeriod:
-                      ratePpm == null ? null : current.ratePeriod,
-                  interestRatePpm: ratePpm,
-                  interestAccrualMethod: current.accrualMethod,
-                  totalFeeMinor: totalFee.minorUnits,
-                  equalInstallmentOverrideMinor: overrideMinor,
-                  note: note,
-                ),
-              );
+      final result = await service.createDisbursementContract(
+        CreateDisbursementContractCommand(
+          liabilityAccountId: current.liability.id,
+          disbursementAccountId: current.disbursementAccountId!,
+          principal: principal,
+          totalPeriods: totalPeriods,
+          borrowingDate: current.borrowingDate,
+          firstRepaymentDate: current.firstRepaymentDate,
+          repaymentMethod: current.method,
+          interestRatePeriod: ratePpm == null ? null : current.ratePeriod,
+          interestRatePpm: ratePpm,
+          interestAccrualMethod: current.accrualMethod,
+          totalFeeMinor: totalFee.minorUnits,
+          equalInstallmentOverrideMinor: overrideMinor,
+          note: note,
+        ),
+      );
       ref.invalidate(
         installmentContractsByAccountProvider(current.liability.id),
       );
@@ -338,12 +314,6 @@ class InstallmentFormLoaded extends InstallmentFormState {
       submitting: submitting ?? this.submitting,
     );
   }
-}
-
-InstallmentSourceType _defaultSourceType(Account liability) {
-  return liability.profileKey == AccountProfileKind.loan.key
-      ? InstallmentSourceType.disbursement
-      : InstallmentSourceType.billConversion;
 }
 
 Account? _findAccount(List<Account> accounts, String? id) {

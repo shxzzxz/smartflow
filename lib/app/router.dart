@@ -151,7 +151,6 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final lockedSourceType = switch (state.uri.queryParameters['source']) {
           'disbursement' => InstallmentSourceType.disbursement,
-          'bill' => InstallmentSourceType.billConversion,
           _ => null,
         };
         return InstallmentFormPage(
@@ -195,19 +194,10 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/installments/:contractId/repay',
-      builder: (context, state) {
-        final contractId = state.pathParameters['contractId']!;
-        final mode = switch (state.uri.queryParameters['mode']) {
-          'prepay' || 'prepayment' => InstallmentRepaymentMode.prepayment,
-          _ => InstallmentRepaymentMode.scheduled,
-        };
-        final scheduleId = state.uri.queryParameters['scheduleId'];
-        return InstallmentRepaymentFormPage(
-          contractId: contractId,
-          mode: mode,
-          scheduleId: scheduleId,
-        );
-      },
+      builder:
+          (context, state) => InstallmentRepaymentFormPage(
+            contractId: state.pathParameters['contractId']!,
+          ),
     ),
     GoRoute(
       path: '/category',

@@ -596,6 +596,7 @@ class _ScheduleRow extends StatelessWidget {
     final pending = row.status == InstallmentScheduleStatus.pending;
     final statusColor = switch (row.status) {
       InstallmentScheduleStatus.pending => colors.primary,
+      InstallmentScheduleStatus.partiallyPaid => colors.error,
       InstallmentScheduleStatus.paid => colors.tertiary,
       InstallmentScheduleStatus.skipped => colors.outline,
     };
@@ -1093,6 +1094,7 @@ String _formatDateShort(DateTime date) {
 String _statusLabel(InstallmentScheduleStatus status) {
   return switch (status) {
     InstallmentScheduleStatus.pending => '待还',
+    InstallmentScheduleStatus.partiallyPaid => '部分已还',
     InstallmentScheduleStatus.paid => '已还',
     InstallmentScheduleStatus.skipped => '已跳过',
   };

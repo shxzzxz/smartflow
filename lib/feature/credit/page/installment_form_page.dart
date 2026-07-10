@@ -100,11 +100,6 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                   placeholder: '',
                 ),
               ),
-              if (widget.lockedSourceType == null)
-                _SourceTypeRow(
-                  value: state.sourceType,
-                  onChanged: notifier.setSourceType,
-                ),
               if (isDisbursement)
                 AccountPlainFormRow(
                   label: '到账账户',
@@ -293,39 +288,6 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
     final n = int.tryParse((value ?? '').trim());
     if (n == null || n <= 0) return '期数必须为正整数';
     return null;
-  }
-}
-
-class _SourceTypeRow extends StatelessWidget {
-  const _SourceTypeRow({required this.value, required this.onChanged});
-
-  final InstallmentSourceType value;
-  final ValueChanged<InstallmentSourceType> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppPlainFormRow(
-      label: '类型',
-      child: Wrap(
-        spacing: AppSpacing.space8,
-        children: [
-          ChoiceChip(
-            label: const Text('放款分期'),
-            selected: value == InstallmentSourceType.disbursement,
-            onSelected: (selected) {
-              if (selected) onChanged(InstallmentSourceType.disbursement);
-            },
-          ),
-          ChoiceChip(
-            label: const Text('账单分期'),
-            selected: value == InstallmentSourceType.billConversion,
-            onSelected: (selected) {
-              if (selected) onChanged(InstallmentSourceType.billConversion);
-            },
-          ),
-        ],
-      ),
-    );
   }
 }
 

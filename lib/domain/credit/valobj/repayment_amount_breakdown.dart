@@ -26,6 +26,8 @@ class RepaymentAmountBreakdown {
       fee.minorUnits < 0 ||
       discount.minorUnits < 0;
 
+  Money get cashPaid => principal + interest + fee - discount;
+
   RepaymentAmountBreakdown operator +(RepaymentAmountBreakdown other) {
     return RepaymentAmountBreakdown(
       principal: principal + other.principal,

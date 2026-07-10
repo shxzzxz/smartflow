@@ -37,10 +37,8 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
     final role = InstallmentOwnerRole.fromWire(ownership.ownerRole);
     if (role != null) {
       return _InstallmentActionDispatcher(
-        transaction: transaction,
         installmentAppService: installmentAppService,
         contractId: ownership.ownerId!,
-        role: role,
       );
     }
   }
@@ -163,53 +161,32 @@ final class _DefaultActionDispatcher
 final class _InstallmentActionDispatcher
     implements TransactionDetailActionDispatcher {
   const _InstallmentActionDispatcher({
-    required this.transaction,
     required this.installmentAppService,
     required this.contractId,
-    required this.role,
   });
 
-  final Transaction transaction;
   final InstallmentAppService installmentAppService;
   final String contractId;
-  final InstallmentOwnerRole role;
 
   @override
   Future<UiActionOutcome<void>> delete() async {
     return detailVoidOutcomeFromAction(() {
-      return switch (role) {
-        InstallmentOwnerRole.disbursement => installmentAppService
-            .deleteContract(DeleteContractCommand(contractId: contractId)),
-        InstallmentOwnerRole.scheduledRepayment ||
-        InstallmentOwnerRole.prepayment => installmentAppService
-            .revertRepayment(
-              RevertRepaymentCommand(transactionId: transaction.id),
-            ),
-      };
+      return installmentAppService.deleteContract(
+        DeleteContractCommand(contractId: contractId),
+      );
     });
   }
 
   @override
   Future<UiActionOutcome<void>> changeNote(String? value) async {
-    if (role == InstallmentOwnerRole.disbursement) {
-      return detailVoidOutcomeFromAction(() {
-        return installmentAppService.updateContract(
-          UpdateContractCommand(
-            contractId: contractId,
-            note:
-                value == null
-                    ? const Patch<String>.clear()
-                    : Patch<String>.set(value),
-          ),
-        );
-      });
-    }
     return detailVoidOutcomeFromAction(() {
-      return installmentAppService.editRepayment(
-        EditRepaymentCommand(
-          transactionId: transaction.id,
+      return installmentAppService.updateContract(
+        UpdateContractCommand(
           contractId: contractId,
-          note: _nullableStringPatch(value),
+          note:
+              value == null
+                  ? const Patch<String>.clear()
+                  : Patch<String>.set(value),
         ),
       );
     });
@@ -217,20 +194,9 @@ final class _InstallmentActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
-    if (role == InstallmentOwnerRole.disbursement) {
-      return detailVoidOutcomeFromAction(() {
-        return installmentAppService.updateContract(
-          UpdateContractCommand(contractId: contractId, borrowingDate: value),
-        );
-      });
-    }
     return detailVoidOutcomeFromAction(() {
-      return installmentAppService.editRepayment(
-        EditRepaymentCommand(
-          transactionId: transaction.id,
-          contractId: contractId,
-          occurredAt: value,
-        ),
+      return installmentAppService.updateContract(
+        UpdateContractCommand(contractId: contractId, borrowingDate: value),
       );
     });
   }
@@ -239,22 +205,11 @@ final class _InstallmentActionDispatcher
   Future<UiActionOutcome<void>> changeSettlementAccount(
     String accountId,
   ) async {
-    if (role == InstallmentOwnerRole.disbursement) {
-      return detailVoidOutcomeFromAction(() {
-        return installmentAppService.updateContract(
-          UpdateContractCommand(
-            contractId: contractId,
-            disbursementAccountId: accountId,
-          ),
-        );
-      });
-    }
     return detailVoidOutcomeFromAction(() {
-      return installmentAppService.editRepayment(
-        EditRepaymentCommand(
-          transactionId: transaction.id,
+      return installmentAppService.updateContract(
+        UpdateContractCommand(
           contractId: contractId,
-          paidFromAccountId: accountId,
+          disbursementAccountId: accountId,
         ),
       );
     });

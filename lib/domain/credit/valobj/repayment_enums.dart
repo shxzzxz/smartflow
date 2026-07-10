@@ -10,9 +10,6 @@ enum RepaymentType {
   final String label;
 
   static RepaymentType fromCode(String code) {
-    if (code == 'EXTRA_PRINCIPAL' || code == 'EARLY_SETTLEMENT') {
-      return RepaymentType.prepayment;
-    }
     for (final value in RepaymentType.values) {
       if (value.code == code) return value;
     }

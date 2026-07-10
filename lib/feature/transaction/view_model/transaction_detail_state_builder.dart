@@ -307,11 +307,7 @@ DetailBehaviorConfig _behaviorConfigFor(Transaction transaction) {
     final role = InstallmentOwnerRole.fromWire(ownership.ownerRole);
     if (role != null) {
       return DetailBehaviorConfig(
-        bannerText: switch (role) {
-          InstallmentOwnerRole.disbursement => '此为分期合同放款，金额、账户、日期等需在合同详情页内调整',
-          InstallmentOwnerRole.scheduledRepayment => '此为分期期次还款，撤销请在合同详情页操作',
-          InstallmentOwnerRole.prepayment => '此为分期提前还款，撤销请在合同详情页操作',
-        },
+        bannerText: '此为分期合同放款，金额、账户、日期等需在合同详情页内调整',
         editRoute: '/installments/${ownership.ownerId}',
         canEditOccurredAt: const DetailEditPermission.allowed(),
         canEditNote: const DetailEditPermission.allowed(),

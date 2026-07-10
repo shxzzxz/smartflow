@@ -12,6 +12,7 @@ import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repository.dart';
 
+import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
 
 void main() {
@@ -44,9 +45,10 @@ void main() {
         );
         await fixture.seedBill(
           id: 'bill-open',
+          period: credit.BillPeriod(year: 2026, month: 8),
           status: credit.BillStatus.open,
           items: [
-            _BillItemSeed.consumption(id: 'open-consumption', principal: 9999),
+            _BillItemSeed.consumption(id: 'open-consumption', principal: 1000),
           ],
         );
         await fixture.repayments.saveRepayment(
@@ -74,14 +76,14 @@ void main() {
 
         expect(overview!.liabilityBalance, const Money(minorUnits: 10000));
         expect(overview.availableCredit, const Money(minorUnits: 5000));
-        expect(overview.buckets.billDebt, const Money(minorUnits: 5000));
+        expect(overview.buckets.billDebt, const Money(minorUnits: 6000));
         expect(
           overview.buckets.futureContractDebt,
           const Money(minorUnits: 3000),
         );
         expect(
           overview.buckets.unattributedDebt,
-          const Money(minorUnits: 2000),
+          const Money(minorUnits: 1000),
         );
         expect(overview.unattributedRepayments, hasLength(1));
         expect(
@@ -270,6 +272,7 @@ class _Fixture {
   final database = createTestDatabase();
   final accounts = _FakeAccountQueryService();
   final transactions = _FakeTransactionQueryService();
+  final ids = SequentialIdGenerator(prefix: 'credit-account-query');
   late final DriftCreditAccountRepository creditAccounts =
       DriftCreditAccountRepository(database);
   late final DriftBillRepository bills = DriftBillRepository(database);
@@ -298,7 +301,6 @@ class _Fixture {
         creditLimit: creditLimit,
         billingDay: 5,
         repaymentDay: 25,
-        billingStartPeriod: credit.BillPeriod(year: 2026, month: 7),
         billingDayToNext: true,
       ),
     );
@@ -309,8 +311,10 @@ class _Fixture {
     required List<int> schedulePrincipals,
   }) async {
     final firstDate = DateTime(2026, 7, 25);
-    final contractId = await installments.insertContract(
-      InstallmentContractDraft(
+    final contractId = ids.newId();
+    await installments.saveContract(
+      credit.InstallmentContract(
+        id: contractId,
         liabilityAccountId: 'credit-1',
         sourceType: credit.InstallmentSourceType.disbursement,
         disbursementAccountId: 'cash-1',
@@ -326,12 +330,16 @@ class _Fixture {
         ),
         repaymentMethod: credit.InstallmentRepaymentMethod.equalPrincipal,
         interestAccrualMethod: credit.InterestAccrualMethod.monthly,
+        totalFeeMinor: 0,
         status: credit.InstallmentContractStatus.active,
+        createdAt: DateTime(2026, 6, 1),
       ),
     );
     await installments.replaceSchedules(contractId, [
       for (var index = 0; index < schedulePrincipals.length; index++)
-        credit.InstallmentScheduleDraft(
+        credit.InstallmentSchedule(
+          id: ids.newId(),
+          contractId: contractId,
           periodNo: index + 1,
           expectedRepaymentDate: DateTime(
             firstDate.year,
@@ -342,6 +350,8 @@ class _Fixture {
           expectedInterest:
               index == 0 ? const Money(minorUnits: 100) : Money.zero(),
           expectedFee: Money.zero(),
+          status: credit.InstallmentScheduleStatus.pending,
+          createdAt: DateTime(2026, 6, 1),
         ),
     ]);
     final schedules = await installments.listSchedules(contractId);
@@ -355,12 +365,13 @@ class _Fixture {
     required String id,
     required credit.BillStatus status,
     required List<_BillItemSeed> items,
+    credit.BillPeriod? period,
   }) async {
     await bills.saveBill(
       Bill(
         id: id,
         accountId: 'credit-1',
-        period: credit.BillPeriod(year: 2026, month: 7),
+        period: period ?? credit.BillPeriod(year: 2026, month: 7),
         status: status,
         items: const [],
       ),
