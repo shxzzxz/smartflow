@@ -14,11 +14,7 @@ export '../../domain/credit/valobj/installment_enums.dart';
 export '../../domain/credit/valobj/repayment_amount_breakdown.dart';
 export '../../domain/credit/valobj/repayment_enums.dart';
 export '../../domain/credit/service/installment/installment_metrics.dart'
-    show
-        ContractMetrics,
-        ContractMetricsView,
-        InstallmentMetricsCalculator,
-        RepaymentCashflow;
+    show ContractMetrics, InstallmentMetricsCalculator, RepaymentCashflow;
 export 'account/query/credit_account_queries.dart';
 export 'account/query/credit_account_query_service.dart';
 export 'account/query/credit_account_read_models.dart';

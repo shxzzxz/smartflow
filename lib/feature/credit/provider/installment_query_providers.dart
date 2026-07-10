@@ -66,12 +66,9 @@ Future<List<RepaymentCashflow>> installmentRepaymentCashflows(
   return result;
 }
 
-/// 计算 designed / actual 两个视图的 metrics 一并返回，UI 选择展示。
+/// 按当前合同计划与合同级提前还款计算合同指标。
 @riverpod
-Future<({ContractMetrics designed, ContractMetrics actual})> installmentMetrics(
-  Ref ref,
-  String contractId,
-) async {
+Future<ContractMetrics> installmentMetrics(Ref ref, String contractId) async {
   final contract = await ref.watch(
     installmentContractProvider(contractId).future,
   );
@@ -85,17 +82,9 @@ Future<({ContractMetrics designed, ContractMetrics actual})> installmentMetrics(
     throw StateError('Contract $contractId not found');
   }
   const calc = InstallmentMetricsCalculator();
-  return (
-    designed: calc.compute(
-      contract: contract,
-      schedules: schedules,
-      repayments: repayments,
-    ),
-    actual: calc.compute(
-      contract: contract,
-      schedules: schedules,
-      repayments: repayments,
-      view: ContractMetricsView.actual,
-    ),
+  return calc.compute(
+    contract: contract,
+    schedules: schedules,
+    repayments: repayments,
   );
 }

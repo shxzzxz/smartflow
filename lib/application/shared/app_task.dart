@@ -23,8 +23,8 @@ class PullTaskScheduler {
       if (!force && _lastRunDayByTask[task.key] == day) {
         continue;
       }
-      _lastRunDayByTask[task.key] = day;
       await task.run(instant);
+      _lastRunDayByTask[task.key] = day;
     }
   }
 }

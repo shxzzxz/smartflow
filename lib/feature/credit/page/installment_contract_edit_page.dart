@@ -74,8 +74,7 @@ class _InstallmentContractEditPageState
 
   Widget _buildBody(
     InstallmentContractEditLoaded loaded,
-    AsyncValue<({ContractMetrics designed, ContractMetrics actual})>
-    metricsAsync,
+    AsyncValue<ContractMetrics> metricsAsync,
   ) {
     final contract = loaded.contract;
     _syncControllers(contract);
@@ -855,8 +854,7 @@ class _Cell extends StatelessWidget {
 class _MetricsSection extends StatelessWidget {
   const _MetricsSection({required this.metricsAsync, required this.principal});
 
-  final AsyncValue<({ContractMetrics designed, ContractMetrics actual})>
-  metricsAsync;
+  final AsyncValue<ContractMetrics> metricsAsync;
   final Money principal;
 
   @override
@@ -872,12 +870,14 @@ class _MetricsSection extends StatelessWidget {
             AppSpacing.space4,
             AppSpacing.space4,
           ),
-          child: Text('汇总信息（合同 / 履约）', style: styles.dateSectionTitle),
+          child: Text('合同汇总', style: styles.dateSectionTitle),
         ),
         switch (metricsAsync) {
-          AsyncData(value: final pair) => _MetricsPair(
-            pair: pair,
-            principal: principal,
+          AsyncData(value: final metrics) => AppSurface(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.space12),
+              child: _MetricGrid(metrics: metrics, principal: principal),
+            ),
           ),
           AsyncError(:final error) => AppSurface(
             child: Padding(
@@ -895,36 +895,10 @@ class _MetricsSection extends StatelessWidget {
   }
 }
 
-class _MetricsPair extends StatelessWidget {
-  const _MetricsPair({required this.pair, required this.principal});
-
-  final ({ContractMetrics designed, ContractMetrics actual}) pair;
-  final Money principal;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppSurface(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space12),
-        child: _MetricGrid(
-          designed: pair.designed,
-          actual: pair.actual,
-          principal: principal,
-        ),
-      ),
-    );
-  }
-}
-
 class _MetricGrid extends StatelessWidget {
-  const _MetricGrid({
-    required this.designed,
-    required this.actual,
-    required this.principal,
-  });
+  const _MetricGrid({required this.metrics, required this.principal});
 
-  final ContractMetrics designed;
-  final ContractMetrics actual;
+  final ContractMetrics metrics;
   final Money principal;
 
   @override
@@ -936,22 +910,19 @@ class _MetricGrid extends StatelessWidget {
             Expanded(
               child: _MetricCell(
                 label: '月 IRR',
-                designed: _formatPercent(designed.monthlyIrr),
-                actual: _formatPercent(actual.monthlyIrr),
+                value: _formatPercent(metrics.monthlyIrr),
               ),
             ),
             Expanded(
               child: _MetricCell(
                 label: '名义年化 APR',
-                designed: _formatPercent(designed.nominalApr),
-                actual: _formatPercent(actual.nominalApr),
+                value: _formatPercent(metrics.nominalApr),
               ),
             ),
             Expanded(
               child: _MetricCell(
                 label: '有效年化 EAR',
-                designed: _formatPercent(designed.effectiveApr),
-                actual: _formatPercent(actual.effectiveApr),
+                value: _formatPercent(metrics.effectiveApr),
               ),
             ),
           ],
@@ -960,20 +931,18 @@ class _MetricGrid extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _MetricCell.single(label: '本金', value: principal.format()),
+              child: _MetricCell(label: '本金', value: principal.format()),
             ),
             Expanded(
               child: _MetricCell(
                 label: '总利息',
-                designed: designed.totalInterest.format(),
-                actual: actual.totalInterest.format(),
+                value: metrics.totalInterest.format(),
               ),
             ),
             Expanded(
               child: _MetricCell(
                 label: '总费用',
-                designed: designed.totalFee.format(),
-                actual: actual.totalFee.format(),
+                value: metrics.totalFee.format(),
               ),
             ),
           ],
@@ -984,21 +953,10 @@ class _MetricGrid extends StatelessWidget {
 }
 
 class _MetricCell extends StatelessWidget {
-  const _MetricCell({
-    required this.label,
-    required String this.designed,
-    required String this.actual,
-  }) : single = null;
-
-  const _MetricCell.single({required this.label, required String value})
-    : designed = null,
-      actual = null,
-      single = value;
+  const _MetricCell({required this.label, required this.value});
 
   final String label;
-  final String? designed;
-  final String? actual;
-  final String? single;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
@@ -1014,33 +972,12 @@ class _MetricCell extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: AppSpacing.space2),
-        if (single != null)
-          Text(
-            single!,
-            style: styles.formLabel,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          )
-        else
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(text: designed!, style: styles.formLabel),
-                TextSpan(
-                  text: ' / ',
-                  style: styles.listSupporting.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-                TextSpan(
-                  text: actual!,
-                  style: styles.formLabel.copyWith(color: colors.primary),
-                ),
-              ],
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+        Text(
+          value,
+          style: styles.formLabel,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ],
     );
   }

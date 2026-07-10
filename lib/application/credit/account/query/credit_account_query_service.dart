@@ -1,12 +1,8 @@
-import 'dart:math' as math;
-
 import 'package:smartflow/application/ledger/ledger_query_api.dart'
     as ledger_query;
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
 import 'package:smartflow/domain/credit/entity/credit_liability_account.dart';
-import 'package:smartflow/domain/credit/entity/installment_contract.dart';
-import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
@@ -16,7 +12,6 @@ import 'package:smartflow/domain/credit/service/debt/credit_debt_bucket_service.
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
-import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
@@ -30,10 +25,6 @@ abstract interface class CreditAccountQueryService {
   Future<CreditLiabilityAccount?> findByAccountId(String accountId);
 
   Future<CreditAccountOverviewReadModel?> findOverview(String accountId);
-
-  Future<ContractEffectiveRateReadModel?> calculateContractEffectiveRates(
-    String contractId,
-  );
 
   Future<List<CreditDueCalendarItemReadModel>> listDueCalendarItems(
     CreditDueCalendarQuery query,
@@ -110,99 +101,6 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
         for (final repayment in repayments)
           await _repaymentRecord(repayment, fallbackTime: DateTime.now()),
       ],
-    );
-  }
-
-  @override
-  Future<ContractEffectiveRateReadModel?> calculateContractEffectiveRates(
-    String contractId,
-  ) async {
-    final contract = await _installments.findContract(contractId);
-    if (contract == null) return null;
-    final schedules = await _installments.listSchedules(contractId);
-    final actualCashflows = await _actualContractCashflows(contract, schedules);
-    final pendingSchedules =
-        schedules
-            .where(
-              (schedule) =>
-                  schedule.status == InstallmentScheduleStatus.pending,
-            )
-            .toList()
-          ..sort(
-            (a, b) =>
-                a.expectedRepaymentDate.compareTo(b.expectedRepaymentDate),
-          );
-
-    final actualPrincipal = actualCashflows.fold<int>(
-      0,
-      (sum, cashflow) => sum + cashflow.principal.minorUnits,
-    );
-    final pendingPrincipal = pendingSchedules.fold<int>(
-      0,
-      (sum, schedule) => sum + schedule.expectedPrincipal.minorUnits,
-    );
-    if (actualPrincipal + pendingPrincipal != contract.principal.minorUnits) {
-      return ContractEffectiveRateReadModel.unavailable(
-        contractId: contract.id,
-        reason: ContractEffectiveRateUnavailableReason.principalMismatch,
-      );
-    }
-
-    final datedCashflows = <_DatedCashflow>[
-      _DatedCashflow(
-        date: contract.borrowingDate,
-        amount: contract.principal.minorUnits.toDouble(),
-      ),
-      for (final cashflow in actualCashflows)
-        _DatedCashflow(
-          date: cashflow.occurredAt,
-          amount:
-              -_cashOutMinor(
-                principal: cashflow.principal,
-                interest: cashflow.interest,
-                fee: cashflow.fee,
-              ).toDouble(),
-        ),
-      for (final schedule in pendingSchedules)
-        _DatedCashflow(
-          date: schedule.expectedRepaymentDate,
-          amount:
-              -_cashOutMinor(
-                principal: schedule.expectedPrincipal,
-                interest: schedule.expectedInterest,
-                fee: schedule.expectedFee,
-              ).toDouble(),
-        ),
-    ]..sort((a, b) => a.date.compareTo(b.date));
-    final xirr = _xirr(datedCashflows);
-    if (!xirr.converged) {
-      return ContractEffectiveRateReadModel.unavailable(
-        contractId: contract.id,
-        reason: ContractEffectiveRateUnavailableReason.notConverged,
-      );
-    }
-    final monthlyIrr = math.pow(1 + xirr.rate, 1 / 12) - 1;
-    return ContractEffectiveRateReadModel.available(
-      contractId: contract.id,
-      monthlyIrr: monthlyIrr.toDouble(),
-      nominalApr: (monthlyIrr * 12).toDouble(),
-      effectiveApr: xirr.rate,
-      totalRepayment: Money(
-        minorUnits: [
-          for (final cashflow in actualCashflows)
-            _cashOutMinor(
-              principal: cashflow.principal,
-              interest: cashflow.interest,
-              fee: cashflow.fee,
-            ),
-          for (final schedule in pendingSchedules)
-            _cashOutMinor(
-              principal: schedule.expectedPrincipal,
-              interest: schedule.expectedInterest,
-              fee: schedule.expectedFee,
-            ),
-        ].fold(0, (sum, amount) => sum + amount),
-      ),
     );
   }
 
@@ -318,82 +216,6 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
     return result;
   }
 
-  Future<List<_ActualContractCashflow>> _actualContractCashflows(
-    InstallmentContract contract,
-    List<InstallmentSchedule> schedules,
-  ) async {
-    final schedulesById = {
-      for (final schedule in schedules) schedule.id: schedule,
-    };
-    final cashflows = <_ActualContractCashflow>[];
-
-    final directRepayments = await _repayments.listByTarget(
-      RepaymentTargetType.contract,
-      contract.id,
-    );
-    for (final repayment in directRepayments) {
-      final cashflow = await _cashflowForRepayment(
-        repayment,
-        repayment.totalAllocated(),
-        scheduleId: null,
-      );
-      if (cashflow != null) cashflows.add(cashflow);
-    }
-
-    final bills = await _bills.listBillsByAccount(contract.liabilityAccountId);
-    final seenRepaymentItems = <String>{};
-    for (final bill in bills) {
-      for (final item in bill.items) {
-        if (item.contractId != contract.id || item.scheduleId == null) {
-          continue;
-        }
-        final schedule = schedulesById[item.scheduleId!];
-        if (schedule == null) continue;
-        final repaymentItems = await _repayments.listItemsByBillItem(item.id);
-        for (final repaymentItem in repaymentItems) {
-          if (!seenRepaymentItems.add(repaymentItem.id)) continue;
-          final repayment = await _repayments.findRepayment(
-            repaymentItem.repaymentId,
-          );
-          if (repayment == null) continue;
-          final cashflow = await _cashflowForRepayment(
-            repayment,
-            repaymentItem.allocated,
-            scheduleId: schedule.id,
-          );
-          if (cashflow != null) cashflows.add(cashflow);
-        }
-      }
-    }
-
-    cashflows.sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
-    return cashflows;
-  }
-
-  Future<_ActualContractCashflow?> _cashflowForRepayment(
-    Repayment repayment,
-    RepaymentAmountBreakdown allocated, {
-    required String? scheduleId,
-  }) async {
-    final rootTransactionId = repayment.rootTransactionId;
-    if (rootTransactionId == null) return null;
-    final detail = await _transactionQueryService
-        .findCurrentParentTransactionDetailByRoot(rootTransactionId);
-    final transaction = detail?.transaction;
-    if (transaction == null ||
-        transaction.businessState != BusinessState.current) {
-      return null;
-    }
-    return _ActualContractCashflow(
-      repaymentId: repayment.id,
-      scheduleId: scheduleId,
-      occurredAt: transaction.occurredAt,
-      principal: allocated.principal,
-      interest: allocated.interest,
-      fee: allocated.fee,
-    );
-  }
-
   Future<CreditRepaymentRecordReadModel> _repaymentRecord(
     Repayment repayment, {
     required DateTime fallbackTime,
@@ -456,110 +278,4 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
   bool _inWindow(DateTime value, DateTime from, DateTime until) {
     return !value.isBefore(from) && value.isBefore(until);
   }
-
-  int _cashOutMinor({
-    required Money principal,
-    required Money interest,
-    required Money fee,
-  }) {
-    return principal.minorUnits + interest.minorUnits + fee.minorUnits;
-  }
-
-  _XirrResult _xirr(List<_DatedCashflow> flows) {
-    if (flows.length < 2) return const _XirrResult(rate: 0, converged: false);
-    final hasPositive = flows.any((flow) => flow.amount > 0);
-    final hasNegative = flows.any((flow) => flow.amount < 0);
-    if (!hasPositive || !hasNegative) {
-      return const _XirrResult(rate: 0, converged: false);
-    }
-
-    final t0 = flows.first.date;
-    final ts =
-        flows.map((flow) => flow.date.difference(t0).inDays / 365.0).toList();
-    final cfs = flows.map((flow) => flow.amount).toList();
-
-    double f(double rate) {
-      var sum = 0.0;
-      for (var i = 0; i < cfs.length; i++) {
-        sum += cfs[i] / math.pow(1 + rate, ts[i]);
-      }
-      return sum;
-    }
-
-    double df(double rate) {
-      var sum = 0.0;
-      for (var i = 0; i < cfs.length; i++) {
-        sum += -ts[i] * cfs[i] / math.pow(1 + rate, ts[i] + 1);
-      }
-      return sum;
-    }
-
-    var rate = 0.1;
-    for (var i = 0; i < 100; i++) {
-      final value = f(rate);
-      final derivative = df(rate);
-      if (derivative.abs() < 1e-12) break;
-      final next = rate - value / derivative;
-      if (!next.isFinite || next <= -0.999) break;
-      if ((next - rate).abs() < 1e-9) {
-        return _XirrResult(rate: next, converged: true);
-      }
-      rate = next;
-    }
-
-    var lo = -0.99;
-    var hi = 10.0;
-    var fLo = f(lo);
-    var fHi = f(hi);
-    if (fLo.sign == fHi.sign) {
-      return _XirrResult(rate: rate, converged: false);
-    }
-    for (var i = 0; i < 200; i++) {
-      final mid = (lo + hi) / 2;
-      final fMid = f(mid);
-      if (fMid.abs() < 1e-9 || (hi - lo) < 1e-10) {
-        return _XirrResult(rate: mid, converged: true);
-      }
-      if (fMid.sign == fLo.sign) {
-        lo = mid;
-        fLo = fMid;
-      } else {
-        hi = mid;
-        fHi = fMid;
-      }
-    }
-    return _XirrResult(rate: (lo + hi) / 2, converged: false);
-  }
-}
-
-class _ActualContractCashflow {
-  const _ActualContractCashflow({
-    required this.repaymentId,
-    required this.occurredAt,
-    required this.principal,
-    required this.interest,
-    required this.fee,
-    this.scheduleId,
-  });
-
-  final String repaymentId;
-  final String? scheduleId;
-  final DateTime occurredAt;
-  final Money principal;
-  final Money interest;
-  final Money fee;
-}
-
-class _DatedCashflow {
-  const _DatedCashflow({required this.date, required this.amount});
-
-  final DateTime date;
-  final double amount;
-}
-
-class _XirrResult {
-  const _XirrResult({required this.rate, required this.converged});
-
-  final double rate;
-  final bool converged;
 }

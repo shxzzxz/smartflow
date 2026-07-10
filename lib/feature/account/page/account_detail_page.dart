@@ -3,20 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../app/provider.dart';
 import '../../../application/credit/credit_query_api.dart';
-import '../../../application/ledger/ledger_command_api.dart';
-import '../../../application/shared/app_task.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
-import '../../credit/provider/bill_query_providers.dart';
 import '../view_model/account_detail_view_model.dart';
 import '../view_model/account_view.dart';
-import '../view_model/account_views_provider.dart';
 
 class AccountDetailPage extends ConsumerWidget {
   const AccountDetailPage({required this.accountId, super.key});
@@ -37,18 +32,6 @@ class AccountDetailPage extends ConsumerWidget {
               onPressed: () => context.push('/account/$accountId/edit'),
               icon: const Icon(RemixIcons.edit_line),
               tooltip: '编辑账户',
-            ),
-          if (loadedAccount != null && loadedAccount.isCreditLiability)
-            PopupMenuButton<_AccountMenuAction>(
-              onSelected:
-                  (action) => _handleMenuAction(context, ref, loadedAccount),
-              itemBuilder:
-                  (context) => [
-                    PopupMenuItem(
-                      value: _AccountMenuAction.archiveToggle,
-                      child: Text(loadedAccount.isArchived ? '取消归档' : '归档账户'),
-                    ),
-                  ],
             ),
         ],
       ),
@@ -75,60 +58,7 @@ class AccountDetailPage extends ConsumerWidget {
       },
     );
   }
-
-  Future<void> _handleMenuAction(
-    BuildContext context,
-    WidgetRef ref,
-    AccountView account,
-  ) async {
-    if (account.isArchived) {
-      await ref
-          .read(accountAppServiceProvider)
-          .unarchiveAccount(UnarchiveAccountCommand(id: account.id));
-      await ref
-          .read(pullTaskSchedulerProvider)
-          .trigger(trigger: TaskTrigger.beforeCreditWrite, force: true);
-      ref.invalidate(accountViewsProvider);
-      ref.invalidate(accountByIdProvider(account.id));
-      ref.invalidate(billSummariesByAccountProvider(account.id));
-      return;
-    }
-
-    final hasUnsettled = await ref
-        .read(billQueryServiceProvider)
-        .hasUnsettledObligations(account.id);
-    if (!context.mounted) return;
-    if (hasUnsettled) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('归档账户'),
-              content: const Text('该账户仍有未结清账单或计划。归档后不会继续生成新账单。'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('取消'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('归档'),
-                ),
-              ],
-            ),
-      );
-      if (confirmed != true) return;
-    }
-    await ref
-        .read(accountAppServiceProvider)
-        .archiveAccount(ArchiveAccountCommand(id: account.id));
-    ref.invalidate(accountViewsProvider);
-    ref.invalidate(accountByIdProvider(account.id));
-    ref.invalidate(billSummariesByAccountProvider(account.id));
-  }
 }
-
-enum _AccountMenuAction { archiveToggle }
 
 class _AccountDetailContent extends StatelessWidget {
   const _AccountDetailContent({

@@ -6,7 +6,6 @@ import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
-import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
@@ -89,122 +88,6 @@ void main() {
         expect(
           overview.unattributedRepayments.single.timeSource,
           credit.CreditRepaymentTimeSource.recordCreatedAt,
-        );
-      },
-    );
-
-    test(
-      'calculates contract rates from transaction repayments and pending schedules',
-      () async {
-        final fixture = _Fixture();
-        addTearDown(fixture.close);
-        await fixture.seedCreditAccount(balance: 10000);
-        final schedules = await fixture.seedContract(
-          principal: 10000,
-          schedulePrincipals: [4000, 6000],
-        );
-        await fixture.installments.updateSchedule(
-          schedules.scheduleIds[0],
-          const InstallmentSchedulePatch(
-            status: credit.InstallmentScheduleStatus.paid,
-          ),
-        );
-        await fixture.seedBill(
-          id: 'bill-1',
-          status: credit.BillStatus.billed,
-          items: [
-            _BillItemSeed.installment(
-              id: 'bill-item-paid',
-              principal: 4000,
-              contractId: schedules.contractId,
-              scheduleId: schedules.scheduleIds[0],
-              status: credit.BillItemStatus.paid,
-            ),
-          ],
-        );
-        await fixture.repayments.saveRepayment(
-          Repayment(
-            id: 'bill-repayment-1',
-            repaymentType: credit.RepaymentType.bill,
-            targetType: credit.RepaymentTargetType.bill,
-            targetId: 'bill-1',
-            rootTransactionId: 'tx-root',
-            items: [
-              RepaymentItem(
-                id: 'repayment-item-1',
-                repaymentId: 'bill-repayment-1',
-                billItemId: 'bill-item-paid',
-                allocated: credit.RepaymentAmountBreakdown(
-                  principal: const Money(minorUnits: 4000),
-                  interest: const Money(minorUnits: 100),
-                  fee: Money.zero(),
-                  discount: Money.zero(),
-                ),
-              ),
-            ],
-          ),
-        );
-        await fixture.repayments.saveRepayment(
-          Repayment(
-            id: 'no-transaction-extra',
-            repaymentType: credit.RepaymentType.prepayment,
-            targetType: credit.RepaymentTargetType.contract,
-            targetId: schedules.contractId,
-            items: [
-              RepaymentItem(
-                id: 'no-transaction-extra-item',
-                repaymentId: 'no-transaction-extra',
-                allocated: credit.RepaymentAmountBreakdown(
-                  principal: const Money(minorUnits: 1000),
-                  interest: Money.zero(),
-                  fee: Money.zero(),
-                  discount: Money.zero(),
-                ),
-              ),
-            ],
-          ),
-        );
-        fixture.transactions.details['tx-root'] = _transactionDetail(
-          rootTransactionId: 'tx-root',
-          occurredAt: DateTime(2026, 7, 10),
-          amount: 4100,
-        );
-
-        final rates = await fixture.query.calculateContractEffectiveRates(
-          schedules.contractId,
-        );
-
-        expect(rates!.isCalculable, true);
-        expect(rates.totalRepayment, const Money(minorUnits: 10100));
-        expect(rates.effectiveApr, isNotNull);
-      },
-    );
-
-    test(
-      'marks contract rates unavailable when principal integrity fails',
-      () async {
-        final fixture = _Fixture();
-        addTearDown(fixture.close);
-        await fixture.seedCreditAccount(balance: 10000);
-        final schedules = await fixture.seedContract(
-          principal: 10000,
-          schedulePrincipals: [5000, 5000],
-        );
-        await fixture.installments.updateSchedule(
-          schedules.scheduleIds[0],
-          const InstallmentSchedulePatch(
-            status: credit.InstallmentScheduleStatus.paid,
-          ),
-        );
-
-        final rates = await fixture.query.calculateContractEffectiveRates(
-          schedules.contractId,
-        );
-
-        expect(rates!.isCalculable, false);
-        expect(
-          rates.unavailableReason,
-          credit.ContractEffectiveRateUnavailableReason.principalMismatch,
         );
       },
     );
@@ -442,46 +325,6 @@ class _BillItemSeed {
   final credit.BillItemStatus status;
   final String? contractId;
   final String? scheduleId;
-}
-
-ledger.TransactionDetail _transactionDetail({
-  required String rootTransactionId,
-  required DateTime occurredAt,
-  required int amount,
-}) {
-  final transaction = ledger.Transaction(
-    id: rootTransactionId,
-    rootTransactionId: rootTransactionId,
-    businessPurpose: ledger.BusinessPurpose.debtRepayment,
-    occurredAt: occurredAt,
-    primaryAmount: Money(minorUnits: amount),
-    mutationKind: ledger.MutationKind.original,
-    businessState: ledger.BusinessState.current,
-    isExcludedFromStats: false,
-    isExcludedFromBudget: false,
-    sourceKind: ledger.SourceKind.manual,
-  );
-  return ledger.TransactionDetail(
-    transaction: transaction,
-    createdAt: occurredAt,
-    details: const [],
-    entries: [
-      ledger.Entry(
-        id: 'entry-liability-$rootTransactionId',
-        transactionId: rootTransactionId,
-        accountId: 'credit-1',
-        direction: ledger.EntryDirection.debit,
-        amount: Money(minorUnits: amount),
-      ),
-      ledger.Entry(
-        id: 'entry-cash-$rootTransactionId',
-        transactionId: rootTransactionId,
-        accountId: 'cash-1',
-        direction: ledger.EntryDirection.credit,
-        amount: Money(minorUnits: amount),
-      ),
-    ],
-  );
 }
 
 class _FakeAccountQueryService implements ledger.AccountQueryService {

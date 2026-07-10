@@ -232,12 +232,6 @@ class _FakeAccountAppService implements AccountAppService {
     _throwIfNeeded();
   }
 
-  @override
-  Future<void> archiveAccount(ArchiveAccountCommand command) async {}
-
-  @override
-  Future<void> unarchiveAccount(UnarchiveAccountCommand command) async {}
-
   void _throwIfNeeded() {
     final exception = this.exception;
     if (exception != null) throw exception;

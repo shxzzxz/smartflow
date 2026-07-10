@@ -6,8 +6,7 @@ import '../../entity/installment_schedule.dart';
 import '../../valobj/installment_enums.dart';
 import '../../valobj/repayment_enums.dart';
 
-/// 一笔实际还款的"现金流口径"快照，metrics 模块只依赖这个轻量结构，
-/// 不直接依赖 transaction_details，避免把仓储耦合进 metrics 模块。
+/// 合同级还款的轻量查询快照。
 class RepaymentCashflow {
   const RepaymentCashflow({
     required this.id,
@@ -17,7 +16,6 @@ class RepaymentCashflow {
     required this.interest,
     required this.fee,
     this.transactionId,
-    this.scheduleId,
   });
 
   final String id;
@@ -27,19 +25,10 @@ class RepaymentCashflow {
   final Money principal;
   final Money interest;
   final Money fee;
-
-  /// 若为正常还款（regular），关联的 schedule id。
-  final String? scheduleId;
 }
-
-/// 计算视图：
-/// - [designed] 合同设计 IRR：paid/pending 期次都用 schedule.expected；prepayment 用实际
-/// - [actual] 实际履约 IRR：paid 用实际交易金额；pending 用 schedule.expected；prepayment 用实际
-enum ContractMetricsView { designed, actual }
 
 class ContractMetrics {
   const ContractMetrics({
-    required this.view,
     required this.monthlyIrr,
     required this.nominalApr,
     required this.effectiveApr,
@@ -48,8 +37,6 @@ class ContractMetrics {
     required this.totalFee,
     required this.converged,
   });
-
-  final ContractMetricsView view;
 
   /// 月 IRR（小数；0.01 = 1%）。
   final double monthlyIrr;
@@ -76,29 +63,20 @@ class InstallmentMetricsCalculator {
     required InstallmentContract contract,
     required List<InstallmentSchedule> schedules,
     required List<RepaymentCashflow> repayments,
-    ContractMetricsView view = ContractMetricsView.designed,
   }) {
     final flows = _buildCashflows(
       contract: contract,
       schedules: schedules,
       repayments: repayments,
-      view: view,
     );
 
-    // 总还款额 / 利息 / 手续费：合计已 paid 期次 + pending 期次 + prepayment
+    // 合同口径：当前非跳过计划 + 合同级提前还款。
     var totalRepayMinor = 0;
     var totalInterestMinor = 0;
     var totalFeeMinor = 0;
-    for (final f in flows) {
-      if (f.amount >= 0) continue; // 流入（principal）跳过
-      // 这里 flows 已经把 amount 拆成本金+利息+费的合计，但 metrics 需要分别累加：
-      // 因此 metrics 用单独的展开列表（见下）。
-    }
     final breakdown = _buildBreakdown(
-      contract: contract,
       schedules: schedules,
       repayments: repayments,
-      view: view,
     );
     for (final b in breakdown) {
       totalRepayMinor += b.principal + b.interest + b.fee;
@@ -112,7 +90,6 @@ class InstallmentMetricsCalculator {
     final nominalApr = monthlyIrr * 12;
 
     return ContractMetrics(
-      view: view,
       monthlyIrr: monthlyIrr.toDouble(),
       nominalApr: nominalApr.toDouble(),
       effectiveApr: ear,
@@ -129,7 +106,6 @@ class InstallmentMetricsCalculator {
     required InstallmentContract contract,
     required List<InstallmentSchedule> schedules,
     required List<RepaymentCashflow> repayments,
-    required ContractMetricsView view,
   }) {
     final flows = <_DatedCashflow>[];
     // t0: 借款流入
@@ -140,10 +116,8 @@ class InstallmentMetricsCalculator {
       ),
     );
     final breakdown = _buildBreakdown(
-      contract: contract,
       schedules: schedules,
       repayments: repayments,
-      view: view,
     );
     for (final b in breakdown) {
       final outflow = -(b.principal + b.interest + b.fee).toDouble();
@@ -155,38 +129,13 @@ class InstallmentMetricsCalculator {
   }
 
   List<_Breakdown> _buildBreakdown({
-    required InstallmentContract contract,
     required List<InstallmentSchedule> schedules,
     required List<RepaymentCashflow> repayments,
-    required ContractMetricsView view,
   }) {
     final out = <_Breakdown>[];
 
-    // 索引：scheduleId -> 实际 repayment（scheduled）
-    final actualByScheduleId = <String, RepaymentCashflow>{
-      for (final r in repayments)
-        if (r.repaymentType == RepaymentType.bill && r.scheduleId != null)
-          r.scheduleId!: r,
-    };
-
     for (final s in schedules) {
       if (s.status == InstallmentScheduleStatus.skipped) continue;
-      final isPaid = s.status == InstallmentScheduleStatus.paid;
-      if (view == ContractMetricsView.actual && isPaid) {
-        final actual = actualByScheduleId[s.id];
-        if (actual != null) {
-          out.add(
-            _Breakdown(
-              date: actual.occurredAt,
-              principal: actual.principal.minorUnits,
-              interest: actual.interest.minorUnits,
-              fee: actual.fee.minorUnits,
-            ),
-          );
-          continue;
-        }
-      }
-      // designed view 或 actual view 找不到实际：用 expected
       out.add(
         _Breakdown(
           date: s.expectedRepaymentDate,
@@ -197,7 +146,7 @@ class InstallmentMetricsCalculator {
       );
     }
 
-    // 提前还款：始终用实际金额（保证本金合计正确）
+    // 提前还款不属于计划行，按合同级还款记录补入当前合同现金流。
     for (final r in repayments) {
       if (r.repaymentType == RepaymentType.prepayment) {
         out.add(

@@ -196,7 +196,6 @@ RepaymentCashflow _cashflow() {
     id: 'repayment-1',
     transactionId: 'tx-repay',
     repaymentType: RepaymentType.prepayment,
-    scheduleId: 'schedule-1',
     occurredAt: DateTime(2026, 2, 1),
     principal: const Money(minorUnits: 4000),
     interest: const Money(minorUnits: 200),

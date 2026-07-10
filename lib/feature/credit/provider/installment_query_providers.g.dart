@@ -341,24 +341,22 @@ final class InstallmentRepaymentCashflowsFamily extends $Family
   String toString() => r'installmentRepaymentCashflowsProvider';
 }
 
-/// 计算 designed / actual 两个视图的 metrics 一并返回，UI 选择展示。
+/// 按当前合同计划与合同级提前还款计算合同指标。
 
 @ProviderFor(installmentMetrics)
 final installmentMetricsProvider = InstallmentMetricsFamily._();
 
-/// 计算 designed / actual 两个视图的 metrics 一并返回，UI 选择展示。
+/// 按当前合同计划与合同级提前还款计算合同指标。
 
 final class InstallmentMetricsProvider
     extends
         $FunctionalProvider<
-          AsyncValue<({ContractMetrics actual, ContractMetrics designed})>,
-          ({ContractMetrics actual, ContractMetrics designed}),
-          FutureOr<({ContractMetrics actual, ContractMetrics designed})>
+          AsyncValue<ContractMetrics>,
+          ContractMetrics,
+          FutureOr<ContractMetrics>
         >
-    with
-        $FutureModifier<({ContractMetrics actual, ContractMetrics designed})>,
-        $FutureProvider<({ContractMetrics actual, ContractMetrics designed})> {
-  /// 计算 designed / actual 两个视图的 metrics 一并返回，UI 选择展示。
+    with $FutureModifier<ContractMetrics>, $FutureProvider<ContractMetrics> {
+  /// 按当前合同计划与合同级提前还款计算合同指标。
   InstallmentMetricsProvider._({
     required InstallmentMetricsFamily super.from,
     required String super.argument,
@@ -382,13 +380,12 @@ final class InstallmentMetricsProvider
 
   @$internal
   @override
-  $FutureProviderElement<({ContractMetrics actual, ContractMetrics designed})>
-  $createElement($ProviderPointer pointer) => $FutureProviderElement(pointer);
+  $FutureProviderElement<ContractMetrics> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
 
   @override
-  FutureOr<({ContractMetrics actual, ContractMetrics designed})> create(
-    Ref ref,
-  ) {
+  FutureOr<ContractMetrics> create(Ref ref) {
     final argument = this.argument as String;
     return installmentMetrics(ref, argument);
   }
@@ -405,16 +402,12 @@ final class InstallmentMetricsProvider
 }
 
 String _$installmentMetricsHash() =>
-    r'48808f61bd5fe5d4386bf8fe50e2335fd8c557a7';
+    r'fb0664c48fa6f9ac35ecfd2c3c77a6aef6956e75';
 
-/// 计算 designed / actual 两个视图的 metrics 一并返回，UI 选择展示。
+/// 按当前合同计划与合同级提前还款计算合同指标。
 
 final class InstallmentMetricsFamily extends $Family
-    with
-        $FunctionalFamilyOverride<
-          FutureOr<({ContractMetrics actual, ContractMetrics designed})>,
-          String
-        > {
+    with $FunctionalFamilyOverride<FutureOr<ContractMetrics>, String> {
   InstallmentMetricsFamily._()
     : super(
         retry: null,
@@ -424,7 +417,7 @@ final class InstallmentMetricsFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// 计算 designed / actual 两个视图的 metrics 一并返回，UI 选择展示。
+  /// 按当前合同计划与合同级提前还款计算合同指标。
 
   InstallmentMetricsProvider call(String contractId) =>
       InstallmentMetricsProvider._(argument: contractId, from: this);

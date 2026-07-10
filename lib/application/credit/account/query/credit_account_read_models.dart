@@ -47,56 +47,6 @@ class CreditRepaymentRecordReadModel {
   final String? paidFromAccountId;
 }
 
-enum ContractEffectiveRateUnavailableReason { principalMismatch, notConverged }
-
-class ContractEffectiveRateReadModel {
-  const ContractEffectiveRateReadModel._({
-    required this.contractId,
-    required this.isCalculable,
-    this.unavailableReason,
-    this.monthlyIrr,
-    this.nominalApr,
-    this.effectiveApr,
-    this.totalRepayment,
-  });
-
-  factory ContractEffectiveRateReadModel.available({
-    required String contractId,
-    required double monthlyIrr,
-    required double nominalApr,
-    required double effectiveApr,
-    required Money totalRepayment,
-  }) {
-    return ContractEffectiveRateReadModel._(
-      contractId: contractId,
-      isCalculable: true,
-      monthlyIrr: monthlyIrr,
-      nominalApr: nominalApr,
-      effectiveApr: effectiveApr,
-      totalRepayment: totalRepayment,
-    );
-  }
-
-  factory ContractEffectiveRateReadModel.unavailable({
-    required String contractId,
-    required ContractEffectiveRateUnavailableReason reason,
-  }) {
-    return ContractEffectiveRateReadModel._(
-      contractId: contractId,
-      isCalculable: false,
-      unavailableReason: reason,
-    );
-  }
-
-  final String contractId;
-  final bool isCalculable;
-  final ContractEffectiveRateUnavailableReason? unavailableReason;
-  final double? monthlyIrr;
-  final double? nominalApr;
-  final double? effectiveApr;
-  final Money? totalRepayment;
-}
-
 enum CreditDueCalendarItemSource { billItem, schedule }
 
 class CreditDueCalendarItemReadModel {
