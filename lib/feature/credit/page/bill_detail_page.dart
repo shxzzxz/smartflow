@@ -3,17 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../app/provider.dart';
-import '../../../application/credit/credit_command_api.dart' as credit_command;
 import '../../../application/credit/credit_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
-import '../provider/bill_query_providers.dart';
-import '../provider/credit_account_query_providers.dart';
-import '../provider/installment_query_providers.dart';
-import '../../shared/provider/ledger_query_providers.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
+import '../presentation/bill_item_presentation.dart';
+import '../view_model/bill_detail_view_model.dart';
 
 class BillDetailPage extends ConsumerWidget {
   const BillDetailPage({required this.billId, super.key});
@@ -22,7 +19,7 @@ class BillDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final detail = ref.watch(billDetailProvider(billId));
+    final detail = ref.watch(billDetailViewModelProvider(billId));
     return Scaffold(
       appBar: AppBar(title: const Text('账单详情')),
       body: switch (detail) {
@@ -35,47 +32,32 @@ class BillDetailPage extends ConsumerWidget {
               (repayment) => _deleteRepayment(context, ref, repayment),
         ),
         AsyncData(value: null) => const Center(child: Text('账单不存在')),
-        AsyncError(:final error) => Center(child: Text('账单加载失败：$error')),
+        AsyncError() => const Center(child: Text('账单加载失败，请稍后重试')),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
   }
 
   Future<void> _syncProjection(BuildContext context, WidgetRef ref) async {
-    final accountId =
-        ref.read(billDetailProvider(billId)).asData?.value?.summary.accountId;
-    try {
-      await ref
-          .read(creditBillGenerationAppServiceProvider)
-          .refreshBill(billId);
-      ref.invalidate(billDetailProvider(billId));
-      if (accountId != null) {
-        ref.invalidate(billSummariesByAccountProvider(accountId));
-        ref.invalidate(creditAccountOverviewProvider(accountId));
-        ref.invalidate(installmentContractsByAccountProvider(accountId));
-      }
-    } on Exception catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('同步失败：$error'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
+    final outcome =
+        await ref
+            .read(billDetailViewModelProvider(billId).notifier)
+            .synchronizeProjection();
+    if (!context.mounted) return;
+    _showFailure(context, outcome, action: '同步');
   }
 
   Future<void> _openRepayment(BuildContext context, WidgetRef ref) async {
     final changed = await context.push<bool>('/bills/$billId/repay');
     if (changed == true) {
-      ref.invalidate(billDetailProvider(billId));
+      ref.read(billDetailViewModelProvider(billId).notifier).reload();
     }
   }
 
   Future<void> _openInstallment(BuildContext context, WidgetRef ref) async {
     final changed = await context.push<bool>('/bills/$billId/installment');
     if (changed == true) {
-      ref.invalidate(billDetailProvider(billId));
+      ref.read(billDetailViewModelProvider(billId).notifier).reload();
     }
   }
 
@@ -103,33 +85,11 @@ class BillDetailPage extends ConsumerWidget {
           ),
     );
     if (confirmed != true) return;
-    try {
-      await ref
-          .read(repaymentAppServiceProvider)
-          .deleteRepayment(
-            credit_command.DeleteCreditRepaymentCommand(
-              repaymentId: repayment.id,
-            ),
-          );
-      final detail = ref.read(billDetailProvider(billId)).asData?.value;
-      final accountId = detail?.summary.accountId;
-      ref.invalidate(billDetailProvider(billId));
-      if (accountId != null) {
-        ref.invalidate(billSummariesByAccountProvider(accountId));
-        ref.invalidate(creditAccountOverviewProvider(accountId));
-        ref.invalidate(installmentContractsByAccountProvider(accountId));
-        ref.invalidate(transactionListProvider(accountId: accountId));
-      }
-      ref.invalidate(accountsByIdProvider);
-    } on Exception catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('删除失败：$error'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
+    final outcome = await ref
+        .read(billDetailViewModelProvider(billId).notifier)
+        .deleteRepayment(repayment.id);
+    if (!context.mounted) return;
+    _showFailure(context, outcome, action: '删除');
   }
 }
 
@@ -469,7 +429,7 @@ class _BillItemRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.label, style: styles.formLabel),
+                  Text(billItemLabel(item), style: styles.formLabel),
                   const SizedBox(height: AppSpacing.space2),
                   Text(
                     '${_dateLabel(item.repaymentDate)} · ${_itemStatusLabel(item)}',
@@ -512,7 +472,7 @@ class _StatusPill extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppRadius.radiusFull),
       ),
       child: Text(
         label,
@@ -577,4 +537,19 @@ String _repaymentSupportingText(BillRepaymentReadModel repayment) {
   final dateText = '$prefix ${_dateLabel(repayment.displayTime)}';
   if (account == null) return dateText;
   return '$dateText · $account';
+}
+
+void _showFailure(
+  BuildContext context,
+  UiActionOutcome<void> outcome, {
+  required String action,
+}) {
+  if (outcome case UiActionFailure<void>(:final error)) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$action失败：${error.message}'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 }

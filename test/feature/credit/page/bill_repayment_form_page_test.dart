@@ -47,8 +47,7 @@ void main() {
     expect(find.text('息'), findsOneWidget);
     expect(find.text('费'), findsOneWidget);
     expect(find.text('优'), findsOneWidget);
-    expect(find.text('消费 A'), findsOneWidget);
-    expect(find.text('消费 B'), findsOneWidget);
+    expect(find.text('消费'), findsNWidgets(2));
     expect(find.byKey(const ValueKey('bill-item-1-principal')), findsOneWidget);
     expect(find.text('账单'), findsNothing);
     expect(find.text('剩余本金'), findsNothing);
@@ -92,7 +91,6 @@ credit_query.BillDetailReadModel _billDetailWithTwoConsumptionItems() {
       credit_query.BillItemReadModel(
         id: 'bill-item-1',
         itemType: credit_query.BillItemType.consumption,
-        label: '消费 A',
         status: credit_query.BillItemStatus.pending,
         repaymentDate: DateTime(2026, 6, 20),
         expectedPrincipal: const Money(minorUnits: 5000),
@@ -104,7 +102,6 @@ credit_query.BillDetailReadModel _billDetailWithTwoConsumptionItems() {
       credit_query.BillItemReadModel(
         id: 'bill-item-2',
         itemType: credit_query.BillItemType.consumption,
-        label: '消费 B',
         status: credit_query.BillItemStatus.pending,
         repaymentDate: DateTime(2026, 6, 20),
         expectedPrincipal: const Money(minorUnits: 5000),

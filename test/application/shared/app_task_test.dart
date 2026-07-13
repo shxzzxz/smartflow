@@ -7,13 +7,10 @@ void main() {
     final scheduler = PullTaskScheduler(tasks: [task]);
     final now = DateTime(2026, 7, 10, 9);
 
-    await expectLater(
-      scheduler.trigger(trigger: TaskTrigger.appStart, now: now),
-      throwsStateError,
-    );
+    await expectLater(scheduler.trigger(now: now), throwsStateError);
 
-    await scheduler.trigger(trigger: TaskTrigger.appResume, now: now);
-    await scheduler.trigger(trigger: TaskTrigger.appResume, now: now);
+    await scheduler.trigger(now: now);
+    await scheduler.trigger(now: now);
 
     expect(task.runCount, 2);
   });

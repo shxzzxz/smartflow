@@ -1,13 +1,21 @@
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/credit_liability_account.dart';
-import 'package:smartflow/domain/credit/service/debt/credit_debt_bucket_service.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
-export 'package:smartflow/domain/credit/service/debt/credit_debt_bucket_service.dart'
-    show CreditDebtBuckets;
+class CreditDebtBucketsReadModel {
+  const CreditDebtBucketsReadModel({
+    required this.billDebt,
+    required this.futureContractDebt,
+    required this.unattributedDebt,
+  });
+
+  final Money billDebt;
+  final Money futureContractDebt;
+  final Money unattributedDebt;
+}
 
 class CreditAccountOverviewReadModel {
   const CreditAccountOverviewReadModel({
@@ -21,7 +29,7 @@ class CreditAccountOverviewReadModel {
   final CreditLiabilityAccount creditAccount;
   final Money liabilityBalance;
   final Money? availableCredit;
-  final CreditDebtBuckets buckets;
+  final CreditDebtBucketsReadModel buckets;
   final List<CreditRepaymentRecordReadModel> unattributedRepayments;
 }
 

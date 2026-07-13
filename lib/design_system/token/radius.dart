@@ -3,4 +3,5 @@ abstract final class AppRadius {
   static const double radiusMd = 8;
   static const double radiusLg = 12;
   static const double radiusXl = 16;
+  static const double radiusFull = 999;
 }

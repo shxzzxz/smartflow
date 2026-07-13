@@ -163,17 +163,14 @@ class BillQueryServiceImpl implements BillQueryService {
     return BillItemReadModel(
       id: item.id,
       itemType: item.itemType,
-      label: _itemLabel(
-        item: item,
-        accountKind: accountKind,
-        contract: contract,
-      ),
       status: item.status,
       repaymentDate: item.repaymentDate,
       expectedPrincipal: item.expectedPrincipal,
       expectedInterest: item.expectedInterest,
       expectedFee: item.expectedFee,
       allocated: allocated,
+      accountKind: accountKind,
+      installmentSourceType: contract?.sourceType,
       contractId: item.contractId,
       scheduleId: item.scheduleId,
       isOverdue:
@@ -200,24 +197,6 @@ class BillQueryServiceImpl implements BillQueryService {
   bool _isOutstanding(BillItemStatus status) {
     return status == BillItemStatus.pending ||
         status == BillItemStatus.partiallyPaid;
-  }
-
-  String _itemLabel({
-    required BillItem item,
-    required CreditLiabilityAccountKind? accountKind,
-    required InstallmentContract? contract,
-  }) {
-    if (item.itemType == BillItemType.consumption) {
-      return '消费';
-    }
-    if (contract == null) {
-      return '分期';
-    }
-    return switch (contract.sourceType) {
-      InstallmentSourceType.billConversion => '账单分期',
-      InstallmentSourceType.disbursement =>
-        accountKind == CreditLiabilityAccountKind.credit ? '现金分期' : '贷款分期',
-    };
   }
 
   Future<List<BillRepaymentReadModel>> _repaymentsForBill(Bill bill) async {

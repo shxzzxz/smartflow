@@ -13,6 +13,7 @@ import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/bill_query_providers.dart';
 import '../provider/installment_query_providers.dart';
+import '../presentation/bill_item_presentation.dart';
 import 'bill_repayment_allocation_view_model.dart';
 
 part 'bill_repayment_form_view_model.g.dart';
@@ -472,7 +473,7 @@ List<BillRepaymentAllocationLine> _allocationLines(
           BillRepaymentAllocationLine(
             billItemId: item.id,
             itemType: item.itemType,
-            label: item.label,
+            label: billItemLabel(item),
             expected: credit.RepaymentAmountBreakdown(
               principal: item.expectedPrincipal,
               interest: item.expectedInterest,

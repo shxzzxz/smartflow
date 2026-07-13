@@ -7,7 +7,6 @@ import '../design_system/theme/app_theme.dart';
 import 'app_error_boundary.dart';
 import 'provider.dart';
 import 'router.dart';
-import '../application/shared/app_task.dart';
 
 class SmartFlowApp extends ConsumerStatefulWidget {
   const SmartFlowApp({super.key, this.scaffoldMessengerKey});
@@ -25,11 +24,7 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(
-        ref
-            .read(pullTaskSchedulerProvider)
-            .trigger(trigger: TaskTrigger.appStart),
-      );
+      unawaited(ref.read(pullTaskSchedulerProvider).trigger());
     });
   }
 
@@ -42,11 +37,7 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(
-        ref
-            .read(pullTaskSchedulerProvider)
-            .trigger(trigger: TaskTrigger.appResume),
-      );
+      unawaited(ref.read(pullTaskSchedulerProvider).trigger());
     }
   }
 

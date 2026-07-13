@@ -73,7 +73,7 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
     final account = await _ledger.findAccount(accountId);
     if (account == null) return null;
 
-    final buckets = await _debtBuckets.bucketsForAccount(
+    final domainBuckets = await _debtBuckets.bucketsForAccount(
       accountId: accountId,
       liabilityBalance: account.balance,
       bills: _bills,
@@ -91,7 +91,11 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
           creditAccount.creditLimit == null
               ? null
               : creditAccount.creditLimit! - account.balance,
-      buckets: buckets,
+      buckets: CreditDebtBucketsReadModel(
+        billDebt: domainBuckets.billDebt,
+        futureContractDebt: domainBuckets.futureContractDebt,
+        unattributedDebt: domainBuckets.unattributedDebt,
+      ),
       unattributedRepayments: [
         for (final repayment in repayments)
           await _repaymentRecord(repayment, fallbackTime: DateTime.now()),

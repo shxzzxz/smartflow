@@ -4,19 +4,13 @@ abstract interface class AppTask {
   Future<void> run(DateTime now);
 }
 
-enum TaskTrigger { appStart, appResume, enterCreditSurface, beforeCreditWrite }
-
 class PullTaskScheduler {
   PullTaskScheduler({required List<AppTask> tasks}) : _tasks = tasks;
 
   final List<AppTask> _tasks;
   final Map<String, DateTime> _lastRunDayByTask = {};
 
-  Future<void> trigger({
-    required TaskTrigger trigger,
-    DateTime? now,
-    bool force = false,
-  }) async {
+  Future<void> trigger({DateTime? now, bool force = false}) async {
     final instant = now ?? DateTime.now();
     final day = DateTime(instant.year, instant.month, instant.day);
     for (final task in _tasks) {

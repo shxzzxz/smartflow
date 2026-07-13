@@ -1,6 +1,8 @@
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
+import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
+import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
@@ -48,7 +50,6 @@ class BillItemReadModel {
   const BillItemReadModel({
     required this.id,
     required this.itemType,
-    required this.label,
     required this.status,
     required this.repaymentDate,
     required this.expectedPrincipal,
@@ -56,13 +57,14 @@ class BillItemReadModel {
     required this.expectedFee,
     required this.allocated,
     required this.isOverdue,
+    this.accountKind,
+    this.installmentSourceType,
     this.contractId,
     this.scheduleId,
   });
 
   final String id;
   final BillItemType itemType;
-  final String label;
   final BillItemStatus status;
   final DateTime repaymentDate;
   final Money expectedPrincipal;
@@ -70,6 +72,8 @@ class BillItemReadModel {
   final Money expectedFee;
   final RepaymentAmountBreakdown allocated;
   final bool isOverdue;
+  final CreditLiabilityAccountKind? accountKind;
+  final InstallmentSourceType? installmentSourceType;
   final String? contractId;
   final String? scheduleId;
 }

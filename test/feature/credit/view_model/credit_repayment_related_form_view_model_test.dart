@@ -650,7 +650,6 @@ credit_query.BillDetailReadModel _billDetail() {
       credit_query.BillItemReadModel(
         id: 'bill-item',
         itemType: credit_query.BillItemType.consumption,
-        label: '消费',
         status: credit_query.BillItemStatus.pending,
         repaymentDate: DateTime(2026, 6, 20),
         expectedPrincipal: const Money(minorUnits: 10000),
@@ -684,7 +683,6 @@ credit_query.BillDetailReadModel _billDetailWithTwoConsumptionItems() {
       credit_query.BillItemReadModel(
         id: 'bill-item-1',
         itemType: credit_query.BillItemType.consumption,
-        label: '消费',
         status: credit_query.BillItemStatus.pending,
         repaymentDate: DateTime(2026, 6, 20),
         expectedPrincipal: const Money(minorUnits: 5000),
@@ -696,7 +694,6 @@ credit_query.BillDetailReadModel _billDetailWithTwoConsumptionItems() {
       credit_query.BillItemReadModel(
         id: 'bill-item-2',
         itemType: credit_query.BillItemType.consumption,
-        label: '消费',
         status: credit_query.BillItemStatus.pending,
         repaymentDate: DateTime(2026, 6, 20),
         expectedPrincipal: const Money(minorUnits: 5000),
@@ -730,7 +727,8 @@ credit_query.BillDetailReadModel _openBillDetailWithInstallment() {
       credit_query.BillItemReadModel(
         id: 'installment-item',
         itemType: credit_query.BillItemType.installment,
-        label: '现金分期',
+        accountKind: credit_query.CreditLiabilityAccountKind.credit,
+        installmentSourceType: credit_query.InstallmentSourceType.disbursement,
         status: credit_query.BillItemStatus.pending,
         repaymentDate: DateTime(2026, 6, 20),
         expectedPrincipal: const Money(minorUnits: 5000),
@@ -742,7 +740,6 @@ credit_query.BillDetailReadModel _openBillDetailWithInstallment() {
       credit_query.BillItemReadModel(
         id: 'consumption-item',
         itemType: credit_query.BillItemType.consumption,
-        label: '消费',
         status: credit_query.BillItemStatus.pending,
         repaymentDate: DateTime(2026, 6, 20),
         expectedPrincipal: const Money(minorUnits: 3000),
@@ -769,7 +766,7 @@ credit_query.CreditAccountOverviewReadModel _creditOverview() {
     ),
     liabilityBalance: const Money(minorUnits: 2500),
     availableCredit: const Money(minorUnits: 97500),
-    buckets: const credit_query.CreditDebtBuckets(
+    buckets: const credit_query.CreditDebtBucketsReadModel(
       billDebt: Money(minorUnits: 0),
       futureContractDebt: Money(minorUnits: 0),
       unattributedDebt: Money(minorUnits: 2500),
