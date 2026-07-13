@@ -9,3 +9,9 @@ String billItemLabel(BillItemReadModel item) {
       item.accountKind == CreditLiabilityAccountKind.credit ? '现金分期' : '贷款分期',
   };
 }
+
+String? billItemDestination(BillItemReadModel item) {
+  if (item.itemType != BillItemType.installment) return null;
+  final contractId = item.contractId;
+  return contractId == null ? null : '/installments/$contractId';
+}

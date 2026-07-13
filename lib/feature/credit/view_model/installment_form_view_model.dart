@@ -75,6 +75,10 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
   void setDisbursementAccountId(String? value) =>
       _updateLoaded((state) => state.copyWith(disbursementAccountId: value));
 
+  void setCreateDisbursementTransaction(bool value) => _updateLoaded(
+    (state) => state.copyWith(createDisbursementTransaction: value),
+  );
+
   Future<UiActionOutcome<String>> submit({
     required String principalText,
     required String totalPeriodsText,
@@ -92,7 +96,9 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
     if (totalPeriods == null || totalPeriods <= 0) {
       return _invalidAction('请输入有效期数');
     }
-    if (current.isDisbursement && current.disbursementAccountId == null) {
+    if (current.isDisbursement &&
+        current.createDisbursementTransaction &&
+        current.disbursementAccountId == null) {
       return _invalidAction('请选择放款入账账户');
     }
 
@@ -111,7 +117,10 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
       final result = await service.createDisbursementContract(
         CreateDisbursementContractCommand(
           liabilityAccountId: current.liability.id,
-          disbursementAccountId: current.disbursementAccountId!,
+          disbursementAccountId:
+              current.createDisbursementTransaction
+                  ? current.disbursementAccountId
+                  : null,
           principal: principal,
           totalPeriods: totalPeriods,
           borrowingDate: current.borrowingDate,
@@ -245,6 +254,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
     required this.method,
     required this.ratePeriod,
     required this.accrualMethod,
+    required this.createDisbursementTransaction,
     required this.submitting,
     this.disbursementAccountId,
   });
@@ -268,6 +278,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
       method: InstallmentRepaymentMethod.equalInstallment,
       ratePeriod: InterestRatePeriod.monthly,
       accrualMethod: InterestAccrualMethod.daily,
+      createDisbursementTransaction: true,
       submitting: false,
     );
   }
@@ -281,6 +292,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
   final InstallmentRepaymentMethod method;
   final InterestRatePeriod ratePeriod;
   final InterestAccrualMethod accrualMethod;
+  final bool createDisbursementTransaction;
   final bool submitting;
 
   bool get isDisbursement => sourceType == InstallmentSourceType.disbursement;
@@ -294,6 +306,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
     InstallmentRepaymentMethod? method,
     InterestRatePeriod? ratePeriod,
     InterestAccrualMethod? accrualMethod,
+    bool? createDisbursementTransaction,
     bool? submitting,
   }) {
     return InstallmentFormLoaded(
@@ -311,6 +324,8 @@ class InstallmentFormLoaded extends InstallmentFormState {
       method: method ?? this.method,
       ratePeriod: ratePeriod ?? this.ratePeriod,
       accrualMethod: accrualMethod ?? this.accrualMethod,
+      createDisbursementTransaction:
+          createDisbursementTransaction ?? this.createDisbursementTransaction,
       submitting: submitting ?? this.submitting,
     );
   }

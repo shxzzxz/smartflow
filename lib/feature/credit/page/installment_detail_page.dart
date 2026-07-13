@@ -97,7 +97,7 @@ class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final contract = loaded.contract;
-    final schedules = loaded.schedules;
+    final scheduleItems = loaded.scheduleItems;
     final cashflows = loaded.repayments;
 
     return ListView(
@@ -122,9 +122,9 @@ class _Body extends StatelessWidget {
         AppSurface(
           child: Column(
             children: [
-              for (var i = 0; i < schedules.length; i++) ...[
-                _ScheduleRow(contract: contract, schedule: schedules[i]),
-                if (i < schedules.length - 1)
+              for (var i = 0; i < scheduleItems.length; i++) ...[
+                _ScheduleRow(contract: contract, item: scheduleItems[i]),
+                if (i < scheduleItems.length - 1)
                   const Divider(height: 1, indent: AppSpacing.space12),
               ],
             ],
@@ -405,14 +405,16 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _ScheduleRow extends StatelessWidget {
-  const _ScheduleRow({required this.contract, required this.schedule});
+class _ScheduleRow extends ConsumerWidget {
+  const _ScheduleRow({required this.contract, required this.item});
 
   final InstallmentContractReadModel contract;
-  final InstallmentScheduleReadModel schedule;
+  final InstallmentScheduleItemState item;
+
+  InstallmentScheduleReadModel get schedule => item.schedule;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
     final total =
@@ -461,11 +463,95 @@ class _ScheduleRow extends StatelessWidget {
                     color: _scheduleStatusColor(schedule.status, colors),
                   ),
                 ),
+                switch (item.action) {
+                  InstallmentScheduleAction.skip => _ScheduleActionButton(
+                    label: '跳过',
+                    onPressed: () => _confirmSkip(context, ref),
+                  ),
+                  InstallmentScheduleAction.restore => _ScheduleActionButton(
+                    label: '撤销跳过',
+                    onPressed: () => _restore(context, ref),
+                  ),
+                  null => const SizedBox.shrink(),
+                },
               ],
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _confirmSkip(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('跳过本期'),
+            content: Text('第${schedule.periodNo}期将不再进入账单，之后可以撤销跳过。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('跳过'),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await _handleOutcome(
+      context,
+      ref
+          .read(installmentDetailViewModelProvider(contract.id).notifier)
+          .skipSchedule(schedule.id),
+      failurePrefix: '跳过失败',
+    );
+  }
+
+  Future<void> _restore(BuildContext context, WidgetRef ref) async {
+    await _handleOutcome(
+      context,
+      ref
+          .read(installmentDetailViewModelProvider(contract.id).notifier)
+          .restoreSchedule(schedule.id),
+      failurePrefix: '撤销跳过失败',
+    );
+  }
+
+  Future<void> _handleOutcome(
+    BuildContext context,
+    Future<UiActionOutcome<void>> action, {
+    required String failurePrefix,
+  }) async {
+    final outcome = await action;
+    if (!context.mounted) return;
+    if (outcome case UiActionFailure<void>(:final error)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$failurePrefix：${error.message}')),
+      );
+    }
+  }
+}
+
+class _ScheduleActionButton extends StatelessWidget {
+  const _ScheduleActionButton({required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        minimumSize: const Size(AppSpacing.space48, AppSpacing.space28),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
+        visualDensity: VisualDensity.compact,
+      ),
+      child: Text(label),
     );
   }
 }

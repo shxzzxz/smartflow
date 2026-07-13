@@ -32,6 +32,28 @@ void main() {
       expect(loaded.paidFeeMinor, 30);
     });
 
+    test('derives schedule actions for contract detail rows', () async {
+      final container = _container(
+        contract: _contract(),
+        schedules: [
+          _schedule(1),
+          _schedule(2, status: InstallmentScheduleStatus.skipped),
+          _schedule(3, status: InstallmentScheduleStatus.paid),
+        ],
+      );
+
+      final state = await container.read(
+        installmentDetailViewModelProvider('contract-1').future,
+      );
+
+      final loaded = state as InstallmentDetailLoaded;
+      expect(loaded.scheduleItems.map((item) => item.action), [
+        InstallmentScheduleAction.skip,
+        InstallmentScheduleAction.restore,
+        null,
+      ]);
+    });
+
     test('returns not found state when contract is missing', () async {
       final container = _container(contract: null);
 
@@ -74,6 +96,46 @@ void main() {
 
       expect(outcome, isA<UiActionSuccess<void>>());
       expect(repaymentAppService.deleteCommands.single.repaymentId, 'tx-repay');
+    });
+
+    test('skip pending schedule delegates to command service', () async {
+      final service = _FakeInstallmentAppService();
+      final container = _container(
+        contract: _contract(),
+        schedules: [_schedule(1)],
+        service: service,
+      );
+      await container.read(
+        installmentDetailViewModelProvider('contract-1').future,
+      );
+
+      final outcome = await container
+          .read(installmentDetailViewModelProvider('contract-1').notifier)
+          .skipSchedule('schedule-1');
+
+      expect(outcome, isA<UiActionSuccess<void>>());
+      expect(service.skipCommands.single.contractId, 'contract-1');
+      expect(service.skipCommands.single.scheduleId, 'schedule-1');
+    });
+
+    test('restore skipped schedule delegates to command service', () async {
+      final service = _FakeInstallmentAppService();
+      final container = _container(
+        contract: _contract(),
+        schedules: [_schedule(1, status: InstallmentScheduleStatus.skipped)],
+        service: service,
+      );
+      await container.read(
+        installmentDetailViewModelProvider('contract-1').future,
+      );
+
+      final outcome = await container
+          .read(installmentDetailViewModelProvider('contract-1').notifier)
+          .restoreSchedule('schedule-1');
+
+      expect(outcome, isA<UiActionSuccess<void>>());
+      expect(service.restoreCommands.single.contractId, 'contract-1');
+      expect(service.restoreCommands.single.scheduleId, 'schedule-1');
     });
 
     test('maps AppException to UI failure', () async {
@@ -208,12 +270,26 @@ class _FakeInstallmentAppService implements InstallmentAppService {
 
   final Object? deleteException;
   final deleteCommands = <DeleteContractCommand>[];
+  final skipCommands = <SkipInstallmentScheduleCommand>[];
+  final restoreCommands = <RestoreInstallmentScheduleCommand>[];
 
   @override
   Future<void> deleteContract(DeleteContractCommand command) async {
     deleteCommands.add(command);
     final exception = deleteException;
     if (exception != null) throw exception;
+  }
+
+  @override
+  Future<void> skipSchedule(SkipInstallmentScheduleCommand command) async {
+    skipCommands.add(command);
+  }
+
+  @override
+  Future<void> restoreSchedule(
+    RestoreInstallmentScheduleCommand command,
+  ) async {
+    restoreCommands.add(command);
   }
 
   @override

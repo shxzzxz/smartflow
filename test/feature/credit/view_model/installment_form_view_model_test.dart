@@ -56,6 +56,35 @@ void main() {
     });
 
     test(
+      'submits migration contract without disbursement transaction',
+      () async {
+        final service = _FakeInstallmentAppService();
+        final args = _args('loan');
+        final container = _container(service: service);
+        await _readState(container, args);
+        final viewModel = container.read(
+          installmentFormViewModelProvider(args).notifier,
+        );
+        viewModel.setCreateDisbursementTransaction(false);
+
+        final outcome = await viewModel.submit(
+          principalText: '100',
+          totalPeriodsText: '6',
+          rateText: '',
+          totalFeeText: '',
+          overrideInstallmentText: '',
+          noteText: '',
+        );
+
+        expect(outcome, isA<UiActionSuccess<String>>());
+        expect(
+          service.disbursementCommands.single.disbursementAccountId,
+          isNull,
+        );
+      },
+    );
+
+    test(
       'submits credit account installment as disbursement command',
       () async {
         final service = _FakeInstallmentAppService();

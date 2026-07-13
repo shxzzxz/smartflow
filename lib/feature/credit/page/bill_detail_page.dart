@@ -407,15 +407,13 @@ class _BillItemRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final styles = context.appTextStyles;
+    final destination = billItemDestination(item);
     final icon =
         item.itemType == BillItemType.consumption
             ? RemixIcons.shopping_bag_3_line
             : RemixIcons.calendar_schedule_line;
     return InkWell(
-      onTap:
-          item.contractId == null
-              ? null
-              : () => context.push('/installments/${item.contractId}/edit'),
+      onTap: destination == null ? null : () => context.push(destination),
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space12,
