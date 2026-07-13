@@ -55,13 +55,13 @@ final creditLiabilityAccountsByAccountIdProvider =
 final class CreditLiabilityAccountsByAccountIdProvider
     extends
         $FunctionalProvider<
-          AsyncValue<Map<String, CreditLiabilityAccount>>,
-          Map<String, CreditLiabilityAccount>,
-          Stream<Map<String, CreditLiabilityAccount>>
+          AsyncValue<Map<String, CreditLiabilityAccountReadModel>>,
+          Map<String, CreditLiabilityAccountReadModel>,
+          Stream<Map<String, CreditLiabilityAccountReadModel>>
         >
     with
-        $FutureModifier<Map<String, CreditLiabilityAccount>>,
-        $StreamProvider<Map<String, CreditLiabilityAccount>> {
+        $FutureModifier<Map<String, CreditLiabilityAccountReadModel>>,
+        $StreamProvider<Map<String, CreditLiabilityAccountReadModel>> {
   CreditLiabilityAccountsByAccountIdProvider._()
     : super(
         from: null,
@@ -79,18 +79,17 @@ final class CreditLiabilityAccountsByAccountIdProvider
 
   @$internal
   @override
-  $StreamProviderElement<Map<String, CreditLiabilityAccount>> $createElement(
-    $ProviderPointer pointer,
-  ) => $StreamProviderElement(pointer);
+  $StreamProviderElement<Map<String, CreditLiabilityAccountReadModel>>
+  $createElement($ProviderPointer pointer) => $StreamProviderElement(pointer);
 
   @override
-  Stream<Map<String, CreditLiabilityAccount>> create(Ref ref) {
+  Stream<Map<String, CreditLiabilityAccountReadModel>> create(Ref ref) {
     return creditLiabilityAccountsByAccountId(ref);
   }
 }
 
 String _$creditLiabilityAccountsByAccountIdHash() =>
-    r'c8a18848b8536072815128196348e4ac6845c373';
+    r'7e960b02eaade95eef2f46ca54d41c73a64cfc84';
 
 /// 全量账户索引。覆盖 5 种 account_type,供 UI 层把 entries 的 accountId
 /// 解析为 Account 元数据(type / name / iconKey 等)。

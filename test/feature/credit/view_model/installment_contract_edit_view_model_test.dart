@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
@@ -301,8 +302,8 @@ InstallmentContractDraftRow _scheduleRow(
   return loaded.draft.singleWhere((row) => row.periodNo == periodNo);
 }
 
-InstallmentContract _contract() {
-  return InstallmentContract(
+InstallmentContractReadModel _contract() {
+  return InstallmentContractReadModel(
     id: 'contract-1',
     liabilityAccountId: 'loan',
     sourceType: InstallmentSourceType.disbursement,
@@ -323,11 +324,11 @@ InstallmentContract _contract() {
   );
 }
 
-InstallmentSchedule _schedule(
+InstallmentScheduleReadModel _schedule(
   int periodNo, {
   InstallmentScheduleStatus status = InstallmentScheduleStatus.pending,
 }) {
-  return InstallmentSchedule(
+  return InstallmentScheduleReadModel(
     id: 'schedule-$periodNo',
     contractId: 'contract-1',
     periodNo: periodNo,
@@ -348,8 +349,8 @@ class _FakeInstallmentAppService implements InstallmentAppService {
     this.previewResults = const [],
   });
 
-  final InstallmentContract? contract;
-  final List<InstallmentSchedule> schedules;
+  final InstallmentContractReadModel? contract;
+  final List<InstallmentScheduleReadModel> schedules;
   final Object? updateException;
   final List<RecalculatedSchedulePreview> previewResults;
   final updateCommands = <UpdateContractCommand>[];

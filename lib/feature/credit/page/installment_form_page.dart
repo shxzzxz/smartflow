@@ -71,7 +71,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
         AsyncData(value: InstallmentFormNotFound()) => const Center(
           child: Text('负债账户不存在'),
         ),
-        AsyncError(:final error) => Center(child: Text('加载失败：$error')),
+        AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );

@@ -125,8 +125,8 @@ void main() {
 }
 
 ProviderContainer _container({
-  required InstallmentContract? contract,
-  List<InstallmentSchedule> schedules = const [],
+  required InstallmentContractReadModel? contract,
+  List<InstallmentScheduleReadModel> schedules = const [],
   List<ContractRepayment> cashflows = const [],
   _FakeInstallmentAppService? service,
   _FakeRepaymentAppService? repaymentAppService,
@@ -154,8 +154,8 @@ ProviderContainer _container({
   return container;
 }
 
-InstallmentContract _contract() {
-  return InstallmentContract(
+InstallmentContractReadModel _contract() {
+  return InstallmentContractReadModel(
     id: 'contract-1',
     liabilityAccountId: 'loan',
     sourceType: InstallmentSourceType.disbursement,
@@ -173,12 +173,12 @@ InstallmentContract _contract() {
   );
 }
 
-InstallmentSchedule _schedule(
+InstallmentScheduleReadModel _schedule(
   int periodNo, {
   Money principal = const Money(minorUnits: 4000),
   InstallmentScheduleStatus status = InstallmentScheduleStatus.pending,
 }) {
-  return InstallmentSchedule(
+  return InstallmentScheduleReadModel(
     id: 'schedule-$periodNo',
     contractId: 'contract-1',
     periodNo: periodNo,

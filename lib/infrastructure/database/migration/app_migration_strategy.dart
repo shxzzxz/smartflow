@@ -8,50 +8,62 @@ import '../builtin_data.dart';
 MigrationStrategy buildMigrationStrategy(AppDatabase database) {
   return MigrationStrategy(
     onCreate: (migrator) async {
-      await migrator.createAll();
-      await database.customStatement(
-        'CREATE UNIQUE INDEX budgets_total_unique '
-        'ON budgets (month_key) '
-        'WHERE account_id IS NULL',
-      );
-      await database.customStatement(
-        'CREATE UNIQUE INDEX budgets_account_unique '
-        'ON budgets (month_key, account_id) '
-        'WHERE account_id IS NOT NULL',
-      );
-      await _createTransactionRowIndexes(database);
-      await database.customStatement(
-        'CREATE INDEX entries_transaction_idx ON entries (transaction_id)',
-      );
-      await database.customStatement(
-        'CREATE INDEX entries_account_transaction_idx '
-        'ON entries (account_id, transaction_id)',
-      );
-      await database.customStatement(
-        'CREATE INDEX installment_contracts_liability_status_idx '
-        'ON installment_contracts (liability_account_id, status)',
-      );
-      await database.customStatement(
-        'CREATE INDEX installment_schedules_contract_period_idx '
-        'ON installment_schedules (contract_id, period_no)',
-      );
-      await database.customStatement(
-        'CREATE INDEX installment_contracts_disbursement_tx_idx '
-        'ON installment_contracts (disbursement_transaction_id) '
-        'WHERE disbursement_transaction_id IS NOT NULL',
-      );
-      await _createInstallmentSourceRepaymentIndex(database);
-      await _createBillIndexes(database);
-      await _createRepaymentIndexes(database);
-      await ensureBuiltinData(database);
+      await _createCurrentSchema(database, migrator);
     },
     beforeOpen: (_) async {
       await ensureBuiltinData(database);
     },
-    onUpgrade: (_, _, _) async {
-      // Development builds reset/recreate the database between schema versions.
+    onUpgrade: (migrator, _, _) async {
+      // Development channel policy: schema changes are destructive. Rebuild
+      // explicitly so an existing database never opens with a partial schema.
+      for (final table in database.allTables.toList().reversed) {
+        await migrator.drop(table);
+      }
+      await _createCurrentSchema(database, migrator);
     },
   );
+}
+
+Future<void> _createCurrentSchema(
+  AppDatabase database,
+  Migrator migrator,
+) async {
+  await migrator.createAll();
+  await database.customStatement(
+    'CREATE UNIQUE INDEX budgets_total_unique '
+    'ON budgets (month_key) '
+    'WHERE account_id IS NULL',
+  );
+  await database.customStatement(
+    'CREATE UNIQUE INDEX budgets_account_unique '
+    'ON budgets (month_key, account_id) '
+    'WHERE account_id IS NOT NULL',
+  );
+  await _createTransactionRowIndexes(database);
+  await database.customStatement(
+    'CREATE INDEX entries_transaction_idx ON entries (transaction_id)',
+  );
+  await database.customStatement(
+    'CREATE INDEX entries_account_transaction_idx '
+    'ON entries (account_id, transaction_id)',
+  );
+  await database.customStatement(
+    'CREATE INDEX installment_contracts_liability_status_idx '
+    'ON installment_contracts (liability_account_id, status)',
+  );
+  await database.customStatement(
+    'CREATE INDEX installment_schedules_contract_period_idx '
+    'ON installment_schedules (contract_id, period_no)',
+  );
+  await database.customStatement(
+    'CREATE INDEX installment_contracts_disbursement_tx_idx '
+    'ON installment_contracts (disbursement_transaction_id) '
+    'WHERE disbursement_transaction_id IS NOT NULL',
+  );
+  await _createInstallmentSourceRepaymentIndex(database);
+  await _createBillIndexes(database);
+  await _createRepaymentIndexes(database);
+  await ensureBuiltinData(database);
 }
 
 Future<void> _createInstallmentSourceRepaymentIndex(

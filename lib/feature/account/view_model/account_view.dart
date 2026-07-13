@@ -40,7 +40,7 @@ class AccountView {
 
 AccountView buildAccountView(
   Account account,
-  Map<String, CreditLiabilityAccount> creditByAccountId,
+  Map<String, CreditLiabilityAccountReadModel> creditByAccountId,
 ) {
   final kind = accountProfileKindForAccount(account);
   final creditAccount = creditByAccountId[account.id];
@@ -68,7 +68,7 @@ AccountView buildAccountView(
 
 List<AccountView> buildAccountViews(
   List<Account> accounts,
-  Map<String, CreditLiabilityAccount> creditByAccountId,
+  Map<String, CreditLiabilityAccountReadModel> creditByAccountId,
 ) {
   return [
     for (final account in accounts)

@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
+import '../../../application/credit/credit_query_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
@@ -326,17 +327,17 @@ class InstallmentContractEditViewModel
   }
 }
 
-String installmentContractPeriodsText(InstallmentContract contract) {
+String installmentContractPeriodsText(InstallmentContractReadModel contract) {
   return contract.totalPeriods.toString();
 }
 
-String installmentContractRateText(InstallmentContract contract) {
+String installmentContractRateText(InstallmentContractReadModel contract) {
   final ratePpm = contract.interestRatePpm;
   if (ratePpm == null || ratePpm <= 0) return '';
   return _trimTrailingZeros((ratePpm / 10000.0).toStringAsFixed(4));
 }
 
-String installmentContractFeeText(InstallmentContract contract) {
+String installmentContractFeeText(InstallmentContractReadModel contract) {
   if (contract.totalFeeMinor <= 0) return '';
   return Money(minorUnits: contract.totalFeeMinor).major.toString();
 }

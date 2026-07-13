@@ -1,7 +1,7 @@
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/credit/entity/credit_liability_account.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
+import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
@@ -26,7 +26,7 @@ class CreditAccountOverviewReadModel {
     this.availableCredit,
   });
 
-  final CreditLiabilityAccount creditAccount;
+  final CreditLiabilityAccountReadModel creditAccount;
   final Money liabilityBalance;
   final Money? availableCredit;
   final CreditDebtBucketsReadModel buckets;
@@ -157,4 +157,24 @@ class MonthlyBillSummaryReadModel {
   final Money expectedFee;
   final Money pendingPrincipal;
   final int itemCount;
+}
+
+class CreditLiabilityAccountReadModel {
+  const CreditLiabilityAccountReadModel({
+    required this.id,
+    required this.accountId,
+    required this.kind,
+    required this.billingDayToNext,
+    this.creditLimit,
+    this.billingDay,
+    this.repaymentDay,
+  });
+
+  final String id;
+  final String accountId;
+  final CreditLiabilityAccountKind kind;
+  final Money? creditLimit;
+  final int? billingDay;
+  final int? repaymentDay;
+  final bool billingDayToNext;
 }

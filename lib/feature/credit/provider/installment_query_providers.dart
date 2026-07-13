@@ -6,7 +6,7 @@ import '../../../application/credit/credit_query_api.dart';
 part 'installment_query_providers.g.dart';
 
 @riverpod
-Future<List<InstallmentContract>> installmentContractsByAccount(
+Future<List<InstallmentContractReadModel>> installmentContractsByAccount(
   Ref ref,
   String accountId,
 ) {
@@ -16,12 +16,15 @@ Future<List<InstallmentContract>> installmentContractsByAccount(
 }
 
 @riverpod
-Future<InstallmentContract?> installmentContract(Ref ref, String contractId) {
+Future<InstallmentContractReadModel?> installmentContract(
+  Ref ref,
+  String contractId,
+) {
   return ref.watch(installmentQueryServiceProvider).findContract(contractId);
 }
 
 @riverpod
-Future<List<InstallmentSchedule>> installmentSchedules(
+Future<List<InstallmentScheduleReadModel>> installmentSchedules(
   Ref ref,
   String contractId,
 ) {

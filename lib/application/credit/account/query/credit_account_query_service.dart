@@ -17,10 +17,10 @@ import 'credit_account_queries.dart';
 import 'credit_account_read_models.dart';
 
 abstract interface class CreditAccountQueryService {
-  Stream<Map<String, CreditLiabilityAccount>>
+  Stream<Map<String, CreditLiabilityAccountReadModel>>
   watchCreditLiabilityAccountsByAccountId();
 
-  Future<CreditLiabilityAccount?> findByAccountId(String accountId);
+  Future<CreditLiabilityAccountReadModel?> findByAccountId(String accountId);
 
   Future<CreditAccountOverviewReadModel?> findOverview(String accountId);
 
@@ -56,14 +56,20 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
   final CreditDebtBucketService _debtBuckets;
 
   @override
-  Stream<Map<String, CreditLiabilityAccount>>
+  Stream<Map<String, CreditLiabilityAccountReadModel>>
   watchCreditLiabilityAccountsByAccountId() {
-    return _creditAccounts.watchByAccountId();
+    return _creditAccounts.watchByAccountId().map(
+      (accounts) =>
+          accounts.map((key, value) => MapEntry(key, _accountReadModel(value))),
+    );
   }
 
   @override
-  Future<CreditLiabilityAccount?> findByAccountId(String accountId) {
-    return _creditAccounts.findByAccountId(accountId);
+  Future<CreditLiabilityAccountReadModel?> findByAccountId(
+    String accountId,
+  ) async {
+    final account = await _creditAccounts.findByAccountId(accountId);
+    return account == null ? null : _accountReadModel(account);
   }
 
   @override
@@ -85,7 +91,7 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
       accountId,
     );
     return CreditAccountOverviewReadModel(
-      creditAccount: creditAccount,
+      creditAccount: _accountReadModel(creditAccount),
       liabilityBalance: account.balance,
       availableCredit:
           creditAccount.creditLimit == null
@@ -100,6 +106,20 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
         for (final repayment in repayments)
           await _repaymentRecord(repayment, fallbackTime: DateTime.now()),
       ],
+    );
+  }
+
+  CreditLiabilityAccountReadModel _accountReadModel(
+    CreditLiabilityAccount account,
+  ) {
+    return CreditLiabilityAccountReadModel(
+      id: account.id,
+      accountId: account.accountId,
+      kind: account.kind,
+      creditLimit: account.creditLimit,
+      billingDay: account.billingDay,
+      repaymentDay: account.repaymentDay,
+      billingDayToNext: account.billingDayToNext,
     );
   }
 

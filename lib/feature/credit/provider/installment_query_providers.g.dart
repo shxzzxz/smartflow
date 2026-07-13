@@ -16,13 +16,13 @@ final installmentContractsByAccountProvider =
 final class InstallmentContractsByAccountProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<InstallmentContract>>,
-          List<InstallmentContract>,
-          FutureOr<List<InstallmentContract>>
+          AsyncValue<List<InstallmentContractReadModel>>,
+          List<InstallmentContractReadModel>,
+          FutureOr<List<InstallmentContractReadModel>>
         >
     with
-        $FutureModifier<List<InstallmentContract>>,
-        $FutureProvider<List<InstallmentContract>> {
+        $FutureModifier<List<InstallmentContractReadModel>>,
+        $FutureProvider<List<InstallmentContractReadModel>> {
   InstallmentContractsByAccountProvider._({
     required InstallmentContractsByAccountFamily super.from,
     required String super.argument,
@@ -46,12 +46,12 @@ final class InstallmentContractsByAccountProvider
 
   @$internal
   @override
-  $FutureProviderElement<List<InstallmentContract>> $createElement(
+  $FutureProviderElement<List<InstallmentContractReadModel>> $createElement(
     $ProviderPointer pointer,
   ) => $FutureProviderElement(pointer);
 
   @override
-  FutureOr<List<InstallmentContract>> create(Ref ref) {
+  FutureOr<List<InstallmentContractReadModel>> create(Ref ref) {
     final argument = this.argument as String;
     return installmentContractsByAccount(ref, argument);
   }
@@ -69,11 +69,14 @@ final class InstallmentContractsByAccountProvider
 }
 
 String _$installmentContractsByAccountHash() =>
-    r'301be457f6f3552f9a43c09c3d854720f8a87aa1';
+    r'35d6f7f2c53a4b64802036e27e294876cc1be7d9';
 
 final class InstallmentContractsByAccountFamily extends $Family
     with
-        $FunctionalFamilyOverride<FutureOr<List<InstallmentContract>>, String> {
+        $FunctionalFamilyOverride<
+          FutureOr<List<InstallmentContractReadModel>>,
+          String
+        > {
   InstallmentContractsByAccountFamily._()
     : super(
         retry: null,
@@ -96,13 +99,13 @@ final installmentContractProvider = InstallmentContractFamily._();
 final class InstallmentContractProvider
     extends
         $FunctionalProvider<
-          AsyncValue<InstallmentContract?>,
-          InstallmentContract?,
-          FutureOr<InstallmentContract?>
+          AsyncValue<InstallmentContractReadModel?>,
+          InstallmentContractReadModel?,
+          FutureOr<InstallmentContractReadModel?>
         >
     with
-        $FutureModifier<InstallmentContract?>,
-        $FutureProvider<InstallmentContract?> {
+        $FutureModifier<InstallmentContractReadModel?>,
+        $FutureProvider<InstallmentContractReadModel?> {
   InstallmentContractProvider._({
     required InstallmentContractFamily super.from,
     required String super.argument,
@@ -126,12 +129,12 @@ final class InstallmentContractProvider
 
   @$internal
   @override
-  $FutureProviderElement<InstallmentContract?> $createElement(
+  $FutureProviderElement<InstallmentContractReadModel?> $createElement(
     $ProviderPointer pointer,
   ) => $FutureProviderElement(pointer);
 
   @override
-  FutureOr<InstallmentContract?> create(Ref ref) {
+  FutureOr<InstallmentContractReadModel?> create(Ref ref) {
     final argument = this.argument as String;
     return installmentContract(ref, argument);
   }
@@ -148,10 +151,14 @@ final class InstallmentContractProvider
 }
 
 String _$installmentContractHash() =>
-    r'30a399371482ebfe566ce3d4e46a0ff5981a7a77';
+    r'87d89acb8e0102dbcde94a3bc9e0793855315bb2';
 
 final class InstallmentContractFamily extends $Family
-    with $FunctionalFamilyOverride<FutureOr<InstallmentContract?>, String> {
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<InstallmentContractReadModel?>,
+          String
+        > {
   InstallmentContractFamily._()
     : super(
         retry: null,
@@ -174,13 +181,13 @@ final installmentSchedulesProvider = InstallmentSchedulesFamily._();
 final class InstallmentSchedulesProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<InstallmentSchedule>>,
-          List<InstallmentSchedule>,
-          FutureOr<List<InstallmentSchedule>>
+          AsyncValue<List<InstallmentScheduleReadModel>>,
+          List<InstallmentScheduleReadModel>,
+          FutureOr<List<InstallmentScheduleReadModel>>
         >
     with
-        $FutureModifier<List<InstallmentSchedule>>,
-        $FutureProvider<List<InstallmentSchedule>> {
+        $FutureModifier<List<InstallmentScheduleReadModel>>,
+        $FutureProvider<List<InstallmentScheduleReadModel>> {
   InstallmentSchedulesProvider._({
     required InstallmentSchedulesFamily super.from,
     required String super.argument,
@@ -204,12 +211,12 @@ final class InstallmentSchedulesProvider
 
   @$internal
   @override
-  $FutureProviderElement<List<InstallmentSchedule>> $createElement(
+  $FutureProviderElement<List<InstallmentScheduleReadModel>> $createElement(
     $ProviderPointer pointer,
   ) => $FutureProviderElement(pointer);
 
   @override
-  FutureOr<List<InstallmentSchedule>> create(Ref ref) {
+  FutureOr<List<InstallmentScheduleReadModel>> create(Ref ref) {
     final argument = this.argument as String;
     return installmentSchedules(ref, argument);
   }
@@ -226,11 +233,14 @@ final class InstallmentSchedulesProvider
 }
 
 String _$installmentSchedulesHash() =>
-    r'a331b0b83f6b3b4caa3da5de0cc88ae302b19fc1';
+    r'd1ab5c406ecac7411558f5874d81451b1243cec1';
 
 final class InstallmentSchedulesFamily extends $Family
     with
-        $FunctionalFamilyOverride<FutureOr<List<InstallmentSchedule>>, String> {
+        $FunctionalFamilyOverride<
+          FutureOr<List<InstallmentScheduleReadModel>>,
+          String
+        > {
   InstallmentSchedulesFamily._()
     : super(
         retry: null,

@@ -3,6 +3,8 @@ import 'package:smartflow/application/credit/credit_query_api.dart' as credit;
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
+import 'package:smartflow/domain/credit/entity/installment_contract.dart';
+import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
@@ -193,7 +195,7 @@ class _Fixture {
     final firstDate = DateTime(2026, 7, 25);
     final contractId = ids.newId();
     await installments.saveContract(
-      credit.InstallmentContract(
+      InstallmentContract(
         id: contractId,
         liabilityAccountId: 'credit-1',
         sourceType: credit.InstallmentSourceType.disbursement,
@@ -218,7 +220,7 @@ class _Fixture {
     await installments
         .saveAggregate((await installments.findContract(contractId))!, [
           for (var index = 0; index < schedulePrincipals.length; index++)
-            credit.InstallmentSchedule(
+            InstallmentSchedule(
               id: ids.newId(),
               contractId: contractId,
               periodNo: index + 1,

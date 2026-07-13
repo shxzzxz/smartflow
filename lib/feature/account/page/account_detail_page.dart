@@ -8,8 +8,11 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../design_system/widget/app_month_picker.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
+import '../view_model/account_credit_actions.dart';
 import '../view_model/account_detail_view_model.dart';
 import '../view_model/account_view.dart';
 
@@ -27,6 +30,13 @@ class AccountDetailPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('账户概览'),
         actions: [
+          if (loadedAccount != null && !loadedAccount.isArchived)
+            if (loadedAccount.isCreditLiability)
+              IconButton(
+                onPressed: () => _generateHistoricalBill(context, ref),
+                icon: const Icon(RemixIcons.calendar_event_line),
+                tooltip: '生成历史账单',
+              ),
           if (loadedAccount != null && !loadedAccount.isArchived)
             IconButton(
               onPressed: () => context.push('/account/$accountId/edit'),
@@ -49,6 +59,9 @@ class AccountDetailPage extends ConsumerWidget {
             contracts: contracts,
             bills: bills,
             creditOverview: creditOverview,
+            onDeleteUnattributedRepayment:
+                (repayment) =>
+                    _deleteUnattributedRepayment(context, ref, repayment),
           ),
         AccountDetailNotFound() => const Center(child: Text('账户不存在')),
         AccountDetailError(:final message) => Center(child: Text(message)),
@@ -57,6 +70,55 @@ class AccountDetailPage extends ConsumerWidget {
         ),
       },
     );
+  }
+
+  Future<void> _generateHistoricalBill(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final selected = await showAppMonthPicker(
+      context: context,
+      initialMonth: DateTime.now(),
+      lastYear: DateTime.now().year,
+      title: '选择账单月份',
+    );
+    if (selected == null) return;
+    final outcome = await ref
+        .read(accountCreditActionsProvider(accountId).notifier)
+        .generateHistoricalBill(selected);
+    if (!context.mounted) return;
+    _showAccountActionOutcome(context, outcome, successMessage: '账单已生成');
+  }
+
+  Future<void> _deleteUnattributedRepayment(
+    BuildContext context,
+    WidgetRef ref,
+    CreditRepaymentRecordReadModel repayment,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('删除还款记录'),
+            content: const Text('删除后将回退相关信贷状态。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('删除'),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true) return;
+    final outcome = await ref
+        .read(accountCreditActionsProvider(accountId).notifier)
+        .deleteUnattributedRepayment(repayment.id);
+    if (!context.mounted) return;
+    _showAccountActionOutcome(context, outcome, successMessage: '还款记录已删除');
   }
 }
 
@@ -67,6 +129,7 @@ class _AccountDetailContent extends StatelessWidget {
     required this.contracts,
     required this.bills,
     required this.creditOverview,
+    required this.onDeleteUnattributedRepayment,
   });
 
   final AccountView account;
@@ -74,6 +137,8 @@ class _AccountDetailContent extends StatelessWidget {
   final AccountContractsState contracts;
   final AccountBillsState bills;
   final AccountCreditOverviewState creditOverview;
+  final ValueChanged<CreditRepaymentRecordReadModel>
+  onDeleteUnattributedRepayment;
 
   @override
   Widget build(BuildContext context) {
@@ -92,6 +157,15 @@ class _AccountDetailContent extends StatelessWidget {
         if (showInstallments) ...[
           const SizedBox(height: AppSpacing.space20),
           _BillSection(bills: bills),
+          if (creditOverview case AccountCreditOverviewLoaded(
+            :final overview,
+          ) when overview.unattributedRepayments.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.space20),
+            _UnattributedRepaymentSection(
+              repayments: overview.unattributedRepayments,
+              onDelete: onDeleteUnattributedRepayment,
+            ),
+          ],
           const SizedBox(height: AppSpacing.space20),
           _InstallmentSection(contracts: contracts),
           const SizedBox(height: AppSpacing.space20),
@@ -331,10 +405,84 @@ List<_InfoItem> _creditDebtMetrics(
       value: loadedOverview?.buckets.billDebt.format() ?? '-',
     ),
     _InfoItem(
+      label: '合同未来欠款',
+      value: loadedOverview?.buckets.futureContractDebt.format() ?? '-',
+    ),
+    _InfoItem(
       label: '未归属欠款',
       value: loadedOverview?.buckets.unattributedDebt.format() ?? '-',
     ),
   ];
+}
+
+class _UnattributedRepaymentSection extends StatelessWidget {
+  const _UnattributedRepaymentSection({
+    required this.repayments,
+    required this.onDelete,
+  });
+
+  final List<CreditRepaymentRecordReadModel> repayments;
+  final ValueChanged<CreditRepaymentRecordReadModel> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final styles = context.appTextStyles;
+    final colors = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('未归属还款记录', style: styles.dateSectionTitle),
+        const SizedBox(height: AppSpacing.space6),
+        AppSurface(
+          child: Column(
+            children: [
+              for (var i = 0; i < repayments.length; i++) ...[
+                ListTile(
+                  title: Text(
+                    repayments[i].allocated.cashPaid.format(),
+                    style: styles.listTitle,
+                  ),
+                  subtitle: Text(
+                    '${repayments[i].timeSource == CreditRepaymentTimeSource.transaction ? '还款日' : '记录于'} '
+                    '${_dateText(repayments[i].displayTime)}',
+                    style: styles.listSupporting,
+                  ),
+                  trailing: IconButton(
+                    tooltip: '删除',
+                    icon: Icon(
+                      RemixIcons.delete_bin_line,
+                      color: colors.onSurfaceVariant,
+                    ),
+                    onPressed: () => onDelete(repayments[i]),
+                  ),
+                ),
+                if (i < repayments.length - 1) _ListDivider(color: colors),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _dateText(DateTime value) {
+  return '${value.year}-${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}';
+}
+
+void _showAccountActionOutcome(
+  BuildContext context,
+  UiActionOutcome<void> outcome, {
+  required String successMessage,
+}) {
+  final message = switch (outcome) {
+    UiActionSuccess<void>() => successMessage,
+    UiActionFailure<void>(:final error) => error.message,
+  };
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+  );
 }
 
 class _InfoItem {
@@ -656,7 +804,7 @@ class _BillSection extends StatelessWidget {
       AccountBillsError(:final message) => AppSurface(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.space12),
-          child: Text('账单加载失败：$message'),
+          child: Text(message),
         ),
       ),
       AccountBillsLoading() => const AppSurface(
@@ -814,7 +962,7 @@ class _InstallmentSection extends StatelessWidget {
       AccountContractsError(:final message) => AppSurface(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.space12),
-          child: Text('合同加载失败：$message'),
+          child: Text(message),
         ),
       ),
       AccountContractsLoading() => const AppSurface(
@@ -831,7 +979,7 @@ class _InstallmentSection extends StatelessWidget {
 class _ContractRow extends StatelessWidget {
   const _ContractRow({required this.contract});
 
-  final InstallmentContract contract;
+  final InstallmentContractReadModel contract;
 
   @override
   Widget build(BuildContext context) {

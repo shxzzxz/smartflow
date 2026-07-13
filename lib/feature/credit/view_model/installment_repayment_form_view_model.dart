@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
+import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
@@ -136,7 +137,7 @@ class InstallmentRepaymentFormViewModel
     }
   }
 
-  void _invalidate(InstallmentContract contract) {
+  void _invalidate(InstallmentContractReadModel contract) {
     ref.invalidate(installmentContractProvider(contract.id));
     ref.invalidate(installmentSchedulesProvider(contract.id));
     ref.invalidate(installmentRepaymentsProvider(contract.id));
@@ -204,8 +205,8 @@ class InstallmentRepaymentFormState {
   });
 
   factory InstallmentRepaymentFormState.loaded({
-    required InstallmentContract contract,
-    required List<InstallmentSchedule> schedules,
+    required InstallmentContractReadModel contract,
+    required List<InstallmentScheduleReadModel> schedules,
     required List<Account> accounts,
     required DateTime occurredAt,
     String principalText = '',
@@ -233,7 +234,7 @@ class InstallmentRepaymentFormState {
   }
 
   factory InstallmentRepaymentFormState.notFound({
-    required List<InstallmentSchedule> schedules,
+    required List<InstallmentScheduleReadModel> schedules,
     required List<Account> accounts,
   }) {
     return InstallmentRepaymentFormState(
@@ -252,8 +253,8 @@ class InstallmentRepaymentFormState {
   }
 
   final InstallmentRepaymentFormStatus status;
-  final InstallmentContract? contract;
-  final List<InstallmentSchedule> schedules;
+  final InstallmentContractReadModel? contract;
+  final List<InstallmentScheduleReadModel> schedules;
   final List<Account> accounts;
   final String principalText;
   final String interestText;
@@ -285,7 +286,7 @@ class InstallmentRepaymentFormState {
       contract:
           contract == _sentinel
               ? this.contract
-              : contract as InstallmentContract?,
+              : contract as InstallmentContractReadModel?,
       schedules: schedules,
       accounts: accounts,
       principalText: principalText ?? this.principalText,
@@ -305,8 +306,8 @@ class InstallmentRepaymentFormState {
 }
 
 String _defaultPrincipalText(
-  InstallmentContract contract,
-  List<InstallmentSchedule> schedules,
+  InstallmentContractReadModel contract,
+  List<InstallmentScheduleReadModel> schedules,
 ) {
   final paidPrincipalSum = schedules
       .where((s) => s.status == InstallmentScheduleStatus.paid)

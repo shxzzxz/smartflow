@@ -76,7 +76,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     return current is InstallmentDetailLoaded ? current : null;
   }
 
-  void _invalidateContract(InstallmentContract contract) {
+  void _invalidateContract(InstallmentContractReadModel contract) {
     ref
       ..invalidate(installmentContractProvider(contract.id))
       ..invalidate(installmentSchedulesProvider(contract.id))
@@ -112,8 +112,8 @@ class InstallmentDetailLoaded extends InstallmentDetailState {
     required this.repayments,
   });
 
-  final InstallmentContract contract;
-  final List<InstallmentSchedule> schedules;
+  final InstallmentContractReadModel contract;
+  final List<InstallmentScheduleReadModel> schedules;
   final List<ContractRepayment> repayments;
 
   int get remainingPrincipalMinor {

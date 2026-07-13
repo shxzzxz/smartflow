@@ -47,7 +47,7 @@ class InstallmentDetailPage extends ConsumerWidget {
         AsyncData(value: InstallmentDetailNotFound()) => const Center(
           child: Text('合同不存在'),
         ),
-        AsyncError(:final error) => Center(child: Text('加载失败：$error')),
+        AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
@@ -165,7 +165,7 @@ class _Header extends StatelessWidget {
     required this.paidFeeMinor,
   });
 
-  final InstallmentContract contract;
+  final InstallmentContractReadModel contract;
   final int remainingPrincipalMinor;
   final int paidInterestMinor;
   final int paidFeeMinor;
@@ -323,7 +323,7 @@ class _StatusChip extends StatelessWidget {
 class _ActionBar extends StatelessWidget {
   const _ActionBar({required this.contract});
 
-  final InstallmentContract contract;
+  final InstallmentContractReadModel contract;
 
   @override
   Widget build(BuildContext context) {
@@ -408,8 +408,8 @@ class _ActionButton extends StatelessWidget {
 class _ScheduleRow extends StatelessWidget {
   const _ScheduleRow({required this.contract, required this.schedule});
 
-  final InstallmentContract contract;
-  final InstallmentSchedule schedule;
+  final InstallmentContractReadModel contract;
+  final InstallmentScheduleReadModel schedule;
 
   @override
   Widget build(BuildContext context) {
@@ -474,7 +474,7 @@ class _RepaymentRow extends ConsumerWidget {
   const _RepaymentRow({required this.cashflow, required this.contract});
 
   final ContractRepayment cashflow;
-  final InstallmentContract contract;
+  final InstallmentContractReadModel contract;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

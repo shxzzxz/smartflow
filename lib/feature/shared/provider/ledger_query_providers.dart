@@ -19,9 +19,8 @@ Stream<List<Account>> accountList(Ref ref) {
 }
 
 @riverpod
-Stream<Map<String, CreditLiabilityAccount>> creditLiabilityAccountsByAccountId(
-  Ref ref,
-) {
+Stream<Map<String, CreditLiabilityAccountReadModel>>
+creditLiabilityAccountsByAccountId(Ref ref) {
   return ref
       .watch(creditAccountQueryServiceProvider)
       .watchCreditLiabilityAccountsByAccountId();

@@ -18,14 +18,14 @@ AccountDetailPageState accountDetailViewModel(Ref ref, String accountId) {
   final transactions = ref.watch(transactionListProvider(accountId: accountId));
   final accountsById = ref.watch(accountsByIdProvider);
 
-  if (account case AsyncError(:final error)) {
-    return AccountDetailPageState.error(message: '加载失败：$error');
+  if (account case AsyncError()) {
+    return const AccountDetailPageState.error(message: '加载失败，请稍后重试');
   }
-  if (transactions case AsyncError(:final error)) {
-    return AccountDetailPageState.error(message: '加载失败：$error');
+  if (transactions case AsyncError()) {
+    return const AccountDetailPageState.error(message: '加载失败，请稍后重试');
   }
-  if (accountsById case AsyncError(:final error)) {
-    return AccountDetailPageState.error(message: '加载失败：$error');
+  if (accountsById case AsyncError()) {
+    return const AccountDetailPageState.error(message: '加载失败，请稍后重试');
   }
   if (account case AsyncData(value: null)) {
     return const AccountDetailPageState.notFound();
@@ -61,7 +61,7 @@ AccountContractsState _contractsStateFor(Ref ref, AccountView account) {
     AsyncData(value: final contracts) => AccountContractsState.loaded(
       contracts: contracts,
     ),
-    AsyncError(:final error) => AccountContractsState.error(message: '$error'),
+    AsyncError() => const AccountContractsState.error(message: '合同加载失败，请稍后重试'),
     _ => const AccountContractsState.loading(),
   };
 }
@@ -73,7 +73,7 @@ AccountBillsState _billsStateFor(Ref ref, AccountView account) {
 
   return switch (ref.watch(billSummariesByAccountProvider(account.id))) {
     AsyncData(value: final bills) => AccountBillsState.loaded(bills: bills),
-    AsyncError(:final error) => AccountBillsState.error(message: '$error'),
+    AsyncError() => const AccountBillsState.error(message: '账单加载失败，请稍后重试'),
     _ => const AccountBillsState.loading(),
   };
 }
@@ -91,8 +91,8 @@ AccountCreditOverviewState _creditOverviewStateFor(
       overview == null
           ? const AccountCreditOverviewState.notApplicable()
           : AccountCreditOverviewState.loaded(overview: overview),
-    AsyncError(:final error) => AccountCreditOverviewState.error(
-      message: '$error',
+    AsyncError() => const AccountCreditOverviewState.error(
+      message: '欠款信息加载失败，请稍后重试',
     ),
     _ => const AccountCreditOverviewState.loading(),
   };
@@ -159,7 +159,7 @@ sealed class AccountContractsState {
       AccountContractsError;
 
   const factory AccountContractsState.loaded({
-    required List<InstallmentContract> contracts,
+    required List<InstallmentContractReadModel> contracts,
   }) = AccountContractsLoaded;
 }
 
@@ -180,7 +180,7 @@ final class AccountContractsError extends AccountContractsState {
 final class AccountContractsLoaded extends AccountContractsState {
   const AccountContractsLoaded({required this.contracts});
 
-  final List<InstallmentContract> contracts;
+  final List<InstallmentContractReadModel> contracts;
 }
 
 sealed class AccountBillsState {

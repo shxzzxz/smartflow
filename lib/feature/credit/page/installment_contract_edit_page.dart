@@ -67,7 +67,7 @@ class _InstallmentContractEditPageState
         AsyncData(value: InstallmentContractEditNotFound()) => const Center(
           child: Text('合同不存在'),
         ),
-        AsyncError(:final error) => Center(child: Text('加载失败：$error')),
+        AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
@@ -156,7 +156,7 @@ class _InstallmentContractEditPageState
     );
   }
 
-  void _syncControllers(InstallmentContract contract) {
+  void _syncControllers(InstallmentContractReadModel contract) {
     if (_syncedContractId == contract.id) return;
     _syncedContractId = contract.id;
     _periodsController.text = installmentContractPeriodsText(contract);
@@ -288,7 +288,7 @@ class _ConfigSection extends StatelessWidget {
     required this.onRecalculate,
   });
 
-  final InstallmentContract contract;
+  final InstallmentContractReadModel contract;
   final int paidCount;
   final DateTime firstRepaymentDate;
   final DateTime lastRepaymentDate;
@@ -880,10 +880,10 @@ class _MetricsSection extends StatelessWidget {
               child: _MetricGrid(metrics: metrics, principal: principal),
             ),
           ),
-          AsyncError(:final error) => AppSurface(
+          AsyncError() => AppSurface(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.space12),
-              child: Text('指标加载失败：$error'),
+              child: const Text('合同指标加载失败，请稍后重试'),
             ),
           ),
           _ => const Padding(

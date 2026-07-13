@@ -232,8 +232,8 @@ Account _account(
   );
 }
 
-CreditLiabilityAccount _creditLiabilityAccount(String accountId) {
-  return CreditLiabilityAccount(
+CreditLiabilityAccountReadModel _creditLiabilityAccount(String accountId) {
+  return CreditLiabilityAccountReadModel(
     id: 'credit-$accountId',
     accountId: accountId,
     kind: CreditLiabilityAccountKind.credit,
@@ -243,8 +243,8 @@ CreditLiabilityAccount _creditLiabilityAccount(String accountId) {
   );
 }
 
-InstallmentContract _contract() {
-  return InstallmentContract(
+InstallmentContractReadModel _contract() {
+  return InstallmentContractReadModel(
     id: 'contract-1',
     liabilityAccountId: 'card',
     sourceType: InstallmentSourceType.billConversion,

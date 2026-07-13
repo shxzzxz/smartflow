@@ -589,9 +589,9 @@ Account _account(String id, AccountType type) {
   return Account(id: id, name: id, type: type, balance: Money.zero());
 }
 
-credit.InstallmentContract _contract() {
+credit_query.InstallmentContractReadModel _contract() {
   final now = DateTime(2026);
-  return credit.InstallmentContract(
+  return credit_query.InstallmentContractReadModel(
     id: 'contract',
     liabilityAccountId: 'loan',
     disbursementAccountId: 'cash',
@@ -609,9 +609,9 @@ credit.InstallmentContract _contract() {
   );
 }
 
-credit.InstallmentSchedule _schedule() {
+credit_query.InstallmentScheduleReadModel _schedule() {
   final now = DateTime(2026);
-  return credit.InstallmentSchedule(
+  return credit_query.InstallmentScheduleReadModel(
     id: 'schedule',
     contractId: 'contract',
     periodNo: 1,
@@ -755,7 +755,7 @@ credit_query.BillDetailReadModel _openBillDetailWithInstallment() {
 
 credit_query.CreditAccountOverviewReadModel _creditOverview() {
   return credit_query.CreditAccountOverviewReadModel(
-    creditAccount: credit_query.CreditLiabilityAccount(
+    creditAccount: credit_query.CreditLiabilityAccountReadModel(
       id: 'credit-extension',
       accountId: 'loan',
       kind: credit_query.CreditLiabilityAccountKind.credit,

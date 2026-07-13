@@ -95,7 +95,7 @@ class _BillConversionInstallmentFormPageState
       appBar: AppBar(title: const Text('账单分期')),
       body: switch (asyncState) {
         AsyncData(value: final state) => _buildState(provider, state),
-        AsyncError(:final error) => Center(child: Text('加载失败：$error')),
+        AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );

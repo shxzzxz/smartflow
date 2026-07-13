@@ -3,14 +3,16 @@ import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
+import 'installment_read_models.dart';
+
 abstract interface class InstallmentQueryService {
-  Future<List<InstallmentContract>> listContractsByLiabilityAccount(
+  Future<List<InstallmentContractReadModel>> listContractsByLiabilityAccount(
     String liabilityAccountId,
   );
 
-  Future<InstallmentContract?> findContract(String contractId);
+  Future<InstallmentContractReadModel?> findContract(String contractId);
 
-  Future<List<InstallmentSchedule>> listSchedules(String contractId);
+  Future<List<InstallmentScheduleReadModel>> listSchedules(String contractId);
 
   /// 该负债账户上所有 active 分期合同的未还本金合计（minor units）。
   Future<int> unpaidInstallmentPrincipalMinor(String liabilityAccountId);
@@ -23,20 +25,27 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
   final InstallmentRepository _repository;
 
   @override
-  Future<List<InstallmentContract>> listContractsByLiabilityAccount(
+  Future<List<InstallmentContractReadModel>> listContractsByLiabilityAccount(
     String liabilityAccountId,
-  ) {
-    return _repository.listContractsByLiabilityAccount(liabilityAccountId);
+  ) async {
+    final values = await _repository.listContractsByLiabilityAccount(
+      liabilityAccountId,
+    );
+    return values.map(_contractReadModel).toList();
   }
 
   @override
-  Future<InstallmentContract?> findContract(String contractId) {
-    return _repository.findContract(contractId);
+  Future<InstallmentContractReadModel?> findContract(String contractId) async {
+    final value = await _repository.findContract(contractId);
+    return value == null ? null : _contractReadModel(value);
   }
 
   @override
-  Future<List<InstallmentSchedule>> listSchedules(String contractId) {
-    return _repository.listSchedules(contractId);
+  Future<List<InstallmentScheduleReadModel>> listSchedules(
+    String contractId,
+  ) async {
+    final values = await _repository.listSchedules(contractId);
+    return values.map(_scheduleReadModel).toList();
   }
 
   @override
@@ -60,5 +69,44 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
           );
     }
     return sum;
+  }
+
+  InstallmentContractReadModel _contractReadModel(InstallmentContract value) {
+    return InstallmentContractReadModel(
+      id: value.id,
+      liabilityAccountId: value.liabilityAccountId,
+      sourceType: value.sourceType,
+      disbursementAccountId: value.disbursementAccountId,
+      disbursementTransactionId: value.disbursementTransactionId,
+      sourceRepaymentId: value.sourceRepaymentId,
+      principal: value.principal,
+      totalPeriods: value.totalPeriods,
+      borrowingDate: value.borrowingDate,
+      firstRepaymentDate: value.firstRepaymentDate,
+      lastRepaymentDate: value.lastRepaymentDate,
+      repaymentMethod: value.repaymentMethod,
+      interestRatePeriod: value.interestRatePeriod,
+      interestRatePpm: value.interestRatePpm,
+      interestAccrualMethod: value.interestAccrualMethod,
+      totalFeeMinor: value.totalFeeMinor,
+      status: value.status,
+      note: value.note,
+      createdAt: value.createdAt,
+    );
+  }
+
+  InstallmentScheduleReadModel _scheduleReadModel(InstallmentSchedule value) {
+    return InstallmentScheduleReadModel(
+      id: value.id,
+      contractId: value.contractId,
+      periodNo: value.periodNo,
+      expectedRepaymentDate: value.expectedRepaymentDate,
+      expectedPrincipal: value.expectedPrincipal,
+      expectedInterest: value.expectedInterest,
+      expectedFee: value.expectedFee,
+      status: value.status,
+      note: value.note,
+      createdAt: value.createdAt,
+    );
   }
 }
