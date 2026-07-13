@@ -1,10 +1,32 @@
 import '../../../core/money/money.dart';
 import '../../../core/error/app_exception.dart';
+import '../../../core/patch/patch.dart';
 import '../valobj/credit_error_code.dart';
 import '../valobj/installment_enums.dart';
+import '../service/settlement/settlement_judgement_service.dart';
+import '../service/installment/installment_financial_terms_policy.dart';
 import 'installment_schedule.dart';
 
+class InstallmentScheduleRevision {
+  const InstallmentScheduleRevision({
+    required this.periodNo,
+    this.expectedPrincipal,
+    this.expectedInterest,
+    this.expectedFee,
+    this.expectedRepaymentDate,
+  });
+
+  final int periodNo;
+  final Money? expectedPrincipal;
+  final Money? expectedInterest;
+  final Money? expectedFee;
+  final DateTime? expectedRepaymentDate;
+}
+
 class InstallmentContract {
+  static const _settlement = SettlementJudgementService();
+  static const _financialTerms = InstallmentFinancialTermsPolicy();
+
   InstallmentContract({
     required this.id,
     required this.liabilityAccountId,
@@ -68,13 +90,60 @@ class InstallmentContract {
     DateTime? lastRepaymentDate,
     DateTime? borrowingDate,
     InstallmentRepaymentMethod? repaymentMethod,
-    InterestRatePeriod? interestRatePeriod,
-    int? interestRatePpm,
+    Patch<InterestRatePeriod>? interestRatePeriod,
+    Patch<int>? interestRatePpm,
     InterestAccrualMethod? interestAccrualMethod,
     int? totalFeeMinor,
-    String? note,
+    Patch<String>? note,
     String? disbursementAccountId,
   }) {
+    ensureEditable();
+    if (disbursementAccountId != null &&
+        sourceType != InstallmentSourceType.disbursement) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: 'Only disbursement contracts carry a disbursement account.',
+      );
+    }
+    if (disbursementAccountId != null && disbursementTransactionId == null) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message:
+            'A contract without a disbursement transaction cannot carry a disbursement account.',
+      );
+    }
+    final effectiveTotalPeriods = totalPeriods ?? this.totalPeriods;
+    final effectiveFirstRepaymentDate =
+        firstRepaymentDate ?? this.firstRepaymentDate;
+    final effectiveLastRepaymentDate =
+        lastRepaymentDate ?? this.lastRepaymentDate;
+    final effectiveInterestRatePeriod = _patchedValue(
+      this.interestRatePeriod,
+      interestRatePeriod,
+    );
+    final effectiveInterestRatePpm = _patchedValue(
+      this.interestRatePpm,
+      interestRatePpm,
+    );
+    final effectiveTotalFeeMinor = totalFeeMinor ?? this.totalFeeMinor;
+    if (effectiveTotalPeriods <= 0) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: 'Total periods must be greater than zero.',
+      );
+    }
+    if (effectiveTotalPeriods > 1 &&
+        !effectiveLastRepaymentDate.isAfter(effectiveFirstRepaymentDate)) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: 'Last repayment date must be after first.',
+      );
+    }
+    _financialTerms.validate(
+      totalFeeMinor: effectiveTotalFeeMinor,
+      interestRatePeriod: effectiveInterestRatePeriod,
+      interestRatePpm: effectiveInterestRatePpm,
+    );
     if (totalPeriods != null) this.totalPeriods = totalPeriods;
     if (firstRepaymentDate != null) {
       this.firstRepaymentDate = firstRepaymentDate;
@@ -83,17 +152,38 @@ class InstallmentContract {
     if (borrowingDate != null) this.borrowingDate = borrowingDate;
     if (repaymentMethod != null) this.repaymentMethod = repaymentMethod;
     if (interestRatePeriod != null) {
-      this.interestRatePeriod = interestRatePeriod;
+      this.interestRatePeriod = switch (interestRatePeriod) {
+        PatchSet<InterestRatePeriod>(:final value) => value,
+        PatchClear<InterestRatePeriod>() => null,
+      };
     }
-    if (interestRatePpm != null) this.interestRatePpm = interestRatePpm;
+    if (interestRatePpm != null) {
+      this.interestRatePpm = switch (interestRatePpm) {
+        PatchSet<int>(:final value) => value,
+        PatchClear<int>() => null,
+      };
+    }
     if (interestAccrualMethod != null) {
       this.interestAccrualMethod = interestAccrualMethod;
     }
     if (totalFeeMinor != null) this.totalFeeMinor = totalFeeMinor;
-    if (note != null) this.note = note;
+    if (note != null) {
+      this.note = switch (note) {
+        PatchSet<String>(:final value) => value,
+        PatchClear<String>() => null,
+      };
+    }
     if (disbursementAccountId != null) {
       this.disbursementAccountId = disbursementAccountId;
     }
+  }
+
+  T? _patchedValue<T>(T? current, Patch<T>? patch) {
+    return switch (patch) {
+      null => current,
+      PatchSet<T>(:final value) => value,
+      PatchClear<T>() => null,
+    };
   }
 
   void markSchedulePaid(
@@ -105,28 +195,70 @@ class InstallmentContract {
     refreshStatusFromSchedules(schedules);
   }
 
-  void refreshStatusFromSchedules(List<InstallmentSchedule> schedules) {
-    if (schedules.isEmpty) return;
+  void skipSchedule(
+    InstallmentSchedule schedule, {
+    required List<InstallmentSchedule> schedules,
+  }) {
+    ensureEditable();
+    _ensureScheduleBelongsToContract(schedule);
+    schedule.skip();
+    refreshStatusFromSchedules(schedules);
+  }
+
+  void restoreSchedule(
+    InstallmentSchedule schedule, {
+    required List<InstallmentSchedule> schedules,
+  }) {
+    _ensureScheduleBelongsToContract(schedule);
+    schedule.restore();
+    refreshStatusFromSchedules(schedules);
+  }
+
+  void reviseSchedules({
+    required List<InstallmentSchedule> schedules,
+    required List<InstallmentScheduleRevision> revisions,
+  }) {
+    ensureEditable();
     for (final schedule in schedules) {
       _ensureScheduleBelongsToContract(schedule);
     }
-    final hasOutstanding = schedules.any(
-      (schedule) =>
-          schedule.status == InstallmentScheduleStatus.pending ||
-          schedule.status == InstallmentScheduleStatus.partiallyPaid,
-    );
-    if (hasOutstanding) {
-      _status = InstallmentContractStatus.active;
-      return;
+    final byPeriod = {
+      for (final schedule in schedules) schedule.periodNo: schedule,
+    };
+    for (final revision in revisions) {
+      final target = byPeriod[revision.periodNo];
+      if (target == null) {
+        throw BusinessException(
+          CreditErrorCode.scheduleNotFound,
+          message: 'Schedule period does not belong to the contract.',
+        );
+      }
+      if (target.status != InstallmentScheduleStatus.pending) {
+        throw BusinessException(
+          CreditErrorCode.scheduleNotPending,
+          message: 'Only pending schedules can be edited.',
+        );
+      }
     }
-    final allDone = schedules.every(
-      (schedule) =>
-          schedule.status == InstallmentScheduleStatus.paid ||
-          schedule.status == InstallmentScheduleStatus.skipped,
-    );
-    if (allDone) {
-      _status = InstallmentContractStatus.settled;
+    for (final revision in revisions) {
+      final target = byPeriod[revision.periodNo]!;
+      target.reviseExpectation(
+        expectedPrincipal: revision.expectedPrincipal,
+        expectedInterest: revision.expectedInterest,
+        expectedFee: revision.expectedFee,
+        expectedRepaymentDate: revision.expectedRepaymentDate,
+      );
     }
+  }
+
+  void refreshStatusFromSchedules(List<InstallmentSchedule> schedules) {
+    for (final schedule in schedules) {
+      _ensureScheduleBelongsToContract(schedule);
+    }
+    _status = _settlement.projectContractStatus(
+      current: _status,
+      scheduleStatuses: schedules.map((schedule) => schedule.status),
+    );
   }
 
   void _ensureScheduleBelongsToContract(InstallmentSchedule schedule) {
@@ -134,6 +266,15 @@ class InstallmentContract {
       throw BusinessException(
         CreditErrorCode.scheduleNotFound,
         message: 'Schedule does not belong to the contract.',
+      );
+    }
+  }
+
+  void ensureEditable() {
+    if (_status != InstallmentContractStatus.active) {
+      throw BusinessException(
+        CreditErrorCode.contractNotActive,
+        message: 'Only active contracts can be edited.',
       );
     }
   }

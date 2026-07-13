@@ -1,12 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
-import 'package:smartflow/application/credit/credit_port_api.dart';
+import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
@@ -170,20 +169,36 @@ void main() {
           ),
         ]);
 
+        final command = RecalculateContractSchedulesCommand(
+          contractId: 'contract-1',
+          terms: ContractRecalculationTerms(
+            totalPeriods: 3,
+            firstRepaymentDate: DateTime(2026, 7, 10),
+            lastRepaymentDate: DateTime(2026, 10, 10),
+            repaymentMethod: InstallmentRepaymentMethod.flatFee,
+            interestRatePeriod: null,
+            interestRatePpm: null,
+            interestAccrualMethod: InterestAccrualMethod.monthly,
+            totalFeeMinor: 500,
+          ),
+        );
         final preview = await fixture.service.previewContractRecalculation(
-          const RecalculateContractSchedulesCommand(contractId: 'contract-1'),
+          command,
         );
-        await fixture.service.recalculateContractSchedules(
-          const RecalculateContractSchedulesCommand(contractId: 'contract-1'),
-        );
+        await fixture.service.recalculateContractSchedules(command);
 
         expect(preview.map((row) => row.expectedRepaymentDate), [
           DateTime(2026, 7, 10),
           DateTime(2026, 9, 10),
         ]);
         final schedules = fixture.installments.schedulesFor('contract-1');
-        expect(schedules[0].expectedPrincipal, const Money(minorUnits: 5000));
-        expect(schedules[0].expectedFee, const Money(minorUnits: 150));
+        expect(preview.map((row) => row.expectedPrincipal.minorUnits), [
+          4950,
+          4951,
+        ]);
+        expect(preview.map((row) => row.expectedFee.minorUnits), [250, 250]);
+        expect(schedules[0].expectedPrincipal, preview[0].expectedPrincipal);
+        expect(schedules[0].expectedFee, preview[0].expectedFee);
         expect(schedules[0].expectedRepaymentDate, DateTime(2026, 7, 10));
         expect(schedules[2].expectedPrincipal, const Money(minorUnits: 99));
         expect(schedules[2].status, InstallmentScheduleStatus.skipped);
@@ -223,6 +238,61 @@ void main() {
         ),
       );
     });
+
+    test(
+      'schedule patch batch is rejected without partial persistence',
+      () async {
+        final fixture = _Fixture();
+        fixture.installments.putContract(_contract(id: 'contract-1'));
+        fixture.installments.putSchedules('contract-1', [
+          _schedule(
+            id: 'schedule-1',
+            contractId: 'contract-1',
+            periodNo: 1,
+            principal: const Money(minorUnits: 5000),
+          ),
+          _schedule(
+            id: 'schedule-2',
+            contractId: 'contract-1',
+            periodNo: 2,
+            principal: const Money(minorUnits: 5000),
+            status: InstallmentScheduleStatus.skipped,
+          ),
+        ]);
+
+        await expectLater(
+          fixture.service.updateContract(
+            const UpdateContractCommand(
+              contractId: 'contract-1',
+              schedulePatches: [
+                SchedulePendingPatch(
+                  periodNo: 1,
+                  expectedPrincipal: Money(minorUnits: 6000),
+                ),
+                SchedulePendingPatch(
+                  periodNo: 2,
+                  expectedPrincipal: Money(minorUnits: 4000),
+                ),
+              ],
+            ),
+          ),
+          throwsA(
+            isA<BusinessException>().having(
+              (exception) => exception.code,
+              'code',
+              CreditErrorCode.scheduleNotPending.code,
+            ),
+          ),
+        );
+        expect(
+          fixture.installments
+              .schedulesFor('contract-1')
+              .first
+              .expectedPrincipal,
+          const Money(minorUnits: 5000),
+        );
+      },
+    );
 
     test('skips and restores pending schedules', () async {
       final fixture = _Fixture();
@@ -575,108 +645,21 @@ class _FakeInstallmentRepository implements InstallmentRepository {
   }
 
   @override
-  Future<void> updateContract(
-    String contractId,
-    InstallmentContractPatch patch,
-  ) async {
-    final current = contracts[contractId]!;
-    contracts[contractId] = InstallmentContract(
-      id: current.id,
-      liabilityAccountId: current.liabilityAccountId,
-      sourceType: current.sourceType,
-      disbursementAccountId:
-          patch.disbursementAccountId ?? current.disbursementAccountId,
-      disbursementTransactionId: current.disbursementTransactionId,
-      principal: current.principal,
-      totalPeriods: patch.totalPeriods ?? current.totalPeriods,
-      borrowingDate: patch.borrowingDate ?? current.borrowingDate,
-      firstRepaymentDate:
-          patch.firstRepaymentDate ?? current.firstRepaymentDate,
-      lastRepaymentDate: patch.lastRepaymentDate ?? current.lastRepaymentDate,
-      repaymentMethod: patch.repaymentMethod ?? current.repaymentMethod,
-      interestRatePeriod: patch.interestRatePeriod.applyTo(
-        current.interestRatePeriod,
-      ),
-      interestRatePpm: patch.interestRatePpm.applyTo(current.interestRatePpm),
-      interestAccrualMethod:
-          patch.interestAccrualMethod ?? current.interestAccrualMethod,
-      totalFeeMinor: patch.totalFeeMinor ?? current.totalFeeMinor,
-      status: current.status,
-      note: patch.note.applyTo(current.note),
-      createdAt: current.createdAt,
-    );
-  }
-
-  @override
-  Future<void> replaceSchedules(
-    String contractId,
+  Future<void> insertAggregate(
+    InstallmentContract contract,
     List<InstallmentSchedule> schedules,
   ) async {
-    _schedules[contractId] = [...schedules];
+    contracts[contract.id] = contract;
+    _schedules[contract.id] = [...schedules];
   }
 
   @override
-  Future<void> appendSchedules(
-    String contractId,
+  Future<void> saveAggregate(
+    InstallmentContract contract,
     List<InstallmentSchedule> schedules,
   ) async {
-    _schedules.putIfAbsent(contractId, () => []).addAll(schedules);
-  }
-
-  @override
-  Future<void> updateSchedule(
-    String scheduleId,
-    InstallmentSchedulePatch patch,
-  ) async {
-    for (final entry in _schedules.entries) {
-      final index = entry.value.indexWhere(
-        (schedule) => schedule.id == scheduleId,
-      );
-      if (index == -1) continue;
-      final current = entry.value[index];
-      entry.value[index] = InstallmentSchedule(
-        id: current.id,
-        contractId: current.contractId,
-        periodNo: current.periodNo,
-        expectedRepaymentDate:
-            patch.expectedRepaymentDate ?? current.expectedRepaymentDate,
-        expectedPrincipal: patch.expectedPrincipal ?? current.expectedPrincipal,
-        expectedInterest: patch.expectedInterest ?? current.expectedInterest,
-        expectedFee: patch.expectedFee ?? current.expectedFee,
-        status: patch.status ?? current.status,
-        note: patch.note.applyTo(current.note),
-        createdAt: current.createdAt,
-      );
-      return;
-    }
-  }
-
-  @override
-  Future<void> updateContractStatus(
-    String contractId,
-    InstallmentContractStatus status,
-  ) async {
-    final current = contracts[contractId]!;
-    contracts[contractId] = InstallmentContract(
-      id: current.id,
-      liabilityAccountId: current.liabilityAccountId,
-      sourceType: current.sourceType,
-      disbursementAccountId: current.disbursementAccountId,
-      disbursementTransactionId: current.disbursementTransactionId,
-      principal: current.principal,
-      totalPeriods: current.totalPeriods,
-      borrowingDate: current.borrowingDate,
-      firstRepaymentDate: current.firstRepaymentDate,
-      lastRepaymentDate: current.lastRepaymentDate,
-      repaymentMethod: current.repaymentMethod,
-      interestRatePeriod: current.interestRatePeriod,
-      interestRatePpm: current.interestRatePpm,
-      interestAccrualMethod: current.interestAccrualMethod,
-      totalFeeMinor: current.totalFeeMinor,
-      status: status,
-      note: current.note,
-      createdAt: current.createdAt,
-    );
+    contracts[contract.id] = contract;
+    _schedules[contract.id] = [...schedules];
   }
 
   @override

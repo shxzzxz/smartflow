@@ -3,32 +3,15 @@ import 'dart:math' as math;
 import '../../../../core/money/money.dart';
 import '../../entity/installment_contract.dart';
 import '../../entity/installment_schedule.dart';
-import '../../valobj/installment_enums.dart';
-import '../../valobj/repayment_enums.dart';
 
-/// 合同级还款的轻量查询快照。
-class RepaymentCashflow {
-  const RepaymentCashflow({
-    required this.id,
-    required this.repaymentType,
-    required this.occurredAt,
-    required this.principal,
-    required this.interest,
-    required this.fee,
-    this.transactionId,
-  });
-
-  final String id;
-  final String? transactionId;
-  final RepaymentType repaymentType;
-  final DateTime occurredAt;
-  final Money principal;
-  final Money interest;
-  final Money fee;
+enum ContractMetricsUnavailableReason {
+  principalNotConserved,
+  insufficientCashflows,
+  noRateSolution,
 }
 
 class ContractMetrics {
-  const ContractMetrics({
+  const ContractMetrics.available({
     required this.monthlyIrr,
     required this.nominalApr,
     required this.effectiveApr,
@@ -36,24 +19,37 @@ class ContractMetrics {
     required this.totalInterest,
     required this.totalFee,
     required this.converged,
-  });
+  }) : unavailableReason = null;
+
+  const ContractMetrics.unavailable({
+    required this.unavailableReason,
+    required this.totalRepayment,
+    required this.totalInterest,
+    required this.totalFee,
+  }) : monthlyIrr = null,
+       nominalApr = null,
+       effectiveApr = null,
+       converged = false;
 
   /// 月 IRR（小数；0.01 = 1%）。
-  final double monthlyIrr;
+  final double? monthlyIrr;
 
   /// 名义年化利率 = 月IRR × 12。
-  final double nominalApr;
+  final double? nominalApr;
 
   /// 有效年化利率 EAR = (1+月IRR)^12 − 1。
-  final double effectiveApr;
+  final double? effectiveApr;
 
   final Money totalRepayment;
   final Money totalInterest;
   final Money totalFee;
 
-  /// XIRR 是否在迭代上限内收敛。
-  /// 收敛失败时 monthlyIrr/nominalApr/effectiveApr 仍是兜底 bisection 的最佳估计。
+  /// 可计算结果的 XIRR 已收敛；不可计算结果固定为 false。
   final bool converged;
+
+  final ContractMetricsUnavailableReason? unavailableReason;
+
+  bool get isAvailable => unavailableReason == null;
 }
 
 class InstallmentMetricsCalculator {
@@ -62,34 +58,58 @@ class InstallmentMetricsCalculator {
   ContractMetrics compute({
     required InstallmentContract contract,
     required List<InstallmentSchedule> schedules,
-    required List<RepaymentCashflow> repayments,
   }) {
-    final flows = _buildCashflows(
-      contract: contract,
-      schedules: schedules,
-      repayments: repayments,
-    );
-
-    // 合同口径：当前非跳过计划 + 合同级提前还款。
     var totalRepayMinor = 0;
     var totalInterestMinor = 0;
     var totalFeeMinor = 0;
-    final breakdown = _buildBreakdown(
-      schedules: schedules,
-      repayments: repayments,
-    );
+    final breakdown = _buildBreakdown(schedules: schedules);
     for (final b in breakdown) {
       totalRepayMinor += b.principal + b.interest + b.fee;
       totalInterestMinor += b.interest;
       totalFeeMinor += b.fee;
     }
 
+    final scheduledPrincipalMinor = schedules.fold<int>(
+      0,
+      (sum, schedule) => sum + schedule.expectedPrincipal.minorUnits,
+    );
+    if (scheduledPrincipalMinor != contract.principal.minorUnits) {
+      return ContractMetrics.unavailable(
+        unavailableReason:
+            ContractMetricsUnavailableReason.principalNotConserved,
+        totalRepayment: Money(minorUnits: totalRepayMinor),
+        totalInterest: Money(minorUnits: totalInterestMinor),
+        totalFee: Money(minorUnits: totalFeeMinor),
+      );
+    }
+
+    final flows = _buildCashflows(contract: contract, schedules: schedules);
+    final hasPositive = flows.any((flow) => flow.amount > 0);
+    final hasNegative = flows.any((flow) => flow.amount < 0);
+    if (flows.length < 2 || !hasPositive || !hasNegative) {
+      return ContractMetrics.unavailable(
+        unavailableReason:
+            ContractMetricsUnavailableReason.insufficientCashflows,
+        totalRepayment: Money(minorUnits: totalRepayMinor),
+        totalInterest: Money(minorUnits: totalInterestMinor),
+        totalFee: Money(minorUnits: totalFeeMinor),
+      );
+    }
+
     final xirrResult = _xirr(flows);
+    if (!xirrResult.converged) {
+      return ContractMetrics.unavailable(
+        unavailableReason: ContractMetricsUnavailableReason.noRateSolution,
+        totalRepayment: Money(minorUnits: totalRepayMinor),
+        totalInterest: Money(minorUnits: totalInterestMinor),
+        totalFee: Money(minorUnits: totalFeeMinor),
+      );
+    }
     final ear = xirrResult.rate;
     final monthlyIrr = math.pow(1 + ear, 1 / 12) - 1;
     final nominalApr = monthlyIrr * 12;
 
-    return ContractMetrics(
+    return ContractMetrics.available(
       monthlyIrr: monthlyIrr.toDouble(),
       nominalApr: nominalApr.toDouble(),
       effectiveApr: ear,
@@ -105,7 +125,6 @@ class InstallmentMetricsCalculator {
   List<_DatedCashflow> _buildCashflows({
     required InstallmentContract contract,
     required List<InstallmentSchedule> schedules,
-    required List<RepaymentCashflow> repayments,
   }) {
     final flows = <_DatedCashflow>[];
     // t0: 借款流入
@@ -115,10 +134,7 @@ class InstallmentMetricsCalculator {
         amount: contract.principal.minorUnits.toDouble(),
       ),
     );
-    final breakdown = _buildBreakdown(
-      schedules: schedules,
-      repayments: repayments,
-    );
+    final breakdown = _buildBreakdown(schedules: schedules);
     for (final b in breakdown) {
       final outflow = -(b.principal + b.interest + b.fee).toDouble();
       if (outflow == 0) continue;
@@ -130,12 +146,10 @@ class InstallmentMetricsCalculator {
 
   List<_Breakdown> _buildBreakdown({
     required List<InstallmentSchedule> schedules,
-    required List<RepaymentCashflow> repayments,
   }) {
     final out = <_Breakdown>[];
 
     for (final s in schedules) {
-      if (s.status == InstallmentScheduleStatus.skipped) continue;
       out.add(
         _Breakdown(
           date: s.expectedRepaymentDate,
@@ -146,19 +160,6 @@ class InstallmentMetricsCalculator {
       );
     }
 
-    // 提前还款不属于计划行，按合同级还款记录补入当前合同现金流。
-    for (final r in repayments) {
-      if (r.repaymentType == RepaymentType.prepayment) {
-        out.add(
-          _Breakdown(
-            date: r.occurredAt,
-            principal: r.principal.minorUnits,
-            interest: r.interest.minorUnits,
-            fee: r.fee.minorUnits,
-          ),
-        );
-      }
-    }
     return out;
   }
 

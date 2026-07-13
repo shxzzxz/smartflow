@@ -3,7 +3,7 @@ import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
-import 'package:smartflow/application/credit/port/credit_ledger_port.dart';
+import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
@@ -12,18 +12,17 @@ import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/service/debt/credit_debt_bucket_service.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_lifecycle_service.dart';
-import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
+import 'package:smartflow/domain/credit/service/installment/installment_origination_service.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_prepayment_recalculator.dart';
-import 'package:smartflow/domain/credit/service/installment/repayment_dates_strategy.dart';
 import 'package:smartflow/domain/credit/service/repayment/repayment_policy_service.dart'
     as domain_repayment;
-import 'package:smartflow/domain/credit/service/repayment/repayment_settlement_service.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 import 'repayment_command.dart';
+import '../../settlement/credit_settlement_coordinator.dart';
 
 abstract interface class RepaymentAppService {
   Future<CreditLedgerPostedTransaction> createLiabilityRepayment(
@@ -69,7 +68,8 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     required CreditLedgerPort ledger,
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
-    InstallmentPlanEngine planEngine = const InstallmentPlanEngine(),
+    InstallmentOriginationService origination =
+        const InstallmentOriginationService(),
     CreditDebtBucketService debtBuckets = const CreditDebtBucketService(),
     InstallmentLifecycleService installmentLifecycle =
         const InstallmentLifecycleService(),
@@ -77,20 +77,19 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         const domain_repayment.RepaymentPolicyService(),
     InstallmentPrepaymentRecalculator prepaymentRecalculator =
         const InstallmentPrepaymentRecalculator(),
-    RepaymentSettlementService? repaymentSettlement,
+    CreditSettlementCoordinator? repaymentSettlement,
   }) : _bills = bills,
        _repayments = repayments,
        _installments = installments,
        _ledger = ledger,
        _transactionRunner = transactionRunner,
        _idGenerator = idGenerator,
-       _planEngine = planEngine,
+       _origination = origination,
        _debtBuckets = debtBuckets,
-       _installmentLifecycle = installmentLifecycle,
        _repaymentPolicy = repaymentPolicy,
        _repaymentSettlement =
            repaymentSettlement ??
-           RepaymentSettlementService(
+           CreditSettlementCoordinator(
              bills: bills,
              repayments: repayments,
              installments: installments,
@@ -104,11 +103,10 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
   final CreditLedgerPort _ledger;
   final TransactionRunner _transactionRunner;
   final IdGenerator _idGenerator;
-  final InstallmentPlanEngine _planEngine;
+  final InstallmentOriginationService _origination;
   final CreditDebtBucketService _debtBuckets;
-  final InstallmentLifecycleService _installmentLifecycle;
   final domain_repayment.RepaymentPolicyService _repaymentPolicy;
-  final RepaymentSettlementService _repaymentSettlement;
+  final CreditSettlementCoordinator _repaymentSettlement;
 
   @override
   Future<CreditLedgerPostedTransaction> createLiabilityRepayment(
@@ -404,11 +402,10 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         ],
       )..validateAgainstLedgerTransaction(total);
       await _repayments.saveRepayment(repayment);
-      await _repaymentSettlement.recalculatePendingSchedulesAfter(
-        contract.id,
-        command.transactionInfo?.occurredAt ?? DateTime.now(),
-      );
-      await _repaymentSettlement.refreshContractStatus(contract.id);
+      if (total.principal.minorUnits > 0) {
+        await _repaymentSettlement.recalculateAllPendingSchedules(contract.id);
+        await _repaymentSettlement.refreshContractStatus(contract.id);
+      }
       return CreateRepaymentResult(
         repaymentId: repaymentId,
         transactionId: post?.transactionId,
@@ -537,13 +534,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         case RepaymentType.installment:
           await _deleteBillConversionInstallmentRepayment(repayment);
         case RepaymentType.prepayment:
-          await _deleteContractPrepaymentRepayment(
-            repayment,
-            occurredAt:
-                transactionDetail?.occurredAt ??
-                repayment.createdAt ??
-                DateTime.fromMillisecondsSinceEpoch(0),
-          );
+          await _deleteContractPrepaymentRepayment(repayment);
         case RepaymentType.unattributed:
           await _repayments.deleteRepayment(repayment.id);
       }
@@ -607,20 +598,18 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     }
   }
 
-  Future<void> _deleteContractPrepaymentRepayment(
-    Repayment repayment, {
-    required DateTime occurredAt,
-  }) async {
+  Future<void> _deleteContractPrepaymentRepayment(Repayment repayment) async {
     final contract = await _installments.findContract(repayment.targetId);
     if (contract == null) {
       throw BusinessException(CreditErrorCode.contractNotFound);
     }
+    final changesPrincipal =
+        repayment.totalAllocated().principal.minorUnits > 0;
     await _repayments.deleteRepayment(repayment.id);
-    await _repaymentSettlement.recalculatePendingSchedulesAfter(
-      contract.id,
-      occurredAt,
-    );
-    await _repaymentSettlement.refreshContractStatus(contract.id);
+    if (changesPrincipal) {
+      await _repaymentSettlement.recalculateAllPendingSchedules(contract.id);
+      await _repaymentSettlement.refreshContractStatus(contract.id);
+    }
   }
 
   Future<InstallmentContract?> _findBillConversionContract(
@@ -689,65 +678,30 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     required Money principal,
     required CreateBillConversionInstallmentRepaymentCommand command,
   }) async {
-    final borrowingDate = command.borrowingDate ?? _defaultBorrowingDate(bill);
-    final firstDate =
-        command.firstRepaymentDate ?? _addMonths(borrowingDate, 1);
-    final lastDate =
-        command.lastRepaymentDate ??
-        _installmentLifecycle.defaultLastDate(firstDate, command.totalPeriods);
-    _repaymentPolicy.validateInstallmentTerms(
-      principal: principal,
-      totalPeriods: command.totalPeriods,
-      firstRepaymentDate: firstDate,
-      lastRepaymentDate: lastDate,
-      interestRatePeriod: command.interestRatePeriod,
-      interestRatePpm: command.interestRatePpm,
-      totalFeeMinor: command.totalFeeMinor,
-      equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
-    );
-    final entries = _planEngine.generate(
-      principal: principal,
-      borrowingDate: borrowingDate,
-      firstRepaymentDate: firstDate,
-      lastRepaymentDate: lastDate,
-      totalPeriods: command.totalPeriods,
-      method: command.repaymentMethod,
-      accrualMethod: command.interestAccrualMethod,
-      ratePeriod: command.interestRatePeriod,
-      ratePpm: command.interestRatePpm,
-      totalFeeMinor: command.totalFeeMinor,
-      equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
-    );
     final now = DateTime.now();
     final contractId = _idGenerator.newId();
-    final contract = InstallmentContract(
-      id: contractId,
-      liabilityAccountId: bill.accountId,
-      sourceType: InstallmentSourceType.billConversion,
+    final aggregate = _origination.originateBillConversion(
+      contractId: contractId,
+      bill: bill,
       sourceRepaymentId: repaymentId,
       principal: principal,
       totalPeriods: command.totalPeriods,
-      borrowingDate: borrowingDate,
-      firstRepaymentDate: firstDate,
-      lastRepaymentDate: lastDate,
+      borrowingDate: command.borrowingDate,
+      firstRepaymentDate: command.firstRepaymentDate,
+      lastRepaymentDate: command.lastRepaymentDate,
       repaymentMethod: command.repaymentMethod,
       interestRatePeriod: command.interestRatePeriod,
       interestRatePpm: command.interestRatePpm,
       interestAccrualMethod: command.interestAccrualMethod,
       totalFeeMinor: command.totalFeeMinor,
-      status: InstallmentContractStatus.active,
+      equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
       note: command.note,
       createdAt: now,
+      newScheduleId: _idGenerator.newId,
     );
-    await _installments.saveContract(contract);
-    await _installments.replaceSchedules(
-      contractId,
-      _installmentLifecycle.schedulesFromEntries(
-        contractId: contractId,
-        entries: entries,
-        createdAt: now,
-        newId: _idGenerator.newId,
-      ),
+    await _installments.insertAggregate(
+      aggregate.contract,
+      aggregate.schedules,
     );
     return contractId;
   }
@@ -882,20 +836,5 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       }
     }
     return null;
-  }
-
-  DateTime _defaultBorrowingDate(Bill bill) {
-    final windowRepaymentDate = bill.window?.repaymentDate;
-    if (windowRepaymentDate != null) return windowRepaymentDate;
-    return bill.items
-        .map((item) => item.repaymentDate)
-        .reduce((a, b) => a.isAfter(b) ? a : b);
-  }
-
-  DateTime _addMonths(DateTime date, int months) {
-    return IntervalRepaymentDates(
-      firstDate: date,
-      count: months + 1,
-    ).getDates().last;
   }
 }

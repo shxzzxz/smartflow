@@ -1,45 +1,47 @@
-import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/domain/credit/entity/credit_liability_account.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
-import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
+import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 
 import 'credit_account_command.dart';
 
 abstract interface class CreditAccountAppService {
-  Future<Account> createAccount(CreateCreditLiabilityAccountCommand command);
+  Future<CreditLedgerAccountSnapshot> createAccount(
+    CreateCreditLiabilityAccountCommand command,
+  );
 
   Future<void> editAccount(EditCreditLiabilityAccountCommand command);
 }
 
 class CreditAccountAppServiceImpl implements CreditAccountAppService {
   const CreditAccountAppServiceImpl({
-    required AccountAppService accountAppService,
+    required CreditAccountLedgerPort ledger,
     required CreditAccountRepository creditAccounts,
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
-  }) : _accountAppService = accountAppService,
+  }) : _ledger = ledger,
        _creditAccounts = creditAccounts,
        _runner = transactionRunner,
        _idGenerator = idGenerator;
 
-  final AccountAppService _accountAppService;
+  final CreditAccountLedgerPort _ledger;
   final CreditAccountRepository _creditAccounts;
   final TransactionRunner _runner;
   final IdGenerator _idGenerator;
 
   @override
-  Future<Account> createAccount(CreateCreditLiabilityAccountCommand command) {
-    return _runner.run<Account>(() async {
-      final account = await _accountAppService.createAccount(
-        CreateAccountCommand(
+  Future<CreditLedgerAccountSnapshot> createAccount(
+    CreateCreditLiabilityAccountCommand command,
+  ) {
+    return _runner.run<CreditLedgerAccountSnapshot>(() async {
+      final account = await _ledger.createLiabilityAccount(
+        CreditLedgerCreateLiabilityAccountCommand(
           name: command.name,
-          type: AccountType.liability,
+          kind: command.kind,
           openingBalance: command.openingBalance,
-          profileKey: _profileKeyForKind(command.kind),
           iconKey: command.iconKey,
           note: command.note,
           sortOrder: command.sortOrder,
@@ -85,9 +87,9 @@ class CreditAccountAppServiceImpl implements CreditAccountAppService {
     current.updateParameters(patch);
 
     await _runner.run<void>(() async {
-      await _accountAppService.editAccount(
-        EditAccountCommand(
-          id: command.accountId,
+      await _ledger.editLiabilityAccount(
+        CreditLedgerEditLiabilityAccountCommand(
+          accountId: command.accountId,
           name: command.name,
           iconKey: command.iconKey,
           note: command.note,
@@ -105,11 +107,4 @@ class CreditAccountAppServiceImpl implements CreditAccountAppService {
       );
     });
   }
-}
-
-String _profileKeyForKind(CreditLiabilityAccountKind kind) {
-  return switch (kind) {
-    CreditLiabilityAccountKind.credit => 'credit.credit',
-    CreditLiabilityAccountKind.loan => 'credit.loan',
-  };
 }

@@ -112,7 +112,9 @@ class RepaymentPolicyService {
         message: 'Only active contracts allow contract-side repayment.',
       );
     }
-    validatePositiveCashRepayment(total);
+    if (total.hasNegativePart || total.cashPaid.minorUnits <= 0) {
+      throw BusinessException(CreditErrorCode.repaymentInvalidCommand);
+    }
   }
 
   void validateUnattributedRepayment({

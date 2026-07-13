@@ -5,7 +5,6 @@ import '../../entity/installment_schedule.dart';
 import '../../valobj/credit_error_code.dart';
 import '../../valobj/installment_enums.dart';
 import 'installment_plan_engine.dart';
-import 'repayment_dates_strategy.dart';
 
 class InstallmentScheduleRecalculation {
   const InstallmentScheduleRecalculation({
@@ -41,7 +40,8 @@ class InstallmentPrepaymentRecalculator {
     final fixed =
         schedules
             .where(
-              (schedule) => schedule.status == InstallmentScheduleStatus.paid,
+              (schedule) =>
+                  schedule.status != InstallmentScheduleStatus.pending,
             )
             .toList()
           ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
@@ -62,57 +62,6 @@ class InstallmentPrepaymentRecalculator {
     );
   }
 
-  List<InstallmentScheduleRecalculation> recalculateAfterPrepayment({
-    required InstallmentContract contract,
-    required List<InstallmentSchedule> schedules,
-    required DateTime occurredAt,
-    required int prepaymentPrincipalMinor,
-  }) {
-    final fixed =
-        schedules
-            .where(
-              (schedule) => schedule.status == InstallmentScheduleStatus.paid,
-            )
-            .followedBy(
-              schedules.where(
-                (schedule) =>
-                    schedule.status == InstallmentScheduleStatus.pending &&
-                    !schedule.expectedRepaymentDate.isAfter(occurredAt),
-              ),
-            )
-            .toList()
-          ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
-    final pending =
-        schedules
-            .where(
-              (schedule) =>
-                  schedule.status == InstallmentScheduleStatus.pending &&
-                  schedule.expectedRepaymentDate.isAfter(occurredAt),
-            )
-            .toList()
-          ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
-    return _recalculate(
-      contract: contract,
-      fixed: fixed,
-      pending: pending,
-      prepaymentPrincipalMinor: prepaymentPrincipalMinor,
-    );
-  }
-
-  List<InstallmentScheduleRecalculation> recalculatePendingAfter({
-    required InstallmentContract contract,
-    required List<InstallmentSchedule> schedules,
-    required DateTime occurredAt,
-    required int prepaymentPrincipalMinor,
-  }) {
-    return recalculateAfterPrepayment(
-      contract: contract,
-      schedules: schedules,
-      occurredAt: occurredAt,
-      prepaymentPrincipalMinor: prepaymentPrincipalMinor,
-    );
-  }
-
   List<InstallmentScheduleRecalculation> _recalculate({
     required InstallmentContract contract,
     required List<InstallmentSchedule> fixed,
@@ -120,6 +69,9 @@ class InstallmentPrepaymentRecalculator {
     required int prepaymentPrincipalMinor,
     int? equalInstallmentOverrideMinor,
   }) {
+    final timeline = [...fixed, ...pending]
+      ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
+    _validateTimeline(contract.borrowingDate, timeline);
     if (pending.isEmpty) return const [];
 
     final fixedPrincipalMinor = fixed.fold<int>(
@@ -142,18 +94,37 @@ class InstallmentPrepaymentRecalculator {
       (sum, schedule) => sum + schedule.expectedFee.minorUnits,
     );
     final remainingFeeMinor = contract.totalFeeMinor - fixedFeeMinor;
-    final anchorDate =
-        fixed.isEmpty
-            ? contract.borrowingDate
-            : fixed.last.expectedRepaymentDate;
+    final accrualStartByScheduleId = <String, DateTime>{};
+    var previousDate = contract.borrowingDate;
+    for (final schedule in timeline) {
+      accrualStartByScheduleId[schedule.id] = previousDate;
+      previousDate = schedule.expectedRepaymentDate;
+    }
+    final additionalOutstandingPrincipalByScheduleId = <String, int>{};
+    var futureFixedPrincipalMinor = 0;
+    for (final schedule in timeline.reversed) {
+      if (schedule.status == InstallmentScheduleStatus.pending) {
+        additionalOutstandingPrincipalByScheduleId[schedule.id] =
+            futureFixedPrincipalMinor;
+      } else {
+        futureFixedPrincipalMinor += schedule.expectedPrincipal.minorUnits;
+      }
+    }
     final entries = _planEngine.plan(
-      InstallmentPlanConfig(
+      InstallmentPlanConfig.withAccrualPeriods(
         remainingPrincipal: Money(minorUnits: remainingMinor),
         firstPeriodNo: pending.first.periodNo,
-        accrualStartDate: anchorDate,
-        repaymentDates: ExplicitRepaymentDates([
-          for (final schedule in pending) schedule.expectedRepaymentDate,
-        ]),
+        accrualPeriods: [
+          for (final schedule in pending)
+            InstallmentAccrualPeriod(
+              accrualStartDate: accrualStartByScheduleId[schedule.id]!,
+              repaymentDate: schedule.expectedRepaymentDate,
+              additionalOutstandingPrincipal: Money(
+                minorUnits:
+                    additionalOutstandingPrincipalByScheduleId[schedule.id]!,
+              ),
+            ),
+        ],
         repaymentMethod: contract.repaymentMethod,
         interestAccrualMethod: contract.interestAccrualMethod,
         interestRatePeriod: contract.interestRatePeriod,
@@ -174,5 +145,22 @@ class InstallmentPrepaymentRecalculator {
           expectedFee: entries[i].expectedFee,
         ),
     ];
+  }
+
+  void _validateTimeline(
+    DateTime borrowingDate,
+    List<InstallmentSchedule> timeline,
+  ) {
+    var previousDate = borrowingDate;
+    for (final schedule in timeline) {
+      if (!schedule.expectedRepaymentDate.isAfter(previousDate)) {
+        throw BusinessException(
+          CreditErrorCode.contractInvalidCommand,
+          message:
+              'Schedule dates must be strictly increasing by period number.',
+        );
+      }
+      previousDate = schedule.expectedRepaymentDate;
+    }
   }
 }

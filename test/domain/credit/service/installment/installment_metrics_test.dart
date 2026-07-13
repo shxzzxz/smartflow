@@ -4,10 +4,172 @@ import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_metrics.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
-import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 void main() {
-  test('contract metrics ignore regular repayment actual amounts', () {
+  test(
+    'contract metrics are available when schedule principal is conserved',
+    () {
+      const calculator = InstallmentMetricsCalculator();
+      final metrics = calculator.compute(
+        contract: _contract(),
+        schedules: [
+          _schedule(id: 'one', periodNo: 1, principal: 4000, interest: 100),
+          _schedule(id: 'two', periodNo: 2, principal: 3000, interest: 100),
+          _schedule(id: 'three', periodNo: 3, principal: 3000, interest: 100),
+        ],
+      );
+
+      expect(metrics.isAvailable, isTrue);
+      expect(metrics.unavailableReason, isNull);
+      expect(metrics.monthlyIrr, isNotNull);
+      expect(metrics.nominalApr, isNotNull);
+      expect(metrics.effectiveApr, isNotNull);
+    },
+  );
+
+  test('contract metrics are unavailable when schedule principal is short', () {
+    const calculator = InstallmentMetricsCalculator();
+    final metrics = calculator.compute(
+      contract: _contract(),
+      schedules: [
+        _schedule(id: 'one', periodNo: 1, principal: 4000),
+        _schedule(id: 'two', periodNo: 2, principal: 3000),
+        _schedule(id: 'three', periodNo: 3, principal: 2999),
+      ],
+    );
+
+    expect(metrics.isAvailable, isFalse);
+    expect(
+      metrics.unavailableReason,
+      ContractMetricsUnavailableReason.principalNotConserved,
+    );
+    expect(metrics.monthlyIrr, isNull);
+    expect(metrics.nominalApr, isNull);
+    expect(metrics.effectiveApr, isNull);
+  });
+
+  test(
+    'contract metrics are unavailable when schedule principal is excessive',
+    () {
+      const calculator = InstallmentMetricsCalculator();
+      final metrics = calculator.compute(
+        contract: _contract(),
+        schedules: [
+          _schedule(id: 'one', periodNo: 1, principal: 4000),
+          _schedule(id: 'two', periodNo: 2, principal: 3000),
+          _schedule(id: 'three', periodNo: 3, principal: 3001),
+        ],
+      );
+
+      expect(metrics.isAvailable, isFalse);
+      expect(
+        metrics.unavailableReason,
+        ContractMetricsUnavailableReason.principalNotConserved,
+      );
+    },
+  );
+
+  test('contract metrics report insufficient cashflows without fake rates', () {
+    const calculator = InstallmentMetricsCalculator();
+    final metrics = calculator.compute(
+      contract: _contract(),
+      schedules: [
+        _schedule(
+          id: 'zero-outflow',
+          periodNo: 1,
+          principal: 10000,
+          interest: -10000,
+        ),
+      ],
+    );
+
+    expect(metrics.isAvailable, isFalse);
+    expect(
+      metrics.unavailableReason,
+      ContractMetricsUnavailableReason.insufficientCashflows,
+    );
+    expect(metrics.monthlyIrr, isNull);
+  });
+
+  test(
+    'contract metrics report no rate solution without fallback estimates',
+    () {
+      const calculator = InstallmentMetricsCalculator();
+      final metrics = calculator.compute(
+        contract: _contract(),
+        schedules: [
+          _schedule(
+            id: 'same-day',
+            periodNo: 1,
+            principal: 10000,
+            date: DateTime(2026, 1, 1),
+          ),
+        ],
+      );
+
+      expect(metrics.isAvailable, isFalse);
+      expect(
+        metrics.unavailableReason,
+        ContractMetricsUnavailableReason.noRateSolution,
+      );
+      expect(metrics.effectiveApr, isNull);
+    },
+  );
+
+  test('schedule status changes do not change contract metrics', () {
+    const calculator = InstallmentMetricsCalculator();
+    final pendingMetrics = calculator.compute(
+      contract: _contract(),
+      schedules: [
+        _schedule(id: 'one', periodNo: 1, principal: 4000, interest: 100),
+        _schedule(id: 'two', periodNo: 2, principal: 3000, interest: 100),
+        _schedule(id: 'three', periodNo: 3, principal: 3000, interest: 100),
+      ],
+    );
+    final projectedMetrics = calculator.compute(
+      contract: _contract(),
+      schedules: [
+        _schedule(
+          id: 'one',
+          periodNo: 1,
+          principal: 4000,
+          interest: 100,
+          status: InstallmentScheduleStatus.partiallyPaid,
+        ),
+        _schedule(
+          id: 'two',
+          periodNo: 2,
+          principal: 3000,
+          interest: 100,
+          status: InstallmentScheduleStatus.paid,
+        ),
+        _schedule(
+          id: 'three',
+          periodNo: 3,
+          principal: 3000,
+          interest: 100,
+          status: InstallmentScheduleStatus.skipped,
+        ),
+      ],
+    );
+
+    expect(projectedMetrics.totalRepayment, pendingMetrics.totalRepayment);
+    expect(projectedMetrics.totalInterest, pendingMetrics.totalInterest);
+    expect(
+      projectedMetrics.monthlyIrr,
+      closeTo(pendingMetrics.monthlyIrr!, 1e-12),
+    );
+    expect(
+      projectedMetrics.nominalApr,
+      closeTo(pendingMetrics.nominalApr!, 1e-12),
+    );
+    expect(
+      projectedMetrics.effectiveApr,
+      closeTo(pendingMetrics.effectiveApr!, 1e-12),
+    );
+  });
+
+  test('contract metrics depend only on planned cashflows', () {
     const calculator = InstallmentMetricsCalculator();
     final metrics = calculator.compute(
       contract: _contract(),
@@ -27,28 +189,12 @@ void main() {
           status: InstallmentScheduleStatus.skipped,
         ),
       ],
-      repayments: [
-        RepaymentCashflow(
-          id: 'regular',
-          repaymentType: RepaymentType.bill,
-          occurredAt: DateTime(2026, 2, 1),
-          principal: const Money(minorUnits: 4000),
-          interest: const Money(minorUnits: 999),
-          fee: Money.zero(),
-        ),
-        RepaymentCashflow(
-          id: 'prepayment',
-          repaymentType: RepaymentType.prepayment,
-          occurredAt: DateTime(2026, 2, 10),
-          principal: const Money(minorUnits: 1000),
-          interest: const Money(minorUnits: 50),
-          fee: Money.zero(),
-        ),
-      ],
     );
 
-    expect(metrics.totalRepayment, const Money(minorUnits: 10350));
-    expect(metrics.totalInterest, const Money(minorUnits: 350));
+    expect(metrics.totalRepayment, const Money(minorUnits: 10300));
+    expect(metrics.totalInterest, const Money(minorUnits: 300));
+    expect(metrics.isAvailable, isTrue);
+    expect(metrics.unavailableReason, isNull);
   });
 }
 
@@ -77,13 +223,14 @@ InstallmentSchedule _schedule({
   required int periodNo,
   required int principal,
   int interest = 0,
+  DateTime? date,
   InstallmentScheduleStatus status = InstallmentScheduleStatus.pending,
 }) {
   return InstallmentSchedule(
     id: id,
     contractId: 'contract',
     periodNo: periodNo,
-    expectedRepaymentDate: DateTime(2026, periodNo + 1, 1),
+    expectedRepaymentDate: date ?? DateTime(2026, periodNo + 1, 1),
     expectedPrincipal: Money(minorUnits: principal),
     expectedInterest: Money(minorUnits: interest),
     expectedFee: Money.zero(),

@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart' as credit;
-import 'package:smartflow/application/credit/credit_port_api.dart'
+import 'package:smartflow/domain/credit/port/credit_ledger_port.dart'
     as credit_port;
 import 'package:smartflow/application/credit/credit_query_api.dart'
     as credit_query;
@@ -446,9 +446,7 @@ ProviderContainer _container({
       installmentSchedulesProvider.overrideWith(
         (ref, id) async => [_schedule()],
       ),
-      installmentRepaymentCashflowsProvider.overrideWith(
-        (ref, id) async => const [],
-      ),
+      installmentRepaymentsProvider.overrideWith((ref, id) async => const []),
       installmentContractsByAccountProvider.overrideWith(
         (ref, id) async => const [],
       ),

@@ -58,7 +58,7 @@ final class InstallmentContractEditViewModelProvider
 }
 
 String _$installmentContractEditViewModelHash() =>
-    r'682009487801179e8a4353c0738f8cc4dfca83f7';
+    r'0bdc0cd5318e210248ecbdb9d1fc2dd77efec0ce';
 
 final class InstallmentContractEditViewModelFamily extends $Family
     with

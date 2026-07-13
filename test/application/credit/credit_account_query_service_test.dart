@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart' as credit;
-import 'package:smartflow/application/ledger/ledger_query_api.dart' as ledger;
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
+import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
@@ -147,14 +147,12 @@ class _Fixture {
       bills: bills,
       installments: installments,
       repayments: repayments,
-      accountQueryService: accounts,
-      transactionQueryService: transactions,
+      ledger: ledgerPort,
     );
   }
 
   final database = createTestDatabase();
-  final accounts = _FakeAccountQueryService();
-  final transactions = _FakeTransactionQueryService();
+  final ledgerPort = _FakeCreditLedgerPort();
   final ids = SequentialIdGenerator(prefix: 'credit-account-query');
   late final DriftCreditAccountRepository creditAccounts =
       DriftCreditAccountRepository(database);
@@ -170,11 +168,10 @@ class _Fixture {
     required int balance,
     Money? creditLimit,
   }) async {
-    accounts.accounts['credit-1'] = ledger.Account(
+    ledgerPort.accounts['credit-1'] = CreditLedgerAccountSnapshot(
       id: 'credit-1',
-      name: 'Credit',
-      type: ledger.AccountType.liability,
       balance: Money(minorUnits: balance),
+      isArchived: false,
     );
     await creditAccounts.insert(
       CreditLiabilityAccountDraft(
@@ -218,25 +215,26 @@ class _Fixture {
         createdAt: DateTime(2026, 6, 1),
       ),
     );
-    await installments.replaceSchedules(contractId, [
-      for (var index = 0; index < schedulePrincipals.length; index++)
-        credit.InstallmentSchedule(
-          id: ids.newId(),
-          contractId: contractId,
-          periodNo: index + 1,
-          expectedRepaymentDate: DateTime(
-            firstDate.year,
-            firstDate.month + index,
-            firstDate.day,
-          ),
-          expectedPrincipal: Money(minorUnits: schedulePrincipals[index]),
-          expectedInterest:
-              index == 0 ? const Money(minorUnits: 100) : Money.zero(),
-          expectedFee: Money.zero(),
-          status: credit.InstallmentScheduleStatus.pending,
-          createdAt: DateTime(2026, 6, 1),
-        ),
-    ]);
+    await installments
+        .saveAggregate((await installments.findContract(contractId))!, [
+          for (var index = 0; index < schedulePrincipals.length; index++)
+            credit.InstallmentSchedule(
+              id: ids.newId(),
+              contractId: contractId,
+              periodNo: index + 1,
+              expectedRepaymentDate: DateTime(
+                firstDate.year,
+                firstDate.month + index,
+                firstDate.day,
+              ),
+              expectedPrincipal: Money(minorUnits: schedulePrincipals[index]),
+              expectedInterest:
+                  index == 0 ? const Money(minorUnits: 100) : Money.zero(),
+              expectedFee: Money.zero(),
+              status: credit.InstallmentScheduleStatus.pending,
+              createdAt: DateTime(2026, 6, 1),
+            ),
+        ]);
     final schedules = await installments.listSchedules(contractId);
     return (
       contractId: contractId,
@@ -327,31 +325,12 @@ class _BillItemSeed {
   final String? scheduleId;
 }
 
-class _FakeAccountQueryService implements ledger.AccountQueryService {
-  final accounts = <String, ledger.Account>{};
+class _FakeCreditLedgerPort implements CreditLedgerPort {
+  final accounts = <String, CreditLedgerAccountSnapshot>{};
 
   @override
-  Future<ledger.Account?> findAccountById(String id) async => accounts[id];
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _FakeTransactionQueryService implements ledger.TransactionQueryService {
-  final details = <String, ledger.TransactionDetail>{};
-
-  @override
-  Future<ledger.TransactionDetail?> findTransactionDetail(
-    String transactionId,
-  ) async {
-    return details[transactionId];
-  }
-
-  @override
-  Future<ledger.TransactionDetail?> findCurrentParentTransactionDetailByRoot(
-    String rootTransactionId,
-  ) async {
-    return details[rootTransactionId];
+  Future<CreditLedgerAccountSnapshot?> findAccount(String accountId) async {
+    return accounts[accountId];
   }
 
   @override

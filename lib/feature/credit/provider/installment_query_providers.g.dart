@@ -247,65 +247,55 @@ final class InstallmentSchedulesFamily extends $Family
   String toString() => r'installmentSchedulesProvider';
 }
 
-/// 提供 metrics 模块所需的 RepaymentCashflow 列表。
-/// 读取 v2 repayment 聚合；有账务交易时用交易时间，无交易时用记录创建时间。
+@ProviderFor(installmentRepayments)
+final installmentRepaymentsProvider = InstallmentRepaymentsFamily._();
 
-@ProviderFor(installmentRepaymentCashflows)
-final installmentRepaymentCashflowsProvider =
-    InstallmentRepaymentCashflowsFamily._();
-
-/// 提供 metrics 模块所需的 RepaymentCashflow 列表。
-/// 读取 v2 repayment 聚合；有账务交易时用交易时间，无交易时用记录创建时间。
-
-final class InstallmentRepaymentCashflowsProvider
+final class InstallmentRepaymentsProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<RepaymentCashflow>>,
-          List<RepaymentCashflow>,
-          FutureOr<List<RepaymentCashflow>>
+          AsyncValue<List<ContractRepayment>>,
+          List<ContractRepayment>,
+          FutureOr<List<ContractRepayment>>
         >
     with
-        $FutureModifier<List<RepaymentCashflow>>,
-        $FutureProvider<List<RepaymentCashflow>> {
-  /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
-  /// 读取 v2 repayment 聚合；有账务交易时用交易时间，无交易时用记录创建时间。
-  InstallmentRepaymentCashflowsProvider._({
-    required InstallmentRepaymentCashflowsFamily super.from,
+        $FutureModifier<List<ContractRepayment>>,
+        $FutureProvider<List<ContractRepayment>> {
+  InstallmentRepaymentsProvider._({
+    required InstallmentRepaymentsFamily super.from,
     required String super.argument,
   }) : super(
          retry: null,
-         name: r'installmentRepaymentCashflowsProvider',
+         name: r'installmentRepaymentsProvider',
          isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
 
   @override
-  String debugGetCreateSourceHash() => _$installmentRepaymentCashflowsHash();
+  String debugGetCreateSourceHash() => _$installmentRepaymentsHash();
 
   @override
   String toString() {
-    return r'installmentRepaymentCashflowsProvider'
+    return r'installmentRepaymentsProvider'
         ''
         '($argument)';
   }
 
   @$internal
   @override
-  $FutureProviderElement<List<RepaymentCashflow>> $createElement(
+  $FutureProviderElement<List<ContractRepayment>> $createElement(
     $ProviderPointer pointer,
   ) => $FutureProviderElement(pointer);
 
   @override
-  FutureOr<List<RepaymentCashflow>> create(Ref ref) {
+  FutureOr<List<ContractRepayment>> create(Ref ref) {
     final argument = this.argument as String;
-    return installmentRepaymentCashflows(ref, argument);
+    return installmentRepayments(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is InstallmentRepaymentCashflowsProvider &&
-        other.argument == argument;
+    return other is InstallmentRepaymentsProvider && other.argument == argument;
   }
 
   @override
@@ -314,39 +304,33 @@ final class InstallmentRepaymentCashflowsProvider
   }
 }
 
-String _$installmentRepaymentCashflowsHash() =>
-    r'e326326ded3f51087964ce3612457b0d30fe8b00';
+String _$installmentRepaymentsHash() =>
+    r'b25d0143eb2aeb9bcca611110b1bdbf79aa9272e';
 
-/// 提供 metrics 模块所需的 RepaymentCashflow 列表。
-/// 读取 v2 repayment 聚合；有账务交易时用交易时间，无交易时用记录创建时间。
-
-final class InstallmentRepaymentCashflowsFamily extends $Family
-    with $FunctionalFamilyOverride<FutureOr<List<RepaymentCashflow>>, String> {
-  InstallmentRepaymentCashflowsFamily._()
+final class InstallmentRepaymentsFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<ContractRepayment>>, String> {
+  InstallmentRepaymentsFamily._()
     : super(
         retry: null,
-        name: r'installmentRepaymentCashflowsProvider',
+        name: r'installmentRepaymentsProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
         isAutoDispose: true,
       );
 
-  /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
-  /// 读取 v2 repayment 聚合；有账务交易时用交易时间，无交易时用记录创建时间。
-
-  InstallmentRepaymentCashflowsProvider call(String contractId) =>
-      InstallmentRepaymentCashflowsProvider._(argument: contractId, from: this);
+  InstallmentRepaymentsProvider call(String contractId) =>
+      InstallmentRepaymentsProvider._(argument: contractId, from: this);
 
   @override
-  String toString() => r'installmentRepaymentCashflowsProvider';
+  String toString() => r'installmentRepaymentsProvider';
 }
 
-/// 按当前合同计划与合同级提前还款计算合同指标。
+/// 按合同与全部还款计划计算合同指标。
 
 @ProviderFor(installmentMetrics)
 final installmentMetricsProvider = InstallmentMetricsFamily._();
 
-/// 按当前合同计划与合同级提前还款计算合同指标。
+/// 按合同与全部还款计划计算合同指标。
 
 final class InstallmentMetricsProvider
     extends
@@ -356,7 +340,7 @@ final class InstallmentMetricsProvider
           FutureOr<ContractMetrics>
         >
     with $FutureModifier<ContractMetrics>, $FutureProvider<ContractMetrics> {
-  /// 按当前合同计划与合同级提前还款计算合同指标。
+  /// 按合同与全部还款计划计算合同指标。
   InstallmentMetricsProvider._({
     required InstallmentMetricsFamily super.from,
     required String super.argument,
@@ -402,9 +386,9 @@ final class InstallmentMetricsProvider
 }
 
 String _$installmentMetricsHash() =>
-    r'fb0664c48fa6f9ac35ecfd2c3c77a6aef6956e75';
+    r'f8521ef992f2192c62f38328be8c287fd859d4b6';
 
-/// 按当前合同计划与合同级提前还款计算合同指标。
+/// 按合同与全部还款计划计算合同指标。
 
 final class InstallmentMetricsFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<ContractMetrics>, String> {
@@ -417,7 +401,7 @@ final class InstallmentMetricsFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// 按当前合同计划与合同级提前还款计算合同指标。
+  /// 按合同与全部还款计划计算合同指标。
 
   InstallmentMetricsProvider call(String contractId) =>
       InstallmentMetricsProvider._(argument: contractId, from: this);

@@ -192,8 +192,8 @@ class _InstallmentContractEditPageState
         .setLastRepaymentDate(picked);
   }
 
-  void _recalculate() {
-    final outcome = ref
+  Future<void> _recalculate() async {
+    final outcome = await ref
         .read(
           installmentContractEditViewModelProvider(widget.contractId).notifier,
         )
@@ -205,7 +205,7 @@ class _InstallmentContractEditPageState
         );
     switch (outcome) {
       case UiActionFailure<void>(:final error):
-        _showError(error.message);
+        if (mounted) _showError(error.message);
       case UiActionSuccess<void>():
         break;
     }
@@ -927,6 +927,15 @@ class _MetricGrid extends StatelessWidget {
             ),
           ],
         ),
+        if (metrics.unavailableReason case final reason?) ...[
+          const SizedBox(height: AppSpacing.space8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'IRR / APR / EAR 暂不可计算：${_metricsUnavailableReasonText(reason)}',
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpacing.space10),
         Row(
           children: [
@@ -1044,7 +1053,16 @@ String _sourceTypeLabel(InstallmentSourceType type) {
   };
 }
 
-String _formatPercent(double v) {
+String _formatPercent(double? v) {
+  if (v == null) return '—';
   if (v.isNaN || v.isInfinite) return '—';
   return '${(v * 100).toStringAsFixed(2)}%';
+}
+
+String _metricsUnavailableReasonText(ContractMetricsUnavailableReason reason) {
+  return switch (reason) {
+    ContractMetricsUnavailableReason.principalNotConserved => '计划本金与合同本金不守恒',
+    ContractMetricsUnavailableReason.insufficientCashflows => '现金流不足',
+    ContractMetricsUnavailableReason.noRateSolution => '不存在有效利率解',
+  };
 }

@@ -1,11 +1,10 @@
-import 'package:smartflow/application/ledger/ledger_query_api.dart'
-    as ledger_query;
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
+import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
@@ -13,7 +12,6 @@ import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
-import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 import 'bill_read_models.dart';
 
@@ -31,20 +29,20 @@ class BillQueryServiceImpl implements BillQueryService {
     required CreditAccountRepository creditAccounts,
     required InstallmentRepository installments,
     required RepaymentRepository repayments,
-    required ledger_query.TransactionQueryService transactionQueryService,
+    required CreditLedgerPort ledger,
     DateTime Function()? now,
   }) : _bills = bills,
        _creditAccounts = creditAccounts,
        _installments = installments,
        _repayments = repayments,
-       _transactionQueryService = transactionQueryService,
+       _ledger = ledger,
        _now = now;
 
   final BillRepository _bills;
   final CreditAccountRepository _creditAccounts;
   final InstallmentRepository _installments;
   final RepaymentRepository _repayments;
-  final ledger_query.TransactionQueryService _transactionQueryService;
+  final CreditLedgerPort _ledger;
   final DateTime Function()? _now;
 
   @override
@@ -242,39 +240,25 @@ class BillQueryServiceImpl implements BillQueryService {
     final detail =
         rootTransactionId == null
             ? null
-            : await _transactionQueryService
-                .findCurrentParentTransactionDetailByRoot(rootTransactionId);
-    final transaction = detail?.transaction;
-    final usesTransaction =
-        transaction != null &&
-        transaction.businessState == BusinessState.current;
+            : await _ledger.findCurrentParentTransactionByRoot(
+              rootTransactionId,
+            );
+    final usesTransaction = detail != null;
     return BillRepaymentReadModel(
       id: repayment.id,
       repaymentType: repayment.repaymentType,
       allocated: total,
       displayTime:
           usesTransaction
-              ? transaction.occurredAt
+              ? detail.occurredAt
               : repayment.createdAt ?? fallbackTime,
       timeSource:
           usesTransaction
               ? BillRepaymentTimeSource.transaction
               : BillRepaymentTimeSource.recordCreatedAt,
       rootTransactionId: rootTransactionId,
-      paidFromAccountId:
-          usesTransaction && detail != null ? _paidFromAccountId(detail) : null,
+      paidFromAccountId: usesTransaction ? detail.paidFromAccountId : null,
     );
-  }
-
-  String? _paidFromAccountId(ledger_query.TransactionDetail detail) {
-    final paidAmount = detail.transaction.primaryAmount;
-    for (final entry in detail.entries.reversed) {
-      if (entry.direction == EntryDirection.credit &&
-          entry.amount == paidAmount) {
-        return entry.accountId;
-      }
-    }
-    return null;
   }
 
   DateTime? _earliestRepaymentDate(Bill bill) {

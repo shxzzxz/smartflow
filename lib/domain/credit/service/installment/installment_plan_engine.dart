@@ -15,18 +15,44 @@ class InstallmentPlanConfig {
     this.interestRatePpm,
     this.remainingFeeMinor = 0,
     this.equalInstallmentOverrideMinor,
-  });
+  }) : accrualPeriods = null;
+
+  const InstallmentPlanConfig.withAccrualPeriods({
+    required this.remainingPrincipal,
+    required this.firstPeriodNo,
+    required this.accrualPeriods,
+    required this.repaymentMethod,
+    required this.interestAccrualMethod,
+    this.interestRatePeriod,
+    this.interestRatePpm,
+    this.remainingFeeMinor = 0,
+    this.equalInstallmentOverrideMinor,
+  }) : accrualStartDate = null,
+       repaymentDates = null;
 
   final Money remainingPrincipal;
   final int firstPeriodNo;
-  final DateTime accrualStartDate;
-  final RepaymentDatesStrategy repaymentDates;
+  final DateTime? accrualStartDate;
+  final RepaymentDatesStrategy? repaymentDates;
   final InstallmentRepaymentMethod repaymentMethod;
   final InterestAccrualMethod interestAccrualMethod;
+  final List<InstallmentAccrualPeriod>? accrualPeriods;
   final InterestRatePeriod? interestRatePeriod;
   final int? interestRatePpm;
   final int remainingFeeMinor;
   final int? equalInstallmentOverrideMinor;
+}
+
+class InstallmentAccrualPeriod {
+  const InstallmentAccrualPeriod({
+    required this.accrualStartDate,
+    required this.repaymentDate,
+    this.additionalOutstandingPrincipal = const Money(minorUnits: 0),
+  });
+
+  final DateTime accrualStartDate;
+  final DateTime repaymentDate;
+  final Money additionalOutstandingPrincipal;
 }
 
 class InstallmentSchedulePlanEntry {
@@ -155,11 +181,17 @@ class InstallmentPlanEngine {
         'Must be > 0',
       );
     }
-    final dates = config.repaymentDates.getDates();
+    final periods = config.accrualPeriods;
+    final dates =
+        periods?.map((period) => period.repaymentDate).toList() ??
+        config.repaymentDates!.getDates();
     if (dates.isEmpty) {
       throw ArgumentError.value(dates, 'repaymentDates', 'Must not be empty');
     }
-    final dayCounts = _dayCountsForDates(config.accrualStartDate, dates);
+    final calculationPeriods =
+        periods == null
+            ? _calculationPeriodsForDates(config.accrualStartDate!, dates)
+            : _calculationPeriodsForAccrualPeriods(periods);
     final calculator = _calculators[config.repaymentMethod];
     if (calculator == null) {
       throw StateError('No calculator for ${config.repaymentMethod}.');
@@ -167,7 +199,7 @@ class InstallmentPlanEngine {
     final allocations = calculator.calculate(
       RepaymentMethodCalculationInput(
         principal: config.remainingPrincipal,
-        dayCounts: dayCounts,
+        periods: calculationPeriods,
         accrualMethod: config.interestAccrualMethod,
         ratePeriod: config.interestRatePeriod,
         ratePpm: config.interestRatePpm,
@@ -187,14 +219,61 @@ class InstallmentPlanEngine {
     ];
   }
 
-  List<int> _dayCountsForDates(DateTime anchorDate, List<DateTime> dates) {
-    final result = <int>[];
+  List<RepaymentMethodCalculationPeriod> _calculationPeriodsForDates(
+    DateTime anchorDate,
+    List<DateTime> dates,
+  ) {
+    final result = <RepaymentMethodCalculationPeriod>[];
     var prev = anchorDate;
     for (final date in dates) {
       final days = date.difference(prev).inDays;
-      result.add(days < 1 ? 1 : days);
+      if (days < 1) {
+        throw ArgumentError.value(
+          dates,
+          'repaymentDates',
+          'Must be strictly increasing after the accrual start date',
+        );
+      }
+      result.add(
+        RepaymentMethodCalculationPeriod(
+          dayCount: days,
+          additionalOutstandingPrincipal: Money.zero(),
+        ),
+      );
       prev = date;
     }
     return result;
+  }
+
+  List<RepaymentMethodCalculationPeriod> _calculationPeriodsForAccrualPeriods(
+    List<InstallmentAccrualPeriod> periods,
+  ) {
+    return [
+      for (final period in periods)
+        RepaymentMethodCalculationPeriod(
+          dayCount: _positiveDayCount(
+            period.accrualStartDate,
+            period.repaymentDate,
+            periods,
+          ),
+          additionalOutstandingPrincipal: period.additionalOutstandingPrincipal,
+        ),
+    ];
+  }
+
+  int _positiveDayCount(
+    DateTime accrualStartDate,
+    DateTime repaymentDate,
+    Object invalidValue,
+  ) {
+    final days = repaymentDate.difference(accrualStartDate).inDays;
+    if (days < 1) {
+      throw ArgumentError.value(
+        invalidValue,
+        'repaymentDates',
+        'Must be strictly increasing after the accrual start date',
+      );
+    }
+    return days;
   }
 }

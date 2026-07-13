@@ -139,7 +139,7 @@ class InstallmentRepaymentFormViewModel
   void _invalidate(InstallmentContract contract) {
     ref.invalidate(installmentContractProvider(contract.id));
     ref.invalidate(installmentSchedulesProvider(contract.id));
-    ref.invalidate(installmentRepaymentCashflowsProvider(contract.id));
+    ref.invalidate(installmentRepaymentsProvider(contract.id));
     ref.invalidate(
       installmentContractsByAccountProvider(contract.liabilityAccountId),
     );

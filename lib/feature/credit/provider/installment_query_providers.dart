@@ -28,63 +28,18 @@ Future<List<InstallmentSchedule>> installmentSchedules(
   return ref.watch(installmentQueryServiceProvider).listSchedules(contractId);
 }
 
-/// 提供 metrics 模块所需的 RepaymentCashflow 列表。
-/// 读取 v2 repayment 聚合；有账务交易时用交易时间，无交易时用记录创建时间。
 @riverpod
-Future<List<RepaymentCashflow>> installmentRepaymentCashflows(
+Future<List<ContractRepayment>> installmentRepayments(
   Ref ref,
   String contractId,
-) async {
-  final repayments = await ref
-      .watch(repaymentRepositoryProvider)
-      .listByTarget(RepaymentTargetType.contract, contractId);
-  final queryService = ref.watch(transactionQueryServiceProvider);
-  final result = <RepaymentCashflow>[];
-  for (final repayment in repayments) {
-    final view =
-        repayment.rootTransactionId == null
-            ? null
-            : await queryService.findTransactionDetail(
-              repayment.rootTransactionId!,
-            );
-    final allocated = repayment.totalAllocated();
-    result.add(
-      RepaymentCashflow(
-        id: repayment.id,
-        transactionId: repayment.rootTransactionId,
-        repaymentType: repayment.repaymentType,
-        occurredAt:
-            view?.transaction.occurredAt ??
-            repayment.createdAt ??
-            DateTime.fromMillisecondsSinceEpoch(0),
-        principal: allocated.principal,
-        interest: allocated.interest,
-        fee: allocated.fee,
-      ),
-    );
-  }
-  return result;
+) {
+  return ref
+      .watch(contractRepaymentQueryProvider)
+      .listContractRepayments(contractId);
 }
 
-/// 按当前合同计划与合同级提前还款计算合同指标。
+/// 按合同与全部还款计划计算合同指标。
 @riverpod
-Future<ContractMetrics> installmentMetrics(Ref ref, String contractId) async {
-  final contract = await ref.watch(
-    installmentContractProvider(contractId).future,
-  );
-  final schedules = await ref.watch(
-    installmentSchedulesProvider(contractId).future,
-  );
-  final repayments = await ref.watch(
-    installmentRepaymentCashflowsProvider(contractId).future,
-  );
-  if (contract == null) {
-    throw StateError('Contract $contractId not found');
-  }
-  const calc = InstallmentMetricsCalculator();
-  return calc.compute(
-    contract: contract,
-    schedules: schedules,
-    repayments: repayments,
-  );
+Future<ContractMetrics> installmentMetrics(Ref ref, String contractId) {
+  return ref.watch(contractMetricsQueryProvider).getContractMetrics(contractId);
 }

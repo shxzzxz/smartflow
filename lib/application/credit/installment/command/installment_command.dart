@@ -58,13 +58,37 @@ class DeleteContractCommand {
 class RecalculateContractSchedulesCommand {
   const RecalculateContractSchedulesCommand({
     required this.contractId,
+    this.terms,
     this.equalInstallmentOverrideMinor,
   });
 
   final String contractId;
+  final ContractRecalculationTerms? terms;
 
   /// 等额本息下用户给定的每期还款额 A，仅用于本次显式重算，不落库。
   final int? equalInstallmentOverrideMinor;
+}
+
+class ContractRecalculationTerms {
+  const ContractRecalculationTerms({
+    required this.totalPeriods,
+    required this.firstRepaymentDate,
+    required this.lastRepaymentDate,
+    required this.repaymentMethod,
+    required this.interestRatePeriod,
+    required this.interestRatePpm,
+    required this.interestAccrualMethod,
+    required this.totalFeeMinor,
+  });
+
+  final int totalPeriods;
+  final DateTime firstRepaymentDate;
+  final DateTime lastRepaymentDate;
+  final InstallmentRepaymentMethod repaymentMethod;
+  final InterestRatePeriod? interestRatePeriod;
+  final int? interestRatePpm;
+  final InterestAccrualMethod interestAccrualMethod;
+  final int totalFeeMinor;
 }
 
 class RecalculatedSchedulePreview {

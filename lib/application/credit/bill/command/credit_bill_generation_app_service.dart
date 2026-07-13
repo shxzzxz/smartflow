@@ -1,4 +1,4 @@
-import 'package:smartflow/application/credit/port/credit_ledger_port.dart';
+import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
@@ -9,6 +9,8 @@ import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/service/bill/credit_bill_generation_service.dart';
 import 'package:smartflow/domain/credit/service/settlement/settlement_judgement_service.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
+
+import '../../settlement/credit_settlement_coordinator.dart';
 
 abstract interface class CreditBillGenerationAppService {
   Future<void> generateDueBills({required DateTime now});
@@ -45,9 +47,17 @@ class CreditBillGenerationAppServiceImpl
     required IdGenerator idGenerator,
     SettlementJudgementService judgement = const SettlementJudgementService(),
     CreditBillGenerationService? generationService,
+    CreditSettlementCoordinator? settlementCoordinator,
   }) : _creditAccounts = creditAccounts,
        _ledger = ledger,
        _runner = transactionRunner,
+       _settlement =
+           settlementCoordinator ??
+           CreditSettlementCoordinator(
+             bills: bills,
+             repayments: repayments,
+             installments: installments,
+           ),
        _generation =
            generationService ??
            CreditBillGenerationService(
@@ -63,6 +73,7 @@ class CreditBillGenerationAppServiceImpl
   final CreditAccountRepository _creditAccounts;
   final CreditLedgerPort _ledger;
   final TransactionRunner _runner;
+  final CreditSettlementCoordinator _settlement;
   final CreditBillGenerationService _generation;
 
   @override
@@ -83,10 +94,11 @@ class CreditBillGenerationAppServiceImpl
     await _runner.run<void>(() async {
       final ledgerAccount = await _ledger.findAccount(accountId);
       if (ledgerAccount == null || ledgerAccount.isArchived) return;
-      await _generation.generateDueBillsForAccount(
+      final result = await _generation.generateDueBillsForAccount(
         account: creditAccount,
         now: now,
       );
+      await _settlement.refreshInstallmentStatuses(result.scheduleStatuses);
     });
   }
 
@@ -98,18 +110,22 @@ class CreditBillGenerationAppServiceImpl
   }) async {
     final account = await _creditAccounts.findByAccountId(accountId);
     if (account == null) return;
-    return _runner.run<void>(
-      () => _generation.generateBillForPeriod(
+    return _runner.run<void>(() async {
+      final result = await _generation.generateBillForPeriod(
         account: account,
         period: period,
         now: now,
-      ),
-    );
+      );
+      await _settlement.refreshInstallmentStatuses(result.scheduleStatuses);
+    });
   }
 
   @override
   Future<void> refreshBill(String billId) {
-    return _runner.run<void>(() => _generation.refreshBill(billId));
+    return _runner.run<void>(() async {
+      final result = await _generation.refreshBill(billId);
+      await _settlement.refreshInstallmentStatuses(result.scheduleStatuses);
+    });
   }
 
   @override
@@ -119,11 +135,12 @@ class CreditBillGenerationAppServiceImpl
   }) async {
     final account = await _creditAccounts.findByAccountId(accountId);
     if (account == null) return;
-    return _runner.run<void>(
-      () => _generation.refreshDisplayedBillsForAccount(
+    return _runner.run<void>(() async {
+      final result = await _generation.refreshDisplayedBillsForAccount(
         account: account,
         now: now,
-      ),
-    );
+      );
+      await _settlement.refreshInstallmentStatuses(result.scheduleStatuses);
+    });
   }
 }

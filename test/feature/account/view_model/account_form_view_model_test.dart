@@ -6,6 +6,7 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
+import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/feature/account/view_model/account_form_view_model.dart';
 import 'package:smartflow/feature/account/view_model/account_view.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
@@ -181,15 +182,14 @@ class _FakeCreditAccountAppService implements CreditAccountAppService {
   final editCommands = <EditCreditLiabilityAccountCommand>[];
 
   @override
-  Future<Account> createAccount(
+  Future<CreditLedgerAccountSnapshot> createAccount(
     CreateCreditLiabilityAccountCommand command,
   ) async {
     createCommands.add(command);
-    return Account(
+    return const CreditLedgerAccountSnapshot(
       id: 'credit-created',
-      name: command.name,
-      type: AccountType.liability,
-      balance: const Money(minorUnits: 0),
+      balance: Money(minorUnits: 0),
+      isArchived: false,
     );
   }
 

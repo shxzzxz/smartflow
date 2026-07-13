@@ -1,5 +1,6 @@
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
+import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 
 class CreditLedgerPostedTransaction {
@@ -28,10 +29,12 @@ class CreditLedgerTransactionSnapshot {
   const CreditLedgerTransactionSnapshot({
     required this.transactionId,
     required this.occurredAt,
+    this.paidFromAccountId,
   });
 
   final String transactionId;
   final DateTime occurredAt;
+  final String? paidFromAccountId;
 }
 
 enum CreditLedgerAccountKind { asset, liability, other }
@@ -89,6 +92,42 @@ class CreditLedgerOwnership {
   final String ownerType;
   final String ownerId;
   final String ownerRole;
+}
+
+class CreditLedgerCreateLiabilityAccountCommand {
+  const CreditLedgerCreateLiabilityAccountCommand({
+    required this.name,
+    required this.kind,
+    required this.openingBalance,
+    this.iconKey,
+    this.note,
+    this.sortOrder = 0,
+    this.isHidden = false,
+  });
+
+  final String name;
+  final CreditLiabilityAccountKind kind;
+  final Money openingBalance;
+  final String? iconKey;
+  final String? note;
+  final int sortOrder;
+  final bool isHidden;
+}
+
+class CreditLedgerEditLiabilityAccountCommand {
+  const CreditLedgerEditLiabilityAccountCommand({
+    required this.accountId,
+    this.name,
+    this.iconKey,
+    this.note,
+    this.targetBalance,
+  });
+
+  final String accountId;
+  final String? name;
+  final Patch<String>? iconKey;
+  final Patch<String>? note;
+  final Money? targetBalance;
 }
 
 class CreditLedgerPostRepaymentCommand {
@@ -171,6 +210,16 @@ class CreditLedgerUpdateBasicInfoCommand {
   final String transactionId;
   final DateTime? occurredAt;
   final Patch<String?>? note;
+}
+
+abstract interface class CreditAccountLedgerPort {
+  Future<CreditLedgerAccountSnapshot> createLiabilityAccount(
+    CreditLedgerCreateLiabilityAccountCommand command,
+  );
+
+  Future<void> editLiabilityAccount(
+    CreditLedgerEditLiabilityAccountCommand command,
+  );
 }
 
 abstract interface class CreditLedgerPort {

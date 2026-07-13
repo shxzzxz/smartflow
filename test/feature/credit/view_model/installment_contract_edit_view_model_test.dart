@@ -29,31 +29,49 @@ void main() {
     });
 
     test(
-      'recalculates existing pending rows and marks them for submit',
+      'uses application preview to recalculate pending rows for submit',
       () async {
         final service = _FakeInstallmentAppService(
           contract: _contract(),
           schedules: [_schedule(1), _schedule(2)],
+          previewResults: [
+            RecalculatedSchedulePreview(
+              scheduleId: 'schedule-1',
+              periodNo: 1,
+              expectedRepaymentDate: DateTime(2026, 2, 1),
+              expectedPrincipal: const Money(minorUnits: 4000),
+              expectedInterest: const Money(minorUnits: 120),
+              expectedFee: const Money(minorUnits: 10),
+            ),
+            RecalculatedSchedulePreview(
+              scheduleId: 'schedule-2',
+              periodNo: 2,
+              expectedRepaymentDate: DateTime(2026, 3, 1),
+              expectedPrincipal: const Money(minorUnits: 6000),
+              expectedInterest: const Money(minorUnits: 80),
+              expectedFee: const Money(minorUnits: 20),
+            ),
+          ],
         );
         final container = _container(service);
         final viewModel = container.read(
           installmentContractEditViewModelProvider('contract-1').notifier,
         );
         await _readState(container);
-        viewModel.applyAmount(
-          _scheduleRow(container, 1),
-          InstallmentAmountField.fee,
-          const Money(minorUnits: 100),
-        );
 
-        final outcome = viewModel.recalculate(
+        final outcome = await viewModel.recalculate(
           totalPeriodsText: '3',
           rateText: '12',
-          feeText: '',
+          feeText: '0.30',
           overrideInstallmentText: '',
         );
 
         expect(outcome, isA<UiActionSuccess<void>>());
+        expect(service.previewCommands, hasLength(1));
+        final previewCommand = service.previewCommands.single;
+        expect(previewCommand.terms!.totalPeriods, 3);
+        expect(previewCommand.terms!.interestRatePpm, 120000);
+        expect(previewCommand.terms!.totalFeeMinor, 30);
         final loaded =
             container
                     .read(
@@ -62,10 +80,12 @@ void main() {
                     .value!
                 as InstallmentContractEditLoaded;
         expect(loaded.draft.length, 2);
-        expect(loaded.draft.map((row) => row.date), [
-          DateTime(2026, 2, 1),
-          DateTime(2026, 3, 1),
+        expect(loaded.draft.map((row) => row.principal.minorUnits), [
+          4000,
+          6000,
         ]);
+        expect(loaded.draft.map((row) => row.interest.minorUnits), [120, 80]);
+        expect(loaded.draft.map((row) => row.fee.minorUnits), [10, 20]);
         expect(loaded.manualPatchedPeriodNos, {1, 2});
       },
     );
@@ -325,12 +345,15 @@ class _FakeInstallmentAppService implements InstallmentAppService {
     required this.contract,
     required this.schedules,
     this.updateException,
+    this.previewResults = const [],
   });
 
   final InstallmentContract? contract;
   final List<InstallmentSchedule> schedules;
   final Object? updateException;
+  final List<RecalculatedSchedulePreview> previewResults;
   final updateCommands = <UpdateContractCommand>[];
+  final previewCommands = <RecalculateContractSchedulesCommand>[];
 
   @override
   Future<void> updateContract(UpdateContractCommand command) async {
@@ -342,8 +365,9 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   @override
   Future<List<RecalculatedSchedulePreview>> previewContractRecalculation(
     RecalculateContractSchedulesCommand command,
-  ) {
-    throw UnimplementedError();
+  ) async {
+    previewCommands.add(command);
+    return previewResults;
   }
 
   @override

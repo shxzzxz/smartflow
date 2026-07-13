@@ -1,5 +1,3 @@
-import 'package:smartflow/application/ledger/ledger_query_api.dart'
-    as ledger_query;
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
 import 'package:smartflow/domain/credit/entity/credit_liability_account.dart';
@@ -7,13 +5,13 @@ import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
+import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/service/debt/credit_debt_bucket_service.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
-import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 import 'credit_account_queries.dart';
 import 'credit_account_read_models.dart';
@@ -41,23 +39,20 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
     required BillRepository bills,
     required InstallmentRepository installments,
     required RepaymentRepository repayments,
-    required ledger_query.AccountQueryService accountQueryService,
-    required ledger_query.TransactionQueryService transactionQueryService,
+    required CreditLedgerPort ledger,
     CreditDebtBucketService debtBuckets = const CreditDebtBucketService(),
   }) : _creditAccounts = creditAccounts,
        _bills = bills,
        _installments = installments,
        _repayments = repayments,
-       _accountQueryService = accountQueryService,
-       _transactionQueryService = transactionQueryService,
+       _ledger = ledger,
        _debtBuckets = debtBuckets;
 
   final CreditAccountRepository _creditAccounts;
   final BillRepository _bills;
   final InstallmentRepository _installments;
   final RepaymentRepository _repayments;
-  final ledger_query.AccountQueryService _accountQueryService;
-  final ledger_query.TransactionQueryService _transactionQueryService;
+  final CreditLedgerPort _ledger;
   final CreditDebtBucketService _debtBuckets;
 
   @override
@@ -75,7 +70,7 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
   Future<CreditAccountOverviewReadModel?> findOverview(String accountId) async {
     final creditAccount = await _creditAccounts.findByAccountId(accountId);
     if (creditAccount == null) return null;
-    final account = await _accountQueryService.findAccountById(accountId);
+    final account = await _ledger.findAccount(accountId);
     if (account == null) return null;
 
     final buckets = await _debtBuckets.bucketsForAccount(
@@ -224,27 +219,24 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
     final detail =
         rootTransactionId == null
             ? null
-            : await _transactionQueryService
-                .findCurrentParentTransactionDetailByRoot(rootTransactionId);
-    final transaction = detail?.transaction;
-    final usesTransaction =
-        transaction != null &&
-        transaction.businessState == BusinessState.current;
+            : await _ledger.findCurrentParentTransactionByRoot(
+              rootTransactionId,
+            );
+    final usesTransaction = detail != null;
     return CreditRepaymentRecordReadModel(
       id: repayment.id,
       repaymentType: repayment.repaymentType,
       allocated: repayment.totalAllocated(),
       displayTime:
           usesTransaction
-              ? transaction.occurredAt
+              ? detail.occurredAt
               : repayment.createdAt ?? fallbackTime,
       timeSource:
           usesTransaction
               ? CreditRepaymentTimeSource.transaction
               : CreditRepaymentTimeSource.recordCreatedAt,
       rootTransactionId: rootTransactionId,
-      paidFromAccountId:
-          usesTransaction && detail != null ? _paidFromAccountId(detail) : null,
+      paidFromAccountId: usesTransaction ? detail.paidFromAccountId : null,
     );
   }
 
@@ -256,17 +248,6 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
       return account == null ? const [] : [account];
     }
     return _creditAccounts.listAll();
-  }
-
-  String? _paidFromAccountId(ledger_query.TransactionDetail detail) {
-    final paidAmount = detail.transaction.primaryAmount;
-    for (final entry in detail.entries.reversed) {
-      if (entry.direction == EntryDirection.credit &&
-          entry.amount == paidAmount) {
-        return entry.accountId;
-      }
-    }
-    return null;
   }
 
   DateTime? _earliestRepaymentDate(Bill bill) {

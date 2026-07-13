@@ -13,10 +13,20 @@ class InstallmentAmountAllocation {
   final Money fee;
 }
 
+class RepaymentMethodCalculationPeriod {
+  const RepaymentMethodCalculationPeriod({
+    required this.dayCount,
+    required this.additionalOutstandingPrincipal,
+  });
+
+  final int dayCount;
+  final Money additionalOutstandingPrincipal;
+}
+
 class RepaymentMethodCalculationInput {
   const RepaymentMethodCalculationInput({
     required this.principal,
-    required this.dayCounts,
+    required this.periods,
     required this.accrualMethod,
     this.ratePeriod,
     this.ratePpm,
@@ -25,7 +35,7 @@ class RepaymentMethodCalculationInput {
   });
 
   final Money principal;
-  final List<int> dayCounts;
+  final List<RepaymentMethodCalculationPeriod> periods;
   final InterestAccrualMethod accrualMethod;
   final InterestRatePeriod? ratePeriod;
   final int? ratePpm;
@@ -47,7 +57,7 @@ class EqualInstallmentCalculator implements RepaymentMethodCalculator {
     RepaymentMethodCalculationInput input,
   ) {
     final monthlyRate = _toMonthlyRate(input.ratePeriod, input.ratePpm);
-    final n = input.dayCounts.length;
+    final n = input.periods.length;
     final int installmentMinor;
     final override = input.equalInstallmentOverrideMinor;
     if (override != null && override > 0) {
@@ -55,19 +65,12 @@ class EqualInstallmentCalculator implements RepaymentMethodCalculator {
     } else if (monthlyRate == 0) {
       return const EqualPrincipalCalculator().calculate(input);
     } else {
-      switch (input.accrualMethod) {
-        case InterestAccrualMethod.monthly:
-          final p = input.principal.minorUnits.toDouble();
-          final r = monthlyRate;
-          final pow = _pow(1 + r, n);
-          installmentMinor = (p * r * pow / (pow - 1)).round();
-        case InterestAccrualMethod.daily:
-          installmentMinor = _solveDailyInstallment(
-            principalMinor: input.principal.minorUnits,
-            monthlyRate: monthlyRate,
-            dayCounts: input.dayCounts,
-          );
-      }
+      installmentMinor = _solveInstallment(
+        principalMinor: input.principal.minorUnits,
+        monthlyRate: monthlyRate,
+        accrual: input.accrualMethod,
+        periods: input.periods,
+      );
     }
 
     final allocations = <InstallmentAmountAllocation>[];
@@ -76,9 +79,11 @@ class EqualInstallmentCalculator implements RepaymentMethodCalculator {
     for (var i = 0; i < n; i++) {
       final isLast = i == n - 1;
       final interestMinor = _interestForPeriod(
-        balanceMinor: remaining,
+        balanceMinor:
+            remaining +
+            input.periods[i].additionalOutstandingPrincipal.minorUnits,
         monthlyRate: monthlyRate,
-        days: input.dayCounts[i],
+        days: input.periods[i].dayCount,
         accrual: input.accrualMethod,
       );
       var principalMinor = installmentMinor - interestMinor;
@@ -107,7 +112,7 @@ class EqualPrincipalCalculator implements RepaymentMethodCalculator {
     RepaymentMethodCalculationInput input,
   ) {
     final monthlyRate = _toMonthlyRate(input.ratePeriod, input.ratePpm);
-    final n = input.dayCounts.length;
+    final n = input.periods.length;
     final perPrincipal = input.principal.minorUnits ~/ n;
     final allocations = <InstallmentAmountAllocation>[];
     var remaining = input.principal.minorUnits;
@@ -118,9 +123,11 @@ class EqualPrincipalCalculator implements RepaymentMethodCalculator {
         principalMinor = input.principal.minorUnits - principalAccum;
       }
       final interestMinor = _interestForPeriod(
-        balanceMinor: remaining,
+        balanceMinor:
+            remaining +
+            input.periods[i].additionalOutstandingPrincipal.minorUnits,
         monthlyRate: monthlyRate,
-        days: input.dayCounts[i],
+        days: input.periods[i].dayCount,
         accrual: input.accrualMethod,
       );
       allocations.add(
@@ -145,7 +152,7 @@ class InterestFirstCalculator implements RepaymentMethodCalculator {
     RepaymentMethodCalculationInput input,
   ) {
     final monthlyRate = _toMonthlyRate(input.ratePeriod, input.ratePpm);
-    final n = input.dayCounts.length;
+    final n = input.periods.length;
     return [
       for (var i = 0; i < n; i++)
         InstallmentAmountAllocation(
@@ -154,9 +161,11 @@ class InterestFirstCalculator implements RepaymentMethodCalculator {
           ),
           interest: Money(
             minorUnits: _interestForPeriod(
-              balanceMinor: input.principal.minorUnits,
+              balanceMinor:
+                  input.principal.minorUnits +
+                  input.periods[i].additionalOutstandingPrincipal.minorUnits,
               monthlyRate: monthlyRate,
-              days: input.dayCounts[i],
+              days: input.periods[i].dayCount,
               accrual: input.accrualMethod,
             ),
           ),
@@ -173,7 +182,7 @@ class FlatFeeCalculator implements RepaymentMethodCalculator {
   List<InstallmentAmountAllocation> calculate(
     RepaymentMethodCalculationInput input,
   ) {
-    final periods = input.dayCounts.length;
+    final periods = input.periods.length;
     final perPrincipal = input.principal.minorUnits ~/ periods;
     final perFee = input.remainingFeeMinor ~/ periods;
     final allocations = <InstallmentAmountAllocation>[];
@@ -209,7 +218,7 @@ class CustomInstallmentCalculator implements RepaymentMethodCalculator {
   ) {
     final zero = Money.zero();
     return [
-      for (var i = 0; i < input.dayCounts.length; i++)
+      for (var i = 0; i < input.periods.length; i++)
         InstallmentAmountAllocation(principal: zero, interest: zero, fee: zero),
     ];
   }
@@ -229,23 +238,42 @@ int _interestForPeriod({
   }
 }
 
-int _solveDailyInstallment({
+int _solveInstallment({
   required int principalMinor,
   required double monthlyRate,
-  required List<int> dayCounts,
+  required InterestAccrualMethod accrual,
+  required List<RepaymentMethodCalculationPeriod> periods,
 }) {
-  final d = monthlyRate / 30;
-  var prodAll = 1.0;
-  for (final days in dayCounts) {
-    prodAll *= (1 + d * days);
-  }
-  var sumOfProducts = 0.0;
+  var additionalInterestGrowth = 0.0;
+  var paymentGrowth = 0.0;
   var suffix = 1.0;
-  for (var i = dayCounts.length - 1; i >= 0; i--) {
-    sumOfProducts += suffix;
-    suffix *= (1 + d * dayCounts[i]);
+  for (var i = periods.length - 1; i >= 0; i--) {
+    final period = periods[i];
+    final periodRate = _periodRate(
+      monthlyRate: monthlyRate,
+      days: period.dayCount,
+      accrual: accrual,
+    );
+    paymentGrowth += suffix;
+    additionalInterestGrowth +=
+        period.additionalOutstandingPrincipal.minorUnits * periodRate * suffix;
+    suffix *= 1 + periodRate;
   }
-  return (principalMinor * prodAll / sumOfProducts).round();
+  return ((principalMinor * suffix + additionalInterestGrowth) / paymentGrowth)
+      .round();
+}
+
+double _periodRate({
+  required double monthlyRate,
+  required int days,
+  required InterestAccrualMethod accrual,
+}) {
+  switch (accrual) {
+    case InterestAccrualMethod.daily:
+      return monthlyRate * days / 30;
+    case InterestAccrualMethod.monthly:
+      return monthlyRate;
+  }
 }
 
 double _toMonthlyRate(InterestRatePeriod? period, int? ppm) {
@@ -261,12 +289,4 @@ double _toMonthlyRate(InterestRatePeriod? period, int? ppm) {
     case InterestRatePeriod.daily:
       return rate * 30.0;
   }
-}
-
-double _pow(double base, int exp) {
-  var result = 1.0;
-  for (var i = 0; i < exp; i++) {
-    result *= base;
-  }
-  return result;
 }

@@ -98,7 +98,7 @@ class _Body extends StatelessWidget {
   Widget build(BuildContext context) {
     final contract = loaded.contract;
     final schedules = loaded.schedules;
-    final cashflows = loaded.cashflows;
+    final cashflows = loaded.repayments;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -473,7 +473,7 @@ class _ScheduleRow extends StatelessWidget {
 class _RepaymentRow extends ConsumerWidget {
   const _RepaymentRow({required this.cashflow, required this.contract});
 
-  final RepaymentCashflow cashflow;
+  final ContractRepayment cashflow;
   final InstallmentContract contract;
 
   @override

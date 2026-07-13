@@ -21,13 +21,13 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     final schedules = await ref.watch(
       installmentSchedulesProvider(contractId).future,
     );
-    final cashflows = await ref.watch(
-      installmentRepaymentCashflowsProvider(contractId).future,
+    final repayments = await ref.watch(
+      installmentRepaymentsProvider(contractId).future,
     );
     return InstallmentDetailLoaded(
       contract: contract,
       schedules: schedules,
-      cashflows: cashflows,
+      repayments: repayments,
     );
   }
 
@@ -80,7 +80,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     ref
       ..invalidate(installmentContractProvider(contract.id))
       ..invalidate(installmentSchedulesProvider(contract.id))
-      ..invalidate(installmentRepaymentCashflowsProvider(contract.id))
+      ..invalidate(installmentRepaymentsProvider(contract.id))
       ..invalidate(installmentMetricsProvider(contract.id))
       ..invalidate(
         installmentContractsByAccountProvider(contract.liabilityAccountId),
@@ -109,12 +109,12 @@ class InstallmentDetailLoaded extends InstallmentDetailState {
   const InstallmentDetailLoaded({
     required this.contract,
     required this.schedules,
-    required this.cashflows,
+    required this.repayments,
   });
 
   final InstallmentContract contract;
   final List<InstallmentSchedule> schedules;
-  final List<RepaymentCashflow> cashflows;
+  final List<ContractRepayment> repayments;
 
   int get remainingPrincipalMinor {
     final remaining = schedules
@@ -130,14 +130,14 @@ class InstallmentDetailLoaded extends InstallmentDetailState {
   }
 
   int get paidInterestMinor {
-    return cashflows.fold<int>(0, (sum, cashflow) {
-      return sum + cashflow.interest.minorUnits;
+    return repayments.fold<int>(0, (sum, repayment) {
+      return sum + repayment.interest.minorUnits;
     });
   }
 
   int get paidFeeMinor {
-    return cashflows.fold<int>(0, (sum, cashflow) {
-      return sum + cashflow.fee.minorUnits;
+    return repayments.fold<int>(0, (sum, repayment) {
+      return sum + repayment.fee.minorUnits;
     });
   }
 }

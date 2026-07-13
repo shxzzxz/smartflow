@@ -146,7 +146,7 @@ void main() {
     );
 
     test(
-      'sync rejudges installment item, schedule, and contract from allocations',
+      'refresh returns installment status projection without patching aggregates',
       () async {
         final fixture = _Fixture();
         final account = fixture.loanAccount();
@@ -206,7 +206,7 @@ void main() {
         );
         schedule.expectedPrincipal = const Money(minorUnits: 70000);
 
-        await fixture.service.refreshBill('loan-bill');
+        final result = await fixture.service.refreshBill('loan-bill');
 
         final bill = await fixture.bills.findBill('loan-bill');
         expect(bill!.status, BillStatus.billed);
@@ -215,14 +215,17 @@ void main() {
           bill.items.single.expectedPrincipal,
           const Money(minorUnits: 70000),
         );
+        expect(result.scheduleStatuses, {
+          schedule.id: BillItemStatus.partiallyPaid,
+        });
         final syncedSchedule = await fixture.installments.findSchedule(
           schedule.id,
         );
-        expect(syncedSchedule!.status, InstallmentScheduleStatus.partiallyPaid);
+        expect(syncedSchedule!.status, InstallmentScheduleStatus.paid);
         final syncedContract = await fixture.installments.findContract(
           contract.id,
         );
-        expect(syncedContract!.status, InstallmentContractStatus.active);
+        expect(syncedContract!.status, InstallmentContractStatus.settled);
       },
     );
 
@@ -485,14 +488,6 @@ class _FakeInstallmentRepository implements InstallmentRepository {
   }
 
   @override
-  Future<void> appendSchedules(
-    String contractId,
-    List<InstallmentSchedule> schedules,
-  ) async {
-    _schedules.putIfAbsent(contractId, () => []).addAll(schedules);
-  }
-
-  @override
   Future<void> deleteContract(String contractId) async {
     _contracts.remove(contractId);
     _schedules.remove(contractId);
@@ -546,7 +541,6 @@ class _FakeInstallmentRepository implements InstallmentRepository {
     return [for (final contract in contracts) ...?_schedules[contract.id]];
   }
 
-  @override
   Future<void> replaceSchedules(
     String contractId,
     List<InstallmentSchedule> schedules,
@@ -560,48 +554,21 @@ class _FakeInstallmentRepository implements InstallmentRepository {
   }
 
   @override
-  Future<void> updateContract(
-    String contractId,
-    InstallmentContractPatch patch,
-  ) async {}
-
-  @override
-  Future<void> updateContractStatus(
-    String contractId,
-    InstallmentContractStatus status,
+  Future<void> insertAggregate(
+    InstallmentContract contract,
+    List<InstallmentSchedule> schedules,
   ) async {
-    final contract = _contracts[contractId];
-    if (contract == null) return;
-    contract.refreshStatusFromSchedules(_schedules[contractId] ?? const []);
+    _contracts[contract.id] = contract;
+    _schedules[contract.id] = List.of(schedules);
   }
 
   @override
-  Future<void> updateSchedule(
-    String scheduleId,
-    InstallmentSchedulePatch patch,
+  Future<void> saveAggregate(
+    InstallmentContract contract,
+    List<InstallmentSchedule> schedules,
   ) async {
-    final schedule = await findSchedule(scheduleId);
-    if (schedule == null) return;
-    if (patch.expectedRepaymentDate != null) {
-      schedule.expectedRepaymentDate = patch.expectedRepaymentDate!;
-    }
-    if (patch.expectedPrincipal != null) {
-      schedule.expectedPrincipal = patch.expectedPrincipal!;
-    }
-    if (patch.expectedInterest != null) {
-      schedule.expectedInterest = patch.expectedInterest!;
-    }
-    if (patch.expectedFee != null) {
-      schedule.expectedFee = patch.expectedFee!;
-    }
-    if (patch.status != null) {
-      schedule.applyBillItemStatus(switch (patch.status!) {
-        InstallmentScheduleStatus.pending => BillItemStatus.pending,
-        InstallmentScheduleStatus.partiallyPaid => BillItemStatus.partiallyPaid,
-        InstallmentScheduleStatus.paid => BillItemStatus.paid,
-        InstallmentScheduleStatus.skipped => BillItemStatus.skipped,
-      });
-    }
+    _contracts[contract.id] = contract;
+    _schedules[contract.id] = List.of(schedules);
   }
 }
 

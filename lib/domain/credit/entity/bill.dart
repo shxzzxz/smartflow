@@ -4,6 +4,7 @@ import '../valobj/bill_enums.dart';
 import '../valobj/bill_period.dart';
 import '../valobj/bill_window.dart';
 import '../valobj/credit_error_code.dart';
+import '../service/settlement/settlement_judgement_service.dart';
 
 class BillAllocationApplicationResult {
   const BillAllocationApplicationResult({required this.scheduleItemStatuses});
@@ -12,6 +13,8 @@ class BillAllocationApplicationResult {
 }
 
 class Bill {
+  static const _settlement = SettlementJudgementService();
+
   Bill({
     required this.id,
     required this.accountId,
@@ -122,11 +125,11 @@ class Bill {
       final allocation = allocationsByItemId[item.id];
       if (allocation == null) continue;
       item._markStatus(
-        allocation.principalMinor >= item.expectedPrincipal.minorUnits
-            ? BillItemStatus.paid
-            : allocation.hasAllocation
-            ? BillItemStatus.partiallyPaid
-            : BillItemStatus.pending,
+        _settlement.judgeBillItem(
+          expectedPrincipalMinor: item.expectedPrincipal.minorUnits,
+          allocatedPrincipalMinor: allocation.principalMinor,
+          hasAllocation: allocation.hasAllocation,
+        ),
       );
       if (item.scheduleId != null) {
         scheduleItemStatuses[item.scheduleId!] = item.status;
@@ -149,18 +152,17 @@ class Bill {
   }
 
   static BillStatus _projectStatus(BillStatus current, List<BillItem> items) {
-    if (current == BillStatus.open) return BillStatus.open;
-    return _projectClosedStatus(items);
+    return _settlement.projectBillStatus(
+      current,
+      items.map((item) => item.status),
+    );
   }
 
   static BillStatus _projectClosedStatus(List<BillItem> items) {
-    return items.any(
-          (item) =>
-              item.status == BillItemStatus.pending ||
-              item.status == BillItemStatus.partiallyPaid,
-        )
-        ? BillStatus.billed
-        : BillStatus.settled;
+    return _settlement.projectBillStatus(
+      BillStatus.billed,
+      items.map((item) => item.status),
+    );
   }
 }
 

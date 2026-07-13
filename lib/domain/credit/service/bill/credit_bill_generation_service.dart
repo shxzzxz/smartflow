@@ -19,6 +19,22 @@ import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 
+class CreditBillGenerationResult {
+  const CreditBillGenerationResult({required this.scheduleStatuses});
+
+  static const empty = CreditBillGenerationResult(scheduleStatuses: {});
+
+  final Map<String, BillItemStatus> scheduleStatuses;
+
+  CreditBillGenerationResult merge(CreditBillGenerationResult other) {
+    if (scheduleStatuses.isEmpty) return other;
+    if (other.scheduleStatuses.isEmpty) return this;
+    return CreditBillGenerationResult(
+      scheduleStatuses: {...scheduleStatuses, ...other.scheduleStatuses},
+    );
+  }
+}
+
 class CreditBillGenerationService {
   const CreditBillGenerationService({
     required CreditAccountRepository creditAccounts,
@@ -44,19 +60,23 @@ class CreditBillGenerationService {
   final IdGenerator _idGenerator;
   final SettlementJudgementService _judgement;
 
-  Future<void> generateDueBillsForAccount({
+  Future<CreditBillGenerationResult> generateDueBillsForAccount({
     required CreditLiabilityAccount account,
     required DateTime now,
   }) async {
-    switch (account.kind) {
-      case CreditLiabilityAccountKind.credit:
-        await _generateCreditBills(account, _dateOnly(now));
-      case CreditLiabilityAccountKind.loan:
-        await _generateCurrentLoanBill(account, _dateOnly(now));
-    }
+    return switch (account.kind) {
+      CreditLiabilityAccountKind.credit => await _generateCreditBills(
+        account,
+        _dateOnly(now),
+      ),
+      CreditLiabilityAccountKind.loan => await _generateCurrentLoanBill(
+        account,
+        _dateOnly(now),
+      ),
+    };
   }
 
-  Future<void> generateBillForPeriod({
+  Future<CreditBillGenerationResult> generateBillForPeriod({
     required CreditLiabilityAccount account,
     required BillPeriod period,
     required DateTime now,
@@ -73,7 +93,7 @@ class CreditBillGenerationService {
     }
     if (await _bills.findByAccountAndPeriod(account.accountId, period) !=
         null) {
-      return;
+      return CreditBillGenerationResult.empty;
     }
 
     switch (account.kind) {
@@ -94,18 +114,18 @@ class CreditBillGenerationService {
           status: status,
           window: window,
         );
-        await _refreshBill(bill);
+        return _refreshBill(bill);
       case CreditLiabilityAccountKind.loan:
         final bill = await _saveEmptyBill(
           accountId: account.accountId,
           period: period,
           status: BillStatus.billed,
         );
-        await _refreshBill(bill);
+        return _refreshBill(bill);
     }
   }
 
-  Future<void> refreshBill(String billId) async {
+  Future<CreditBillGenerationResult> refreshBill(String billId) async {
     final bill = await _bills.findBill(billId);
     if (bill == null) {
       throw BusinessException(
@@ -113,10 +133,10 @@ class CreditBillGenerationService {
         message: 'Bill does not exist.',
       );
     }
-    await _refreshBill(bill);
+    return _refreshBill(bill);
   }
 
-  Future<void> refreshDisplayedBillsForAccount({
+  Future<CreditBillGenerationResult> refreshDisplayedBillsForAccount({
     required CreditLiabilityAccount account,
     required DateTime now,
   }) async {
@@ -127,6 +147,7 @@ class CreditBillGenerationService {
       ],
       CreditLiabilityAccountKind.loan => [BillPeriod.fromDate(now)],
     };
+    var result = CreditBillGenerationResult.empty;
     for (final period in periods) {
       final bill = await _bills.findByAccountAndPeriod(
         account.accountId,
@@ -135,14 +156,16 @@ class CreditBillGenerationService {
       if (bill == null || !_shouldRefreshWhenDisplayed(account, bill)) {
         continue;
       }
-      await _refreshBill(bill);
+      result = result.merge(await _refreshBill(bill));
     }
+    return result;
   }
 
-  Future<void> _generateCreditBills(
+  Future<CreditBillGenerationResult> _generateCreditBills(
     CreditLiabilityAccount account,
     DateTime now,
   ) async {
+    var result = CreditBillGenerationResult.empty;
     final currentPeriod = account.creditPeriodForDate(now);
     final billedPeriod = currentPeriod.previous();
     var billed = await _bills.findByAccountAndPeriod(
@@ -163,16 +186,16 @@ class CreditBillGenerationService {
           previousWindow: prior?.window,
         ),
       );
-      await _refreshBill(billed);
+      result = result.merge(await _refreshBill(billed));
     } else if (billed.status == BillStatus.open) {
-      await _refreshBill(billed, freezeOpenBill: true);
+      result = result.merge(await _refreshBill(billed, freezeOpenBill: true));
     }
 
     final current = await _bills.findByAccountAndPeriod(
       account.accountId,
       currentPeriod,
     );
-    if (current != null) return;
+    if (current != null) return result;
     final opened = await _saveEmptyBill(
       accountId: account.accountId,
       period: currentPeriod,
@@ -182,24 +205,24 @@ class CreditBillGenerationService {
         previousWindow: billed.window,
       ),
     );
-    await _refreshBill(opened);
+    return result.merge(await _refreshBill(opened));
   }
 
-  Future<void> _generateCurrentLoanBill(
+  Future<CreditBillGenerationResult> _generateCurrentLoanBill(
     CreditLiabilityAccount account,
     DateTime now,
   ) async {
     final period = BillPeriod.fromDate(now);
     if (await _bills.findByAccountAndPeriod(account.accountId, period) !=
         null) {
-      return;
+      return CreditBillGenerationResult.empty;
     }
     final bill = await _saveEmptyBill(
       accountId: account.accountId,
       period: period,
       status: BillStatus.billed,
     );
-    await _refreshBill(bill);
+    return _refreshBill(bill);
   }
 
   Future<Bill> _saveEmptyBill({
@@ -220,7 +243,10 @@ class CreditBillGenerationService {
     );
   }
 
-  Future<void> _refreshBill(Bill bill, {bool freezeOpenBill = false}) async {
+  Future<CreditBillGenerationResult> _refreshBill(
+    Bill bill, {
+    bool freezeOpenBill = false,
+  }) async {
     final account = await _creditAccounts.findByAccountId(bill.accountId);
     if (account == null) {
       throw BusinessException(CreditErrorCode.accountNotFound);
@@ -243,8 +269,13 @@ class CreditBillGenerationService {
     } else {
       bill.synchronizeBilledItems(sourceItems);
     }
-    await _refreshInstallmentStatusesFromItems(sourceItems);
     await _bills.updateBill(bill);
+    return CreditBillGenerationResult(
+      scheduleStatuses: {
+        for (final item in sourceItems)
+          if (item.scheduleId != null) item.scheduleId!: item.status,
+      },
+    );
   }
 
   Future<List<BillItem>> _buildCreditItems(
@@ -417,38 +448,6 @@ class CreditBillGenerationService {
       }
     }
     return result;
-  }
-
-  Future<void> _refreshInstallmentStatusesFromItems(
-    List<BillItem> items,
-  ) async {
-    final touchedContractIds = <String>{};
-    for (final item in items) {
-      final scheduleId = item.scheduleId;
-      if (scheduleId == null) continue;
-      final schedule = await _installments.findSchedule(scheduleId);
-      if (schedule == null) continue;
-      final nextStatus = _judgement.projectScheduleStatus(item.status);
-      if (nextStatus != schedule.status) {
-        await _installments.updateSchedule(
-          schedule.id,
-          InstallmentSchedulePatch(status: nextStatus),
-        );
-      }
-      touchedContractIds.add(schedule.contractId);
-    }
-    for (final contractId in touchedContractIds) {
-      final contract = await _installments.findContract(contractId);
-      if (contract == null) continue;
-      final schedules = await _installments.listSchedules(contractId);
-      final nextStatus = _judgement.projectContractStatus(
-        current: contract.status,
-        schedules: schedules,
-      );
-      if (nextStatus != contract.status) {
-        await _installments.updateContractStatus(contractId, nextStatus);
-      }
-    }
   }
 
   bool _shouldRefreshWhenDisplayed(CreditLiabilityAccount account, Bill bill) {

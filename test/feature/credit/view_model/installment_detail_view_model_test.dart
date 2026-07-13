@@ -127,7 +127,7 @@ void main() {
 ProviderContainer _container({
   required InstallmentContract? contract,
   List<InstallmentSchedule> schedules = const [],
-  List<RepaymentCashflow> cashflows = const [],
+  List<ContractRepayment> cashflows = const [],
   _FakeInstallmentAppService? service,
   _FakeRepaymentAppService? repaymentAppService,
 }) {
@@ -139,7 +139,7 @@ ProviderContainer _container({
       installmentSchedulesProvider.overrideWith(
         (ref, contractId) async => schedules,
       ),
-      installmentRepaymentCashflowsProvider.overrideWith(
+      installmentRepaymentsProvider.overrideWith(
         (ref, contractId) async => cashflows,
       ),
       installmentAppServiceProvider.overrideWithValue(
@@ -191,8 +191,8 @@ InstallmentSchedule _schedule(
   );
 }
 
-RepaymentCashflow _cashflow() {
-  return RepaymentCashflow(
+ContractRepayment _cashflow() {
+  return ContractRepayment(
     id: 'repayment-1',
     transactionId: 'tx-repay',
     repaymentType: RepaymentType.prepayment,

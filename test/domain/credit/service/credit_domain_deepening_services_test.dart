@@ -363,12 +363,6 @@ class _FakeInstallmentRepository implements InstallmentRepository {
   final List<InstallmentSchedule> schedules;
 
   @override
-  Future<void> appendSchedules(
-    String contractId,
-    List<InstallmentSchedule> schedules,
-  ) async {}
-
-  @override
   Future<void> deleteContract(String contractId) async {}
 
   @override
@@ -404,30 +398,18 @@ class _FakeInstallmentRepository implements InstallmentRepository {
   }
 
   @override
-  Future<void> replaceSchedules(
-    String contractId,
+  Future<void> saveContract(InstallmentContract contract) async {}
+
+  @override
+  Future<void> insertAggregate(
+    InstallmentContract contract,
     List<InstallmentSchedule> schedules,
   ) async {}
 
   @override
-  Future<void> saveContract(InstallmentContract contract) async {}
-
-  @override
-  Future<void> updateContract(
-    String contractId,
-    InstallmentContractPatch patch,
-  ) async {}
-
-  @override
-  Future<void> updateContractStatus(
-    String contractId,
-    InstallmentContractStatus status,
-  ) async {}
-
-  @override
-  Future<void> updateSchedule(
-    String scheduleId,
-    InstallmentSchedulePatch patch,
+  Future<void> saveAggregate(
+    InstallmentContract contract,
+    List<InstallmentSchedule> schedules,
   ) async {}
 }
 

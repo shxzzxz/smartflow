@@ -2,7 +2,7 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart'
     as ledger_command;
 import 'package:smartflow/application/ledger/ledger_query_api.dart'
     as ledger_query;
-import 'package:smartflow/application/credit/port/credit_ledger_port.dart';
+import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 
@@ -157,6 +157,7 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
     return CreditLedgerTransactionSnapshot(
       transactionId: detail.transaction.id,
       occurredAt: detail.transaction.occurredAt,
+      paidFromAccountId: _paidFromAccountId(detail),
     );
   }
 
@@ -257,5 +258,16 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
 
   Money? _positiveOrNull(Money value) {
     return value.minorUnits > 0 ? value : null;
+  }
+
+  String? _paidFromAccountId(ledger_query.TransactionDetail detail) {
+    final paidAmount = detail.transaction.primaryAmount;
+    for (final entry in detail.entries.reversed) {
+      if (entry.direction == ledger_query.EntryDirection.credit &&
+          entry.amount == paidAmount) {
+        return entry.accountId;
+      }
+    }
+    return null;
   }
 }

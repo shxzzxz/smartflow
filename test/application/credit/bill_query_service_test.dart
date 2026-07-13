@@ -6,6 +6,7 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart' as ledger;
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
+import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
@@ -77,13 +78,13 @@ void main() {
 class _Fixture {
   _Fixture({
     Map<String, ledger.TransactionDetail> transactionDetails = const {},
-  }) : transactions = _FakeTransactionQueryService(transactionDetails) {
+  }) {
     query = credit_query.BillQueryServiceImpl(
       bills: bills,
       creditAccounts: creditAccounts,
       installments: installments,
       repayments: repayments,
-      transactionQueryService: transactions,
+      ledger: _FakeCreditLedgerPort(transactionDetails),
       now: () => DateTime(2026, 7, 1),
     );
   }
@@ -97,7 +98,6 @@ class _Fixture {
   late final DriftRepaymentRepository repayments = DriftRepaymentRepository(
     database,
   );
-  final _FakeTransactionQueryService transactions;
   late final credit_query.BillQueryService query;
 
   Future<void> seedBill() async {
@@ -188,23 +188,22 @@ ledger.TransactionDetail _transactionDetail() {
   );
 }
 
-class _FakeTransactionQueryService implements ledger.TransactionQueryService {
-  const _FakeTransactionQueryService(this.details);
+class _FakeCreditLedgerPort implements CreditLedgerPort {
+  const _FakeCreditLedgerPort(this.details);
 
   final Map<String, ledger.TransactionDetail> details;
 
   @override
-  Future<ledger.TransactionDetail?> findTransactionDetail(
-    String transactionId,
-  ) {
-    return Future.value(details[transactionId]);
-  }
-
-  @override
-  Future<ledger.TransactionDetail?> findCurrentParentTransactionDetailByRoot(
+  Future<CreditLedgerTransactionSnapshot?> findCurrentParentTransactionByRoot(
     String rootTransactionId,
-  ) {
-    return Future.value(details[rootTransactionId]);
+  ) async {
+    final detail = details[rootTransactionId];
+    if (detail == null) return null;
+    return CreditLedgerTransactionSnapshot(
+      transactionId: detail.transaction.id,
+      occurredAt: detail.transaction.occurredAt,
+      paidFromAccountId: detail.entries.last.accountId,
+    );
   }
 
   @override

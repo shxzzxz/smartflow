@@ -4,13 +4,14 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/credit/port/installment_repository.dart';
+import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/domain/ledger/service/account/account_role_policy.dart';
 import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
 import 'package:smartflow/infrastructure/credit/adapter/ledger_credit_ledger_port.dart';
+import 'package:smartflow/infrastructure/credit/adapter/ledger_credit_account_port.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_bill_source_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
@@ -347,50 +348,52 @@ void main() {
             createdAt: DateTime(2026, 6, 1),
           ),
         );
-        await fixture.installmentRepository.replaceSchedules(contractId, [
-          InstallmentSchedule(
-            id: fixture.ids.newId(),
-            contractId: contractId,
-            periodNo: 1,
-            expectedRepaymentDate: DateTime(2026, 7, 1),
-            expectedPrincipal: const Money(minorUnits: 60000),
-            expectedInterest: const Money(minorUnits: 1000),
-            expectedFee: Money.zero(),
-            status: InstallmentScheduleStatus.pending,
-            createdAt: DateTime(2026, 6, 1),
-          ),
-          InstallmentSchedule(
-            id: fixture.ids.newId(),
-            contractId: contractId,
-            periodNo: 2,
-            expectedRepaymentDate: DateTime(2026, 8, 1),
-            expectedPrincipal: const Money(minorUnits: 0),
-            expectedInterest: const Money(minorUnits: 0),
-            expectedFee: Money.zero(),
-            status: InstallmentScheduleStatus.pending,
-            createdAt: DateTime(2026, 6, 1),
-          ),
-          InstallmentSchedule(
-            id: fixture.ids.newId(),
-            contractId: contractId,
-            periodNo: 3,
-            expectedRepaymentDate: DateTime(2026, 9, 1),
-            expectedPrincipal: const Money(minorUnits: 60000),
-            expectedInterest: const Money(minorUnits: 500),
-            expectedFee: Money.zero(),
-            status: InstallmentScheduleStatus.pending,
-            createdAt: DateTime(2026, 6, 1),
-          ),
-        ]);
-        final skippedSchedule = (await fixture.installmentRepository
-            .listSchedules(
-              contractId,
-            )).singleWhere((schedule) => schedule.periodNo == 2);
-        await fixture.installmentRepository.updateSchedule(
-          skippedSchedule.id,
-          const InstallmentSchedulePatch(
-            status: InstallmentScheduleStatus.skipped,
-          ),
+        await fixture.installmentRepository.saveAggregate(
+          (await fixture.installmentRepository.findContract(contractId))!,
+          [
+            InstallmentSchedule(
+              id: fixture.ids.newId(),
+              contractId: contractId,
+              periodNo: 1,
+              expectedRepaymentDate: DateTime(2026, 7, 1),
+              expectedPrincipal: const Money(minorUnits: 60000),
+              expectedInterest: const Money(minorUnits: 1000),
+              expectedFee: Money.zero(),
+              status: InstallmentScheduleStatus.pending,
+              createdAt: DateTime(2026, 6, 1),
+            ),
+            InstallmentSchedule(
+              id: fixture.ids.newId(),
+              contractId: contractId,
+              periodNo: 2,
+              expectedRepaymentDate: DateTime(2026, 8, 1),
+              expectedPrincipal: const Money(minorUnits: 0),
+              expectedInterest: const Money(minorUnits: 0),
+              expectedFee: Money.zero(),
+              status: InstallmentScheduleStatus.pending,
+              createdAt: DateTime(2026, 6, 1),
+            ),
+            InstallmentSchedule(
+              id: fixture.ids.newId(),
+              contractId: contractId,
+              periodNo: 3,
+              expectedRepaymentDate: DateTime(2026, 9, 1),
+              expectedPrincipal: const Money(minorUnits: 60000),
+              expectedInterest: const Money(minorUnits: 500),
+              expectedFee: Money.zero(),
+              status: InstallmentScheduleStatus.pending,
+              createdAt: DateTime(2026, 6, 1),
+            ),
+          ],
+        );
+        final aggregateSchedules = await fixture.installmentRepository
+            .listSchedules(contractId);
+        aggregateSchedules
+            .singleWhere((schedule) => schedule.periodNo == 2)
+            .skip();
+        await fixture.installmentRepository.saveAggregate(
+          (await fixture.installmentRepository.findContract(contractId))!,
+          aggregateSchedules,
         );
 
         await fixture.generation.generateDueBills(now: DateTime(2026, 8, 15));
@@ -429,19 +432,22 @@ void main() {
           createdAt: DateTime(2026, 6, 1),
         ),
       );
-      await fixture.installmentRepository.replaceSchedules(contractId, [
-        InstallmentSchedule(
-          id: fixture.ids.newId(),
-          contractId: contractId,
-          periodNo: 1,
-          expectedRepaymentDate: DateTime(2026, 7, 1),
-          expectedPrincipal: const Money(minorUnits: 60000),
-          expectedInterest: Money.zero(),
-          expectedFee: Money.zero(),
-          status: InstallmentScheduleStatus.pending,
-          createdAt: DateTime(2026, 6, 1),
-        ),
-      ]);
+      await fixture.installmentRepository.saveAggregate(
+        (await fixture.installmentRepository.findContract(contractId))!,
+        [
+          InstallmentSchedule(
+            id: fixture.ids.newId(),
+            contractId: contractId,
+            periodNo: 1,
+            expectedRepaymentDate: DateTime(2026, 7, 1),
+            expectedPrincipal: const Money(minorUnits: 60000),
+            expectedInterest: Money.zero(),
+            expectedFee: Money.zero(),
+            status: InstallmentScheduleStatus.pending,
+            createdAt: DateTime(2026, 6, 1),
+          ),
+        ],
+      );
       final schedule =
           (await fixture.installmentRepository.listSchedules(
             contractId,
@@ -453,10 +459,16 @@ void main() {
       )).singleWhere((bill) => bill.period == BillPeriod.fromInt(202607));
       final originalItemId = july.items.single.id;
 
-      await fixture.installmentRepository.updateSchedule(
-        schedule.id,
-        InstallmentSchedulePatch(expectedRepaymentDate: DateTime(2026, 8, 1)),
+      final contract = await fixture.installmentRepository.findContract(
+        schedule.contractId,
       );
+      final schedules = await fixture.installmentRepository.listSchedules(
+        schedule.contractId,
+      );
+      schedules
+          .singleWhere((candidate) => candidate.id == schedule.id)
+          .reviseExpectation(expectedRepaymentDate: DateTime(2026, 8, 1));
+      await fixture.installmentRepository.saveAggregate(contract!, schedules);
 
       await fixture.generation.generateDueBills(now: DateTime(2026, 8, 15));
       final august = (await fixture.billRepository.listBillsByAccount(
@@ -471,6 +483,104 @@ void main() {
       expect(syncedJuly!.items, isEmpty);
       expect(syncedJuly.status, BillStatus.settled);
     });
+
+    test(
+      'bill refresh advances and reopens installment aggregate from allocations',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        final account = await fixture.createLoanAccount();
+        final contract = InstallmentContract(
+          id: fixture.ids.newId(),
+          liabilityAccountId: account.id,
+          sourceType: InstallmentSourceType.disbursement,
+          disbursementAccountId: 'asset-account',
+          disbursementTransactionId: 'tx-borrowing',
+          principal: const Money(minorUnits: 60000),
+          totalPeriods: 1,
+          borrowingDate: DateTime(2026, 6, 1),
+          firstRepaymentDate: DateTime(2026, 7, 1),
+          lastRepaymentDate: DateTime(2026, 7, 1),
+          repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+          interestAccrualMethod: InterestAccrualMethod.daily,
+          totalFeeMinor: 0,
+          status: InstallmentContractStatus.active,
+          createdAt: DateTime(2026, 6, 1),
+        );
+        final schedule = InstallmentSchedule(
+          id: fixture.ids.newId(),
+          contractId: contract.id,
+          periodNo: 1,
+          expectedRepaymentDate: DateTime(2026, 7, 1),
+          expectedPrincipal: const Money(minorUnits: 60000),
+          expectedInterest: Money.zero(),
+          expectedFee: Money.zero(),
+          status: InstallmentScheduleStatus.pending,
+          createdAt: DateTime(2026, 6, 1),
+        );
+        await fixture.installmentRepository.insertAggregate(contract, [
+          schedule,
+        ]);
+        await fixture.generation.generateDueBills(now: DateTime(2026, 7, 15));
+        final bill =
+            (await fixture.billRepository.listBillsByAccount(
+              account.id,
+            )).single;
+        final billItem = bill.items.single;
+        final repaymentId = fixture.ids.newId();
+        final repayment = Repayment(
+          id: repaymentId,
+          repaymentType: RepaymentType.bill,
+          targetType: RepaymentTargetType.bill,
+          targetId: bill.id,
+          items: [
+            RepaymentItem(
+              id: fixture.ids.newId(),
+              repaymentId: repaymentId,
+              billItemId: billItem.id,
+              allocated: const RepaymentAmountBreakdown(
+                principal: Money(minorUnits: 60000),
+                interest: Money(minorUnits: 0),
+                fee: Money(minorUnits: 0),
+                discount: Money(minorUnits: 0),
+              ),
+            ),
+          ],
+        );
+        await fixture.repaymentRepository.saveRepayment(repayment);
+
+        await fixture.generation.refreshBill(bill.id);
+
+        expect(
+          (await fixture.installmentRepository.findSchedule(
+            schedule.id,
+          ))!.status,
+          InstallmentScheduleStatus.paid,
+        );
+        expect(
+          (await fixture.installmentRepository.findContract(
+            contract.id,
+          ))!.status,
+          InstallmentContractStatus.settled,
+        );
+
+        await fixture.repaymentRepository.deleteRepayment(repayment.id);
+        await fixture.generation.refreshBill(bill.id);
+
+        expect(
+          (await fixture.installmentRepository.findSchedule(
+            schedule.id,
+          ))!.status,
+          InstallmentScheduleStatus.pending,
+        );
+        expect(
+          (await fixture.installmentRepository.findContract(
+            contract.id,
+          ))!.status,
+          InstallmentContractStatus.active,
+        );
+      },
+    );
   });
 }
 
@@ -494,7 +604,7 @@ class _Fixture {
       idGenerator: ids,
     );
     creditAccountAppService = CreditAccountAppServiceImpl(
-      accountAppService: accountAppService,
+      ledger: LedgerCreditAccountPort(accountAppService),
       creditAccounts: creditAccountRepository,
       transactionRunner: runner,
       idGenerator: ids,
@@ -583,7 +693,7 @@ class _Fixture {
   late final CreditBillGenerationAppService generation;
   late final RepaymentAppService repaymentAppService;
 
-  Future<Account> createCreditAccount() {
+  Future<CreditLedgerAccountSnapshot> createCreditAccount() {
     return creditAccountAppService.createAccount(
       CreateCreditLiabilityAccountCommand(
         name: 'Huabei',
@@ -594,7 +704,7 @@ class _Fixture {
     );
   }
 
-  Future<Account> createLoanAccount() {
+  Future<CreditLedgerAccountSnapshot> createLoanAccount() {
     return creditAccountAppService.createAccount(
       const CreateCreditLiabilityAccountCommand(
         name: 'Jiebei',

@@ -20,7 +20,7 @@ application 是**用例编排层**，不是某个业务域的附属实现细节�
 排除：
 
 - 不承载领域不变量。
-- 不把另一个 application use case 当成可复用领域能力。
+- 不直接依赖兄弟域 application；跨域能力通过消费域 domain port 表达，由 infrastructure adapter 调用提供域 application facade。
 - 不直接依赖 Drift / SQL 实现；纯读侧通过 application query interface 由 infrastructure 提供实现。
 
 ### domain
@@ -53,6 +53,7 @@ infrastructure 实现 port 与 query interfaces，不承载业务决策。
 - SQL 表达式与 mapper。
 - application query interface 的 Drift / SQL 实现。
 - RPC / 文件 / 平台能力实现。
+- 消费域跨域 port adapter；adapter 可调用提供域 application facade，并负责语义转换。
 - 数据库事务执行器实现。
 
 排除：
@@ -147,7 +148,8 @@ feature/<feature>/
 
 ```text
 一个 application use case 拥有一个顶层事务边界。
-application use case 不应通过调用另一个完整 application use case 来复用领域能力。
+消费域 application 不直接调用提供域 application，而是调用本域 domain port。
+infrastructure adapter 可在该调用链内调用提供域 application facade；当前实现支持事务嵌套。
 跨域用例在自己的事务内组合多个 domain service / ports。
 ```
 
@@ -188,7 +190,9 @@ lib/infrastructure/database/table/*
 - `domain/*` 不依赖 application query DTO / read model / scope filter。
 - `application/*` 可以依赖一个或多个 `domain/*`；`application/<domain>/<capability>/query` 可定义纯读侧查询接口、查询参数与 read model。
 - `infrastructure/*` 实现 `domain/*/port` 和 application query interfaces，可以依赖对应接口和模型。
-- `feature/*` 不直接依赖 `domain/*` 或 `infrastructure/*`，通过 application provider / use case / query 使用业务能力。
+- `feature/*` 可直接引用稳定的 domain 枚举和值类型；不得直接依赖 domain service / port 或 `infrastructure/*`，业务行为通过 application provider / use case / query 完成。
+- application facade 不 export domain service / port；feature provider 不通过装配层 repository provider 执行领域规则。
 - `shared/*` 可承载跨 feature / application 复用的项目级业务语义；不得依赖 `feature/*`，不得承载账务核心不变量。
 - `domain/ledger` 不依赖 `domain/credit`、`domain/budget` 等兄弟业务域。
-- 兄弟业务域之间如需组合，由 application 用例编排。
+- 兄弟业务域之间如需组合，由消费域 application 编排本域 port；port adapter 位于消费域 infrastructure，并可调用提供域 application facade。
+- 跨聚合状态同步由 application coordinator 加载聚合、调用实体行为并通过 aggregate repository 保存；禁止为局部更新方便在 port 暴露状态 patch。

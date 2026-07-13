@@ -1247,7 +1247,7 @@ final class CreditAccountAppServiceProvider
 }
 
 String _$creditAccountAppServiceHash() =>
-    r'169e256ec4e3ec908461f339f4976d037306eedd';
+    r'e358f563657d958bd8c04846ad135ea9f3af90bd';
 
 @ProviderFor(creditAccountQueryService)
 final creditAccountQueryServiceProvider = CreditAccountQueryServiceProvider._();
@@ -1295,7 +1295,7 @@ final class CreditAccountQueryServiceProvider
 }
 
 String _$creditAccountQueryServiceHash() =>
-    r'32be17150fe38934822e22bcda2175ff2aaa4432';
+    r'a8b137a52b087c652b49be72c6a37d714d7e3345';
 
 @ProviderFor(installmentRepository)
 final installmentRepositoryProvider = InstallmentRepositoryProvider._();
@@ -1392,6 +1392,54 @@ final class RepaymentRepositoryProvider
 
 String _$repaymentRepositoryHash() =>
     r'4e0367be733a7a3427bf4ffd5cc592cc67011aab';
+
+@ProviderFor(creditAccountLedgerPort)
+final creditAccountLedgerPortProvider = CreditAccountLedgerPortProvider._();
+
+final class CreditAccountLedgerPortProvider
+    extends
+        $FunctionalProvider<
+          CreditAccountLedgerPort,
+          CreditAccountLedgerPort,
+          CreditAccountLedgerPort
+        >
+    with $Provider<CreditAccountLedgerPort> {
+  CreditAccountLedgerPortProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'creditAccountLedgerPortProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$creditAccountLedgerPortHash();
+
+  @$internal
+  @override
+  $ProviderElement<CreditAccountLedgerPort> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CreditAccountLedgerPort create(Ref ref) {
+    return creditAccountLedgerPort(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CreditAccountLedgerPort value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CreditAccountLedgerPort>(value),
+    );
+  }
+}
+
+String _$creditAccountLedgerPortHash() =>
+    r'8aac8aa58ac2b0771805f50dc8282e21d1194cbc';
 
 @ProviderFor(creditLedgerPort)
 final creditLedgerPortProvider = CreditLedgerPortProvider._();
@@ -1583,6 +1631,102 @@ final class InstallmentQueryServiceProvider
 String _$installmentQueryServiceHash() =>
     r'ed37f40ae719e4e434531e311910a2796e21c552';
 
+@ProviderFor(contractMetricsQuery)
+final contractMetricsQueryProvider = ContractMetricsQueryProvider._();
+
+final class ContractMetricsQueryProvider
+    extends
+        $FunctionalProvider<
+          ContractMetricsQuery,
+          ContractMetricsQuery,
+          ContractMetricsQuery
+        >
+    with $Provider<ContractMetricsQuery> {
+  ContractMetricsQueryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'contractMetricsQueryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$contractMetricsQueryHash();
+
+  @$internal
+  @override
+  $ProviderElement<ContractMetricsQuery> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ContractMetricsQuery create(Ref ref) {
+    return contractMetricsQuery(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ContractMetricsQuery value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ContractMetricsQuery>(value),
+    );
+  }
+}
+
+String _$contractMetricsQueryHash() =>
+    r'33a550c96fd010223ffa625e361201022626a8f6';
+
+@ProviderFor(contractRepaymentQuery)
+final contractRepaymentQueryProvider = ContractRepaymentQueryProvider._();
+
+final class ContractRepaymentQueryProvider
+    extends
+        $FunctionalProvider<
+          ContractRepaymentQuery,
+          ContractRepaymentQuery,
+          ContractRepaymentQuery
+        >
+    with $Provider<ContractRepaymentQuery> {
+  ContractRepaymentQueryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'contractRepaymentQueryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$contractRepaymentQueryHash();
+
+  @$internal
+  @override
+  $ProviderElement<ContractRepaymentQuery> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ContractRepaymentQuery create(Ref ref) {
+    return contractRepaymentQuery(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ContractRepaymentQuery value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ContractRepaymentQuery>(value),
+    );
+  }
+}
+
+String _$contractRepaymentQueryHash() =>
+    r'b498f0bc81f2445a1445f4538ea81575a2892aae';
+
 @ProviderFor(creditBillGenerationAppService)
 final creditBillGenerationAppServiceProvider =
     CreditBillGenerationAppServiceProvider._();
@@ -1773,4 +1917,4 @@ final class BillQueryServiceProvider
   }
 }
 
-String _$billQueryServiceHash() => r'c35417ead0b2be5f34008d78dc5ba835ba0b8a45';
+String _$billQueryServiceHash() => r'cda940ed42d0bb1f907e16557e59eb2999258e51';

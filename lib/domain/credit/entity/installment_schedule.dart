@@ -3,8 +3,11 @@ import '../../../core/error/app_exception.dart';
 import '../valobj/bill_enums.dart';
 import '../valobj/credit_error_code.dart';
 import '../valobj/installment_enums.dart';
+import '../service/settlement/settlement_judgement_service.dart';
 
 class InstallmentSchedule {
+  static const _settlement = SettlementJudgementService();
+
   InstallmentSchedule({
     required this.id,
     required this.contractId,
@@ -72,12 +75,7 @@ class InstallmentSchedule {
   }
 
   void applyBillItemStatus(BillItemStatus status) {
-    _status = switch (status) {
-      BillItemStatus.paid => InstallmentScheduleStatus.paid,
-      BillItemStatus.partiallyPaid => InstallmentScheduleStatus.partiallyPaid,
-      BillItemStatus.pending => InstallmentScheduleStatus.pending,
-      BillItemStatus.skipped => InstallmentScheduleStatus.skipped,
-    };
+    _status = _settlement.projectScheduleStatus(status);
   }
 
   void _ensurePending() {

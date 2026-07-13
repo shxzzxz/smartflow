@@ -11,6 +11,7 @@ import '../infrastructure/credit/repository/drift_credit_bill_source_repository.
 import '../infrastructure/credit/repository/drift_installment_repository.dart';
 import '../infrastructure/credit/repository/drift_repayment_repository.dart';
 import '../infrastructure/credit/adapter/ledger_credit_ledger_port.dart';
+import '../infrastructure/credit/adapter/ledger_credit_account_port.dart';
 import '../infrastructure/ledger/repository/drift_posting_repository.dart';
 import '../infrastructure/ledger/repository/drift_system_account_resolver.dart';
 import '../infrastructure/ledger/repository/drift_transaction_detail_read_repository.dart';
@@ -21,7 +22,6 @@ import '../infrastructure/shared/uuid_id_generator.dart';
 import '../application/ledger/ledger_command_api.dart';
 import '../application/ledger/ledger_query_api.dart';
 import '../application/ledger/ledger_query_port_api.dart';
-import 'package:smartflow/application/credit/credit_port_api.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../application/shared/app_task.dart';
@@ -31,6 +31,7 @@ import '../domain/credit/port/credit_account_repository.dart';
 import '../domain/credit/port/credit_bill_source_repository.dart';
 import '../domain/credit/port/installment_repository.dart';
 import '../domain/credit/port/repayment_repository.dart';
+import '../domain/credit/port/credit_ledger_port.dart';
 import '../domain/ledger/port/system_account_resolver.dart';
 import '../domain/ledger/service/account/account_role_policy.dart';
 import '../domain/ledger/service/posting/account_posting_service.dart';
@@ -219,7 +220,7 @@ CreditBillSourceRepository creditBillSourceRepository(Ref ref) {
 @Riverpod(keepAlive: true)
 CreditAccountAppService creditAccountAppService(Ref ref) {
   return CreditAccountAppServiceImpl(
-    accountAppService: ref.watch(accountAppServiceProvider),
+    ledger: ref.watch(creditAccountLedgerPortProvider),
     creditAccounts: ref.watch(creditAccountRepositoryProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
     idGenerator: ref.watch(idGeneratorProvider),
@@ -233,8 +234,7 @@ CreditAccountQueryService creditAccountQueryService(Ref ref) {
     bills: ref.watch(billRepositoryProvider),
     installments: ref.watch(installmentRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
-    accountQueryService: ref.watch(accountQueryServiceProvider),
-    transactionQueryService: ref.watch(transactionQueryServiceProvider),
+    ledger: ref.watch(creditLedgerPortProvider),
   );
 }
 
@@ -246,6 +246,11 @@ InstallmentRepository installmentRepository(Ref ref) {
 @Riverpod(keepAlive: true)
 RepaymentRepository repaymentRepository(Ref ref) {
   return DriftRepaymentRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+CreditAccountLedgerPort creditAccountLedgerPort(Ref ref) {
+  return LedgerCreditAccountPort(ref.watch(accountAppServiceProvider));
 }
 
 @Riverpod(keepAlive: true)
@@ -292,6 +297,21 @@ InstallmentQueryService installmentQueryService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+ContractMetricsQuery contractMetricsQuery(Ref ref) {
+  return ContractMetricsQueryImpl(
+    installments: ref.watch(installmentRepositoryProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+ContractRepaymentQuery contractRepaymentQuery(Ref ref) {
+  return ContractRepaymentQueryImpl(
+    repayments: ref.watch(repaymentRepositoryProvider),
+    ledger: ref.watch(creditLedgerPortProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
 CreditBillGenerationAppService creditBillGenerationAppService(Ref ref) {
   return CreditBillGenerationAppServiceImpl(
     creditAccounts: ref.watch(creditAccountRepositoryProvider),
@@ -326,6 +346,6 @@ BillQueryService billQueryService(Ref ref) {
     creditAccounts: ref.watch(creditAccountRepositoryProvider),
     installments: ref.watch(installmentRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
-    transactionQueryService: ref.watch(transactionQueryServiceProvider),
+    ledger: ref.watch(creditLedgerPortProvider),
   );
 }

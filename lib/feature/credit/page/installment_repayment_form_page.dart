@@ -145,7 +145,7 @@ class _InstallmentRepaymentFormPageState
             ],
           ),
           const SizedBox(height: AppSpacing.space24),
-          const CreditRepaymentSubmitHint(text: '提交后，发生日之后的待还期次金额将按剩余本金重新计算。'),
+          const CreditRepaymentSubmitHint(text: '提交后，全部待还期次金额将按剩余本金重新计算。'),
           AppSubmitButton(
             label: '提交并重算',
             loading: state.submitting,

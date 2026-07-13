@@ -1,4 +1,5 @@
 import 'package:smartflow/domain/credit/entity/bill.dart';
+import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
@@ -8,8 +9,8 @@ import 'package:smartflow/domain/credit/service/repayment/repayment_policy_servi
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
-class RepaymentSettlementService {
-  const RepaymentSettlementService({
+class CreditSettlementCoordinator {
+  const CreditSettlementCoordinator({
     required BillRepository bills,
     required RepaymentRepository repayments,
     required InstallmentRepository installments,
@@ -51,53 +52,52 @@ class RepaymentSettlementService {
   ) async {
     if (scheduleStatuses.isEmpty) return;
     final touchedContractIds = <String>{};
-    for (final entry in scheduleStatuses.entries) {
-      final scheduleId = entry.key;
+    for (final scheduleId in scheduleStatuses.keys) {
       final schedule = await _installments.findSchedule(scheduleId);
-      if (schedule == null) continue;
-      final currentStatus = schedule.status;
-      schedule.applyBillItemStatus(entry.value);
-      final nextStatus = schedule.status;
-      if (currentStatus != nextStatus) {
-        await _installments.updateSchedule(
-          scheduleId,
-          InstallmentSchedulePatch(status: nextStatus),
-        );
-      }
-      touchedContractIds.add(schedule.contractId);
+      if (schedule != null) touchedContractIds.add(schedule.contractId);
     }
 
     for (final contractId in touchedContractIds) {
-      await refreshContractStatus(contractId);
+      final contract = await _installments.findContract(contractId);
+      if (contract == null) continue;
+      final schedules = await _installments.listSchedules(contractId);
+      for (final schedule in schedules) {
+        final billItemStatus = scheduleStatuses[schedule.id];
+        if (billItemStatus != null) {
+          schedule.applyBillItemStatus(billItemStatus);
+        }
+      }
+      contract.refreshStatusFromSchedules(schedules);
+      await _installments.saveAggregate(contract, schedules);
     }
   }
 
-  Future<void> recalculatePendingSchedulesAfter(
-    String contractId,
-    DateTime occurredAt,
-  ) async {
+  Future<void> recalculateAllPendingSchedules(String contractId) async {
     final contract = await _installments.findContract(contractId);
     if (contract == null) return;
 
     final schedules = await _installments.listSchedules(contractId);
     final prepaymentPrincipalMinor = await prepaymentSumMinor(contractId);
-    final recalculations = _prepaymentRecalculator.recalculateAfterPrepayment(
+    final recalculations = _prepaymentRecalculator.recalculateAllPending(
       contract: contract,
       schedules: schedules,
-      occurredAt: occurredAt,
       prepaymentPrincipalMinor: prepaymentPrincipalMinor,
     );
 
-    for (final recalculation in recalculations) {
-      await _installments.updateSchedule(
-        recalculation.scheduleId,
-        InstallmentSchedulePatch(
-          expectedPrincipal: recalculation.expectedPrincipal,
-          expectedInterest: recalculation.expectedInterest,
-          expectedFee: recalculation.expectedFee,
-        ),
-      );
-    }
+    contract.reviseSchedules(
+      schedules: schedules,
+      revisions: [
+        for (final recalculation in recalculations)
+          InstallmentScheduleRevision(
+            periodNo: recalculation.periodNo,
+            expectedPrincipal: recalculation.expectedPrincipal,
+            expectedInterest: recalculation.expectedInterest,
+            expectedFee: recalculation.expectedFee,
+            expectedRepaymentDate: recalculation.expectedRepaymentDate,
+          ),
+      ],
+    );
+    await _installments.saveAggregate(contract, schedules);
   }
 
   Future<int> prepaymentSumMinor(String contractId) async {
@@ -113,13 +113,7 @@ class RepaymentSettlementService {
     if (contract == null) return;
     final schedules = await _installments.listSchedules(contractId);
     if (schedules.isEmpty) return;
-    final currentStatus = contract.status;
-    final nextStatus = _lifecycle.projectContractStatus(
-      contract: contract,
-      schedules: schedules,
-    );
-    if (nextStatus != currentStatus) {
-      await _installments.updateContractStatus(contractId, nextStatus);
-    }
+    contract.refreshStatusFromSchedules(schedules);
+    await _installments.saveAggregate(contract, schedules);
   }
 }

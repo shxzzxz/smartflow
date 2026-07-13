@@ -5,7 +5,6 @@ import '../../../application/credit/credit_command_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
-import '../../../domain/credit/service/installment/installment_plan_engine.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
 import 'installment_contract_edit_state.dart';
@@ -15,8 +14,6 @@ part 'installment_contract_edit_view_model.g.dart';
 @riverpod
 class InstallmentContractEditViewModel
     extends _$InstallmentContractEditViewModel {
-  static const _planner = InstallmentPlanEngine();
-
   @override
   Future<InstallmentContractEditState> build(String contractId) async {
     final contract = await ref.watch(
@@ -73,12 +70,12 @@ class InstallmentContractEditViewModel
     _updateLoaded((loaded) => loaded.copyWith(accrualMethod: value));
   }
 
-  UiActionOutcome<void> recalculate({
+  Future<UiActionOutcome<void>> recalculate({
     required String totalPeriodsText,
     required String rateText,
     required String feeText,
     required String overrideInstallmentText,
-  }) {
+  }) async {
     final loaded = _loadedOrNull();
     if (loaded == null) return _invalidAction('合同尚未加载');
 
@@ -101,70 +98,60 @@ class InstallmentContractEditViewModel
             ? _parseOptionalOverride(overrideInstallmentText)
             : null;
 
-    final paidRows =
-        loaded.draft
-            .where((r) => r.status == InstallmentScheduleStatus.paid)
-            .toList()
-          ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
-    final pendingRows =
-        loaded.draft
-            .where((r) => r.status == InstallmentScheduleStatus.pending)
-            .toList()
-          ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
-    if (pendingRows.isEmpty) {
+    if (!loaded.draft.any(
+      (row) => row.status == InstallmentScheduleStatus.pending,
+    )) {
       return _invalidAction('没有可重算的待还期次');
     }
 
-    final paidPrincipalMinor = paidRows.fold<int>(
-      0,
-      (acc, row) => acc + row.principal.minorUnits,
-    );
-    final paidFeeMinor = paidRows.fold<int>(
-      0,
-      (acc, row) => acc + row.fee.minorUnits,
-    );
-    final remainingMinor =
-        loaded.contract.principal.minorUnits - paidPrincipalMinor;
-    if (remainingMinor < 0) return _invalidAction('剩余本金为负，无法重算');
-
-    final anchorDate =
-        paidRows.isEmpty ? loaded.contract.borrowingDate : paidRows.last.date;
-    final remainingFeeMinor = feeMinor - paidFeeMinor;
-    final allocations = _planner.allocate(
-      remainingPrincipal: Money(minorUnits: remainingMinor),
-      anchorDate: anchorDate,
-      pendingDates: [for (final row in pendingRows) row.date],
-      method: loaded.method,
-      accrualMethod: loaded.accrualMethod,
-      ratePeriod: ratePpm == null ? null : loaded.ratePeriod,
-      ratePpm: ratePpm,
-      remainingFeeMinor: remainingFeeMinor < 0 ? 0 : remainingFeeMinor,
-      equalInstallmentOverrideMinor: overrideMinor,
-    );
-
-    final allocationByPeriod = {
-      for (var i = 0; i < pendingRows.length; i++)
-        pendingRows[i].periodNo: allocations[i],
-    };
-    final nextDraft = [
-      for (final row in loaded.draft)
-        if (allocationByPeriod[row.periodNo] case final allocation?)
-          row.copyWith(
-            principal: allocation.principal,
-            interest: allocation.interest,
-            fee: allocation.fee,
-          )
-        else
-          row,
-    ];
-
-    _setLoaded(
-      loaded.copyWith(
-        draft: nextDraft,
-        manualPatchedPeriodNos: {for (final row in pendingRows) row.periodNo},
-      ),
-    );
-    return const UiActionOutcome.success(null);
+    try {
+      final preview = await ref
+          .read(installmentAppServiceProvider)
+          .previewContractRecalculation(
+            RecalculateContractSchedulesCommand(
+              contractId: contractId,
+              terms: ContractRecalculationTerms(
+                totalPeriods: totalPeriods,
+                firstRepaymentDate: loaded.firstRepaymentDate,
+                lastRepaymentDate: loaded.lastRepaymentDate,
+                repaymentMethod: loaded.method,
+                interestRatePeriod: ratePpm == null ? null : loaded.ratePeriod,
+                interestRatePpm: ratePpm,
+                interestAccrualMethod: loaded.accrualMethod,
+                totalFeeMinor: feeMinor,
+              ),
+              equalInstallmentOverrideMinor: overrideMinor,
+            ),
+          );
+      final previewByScheduleId = {
+        for (final row in preview) row.scheduleId: row,
+      };
+      _setLoaded(
+        loaded.copyWith(
+          draft: [
+            for (final row in loaded.draft)
+              if (previewByScheduleId[row.scheduleId] case final previewRow?)
+                row.copyWith(
+                  date: previewRow.expectedRepaymentDate,
+                  principal: previewRow.expectedPrincipal,
+                  interest: previewRow.expectedInterest,
+                  fee: previewRow.expectedFee,
+                )
+              else
+                row,
+          ],
+          manualPatchedPeriodNos: {
+            ...loaded.manualPatchedPeriodNos,
+            for (final row in preview) row.periodNo,
+          },
+        ),
+      );
+      return const UiActionOutcome.success(null);
+    } on AppException catch (exception) {
+      return UiActionOutcome.failure(UiError.fromException(exception));
+    } on Exception {
+      return const UiActionOutcome.failure(UiError.unknown());
+    }
   }
 
   void applyAmount(
@@ -300,7 +287,7 @@ class InstallmentContractEditViewModel
     ref
       ..invalidate(installmentContractProvider(contractId))
       ..invalidate(installmentSchedulesProvider(contractId))
-      ..invalidate(installmentRepaymentCashflowsProvider(contractId))
+      ..invalidate(installmentRepaymentsProvider(contractId))
       ..invalidate(installmentMetricsProvider(contractId))
       ..invalidate(installmentContractsByAccountProvider(liabilityAccountId));
   }

@@ -1,5 +1,3 @@
-import 'package:smartflow/domain/credit/entity/bill.dart';
-import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
@@ -19,12 +17,15 @@ class SettlementJudgementService {
         : BillItemStatus.pending;
   }
 
-  BillStatus projectBillStatus(BillStatus current, List<BillItem> items) {
+  BillStatus projectBillStatus(
+    BillStatus current,
+    Iterable<BillItemStatus> itemStatuses,
+  ) {
     if (current == BillStatus.open) return BillStatus.open;
-    return items.any(
-          (item) =>
-              item.status == BillItemStatus.pending ||
-              item.status == BillItemStatus.partiallyPaid,
+    return itemStatuses.any(
+          (status) =>
+              status == BillItemStatus.pending ||
+              status == BillItemStatus.partiallyPaid,
         )
         ? BillStatus.billed
         : BillStatus.settled;
@@ -41,19 +42,20 @@ class SettlementJudgementService {
 
   InstallmentContractStatus projectContractStatus({
     required InstallmentContractStatus current,
-    required List<InstallmentSchedule> schedules,
+    required Iterable<InstallmentScheduleStatus> scheduleStatuses,
   }) {
-    if (schedules.isEmpty) return current;
-    final hasOutstanding = schedules.any(
-      (schedule) =>
-          schedule.status == InstallmentScheduleStatus.pending ||
-          schedule.status == InstallmentScheduleStatus.partiallyPaid,
+    final statuses = scheduleStatuses.toList(growable: false);
+    if (statuses.isEmpty) return current;
+    final hasOutstanding = statuses.any(
+      (status) =>
+          status == InstallmentScheduleStatus.pending ||
+          status == InstallmentScheduleStatus.partiallyPaid,
     );
     if (hasOutstanding) return InstallmentContractStatus.active;
-    final allDone = schedules.every(
-      (schedule) =>
-          schedule.status == InstallmentScheduleStatus.paid ||
-          schedule.status == InstallmentScheduleStatus.skipped,
+    final allDone = statuses.every(
+      (status) =>
+          status == InstallmentScheduleStatus.paid ||
+          status == InstallmentScheduleStatus.skipped,
     );
     return allDone ? InstallmentContractStatus.settled : current;
   }
