@@ -5,6 +5,7 @@ import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/feature/credit/page/installment_detail_page.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 
@@ -16,8 +17,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('跳过'), findsOneWidget);
-    await tester.tap(find.text('跳过'));
+    await tester.drag(
+      find.byKey(const ValueKey('installment-schedule-schedule-1')),
+      const Offset(400, 0),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, '跳过'));
     await tester.pumpAndSettle();
@@ -32,17 +35,81 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('撤销跳过'), findsOneWidget);
-    await tester.tap(find.text('撤销跳过'));
+    await tester.drag(
+      find.byKey(const ValueKey('installment-schedule-schedule-1')),
+      const Offset(400, 0),
+    );
     await tester.pumpAndSettle();
 
     expect(service.restoreCommands.single.scheduleId, 'schedule-1');
+  });
+
+  testWidgets('repayment exposes revert action from swipe', (tester) async {
+    final repaymentService = _FakeRepaymentAppService();
+    await tester.pumpWidget(
+      _app(
+        service: _FakeInstallmentAppService(),
+        repaymentService: repaymentService,
+        scheduleStatus: InstallmentScheduleStatus.paid,
+        repayments: [_repayment('repayment-1')],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('installment-repayment-repayment-1')),
+      200,
+    );
+
+    await tester.drag(
+      find.byKey(const ValueKey('installment-repayment-repayment-1')),
+      const Offset(400, 0),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '撤销'));
+    await tester.pumpAndSettle();
+
+    expect(repaymentService.deleteCommands.single.repaymentId, 'repayment-1');
+  });
+
+  testWidgets('schedule and repayment rows use whitespace without dividers', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        service: _FakeInstallmentAppService(),
+        scheduleStatus: InstallmentScheduleStatus.pending,
+        scheduleCount: 2,
+        repayments: [_repayment('repayment-1'), _repayment('repayment-2')],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Divider), findsNothing);
+    expect(
+      tester
+          .widget<SizedBox>(
+            find.byKey(const ValueKey('installment-schedule-gap-0')),
+          )
+          .height,
+      AppSpacing.space4,
+    );
+    expect(
+      tester
+          .widget<SizedBox>(
+            find.byKey(const ValueKey('installment-repayment-gap-0')),
+          )
+          .height,
+      AppSpacing.space4,
+    );
   });
 }
 
 Widget _app({
   required _FakeInstallmentAppService service,
   required InstallmentScheduleStatus scheduleStatus,
+  _FakeRepaymentAppService? repaymentService,
+  int scheduleCount = 1,
+  List<ContractRepayment> repayments = const [],
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -50,12 +117,17 @@ Widget _app({
         (ref, contractId) async => _contract(),
       ),
       installmentSchedulesProvider.overrideWith(
-        (ref, contractId) async => [_schedule(scheduleStatus)],
+        (ref, contractId) async => [
+          for (var period = 1; period <= scheduleCount; period++)
+            _schedule(scheduleStatus, period: period),
+        ],
       ),
       installmentRepaymentsProvider.overrideWith(
-        (ref, contractId) async => const [],
+        (ref, contractId) async => repayments,
       ),
       installmentAppServiceProvider.overrideWithValue(service),
+      if (repaymentService != null)
+        repaymentAppServiceProvider.overrideWithValue(repaymentService),
     ],
   );
   addTearDown(container.dispose);
@@ -86,17 +158,31 @@ InstallmentContractReadModel _contract() {
   );
 }
 
-InstallmentScheduleReadModel _schedule(InstallmentScheduleStatus status) {
+InstallmentScheduleReadModel _schedule(
+  InstallmentScheduleStatus status, {
+  int period = 1,
+}) {
   return InstallmentScheduleReadModel(
-    id: 'schedule-1',
+    id: 'schedule-$period',
     contractId: 'contract-1',
-    periodNo: 1,
-    expectedRepaymentDate: DateTime(2026, 2, 1),
+    periodNo: period,
+    expectedRepaymentDate: DateTime(2026, period + 1),
     expectedPrincipal: const Money(minorUnits: 10000),
     expectedInterest: Money.zero(),
     expectedFee: Money.zero(),
     status: status,
     createdAt: DateTime(2026, 1, 1),
+  );
+}
+
+ContractRepayment _repayment(String id) {
+  return ContractRepayment(
+    id: id,
+    repaymentType: RepaymentType.installment,
+    occurredAt: DateTime(2026, 2, 1),
+    principal: const Money(minorUnits: 10000),
+    interest: Money.zero(),
+    fee: Money.zero(),
   );
 }
 
@@ -114,6 +200,18 @@ class _FakeInstallmentAppService implements InstallmentAppService {
     RestoreInstallmentScheduleCommand command,
   ) async {
     restoreCommands.add(command);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeRepaymentAppService implements RepaymentAppService {
+  final deleteCommands = <DeleteCreditRepaymentCommand>[];
+
+  @override
+  Future<void> deleteRepayment(DeleteCreditRepaymentCommand command) async {
+    deleteCommands.add(command);
   }
 
   @override

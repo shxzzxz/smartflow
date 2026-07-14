@@ -8,6 +8,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../design_system/widget/app_swipe_action.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/installment_detail_view_model.dart';
@@ -125,7 +126,10 @@ class _Body extends StatelessWidget {
               for (var i = 0; i < scheduleItems.length; i++) ...[
                 _ScheduleRow(contract: contract, item: scheduleItems[i]),
                 if (i < scheduleItems.length - 1)
-                  const Divider(height: 1, indent: AppSpacing.space12),
+                  SizedBox(
+                    key: ValueKey('installment-schedule-gap-$i'),
+                    height: AppSpacing.space4,
+                  ),
               ],
             ],
           ),
@@ -147,7 +151,10 @@ class _Body extends StatelessWidget {
                 for (var i = 0; i < cashflows.length; i++) ...[
                   _RepaymentRow(cashflow: cashflows[i], contract: contract),
                   if (i < cashflows.length - 1)
-                    const Divider(height: 1, indent: AppSpacing.space12),
+                    SizedBox(
+                      key: ValueKey('installment-repayment-gap-$i'),
+                      height: AppSpacing.space4,
+                    ),
                 ],
               ],
             ),
@@ -421,7 +428,7 @@ class _ScheduleRow extends ConsumerWidget {
         schedule.expectedPrincipal +
         schedule.expectedInterest +
         schedule.expectedFee;
-    return InkWell(
+    final row = InkWell(
       onTap: null,
       child: Padding(
         padding: const EdgeInsets.symmetric(
@@ -463,22 +470,34 @@ class _ScheduleRow extends ConsumerWidget {
                     color: _scheduleStatusColor(schedule.status, colors),
                   ),
                 ),
-                switch (item.action) {
-                  InstallmentScheduleAction.skip => _ScheduleActionButton(
-                    label: '跳过',
-                    onPressed: () => _confirmSkip(context, ref),
-                  ),
-                  InstallmentScheduleAction.restore => _ScheduleActionButton(
-                    label: '撤销跳过',
-                    onPressed: () => _restore(context, ref),
-                  ),
-                  null => const SizedBox.shrink(),
-                },
               ],
             ),
           ],
         ),
       ),
+    );
+
+    final action = item.action;
+    if (action == null) return row;
+
+    final (label, icon, callback) = switch (action) {
+      InstallmentScheduleAction.skip => (
+        '跳过',
+        RemixIcons.skip_forward_line,
+        () => _confirmSkip(context, ref),
+      ),
+      InstallmentScheduleAction.restore => (
+        '撤销跳过',
+        RemixIcons.arrow_go_back_line,
+        () => _restore(context, ref),
+      ),
+    };
+    return AppSwipeAction(
+      dismissibleKey: ValueKey('installment-schedule-${schedule.id}'),
+      label: label,
+      icon: icon,
+      onTriggered: callback,
+      child: row,
     );
   }
 
@@ -536,26 +555,6 @@ class _ScheduleRow extends ConsumerWidget {
   }
 }
 
-class _ScheduleActionButton extends StatelessWidget {
-  const _ScheduleActionButton({required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        minimumSize: const Size(AppSpacing.space48, AppSpacing.space28),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
-        visualDensity: VisualDensity.compact,
-      ),
-      child: Text(label),
-    );
-  }
-}
-
 class _RepaymentRow extends ConsumerWidget {
   const _RepaymentRow({required this.cashflow, required this.contract});
 
@@ -567,7 +566,7 @@ class _RepaymentRow extends ConsumerWidget {
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
     final total = cashflow.principal + cashflow.interest + cashflow.fee;
-    return InkWell(
+    final row = InkWell(
       onTap:
           cashflow.transactionId == null
               ? null
@@ -609,18 +608,17 @@ class _RepaymentRow extends ConsumerWidget {
             ),
             const SizedBox(width: AppSpacing.space8),
             Text(total.format(), style: styles.formLabel),
-            IconButton(
-              tooltip: '撤销',
-              icon: Icon(
-                RemixIcons.arrow_go_back_line,
-                color: colors.onSurfaceVariant,
-                size: AppSpacing.space20,
-              ),
-              onPressed: () => _confirmRevert(context, ref),
-            ),
           ],
         ),
       ),
+    );
+    return AppSwipeAction(
+      dismissibleKey: ValueKey('installment-repayment-${cashflow.id}'),
+      label: '撤销',
+      icon: RemixIcons.arrow_go_back_line,
+      tone: AppSwipeActionTone.danger,
+      onTriggered: () => _confirmRevert(context, ref),
+      child: row,
     );
   }
 
