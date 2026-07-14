@@ -31,13 +31,6 @@ class AccountDetailPage extends ConsumerWidget {
         title: const Text('账户概览'),
         actions: [
           if (loadedAccount != null && !loadedAccount.isArchived)
-            if (loadedAccount.isCreditLiability)
-              IconButton(
-                onPressed: () => _generateHistoricalBill(context, ref),
-                icon: const Icon(RemixIcons.calendar_event_line),
-                tooltip: '生成历史账单',
-              ),
-          if (loadedAccount != null && !loadedAccount.isArchived)
             IconButton(
               onPressed: () => context.push('/account/$accountId/edit'),
               icon: const Icon(RemixIcons.edit_line),
@@ -48,6 +41,7 @@ class AccountDetailPage extends ConsumerWidget {
       body: switch (state) {
         AccountDetailLoaded(
           :final account,
+          :final canGenerateHistoricalBill,
           :final transactionGroups,
           :final contracts,
           :final bills,
@@ -59,6 +53,9 @@ class AccountDetailPage extends ConsumerWidget {
             contracts: contracts,
             bills: bills,
             creditOverview: creditOverview,
+            canGenerateHistoricalBill: canGenerateHistoricalBill,
+            onGenerateHistoricalBill:
+                () => _generateHistoricalBill(context, ref),
             onDeleteUnattributedRepayment:
                 (repayment) =>
                     _deleteUnattributedRepayment(context, ref, repayment),
@@ -129,6 +126,8 @@ class _AccountDetailContent extends StatelessWidget {
     required this.contracts,
     required this.bills,
     required this.creditOverview,
+    required this.canGenerateHistoricalBill,
+    required this.onGenerateHistoricalBill,
     required this.onDeleteUnattributedRepayment,
   });
 
@@ -137,6 +136,8 @@ class _AccountDetailContent extends StatelessWidget {
   final AccountContractsState contracts;
   final AccountBillsState bills;
   final AccountCreditOverviewState creditOverview;
+  final bool canGenerateHistoricalBill;
+  final VoidCallback onGenerateHistoricalBill;
   final ValueChanged<CreditRepaymentRecordReadModel>
   onDeleteUnattributedRepayment;
 
@@ -153,7 +154,11 @@ class _AccountDetailContent extends StatelessWidget {
       children: [
         _AccountInfoSection(account: account, creditOverview: creditOverview),
         const SizedBox(height: AppSpacing.space12),
-        _AccountActionBar(account: account),
+        _AccountActionBar(
+          account: account,
+          canGenerateHistoricalBill: canGenerateHistoricalBill,
+          onGenerateHistoricalBill: onGenerateHistoricalBill,
+        ),
         if (showInstallments) ...[
           const SizedBox(height: AppSpacing.space20),
           _BillSection(bills: bills),
@@ -405,10 +410,6 @@ List<_InfoItem> _creditDebtMetrics(
       value: loadedOverview?.buckets.billDebt.format() ?? '-',
     ),
     _InfoItem(
-      label: '合同未来欠款',
-      value: loadedOverview?.buckets.futureContractDebt.format() ?? '-',
-    ),
-    _InfoItem(
       label: '未归属欠款',
       value: loadedOverview?.buckets.unattributedDebt.format() ?? '-',
     ),
@@ -500,9 +501,15 @@ String _monthlyDay(int? day) {
 }
 
 class _AccountActionBar extends StatelessWidget {
-  const _AccountActionBar({required this.account});
+  const _AccountActionBar({
+    required this.account,
+    required this.canGenerateHistoricalBill,
+    required this.onGenerateHistoricalBill,
+  });
 
   final AccountView account;
+  final bool canGenerateHistoricalBill;
+  final VoidCallback onGenerateHistoricalBill;
 
   @override
   Widget build(BuildContext context) {
@@ -515,51 +522,66 @@ class _AccountActionBar extends StatelessWidget {
           horizontal: AppSpacing.space8,
           vertical: AppSpacing.space6,
         ),
-        child: Row(
+        child: Column(
           children: [
-            Expanded(
-              child: _ActionButton(
-                icon: RemixIcons.add_circle_line,
-                label: '记账',
-                onTap: () => _openTransactionForm(context, account),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: _ActionButton(
+                    icon: RemixIcons.add_circle_line,
+                    label: '记账',
+                    onTap: () => _openTransactionForm(context, account),
+                  ),
+                ),
+                if (isLiability) ...[
+                  const SizedBox(width: AppSpacing.space6),
+                  Expanded(
+                    child: _ActionButton(
+                      icon: RemixIcons.bank_card_line,
+                      label: account.isCreditLiability ? '未归属还款' : '还款',
+                      onTap:
+                          () => context.push(
+                            account.isCreditLiability
+                                ? '/account/${account.id}/unattributed-repayment'
+                                : '/account/${account.id}/repayment',
+                          ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.space6),
+                  Expanded(
+                    child: _ActionButton(
+                      icon: RemixIcons.calendar_schedule_line,
+                      label: account.isCredit ? '现金分期' : '贷款分期',
+                      onTap:
+                          () => context.push(
+                            '/account/${account.id}/installments/new'
+                            '?source=$installmentSource',
+                          ),
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(width: AppSpacing.space6),
+                  Expanded(
+                    child: _ActionButton(
+                      icon: RemixIcons.arrow_left_right_line,
+                      label: '转账',
+                      onTap:
+                          () => context.push(
+                            '/transaction/new?mode=transfer&fromAccountId=${account.id}',
+                          ),
+                    ),
+                  ),
+                ],
+              ],
             ),
-            if (isLiability) ...[
-              const SizedBox(width: AppSpacing.space6),
-              Expanded(
+            if (canGenerateHistoricalBill) ...[
+              const SizedBox(height: AppSpacing.space4),
+              SizedBox(
+                width: double.infinity,
                 child: _ActionButton(
-                  icon: RemixIcons.bank_card_line,
-                  label: account.isCreditLiability ? '未归属还款' : '还款',
-                  onTap:
-                      () => context.push(
-                        account.isCreditLiability
-                            ? '/account/${account.id}/unattributed-repayment'
-                            : '/account/${account.id}/repayment',
-                      ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.space6),
-              Expanded(
-                child: _ActionButton(
-                  icon: RemixIcons.calendar_schedule_line,
-                  label: account.isCredit ? '现金分期' : '贷款分期',
-                  onTap:
-                      () => context.push(
-                        '/account/${account.id}/installments/new'
-                        '?source=$installmentSource',
-                      ),
-                ),
-              ),
-            ] else ...[
-              const SizedBox(width: AppSpacing.space6),
-              Expanded(
-                child: _ActionButton(
-                  icon: RemixIcons.arrow_left_right_line,
-                  label: '转账',
-                  onTap:
-                      () => context.push(
-                        '/transaction/new?mode=transfer&fromAccountId=${account.id}',
-                      ),
+                  icon: RemixIcons.calendar_event_line,
+                  label: '生成历史账单',
+                  onTap: onGenerateHistoricalBill,
                 ),
               ),
             ],

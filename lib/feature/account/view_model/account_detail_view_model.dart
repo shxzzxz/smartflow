@@ -42,6 +42,8 @@ AccountDetailPageState accountDetailViewModel(Ref ref, String accountId) {
 
   return AccountDetailPageState.loaded(
     account: accountValue,
+    canGenerateHistoricalBill:
+        accountValue.isCreditLiability && !accountValue.isArchived,
     transactionGroups: groupTransactionsByDay(
       items: transactionValues,
       accountLookup: AccountLookup(accountLookupValues),
@@ -110,6 +112,7 @@ sealed class AccountDetailPageState {
 
   const factory AccountDetailPageState.loaded({
     required AccountView account,
+    required bool canGenerateHistoricalBill,
     required List<TransactionDayGroup> transactionGroups,
     required AccountContractsState contracts,
     required AccountBillsState bills,
@@ -134,6 +137,7 @@ final class AccountDetailNotFound extends AccountDetailPageState {
 final class AccountDetailLoaded extends AccountDetailPageState {
   const AccountDetailLoaded({
     required this.account,
+    required this.canGenerateHistoricalBill,
     required this.transactionGroups,
     required this.contracts,
     required this.bills,
@@ -141,6 +145,7 @@ final class AccountDetailLoaded extends AccountDetailPageState {
   });
 
   final AccountView account;
+  final bool canGenerateHistoricalBill;
   final List<TransactionDayGroup> transactionGroups;
   final AccountContractsState contracts;
   final AccountBillsState bills;

@@ -49,6 +49,7 @@ void main() {
       expect(state, isA<AccountDetailLoaded>());
       final loaded = state as AccountDetailLoaded;
       expect(loaded.account.name, '现金');
+      expect(loaded.canGenerateHistoricalBill, isFalse);
       expect(loaded.transactionGroups.single.rows.single.amountText, '-12.34');
       expect(
         loaded.transactionGroups.single.rows.single.amountTone,
@@ -146,12 +147,69 @@ void main() {
       final state = container.read(accountDetailViewModelProvider('card'));
       expect(state, isA<AccountDetailLoaded>());
       final loaded = state as AccountDetailLoaded;
+      expect(loaded.canGenerateHistoricalBill, isTrue);
       expect(loaded.contracts, isA<AccountContractsLoaded>());
       expect(
         (loaded.contracts as AccountContractsLoaded).contracts.single.id,
         'contract-1',
       );
     });
+
+    test(
+      'disables historical bill generation for archived credit account',
+      () async {
+        final transactionService = _FakeTransactionQueryService();
+        final archivedCard = _account(
+          'card',
+          '已归档信用卡',
+          type: AccountType.liability,
+          archivedAt: DateTime(2026, 1, 1),
+        );
+        final accountService = _FakeAccountQueryService(
+          accountsById: {..._accounts, 'card': archivedCard},
+        );
+        final container = _container(
+          transactionService,
+          accountService,
+          overrides: [
+            accountListProvider.overrideWith(
+              (ref) => Stream.value([archivedCard]),
+            ),
+            creditLiabilityAccountsByAccountIdProvider.overrideWith(
+              (ref) => Stream.value({'card': _creditLiabilityAccount('card')}),
+            ),
+            transactionListProvider(
+              accountId: 'card',
+            ).overrideWith((ref) => Stream.value(const [])),
+            installmentContractsByAccountProvider(
+              'card',
+            ).overrideWith((ref) async => const []),
+            billSummariesByAccountProvider(
+              'card',
+            ).overrideWith((ref) async => const []),
+          ],
+        );
+
+        final sub = container.listen(
+          accountDetailViewModelProvider('card'),
+          (_, _) {},
+        );
+        addTearDown(sub.close);
+        await container.read(accountListProvider.future);
+        await container.read(creditLiabilityAccountsByAccountIdProvider.future);
+        await container.read(transactionListProvider(accountId: 'card').future);
+        await container.read(accountsByIdProvider.future);
+        await container.pump();
+        await _flush();
+
+        final state = container.read(accountDetailViewModelProvider('card'));
+        expect(state, isA<AccountDetailLoaded>());
+        expect(
+          (state as AccountDetailLoaded).canGenerateHistoricalBill,
+          isFalse,
+        );
+      },
+    );
   });
 }
 
@@ -222,12 +280,14 @@ Account _account(
   String name, {
   AccountType type = AccountType.asset,
   String? iconKey,
+  DateTime? archivedAt,
 }) {
   return Account(
     id: id,
     name: name,
     type: type,
     iconKey: iconKey,
+    archivedAt: archivedAt,
     balance: const Money(minorUnits: 0),
   );
 }
