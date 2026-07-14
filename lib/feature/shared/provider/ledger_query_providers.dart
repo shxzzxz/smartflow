@@ -74,6 +74,8 @@ Stream<List<CategoryNode>> categoryTree(Ref ref, AccountType type) {
 Stream<List<TransactionListReadModel>> transactionList(
   Ref ref, {
   String? accountId,
+  int limit = 50,
+  int offset = 0,
 }) {
   return ref
       .watch(transactionQueryServiceProvider)
@@ -81,6 +83,8 @@ Stream<List<TransactionListReadModel>> transactionList(
         TransactionListQuery(
           accountId: accountId,
           topLevelOnly: accountId == null,
+          limit: limit,
+          offset: offset,
         ),
       );
 }

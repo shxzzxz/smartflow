@@ -5,8 +5,7 @@ import 'package:remixicon/remixicon.dart';
 
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_month_picker.dart';
-import 'package:smartflow/widget/business/transaction/empty_transaction_card.dart';
-import 'package:smartflow/widget/business/transaction/transaction_day_card.dart';
+import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../view_model/home_view_model.dart';
 import '../widget/home_header.dart';
@@ -85,27 +84,20 @@ class _HomeContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(
-        parent: BouncingScrollPhysics(),
-      ),
+    return TransactionFeedScrollView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.space16,
         0,
         AppSpacing.space16,
-        AppSpacing.space24 + 56, // 留给 FAB
+        0,
       ),
-      children: [
+      bottomPadding: AppSpacing.space24 + 56, // 留给 FAB
+      leading: [
         MonthlySummaryCard(summary: summary),
         const SizedBox(height: AppSpacing.space20),
-        if (groups.isEmpty)
-          const EmptyTransactionCard()
-        else
-          for (final group in groups) ...[
-            TransactionDayCard(group: group),
-            const SizedBox(height: AppSpacing.space10),
-          ],
       ],
+      groups: groups,
+      emptyMessage: '本月暂无交易记录',
     );
   }
 }

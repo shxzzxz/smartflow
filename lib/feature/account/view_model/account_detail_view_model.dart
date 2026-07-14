@@ -1,57 +1,50 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../application/credit/credit_query_api.dart';
-import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
-import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../credit/provider/bill_query_providers.dart';
 import '../../credit/provider/credit_account_query_providers.dart';
 import '../../credit/provider/installment_query_providers.dart';
-import '../../shared/provider/ledger_query_providers.dart';
+import 'account_transactions_view_model.dart';
 import 'account_view.dart';
 import 'account_views_provider.dart';
 
 part 'account_detail_view_model.g.dart';
 
 @riverpod
-AccountDetailPageState accountDetailViewModel(Ref ref, String accountId) {
-  final account = ref.watch(accountViewProvider(accountId));
-  final transactions = ref.watch(transactionListProvider(accountId: accountId));
-  final accountsById = ref.watch(accountsByIdProvider);
+class AccountDetailViewModel extends _$AccountDetailViewModel {
+  @override
+  AccountDetailPageState build(String accountId) {
+    final account = ref.watch(accountViewProvider(accountId));
+    final transactions = ref.watch(
+      accountTransactionsViewModelProvider(accountId),
+    );
 
-  if (account case AsyncError()) {
-    return const AccountDetailPageState.error(message: '加载失败，请稍后重试');
-  }
-  if (transactions case AsyncError()) {
-    return const AccountDetailPageState.error(message: '加载失败，请稍后重试');
-  }
-  if (accountsById case AsyncError()) {
-    return const AccountDetailPageState.error(message: '加载失败，请稍后重试');
-  }
-  if (account case AsyncData(value: null)) {
-    return const AccountDetailPageState.notFound();
+    if (account case AsyncError()) {
+      return const AccountDetailPageState.error(message: '加载失败，请稍后重试');
+    }
+    if (account case AsyncData(value: null)) {
+      return const AccountDetailPageState.notFound();
+    }
+
+    final accountValue = account.value;
+    if (accountValue == null) {
+      return const AccountDetailPageState.loading();
+    }
+
+    return AccountDetailPageState.loaded(
+      account: accountValue,
+      transactions: transactions,
+      contracts: _contractsStateFor(ref, accountValue),
+      bills: _billsStateFor(ref, accountValue),
+      creditOverview: _creditOverviewStateFor(ref, accountValue),
+    );
   }
 
-  final accountValue = account.value;
-  final transactionValues = transactions.value;
-  final accountLookupValues = accountsById.value;
-  if (accountValue == null ||
-      transactionValues == null ||
-      accountLookupValues == null) {
-    return const AccountDetailPageState.loading();
+  void loadMoreTransactions() {
+    ref
+        .read(accountTransactionsViewModelProvider(accountId).notifier)
+        .loadMore();
   }
-
-  return AccountDetailPageState.loaded(
-    account: accountValue,
-    canGenerateHistoricalBill:
-        accountValue.isCreditLiability && !accountValue.isArchived,
-    transactionGroups: groupTransactionsByDay(
-      items: transactionValues,
-      accountLookup: AccountLookup(accountLookupValues),
-    ),
-    contracts: _contractsStateFor(ref, accountValue),
-    bills: _billsStateFor(ref, accountValue),
-    creditOverview: _creditOverviewStateFor(ref, accountValue),
-  );
 }
 
 AccountContractsState _contractsStateFor(Ref ref, AccountView account) {
@@ -74,7 +67,9 @@ AccountBillsState _billsStateFor(Ref ref, AccountView account) {
   }
 
   return switch (ref.watch(billSummariesByAccountProvider(account.id))) {
-    AsyncData(value: final bills) => AccountBillsState.loaded(bills: bills),
+    AsyncData(value: final bills) => AccountBillsState.loaded(
+      bills: bills.take(2).toList(),
+    ),
     AsyncError() => const AccountBillsState.error(message: '账单加载失败，请稍后重试'),
     _ => const AccountBillsState.loading(),
   };
@@ -112,8 +107,7 @@ sealed class AccountDetailPageState {
 
   const factory AccountDetailPageState.loaded({
     required AccountView account,
-    required bool canGenerateHistoricalBill,
-    required List<TransactionDayGroup> transactionGroups,
+    required AccountTransactionsState transactions,
     required AccountContractsState contracts,
     required AccountBillsState bills,
     required AccountCreditOverviewState creditOverview,
@@ -137,16 +131,14 @@ final class AccountDetailNotFound extends AccountDetailPageState {
 final class AccountDetailLoaded extends AccountDetailPageState {
   const AccountDetailLoaded({
     required this.account,
-    required this.canGenerateHistoricalBill,
-    required this.transactionGroups,
+    required this.transactions,
     required this.contracts,
     required this.bills,
     required this.creditOverview,
   });
 
   final AccountView account;
-  final bool canGenerateHistoricalBill;
-  final List<TransactionDayGroup> transactionGroups;
+  final AccountTransactionsState transactions;
   final AccountContractsState contracts;
   final AccountBillsState bills;
   final AccountCreditOverviewState creditOverview;

@@ -11,7 +11,7 @@ import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
 void main() {
   group('AccountTransactionsViewModel', () {
-    test('builds controlled rows in account ledger mode', () async {
+    test('builds controlled day groups in account ledger mode', () async {
       final transactionService = _FakeTransactionQueryService();
       final accountService = _FakeAccountQueryService(accountsById: _accounts);
       final container = _container(
@@ -20,7 +20,8 @@ void main() {
         overrides: [
           transactionListProvider(
             accountId: 'cash',
-          ).overrideWith((ref) => Stream.value([_item()])),
+            limit: accountTransactionPageSize,
+          ).overrideWith((ref) => Stream.value([_item('tx-1')])),
         ],
       );
 
@@ -29,7 +30,12 @@ void main() {
         (_, _) {},
       );
       addTearDown(sub.close);
-      await container.read(transactionListProvider(accountId: 'cash').future);
+      await container.read(
+        transactionListProvider(
+          accountId: 'cash',
+          limit: accountTransactionPageSize,
+        ).future,
+      );
       await container.read(accountsByIdProvider.future);
       await container.pump();
       await _flush();
@@ -39,10 +45,142 @@ void main() {
       );
       expect(state, isA<AccountTransactionsLoaded>());
       final loaded = state as AccountTransactionsLoaded;
-      expect(loaded.rows.single.transactionId, 'tx-1');
-      expect(loaded.rows.single.amountText, '-12.34');
-      expect(loaded.rows.single.amountTone, FinanceTone.neutral);
+      final row = loaded.groups.single.rows.single;
+      expect(row.transactionId, 'tx-1');
+      expect(row.amountText, '-12.34');
+      expect(row.amountTone, FinanceTone.neutral);
+      expect(loaded.hasMore, isFalse);
     });
+
+    test(
+      'loads a larger prefix once and stops at the end of the feed',
+      () async {
+        final transactionService = _FakeTransactionQueryService();
+        final accountService = _FakeAccountQueryService(
+          accountsById: _accounts,
+        );
+        final firstPage = [
+          for (var i = 0; i < accountTransactionPageSize; i++)
+            _item('tx-$i', occurredAt: DateTime(2026, 1, 2, 8, i)),
+        ];
+        final container = _container(transactionService, accountService);
+
+        final sub = container.listen(
+          accountTransactionsViewModelProvider('cash'),
+          (_, _) {},
+        );
+        addTearDown(sub.close);
+        await container.read(accountsByIdProvider.future);
+        await container.pump();
+        transactionService.emit(firstPage);
+        await _flush();
+
+        container
+            .read(accountTransactionsViewModelProvider('cash').notifier)
+            .loadMore();
+        await container.pump();
+        expect(transactionService.queries, hasLength(2));
+        expect(transactionService.queries.last.limit, 40);
+        expect(transactionService.queries.last.offset, 0);
+        final loading = container.read(
+          accountTransactionsViewModelProvider('cash'),
+        );
+        expect(loading, isA<AccountTransactionsLoaded>());
+        expect((loading as AccountTransactionsLoaded).isLoadingMore, isTrue);
+
+        container
+            .read(accountTransactionsViewModelProvider('cash').notifier)
+            .loadMore();
+        expect(transactionService.queries, hasLength(2));
+
+        transactionService.emit([
+          ...firstPage,
+          _item('tx-next', occurredAt: DateTime(2026, 1, 1, 8)),
+        ]);
+        await _flush();
+
+        final state = container.read(
+          accountTransactionsViewModelProvider('cash'),
+        );
+        expect(state, isA<AccountTransactionsLoaded>());
+        final loaded = state as AccountTransactionsLoaded;
+        expect(loaded.groups.expand((group) => group.rows), hasLength(21));
+        expect(loaded.groups, hasLength(2));
+        expect(loaded.hasMore, isFalse);
+
+        container
+            .read(accountTransactionsViewModelProvider('cash').notifier)
+            .loadMore();
+        expect(transactionService.queries, hasLength(2));
+      },
+    );
+
+    test(
+      'preserves rows and retries the same prefix after load-more failure',
+      () async {
+        final transactionService = _FakeTransactionQueryService();
+        final accountService = _FakeAccountQueryService(
+          accountsById: _accounts,
+        );
+        final firstPage = [
+          for (var i = 0; i < accountTransactionPageSize; i++)
+            _item('tx-$i', occurredAt: DateTime(2026, 1, 2, 8, i)),
+        ];
+        final container = _container(transactionService, accountService);
+
+        final sub = container.listen(
+          accountTransactionsViewModelProvider('cash'),
+          (_, _) {},
+        );
+        addTearDown(sub.close);
+        await container.read(accountsByIdProvider.future);
+        await container.pump();
+        transactionService.emit(firstPage);
+        await _flush();
+
+        container
+            .read(accountTransactionsViewModelProvider('cash').notifier)
+            .loadMore();
+        await container.pump();
+        transactionService.fail(StateError('next page failed'));
+        await _flush();
+
+        final failed = container.read(
+          accountTransactionsViewModelProvider('cash'),
+        );
+        expect(failed, isA<AccountTransactionsLoaded>());
+        final failedLoaded = failed as AccountTransactionsLoaded;
+        expect(failedLoaded.rows, hasLength(accountTransactionPageSize));
+        expect(failedLoaded.hasMore, isTrue);
+        expect(failedLoaded.isLoadingMore, isFalse);
+        expect(failedLoaded.loadMoreErrorMessage, isNotNull);
+
+        container
+            .read(accountTransactionsViewModelProvider('cash').notifier)
+            .loadMore();
+        await container.pump();
+
+        expect(transactionService.queries, hasLength(3));
+        expect(transactionService.queries.last.limit, 40);
+        expect(transactionService.queries.last.offset, 0);
+        final retrying = container.read(
+          accountTransactionsViewModelProvider('cash'),
+        );
+        expect(retrying, isA<AccountTransactionsLoaded>());
+        expect((retrying as AccountTransactionsLoaded).isLoadingMore, isTrue);
+
+        transactionService.emit([
+          ...firstPage,
+          _item('tx-next', occurredAt: DateTime(2026, 1, 1, 8)),
+        ]);
+        await _flush();
+        final recovered =
+            container.read(accountTransactionsViewModelProvider('cash'))
+                as AccountTransactionsLoaded;
+        expect(recovered.rows, hasLength(accountTransactionPageSize + 1));
+        expect(recovered.loadMoreErrorMessage, isNull);
+      },
+    );
   });
 }
 
@@ -74,30 +212,30 @@ final _accounts = <String, Account>{
   'food': _account('food', '餐饮', type: AccountType.expense, iconKey: 'meal'),
 };
 
-TransactionListReadModel _item() {
+TransactionListReadModel _item(String id, {DateTime? occurredAt}) {
   return TransactionListReadModel(
-    id: 'tx-1',
-    rootTransactionId: 'tx-1',
+    id: id,
+    rootTransactionId: id,
     businessPurpose: BusinessPurpose.dailyExpense,
     businessState: BusinessState.current,
-    occurredAt: DateTime(2026, 1, 1, 8, 30),
+    occurredAt: occurredAt ?? DateTime(2026, 1, 1, 8, 30),
     primaryAmount: const Money(minorUnits: 1234),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    entries: const [
+    entries: [
       Entry(
-        id: 'entry-cash',
-        transactionId: 'tx-1',
+        id: 'entry-cash-$id',
+        transactionId: id,
         accountId: 'cash',
         direction: EntryDirection.credit,
-        amount: Money(minorUnits: 1234),
+        amount: const Money(minorUnits: 1234),
       ),
       Entry(
-        id: 'entry-food',
-        transactionId: 'tx-1',
+        id: 'entry-food-$id',
+        transactionId: id,
         accountId: 'food',
         direction: EntryDirection.debit,
-        amount: Money(minorUnits: 1234),
+        amount: const Money(minorUnits: 1234),
       ),
     ],
     details: const [],
@@ -135,6 +273,10 @@ class _FakeTransactionQueryService implements TransactionQueryService {
 
   void emit(List<TransactionListReadModel> items) {
     _streams.last.add(items);
+  }
+
+  void fail(Object error) {
+    _streams.last.addError(error);
   }
 
   void dispose() {
@@ -209,6 +351,14 @@ class _ReplayStream<T> {
     for (final controller in List.of(_controllers)) {
       if (!controller.isClosed) {
         controller.add(value);
+      }
+    }
+  }
+
+  void addError(Object error) {
+    for (final controller in List.of(_controllers)) {
+      if (!controller.isClosed) {
+        controller.addError(error);
       }
     }
   }

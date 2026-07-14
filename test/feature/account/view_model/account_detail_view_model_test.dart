@@ -10,11 +10,10 @@ import 'package:smartflow/feature/account/view_model/account_detail_view_model.d
 import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
-import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
 void main() {
   group('AccountDetailViewModel', () {
-    test('builds account detail with controlled transaction groups', () async {
+    test('builds account detail for an existing account', () async {
       final transactionService = _FakeTransactionQueryService();
       final accountService = _FakeAccountQueryService(accountsById: _accounts);
       final container = _container(
@@ -27,9 +26,6 @@ void main() {
           creditLiabilityAccountsByAccountIdProvider.overrideWith(
             (ref) => Stream.value(const {}),
           ),
-          transactionListProvider(
-            accountId: 'cash',
-          ).overrideWith((ref) => Stream.value([_item()])),
         ],
       );
 
@@ -40,8 +36,6 @@ void main() {
       addTearDown(sub.close);
       await container.read(accountListProvider.future);
       await container.read(creditLiabilityAccountsByAccountIdProvider.future);
-      await container.read(transactionListProvider(accountId: 'cash').future);
-      await container.read(accountsByIdProvider.future);
       await container.pump();
       await _flush();
 
@@ -49,12 +43,6 @@ void main() {
       expect(state, isA<AccountDetailLoaded>());
       final loaded = state as AccountDetailLoaded;
       expect(loaded.account.name, '现金');
-      expect(loaded.canGenerateHistoricalBill, isFalse);
-      expect(loaded.transactionGroups.single.rows.single.amountText, '-12.34');
-      expect(
-        loaded.transactionGroups.single.rows.single.amountTone,
-        FinanceTone.expense,
-      );
       expect(loaded.contracts, isA<AccountContractsNotApplicable>());
     });
 
@@ -71,9 +59,6 @@ void main() {
           creditLiabilityAccountsByAccountIdProvider.overrideWith(
             (ref) => Stream.value(const {}),
           ),
-          transactionListProvider(
-            accountId: 'missing',
-          ).overrideWith((ref) => Stream.value(const [])),
         ],
       );
 
@@ -84,10 +69,6 @@ void main() {
       addTearDown(sub.close);
       await container.read(accountListProvider.future);
       await container.read(creditLiabilityAccountsByAccountIdProvider.future);
-      await container.read(
-        transactionListProvider(accountId: 'missing').future,
-      );
-      await container.read(accountsByIdProvider.future);
       await container.pump();
       await _flush();
 
@@ -117,15 +98,16 @@ void main() {
           creditLiabilityAccountsByAccountIdProvider.overrideWith(
             (ref) => Stream.value({'card': _creditLiabilityAccount('card')}),
           ),
-          transactionListProvider(
-            accountId: 'card',
-          ).overrideWith((ref) => Stream.value(const [])),
           installmentContractsByAccountProvider(
             'card',
           ).overrideWith((ref) async => [_contract()]),
-          billSummariesByAccountProvider(
-            'card',
-          ).overrideWith((ref) async => const []),
+          billSummariesByAccountProvider('card').overrideWith(
+            (ref) async => [
+              _bill(year: 2026, month: 7),
+              _bill(year: 2026, month: 6),
+              _bill(year: 2026, month: 5),
+            ],
+          ),
         ],
       );
 
@@ -136,8 +118,6 @@ void main() {
       addTearDown(sub.close);
       await container.read(accountListProvider.future);
       await container.read(creditLiabilityAccountsByAccountIdProvider.future);
-      await container.read(transactionListProvider(accountId: 'card').future);
-      await container.read(accountsByIdProvider.future);
       await container.read(
         installmentContractsByAccountProvider('card').future,
       );
@@ -147,69 +127,14 @@ void main() {
       final state = container.read(accountDetailViewModelProvider('card'));
       expect(state, isA<AccountDetailLoaded>());
       final loaded = state as AccountDetailLoaded;
-      expect(loaded.canGenerateHistoricalBill, isTrue);
       expect(loaded.contracts, isA<AccountContractsLoaded>());
       expect(
         (loaded.contracts as AccountContractsLoaded).contracts.single.id,
         'contract-1',
       );
+      final bills = (loaded.bills as AccountBillsLoaded).bills;
+      expect(bills.map((bill) => bill.period.month), [7, 6]);
     });
-
-    test(
-      'disables historical bill generation for archived credit account',
-      () async {
-        final transactionService = _FakeTransactionQueryService();
-        final archivedCard = _account(
-          'card',
-          '已归档信用卡',
-          type: AccountType.liability,
-          archivedAt: DateTime(2026, 1, 1),
-        );
-        final accountService = _FakeAccountQueryService(
-          accountsById: {..._accounts, 'card': archivedCard},
-        );
-        final container = _container(
-          transactionService,
-          accountService,
-          overrides: [
-            accountListProvider.overrideWith(
-              (ref) => Stream.value([archivedCard]),
-            ),
-            creditLiabilityAccountsByAccountIdProvider.overrideWith(
-              (ref) => Stream.value({'card': _creditLiabilityAccount('card')}),
-            ),
-            transactionListProvider(
-              accountId: 'card',
-            ).overrideWith((ref) => Stream.value(const [])),
-            installmentContractsByAccountProvider(
-              'card',
-            ).overrideWith((ref) async => const []),
-            billSummariesByAccountProvider(
-              'card',
-            ).overrideWith((ref) async => const []),
-          ],
-        );
-
-        final sub = container.listen(
-          accountDetailViewModelProvider('card'),
-          (_, _) {},
-        );
-        addTearDown(sub.close);
-        await container.read(accountListProvider.future);
-        await container.read(creditLiabilityAccountsByAccountIdProvider.future);
-        await container.read(transactionListProvider(accountId: 'card').future);
-        await container.read(accountsByIdProvider.future);
-        await container.pump();
-        await _flush();
-
-        final state = container.read(accountDetailViewModelProvider('card'));
-        expect(state, isA<AccountDetailLoaded>());
-        expect(
-          (state as AccountDetailLoaded).canGenerateHistoricalBill,
-          isFalse,
-        );
-      },
-    );
   });
 }
 
@@ -245,36 +170,6 @@ final _accounts = <String, Account>{
   'food': _account('food', '餐饮', type: AccountType.expense, iconKey: 'meal'),
 };
 
-TransactionListReadModel _item() {
-  return TransactionListReadModel(
-    id: 'tx-1',
-    rootTransactionId: 'tx-1',
-    businessPurpose: BusinessPurpose.dailyExpense,
-    businessState: BusinessState.current,
-    occurredAt: DateTime(2026, 1, 1, 8, 30),
-    primaryAmount: const Money(minorUnits: 1234),
-    isExcludedFromStats: false,
-    isExcludedFromBudget: false,
-    entries: const [
-      Entry(
-        id: 'entry-cash',
-        transactionId: 'tx-1',
-        accountId: 'cash',
-        direction: EntryDirection.credit,
-        amount: Money(minorUnits: 1234),
-      ),
-      Entry(
-        id: 'entry-food',
-        transactionId: 'tx-1',
-        accountId: 'food',
-        direction: EntryDirection.debit,
-        amount: Money(minorUnits: 1234),
-      ),
-    ],
-    details: const [],
-  );
-}
-
 Account _account(
   String id,
   String name, {
@@ -300,6 +195,21 @@ CreditLiabilityAccountReadModel _creditLiabilityAccount(String accountId) {
     billingDay: 5,
     repaymentDay: 25,
     billingDayToNext: true,
+  );
+}
+
+BillSummaryReadModel _bill({required int year, required int month}) {
+  return BillSummaryReadModel(
+    id: 'bill-$year-$month',
+    accountId: 'card',
+    period: BillPeriod(year: year, month: month),
+    status: BillStatus.billed,
+    expectedPrincipal: Money.zero(),
+    expectedInterest: Money.zero(),
+    expectedFee: Money.zero(),
+    pendingPrincipal: Money.zero(),
+    itemCount: 0,
+    overdueItemCount: 0,
   );
 }
 

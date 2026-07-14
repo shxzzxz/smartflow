@@ -434,7 +434,7 @@ final class TransactionListProvider
         $StreamProvider<List<TransactionListReadModel>> {
   TransactionListProvider._({
     required TransactionListFamily super.from,
-    required String? super.argument,
+    required ({String? accountId, int limit, int offset}) super.argument,
   }) : super(
          retry: null,
          name: r'transactionListProvider',
@@ -450,7 +450,7 @@ final class TransactionListProvider
   String toString() {
     return r'transactionListProvider'
         ''
-        '($argument)';
+        '$argument';
   }
 
   @$internal
@@ -461,8 +461,14 @@ final class TransactionListProvider
 
   @override
   Stream<List<TransactionListReadModel>> create(Ref ref) {
-    final argument = this.argument as String?;
-    return transactionList(ref, accountId: argument);
+    final argument =
+        this.argument as ({String? accountId, int limit, int offset});
+    return transactionList(
+      ref,
+      accountId: argument.accountId,
+      limit: argument.limit,
+      offset: argument.offset,
+    );
   }
 
   @override
@@ -476,13 +482,13 @@ final class TransactionListProvider
   }
 }
 
-String _$transactionListHash() => r'5d311170c35eb08026988b1d846b7ebe0013db0b';
+String _$transactionListHash() => r'32fc89af16404b454b7e206041e5cf82cf4959ca';
 
 final class TransactionListFamily extends $Family
     with
         $FunctionalFamilyOverride<
           Stream<List<TransactionListReadModel>>,
-          String?
+          ({String? accountId, int limit, int offset})
         > {
   TransactionListFamily._()
     : super(
@@ -493,8 +499,14 @@ final class TransactionListFamily extends $Family
         isAutoDispose: true,
       );
 
-  TransactionListProvider call({String? accountId}) =>
-      TransactionListProvider._(argument: accountId, from: this);
+  TransactionListProvider call({
+    String? accountId,
+    int limit = 50,
+    int offset = 0,
+  }) => TransactionListProvider._(
+    argument: (accountId: accountId, limit: limit, offset: offset),
+    from: this,
+  );
 
   @override
   String toString() => r'transactionListProvider';

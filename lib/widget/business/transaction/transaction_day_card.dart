@@ -17,12 +17,14 @@ class TransactionDayCard extends StatelessWidget {
     this.emptyMessage,
     this.onRowTap,
     this.onRowQuickEdit,
+    this.showDailyTotals = true,
   });
 
   final TransactionDayGroup group;
   final String? emptyMessage;
   final ValueChanged<String>? onRowTap;
   final ValueChanged<String>? onRowQuickEdit;
+  final bool showDailyTotals;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +41,7 @@ class TransactionDayCard extends StatelessWidget {
             AppSpacing.space4,
             AppSpacing.space8,
           ),
-          child: _DayHeader(group: group),
+          child: _DayHeader(group: group, showDailyTotals: showDailyTotals),
         ),
         if (group.rows.isEmpty)
           EmptyTransactionCard(message: emptyMessage ?? '本月暂无交易记录')
@@ -96,9 +98,10 @@ class TransactionDayCard extends StatelessWidget {
 }
 
 class _DayHeader extends StatelessWidget {
-  const _DayHeader({required this.group});
+  const _DayHeader({required this.group, required this.showDailyTotals});
 
   final TransactionDayGroup group;
+  final bool showDailyTotals;
 
   @override
   Widget build(BuildContext context) {
@@ -113,18 +116,20 @@ class _DayHeader extends StatelessWidget {
         ),
         const SizedBox(width: AppSpacing.space8),
         Text(weekdayLabel(group.date), style: textStyles.listSupporting),
-        const Spacer(),
-        _DayTotal(
-          label: '收入',
-          amountMinor: group.incomeMinor,
-          color: financeColors.income,
-        ),
-        const SizedBox(width: AppSpacing.space12),
-        _DayTotal(
-          label: '支出',
-          amountMinor: group.expenseMinor,
-          color: financeColors.expense,
-        ),
+        if (showDailyTotals) ...[
+          const Spacer(),
+          _DayTotal(
+            label: '收入',
+            amountMinor: group.incomeMinor,
+            color: financeColors.income,
+          ),
+          const SizedBox(width: AppSpacing.space12),
+          _DayTotal(
+            label: '支出',
+            amountMinor: group.expenseMinor,
+            color: financeColors.expense,
+          ),
+        ],
       ],
     );
   }
