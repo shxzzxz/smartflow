@@ -178,16 +178,18 @@ void main() {
 
       expect(outcome, isA<UiActionFailure<String>>());
       expect((outcome as UiActionFailure<String>).error.code, 'unknown');
-      expect(records, hasLength(1));
-      expect(records.single.level, Level.SEVERE);
-      expect(records.single.loggerName, 'feature.credit.installment_form');
-      expect(
-        records.single.message,
-        'Installment form submission failed unexpectedly: '
-        'liabilityAccountId=loan.',
+      final formRecords = records.where(
+        (record) => record.loggerName == 'feature.credit.installment_form',
       );
-      expect(records.single.error, isA<Exception>());
-      expect(records.single.stackTrace, isNotNull);
+      expect(formRecords, hasLength(1));
+      final record = formRecords.single;
+      expect(record.level, Level.SEVERE);
+      expect(
+        record.message,
+        'Installment form submission failed unexpectedly.',
+      );
+      expect(record.error, isA<Exception>());
+      expect(record.stackTrace, isNotNull);
     });
   });
 }

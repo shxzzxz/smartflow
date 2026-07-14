@@ -145,8 +145,7 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
       return UiActionOutcome.failure(UiError.fromException(exception));
     } on Exception catch (exception, stackTrace) {
       _logger.severe(
-        'Installment form submission failed unexpectedly: '
-        'liabilityAccountId=${current.liability.id}.',
+        'Installment form submission failed unexpectedly.',
         exception,
         stackTrace,
       );
