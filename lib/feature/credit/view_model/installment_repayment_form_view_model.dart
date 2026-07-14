@@ -12,6 +12,7 @@ import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
+import '../provider/credit_account_query_providers.dart';
 
 part 'installment_repayment_form_view_model.g.dart';
 
@@ -144,6 +145,7 @@ class InstallmentRepaymentFormViewModel
     ref.invalidate(
       installmentContractsByAccountProvider(contract.liabilityAccountId),
     );
+    ref.invalidate(creditAccountOverviewProvider(contract.liabilityAccountId));
     ref.invalidate(
       accountsForSelectionPurposeProvider(
         AccountSelectionPurpose.repaymentSource,

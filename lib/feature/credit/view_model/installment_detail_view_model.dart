@@ -6,6 +6,7 @@ import '../../../application/credit/credit_query_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
+import '../provider/credit_account_query_providers.dart';
 
 part 'installment_detail_view_model.g.dart';
 
@@ -44,6 +45,9 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
         installmentContractsByAccountProvider(
           loaded.contract.liabilityAccountId,
         ),
+      );
+      ref.invalidate(
+        creditAccountOverviewProvider(loaded.contract.liabilityAccountId),
       );
       return const UiActionOutcome.success(null);
     } on AppException catch (exception) {
@@ -126,7 +130,8 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
       ..invalidate(installmentMetricsProvider(contract.id))
       ..invalidate(
         installmentContractsByAccountProvider(contract.liabilityAccountId),
-      );
+      )
+      ..invalidate(creditAccountOverviewProvider(contract.liabilityAccountId));
   }
 
   UiActionOutcome<void> _invalidAction(String message) {

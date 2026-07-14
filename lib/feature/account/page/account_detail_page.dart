@@ -10,8 +10,6 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
-import '../../shared/view_model/ui_action_outcome.dart';
-import '../view_model/account_credit_actions.dart';
 import '../view_model/account_detail_view_model.dart';
 import '../view_model/account_transactions_view_model.dart';
 import '../view_model/account_view.dart';
@@ -60,9 +58,6 @@ class AccountDetailPage extends ConsumerWidget {
                           accountDetailViewModelProvider(accountId).notifier,
                         )
                         .loadMoreTransactions(),
-            onDeleteUnattributedRepayment:
-                (repayment) =>
-                    _deleteUnattributedRepayment(context, ref, repayment),
           ),
         AccountDetailNotFound() => const Center(child: Text('账户不存在')),
         AccountDetailError(:final message) => Center(child: Text(message)),
@@ -71,37 +66,6 @@ class AccountDetailPage extends ConsumerWidget {
         ),
       },
     );
-  }
-
-  Future<void> _deleteUnattributedRepayment(
-    BuildContext context,
-    WidgetRef ref,
-    CreditRepaymentRecordReadModel repayment,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (dialogContext) => AlertDialog(
-            title: const Text('删除还款记录'),
-            content: const Text('删除后将回退相关信贷状态。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text('删除'),
-              ),
-            ],
-          ),
-    );
-    if (confirmed != true) return;
-    final outcome = await ref
-        .read(accountCreditActionsProvider(accountId).notifier)
-        .deleteUnattributedRepayment(repayment.id);
-    if (!context.mounted) return;
-    _showAccountActionOutcome(context, outcome, successMessage: '还款记录已删除');
   }
 }
 
@@ -113,7 +77,6 @@ class _AccountDetailContent extends StatelessWidget {
     required this.bills,
     required this.creditOverview,
     required this.onLoadMoreTransactions,
-    required this.onDeleteUnattributedRepayment,
   });
 
   final AccountView account;
@@ -122,8 +85,6 @@ class _AccountDetailContent extends StatelessWidget {
   final AccountBillsState bills;
   final AccountCreditOverviewState creditOverview;
   final VoidCallback onLoadMoreTransactions;
-  final ValueChanged<CreditRepaymentRecordReadModel>
-  onDeleteUnattributedRepayment;
 
   @override
   Widget build(BuildContext context) {
@@ -185,15 +146,6 @@ class _AccountDetailContent extends StatelessWidget {
         if (showInstallments) ...[
           const SizedBox(height: AppSpacing.space20),
           _BillSection(accountId: account.id, bills: bills),
-          if (creditOverview case AccountCreditOverviewLoaded(
-            :final overview,
-          ) when overview.unattributedRepayments.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.space20),
-            _UnattributedRepaymentSection(
-              repayments: overview.unattributedRepayments,
-              onDelete: onDeleteUnattributedRepayment,
-            ),
-          ],
           const SizedBox(height: AppSpacing.space20),
           _InstallmentSection(contracts: contracts),
           const SizedBox(height: AppSpacing.space20),
@@ -442,76 +394,6 @@ List<_InfoItem> _creditDebtMetrics(
       value: loadedOverview?.buckets.unattributedDebt.format() ?? '-',
     ),
   ];
-}
-
-class _UnattributedRepaymentSection extends StatelessWidget {
-  const _UnattributedRepaymentSection({
-    required this.repayments,
-    required this.onDelete,
-  });
-
-  final List<CreditRepaymentRecordReadModel> repayments;
-  final ValueChanged<CreditRepaymentRecordReadModel> onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final styles = context.appTextStyles;
-    final colors = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('未归属还款记录', style: styles.dateSectionTitle),
-        const SizedBox(height: AppSpacing.space6),
-        AppSurface(
-          child: Column(
-            children: [
-              for (var i = 0; i < repayments.length; i++) ...[
-                ListTile(
-                  title: Text(
-                    repayments[i].allocated.cashPaid.format(),
-                    style: styles.listTitle,
-                  ),
-                  subtitle: Text(
-                    '${repayments[i].timeSource == CreditRepaymentTimeSource.transaction ? '还款日' : '记录于'} '
-                    '${_dateText(repayments[i].displayTime)}',
-                    style: styles.listSupporting,
-                  ),
-                  trailing: IconButton(
-                    tooltip: '删除',
-                    icon: Icon(
-                      RemixIcons.delete_bin_line,
-                      color: colors.onSurfaceVariant,
-                    ),
-                    onPressed: () => onDelete(repayments[i]),
-                  ),
-                ),
-                if (i < repayments.length - 1) _ListDivider(color: colors),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-String _dateText(DateTime value) {
-  return '${value.year}-${value.month.toString().padLeft(2, '0')}-'
-      '${value.day.toString().padLeft(2, '0')}';
-}
-
-void _showAccountActionOutcome(
-  BuildContext context,
-  UiActionOutcome<void> outcome, {
-  required String successMessage,
-}) {
-  final message = switch (outcome) {
-    UiActionSuccess<void>() => successMessage,
-    UiActionFailure<void>(:final error) => error.message,
-  };
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-  );
 }
 
 class _InfoItem {

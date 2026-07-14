@@ -11,6 +11,7 @@ import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
+import '../provider/credit_account_query_providers.dart';
 
 part 'repayment_form_view_model.g.dart';
 
@@ -201,6 +202,7 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
       ),
     );
     ref.invalidate(installmentContractsByAccountProvider(liabilityAccountId));
+    ref.invalidate(creditAccountOverviewProvider(liabilityAccountId));
     if (transactionId != null) {
       ref.invalidate(transactionDetailProvider(transactionId));
     }

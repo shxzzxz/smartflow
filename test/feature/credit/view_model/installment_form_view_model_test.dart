@@ -3,12 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/feature/credit/view_model/installment_form_view_model.dart';
+import 'package:smartflow/feature/credit/provider/credit_account_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
@@ -60,8 +62,18 @@ void main() {
       'submits migration contract without disbursement transaction',
       () async {
         final service = _FakeInstallmentAppService();
+        final queryService = _FakeCreditAccountQueryService();
         final args = _args('loan');
-        final container = _container(service: service);
+        final container = _container(
+          service: service,
+          creditQueryService: queryService,
+        );
+        final overviewSubscription = container.listen(
+          creditAccountOverviewProvider('loan'),
+          (_, _) {},
+        );
+        addTearDown(overviewSubscription.close);
+        await container.read(creditAccountOverviewProvider('loan').future);
         await _readState(container, args);
         final viewModel = container.read(
           installmentFormViewModelProvider(args).notifier,
@@ -82,6 +94,8 @@ void main() {
           service.disbursementCommands.single.disbursementAccountId,
           isNull,
         );
+        await container.read(creditAccountOverviewProvider('loan').future);
+        expect(queryService.findOverviewCalls, 2);
       },
     );
 
@@ -216,7 +230,10 @@ InstallmentFormArgs _args(
   );
 }
 
-ProviderContainer _container({_FakeInstallmentAppService? service}) {
+ProviderContainer _container({
+  _FakeInstallmentAppService? service,
+  _FakeCreditAccountQueryService? creditQueryService,
+}) {
   final liabilities = [
     _account(
       'loan',
@@ -238,10 +255,25 @@ ProviderContainer _container({_FakeInstallmentAppService? service}) {
       installmentAppServiceProvider.overrideWithValue(
         service ?? _FakeInstallmentAppService(),
       ),
+      if (creditQueryService != null)
+        creditAccountQueryServiceProvider.overrideWithValue(creditQueryService),
     ],
   );
   addTearDown(container.dispose);
   return container;
+}
+
+class _FakeCreditAccountQueryService implements CreditAccountQueryService {
+  int findOverviewCalls = 0;
+
+  @override
+  Future<CreditAccountOverviewReadModel?> findOverview(String accountId) async {
+    findOverviewCalls++;
+    return null;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 Account _account(

@@ -8,6 +8,7 @@ import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
+import '../provider/credit_account_query_providers.dart';
 import 'installment_contract_edit_state.dart';
 
 part 'installment_contract_edit_view_model.g.dart';
@@ -290,7 +291,8 @@ class InstallmentContractEditViewModel
       ..invalidate(installmentSchedulesProvider(contractId))
       ..invalidate(installmentRepaymentsProvider(contractId))
       ..invalidate(installmentMetricsProvider(contractId))
-      ..invalidate(installmentContractsByAccountProvider(liabilityAccountId));
+      ..invalidate(installmentContractsByAccountProvider(liabilityAccountId))
+      ..invalidate(creditAccountOverviewProvider(liabilityAccountId));
   }
 
   InstallmentContractEditLoaded? _loadedOrNull() {

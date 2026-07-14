@@ -7,6 +7,7 @@ import '../../../core/time/month_key.dart';
 import '../../../shared/account_profile/account_selection_policy.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
+import 'current_date_time_provider.dart';
 
 part 'ledger_query_providers.g.dart';
 
@@ -91,27 +92,29 @@ Stream<List<TransactionListReadModel>> transactionList(
 
 @riverpod
 Stream<BalanceSheetComparison> balanceSheetComparison(Ref ref) {
-  final now = DateTime.now();
+  final now = ref.watch(currentDateTimeProvider);
+  final todayEndExclusive = DateTime(now.year, now.month, now.day + 1);
   return ref
       .watch(financialMetricsServiceProvider)
       .watchBalanceSheetComparison(
         BalanceSheetComparisonQuery(
           month: MonthKey.fromDate(now),
-          asOfExclusive: now,
+          asOfExclusive: todayEndExclusive,
         ),
       );
 }
 
 @riverpod
 Stream<List<NetAssetTrendPoint>> netAssetTrend(Ref ref, {int months = 6}) {
-  final now = DateTime.now();
+  final now = ref.watch(currentDateTimeProvider);
+  final todayEndExclusive = DateTime(now.year, now.month, now.day + 1);
   return ref
       .watch(financialMetricsServiceProvider)
       .watchNetAssetTrend(
         NetAssetTrendQuery(
           endMonth: MonthKey.fromDate(now),
           months: months,
-          currentAsOfExclusive: now,
+          currentAsOfExclusive: todayEndExclusive,
         ),
       );
 }

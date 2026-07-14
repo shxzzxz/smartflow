@@ -50,6 +50,44 @@ void main() {
     expect(find.text('查看全部'), findsNothing);
   });
 
+  testWidgets('does not show unattributed repayment records', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      _app(
+        account: _account(kind: AccountProfileKind.credit),
+        creditOverview: AccountCreditOverviewState.loaded(
+          overview: CreditAccountOverviewReadModel(
+            creditAccount: const CreditLiabilityAccountReadModel(
+              id: 'credit-account',
+              accountId: 'account',
+              kind: CreditLiabilityAccountKind.credit,
+              billingDayToNext: true,
+            ),
+            liabilityBalance: Money.zero(),
+            buckets: const CreditDebtBucketsReadModel(
+              billDebt: Money(minorUnits: 0),
+              futureContractDebt: Money(minorUnits: 0),
+              unattributedDebt: Money(minorUnits: 0),
+            ),
+            unattributedRepayments: [
+              CreditRepaymentRecordReadModel(
+                id: 'repayment',
+                repaymentType: RepaymentType.unattributed,
+                allocated: RepaymentAmountBreakdown.zero,
+                displayTime: DateTime(2026, 7, 14),
+                timeSource: CreditRepaymentTimeSource.recordCreatedAt,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('未归属还款记录'), findsNothing);
+  });
+
   testWidgets('opens the full bill list from the bill section header', (
     tester,
   ) async {
@@ -191,6 +229,8 @@ void main() {
 Widget _app({
   required AccountView account,
   List<BillSummaryReadModel> bills = const [],
+  AccountCreditOverviewState creditOverview =
+      const AccountCreditOverviewState.notApplicable(),
 }) {
   final state = AccountDetailPageState.loaded(
     account: account,
@@ -201,7 +241,7 @@ Widget _app({
     ),
     contracts: const AccountContractsState.loaded(contracts: []),
     bills: AccountBillsState.loaded(bills: bills),
-    creditOverview: const AccountCreditOverviewState.notApplicable(),
+    creditOverview: creditOverview,
   );
   return ProviderScope(
     overrides: [

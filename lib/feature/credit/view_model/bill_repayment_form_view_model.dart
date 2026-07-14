@@ -13,6 +13,7 @@ import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/bill_query_providers.dart';
 import '../provider/installment_query_providers.dart';
+import '../provider/credit_account_query_providers.dart';
 import '../presentation/bill_item_presentation.dart';
 import 'bill_repayment_allocation_view_model.dart';
 
@@ -211,6 +212,7 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
     ref.invalidate(accountsByIdProvider);
     ref.invalidate(transactionListProvider(accountId: accountId));
     ref.invalidate(installmentContractsByAccountProvider(accountId));
+    ref.invalidate(creditAccountOverviewProvider(accountId));
     ref.invalidate(
       accountsForSelectionPurposeProvider(
         AccountSelectionPurpose.repaymentSource,
