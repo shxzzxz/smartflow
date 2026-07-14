@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:logging/logging.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
@@ -12,6 +13,8 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
 
 part 'installment_form_view_model.g.dart';
+
+final _logger = Logger('feature.credit.installment_form');
 
 @riverpod
 class InstallmentFormViewModel extends _$InstallmentFormViewModel {
@@ -140,7 +143,13 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
       return UiActionOutcome.success(result.contractId);
     } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Installment form submission failed unexpectedly: '
+        'liabilityAccountId=${current.liability.id}.',
+        exception,
+        stackTrace,
+      );
       return const UiActionOutcome.failure(UiError.unknown());
     } finally {
       final latest = _loadedOrNull();

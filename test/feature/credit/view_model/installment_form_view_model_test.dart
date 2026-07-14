@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logging/logging.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
@@ -151,6 +152,9 @@ void main() {
     });
 
     test('maps regular Exception to unknown UI failure', () async {
+      final records = <LogRecord>[];
+      final subscription = Logger.root.onRecord.listen(records.add);
+      addTearDown(subscription.cancel);
       final service = _FakeInstallmentAppService(
         createException: Exception('database failed'),
       );
@@ -174,6 +178,16 @@ void main() {
 
       expect(outcome, isA<UiActionFailure<String>>());
       expect((outcome as UiActionFailure<String>).error.code, 'unknown');
+      expect(records, hasLength(1));
+      expect(records.single.level, Level.SEVERE);
+      expect(records.single.loggerName, 'feature.credit.installment_form');
+      expect(
+        records.single.message,
+        'Installment form submission failed unexpectedly: '
+        'liabilityAccountId=loan.',
+      );
+      expect(records.single.error, isA<Exception>());
+      expect(records.single.stackTrace, isNotNull);
     });
   });
 }
