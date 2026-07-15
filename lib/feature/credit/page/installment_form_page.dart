@@ -104,10 +104,9 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                 ),
               ),
               if (isDisbursement)
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('创建放款交易'),
-                  subtitle: const Text('迁移已有贷款时可关闭，仅创建合同和还款计划'),
+                AppPlainSwitchRow(
+                  label: '创建放款交易',
+                  description: '迁移已有贷款时可关闭，仅创建合同和还款计划',
                   value: state.createDisbursementTransaction,
                   onChanged: notifier.setCreateDisbursementTransaction,
                 ),

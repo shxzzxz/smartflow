@@ -90,6 +90,7 @@ class _AppFormShowcasePageState extends State<AppFormShowcasePage> {
               ),
               AppPlainSwitchRow(
                 label: '参与统计',
+                description: '关闭后仍保留记录，但不计入账户汇总和统计',
                 value: _enabled,
                 onChanged: (value) => setState(() => _enabled = value),
               ),

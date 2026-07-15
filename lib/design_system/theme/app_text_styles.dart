@@ -80,6 +80,19 @@ class AppTextStyles {
     fontWeight: AppTypography.bodyWeight,
   );
 
+  TextStyle get formSwitchLabel => _bodyLarge.copyWith(
+    color: _colors.onSurface,
+    fontSize: AppTypography.fontSizeMd,
+    fontWeight: AppTypography.emphasisWeight,
+  );
+
+  TextStyle get formSwitchDescription => _bodySmall.copyWith(
+    color: _colors.onSurfaceVariant,
+    fontSize: AppTypography.fontSizeXs,
+    fontWeight: AppTypography.bodyWeight,
+    height: 1.35,
+  );
+
   TextStyle get detailLabel => _bodyMedium.copyWith(
     color: _colors.onSurfaceVariant,
     fontWeight: AppTypography.bodyWeight,

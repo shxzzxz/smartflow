@@ -193,27 +193,45 @@ class AppPlainSwitchRow extends StatelessWidget {
     required this.value,
     required this.onChanged,
     super.key,
-    this.labelWidth = AppFormTokens.labelWidth,
+    this.description,
+    this.enabled = true,
   });
 
   final String label;
+  final String? description;
   final bool value;
   final ValueChanged<bool> onChanged;
-  final double labelWidth;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
-    return AppPlainFormRow(
-      label: label,
-      labelWidth: labelWidth,
-      minHeight: AppFormTokens.rowMinHeight,
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Switch(
-          value: value,
-          onChanged: onChanged,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    final description = this.description?.trim();
+    final labelStyle = context.appTextStyles.formSwitchLabel;
+    final descriptionStyle = context.appTextStyles.formSwitchDescription;
+    final disabledOpacity = enabled ? 1.0 : AppFormTokens.disabledOpacity;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppFormTokens.rowMinHeight),
+      child: SwitchListTile.adaptive(
+        contentPadding: EdgeInsets.zero,
+        title: Text(
+          label,
+          style: labelStyle.copyWith(
+            color: labelStyle.color?.withValues(alpha: disabledOpacity),
+          ),
         ),
+        subtitle:
+            description != null && description.isNotEmpty
+                ? Text(
+                  description,
+                  style: descriptionStyle.copyWith(
+                    color: descriptionStyle.color?.withValues(
+                      alpha: disabledOpacity,
+                    ),
+                  ),
+                )
+                : null,
+        value: value,
+        onChanged: enabled ? onChanged : null,
       ),
     );
   }
