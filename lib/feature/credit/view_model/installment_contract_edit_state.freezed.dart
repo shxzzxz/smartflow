@@ -119,7 +119,7 @@ return notFound(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( InstallmentContract contract,  int paidCount,  DateTime firstRepaymentDate,  DateTime lastRepaymentDate,  InstallmentRepaymentMethod method,  InterestRatePeriod ratePeriod,  InterestAccrualMethod accrualMethod,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting)?  loaded,TResult Function()?  notFound,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( InstallmentContractReadModel contract,  int paidCount,  DateTime firstRepaymentDate,  DateTime lastRepaymentDate,  InstallmentRepaymentMethod method,  InterestRatePeriod ratePeriod,  InterestAccrualMethod accrualMethod,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting)?  loaded,TResult Function()?  notFound,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case InstallmentContractEditLoaded() when loaded != null:
 return loaded(_that.contract,_that.paidCount,_that.firstRepaymentDate,_that.lastRepaymentDate,_that.method,_that.ratePeriod,_that.accrualMethod,_that.draft,_that.manualPatchedPeriodNos,_that.submitting);case InstallmentContractEditNotFound() when notFound != null:
@@ -141,7 +141,7 @@ return notFound();case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( InstallmentContract contract,  int paidCount,  DateTime firstRepaymentDate,  DateTime lastRepaymentDate,  InstallmentRepaymentMethod method,  InterestRatePeriod ratePeriod,  InterestAccrualMethod accrualMethod,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting)  loaded,required TResult Function()  notFound,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( InstallmentContractReadModel contract,  int paidCount,  DateTime firstRepaymentDate,  DateTime lastRepaymentDate,  InstallmentRepaymentMethod method,  InterestRatePeriod ratePeriod,  InterestAccrualMethod accrualMethod,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting)  loaded,required TResult Function()  notFound,}) {final _that = this;
 switch (_that) {
 case InstallmentContractEditLoaded():
 return loaded(_that.contract,_that.paidCount,_that.firstRepaymentDate,_that.lastRepaymentDate,_that.method,_that.ratePeriod,_that.accrualMethod,_that.draft,_that.manualPatchedPeriodNos,_that.submitting);case InstallmentContractEditNotFound():
@@ -159,7 +159,7 @@ return notFound();}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( InstallmentContract contract,  int paidCount,  DateTime firstRepaymentDate,  DateTime lastRepaymentDate,  InstallmentRepaymentMethod method,  InterestRatePeriod ratePeriod,  InterestAccrualMethod accrualMethod,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting)?  loaded,TResult? Function()?  notFound,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( InstallmentContractReadModel contract,  int paidCount,  DateTime firstRepaymentDate,  DateTime lastRepaymentDate,  InstallmentRepaymentMethod method,  InterestRatePeriod ratePeriod,  InterestAccrualMethod accrualMethod,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting)?  loaded,TResult? Function()?  notFound,}) {final _that = this;
 switch (_that) {
 case InstallmentContractEditLoaded() when loaded != null:
 return loaded(_that.contract,_that.paidCount,_that.firstRepaymentDate,_that.lastRepaymentDate,_that.method,_that.ratePeriod,_that.accrualMethod,_that.draft,_that.manualPatchedPeriodNos,_that.submitting);case InstallmentContractEditNotFound() when notFound != null:
@@ -178,7 +178,7 @@ class InstallmentContractEditLoaded implements InstallmentContractEditState {
   const InstallmentContractEditLoaded({required this.contract, required this.paidCount, required this.firstRepaymentDate, required this.lastRepaymentDate, required this.method, required this.ratePeriod, required this.accrualMethod, required final  List<InstallmentContractDraftRow> draft, final  Set<int> manualPatchedPeriodNos = const {}, this.submitting = false}): _draft = draft,_manualPatchedPeriodNos = manualPatchedPeriodNos;
   
 
- final  InstallmentContract contract;
+ final  InstallmentContractReadModel contract;
  final  int paidCount;
  final  DateTime firstRepaymentDate;
  final  DateTime lastRepaymentDate;
@@ -231,7 +231,7 @@ abstract mixin class $InstallmentContractEditLoadedCopyWith<$Res> implements $In
   factory $InstallmentContractEditLoadedCopyWith(InstallmentContractEditLoaded value, $Res Function(InstallmentContractEditLoaded) _then) = _$InstallmentContractEditLoadedCopyWithImpl;
 @useResult
 $Res call({
- InstallmentContract contract, int paidCount, DateTime firstRepaymentDate, DateTime lastRepaymentDate, InstallmentRepaymentMethod method, InterestRatePeriod ratePeriod, InterestAccrualMethod accrualMethod, List<InstallmentContractDraftRow> draft, Set<int> manualPatchedPeriodNos, bool submitting
+ InstallmentContractReadModel contract, int paidCount, DateTime firstRepaymentDate, DateTime lastRepaymentDate, InstallmentRepaymentMethod method, InterestRatePeriod ratePeriod, InterestAccrualMethod accrualMethod, List<InstallmentContractDraftRow> draft, Set<int> manualPatchedPeriodNos, bool submitting
 });
 
 
@@ -251,7 +251,7 @@ class _$InstallmentContractEditLoadedCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? contract = null,Object? paidCount = null,Object? firstRepaymentDate = null,Object? lastRepaymentDate = null,Object? method = null,Object? ratePeriod = null,Object? accrualMethod = null,Object? draft = null,Object? manualPatchedPeriodNos = null,Object? submitting = null,}) {
   return _then(InstallmentContractEditLoaded(
 contract: null == contract ? _self.contract : contract // ignore: cast_nullable_to_non_nullable
-as InstallmentContract,paidCount: null == paidCount ? _self.paidCount : paidCount // ignore: cast_nullable_to_non_nullable
+as InstallmentContractReadModel,paidCount: null == paidCount ? _self.paidCount : paidCount // ignore: cast_nullable_to_non_nullable
 as int,firstRepaymentDate: null == firstRepaymentDate ? _self.firstRepaymentDate : firstRepaymentDate // ignore: cast_nullable_to_non_nullable
 as DateTime,lastRepaymentDate: null == lastRepaymentDate ? _self.lastRepaymentDate : lastRepaymentDate // ignore: cast_nullable_to_non_nullable
 as DateTime,method: null == method ? _self.method : method // ignore: cast_nullable_to_non_nullable

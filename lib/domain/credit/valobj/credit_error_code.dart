@@ -1,6 +1,15 @@
 import '../../../core/error/app_error_code.dart';
 
 enum CreditErrorCode implements AppErrorCode {
+  accountNotFound(code: 'credit.account.not_found', defaultMessage: '信贷账户不存在。'),
+  accountInvalidCommand(
+    code: 'credit.account.invalid_command',
+    defaultMessage: '信贷账户参数不完整或不合法。',
+  ),
+  accountPersistenceConflict(
+    code: 'credit.account.persistence_conflict',
+    defaultMessage: '信贷账户数据已变化，请刷新后重试。',
+  ),
   contractNotFound(code: 'credit.contract.not_found', defaultMessage: '合同不存在。'),
   contractNotActive(
     code: 'credit.contract.not_active',
@@ -29,6 +38,11 @@ enum CreditErrorCode implements AppErrorCode {
   repaymentExceedsAvailable(
     code: 'credit.repayment.exceeds_available',
     defaultMessage: '还款本金超过可还额度。',
+  ),
+  billNotFound(code: 'credit.bill.not_found', defaultMessage: '账单不存在。'),
+  billInvalidCommand(
+    code: 'credit.bill.invalid_command',
+    defaultMessage: '账单还款参数不完整或不合法。',
   ),
   scheduleNotFound(
     code: 'credit.schedule.not_found',

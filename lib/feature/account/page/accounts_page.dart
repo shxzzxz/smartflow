@@ -12,9 +12,10 @@ import '../../../application/ledger/ledger_query_api.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/business_icon_bubble.dart';
-import 'package:smartflow/widget/business/finance/finance_labels.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import '../view_model/account_view.dart';
+import '../view_model/account_views_provider.dart';
 
 class AccountsPage extends ConsumerStatefulWidget {
   const AccountsPage({super.key});
@@ -28,7 +29,7 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final accountsAsync = ref.watch(accountListProvider);
+    final accountsAsync = ref.watch(accountViewsProvider);
     final balanceSheetAsync = ref.watch(balanceSheetComparisonProvider);
     final trendAsync = ref.watch(netAssetTrendProvider());
     final colors = Theme.of(context).colorScheme;
@@ -69,7 +70,7 @@ class _AccountsContent extends StatelessWidget {
     required this.onToggleHide,
   });
 
-  final List<Account> accounts;
+  final List<AccountView> accounts;
   final BalanceSheetComparison balanceSheet;
   final List<NetAssetTrendPoint> trend;
   final bool hideBalances;
@@ -153,28 +154,20 @@ class _AccountsContent extends StatelessWidget {
   }
 }
 
-bool _isFundAccount(Account account) {
-  return _profileForAccount(account) == AccountProfileKind.fund;
+bool _isFundAccount(AccountView model) {
+  return model.kind == AccountProfileKind.fund;
 }
 
-bool _isCreditAccount(Account account) {
-  return _profileForAccount(account) == AccountProfileKind.credit;
+bool _isCreditAccount(AccountView model) {
+  return model.kind == AccountProfileKind.credit;
 }
 
-bool _isLoanAccount(Account account) {
-  return _profileForAccount(account) == AccountProfileKind.loan;
+bool _isLoanAccount(AccountView model) {
+  return model.kind == AccountProfileKind.loan;
 }
 
-bool _isReimbursementAccount(Account account) {
-  return _profileForAccount(account) == AccountProfileKind.reimbursement;
-}
-
-AccountProfileKind _profileForAccount(Account account) {
-  return accountProfileKindForAccountType(
-    type: account.type,
-    subtype: account.subtype,
-    profileKey: account.profileKey,
-  );
+bool _isReimbursementAccount(AccountView model) {
+  return model.kind == AccountProfileKind.reimbursement;
 }
 
 class _AssetsHeader extends StatelessWidget {
@@ -413,7 +406,7 @@ class _AccountSection extends StatelessWidget {
   final String totalLabel;
   final Money total;
   final MoneySemantic totalSemantic;
-  final List<Account> accounts;
+  final List<AccountView> accounts;
   final bool hideBalances;
 
   @override
@@ -451,7 +444,7 @@ class _AccountSection extends StatelessWidget {
                     children: [
                       for (var i = 0; i < accounts.length; i++) ...[
                         _AccountRow(
-                          account: accounts[i],
+                          model: accounts[i],
                           hideBalance: hideBalances,
                         ),
                         if (i < accounts.length - 1)
@@ -472,9 +465,9 @@ class _AccountSection extends StatelessWidget {
 }
 
 class _AccountRow extends StatelessWidget {
-  const _AccountRow({required this.account, required this.hideBalance});
+  const _AccountRow({required this.model, required this.hideBalance});
 
-  final Account account;
+  final AccountView model;
   final bool hideBalance;
 
   @override
@@ -482,12 +475,12 @@ class _AccountRow extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final textStyles = context.appTextStyles;
     final semantic =
-        account.type == AccountType.asset
+        model.accountType == AccountType.asset
             ? MoneySemantic.asset
             : MoneySemantic.liability;
 
     return InkWell(
-      onTap: () => context.push('/account/${account.id}'),
+      onTap: () => context.push('/account/${model.id}'),
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space16,
@@ -498,7 +491,7 @@ class _AccountRow extends StatelessWidget {
             BusinessIconBubble(
               size: AppSpacing.space32,
               child: BusinessIcon(
-                iconKey: account.iconKey,
+                iconKey: model.iconKey,
                 size: AppSpacing.space28,
               ),
             ),
@@ -508,14 +501,14 @@ class _AccountRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    account.name,
+                    model.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: textStyles.formValue,
                   ),
                   const SizedBox(height: AppSpacing.space4),
                   Text(
-                    _accountRowTypeLabel(account),
+                    model.kind.label,
                     style: textStyles.listSupporting.copyWith(
                       color: colors.onSurfaceVariant,
                     ),
@@ -530,16 +523,16 @@ class _AccountRow extends StatelessWidget {
                 hideBalance
                     ? const _HiddenMoneyText()
                     : MoneyText(
-                      money: account.balance,
+                      money: model.balance,
                       semantic: semantic,
                       style: textStyles.amountList,
                     ),
-                if (account.type == AccountType.liability &&
-                    (account.billingDay != null ||
-                        account.repaymentDay != null)) ...[
+                if (model.isLiability &&
+                    (model.billingDay != null ||
+                        model.repaymentDay != null)) ...[
                   const SizedBox(height: AppSpacing.space4),
                   Text(
-                    _liabilityDateText(account),
+                    _liabilityDateText(model),
                     style: textStyles.listSupporting.copyWith(
                       color: colors.onSurfaceVariant,
                     ),
@@ -774,7 +767,7 @@ String _formatNetAssetComparison(PeriodChange change) {
   return '较上月 $delta ($sign${(ratio.abs() * 100).toStringAsFixed(2)}%)';
 }
 
-String _liabilityDateText(Account account) {
+String _liabilityDateText(AccountView account) {
   final parts = <String>[];
   if (account.billingDay != null) {
     parts.add('出账日 ${account.billingDay}');
@@ -783,13 +776,4 @@ String _liabilityDateText(Account account) {
     parts.add('还款日 ${account.repaymentDay}');
   }
   return parts.join('   ');
-}
-
-String _accountRowTypeLabel(Account account) {
-  if (account.type.isUserAccount) {
-    return _profileForAccount(account).label;
-  }
-  return account.subtype == null
-      ? accountTypeLabel(account.type)
-      : accountSubtypeLabel(account.subtype!);
 }

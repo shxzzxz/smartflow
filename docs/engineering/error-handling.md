@@ -78,7 +78,7 @@ ledger.account.not_found
 ledger.account.invalid_role
 ledger.transaction.not_editable
 credit.contract.not_found
-credit.contract.closed
+credit.contract.not_editable
 infra.network.timeout
 infra.call.invalid_response
 infra.persistence.conflict

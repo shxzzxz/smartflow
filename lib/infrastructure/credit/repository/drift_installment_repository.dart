@@ -1,24 +1,17 @@
 import 'package:drift/drift.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../domain/credit/entity/installment_contract.dart';
-import '../../../domain/credit/entity/installment_repayment.dart';
 import '../../../domain/credit/entity/installment_schedule.dart';
 import '../../../domain/credit/valobj/credit_error_code.dart';
-import '../../../domain/credit/valobj/installment_enums.dart';
 import '../../../domain/credit/port/installment_repository.dart';
-import '../../../domain/credit/service/installment_schedule_generator.dart';
 import '../../database/app_database.dart';
-import '../../database/patch_value.dart';
 
 class DriftInstallmentRepository implements InstallmentRepository {
   DriftInstallmentRepository(this._database);
 
   final AppDatabase _database;
-
-  static const _uuid = Uuid();
 
   @override
   Future<InstallmentContract?> findContract(String id) async {
@@ -54,32 +47,42 @@ class DriftInstallmentRepository implements InstallmentRepository {
   }
 
   @override
+  Future<List<InstallmentSchedule>> listSchedulesByLiabilityAccount(
+    String liabilityAccountId,
+  ) async {
+    final rows =
+        await (_database.select(_database.installmentSchedules).join([
+                innerJoin(
+                  _database.installmentContracts,
+                  _database.installmentContracts.id.equalsExp(
+                    _database.installmentSchedules.contractId,
+                  ),
+                ),
+              ])
+              ..where(
+                _database.installmentContracts.liabilityAccountId.equals(
+                  liabilityAccountId,
+                ),
+              )
+              ..orderBy([
+                OrderingTerm.asc(
+                  _database.installmentSchedules.expectedRepaymentDate,
+                ),
+                OrderingTerm.asc(_database.installmentSchedules.periodNo),
+              ]))
+            .get();
+    return [
+      for (final row in rows)
+        _mapSchedule(row.readTable(_database.installmentSchedules)),
+    ];
+  }
+
+  @override
   Future<InstallmentSchedule?> findSchedule(String scheduleId) async {
     final row =
         await (_database.select(_database.installmentSchedules)
           ..where((s) => s.id.equals(scheduleId))).getSingleOrNull();
     return row == null ? null : _mapSchedule(row);
-  }
-
-  @override
-  Future<List<InstallmentRepayment>> listRepayments(String contractId) async {
-    final rows =
-        await (_database.select(_database.installmentRepayments)
-              ..where((r) => r.contractId.equals(contractId))
-              ..orderBy([(r) => OrderingTerm.asc(r.createdAt)]))
-            .get();
-    return rows.map(_mapRepayment).toList();
-  }
-
-  @override
-  Future<InstallmentRepayment?> findRepaymentByTransaction(
-    String transactionId,
-  ) async {
-    final row =
-        await (_database.select(_database.installmentRepayments)..where(
-          (r) => r.transactionId.equals(transactionId),
-        )).getSingleOrNull();
-    return row == null ? null : _mapRepayment(row);
   }
 
   @override
@@ -94,226 +97,115 @@ class DriftInstallmentRepository implements InstallmentRepository {
   }
 
   @override
-  Future<String> insertContract(InstallmentContractDraft draft) async {
-    final id = _uuid.v7();
+  Future<void> saveContract(InstallmentContract contract) async {
     final now = DateTime.now();
     await _database
         .into(_database.installmentContracts)
         .insert(
           InstallmentContractsCompanion.insert(
-            id: id,
-            liabilityAccountId: draft.liabilityAccountId,
-            sourceType: draft.sourceType,
-            disbursementAccountId: Value(draft.disbursementAccountId),
-            disbursementTransactionId: Value(draft.disbursementTransactionId),
-            principalMinor: draft.principal.minorUnits,
-            totalPeriods: draft.totalPeriods,
-            borrowingDate: draft.borrowingDate,
-            firstRepaymentDate: draft.firstRepaymentDate,
-            lastRepaymentDate: draft.lastRepaymentDate,
-            repaymentMethod: draft.repaymentMethod,
-            interestRatePeriod: Value(draft.interestRatePeriod),
-            interestRatePpm: Value(draft.interestRatePpm),
-            interestAccrualMethod: Value(draft.interestAccrualMethod),
-            totalFeeMinor: Value(draft.totalFeeMinor),
-            status: draft.status,
-            note: Value(draft.note),
-            createdAt: Value(now),
+            id: contract.id,
+            liabilityAccountId: contract.liabilityAccountId,
+            sourceType: contract.sourceType,
+            disbursementAccountId: Value(contract.disbursementAccountId),
+            disbursementTransactionId: Value(
+              contract.disbursementTransactionId,
+            ),
+            sourceRepaymentId: Value(contract.sourceRepaymentId),
+            principalMinor: contract.principal.minorUnits,
+            totalPeriods: contract.totalPeriods,
+            borrowingDate: contract.borrowingDate,
+            firstRepaymentDate: contract.firstRepaymentDate,
+            lastRepaymentDate: contract.lastRepaymentDate,
+            repaymentMethod: contract.repaymentMethod,
+            interestRatePeriod: Value(contract.interestRatePeriod),
+            interestRatePpm: Value(contract.interestRatePpm),
+            interestAccrualMethod: Value(contract.interestAccrualMethod),
+            totalFeeMinor: Value(contract.totalFeeMinor),
+            status: contract.status,
+            note: Value(contract.note),
+            createdAt: Value(contract.createdAt),
             updatedAt: Value(now),
           ),
         );
-    return id;
   }
 
   @override
-  Future<void> updateContract(
-    String contractId,
-    InstallmentContractPatch patch,
-  ) async {
-    final companion = InstallmentContractsCompanion(
-      totalPeriods:
-          patch.totalPeriods == null
-              ? const Value.absent()
-              : Value(patch.totalPeriods!),
-      firstRepaymentDate:
-          patch.firstRepaymentDate == null
-              ? const Value.absent()
-              : Value(patch.firstRepaymentDate!),
-      lastRepaymentDate:
-          patch.lastRepaymentDate == null
-              ? const Value.absent()
-              : Value(patch.lastRepaymentDate!),
-      borrowingDate:
-          patch.borrowingDate == null
-              ? const Value.absent()
-              : Value(patch.borrowingDate!),
-      repaymentMethod:
-          patch.repaymentMethod == null
-              ? const Value.absent()
-              : Value(patch.repaymentMethod!),
-      interestRatePeriod: patch.interestRatePeriod.toValue(),
-      interestRatePpm: patch.interestRatePpm.toValue(),
-      interestAccrualMethod:
-          patch.interestAccrualMethod == null
-              ? const Value.absent()
-              : Value(patch.interestAccrualMethod!),
-      totalFeeMinor:
-          patch.totalFeeMinor == null
-              ? const Value.absent()
-              : Value(patch.totalFeeMinor!),
-      note: patch.note.toValue(),
-      disbursementAccountId:
-          patch.disbursementAccountId == null
-              ? const Value.absent()
-              : Value(patch.disbursementAccountId!),
-      updatedAt: Value(DateTime.now()),
-    );
-    final updated = await (_database.update(_database.installmentContracts)
-      ..where((c) => c.id.equals(contractId))).write(companion);
-    if (updated == 0) {
-      throw BusinessException(CreditErrorCode.contractPersistenceConflict);
-    }
+  Future<void> insertAggregate(
+    InstallmentContract contract,
+    List<InstallmentSchedule> schedules,
+  ) {
+    return _database.transaction(() async {
+      await saveContract(contract);
+      await _replaceSchedules(contract.id, schedules);
+    });
   }
 
   @override
-  Future<void> replaceSchedules(
+  Future<void> saveAggregate(
+    InstallmentContract contract,
+    List<InstallmentSchedule> schedules,
+  ) {
+    return _database.transaction(() async {
+      final updated = await (_database.update(_database.installmentContracts)
+        ..where((row) => row.id.equals(contract.id))).write(
+        InstallmentContractsCompanion(
+          disbursementAccountId: Value(contract.disbursementAccountId),
+          totalPeriods: Value(contract.totalPeriods),
+          borrowingDate: Value(contract.borrowingDate),
+          firstRepaymentDate: Value(contract.firstRepaymentDate),
+          lastRepaymentDate: Value(contract.lastRepaymentDate),
+          repaymentMethod: Value(contract.repaymentMethod),
+          interestRatePeriod: Value(contract.interestRatePeriod),
+          interestRatePpm: Value(contract.interestRatePpm),
+          interestAccrualMethod: Value(contract.interestAccrualMethod),
+          totalFeeMinor: Value(contract.totalFeeMinor),
+          status: Value(contract.status),
+          note: Value(contract.note),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+      if (updated == 0) {
+        throw BusinessException(CreditErrorCode.contractPersistenceConflict);
+      }
+      await _replaceSchedules(contract.id, schedules);
+    });
+  }
+
+  Future<void> _replaceSchedules(
     String contractId,
-    List<InstallmentScheduleDraft> drafts,
+    List<InstallmentSchedule> schedules,
   ) async {
     await (_database.delete(_database.installmentSchedules)
       ..where((s) => s.contractId.equals(contractId))).go();
-    final now = DateTime.now();
     await _database.batch((batch) {
-      for (final draft in drafts) {
-        batch.insert(
-          _database.installmentSchedules,
-          InstallmentSchedulesCompanion.insert(
-            id: _uuid.v7(),
-            contractId: contractId,
-            periodNo: draft.periodNo,
-            expectedRepaymentDate: draft.expectedRepaymentDate,
-            expectedPrincipalMinor: Value(draft.expectedPrincipal.minorUnits),
-            expectedInterestMinor: Value(draft.expectedInterest.minorUnits),
-            expectedFeeMinor: Value(draft.expectedFee.minorUnits),
-            status: InstallmentScheduleStatus.pending,
-            createdAt: Value(now),
-            updatedAt: Value(now),
-          ),
-        );
+      for (final schedule in schedules) {
+        batch.insert(_database.installmentSchedules, _scheduleInsert(schedule));
       }
     });
-  }
-
-  @override
-  Future<void> appendSchedules(
-    String contractId,
-    List<InstallmentScheduleDraft> drafts,
-  ) async {
-    if (drafts.isEmpty) return;
-    final now = DateTime.now();
-    await _database.batch((batch) {
-      for (final draft in drafts) {
-        batch.insert(
-          _database.installmentSchedules,
-          InstallmentSchedulesCompanion.insert(
-            id: _uuid.v7(),
-            contractId: contractId,
-            periodNo: draft.periodNo,
-            expectedRepaymentDate: draft.expectedRepaymentDate,
-            expectedPrincipalMinor: Value(draft.expectedPrincipal.minorUnits),
-            expectedInterestMinor: Value(draft.expectedInterest.minorUnits),
-            expectedFeeMinor: Value(draft.expectedFee.minorUnits),
-            status: InstallmentScheduleStatus.pending,
-            createdAt: Value(now),
-            updatedAt: Value(now),
-          ),
-        );
-      }
-    });
-  }
-
-  @override
-  Future<void> updateSchedule(
-    String scheduleId,
-    InstallmentSchedulePatch patch,
-  ) async {
-    final companion = InstallmentSchedulesCompanion(
-      expectedRepaymentDate:
-          patch.expectedRepaymentDate == null
-              ? const Value.absent()
-              : Value(patch.expectedRepaymentDate!),
-      expectedPrincipalMinor:
-          patch.expectedPrincipal == null
-              ? const Value.absent()
-              : Value(patch.expectedPrincipal!.minorUnits),
-      expectedInterestMinor:
-          patch.expectedInterest == null
-              ? const Value.absent()
-              : Value(patch.expectedInterest!.minorUnits),
-      expectedFeeMinor:
-          patch.expectedFee == null
-              ? const Value.absent()
-              : Value(patch.expectedFee!.minorUnits),
-      status:
-          patch.status == null ? const Value.absent() : Value(patch.status!),
-      note: patch.note.toValue(),
-      updatedAt: Value(DateTime.now()),
-    );
-    final updated = await (_database.update(_database.installmentSchedules)
-      ..where((s) => s.id.equals(scheduleId))).write(companion);
-    if (updated == 0) {
-      throw BusinessException(CreditErrorCode.contractPersistenceConflict);
-    }
-  }
-
-  @override
-  Future<String> insertRepayment(InstallmentRepaymentDraft draft) async {
-    final id = _uuid.v7();
-    final now = DateTime.now();
-    await _database
-        .into(_database.installmentRepayments)
-        .insert(
-          InstallmentRepaymentsCompanion.insert(
-            id: id,
-            contractId: draft.contractId,
-            repaymentType: draft.repaymentType,
-            scheduleId: Value(draft.scheduleId),
-            transactionId: draft.transactionId,
-            createdAt: Value(now),
-            updatedAt: Value(now),
-          ),
-        );
-    return id;
-  }
-
-  @override
-  Future<void> deleteRepayment(String repaymentId) async {
-    await (_database.delete(_database.installmentRepayments)
-      ..where((r) => r.id.equals(repaymentId))).go();
-  }
-
-  @override
-  Future<void> updateContractStatus(
-    String contractId,
-    InstallmentContractStatus status,
-  ) async {
-    await (_database.update(_database.installmentContracts)
-      ..where((c) => c.id.equals(contractId))).write(
-      InstallmentContractsCompanion(
-        status: Value(status),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
   }
 
   @override
   Future<void> deleteContract(String contractId) async {
-    await (_database.delete(_database.installmentRepayments)
-      ..where((r) => r.contractId.equals(contractId))).go();
     await (_database.delete(_database.installmentSchedules)
       ..where((s) => s.contractId.equals(contractId))).go();
     await (_database.delete(_database.installmentContracts)
       ..where((c) => c.id.equals(contractId))).go();
+  }
+
+  InstallmentSchedulesCompanion _scheduleInsert(InstallmentSchedule schedule) {
+    return InstallmentSchedulesCompanion.insert(
+      id: schedule.id,
+      contractId: schedule.contractId,
+      periodNo: schedule.periodNo,
+      expectedRepaymentDate: schedule.expectedRepaymentDate,
+      expectedPrincipalMinor: Value(schedule.expectedPrincipal.minorUnits),
+      expectedInterestMinor: Value(schedule.expectedInterest.minorUnits),
+      expectedFeeMinor: Value(schedule.expectedFee.minorUnits),
+      status: schedule.status,
+      note: Value(schedule.note),
+      createdAt: Value(schedule.createdAt),
+      updatedAt: Value(DateTime.now()),
+    );
   }
 
   InstallmentContract _mapContract(InstallmentContractRow row) {
@@ -323,6 +215,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
       sourceType: row.sourceType,
       disbursementAccountId: row.disbursementAccountId,
       disbursementTransactionId: row.disbursementTransactionId,
+      sourceRepaymentId: row.sourceRepaymentId,
       principal: Money(minorUnits: row.principalMinor),
       totalPeriods: row.totalPeriods,
       borrowingDate: row.borrowingDate,
@@ -350,17 +243,6 @@ class DriftInstallmentRepository implements InstallmentRepository {
       expectedFee: Money(minorUnits: row.expectedFeeMinor),
       status: row.status,
       note: row.note,
-      createdAt: row.createdAt,
-    );
-  }
-
-  InstallmentRepayment _mapRepayment(InstallmentRepaymentRow row) {
-    return InstallmentRepayment(
-      id: row.id,
-      contractId: row.contractId,
-      repaymentType: row.repaymentType,
-      scheduleId: row.scheduleId,
-      transactionId: row.transactionId,
       createdAt: row.createdAt,
     );
   }

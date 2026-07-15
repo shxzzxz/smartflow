@@ -46,6 +46,8 @@ ViewModel state 使用不可变对象表达，每次状态变化发布新的 sta
 
 `app/provider.dart` 只承担应用装配级 provider，例如 database、repository、application service 与全局 facade。页面级查询聚合、ViewModel provider 和交互状态 provider 放在对应 `feature/<feature>/provider` 或 `feature/<feature>/view_model` 下，不继续集中进 `app/provider.dart`。
 
+Feature provider 只能组合 application query / use case，不直接读取 repository provider、ledger query 或实例化 domain service。需要合同、计划、还款等多来源事实时，由 application query 加载并返回 read model。
+
 ## Presentation
 
 纯展示计算放在 `feature/<feature>/presentation`，不放在 `view_model`。presentation 必须是无状态、无 Riverpod、无 application service 调用、无副作用的展示转换；它只把已有 read model / UI state 转换为展示文案、格式化金额、图标 key、排序分组或日历格子等可测试结果。ViewModel 可以调用 presentation 函数构造 UI state，presentation 不反向依赖 ViewModel。

@@ -11,6 +11,7 @@ import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
+import '../provider/credit_account_query_providers.dart';
 
 part 'repayment_form_view_model.g.dart';
 
@@ -48,32 +49,31 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
       );
     }
 
-    final detail = await ref.watch(
-      transactionDetailProvider(editTransactionId).future,
-    );
-    if (detail == null) {
-      return RepaymentFormState.notFound(
-        liabilityAccounts: liabilityAccounts,
-        repaymentSourceAccounts: repaymentSourceAccounts,
-      );
+    final editResult = await ref
+        .read(repaymentAppServiceProvider)
+        .loadLiabilityRepaymentEditView(editTransactionId);
+    switch (editResult.status) {
+      case credit.LiabilityRepaymentEditViewLoadStatus.notFound:
+        return RepaymentFormState.notFound(
+          liabilityAccounts: liabilityAccounts,
+          repaymentSourceAccounts: repaymentSourceAccounts,
+        );
+      case credit.LiabilityRepaymentEditViewLoadStatus.notEditable:
+        return RepaymentFormState.notEditable(
+          liabilityAccounts: liabilityAccounts,
+          repaymentSourceAccounts: repaymentSourceAccounts,
+        );
+      case credit.LiabilityRepaymentEditViewLoadStatus.loaded:
+        break;
     }
-    final accountsById = await ref.watch(accountsByIdProvider.future);
-    final view = ref
-        .read(creditServiceProvider)
-        .parseRepaymentEditView(detail, accountsById: accountsById);
-    if (view == null) {
-      return RepaymentFormState.notEditable(
-        liabilityAccounts: liabilityAccounts,
-        repaymentSourceAccounts: repaymentSourceAccounts,
-      );
-    }
+    final view = editResult.view!;
     return RepaymentFormState.loaded(
       liabilityAccounts: liabilityAccounts,
       repaymentSourceAccounts: repaymentSourceAccounts,
-      principalText: view.principal.format(),
-      interestText: view.interest?.format() ?? '',
-      feeText: view.fee?.format() ?? '',
-      discountText: view.discount?.format() ?? '',
+      principalText: view.amount.principal.format(),
+      interestText: _positiveText(view.amount.interest),
+      feeText: _positiveText(view.amount.fee),
+      discountText: _positiveText(view.amount.discount),
       noteText: view.note ?? '',
       liabilityAccountId: view.liabilityAccountId,
       paidFromAccountId: view.paidFromAccountId,
@@ -140,32 +140,32 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
 
     _update((state) => state.copyWith(submitting: true));
     try {
-      final service = ref.read(creditServiceProvider);
+      final service = ref.read(repaymentAppServiceProvider);
       final editTransactionId = args.editTransactionId;
       final note = trimToNull(current.noteText);
+      final amount = credit.RepaymentAmountDto(
+        principal: principal,
+        interest: _parseOptionalMoney(current.interestText) ?? Money.zero(),
+        fee: _parseOptionalMoney(current.feeText) ?? Money.zero(),
+        discount: _parseOptionalMoney(current.discountText) ?? Money.zero(),
+      );
       final result =
           editTransactionId == null
-              ? await service.createRepayment(
-                credit.CreateRepaymentCommand(
+              ? await service.createLiabilityRepayment(
+                credit.CreateLiabilityRepaymentCommand(
                   liabilityAccountId: liabilityAccountId,
                   paidFromAccountId: paidFromAccountId,
-                  principal: principal,
-                  interest: _parseOptionalMoney(current.interestText),
-                  fee: _parseOptionalMoney(current.feeText),
-                  discount: _parseOptionalMoney(current.discountText),
+                  amount: amount,
                   occurredAt: current.occurredAt,
                   note: note,
                 ),
               )
-              : await service.correctRepayment(
-                credit.CorrectRepaymentCommand(
+              : await service.correctLiabilityRepayment(
+                credit.CorrectLiabilityRepaymentCommand(
                   transactionId: editTransactionId,
                   liabilityAccountId: liabilityAccountId,
                   paidFromAccountId: paidFromAccountId,
-                  principal: principal,
-                  interest: _parseOptionalMoney(current.interestText),
-                  fee: _parseOptionalMoney(current.feeText),
-                  discount: _parseOptionalMoney(current.discountText),
+                  amount: amount,
                   occurredAt: current.occurredAt,
                   note: note,
                 ),
@@ -202,6 +202,7 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
       ),
     );
     ref.invalidate(installmentContractsByAccountProvider(liabilityAccountId));
+    ref.invalidate(creditAccountOverviewProvider(liabilityAccountId));
     if (transactionId != null) {
       ref.invalidate(transactionDetailProvider(transactionId));
     }
@@ -382,6 +383,10 @@ Money? _parseOptionalMoney(String value) {
   if (trimmed.isEmpty) return null;
   final money = Money.tryParse(trimmed);
   return money != null && money.minorUnits > 0 ? money : null;
+}
+
+String _positiveText(Money value) {
+  return value.minorUnits > 0 ? value.format() : '';
 }
 
 const Object _sentinel = Object();

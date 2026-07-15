@@ -2,11 +2,13 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
+import '../../../application/credit/credit_query_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
+import '../provider/credit_account_query_providers.dart';
 import 'installment_contract_edit_state.dart';
 
 part 'installment_contract_edit_view_model.g.dart';
@@ -14,8 +16,6 @@ part 'installment_contract_edit_view_model.g.dart';
 @riverpod
 class InstallmentContractEditViewModel
     extends _$InstallmentContractEditViewModel {
-  static const _generator = InstallmentScheduleGenerator();
-
   @override
   Future<InstallmentContractEditState> build(String contractId) async {
     final contract = await ref.watch(
@@ -72,12 +72,12 @@ class InstallmentContractEditViewModel
     _updateLoaded((loaded) => loaded.copyWith(accrualMethod: value));
   }
 
-  UiActionOutcome<void> recalculate({
+  Future<UiActionOutcome<void>> recalculate({
     required String totalPeriodsText,
     required String rateText,
     required String feeText,
     required String overrideInstallmentText,
-  }) {
+  }) async {
     final loaded = _loadedOrNull();
     if (loaded == null) return _invalidAction('合同尚未加载');
 
@@ -100,74 +100,60 @@ class InstallmentContractEditViewModel
             ? _parseOptionalOverride(overrideInstallmentText)
             : null;
 
-    final allDates = _generator.generateDates(
-      firstRepaymentDate: loaded.firstRepaymentDate,
-      lastRepaymentDate: loaded.lastRepaymentDate,
-      totalPeriods: totalPeriods,
-    );
-    final pendingDates = allDates.sublist(loaded.paidCount);
-
-    final paidRows =
-        loaded.draft
-            .where((r) => r.status == InstallmentScheduleStatus.paid)
-            .toList()
-          ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
-
-    final paidPrincipalMinor = paidRows.fold<int>(
-      0,
-      (acc, row) => acc + row.principal.minorUnits,
-    );
-    final paidFeeMinor = paidRows.fold<int>(
-      0,
-      (acc, row) => acc + row.fee.minorUnits,
-    );
-    final remainingMinor =
-        loaded.contract.principal.minorUnits - paidPrincipalMinor;
-    if (remainingMinor < 0) return _invalidAction('剩余本金为负，无法重算');
-
-    final anchorDate =
-        paidRows.isEmpty ? loaded.contract.borrowingDate : paidRows.last.date;
-    final remainingFeeMinor = feeMinor - paidFeeMinor;
-    final allocations = _generator.allocate(
-      remainingPrincipal: Money(minorUnits: remainingMinor),
-      anchorDate: anchorDate,
-      pendingDates: pendingDates,
-      method: loaded.method,
-      accrualMethod: loaded.accrualMethod,
-      ratePeriod: ratePpm == null ? null : loaded.ratePeriod,
-      ratePpm: ratePpm,
-      remainingFeeMinor: remainingFeeMinor < 0 ? 0 : remainingFeeMinor,
-      equalInstallmentOverrideMinor: overrideMinor,
-    );
-
-    final nextDraft = <InstallmentContractDraftRow>[...paidRows];
-    for (var i = 0; i < pendingDates.length; i++) {
-      final periodNo = paidRows.length + i + 1;
-      final existing =
-          loaded.draft
-              .where(
-                (row) =>
-                    row.status != InstallmentScheduleStatus.paid &&
-                    row.periodNo == periodNo,
-              )
-              .firstOrNull;
-      nextDraft.add(
-        InstallmentContractDraftRow(
-          scheduleId: existing?.scheduleId,
-          periodNo: periodNo,
-          date: pendingDates[i],
-          principal: allocations[i].principal,
-          interest: allocations[i].interest,
-          fee: allocations[i].fee,
-          status: InstallmentScheduleStatus.pending,
-        ),
-      );
+    if (!loaded.draft.any(
+      (row) => row.status == InstallmentScheduleStatus.pending,
+    )) {
+      return _invalidAction('没有可重算的待还期次');
     }
 
-    _setLoaded(
-      loaded.copyWith(draft: nextDraft, manualPatchedPeriodNos: const {}),
-    );
-    return const UiActionOutcome.success(null);
+    try {
+      final preview = await ref
+          .read(installmentAppServiceProvider)
+          .previewContractRecalculation(
+            RecalculateContractSchedulesCommand(
+              contractId: contractId,
+              terms: ContractRecalculationTerms(
+                totalPeriods: totalPeriods,
+                firstRepaymentDate: loaded.firstRepaymentDate,
+                lastRepaymentDate: loaded.lastRepaymentDate,
+                repaymentMethod: loaded.method,
+                interestRatePeriod: ratePpm == null ? null : loaded.ratePeriod,
+                interestRatePpm: ratePpm,
+                interestAccrualMethod: loaded.accrualMethod,
+                totalFeeMinor: feeMinor,
+              ),
+              equalInstallmentOverrideMinor: overrideMinor,
+            ),
+          );
+      final previewByScheduleId = {
+        for (final row in preview) row.scheduleId: row,
+      };
+      _setLoaded(
+        loaded.copyWith(
+          draft: [
+            for (final row in loaded.draft)
+              if (previewByScheduleId[row.scheduleId] case final previewRow?)
+                row.copyWith(
+                  date: previewRow.expectedRepaymentDate,
+                  principal: previewRow.expectedPrincipal,
+                  interest: previewRow.expectedInterest,
+                  fee: previewRow.expectedFee,
+                )
+              else
+                row,
+          ],
+          manualPatchedPeriodNos: {
+            ...loaded.manualPatchedPeriodNos,
+            for (final row in preview) row.periodNo,
+          },
+        ),
+      );
+      return const UiActionOutcome.success(null);
+    } on AppException catch (exception) {
+      return UiActionOutcome.failure(UiError.fromException(exception));
+    } on Exception {
+      return const UiActionOutcome.failure(UiError.unknown());
+    }
   }
 
   void applyAmount(
@@ -259,7 +245,7 @@ class InstallmentContractEditViewModel
     _setLoaded(loaded.copyWith(submitting: true));
     try {
       await ref
-          .read(installmentServiceProvider)
+          .read(installmentAppServiceProvider)
           .updateContract(
             UpdateContractCommand(
               contractId: contractId,
@@ -305,7 +291,8 @@ class InstallmentContractEditViewModel
       ..invalidate(installmentSchedulesProvider(contractId))
       ..invalidate(installmentRepaymentsProvider(contractId))
       ..invalidate(installmentMetricsProvider(contractId))
-      ..invalidate(installmentContractsByAccountProvider(liabilityAccountId));
+      ..invalidate(installmentContractsByAccountProvider(liabilityAccountId))
+      ..invalidate(creditAccountOverviewProvider(liabilityAccountId));
   }
 
   InstallmentContractEditLoaded? _loadedOrNull() {
@@ -342,17 +329,17 @@ class InstallmentContractEditViewModel
   }
 }
 
-String installmentContractPeriodsText(InstallmentContract contract) {
+String installmentContractPeriodsText(InstallmentContractReadModel contract) {
   return contract.totalPeriods.toString();
 }
 
-String installmentContractRateText(InstallmentContract contract) {
+String installmentContractRateText(InstallmentContractReadModel contract) {
   final ratePpm = contract.interestRatePpm;
   if (ratePpm == null || ratePpm <= 0) return '';
   return _trimTrailingZeros((ratePpm / 10000.0).toStringAsFixed(4));
 }
 
-String installmentContractFeeText(InstallmentContract contract) {
+String installmentContractFeeText(InstallmentContractReadModel contract) {
   if (contract.totalFeeMinor <= 0) return '';
   return Money(minorUnits: contract.totalFeeMinor).major.toString();
 }

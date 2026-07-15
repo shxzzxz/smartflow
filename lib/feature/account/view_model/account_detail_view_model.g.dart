@@ -9,17 +9,11 @@ part of 'account_detail_view_model.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(accountDetailViewModel)
+@ProviderFor(AccountDetailViewModel)
 final accountDetailViewModelProvider = AccountDetailViewModelFamily._();
 
 final class AccountDetailViewModelProvider
-    extends
-        $FunctionalProvider<
-          AccountDetailPageState,
-          AccountDetailPageState,
-          AccountDetailPageState
-        >
-    with $Provider<AccountDetailPageState> {
+    extends $NotifierProvider<AccountDetailViewModel, AccountDetailPageState> {
   AccountDetailViewModelProvider._({
     required AccountDetailViewModelFamily super.from,
     required String super.argument,
@@ -43,15 +37,7 @@ final class AccountDetailViewModelProvider
 
   @$internal
   @override
-  $ProviderElement<AccountDetailPageState> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  AccountDetailPageState create(Ref ref) {
-    final argument = this.argument as String;
-    return accountDetailViewModel(ref, argument);
-  }
+  AccountDetailViewModel create() => AccountDetailViewModel();
 
   /// {@macro riverpod.override_with_value}
   Override overrideWithValue(AccountDetailPageState value) {
@@ -74,10 +60,17 @@ final class AccountDetailViewModelProvider
 }
 
 String _$accountDetailViewModelHash() =>
-    r'c684e623b370ac7e9041cc05aa6a0aa4efc61f5b';
+    r'41c7910b2310c59d8d05764209c05e4285bf0bc7';
 
 final class AccountDetailViewModelFamily extends $Family
-    with $FunctionalFamilyOverride<AccountDetailPageState, String> {
+    with
+        $ClassFamilyOverride<
+          AccountDetailViewModel,
+          AccountDetailPageState,
+          AccountDetailPageState,
+          AccountDetailPageState,
+          String
+        > {
   AccountDetailViewModelFamily._()
     : super(
         retry: null,
@@ -92,4 +85,27 @@ final class AccountDetailViewModelFamily extends $Family
 
   @override
   String toString() => r'accountDetailViewModelProvider';
+}
+
+abstract class _$AccountDetailViewModel
+    extends $Notifier<AccountDetailPageState> {
+  late final _$args = ref.$arg as String;
+  String get accountId => _$args;
+
+  AccountDetailPageState build(String accountId);
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref =
+        this.ref as $Ref<AccountDetailPageState, AccountDetailPageState>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AccountDetailPageState, AccountDetailPageState>,
+              AccountDetailPageState,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, () => build(_$args));
+  }
 }

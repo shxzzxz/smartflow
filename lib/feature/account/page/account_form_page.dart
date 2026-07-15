@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../application/ledger/ledger_command_api.dart';
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
@@ -14,9 +13,10 @@ import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/icon_choice_grid.dart';
-import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../view_model/account_view.dart';
 import '../view_model/account_form_view_model.dart';
+import '../view_model/account_views_provider.dart';
 
 class AccountFormPage extends ConsumerStatefulWidget {
   const AccountFormPage({this.accountId, super.key});
@@ -52,9 +52,9 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
 
     final accountId = widget.accountId;
     if (accountId != null) {
-      final accountsAsync = ref.watch(accountListProvider);
-      return switch (accountsAsync) {
-        AsyncData(value: final accounts) => _buildForEdit(context, accounts),
+      final accountAsync = ref.watch(accountViewProvider(accountId));
+      return switch (accountAsync) {
+        AsyncData(value: final account) => _buildForEdit(context, account),
         AsyncError(:final error) => Scaffold(
           appBar: AppBar(title: const Text('编辑账户')),
           body: Center(child: Text('账户加载失败：$error')),
@@ -66,8 +66,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
     return _buildFormScaffold(context, formState);
   }
 
-  Widget _buildForEdit(BuildContext context, List<Account> accounts) {
-    final account = _findAccount(accounts, widget.accountId!);
+  Widget _buildForEdit(BuildContext context, AccountView? account) {
     if (account == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('编辑账户')),
@@ -78,7 +77,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
     return _buildFormScaffold(context, ref.watch(accountFormViewModelProvider));
   }
 
-  void _scheduleEditInitialization(Account account) {
+  void _scheduleEditInitialization(AccountView account) {
     final initializedId =
         ref.read(accountFormViewModelProvider).initializedAccountId;
     if (initializedId == account.id || _scheduledEditAccountId == account.id) {
@@ -186,7 +185,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                         ),
                       ),
                       const Divider(height: 1),
-                      if (formState.kind == AccountProfileKind.credit)
+                      if (formState.kind == AccountProfileKind.credit) ...[
                         AppPlainFormRow(
                           label: '出账还款日',
                           child: _BillingRepaymentFields(
@@ -205,21 +204,15 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                                   onChanged: notifier.setRepaymentDay,
                                 ),
                           ),
-                        )
-                      else
-                        AppPlainFormRow(
-                          label: '还款日',
-                          child: _MonthlyDayField(
-                            day: formState.repaymentDay,
-                            placeholder: '还款日',
-                            onTap:
-                                () => _pickMonthlyDay(
-                                  title: '选择还款日',
-                                  selectedDay: formState.repaymentDay,
-                                  onChanged: notifier.setRepaymentDay,
-                                ),
-                          ),
                         ),
+                        const Divider(height: 1),
+                        SwitchListTile.adaptive(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('出账日交易计入下期'),
+                          value: formState.billingDayToNext,
+                          onChanged: notifier.setBillingDayToNext,
+                        ),
+                      ],
                       const Divider(height: 1),
                     ],
                     AppPlainFormRow(
@@ -262,6 +255,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
       context: context,
       title: title,
       selectedDay: selectedDay,
+      maxDay: 28,
     );
     if (!mounted) return;
     onChanged(selected);
@@ -490,13 +484,6 @@ class _MonthlyDayField extends StatelessWidget {
       child: AppPlainValueText(text: day == null ? placeholder : '$day 日'),
     );
   }
-}
-
-Account? _findAccount(List<Account> accounts, String id) {
-  for (final account in accounts) {
-    if (account.id == id) return account;
-  }
-  return null;
 }
 
 final List<IconChoiceGridItem> _accountIconGridItems = [

@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
-import 'package:smartflow/application/credit/credit_command_api.dart'
-    hide CorrectRepaymentCommand, CreateRepaymentCommand;
+import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_state.dart';
@@ -48,19 +48,19 @@ void main() {
     });
 
     test(
-      'dispatches installment repayment account change to credit service',
+      'dispatches installment disbursement account change to credit app service',
       () async {
-        final installment = _FakeInstallmentService();
+        final installment = _FakeInstallmentAppService();
         final detail = _detail(
-          purpose: BusinessPurpose.debtRepayment,
+          purpose: BusinessPurpose.borrowing,
           ownership: const TransactionOwnership(
             ownerType: installmentOwnerType,
             ownerId: 'contract-1',
-            ownerRole: 'scheduled_repayment',
+            ownerRole: 'disbursement',
           ),
           entries: [
-            _entry('cash', EntryDirection.credit),
-            _entry('loan', EntryDirection.debit),
+            _entry('loan', EntryDirection.credit),
+            _entry('cash', EntryDirection.debit),
           ],
         );
         final container = _container(detail: detail, installment: installment);
@@ -71,17 +71,16 @@ void main() {
             .changeAccount(AccountSelectionPurpose.repaymentSource, 'bank');
 
         expect(outcome, isA<UiActionSuccess<void>>());
-        final command = installment.editRepaymentCommands.single;
-        expect(command.transactionId, 'tx-1');
+        final command = installment.updateContractCommands.single;
         expect(command.contractId, 'contract-1');
-        expect(command.paidFromAccountId, 'bank');
+        expect(command.disbursementAccountId, 'bank');
       },
     );
 
     test(
       'maps installment disbursement update exception to action failure',
       () async {
-        final installment = _FakeInstallmentService(
+        final installment = _FakeInstallmentAppService(
           updateContractException: BusinessException(
             CreditErrorCode.contractPersistenceConflict,
             message: '合同数据已变化，请刷新后重试。',
@@ -113,9 +112,69 @@ void main() {
     );
 
     test(
+      'routes credit repayment owner edits and delete to repayment app service',
+      () async {
+        final repayment = _FakeRepaymentAppService();
+        final detail = _detail(
+          purpose: BusinessPurpose.debtRepayment,
+          ownership: const TransactionOwnership(
+            ownerType: creditRepaymentOwnerType,
+            ownerId: 'repayment-1',
+            ownerRole: 'BILL',
+          ),
+          entries: [
+            _entry('cash', EntryDirection.credit),
+            _entry('loan', EntryDirection.debit),
+          ],
+        );
+        final container = _container(detail: detail, repayment: repayment);
+
+        final state = await _readState(container);
+        final loaded = state as TransactionDetailLoaded;
+        expect(loaded.behavior.bannerText, contains('金额调整请在信贷页面处理'));
+        expect(loaded.behavior.canEditOccurredAt, isA<DetailEditAllowed>());
+        expect(loaded.behavior.canEditNote, isA<DetailEditAllowed>());
+        final accountRow = loaded.accountRows.singleWhere(
+          (row) => row.label == '还款账户',
+        );
+        expect(accountRow.permission, isA<DetailEditAllowed>());
+
+        final notifier = container.read(
+          transactionDetailViewModelProvider('tx-1').notifier,
+        );
+        expect(
+          await notifier.changeOccurredAt(DateTime(2026, 2, 1)),
+          isA<UiActionSuccess<void>>(),
+        );
+        expect(
+          await notifier.changeNote(' repayment note '),
+          isA<UiActionSuccess<void>>(),
+        );
+        expect(
+          await notifier.changeAccount(
+            AccountSelectionPurpose.repaymentSource,
+            'bank',
+          ),
+          isA<UiActionSuccess<void>>(),
+        );
+        expect(await notifier.delete(), isA<UiActionSuccess<void>>());
+
+        expect(repayment.editCommands, hasLength(3));
+        expect(repayment.editCommands[0].repaymentId, 'repayment-1');
+        expect(repayment.editCommands[0].occurredAt, DateTime(2026, 2, 1));
+        expect(
+          (repayment.editCommands[1].note as PatchSet<String?>).value,
+          'repayment note',
+        );
+        expect(repayment.editCommands[2].paidFromAccountId, 'bank');
+        expect(repayment.deleteCommands.single.repaymentId, 'repayment-1');
+      },
+    );
+
+    test(
       'maps installment disbursement regular exception to unknown failure',
       () async {
-        final installment = _FakeInstallmentService(
+        final installment = _FakeInstallmentAppService(
           updateContractException: Exception('database failed'),
         );
         final detail = _detail(
@@ -239,7 +298,8 @@ ProviderContainer _container({
   _FakeTransactionUpdateAppService? update,
   _FakeTransactionCorrectionAppService? correction,
   _FakeTransactionPostingAppService? posting,
-  _FakeInstallmentService? installment,
+  _FakeInstallmentAppService? installment,
+  _FakeRepaymentAppService? repayment,
 }) {
   final accounts = <String, Account>{
     'cash': _account('cash', '现金', iconKey: 'cash'),
@@ -278,8 +338,11 @@ ProviderContainer _container({
       transactionPostingAppServiceProvider.overrideWithValue(
         posting ?? _FakeTransactionPostingAppService(),
       ),
-      installmentServiceProvider.overrideWithValue(
-        installment ?? _FakeInstallmentService(),
+      installmentAppServiceProvider.overrideWithValue(
+        installment ?? _FakeInstallmentAppService(),
+      ),
+      repaymentAppServiceProvider.overrideWithValue(
+        repayment ?? _FakeRepaymentAppService(),
       ),
     ],
   );
@@ -547,14 +610,12 @@ class _FakeTransactionPostingAppService
   }
 }
 
-class _FakeInstallmentService implements InstallmentService {
-  _FakeInstallmentService({this.updateContractException});
+class _FakeInstallmentAppService implements InstallmentAppService {
+  _FakeInstallmentAppService({this.updateContractException});
 
   final Object? updateContractException;
   final updateContractCommands = <UpdateContractCommand>[];
-  final editRepaymentCommands = <EditRepaymentCommand>[];
   final deleteContractCommands = <DeleteContractCommand>[];
-  final revertRepaymentCommands = <RevertRepaymentCommand>[];
 
   @override
   Future<void> updateContract(UpdateContractCommand command) async {
@@ -564,8 +625,27 @@ class _FakeInstallmentService implements InstallmentService {
   }
 
   @override
-  Future<void> editRepayment(EditRepaymentCommand command) async {
-    editRepaymentCommands.add(command);
+  Future<List<RecalculatedSchedulePreview>> previewContractRecalculation(
+    RecalculateContractSchedulesCommand command,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> recalculateContractSchedules(
+    RecalculateContractSchedulesCommand command,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> skipSchedule(SkipInstallmentScheduleCommand command) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> restoreSchedule(RestoreInstallmentScheduleCommand command) {
+    throw UnimplementedError();
   }
 
   @override
@@ -574,42 +654,29 @@ class _FakeInstallmentService implements InstallmentService {
   }
 
   @override
-  Future<void> revertRepayment(RevertRepaymentCommand command) async {
-    revertRepaymentCommands.add(command);
-  }
-
-  @override
-  Future<CreateContractResult> createBillConversionContract(
-    CreateBillConversionContractCommand command,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
   Future<CreateContractResult> createDisbursementContract(
     CreateDisbursementContractCommand command,
   ) {
     throw UnimplementedError();
   }
+}
+
+class _FakeRepaymentAppService implements RepaymentAppService {
+  final editCommands = <EditCreditRepaymentTransactionCommand>[];
+  final deleteCommands = <DeleteCreditRepaymentCommand>[];
 
   @override
-  Future<PostedTransactionResult> createEarlySettlement(
-    CreateEarlySettlementCommand command,
-  ) {
-    throw UnimplementedError();
+  Future<void> editRepaymentTransaction(
+    EditCreditRepaymentTransactionCommand command,
+  ) async {
+    editCommands.add(command);
   }
 
   @override
-  Future<PostedTransactionResult> createPrincipalPrepayment(
-    CreatePrincipalPrepaymentCommand command,
-  ) {
-    throw UnimplementedError();
+  Future<void> deleteRepayment(DeleteCreditRepaymentCommand command) async {
+    deleteCommands.add(command);
   }
 
   @override
-  Future<PostedTransactionResult> createScheduledRepayment(
-    CreateScheduledRepaymentCommand command,
-  ) {
-    throw UnimplementedError();
-  }
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

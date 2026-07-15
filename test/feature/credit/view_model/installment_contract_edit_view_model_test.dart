@@ -1,9 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
-import 'package:smartflow/application/credit/credit_command_api.dart'
-    hide CreateRepaymentCommand;
-import 'package:smartflow/application/ledger/ledger_command_api.dart';
+import 'package:smartflow/application/credit/credit_command_api.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
@@ -15,7 +14,7 @@ import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 void main() {
   group('InstallmentContractEditViewModel', () {
     test('loads contract and schedules into draft state', () async {
-      final service = _FakeInstallmentService(
+      final service = _FakeInstallmentAppService(
         contract: _contract(),
         schedules: [_schedule(1), _schedule(2)],
       );
@@ -30,41 +29,70 @@ void main() {
       expect(loaded.ratePeriod, InterestRatePeriod.monthly);
     });
 
-    test('recalculates pending draft rows and clears manual patches', () async {
-      final service = _FakeInstallmentService(
-        contract: _contract(),
-        schedules: [_schedule(1), _schedule(2)],
-      );
-      final container = _container(service);
-      final viewModel = container.read(
-        installmentContractEditViewModelProvider('contract-1').notifier,
-      );
-      await _readState(container);
-      viewModel.applyAmount(
-        _scheduleRow(container, 1),
-        InstallmentAmountField.fee,
-        const Money(minorUnits: 100),
-      );
+    test(
+      'uses application preview to recalculate pending rows for submit',
+      () async {
+        final service = _FakeInstallmentAppService(
+          contract: _contract(),
+          schedules: [_schedule(1), _schedule(2)],
+          previewResults: [
+            RecalculatedSchedulePreview(
+              scheduleId: 'schedule-1',
+              periodNo: 1,
+              expectedRepaymentDate: DateTime(2026, 2, 1),
+              expectedPrincipal: const Money(minorUnits: 4000),
+              expectedInterest: const Money(minorUnits: 120),
+              expectedFee: const Money(minorUnits: 10),
+            ),
+            RecalculatedSchedulePreview(
+              scheduleId: 'schedule-2',
+              periodNo: 2,
+              expectedRepaymentDate: DateTime(2026, 3, 1),
+              expectedPrincipal: const Money(minorUnits: 6000),
+              expectedInterest: const Money(minorUnits: 80),
+              expectedFee: const Money(minorUnits: 20),
+            ),
+          ],
+        );
+        final container = _container(service);
+        final viewModel = container.read(
+          installmentContractEditViewModelProvider('contract-1').notifier,
+        );
+        await _readState(container);
 
-      final outcome = viewModel.recalculate(
-        totalPeriodsText: '3',
-        rateText: '12',
-        feeText: '',
-        overrideInstallmentText: '',
-      );
+        final outcome = await viewModel.recalculate(
+          totalPeriodsText: '3',
+          rateText: '12',
+          feeText: '0.30',
+          overrideInstallmentText: '',
+        );
 
-      expect(outcome, isA<UiActionSuccess<void>>());
-      final loaded =
-          container
-                  .read(installmentContractEditViewModelProvider('contract-1'))
-                  .value!
-              as InstallmentContractEditLoaded;
-      expect(loaded.draft.length, 3);
-      expect(loaded.manualPatchedPeriodNos, isEmpty);
-    });
+        expect(outcome, isA<UiActionSuccess<void>>());
+        expect(service.previewCommands, hasLength(1));
+        final previewCommand = service.previewCommands.single;
+        expect(previewCommand.terms!.totalPeriods, 3);
+        expect(previewCommand.terms!.interestRatePpm, 120000);
+        expect(previewCommand.terms!.totalFeeMinor, 30);
+        final loaded =
+            container
+                    .read(
+                      installmentContractEditViewModelProvider('contract-1'),
+                    )
+                    .value!
+                as InstallmentContractEditLoaded;
+        expect(loaded.draft.length, 2);
+        expect(loaded.draft.map((row) => row.principal.minorUnits), [
+          4000,
+          6000,
+        ]);
+        expect(loaded.draft.map((row) => row.interest.minorUnits), [120, 80]);
+        expect(loaded.draft.map((row) => row.fee.minorUnits), [10, 20]);
+        expect(loaded.manualPatchedPeriodNos, {1, 2});
+      },
+    );
 
     test('edits draft row amount and date', () async {
-      final service = _FakeInstallmentService(
+      final service = _FakeInstallmentAppService(
         contract: _contract(),
         schedules: [_schedule(1)],
       );
@@ -94,7 +122,7 @@ void main() {
     });
 
     test('submits update command and returns success', () async {
-      final service = _FakeInstallmentService(
+      final service = _FakeInstallmentAppService(
         contract: _contract(),
         schedules: [_schedule(1), _schedule(2)],
       );
@@ -142,7 +170,7 @@ void main() {
     });
 
     test('maps business exception to submit failure', () async {
-      final service = _FakeInstallmentService(
+      final service = _FakeInstallmentAppService(
         contract: _contract(),
         schedules: [_schedule(1)],
         updateException: BusinessException(
@@ -173,7 +201,7 @@ void main() {
     });
 
     test('maps regular exception to unknown submit failure', () async {
-      final service = _FakeInstallmentService(
+      final service = _FakeInstallmentAppService(
         contract: _contract(),
         schedules: [_schedule(1)],
         updateException: Exception('database failed'),
@@ -205,7 +233,7 @@ void main() {
 
     test('rethrows unexpected exception after resetting submitting', () async {
       final unexpected = StateError('unexpected');
-      final service = _FakeInstallmentService(
+      final service = _FakeInstallmentAppService(
         contract: _contract(),
         schedules: [_schedule(1)],
         updateException: unexpected,
@@ -235,7 +263,7 @@ void main() {
   });
 }
 
-ProviderContainer _container(_FakeInstallmentService service) {
+ProviderContainer _container(_FakeInstallmentAppService service) {
   final container = ProviderContainer(
     overrides: [
       installmentContractProvider.overrideWith(
@@ -244,7 +272,7 @@ ProviderContainer _container(_FakeInstallmentService service) {
       installmentSchedulesProvider.overrideWith(
         (ref, contractId) async => service.schedules,
       ),
-      installmentServiceProvider.overrideWithValue(service),
+      installmentAppServiceProvider.overrideWithValue(service),
     ],
   );
   addTearDown(container.dispose);
@@ -274,8 +302,8 @@ InstallmentContractDraftRow _scheduleRow(
   return loaded.draft.singleWhere((row) => row.periodNo == periodNo);
 }
 
-InstallmentContract _contract() {
-  return InstallmentContract(
+InstallmentContractReadModel _contract() {
+  return InstallmentContractReadModel(
     id: 'contract-1',
     liabilityAccountId: 'loan',
     sourceType: InstallmentSourceType.disbursement,
@@ -296,11 +324,11 @@ InstallmentContract _contract() {
   );
 }
 
-InstallmentSchedule _schedule(
+InstallmentScheduleReadModel _schedule(
   int periodNo, {
   InstallmentScheduleStatus status = InstallmentScheduleStatus.pending,
 }) {
-  return InstallmentSchedule(
+  return InstallmentScheduleReadModel(
     id: 'schedule-$periodNo',
     contractId: 'contract-1',
     periodNo: periodNo,
@@ -313,17 +341,20 @@ InstallmentSchedule _schedule(
   );
 }
 
-class _FakeInstallmentService implements InstallmentService {
-  _FakeInstallmentService({
+class _FakeInstallmentAppService implements InstallmentAppService {
+  _FakeInstallmentAppService({
     required this.contract,
     required this.schedules,
     this.updateException,
+    this.previewResults = const [],
   });
 
-  final InstallmentContract? contract;
-  final List<InstallmentSchedule> schedules;
+  final InstallmentContractReadModel? contract;
+  final List<InstallmentScheduleReadModel> schedules;
   final Object? updateException;
+  final List<RecalculatedSchedulePreview> previewResults;
   final updateCommands = <UpdateContractCommand>[];
+  final previewCommands = <RecalculateContractSchedulesCommand>[];
 
   @override
   Future<void> updateContract(UpdateContractCommand command) async {
@@ -333,9 +364,27 @@ class _FakeInstallmentService implements InstallmentService {
   }
 
   @override
-  Future<CreateContractResult> createBillConversionContract(
-    CreateBillConversionContractCommand command,
+  Future<List<RecalculatedSchedulePreview>> previewContractRecalculation(
+    RecalculateContractSchedulesCommand command,
+  ) async {
+    previewCommands.add(command);
+    return previewResults;
+  }
+
+  @override
+  Future<void> recalculateContractSchedules(
+    RecalculateContractSchedulesCommand command,
   ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> skipSchedule(SkipInstallmentScheduleCommand command) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> restoreSchedule(RestoreInstallmentScheduleCommand command) {
     throw UnimplementedError();
   }
 
@@ -347,38 +396,7 @@ class _FakeInstallmentService implements InstallmentService {
   }
 
   @override
-  Future<PostedTransactionResult> createEarlySettlement(
-    CreateEarlySettlementCommand command,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<PostedTransactionResult> createPrincipalPrepayment(
-    CreatePrincipalPrepaymentCommand command,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<PostedTransactionResult> createScheduledRepayment(
-    CreateScheduledRepaymentCommand command,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
   Future<void> deleteContract(DeleteContractCommand command) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> editRepayment(EditRepaymentCommand command) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> revertRepayment(RevertRepaymentCommand command) {
     throw UnimplementedError();
   }
 }

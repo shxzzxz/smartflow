@@ -36,6 +36,8 @@ class TransactionHistoryRow {
 abstract interface class TransactionReadRepository {
   Future<Transaction?> findById(String id);
 
+  Future<Transaction?> findCurrentParentByRoot(String rootTransactionId);
+
   Future<DateTime?> findCreatedAt(String id);
 
   Future<List<Transaction>> findByIds(Set<String> ids);

@@ -71,7 +71,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
         AsyncData(value: InstallmentFormNotFound()) => const Center(
           child: Text('负债账户不存在'),
         ),
-        AsyncError(:final error) => Center(child: Text('加载失败：$error')),
+        AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
@@ -100,12 +100,15 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                   placeholder: '',
                 ),
               ),
-              if (widget.lockedSourceType == null)
-                _SourceTypeRow(
-                  value: state.sourceType,
-                  onChanged: notifier.setSourceType,
-                ),
               if (isDisbursement)
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('创建放款交易'),
+                  subtitle: const Text('迁移已有贷款时可关闭，仅创建合同和还款计划'),
+                  value: state.createDisbursementTransaction,
+                  onChanged: notifier.setCreateDisbursementTransaction,
+                ),
+              if (isDisbursement && state.createDisbursementTransaction)
                 AccountPlainFormRow(
                   label: '到账账户',
                   account: _findAccount(
@@ -293,39 +296,6 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
     final n = int.tryParse((value ?? '').trim());
     if (n == null || n <= 0) return '期数必须为正整数';
     return null;
-  }
-}
-
-class _SourceTypeRow extends StatelessWidget {
-  const _SourceTypeRow({required this.value, required this.onChanged});
-
-  final InstallmentSourceType value;
-  final ValueChanged<InstallmentSourceType> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppPlainFormRow(
-      label: '类型',
-      child: Wrap(
-        spacing: AppSpacing.space8,
-        children: [
-          ChoiceChip(
-            label: const Text('放款分期'),
-            selected: value == InstallmentSourceType.disbursement,
-            onSelected: (selected) {
-              if (selected) onChanged(InstallmentSourceType.disbursement);
-            },
-          ),
-          ChoiceChip(
-            label: const Text('账单分期'),
-            selected: value == InstallmentSourceType.billConversion,
-            onSelected: (selected) {
-              if (selected) onChanged(InstallmentSourceType.billConversion);
-            },
-          ),
-        ],
-      ),
-    );
   }
 }
 

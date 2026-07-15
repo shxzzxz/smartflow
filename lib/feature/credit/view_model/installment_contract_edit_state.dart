@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../../../application/credit/credit_command_api.dart';
+import '../../../application/credit/credit_query_api.dart';
 import '../../../core/money/money.dart';
 
 part 'installment_contract_edit_state.freezed.dart';
@@ -8,7 +8,7 @@ part 'installment_contract_edit_state.freezed.dart';
 @freezed
 sealed class InstallmentContractEditState with _$InstallmentContractEditState {
   const factory InstallmentContractEditState.loaded({
-    required InstallmentContract contract,
+    required InstallmentContractReadModel contract,
     required int paidCount,
     required DateTime firstRepaymentDate,
     required DateTime lastRepaymentDate,

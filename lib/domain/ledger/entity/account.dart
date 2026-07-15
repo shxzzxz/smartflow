@@ -28,18 +28,6 @@ class AccountProfilePatch {
   final Patch<String>? note;
 }
 
-class AccountCreditProfilePatch {
-  const AccountCreditProfilePatch({
-    this.creditLimit,
-    this.billingDay,
-    this.repaymentDay,
-  });
-
-  final Patch<Money>? creditLimit;
-  final Patch<int>? billingDay;
-  final Patch<int>? repaymentDay;
-}
-
 class CategoryProfilePatch {
   const CategoryProfilePatch({this.name, this.iconKey, this.note});
 
@@ -59,9 +47,6 @@ class Account {
     this.parentId,
     this.iconKey,
     this.note,
-    this.creditLimit,
-    this.billingDay,
-    this.repaymentDay,
     this.sortOrder = 0,
     this.isHidden = false,
     this.archivedAt,
@@ -81,9 +66,6 @@ class Account {
   Money balance;
   String? iconKey;
   String? note;
-  Money? creditLimit;
-  int? billingDay;
-  int? repaymentDay;
   int sortOrder;
   bool isHidden;
   DateTime? archivedAt;
@@ -124,23 +106,6 @@ class Account {
     note = patch.note.applyMappedTo(note, trimToNull);
     sortOrder = patch.sortOrder ?? sortOrder;
     isHidden = patch.isHidden ?? isHidden;
-  }
-
-  void changeCreditProfile(AccountCreditProfilePatch patch) {
-    _ensureUserAccountEditable();
-    final nextCreditLimit = patch.creditLimit.applyTo(creditLimit);
-    final nextBillingDay = patch.billingDay.applyTo(billingDay);
-    final nextRepaymentDay = patch.repaymentDay.applyTo(repaymentDay);
-    _ensureCreditFields(
-      type: type,
-      creditLimit: nextCreditLimit,
-      billingDay: nextBillingDay,
-      repaymentDay: nextRepaymentDay,
-    );
-
-    creditLimit = nextCreditLimit;
-    billingDay = nextBillingDay;
-    repaymentDay = nextRepaymentDay;
   }
 
   void moveCategoryTo(Account? parent) {
@@ -315,38 +280,5 @@ class Account {
       LedgerErrorCode.accountInvalidCommand,
       message: 'Account subtype does not match account type.',
     );
-  }
-
-  static void _ensureCreditFields({
-    required AccountType type,
-    required Money? creditLimit,
-    required int? billingDay,
-    required int? repaymentDay,
-  }) {
-    if (type != AccountType.liability &&
-        (creditLimit != null || billingDay != null || repaymentDay != null)) {
-      throw BusinessException(
-        LedgerErrorCode.accountInvalidCommand,
-        message: 'Credit profile is only supported for liability accounts.',
-      );
-    }
-    if (creditLimit != null && creditLimit.minorUnits < 0) {
-      throw BusinessException(
-        LedgerErrorCode.accountInvalidCommand,
-        message: 'Credit limit cannot be negative.',
-      );
-    }
-    if (billingDay != null && (billingDay < 1 || billingDay > 31)) {
-      throw BusinessException(
-        LedgerErrorCode.accountInvalidCommand,
-        message: 'Billing day must be between 1 and 31.',
-      );
-    }
-    if (repaymentDay != null && (repaymentDay < 1 || repaymentDay > 31)) {
-      throw BusinessException(
-        LedgerErrorCode.accountInvalidCommand,
-        message: 'Repayment day must be between 1 and 31.',
-      );
-    }
   }
 }

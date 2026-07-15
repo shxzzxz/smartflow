@@ -12,6 +12,8 @@ class InstallmentContracts extends Table {
       text().named('disbursement_account_id').nullable()();
   TextColumn get disbursementTransactionId =>
       text().named('disbursement_transaction_id').nullable()();
+  TextColumn get sourceRepaymentId =>
+      text().named('source_repayment_id').nullable()();
   IntColumn get principalMinor => integer().named('principal_minor')();
   IntColumn get totalPeriods => integer().named('total_periods')();
 
@@ -62,8 +64,12 @@ class InstallmentContracts extends Table {
     'CHECK (interest_rate_ppm IS NULL OR interest_rate_ppm >= 0)',
     'CHECK ('
         '(source_type = \'disbursement\' '
-        'AND disbursement_account_id IS NOT NULL '
-        'AND disbursement_transaction_id IS NOT NULL) '
+        'AND ('
+        '(disbursement_account_id IS NULL '
+        'AND disbursement_transaction_id IS NULL) '
+        'OR (disbursement_account_id IS NOT NULL '
+        'AND disbursement_transaction_id IS NOT NULL)'
+        ')) '
         'OR (source_type = \'billConversion\' '
         'AND disbursement_account_id IS NULL '
         'AND disbursement_transaction_id IS NULL)'

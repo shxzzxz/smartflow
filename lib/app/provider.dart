@@ -5,7 +5,13 @@ import '../infrastructure/ledger/repository/drift_account_query_repository.dart'
 import '../infrastructure/ledger/repository/drift_account_repository.dart';
 import '../infrastructure/ledger/repository/drift_balance_aggregate_repository.dart';
 import '../infrastructure/ledger/repository/drift_entry_read_repository.dart';
+import '../infrastructure/credit/repository/drift_credit_account_repository.dart';
+import '../infrastructure/credit/repository/drift_bill_repository.dart';
+import '../infrastructure/credit/repository/drift_credit_bill_source_repository.dart';
 import '../infrastructure/credit/repository/drift_installment_repository.dart';
+import '../infrastructure/credit/repository/drift_repayment_repository.dart';
+import '../infrastructure/credit/adapter/ledger_credit_ledger_port.dart';
+import '../infrastructure/credit/adapter/ledger_credit_account_port.dart';
 import '../infrastructure/ledger/repository/drift_posting_repository.dart';
 import '../infrastructure/ledger/repository/drift_system_account_resolver.dart';
 import '../infrastructure/ledger/repository/drift_transaction_detail_read_repository.dart';
@@ -17,9 +23,15 @@ import '../application/ledger/ledger_command_api.dart';
 import '../application/ledger/ledger_query_api.dart';
 import '../application/ledger/ledger_query_port_api.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
-import '../application/credit/installment/query/installment_query_service.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
+import '../application/shared/app_task.dart';
 import '../domain/ledger/port/account_repository.dart';
+import '../domain/credit/port/bill_repository.dart';
+import '../domain/credit/port/credit_account_repository.dart';
+import '../domain/credit/port/credit_bill_source_repository.dart';
 import '../domain/credit/port/installment_repository.dart';
+import '../domain/credit/port/repayment_repository.dart';
+import '../domain/credit/port/credit_ledger_port.dart';
 import '../domain/ledger/port/system_account_resolver.dart';
 import '../domain/ledger/service/account/account_role_policy.dart';
 import '../domain/ledger/service/posting/account_posting_service.dart';
@@ -191,19 +203,89 @@ FinancialMetricsService financialMetricsService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+CreditAccountRepository creditAccountRepository(Ref ref) {
+  return DriftCreditAccountRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+BillRepository billRepository(Ref ref) {
+  return DriftBillRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+CreditBillSourceRepository creditBillSourceRepository(Ref ref) {
+  return DriftCreditBillSourceRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+CreditAccountAppService creditAccountAppService(Ref ref) {
+  return CreditAccountAppServiceImpl(
+    ledger: ref.watch(creditAccountLedgerPortProvider),
+    creditAccounts: ref.watch(creditAccountRepositoryProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+CreditAccountQueryService creditAccountQueryService(Ref ref) {
+  return CreditAccountQueryServiceImpl(
+    creditAccounts: ref.watch(creditAccountRepositoryProvider),
+    bills: ref.watch(billRepositoryProvider),
+    installments: ref.watch(installmentRepositoryProvider),
+    repayments: ref.watch(repaymentRepositoryProvider),
+    ledger: ref.watch(creditLedgerPortProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
 InstallmentRepository installmentRepository(Ref ref) {
   return DriftInstallmentRepository(ref.watch(appDatabaseProvider));
 }
 
 @Riverpod(keepAlive: true)
-InstallmentService installmentService(Ref ref) {
-  return InstallmentServiceImpl(
-    repository: ref.watch(installmentRepositoryProvider),
+RepaymentRepository repaymentRepository(Ref ref) {
+  return DriftRepaymentRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+CreditAccountLedgerPort creditAccountLedgerPort(Ref ref) {
+  return LedgerCreditAccountPort(ref.watch(accountAppServiceProvider));
+}
+
+@Riverpod(keepAlive: true)
+CreditLedgerPort creditLedgerPort(Ref ref) {
+  return LedgerCreditLedgerPort(
+    accountQueryService: ref.watch(accountQueryServiceProvider),
     postingService: ref.watch(transactionPostingAppServiceProvider),
     correctionService: ref.watch(transactionCorrectionAppServiceProvider),
     updateService: ref.watch(transactionUpdateAppServiceProvider),
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+RepaymentAppService repaymentAppService(Ref ref) {
+  return RepaymentAppServiceImpl(
+    bills: ref.watch(billRepositoryProvider),
+    repayments: ref.watch(repaymentRepositoryProvider),
+    installments: ref.watch(installmentRepositoryProvider),
+    ledger: ref.watch(creditLedgerPortProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+InstallmentAppService installmentAppService(Ref ref) {
+  return InstallmentAppServiceImpl(
+    repository: ref.watch(installmentRepositoryProvider),
+    bills: ref.watch(billRepositoryProvider),
+    creditAccounts: ref.watch(creditAccountRepositoryProvider),
+    repayments: ref.watch(repaymentRepositoryProvider),
+    ledger: ref.watch(creditLedgerPortProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
   );
 }
 
@@ -211,17 +293,59 @@ InstallmentService installmentService(Ref ref) {
 InstallmentQueryService installmentQueryService(Ref ref) {
   return InstallmentQueryServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),
-    transactionQueryService: ref.watch(transactionQueryServiceProvider),
   );
 }
 
 @Riverpod(keepAlive: true)
-CreditService creditService(Ref ref) {
-  return CreditServiceImpl(
-    installmentQueryService: ref.watch(installmentQueryServiceProvider),
-    postingService: ref.watch(transactionPostingAppServiceProvider),
-    correctionService: ref.watch(transactionCorrectionAppServiceProvider),
-    transactionQueryService: ref.watch(transactionQueryServiceProvider),
-    accountQueryService: ref.watch(accountQueryServiceProvider),
+ContractMetricsQuery contractMetricsQuery(Ref ref) {
+  return ContractMetricsQueryImpl(
+    installments: ref.watch(installmentRepositoryProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+ContractRepaymentQuery contractRepaymentQuery(Ref ref) {
+  return ContractRepaymentQueryImpl(
+    repayments: ref.watch(repaymentRepositoryProvider),
+    ledger: ref.watch(creditLedgerPortProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+CreditBillGenerationAppService creditBillGenerationAppService(Ref ref) {
+  return CreditBillGenerationAppServiceImpl(
+    creditAccounts: ref.watch(creditAccountRepositoryProvider),
+    ledger: ref.watch(creditLedgerPortProvider),
+    installments: ref.watch(installmentRepositoryProvider),
+    repayments: ref.watch(repaymentRepositoryProvider),
+    bills: ref.watch(billRepositoryProvider),
+    billSources: ref.watch(creditBillSourceRepositoryProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+CreditBillGenerationTask creditBillGenerationTask(Ref ref) {
+  return CreditBillGenerationTask(
+    ref.watch(creditBillGenerationAppServiceProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+PullTaskScheduler pullTaskScheduler(Ref ref) {
+  return PullTaskScheduler(
+    tasks: [ref.watch(creditBillGenerationTaskProvider)],
+  );
+}
+
+@Riverpod(keepAlive: true)
+BillQueryService billQueryService(Ref ref) {
+  return BillQueryServiceImpl(
+    bills: ref.watch(billRepositoryProvider),
+    creditAccounts: ref.watch(creditAccountRepositoryProvider),
+    installments: ref.watch(installmentRepositoryProvider),
+    repayments: ref.watch(repaymentRepositoryProvider),
+    ledger: ref.watch(creditLedgerPortProvider),
   );
 }

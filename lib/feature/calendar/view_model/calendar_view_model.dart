@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
+import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/time/month_key.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
@@ -108,6 +109,30 @@ Stream<List<DailyCashflowSummary>> calendarDailyCashflowSummaries(
 }
 
 @riverpod
+Future<List<CreditDueCalendarItemReadModel>> calendarCreditDueItems(
+  Ref ref,
+  DateTime visibleMonth,
+) {
+  final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
+  return ref
+      .watch(creditAccountQueryServiceProvider)
+      .listDueCalendarItems(
+        CreditDueCalendarQuery(from: month.start, until: month.nextMonthStart),
+      );
+}
+
+@riverpod
+Future<List<MonthlyBillSummaryReadModel>> calendarMonthlyBillSummaries(
+  Ref ref,
+  DateTime visibleMonth,
+) {
+  final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
+  return ref
+      .watch(creditAccountQueryServiceProvider)
+      .listMonthlyBillSummaries(MonthlyBillSummaryQuery(month: month));
+}
+
+@riverpod
 CalendarContentState calendarContent(
   Ref ref, {
   required DateTime visibleMonth,
@@ -121,6 +146,12 @@ CalendarContentState calendarContent(
   final dailySummaries = ref.watch(
     calendarDailyCashflowSummariesProvider(visibleMonth),
   );
+  final creditDueItems = ref.watch(
+    calendarCreditDueItemsProvider(visibleMonth),
+  );
+  final monthlyBillSummaries = ref.watch(
+    calendarMonthlyBillSummariesProvider(visibleMonth),
+  );
   final accountsById = ref.watch(accountsByIdProvider);
 
   if (transactions case AsyncError(:final error)) {
@@ -132,6 +163,12 @@ CalendarContentState calendarContent(
   if (dailySummaries case AsyncError(:final error)) {
     return CalendarContentState.error(message: '加载失败：$error');
   }
+  if (creditDueItems case AsyncError(:final error)) {
+    return CalendarContentState.error(message: '加载失败：$error');
+  }
+  if (monthlyBillSummaries case AsyncError(:final error)) {
+    return CalendarContentState.error(message: '加载失败：$error');
+  }
   if (accountsById case AsyncError(:final error)) {
     return CalendarContentState.error(message: '加载失败：$error');
   }
@@ -139,10 +176,14 @@ CalendarContentState calendarContent(
   final transactionValues = transactions.value;
   final comparisonValue = comparison.value;
   final dailySummaryValues = dailySummaries.value;
+  final creditDueItemValues = creditDueItems.value;
+  final monthlyBillSummaryValues = monthlyBillSummaries.value;
   final accountValues = accountsById.value;
   if (transactionValues == null ||
       comparisonValue == null ||
       dailySummaryValues == null ||
+      creditDueItemValues == null ||
+      monthlyBillSummaryValues == null ||
       accountValues == null) {
     return const CalendarContentState.loading();
   }
@@ -155,6 +196,8 @@ CalendarContentState calendarContent(
       accountLookup: AccountLookup(accountValues),
       summary: comparisonValue.current,
       dailySummaries: dailySummaryValues,
+      creditDueItems: creditDueItemValues,
+      monthlyBillSummaries: monthlyBillSummaryValues,
       today: now,
     ),
   );

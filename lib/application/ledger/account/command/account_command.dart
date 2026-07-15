@@ -11,9 +11,6 @@ class CreateAccountCommand {
     this.profileKey,
     this.iconKey,
     this.note,
-    this.creditLimit,
-    this.billingDay,
-    this.repaymentDay,
     this.sortOrder = 0,
     this.isHidden = false,
   });
@@ -25,9 +22,6 @@ class CreateAccountCommand {
   final String? profileKey;
   final String? iconKey;
   final String? note;
-  final Money? creditLimit;
-  final int? billingDay;
-  final int? repaymentDay;
   final int sortOrder;
   final bool isHidden;
 }
@@ -42,9 +36,6 @@ class EditAccountCommand {
     this.profileKey,
     this.iconKey,
     this.note,
-    this.creditLimit,
-    this.billingDay,
-    this.repaymentDay,
     this.targetBalance,
   });
 
@@ -56,8 +47,5 @@ class EditAccountCommand {
   final Patch<String>? profileKey;
   final Patch<String>? iconKey;
   final Patch<String>? note;
-  final Patch<Money>? creditLimit;
-  final Patch<int>? billingDay;
-  final Patch<int>? repaymentDay;
   final Money? targetBalance;
 }

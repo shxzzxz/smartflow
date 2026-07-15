@@ -56,7 +56,7 @@ final class TransactionDetailViewModelProvider
 }
 
 String _$transactionDetailViewModelHash() =>
-    r'60de95ccf97c136944efe19f542441fe660abdef';
+    r'30f2cdfb5f3ced46631a1bddd963b1eefda4b56e';
 
 final class TransactionDetailViewModelFamily extends $Family
     with

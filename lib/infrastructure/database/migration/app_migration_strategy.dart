@@ -8,93 +8,109 @@ import '../builtin_data.dart';
 MigrationStrategy buildMigrationStrategy(AppDatabase database) {
   return MigrationStrategy(
     onCreate: (migrator) async {
-      await migrator.createAll();
-      await database.customStatement(
-        'CREATE UNIQUE INDEX budgets_total_unique '
-        'ON budgets (month_key) '
-        'WHERE account_id IS NULL',
-      );
-      await database.customStatement(
-        'CREATE UNIQUE INDEX budgets_account_unique '
-        'ON budgets (month_key, account_id) '
-        'WHERE account_id IS NOT NULL',
-      );
-      await _createTransactionRowIndexes(database);
-      await database.customStatement(
-        'CREATE INDEX entries_transaction_idx ON entries (transaction_id)',
-      );
-      await database.customStatement(
-        'CREATE INDEX entries_account_transaction_idx '
-        'ON entries (account_id, transaction_id)',
-      );
-      await database.customStatement(
-        'CREATE INDEX installment_contracts_liability_status_idx '
-        'ON installment_contracts (liability_account_id, status)',
-      );
-      await database.customStatement(
-        'CREATE INDEX installment_schedules_contract_period_idx '
-        'ON installment_schedules (contract_id, period_no)',
-      );
-      await database.customStatement(
-        'CREATE UNIQUE INDEX installment_repayments_contract_schedule_unique '
-        'ON installment_repayments (contract_id, schedule_id) '
-        'WHERE schedule_id IS NOT NULL',
-      );
-      await database.customStatement(
-        'CREATE INDEX installment_repayments_transaction_idx '
-        'ON installment_repayments (transaction_id)',
-      );
-      await database.customStatement(
-        'CREATE INDEX installment_contracts_disbursement_tx_idx '
-        'ON installment_contracts (disbursement_transaction_id) '
-        'WHERE disbursement_transaction_id IS NOT NULL',
-      );
-      await ensureBuiltinData(database);
+      await _createCurrentSchema(database, migrator);
     },
     beforeOpen: (_) async {
       await ensureBuiltinData(database);
     },
-    onUpgrade: (migrator, from, to) async {
-      if (from < 10) {
-        await migrator.addColumn(database.accounts, database.accounts.version);
+    onUpgrade: (migrator, _, _) async {
+      // Development channel policy: schema changes are destructive. Rebuild
+      // explicitly so an existing database never opens with a partial schema.
+      for (final table in database.allTables.toList().reversed) {
+        await migrator.drop(table);
       }
-      if (from < 11) {
-        await migrator.addColumn(
-          database.accounts,
-          database.accounts.accountProfileKey,
-        );
-        await _migrateAccountProfileKeys(database);
-      }
+      await _createCurrentSchema(database, migrator);
     },
   );
 }
 
-Future<void> _migrateAccountProfileKeys(AppDatabase database) async {
+Future<void> _createCurrentSchema(
+  AppDatabase database,
+  Migrator migrator,
+) async {
+  await migrator.createAll();
   await database.customStatement(
-    "UPDATE accounts SET account_profile_key = 'ledger.reimbursement' "
-    "WHERE account_type = 'asset' AND account_subtype = 'reimbursement'",
+    'CREATE UNIQUE INDEX budgets_total_unique '
+    'ON budgets (month_key) '
+    'WHERE account_id IS NULL',
   );
   await database.customStatement(
-    "UPDATE accounts SET account_profile_key = 'ledger.fund' "
-    "WHERE account_type = 'asset' AND "
-    "(account_subtype IS NULL OR account_subtype <> 'reimbursement')",
+    'CREATE UNIQUE INDEX budgets_account_unique '
+    'ON budgets (month_key, account_id) '
+    'WHERE account_id IS NOT NULL',
+  );
+  await _createTransactionRowIndexes(database);
+  await database.customStatement(
+    'CREATE INDEX entries_transaction_idx ON entries (transaction_id)',
   );
   await database.customStatement(
-    "UPDATE accounts SET account_profile_key = 'credit.loan' "
-    "WHERE account_type = 'liability' AND account_subtype = 'loan'",
+    'CREATE INDEX entries_account_transaction_idx '
+    'ON entries (account_id, transaction_id)',
   );
   await database.customStatement(
-    "UPDATE accounts SET account_profile_key = 'credit.credit' "
-    "WHERE account_type = 'liability' AND "
-    "(account_subtype IS NULL OR account_subtype <> 'loan')",
+    'CREATE INDEX installment_contracts_liability_status_idx '
+    'ON installment_contracts (liability_account_id, status)',
   );
   await database.customStatement(
-    "UPDATE accounts SET account_subtype = NULL "
-    "WHERE account_subtype IS NOT NULL AND account_subtype <> 'reimbursement'",
+    'CREATE INDEX installment_schedules_contract_period_idx '
+    'ON installment_schedules (contract_id, period_no)',
   );
   await database.customStatement(
-    "UPDATE accounts SET account_subtype = NULL, account_profile_key = NULL "
-    "WHERE account_type IN ('equity', 'income', 'expense')",
+    'CREATE INDEX installment_contracts_disbursement_tx_idx '
+    'ON installment_contracts (disbursement_transaction_id) '
+    'WHERE disbursement_transaction_id IS NOT NULL',
+  );
+  await _createInstallmentSourceRepaymentIndex(database);
+  await _createBillIndexes(database);
+  await _createRepaymentIndexes(database);
+  await ensureBuiltinData(database);
+}
+
+Future<void> _createInstallmentSourceRepaymentIndex(
+  AppDatabase database,
+) async {
+  await database.customStatement(
+    'CREATE INDEX installment_contracts_source_repayment_idx '
+    'ON installment_contracts (source_repayment_id) '
+    'WHERE source_repayment_id IS NOT NULL',
+  );
+}
+
+Future<void> _createBillIndexes(AppDatabase database) async {
+  await database.customStatement(
+    'CREATE INDEX bills_account_period_idx ON bills (account_id, period)',
+  );
+  await database.customStatement(
+    'CREATE INDEX bill_items_bill_idx ON bill_items (bill_id)',
+  );
+  await database.customStatement(
+    'CREATE INDEX bill_items_contract_idx ON bill_items (contract_id) '
+    'WHERE contract_id IS NOT NULL',
+  );
+  await database.customStatement(
+    'CREATE UNIQUE INDEX bill_items_consumption_unique '
+    'ON bill_items (bill_id) WHERE item_type = \'consumption\'',
+  );
+}
+
+Future<void> _createRepaymentIndexes(AppDatabase database) async {
+  await database.customStatement(
+    'CREATE INDEX repayments_target_idx '
+    'ON repayments (target_type, target_id, created_at)',
+  );
+  await database.customStatement(
+    'CREATE UNIQUE INDEX repayments_root_transaction_unique '
+    'ON repayments (root_transaction_id) '
+    'WHERE root_transaction_id IS NOT NULL',
+  );
+  await database.customStatement(
+    'CREATE INDEX repayment_items_repayment_idx '
+    'ON repayment_items (repayment_id)',
+  );
+  await database.customStatement(
+    'CREATE INDEX repayment_items_bill_item_idx '
+    'ON repayment_items (bill_item_id) '
+    'WHERE bill_item_id IS NOT NULL',
   );
 }
 

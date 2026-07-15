@@ -5,8 +5,10 @@ import 'package:remixicon/remixicon.dart';
 
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
+import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../design_system/widget/app_swipe_action.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/installment_detail_view_model.dart';
@@ -46,7 +48,7 @@ class InstallmentDetailPage extends ConsumerWidget {
         AsyncData(value: InstallmentDetailNotFound()) => const Center(
           child: Text('合同不存在'),
         ),
-        AsyncError(:final error) => Center(child: Text('加载失败：$error')),
+        AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
@@ -96,8 +98,8 @@ class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final contract = loaded.contract;
-    final schedules = loaded.schedules;
-    final cashflows = loaded.cashflows;
+    final scheduleItems = loaded.scheduleItems;
+    final cashflows = loaded.repayments;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -121,10 +123,13 @@ class _Body extends StatelessWidget {
         AppSurface(
           child: Column(
             children: [
-              for (var i = 0; i < schedules.length; i++) ...[
-                _ScheduleRow(contract: contract, schedule: schedules[i]),
-                if (i < schedules.length - 1)
-                  const Divider(height: 1, indent: AppSpacing.space12),
+              for (var i = 0; i < scheduleItems.length; i++) ...[
+                _ScheduleRow(contract: contract, item: scheduleItems[i]),
+                if (i < scheduleItems.length - 1)
+                  SizedBox(
+                    key: ValueKey('installment-schedule-gap-$i'),
+                    height: AppSpacing.space4,
+                  ),
               ],
             ],
           ),
@@ -146,7 +151,10 @@ class _Body extends StatelessWidget {
                 for (var i = 0; i < cashflows.length; i++) ...[
                   _RepaymentRow(cashflow: cashflows[i], contract: contract),
                   if (i < cashflows.length - 1)
-                    const Divider(height: 1, indent: AppSpacing.space12),
+                    SizedBox(
+                      key: ValueKey('installment-repayment-gap-$i'),
+                      height: AppSpacing.space4,
+                    ),
                 ],
               ],
             ),
@@ -164,7 +172,7 @@ class _Header extends StatelessWidget {
     required this.paidFeeMinor,
   });
 
-  final InstallmentContract contract;
+  final InstallmentContractReadModel contract;
   final int remainingPrincipalMinor;
   final int paidInterestMinor;
   final int paidFeeMinor;
@@ -301,10 +309,6 @@ class _StatusChip extends StatelessWidget {
         '已结清',
         Theme.of(context).colorScheme.tertiary,
       ),
-      InstallmentContractStatus.closed => (
-        '已关闭',
-        Theme.of(context).colorScheme.outline,
-      ),
     };
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -326,7 +330,7 @@ class _StatusChip extends StatelessWidget {
 class _ActionBar extends StatelessWidget {
   const _ActionBar({required this.contract});
 
-  final InstallmentContract contract;
+  final InstallmentContractReadModel contract;
 
   @override
   Widget build(BuildContext context) {
@@ -342,28 +346,18 @@ class _ActionBar extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: TextButton(
-                onPressed:
-                    () => context.push(
-                      '/installments/${contract.id}/repay?mode=extra',
-                    ),
-                child: const Text('提前还本'),
+              child: _ActionButton(
+                icon: RemixIcons.bank_card_line,
+                label: '提前还款',
+                onTap: () => context.push('/installments/${contract.id}/repay'),
               ),
             ),
+            const SizedBox(width: AppSpacing.space6),
             Expanded(
-              child: TextButton(
-                onPressed:
-                    () => context.push(
-                      '/installments/${contract.id}/repay?mode=settle',
-                    ),
-                child: const Text('提前结清'),
-              ),
-            ),
-            Expanded(
-              child: TextButton(
-                onPressed:
-                    () => context.push('/installments/${contract.id}/edit'),
-                child: const Text('编辑合同'),
+              child: _ActionButton(
+                icon: RemixIcons.edit_line,
+                label: '编辑合同',
+                onTap: () => context.push('/installments/${contract.id}/edit'),
               ),
             ),
           ],
@@ -373,31 +367,69 @@ class _ActionBar extends StatelessWidget {
   }
 }
 
-class _ScheduleRow extends StatelessWidget {
-  const _ScheduleRow({required this.contract, required this.schedule});
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
-  final InstallmentContract contract;
-  final InstallmentSchedule schedule;
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textStyles = context.appTextStyles;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space6,
+          vertical: AppSpacing.space6,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: colors.primary, size: AppSpacing.space20),
+            const SizedBox(width: AppSpacing.space6),
+            Flexible(
+              child: Text(
+                label,
+                style: textStyles.formLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ScheduleRow extends ConsumerWidget {
+  const _ScheduleRow({required this.contract, required this.item});
+
+  final InstallmentContractReadModel contract;
+  final InstallmentScheduleItemState item;
+
+  InstallmentScheduleReadModel get schedule => item.schedule;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
     final total =
         schedule.expectedPrincipal +
         schedule.expectedInterest +
         schedule.expectedFee;
-    final canRepay =
-        schedule.status == InstallmentScheduleStatus.pending &&
-        contract.status == InstallmentContractStatus.active;
-
-    return InkWell(
-      onTap:
-          canRepay
-              ? () => context.push(
-                '/installments/${contract.id}/repay?mode=regular&scheduleId=${schedule.id}',
-              )
-              : null,
+    final row = InkWell(
+      onTap: null,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space12,
@@ -444,22 +476,101 @@ class _ScheduleRow extends StatelessWidget {
         ),
       ),
     );
+
+    final action = item.action;
+    if (action == null) return row;
+
+    final (label, icon, callback) = switch (action) {
+      InstallmentScheduleAction.skip => (
+        '跳过',
+        RemixIcons.skip_forward_line,
+        () => _confirmSkip(context, ref),
+      ),
+      InstallmentScheduleAction.restore => (
+        '撤销跳过',
+        RemixIcons.arrow_go_back_line,
+        () => _restore(context, ref),
+      ),
+    };
+    return AppSwipeAction(
+      dismissibleKey: ValueKey('installment-schedule-${schedule.id}'),
+      label: label,
+      icon: icon,
+      onTriggered: callback,
+      child: row,
+    );
+  }
+
+  Future<void> _confirmSkip(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('跳过本期'),
+            content: Text('第${schedule.periodNo}期将不再进入账单，之后可以撤销跳过。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('跳过'),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await _handleOutcome(
+      context,
+      ref
+          .read(installmentDetailViewModelProvider(contract.id).notifier)
+          .skipSchedule(schedule.id),
+      failurePrefix: '跳过失败',
+    );
+  }
+
+  Future<void> _restore(BuildContext context, WidgetRef ref) async {
+    await _handleOutcome(
+      context,
+      ref
+          .read(installmentDetailViewModelProvider(contract.id).notifier)
+          .restoreSchedule(schedule.id),
+      failurePrefix: '撤销跳过失败',
+    );
+  }
+
+  Future<void> _handleOutcome(
+    BuildContext context,
+    Future<UiActionOutcome<void>> action, {
+    required String failurePrefix,
+  }) async {
+    final outcome = await action;
+    if (!context.mounted) return;
+    if (outcome case UiActionFailure<void>(:final error)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$failurePrefix：${error.message}')),
+      );
+    }
   }
 }
 
 class _RepaymentRow extends ConsumerWidget {
   const _RepaymentRow({required this.cashflow, required this.contract});
 
-  final RepaymentCashflow cashflow;
-  final InstallmentContract contract;
+  final ContractRepayment cashflow;
+  final InstallmentContractReadModel contract;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
     final total = cashflow.principal + cashflow.interest + cashflow.fee;
-    return InkWell(
-      onTap: () => context.push('/transaction/${cashflow.transactionId}'),
+    final row = InkWell(
+      onTap:
+          cashflow.transactionId == null
+              ? null
+              : () => context.push('/transaction/${cashflow.transactionId}'),
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space12,
@@ -497,18 +608,17 @@ class _RepaymentRow extends ConsumerWidget {
             ),
             const SizedBox(width: AppSpacing.space8),
             Text(total.format(), style: styles.formLabel),
-            IconButton(
-              tooltip: '撤销',
-              icon: Icon(
-                RemixIcons.arrow_go_back_line,
-                color: colors.onSurfaceVariant,
-                size: AppSpacing.space20,
-              ),
-              onPressed: () => _confirmRevert(context, ref),
-            ),
           ],
         ),
       ),
+    );
+    return AppSwipeAction(
+      dismissibleKey: ValueKey('installment-repayment-${cashflow.id}'),
+      label: '撤销',
+      icon: RemixIcons.arrow_go_back_line,
+      tone: AppSwipeActionTone.danger,
+      onTriggered: () => _confirmRevert(context, ref),
+      child: row,
     );
   }
 
@@ -535,7 +645,7 @@ class _RepaymentRow extends ConsumerWidget {
     if (confirmed != true) return;
     final outcome = await ref
         .read(installmentDetailViewModelProvider(contract.id).notifier)
-        .revertRepayment(cashflow.transactionId);
+        .revertRepayment(cashflow.id);
     if (!context.mounted) return;
     switch (outcome) {
       case UiActionSuccess<void>():
@@ -561,6 +671,7 @@ String _methodLabel(InstallmentRepaymentMethod method) {
 String _scheduleStatusLabel(InstallmentScheduleStatus status) {
   return switch (status) {
     InstallmentScheduleStatus.pending => '待还',
+    InstallmentScheduleStatus.partiallyPaid => '部分已还',
     InstallmentScheduleStatus.paid => '已还',
     InstallmentScheduleStatus.skipped => '已跳过',
   };
@@ -572,24 +683,27 @@ Color _scheduleStatusColor(
 ) {
   return switch (status) {
     InstallmentScheduleStatus.pending => colors.primary,
+    InstallmentScheduleStatus.partiallyPaid => colors.error,
     InstallmentScheduleStatus.paid => colors.tertiary,
     InstallmentScheduleStatus.skipped => colors.outline,
   };
 }
 
-String _repaymentTypeLabel(InstallmentRepaymentType type) {
+String _repaymentTypeLabel(RepaymentType type) {
   return switch (type) {
-    InstallmentRepaymentType.scheduled => '正常还款',
-    InstallmentRepaymentType.extraPrincipal => '提前还本',
-    InstallmentRepaymentType.earlySettlement => '提前结清',
+    RepaymentType.bill => '账单还款',
+    RepaymentType.installment => '分期还款',
+    RepaymentType.prepayment => '提前还款',
+    RepaymentType.unattributed => '未归属',
   };
 }
 
-Color _repaymentTypeColor(InstallmentRepaymentType type, ColorScheme colors) {
+Color _repaymentTypeColor(RepaymentType type, ColorScheme colors) {
   return switch (type) {
-    InstallmentRepaymentType.scheduled => colors.tertiary,
-    InstallmentRepaymentType.extraPrincipal => colors.primary,
-    InstallmentRepaymentType.earlySettlement => colors.secondary,
+    RepaymentType.bill => colors.tertiary,
+    RepaymentType.installment => colors.tertiary,
+    RepaymentType.prepayment => colors.primary,
+    RepaymentType.unattributed => colors.outline,
   };
 }
 

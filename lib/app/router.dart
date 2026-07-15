@@ -4,6 +4,7 @@ import 'app_shell.dart';
 import '../application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../feature/account/page/account_detail_page.dart';
+import '../feature/account/page/account_bills_page.dart';
 import '../feature/account/page/account_form_page.dart';
 import '../feature/account/page/accounts_page.dart';
 import '../feature/category/page/categories_page.dart';
@@ -11,10 +12,14 @@ import '../feature/category/page/category_form_page.dart';
 import '../feature/calendar/page/calendar_page.dart';
 import '../feature/home/page/home_page.dart';
 import '../feature/credit/page/installment_contract_edit_page.dart';
+import '../feature/credit/page/bill_conversion_installment_form_page.dart';
+import '../feature/credit/page/bill_detail_page.dart';
+import '../feature/credit/page/bill_repayment_form_page.dart';
 import '../feature/credit/page/installment_detail_page.dart';
 import '../feature/credit/page/installment_form_page.dart';
 import '../feature/credit/page/installment_repayment_form_page.dart';
 import '../feature/credit/page/repayment_form_page.dart';
+import '../feature/credit/page/unattributed_repayment_form_page.dart';
 import '../feature/placeholder/page/placeholder_page.dart';
 import '../feature/profile/page/installment_guide_page.dart';
 import '../feature/profile/page/profile_page.dart';
@@ -122,6 +127,12 @@ final appRouter = GoRouter(
               AccountFormPage(accountId: state.pathParameters['id']!),
     ),
     GoRoute(
+      path: '/account/:id/bills',
+      builder:
+          (context, state) =>
+              AccountBillsPage(accountId: state.pathParameters['id']!),
+    ),
+    GoRoute(
       path: '/account/:id/repayment',
       builder:
           (context, state) => RepaymentFormPage(
@@ -129,11 +140,17 @@ final appRouter = GoRouter(
           ),
     ),
     GoRoute(
+      path: '/account/:id/unattributed-repayment',
+      builder:
+          (context, state) => UnattributedRepaymentFormPage(
+            accountId: state.pathParameters['id']!,
+          ),
+    ),
+    GoRoute(
       path: '/account/:id/installments/new',
       builder: (context, state) {
         final lockedSourceType = switch (state.uri.queryParameters['source']) {
           'disbursement' => InstallmentSourceType.disbursement,
-          'bill' => InstallmentSourceType.billConversion,
           _ => null,
         };
         return InstallmentFormPage(
@@ -141,6 +158,25 @@ final appRouter = GoRouter(
           lockedSourceType: lockedSourceType,
         );
       },
+    ),
+    GoRoute(
+      path: '/bills/:billId',
+      builder:
+          (context, state) =>
+              BillDetailPage(billId: state.pathParameters['billId']!),
+    ),
+    GoRoute(
+      path: '/bills/:billId/repay',
+      builder:
+          (context, state) =>
+              BillRepaymentFormPage(billId: state.pathParameters['billId']!),
+    ),
+    GoRoute(
+      path: '/bills/:billId/installment',
+      builder:
+          (context, state) => BillConversionInstallmentFormPage(
+            billId: state.pathParameters['billId']!,
+          ),
     ),
     GoRoute(
       path: '/installments/:contractId',
@@ -158,20 +194,10 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/installments/:contractId/repay',
-      builder: (context, state) {
-        final contractId = state.pathParameters['contractId']!;
-        final mode = switch (state.uri.queryParameters['mode']) {
-          'extra' => InstallmentRepaymentMode.extraPrincipal,
-          'settle' => InstallmentRepaymentMode.earlySettlement,
-          _ => InstallmentRepaymentMode.scheduled,
-        };
-        final scheduleId = state.uri.queryParameters['scheduleId'];
-        return InstallmentRepaymentFormPage(
-          contractId: contractId,
-          mode: mode,
-          scheduleId: scheduleId,
-        );
-      },
+      builder:
+          (context, state) => InstallmentRepaymentFormPage(
+            contractId: state.pathParameters['contractId']!,
+          ),
     ),
     GoRoute(
       path: '/category',

@@ -21,6 +21,22 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
   }
 
   @override
+  Future<Transaction?> findCurrentParentByRoot(String rootTransactionId) async {
+    final row =
+        await (_db.select(_db.transactions)
+              ..where(
+                (t) =>
+                    (t.rootTransactionId.equals(rootTransactionId) |
+                        t.id.equals(rootTransactionId)) &
+                    t.businessState.equalsValue(BusinessState.current) &
+                    t.parentTransactionId.isNull(),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    return row == null ? null : mapTransaction(row);
+  }
+
+  @override
   Future<DateTime?> findCreatedAt(String id) async {
     final row =
         await (_db.selectOnly(_db.transactions)

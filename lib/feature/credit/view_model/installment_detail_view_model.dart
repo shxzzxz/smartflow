@@ -6,6 +6,7 @@ import '../../../application/credit/credit_query_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
+import '../provider/credit_account_query_providers.dart';
 
 part 'installment_detail_view_model.g.dart';
 
@@ -21,13 +22,13 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     final schedules = await ref.watch(
       installmentSchedulesProvider(contractId).future,
     );
-    final cashflows = await ref.watch(
-      installmentRepaymentCashflowsProvider(contractId).future,
+    final repayments = await ref.watch(
+      installmentRepaymentsProvider(contractId).future,
     );
     return InstallmentDetailLoaded(
       contract: contract,
       schedules: schedules,
-      cashflows: cashflows,
+      repayments: repayments,
     );
   }
 
@@ -36,7 +37,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     if (loaded == null) return _invalidAction('合同尚未加载');
     try {
       await ref
-          .read(installmentServiceProvider)
+          .read(installmentAppServiceProvider)
           .deleteContract(
             DeleteContractCommand(contractId: loaded.contract.id),
           );
@@ -44,6 +45,9 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
         installmentContractsByAccountProvider(
           loaded.contract.liabilityAccountId,
         ),
+      );
+      ref.invalidate(
+        creditAccountOverviewProvider(loaded.contract.liabilityAccountId),
       );
       return const UiActionOutcome.success(null);
     } on AppException catch (exception) {
@@ -53,14 +57,56 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     }
   }
 
-  Future<UiActionOutcome<void>> revertRepayment(String transactionId) async {
+  Future<UiActionOutcome<void>> revertRepayment(String repaymentId) async {
     final loaded = _loadedOrNull();
     if (loaded == null) return _invalidAction('合同尚未加载');
     try {
       await ref
-          .read(installmentServiceProvider)
-          .revertRepayment(
-            RevertRepaymentCommand(transactionId: transactionId),
+          .read(repaymentAppServiceProvider)
+          .deleteRepayment(
+            DeleteCreditRepaymentCommand(repaymentId: repaymentId),
+          );
+      _invalidateContract(loaded.contract);
+      return const UiActionOutcome.success(null);
+    } on AppException catch (exception) {
+      return UiActionOutcome.failure(UiError.fromException(exception));
+    } on Exception {
+      return const UiActionOutcome.failure(UiError.unknown());
+    }
+  }
+
+  Future<UiActionOutcome<void>> skipSchedule(String scheduleId) async {
+    final loaded = _loadedOrNull();
+    if (loaded == null) return _invalidAction('合同尚未加载');
+    try {
+      await ref
+          .read(installmentAppServiceProvider)
+          .skipSchedule(
+            SkipInstallmentScheduleCommand(
+              contractId: loaded.contract.id,
+              scheduleId: scheduleId,
+            ),
+          );
+      _invalidateContract(loaded.contract);
+      return const UiActionOutcome.success(null);
+    } on AppException catch (exception) {
+      return UiActionOutcome.failure(UiError.fromException(exception));
+    } on Exception {
+      return const UiActionOutcome.failure(UiError.unknown());
+    }
+  }
+
+  Future<UiActionOutcome<void>> restoreSchedule(String scheduleId) async {
+    final loaded = _loadedOrNull();
+    if (loaded == null) return _invalidAction('合同尚未加载');
+    try {
+      await ref
+          .read(installmentAppServiceProvider)
+          .restoreSchedule(
+            RestoreInstallmentScheduleCommand(
+              contractId: loaded.contract.id,
+              scheduleId: scheduleId,
+            ),
           );
       _invalidateContract(loaded.contract);
       return const UiActionOutcome.success(null);
@@ -76,16 +122,16 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     return current is InstallmentDetailLoaded ? current : null;
   }
 
-  void _invalidateContract(InstallmentContract contract) {
+  void _invalidateContract(InstallmentContractReadModel contract) {
     ref
       ..invalidate(installmentContractProvider(contract.id))
       ..invalidate(installmentSchedulesProvider(contract.id))
       ..invalidate(installmentRepaymentsProvider(contract.id))
-      ..invalidate(installmentRepaymentCashflowsProvider(contract.id))
       ..invalidate(installmentMetricsProvider(contract.id))
       ..invalidate(
         installmentContractsByAccountProvider(contract.liabilityAccountId),
-      );
+      )
+      ..invalidate(creditAccountOverviewProvider(contract.liabilityAccountId));
   }
 
   UiActionOutcome<void> _invalidAction(String message) {
@@ -110,16 +156,34 @@ class InstallmentDetailLoaded extends InstallmentDetailState {
   const InstallmentDetailLoaded({
     required this.contract,
     required this.schedules,
-    required this.cashflows,
+    required this.repayments,
   });
 
-  final InstallmentContract contract;
-  final List<InstallmentSchedule> schedules;
-  final List<RepaymentCashflow> cashflows;
+  final InstallmentContractReadModel contract;
+  final List<InstallmentScheduleReadModel> schedules;
+  final List<ContractRepayment> repayments;
+
+  List<InstallmentScheduleItemState> get scheduleItems => [
+    for (final schedule in schedules)
+      InstallmentScheduleItemState(
+        schedule: schedule,
+        action: switch (schedule.status) {
+          InstallmentScheduleStatus.pending => InstallmentScheduleAction.skip,
+          InstallmentScheduleStatus.skipped =>
+            InstallmentScheduleAction.restore,
+          InstallmentScheduleStatus.partiallyPaid ||
+          InstallmentScheduleStatus.paid => null,
+        },
+      ),
+  ];
 
   int get remainingPrincipalMinor {
     final remaining = schedules
-        .where((s) => s.status == InstallmentScheduleStatus.pending)
+        .where(
+          (s) =>
+              s.status == InstallmentScheduleStatus.pending ||
+              s.status == InstallmentScheduleStatus.partiallyPaid,
+        )
         .fold<int>(0, (sum, schedule) {
           return sum + schedule.expectedPrincipal.minorUnits;
         });
@@ -127,14 +191,26 @@ class InstallmentDetailLoaded extends InstallmentDetailState {
   }
 
   int get paidInterestMinor {
-    return cashflows.fold<int>(0, (sum, cashflow) {
-      return sum + cashflow.interest.minorUnits;
+    return repayments.fold<int>(0, (sum, repayment) {
+      return sum + repayment.interest.minorUnits;
     });
   }
 
   int get paidFeeMinor {
-    return cashflows.fold<int>(0, (sum, cashflow) {
-      return sum + cashflow.fee.minorUnits;
+    return repayments.fold<int>(0, (sum, repayment) {
+      return sum + repayment.fee.minorUnits;
     });
   }
+}
+
+enum InstallmentScheduleAction { skip, restore }
+
+class InstallmentScheduleItemState {
+  const InstallmentScheduleItemState({
+    required this.schedule,
+    required this.action,
+  });
+
+  final InstallmentScheduleReadModel schedule;
+  final InstallmentScheduleAction? action;
 }

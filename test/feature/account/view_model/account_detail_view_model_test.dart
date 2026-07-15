@@ -7,13 +7,13 @@ import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/account/view_model/account_detail_view_model.dart';
+import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
-import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
 void main() {
   group('AccountDetailViewModel', () {
-    test('builds account detail with controlled transaction groups', () async {
+    test('builds account detail for an existing account', () async {
       final transactionService = _FakeTransactionQueryService();
       final accountService = _FakeAccountQueryService(accountsById: _accounts);
       final container = _container(
@@ -23,9 +23,9 @@ void main() {
           accountListProvider.overrideWith(
             (ref) => Stream.value([_account('cash', '现金')]),
           ),
-          transactionListProvider(
-            accountId: 'cash',
-          ).overrideWith((ref) => Stream.value([_item()])),
+          creditLiabilityAccountsByAccountIdProvider.overrideWith(
+            (ref) => Stream.value(const {}),
+          ),
         ],
       );
 
@@ -35,8 +35,7 @@ void main() {
       );
       addTearDown(sub.close);
       await container.read(accountListProvider.future);
-      await container.read(transactionListProvider(accountId: 'cash').future);
-      await container.read(accountsByIdProvider.future);
+      await container.read(creditLiabilityAccountsByAccountIdProvider.future);
       await container.pump();
       await _flush();
 
@@ -44,11 +43,6 @@ void main() {
       expect(state, isA<AccountDetailLoaded>());
       final loaded = state as AccountDetailLoaded;
       expect(loaded.account.name, '现金');
-      expect(loaded.transactionGroups.single.rows.single.amountText, '-12.34');
-      expect(
-        loaded.transactionGroups.single.rows.single.amountTone,
-        FinanceTone.expense,
-      );
       expect(loaded.contracts, isA<AccountContractsNotApplicable>());
     });
 
@@ -62,9 +56,9 @@ void main() {
           accountListProvider.overrideWith(
             (ref) => Stream.value([_account('cash', '现金')]),
           ),
-          transactionListProvider(
-            accountId: 'missing',
-          ).overrideWith((ref) => Stream.value(const [])),
+          creditLiabilityAccountsByAccountIdProvider.overrideWith(
+            (ref) => Stream.value(const {}),
+          ),
         ],
       );
 
@@ -74,10 +68,7 @@ void main() {
       );
       addTearDown(sub.close);
       await container.read(accountListProvider.future);
-      await container.read(
-        transactionListProvider(accountId: 'missing').future,
-      );
-      await container.read(accountsByIdProvider.future);
+      await container.read(creditLiabilityAccountsByAccountIdProvider.future);
       await container.pump();
       await _flush();
 
@@ -104,12 +95,19 @@ void main() {
               _account('card', '信用卡', type: AccountType.liability),
             ]),
           ),
-          transactionListProvider(
-            accountId: 'card',
-          ).overrideWith((ref) => Stream.value(const [])),
+          creditLiabilityAccountsByAccountIdProvider.overrideWith(
+            (ref) => Stream.value({'card': _creditLiabilityAccount('card')}),
+          ),
           installmentContractsByAccountProvider(
             'card',
           ).overrideWith((ref) async => [_contract()]),
+          billSummariesByAccountProvider('card').overrideWith(
+            (ref) async => [
+              _bill(year: 2026, month: 7),
+              _bill(year: 2026, month: 6),
+              _bill(year: 2026, month: 5),
+            ],
+          ),
         ],
       );
 
@@ -119,8 +117,7 @@ void main() {
       );
       addTearDown(sub.close);
       await container.read(accountListProvider.future);
-      await container.read(transactionListProvider(accountId: 'card').future);
-      await container.read(accountsByIdProvider.future);
+      await container.read(creditLiabilityAccountsByAccountIdProvider.future);
       await container.read(
         installmentContractsByAccountProvider('card').future,
       );
@@ -135,6 +132,8 @@ void main() {
         (loaded.contracts as AccountContractsLoaded).contracts.single.id,
         'contract-1',
       );
+      final bills = (loaded.bills as AccountBillsLoaded).bills;
+      expect(bills.map((bill) => bill.period.month), [7, 6]);
     });
   });
 }
@@ -148,6 +147,9 @@ ProviderContainer _container(
     overrides: [
       transactionQueryServiceProvider.overrideWithValue(transactionService),
       accountQueryServiceProvider.overrideWithValue(accountService),
+      creditAccountQueryServiceProvider.overrideWithValue(
+        const _FakeCreditAccountQueryService(),
+      ),
       ...overrides,
     ],
   );
@@ -168,53 +170,51 @@ final _accounts = <String, Account>{
   'food': _account('food', '餐饮', type: AccountType.expense, iconKey: 'meal'),
 };
 
-TransactionListReadModel _item() {
-  return TransactionListReadModel(
-    id: 'tx-1',
-    rootTransactionId: 'tx-1',
-    businessPurpose: BusinessPurpose.dailyExpense,
-    businessState: BusinessState.current,
-    occurredAt: DateTime(2026, 1, 1, 8, 30),
-    primaryAmount: const Money(minorUnits: 1234),
-    isExcludedFromStats: false,
-    isExcludedFromBudget: false,
-    entries: const [
-      Entry(
-        id: 'entry-cash',
-        transactionId: 'tx-1',
-        accountId: 'cash',
-        direction: EntryDirection.credit,
-        amount: Money(minorUnits: 1234),
-      ),
-      Entry(
-        id: 'entry-food',
-        transactionId: 'tx-1',
-        accountId: 'food',
-        direction: EntryDirection.debit,
-        amount: Money(minorUnits: 1234),
-      ),
-    ],
-    details: const [],
-  );
-}
-
 Account _account(
   String id,
   String name, {
   AccountType type = AccountType.asset,
   String? iconKey,
+  DateTime? archivedAt,
 }) {
   return Account(
     id: id,
     name: name,
     type: type,
     iconKey: iconKey,
+    archivedAt: archivedAt,
     balance: const Money(minorUnits: 0),
   );
 }
 
-InstallmentContract _contract() {
-  return InstallmentContract(
+CreditLiabilityAccountReadModel _creditLiabilityAccount(String accountId) {
+  return CreditLiabilityAccountReadModel(
+    id: 'credit-$accountId',
+    accountId: accountId,
+    kind: CreditLiabilityAccountKind.credit,
+    billingDay: 5,
+    repaymentDay: 25,
+    billingDayToNext: true,
+  );
+}
+
+BillSummaryReadModel _bill({required int year, required int month}) {
+  return BillSummaryReadModel(
+    id: 'bill-$year-$month',
+    accountId: 'card',
+    period: BillPeriod(year: year, month: month),
+    status: BillStatus.billed,
+    expectedPrincipal: Money.zero(),
+    expectedInterest: Money.zero(),
+    expectedFee: Money.zero(),
+    pendingPrincipal: Money.zero(),
+    itemCount: 0,
+    overdueItemCount: 0,
+  );
+}
+
+InstallmentContractReadModel _contract() {
+  return InstallmentContractReadModel(
     id: 'contract-1',
     liabilityAccountId: 'card',
     sourceType: InstallmentSourceType.billConversion,
@@ -268,6 +268,11 @@ class _FakeAccountQueryService implements AccountQueryService {
   final _byIdStreams = <_ReplayStream<Map<String, Account>>>[];
 
   @override
+  Future<Account?> findAccountById(String id) async {
+    return _accountsById?[id];
+  }
+
+  @override
   Stream<List<Account>> watchAccounts(Set<AccountType> types) {
     final stream = _ReplayStream<List<Account>>();
     _accountsStreams.add(stream);
@@ -300,6 +305,18 @@ class _FakeAccountQueryService implements AccountQueryService {
     for (final stream in _byIdStreams) {
       stream.close();
     }
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeCreditAccountQueryService implements CreditAccountQueryService {
+  const _FakeCreditAccountQueryService();
+
+  @override
+  Future<CreditAccountOverviewReadModel?> findOverview(String accountId) async {
+    return null;
   }
 
   @override

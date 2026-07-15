@@ -48,9 +48,6 @@ class AccountAppServiceImpl implements AccountAppService {
       profileKey: command.profileKey,
       iconKey: command.iconKey,
       note: command.note,
-      creditLimit: command.creditLimit,
-      billingDay: command.billingDay,
-      repaymentDay: command.repaymentDay,
       sortOrder: command.sortOrder,
       isHidden: command.isHidden,
     );
@@ -97,14 +94,6 @@ class AccountAppServiceImpl implements AccountAppService {
         note: command.note,
       ),
     );
-    account.changeCreditProfile(
-      AccountCreditProfilePatch(
-        creditLimit: command.creditLimit,
-        billingDay: command.billingDay,
-        repaymentDay: command.repaymentDay,
-      ),
-    );
-
     await _runner.run<void>(() async {
       if (targetBalance == null ||
           targetBalance.minorUnits == account.balance.minorUnits) {

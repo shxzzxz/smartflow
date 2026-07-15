@@ -1,12 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
+import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
+import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/feature/account/view_model/account_form_view_model.dart';
+import 'package:smartflow/feature/account/view_model/account_view.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
+import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 void main() {
   group('AccountFormViewModel', () {
@@ -31,16 +35,70 @@ void main() {
       expect(command.note, 'daily account');
     });
 
+    test('creates credit account through credit account service', () async {
+      final creditAppService = _FakeCreditAccountAppService();
+      final container = _container(
+        _FakeAccountAppService(),
+        creditAppService: creditAppService,
+      );
+      final viewModel =
+          container.read(accountFormViewModelProvider.notifier)
+            ..setKind(AccountProfileKind.credit)
+            ..setBillingDay(5)
+            ..setRepaymentDay(25);
+
+      final outcome = await viewModel.submit(
+        nameText: 'Card',
+        openingBalanceText: '0',
+        creditLimitText: '1000',
+        noteText: '',
+      );
+
+      expect(outcome, isA<SubmitSuccess>());
+      final command = creditAppService.createCommands.single;
+      expect(command.kind, CreditLiabilityAccountKind.credit);
+      expect(command.creditLimit, const Money(minorUnits: 100000));
+      expect(command.billingDay, 5);
+      expect(command.repaymentDay, 25);
+    });
+
+    test('creates loan account without cycle parameters', () async {
+      final creditAppService = _FakeCreditAccountAppService();
+      final container = _container(
+        _FakeAccountAppService(),
+        creditAppService: creditAppService,
+      );
+      final viewModel = container.read(accountFormViewModelProvider.notifier)
+        ..setKind(AccountProfileKind.loan);
+
+      final outcome = await viewModel.submit(
+        nameText: 'Loan',
+        openingBalanceText: '0',
+        creditLimitText: '3000',
+        noteText: '',
+      );
+
+      expect(outcome, isA<SubmitSuccess>());
+      final command = creditAppService.createCommands.single;
+      expect(command.kind, CreditLiabilityAccountKind.loan);
+      expect(command.creditLimit, const Money(minorUnits: 300000));
+      expect(command.billingDay, isNull);
+      expect(command.repaymentDay, isNull);
+    });
+
     test('edits loaded account through edit command', () async {
       final service = _FakeAccountAppService();
       final container = _container(service);
       final viewModel = container.read(accountFormViewModelProvider.notifier);
 
       viewModel.initializeForEdit(
-        _account(
-          'account-1',
+        AccountView(
+          id: 'account-1',
           name: 'Old',
+          kind: AccountProfileKind.fund,
           balance: const Money(minorUnits: 1000),
+          iconKey: AccountProfileKind.fund.iconKey,
+          isArchived: false,
         ),
       );
 
@@ -103,12 +161,42 @@ void main() {
   });
 }
 
-ProviderContainer _container(_FakeAccountAppService service) {
+ProviderContainer _container(
+  _FakeAccountAppService service, {
+  _FakeCreditAccountAppService? creditAppService,
+}) {
   final container = ProviderContainer(
-    overrides: [accountAppServiceProvider.overrideWith((ref) => service)],
+    overrides: [
+      accountAppServiceProvider.overrideWith((ref) => service),
+      creditAccountAppServiceProvider.overrideWith(
+        (ref) => creditAppService ?? _FakeCreditAccountAppService(),
+      ),
+    ],
   );
   addTearDown(container.dispose);
   return container;
+}
+
+class _FakeCreditAccountAppService implements CreditAccountAppService {
+  final createCommands = <CreateCreditLiabilityAccountCommand>[];
+  final editCommands = <EditCreditLiabilityAccountCommand>[];
+
+  @override
+  Future<CreditLedgerAccountSnapshot> createAccount(
+    CreateCreditLiabilityAccountCommand command,
+  ) async {
+    createCommands.add(command);
+    return const CreditLedgerAccountSnapshot(
+      id: 'credit-created',
+      balance: Money(minorUnits: 0),
+      isArchived: false,
+    );
+  }
+
+  @override
+  Future<void> editAccount(EditCreditLiabilityAccountCommand command) async {
+    editCommands.add(command);
+  }
 }
 
 Account _account(

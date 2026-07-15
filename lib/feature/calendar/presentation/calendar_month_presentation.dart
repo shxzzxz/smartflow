@@ -1,3 +1,4 @@
+import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
@@ -43,6 +44,7 @@ class CalendarDayPresentation {
     required this.isToday,
     required this.incomeMinor,
     required this.expenseMinor,
+    required this.dueItemCount,
     required this.lunarLabel,
     required this.markerLabel,
   });
@@ -53,6 +55,7 @@ class CalendarDayPresentation {
   final bool isToday;
   final int incomeMinor;
   final int expenseMinor;
+  final int dueItemCount;
   final String lunarLabel;
   final String? markerLabel;
 
@@ -70,16 +73,22 @@ CalendarMonthPresentation buildCalendarMonthPresentation({
   required AccountLookup accountLookup,
   required CashflowSummary summary,
   required List<DailyCashflowSummary> dailySummaries,
+  List<CreditDueCalendarItemReadModel> creditDueItems = const [],
+  List<MonthlyBillSummaryReadModel> monthlyBillSummaries = const [],
   DateTime? today,
   CalendarLunarLabelResolver lunarLabelResolver =
       const DefaultCalendarLunarLabelResolver(),
 }) {
   return CalendarMonthPresentation(
-    summary: buildCalendarMonthlySummaryPresentation(summary),
+    summary: buildCalendarMonthlySummaryPresentation(
+      summary,
+      monthlyBillSummaries: monthlyBillSummaries,
+    ),
     days: buildCalendarDayPresentations(
       visibleMonth: visibleMonth,
       selectedDate: selectedDate,
       dailySummaries: dailySummaries,
+      creditDueItems: creditDueItems,
       today: today,
       lunarLabelResolver: lunarLabelResolver,
     ),
@@ -93,33 +102,47 @@ CalendarMonthPresentation buildCalendarMonthPresentation({
 }
 
 CalendarMonthlySummaryPresentation buildCalendarMonthlySummaryPresentation(
-  CashflowSummary summary,
-) {
-  return CalendarMonthlySummaryPresentation(
-    metrics: [
+  CashflowSummary summary, {
+  List<MonthlyBillSummaryReadModel> monthlyBillSummaries = const [],
+}) {
+  final billDueMinor = monthlyBillSummaries.fold<int>(
+    0,
+    (sum, bill) => sum + bill.pendingPrincipal.minorUnits,
+  );
+  final metrics = [
+    CalendarMonthlySummaryMetricPresentation(
+      label: '收入',
+      amountText: formatMinorAmount(summary.income.minorUnits),
+      tone: FinanceTone.income,
+    ),
+    CalendarMonthlySummaryMetricPresentation(
+      label: '支出',
+      amountText: formatMinorAmount(summary.expense.minorUnits),
+      tone: FinanceTone.expense,
+    ),
+    CalendarMonthlySummaryMetricPresentation(
+      label: '净收入',
+      amountText: formatMonthlyAmount(summary.net.minorUnits, showSign: true),
+      tone: FinanceTone.neutral,
+    ),
+  ];
+  if (monthlyBillSummaries.isNotEmpty) {
+    metrics.add(
       CalendarMonthlySummaryMetricPresentation(
-        label: '收入',
-        amountText: formatMinorAmount(summary.income.minorUnits),
-        tone: FinanceTone.income,
-      ),
-      CalendarMonthlySummaryMetricPresentation(
-        label: '支出',
-        amountText: formatMinorAmount(summary.expense.minorUnits),
+        label: '应还',
+        amountText: formatMinorAmount(billDueMinor),
         tone: FinanceTone.expense,
       ),
-      CalendarMonthlySummaryMetricPresentation(
-        label: '净收入',
-        amountText: formatMonthlyAmount(summary.net.minorUnits, showSign: true),
-        tone: FinanceTone.neutral,
-      ),
-    ],
-  );
+    );
+  }
+  return CalendarMonthlySummaryPresentation(metrics: metrics);
 }
 
 List<CalendarDayPresentation> buildCalendarDayPresentations({
   required DateTime visibleMonth,
   required DateTime selectedDate,
   required List<DailyCashflowSummary> dailySummaries,
+  required List<CreditDueCalendarItemReadModel> creditDueItems,
   DateTime? today,
   CalendarLunarLabelResolver lunarLabelResolver =
       const DefaultCalendarLunarLabelResolver(),
@@ -128,6 +151,7 @@ List<CalendarDayPresentation> buildCalendarDayPresentations({
   final normalizedSelected = normalizeDate(selectedDate);
   final normalizedToday = normalizeDate(today ?? DateTime.now());
   final totalsByDate = _totalsByDate(dailySummaries);
+  final duesByDate = _dueCountsByDate(creditDueItems);
 
   return [
     for (final date in calendarGridDates(month))
@@ -137,6 +161,7 @@ List<CalendarDayPresentation> buildCalendarDayPresentations({
         normalizedSelected: normalizedSelected,
         normalizedToday: normalizedToday,
         totals: totalsByDate[date],
+        dueItemCount: duesByDate[date] ?? 0,
         lunarLabel: lunarLabelResolver.labelFor(date),
       ),
   ];
@@ -148,6 +173,7 @@ CalendarDayPresentation _buildCalendarDay({
   required DateTime normalizedSelected,
   required DateTime normalizedToday,
   required _DayTotals? totals,
+  required int dueItemCount,
   required CalendarLunarLabel lunarLabel,
 }) {
   return CalendarDayPresentation(
@@ -157,8 +183,9 @@ CalendarDayPresentation _buildCalendarDay({
     isToday: isSameDate(date, normalizedToday),
     incomeMinor: totals?.incomeMinor ?? 0,
     expenseMinor: totals?.expenseMinor ?? 0,
+    dueItemCount: dueItemCount,
     lunarLabel: lunarLabel.text,
-    markerLabel: lunarLabel.marker,
+    markerLabel: dueItemCount > 0 ? '$dueItemCount' : lunarLabel.marker,
   );
 }
 
@@ -191,6 +218,17 @@ Map<DateTime, _DayTotals> _totalsByDate(List<DailyCashflowSummary> summaries) {
         expenseMinor: summary.expense.minorUnits,
       ),
   };
+}
+
+Map<DateTime, int> _dueCountsByDate(
+  List<CreditDueCalendarItemReadModel> dueItems,
+) {
+  final result = <DateTime, int>{};
+  for (final item in dueItems) {
+    final date = normalizeDate(item.dueDate);
+    result[date] = (result[date] ?? 0) + 1;
+  }
+  return result;
 }
 
 class _DayTotals {

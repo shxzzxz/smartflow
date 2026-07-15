@@ -18,11 +18,9 @@ enum InterestRatePeriod { annual, monthly, daily }
 ///   等额本息下用标准月供公式。
 enum InterestAccrualMethod { daily, monthly }
 
-enum InstallmentContractStatus { active, settled, closed }
+enum InstallmentContractStatus { active, settled }
 
-enum InstallmentScheduleStatus { pending, paid, skipped }
-
-enum InstallmentRepaymentType { scheduled, extraPrincipal, earlySettlement }
+enum InstallmentScheduleStatus { pending, partiallyPaid, paid, skipped }
 
 /// 分期模块写入 `transaction.owner_type` 的固定值。
 const String installmentOwnerType = 'installment';
@@ -32,10 +30,7 @@ const String installmentOwnerType = 'installment';
 /// wire 值即落库字符串：迁移 SQL、单测断言、跨存储读取都以 [wireValue] 为准。
 /// 仅在分期模块内部以枚举形式使用；账务核心 / 通用 UI 不感知具体取值。
 enum InstallmentOwnerRole {
-  disbursement('disbursement'),
-  scheduledRepayment('scheduled_repayment'),
-  extraPrincipal('extra_principal'),
-  earlySettlement('early_settlement');
+  disbursement('disbursement');
 
   const InstallmentOwnerRole(this.wireValue);
 

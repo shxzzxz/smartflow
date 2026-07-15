@@ -4,6 +4,7 @@ import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
+import 'package:smartflow/design_system/widget/app_swipe_action.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 
 import '../account/account_endpoint.dart';
@@ -94,55 +95,12 @@ class TransactionRow extends StatelessWidget {
       return row;
     }
 
-    return Dismissible(
-      key: ValueKey('transaction-row-${presentation.transactionId}'),
-      direction: DismissDirection.startToEnd,
-      dismissThresholds: const {DismissDirection.startToEnd: 0.4},
-      background: const _QuickEditBackground(),
-      confirmDismiss: (direction) {
-        if (direction == DismissDirection.startToEnd) {
-          onQuickEdit?.call();
-        }
-        return Future.value(false);
-      },
+    return AppSwipeAction(
+      dismissibleKey: ValueKey('transaction-row-${presentation.transactionId}'),
+      label: '编辑',
+      icon: RemixIcons.edit_2_line,
+      onTriggered: () => onQuickEdit?.call(),
       child: row,
-    );
-  }
-}
-
-class _QuickEditBackground extends StatelessWidget {
-  const _QuickEditBackground();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textStyles = context.appTextStyles;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(color: colors.primaryContainer),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space20),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                RemixIcons.edit_2_line,
-                size: AppSpacing.space20,
-                color: colors.onPrimaryContainer,
-              ),
-              const SizedBox(width: AppSpacing.space8),
-              Text(
-                '编辑',
-                style: textStyles.formLabel.copyWith(
-                  color: colors.onPrimaryContainer,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

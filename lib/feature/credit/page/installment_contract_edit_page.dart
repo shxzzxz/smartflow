@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
+import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
@@ -66,7 +67,7 @@ class _InstallmentContractEditPageState
         AsyncData(value: InstallmentContractEditNotFound()) => const Center(
           child: Text('合同不存在'),
         ),
-        AsyncError(:final error) => Center(child: Text('加载失败：$error')),
+        AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
@@ -74,8 +75,7 @@ class _InstallmentContractEditPageState
 
   Widget _buildBody(
     InstallmentContractEditLoaded loaded,
-    AsyncValue<({ContractMetrics designed, ContractMetrics actual})>
-    metricsAsync,
+    AsyncValue<ContractMetrics> metricsAsync,
   ) {
     final contract = loaded.contract;
     _syncControllers(contract);
@@ -156,7 +156,7 @@ class _InstallmentContractEditPageState
     );
   }
 
-  void _syncControllers(InstallmentContract contract) {
+  void _syncControllers(InstallmentContractReadModel contract) {
     if (_syncedContractId == contract.id) return;
     _syncedContractId = contract.id;
     _periodsController.text = installmentContractPeriodsText(contract);
@@ -193,8 +193,8 @@ class _InstallmentContractEditPageState
         .setLastRepaymentDate(picked);
   }
 
-  void _recalculate() {
-    final outcome = ref
+  Future<void> _recalculate() async {
+    final outcome = await ref
         .read(
           installmentContractEditViewModelProvider(widget.contractId).notifier,
         )
@@ -206,7 +206,7 @@ class _InstallmentContractEditPageState
         );
     switch (outcome) {
       case UiActionFailure<void>(:final error):
-        _showError(error.message);
+        if (mounted) _showError(error.message);
       case UiActionSuccess<void>():
         break;
     }
@@ -288,7 +288,7 @@ class _ConfigSection extends StatelessWidget {
     required this.onRecalculate,
   });
 
-  final InstallmentContract contract;
+  final InstallmentContractReadModel contract;
   final int paidCount;
   final DateTime firstRepaymentDate;
   final DateTime lastRepaymentDate;
@@ -596,6 +596,7 @@ class _ScheduleRow extends StatelessWidget {
     final pending = row.status == InstallmentScheduleStatus.pending;
     final statusColor = switch (row.status) {
       InstallmentScheduleStatus.pending => colors.primary,
+      InstallmentScheduleStatus.partiallyPaid => colors.error,
       InstallmentScheduleStatus.paid => colors.tertiary,
       InstallmentScheduleStatus.skipped => colors.outline,
     };
@@ -780,7 +781,7 @@ class _EditableMoneyCellState extends State<_EditableMoneyCell> {
       return Container(
         decoration: BoxDecoration(
           color: colors.primary.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(AppRadius.radiusSm),
         ),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space2),
         child: TextField(
@@ -854,8 +855,7 @@ class _Cell extends StatelessWidget {
 class _MetricsSection extends StatelessWidget {
   const _MetricsSection({required this.metricsAsync, required this.principal});
 
-  final AsyncValue<({ContractMetrics designed, ContractMetrics actual})>
-  metricsAsync;
+  final AsyncValue<ContractMetrics> metricsAsync;
   final Money principal;
 
   @override
@@ -871,17 +871,19 @@ class _MetricsSection extends StatelessWidget {
             AppSpacing.space4,
             AppSpacing.space4,
           ),
-          child: Text('汇总信息（合同 / 履约）', style: styles.dateSectionTitle),
+          child: Text('合同汇总', style: styles.dateSectionTitle),
         ),
         switch (metricsAsync) {
-          AsyncData(value: final pair) => _MetricsPair(
-            pair: pair,
-            principal: principal,
-          ),
-          AsyncError(:final error) => AppSurface(
+          AsyncData(value: final metrics) => AppSurface(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.space12),
-              child: Text('指标加载失败：$error'),
+              child: _MetricGrid(metrics: metrics, principal: principal),
+            ),
+          ),
+          AsyncError() => AppSurface(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.space12),
+              child: const Text('合同指标加载失败，请稍后重试'),
             ),
           ),
           _ => const Padding(
@@ -894,36 +896,10 @@ class _MetricsSection extends StatelessWidget {
   }
 }
 
-class _MetricsPair extends StatelessWidget {
-  const _MetricsPair({required this.pair, required this.principal});
-
-  final ({ContractMetrics designed, ContractMetrics actual}) pair;
-  final Money principal;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppSurface(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space12),
-        child: _MetricGrid(
-          designed: pair.designed,
-          actual: pair.actual,
-          principal: principal,
-        ),
-      ),
-    );
-  }
-}
-
 class _MetricGrid extends StatelessWidget {
-  const _MetricGrid({
-    required this.designed,
-    required this.actual,
-    required this.principal,
-  });
+  const _MetricGrid({required this.metrics, required this.principal});
 
-  final ContractMetrics designed;
-  final ContractMetrics actual;
+  final ContractMetrics metrics;
   final Money principal;
 
   @override
@@ -935,44 +911,48 @@ class _MetricGrid extends StatelessWidget {
             Expanded(
               child: _MetricCell(
                 label: '月 IRR',
-                designed: _formatPercent(designed.monthlyIrr),
-                actual: _formatPercent(actual.monthlyIrr),
+                value: _formatPercent(metrics.monthlyIrr),
               ),
             ),
             Expanded(
               child: _MetricCell(
                 label: '名义年化 APR',
-                designed: _formatPercent(designed.nominalApr),
-                actual: _formatPercent(actual.nominalApr),
+                value: _formatPercent(metrics.nominalApr),
               ),
             ),
             Expanded(
               child: _MetricCell(
                 label: '有效年化 EAR',
-                designed: _formatPercent(designed.effectiveApr),
-                actual: _formatPercent(actual.effectiveApr),
+                value: _formatPercent(metrics.effectiveApr),
               ),
             ),
           ],
         ),
+        if (metrics.unavailableReason case final reason?) ...[
+          const SizedBox(height: AppSpacing.space8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'IRR / APR / EAR 暂不可计算：${_metricsUnavailableReasonText(reason)}',
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpacing.space10),
         Row(
           children: [
             Expanded(
-              child: _MetricCell.single(label: '本金', value: principal.format()),
+              child: _MetricCell(label: '本金', value: principal.format()),
             ),
             Expanded(
               child: _MetricCell(
                 label: '总利息',
-                designed: designed.totalInterest.format(),
-                actual: actual.totalInterest.format(),
+                value: metrics.totalInterest.format(),
               ),
             ),
             Expanded(
               child: _MetricCell(
                 label: '总费用',
-                designed: designed.totalFee.format(),
-                actual: actual.totalFee.format(),
+                value: metrics.totalFee.format(),
               ),
             ),
           ],
@@ -983,21 +963,10 @@ class _MetricGrid extends StatelessWidget {
 }
 
 class _MetricCell extends StatelessWidget {
-  const _MetricCell({
-    required this.label,
-    required String this.designed,
-    required String this.actual,
-  }) : single = null;
-
-  const _MetricCell.single({required this.label, required String value})
-    : designed = null,
-      actual = null,
-      single = value;
+  const _MetricCell({required this.label, required this.value});
 
   final String label;
-  final String? designed;
-  final String? actual;
-  final String? single;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
@@ -1013,33 +982,12 @@ class _MetricCell extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: AppSpacing.space2),
-        if (single != null)
-          Text(
-            single!,
-            style: styles.formLabel,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          )
-        else
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(text: designed!, style: styles.formLabel),
-                TextSpan(
-                  text: ' / ',
-                  style: styles.listSupporting.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-                TextSpan(
-                  text: actual!,
-                  style: styles.formLabel.copyWith(color: colors.primary),
-                ),
-              ],
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+        Text(
+          value,
+          style: styles.formLabel,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ],
     );
   }
@@ -1093,6 +1041,7 @@ String _formatDateShort(DateTime date) {
 String _statusLabel(InstallmentScheduleStatus status) {
   return switch (status) {
     InstallmentScheduleStatus.pending => '待还',
+    InstallmentScheduleStatus.partiallyPaid => '部分已还',
     InstallmentScheduleStatus.paid => '已还',
     InstallmentScheduleStatus.skipped => '已跳过',
   };
@@ -1105,7 +1054,16 @@ String _sourceTypeLabel(InstallmentSourceType type) {
   };
 }
 
-String _formatPercent(double v) {
+String _formatPercent(double? v) {
+  if (v == null) return '—';
   if (v.isNaN || v.isInfinite) return '—';
   return '${(v * 100).toStringAsFixed(2)}%';
+}
+
+String _metricsUnavailableReasonText(ContractMetricsUnavailableReason reason) {
+  return switch (reason) {
+    ContractMetricsUnavailableReason.principalNotConserved => '计划本金与合同本金不守恒',
+    ContractMetricsUnavailableReason.insufficientCashflows => '现金流不足',
+    ContractMetricsUnavailableReason.noRateSolution => '不存在有效利率解',
+  };
 }

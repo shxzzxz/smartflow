@@ -48,6 +48,49 @@ final class AccountListProvider
 
 String _$accountListHash() => r'95dee3110f192c62457e962aca9bdbefc29c02c6';
 
+@ProviderFor(creditLiabilityAccountsByAccountId)
+final creditLiabilityAccountsByAccountIdProvider =
+    CreditLiabilityAccountsByAccountIdProvider._();
+
+final class CreditLiabilityAccountsByAccountIdProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Map<String, CreditLiabilityAccountReadModel>>,
+          Map<String, CreditLiabilityAccountReadModel>,
+          Stream<Map<String, CreditLiabilityAccountReadModel>>
+        >
+    with
+        $FutureModifier<Map<String, CreditLiabilityAccountReadModel>>,
+        $StreamProvider<Map<String, CreditLiabilityAccountReadModel>> {
+  CreditLiabilityAccountsByAccountIdProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'creditLiabilityAccountsByAccountIdProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() =>
+      _$creditLiabilityAccountsByAccountIdHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<Map<String, CreditLiabilityAccountReadModel>>
+  $createElement($ProviderPointer pointer) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<Map<String, CreditLiabilityAccountReadModel>> create(Ref ref) {
+    return creditLiabilityAccountsByAccountId(ref);
+  }
+}
+
+String _$creditLiabilityAccountsByAccountIdHash() =>
+    r'7e960b02eaade95eef2f46ca54d41c73a64cfc84';
+
 /// 全量账户索引。覆盖 5 种 account_type,供 UI 层把 entries 的 accountId
 /// 解析为 Account 元数据(type / name / iconKey 等)。
 ///
@@ -391,7 +434,7 @@ final class TransactionListProvider
         $StreamProvider<List<TransactionListReadModel>> {
   TransactionListProvider._({
     required TransactionListFamily super.from,
-    required String? super.argument,
+    required ({String? accountId, int limit, int offset}) super.argument,
   }) : super(
          retry: null,
          name: r'transactionListProvider',
@@ -407,7 +450,7 @@ final class TransactionListProvider
   String toString() {
     return r'transactionListProvider'
         ''
-        '($argument)';
+        '$argument';
   }
 
   @$internal
@@ -418,8 +461,14 @@ final class TransactionListProvider
 
   @override
   Stream<List<TransactionListReadModel>> create(Ref ref) {
-    final argument = this.argument as String?;
-    return transactionList(ref, accountId: argument);
+    final argument =
+        this.argument as ({String? accountId, int limit, int offset});
+    return transactionList(
+      ref,
+      accountId: argument.accountId,
+      limit: argument.limit,
+      offset: argument.offset,
+    );
   }
 
   @override
@@ -433,13 +482,13 @@ final class TransactionListProvider
   }
 }
 
-String _$transactionListHash() => r'5d311170c35eb08026988b1d846b7ebe0013db0b';
+String _$transactionListHash() => r'32fc89af16404b454b7e206041e5cf82cf4959ca';
 
 final class TransactionListFamily extends $Family
     with
         $FunctionalFamilyOverride<
           Stream<List<TransactionListReadModel>>,
-          String?
+          ({String? accountId, int limit, int offset})
         > {
   TransactionListFamily._()
     : super(
@@ -450,8 +499,14 @@ final class TransactionListFamily extends $Family
         isAutoDispose: true,
       );
 
-  TransactionListProvider call({String? accountId}) =>
-      TransactionListProvider._(argument: accountId, from: this);
+  TransactionListProvider call({
+    String? accountId,
+    int limit = 50,
+    int offset = 0,
+  }) => TransactionListProvider._(
+    argument: (accountId: accountId, limit: limit, offset: offset),
+    from: this,
+  );
 
   @override
   String toString() => r'transactionListProvider';

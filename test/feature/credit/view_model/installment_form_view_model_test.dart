@@ -1,13 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logging/logging.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/feature/credit/view_model/installment_form_view_model.dart';
+import 'package:smartflow/feature/credit/provider/credit_account_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
@@ -25,7 +28,7 @@ void main() {
     });
 
     test('submits disbursement contract command', () async {
-      final service = _FakeInstallmentService();
+      final service = _FakeInstallmentAppService();
       final args = _args('loan');
       final container = _container(service: service);
       await _readState(container, args);
@@ -55,36 +58,84 @@ void main() {
       expect(command.note, 'note');
     });
 
-    test('submits bill conversion contract command', () async {
-      final service = _FakeInstallmentService();
-      final args = _args(
-        'card',
-        lockedSourceType: InstallmentSourceType.billConversion,
-      );
-      final container = _container(service: service);
-      await _readState(container, args);
+    test(
+      'submits migration contract without disbursement transaction',
+      () async {
+        final service = _FakeInstallmentAppService();
+        final queryService = _FakeCreditAccountQueryService();
+        final args = _args('loan');
+        final container = _container(
+          service: service,
+          creditQueryService: queryService,
+        );
+        final overviewSubscription = container.listen(
+          creditAccountOverviewProvider('loan'),
+          (_, _) {},
+        );
+        addTearDown(overviewSubscription.close);
+        await container.read(creditAccountOverviewProvider('loan').future);
+        await _readState(container, args);
+        final viewModel = container.read(
+          installmentFormViewModelProvider(args).notifier,
+        );
+        viewModel.setCreateDisbursementTransaction(false);
 
-      final outcome = await container
-          .read(installmentFormViewModelProvider(args).notifier)
-          .submit(
-            principalText: '100',
-            totalPeriodsText: '6',
-            rateText: '',
-            totalFeeText: '3',
-            overrideInstallmentText: '',
-            noteText: '',
-          );
+        final outcome = await viewModel.submit(
+          principalText: '100',
+          totalPeriodsText: '6',
+          rateText: '',
+          totalFeeText: '',
+          overrideInstallmentText: '',
+          noteText: '',
+        );
 
-      expect(outcome, isA<UiActionSuccess<String>>());
-      final command = service.billConversionCommands.single;
-      expect(command.liabilityAccountId, 'card');
-      expect(command.principal, const Money(minorUnits: 10000));
-      expect(command.totalFeeMinor, 300);
-      expect(command.interestRatePeriod, isNull);
-    });
+        expect(outcome, isA<UiActionSuccess<String>>());
+        expect(
+          service.disbursementCommands.single.disbursementAccountId,
+          isNull,
+        );
+        await container.read(creditAccountOverviewProvider('loan').future);
+        expect(queryService.findOverviewCalls, 2);
+      },
+    );
+
+    test(
+      'submits credit account installment as disbursement command',
+      () async {
+        final service = _FakeInstallmentAppService();
+        final args = _args(
+          'card',
+          lockedSourceType: InstallmentSourceType.billConversion,
+        );
+        final container = _container(service: service);
+        await _readState(container, args);
+        container
+            .read(installmentFormViewModelProvider(args).notifier)
+            .setDisbursementAccountId('cash');
+
+        final outcome = await container
+            .read(installmentFormViewModelProvider(args).notifier)
+            .submit(
+              principalText: '100',
+              totalPeriodsText: '6',
+              rateText: '',
+              totalFeeText: '3',
+              overrideInstallmentText: '',
+              noteText: '',
+            );
+
+        expect(outcome, isA<UiActionSuccess<String>>());
+        final command = service.disbursementCommands.single;
+        expect(command.liabilityAccountId, 'card');
+        expect(command.disbursementAccountId, 'cash');
+        expect(command.principal, const Money(minorUnits: 10000));
+        expect(command.totalFeeMinor, 300);
+        expect(command.interestRatePeriod, isNull);
+      },
+    );
 
     test('maps AppException to UI failure', () async {
-      final service = _FakeInstallmentService(
+      final service = _FakeInstallmentAppService(
         createException: BusinessException(
           CreditErrorCode.contractInvalidCommand,
           message: '合同参数无效',
@@ -115,7 +166,10 @@ void main() {
     });
 
     test('maps regular Exception to unknown UI failure', () async {
-      final service = _FakeInstallmentService(
+      final records = <LogRecord>[];
+      final subscription = Logger.root.onRecord.listen(records.add);
+      addTearDown(subscription.cancel);
+      final service = _FakeInstallmentAppService(
         createException: Exception('database failed'),
       );
       final args = _args('loan');
@@ -138,6 +192,18 @@ void main() {
 
       expect(outcome, isA<UiActionFailure<String>>());
       expect((outcome as UiActionFailure<String>).error.code, 'unknown');
+      final formRecords = records.where(
+        (record) => record.loggerName == 'feature.credit.installment_form',
+      );
+      expect(formRecords, hasLength(1));
+      final record = formRecords.single;
+      expect(record.level, Level.SEVERE);
+      expect(
+        record.message,
+        'Installment form submission failed unexpectedly.',
+      );
+      expect(record.error, isA<Exception>());
+      expect(record.stackTrace, isNotNull);
     });
   });
 }
@@ -164,7 +230,10 @@ InstallmentFormArgs _args(
   );
 }
 
-ProviderContainer _container({_FakeInstallmentService? service}) {
+ProviderContainer _container({
+  _FakeInstallmentAppService? service,
+  _FakeCreditAccountQueryService? creditQueryService,
+}) {
   final liabilities = [
     _account(
       'loan',
@@ -183,13 +252,28 @@ ProviderContainer _container({_FakeInstallmentService? service}) {
           _ => const <Account>[],
         }),
       ),
-      installmentServiceProvider.overrideWithValue(
-        service ?? _FakeInstallmentService(),
+      installmentAppServiceProvider.overrideWithValue(
+        service ?? _FakeInstallmentAppService(),
       ),
+      if (creditQueryService != null)
+        creditAccountQueryServiceProvider.overrideWithValue(creditQueryService),
     ],
   );
   addTearDown(container.dispose);
   return container;
+}
+
+class _FakeCreditAccountQueryService implements CreditAccountQueryService {
+  int findOverviewCalls = 0;
+
+  @override
+  Future<CreditAccountOverviewReadModel?> findOverview(String accountId) async {
+    findOverviewCalls++;
+    return null;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 Account _account(
@@ -208,28 +292,17 @@ Account _account(
   );
 }
 
-class _FakeInstallmentService implements InstallmentService {
-  _FakeInstallmentService({this.createException});
+class _FakeInstallmentAppService implements InstallmentAppService {
+  _FakeInstallmentAppService({this.createException});
 
   final Object? createException;
   final disbursementCommands = <CreateDisbursementContractCommand>[];
-  final billConversionCommands = <CreateBillConversionContractCommand>[];
 
   @override
   Future<CreateContractResult> createDisbursementContract(
     CreateDisbursementContractCommand command,
   ) async {
     disbursementCommands.add(command);
-    final exception = createException;
-    if (exception != null) throw exception;
-    return const CreateContractResult(contractId: 'contract-created');
-  }
-
-  @override
-  Future<CreateContractResult> createBillConversionContract(
-    CreateBillConversionContractCommand command,
-  ) async {
-    billConversionCommands.add(command);
     final exception = createException;
     if (exception != null) throw exception;
     return const CreateContractResult(contractId: 'contract-created');

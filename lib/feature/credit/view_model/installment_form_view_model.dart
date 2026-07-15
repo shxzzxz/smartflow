@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:logging/logging.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
@@ -6,13 +7,15 @@ import '../../../application/ledger/ledger_command_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
-import '../../../shared/account_profile/account_profile_kind.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
+import '../provider/credit_account_query_providers.dart';
 
 part 'installment_form_view_model.g.dart';
+
+final _logger = Logger('feature.credit.installment_form');
 
 @riverpod
 class InstallmentFormViewModel extends _$InstallmentFormViewModel {
@@ -39,14 +42,11 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
       liabilityAccounts: liabilityAccounts,
       fundAccounts: fundAccounts,
       liability: liability,
-      sourceType: args.lockedSourceType ?? _defaultSourceType(liability),
+      sourceType: InstallmentSourceType.disbursement,
       borrowingDate: now,
       firstRepaymentDate: DateTime(now.year, now.month + 1, now.day),
     );
   }
-
-  void setSourceType(InstallmentSourceType value) =>
-      _updateLoaded((state) => state.copyWith(sourceType: value));
 
   void setBorrowingDate(DateTime value) {
     _updateLoaded((state) {
@@ -79,6 +79,10 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
   void setDisbursementAccountId(String? value) =>
       _updateLoaded((state) => state.copyWith(disbursementAccountId: value));
 
+  void setCreateDisbursementTransaction(bool value) => _updateLoaded(
+    (state) => state.copyWith(createDisbursementTransaction: value),
+  );
+
   Future<UiActionOutcome<String>> submit({
     required String principalText,
     required String totalPeriodsText,
@@ -96,7 +100,9 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
     if (totalPeriods == null || totalPeriods <= 0) {
       return _invalidAction('请输入有效期数');
     }
-    if (current.isDisbursement && current.disbursementAccountId == null) {
+    if (current.isDisbursement &&
+        current.createDisbursementTransaction &&
+        current.disbursementAccountId == null) {
       return _invalidAction('请选择放款入账账户');
     }
 
@@ -110,52 +116,41 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
 
     _setLoaded(current.copyWith(submitting: true));
     try {
-      final service = ref.read(installmentServiceProvider);
+      final service = ref.read(installmentAppServiceProvider);
       final note = trimToNull(noteText);
-      final result =
-          current.isDisbursement
-              ? await service.createDisbursementContract(
-                CreateDisbursementContractCommand(
-                  liabilityAccountId: current.liability.id,
-                  disbursementAccountId: current.disbursementAccountId!,
-                  principal: principal,
-                  totalPeriods: totalPeriods,
-                  borrowingDate: current.borrowingDate,
-                  firstRepaymentDate: current.firstRepaymentDate,
-                  repaymentMethod: current.method,
-                  interestRatePeriod:
-                      ratePpm == null ? null : current.ratePeriod,
-                  interestRatePpm: ratePpm,
-                  interestAccrualMethod: current.accrualMethod,
-                  totalFeeMinor: totalFee.minorUnits,
-                  equalInstallmentOverrideMinor: overrideMinor,
-                  note: note,
-                ),
-              )
-              : await service.createBillConversionContract(
-                CreateBillConversionContractCommand(
-                  liabilityAccountId: current.liability.id,
-                  principal: principal,
-                  totalPeriods: totalPeriods,
-                  borrowingDate: current.borrowingDate,
-                  firstRepaymentDate: current.firstRepaymentDate,
-                  repaymentMethod: current.method,
-                  interestRatePeriod:
-                      ratePpm == null ? null : current.ratePeriod,
-                  interestRatePpm: ratePpm,
-                  interestAccrualMethod: current.accrualMethod,
-                  totalFeeMinor: totalFee.minorUnits,
-                  equalInstallmentOverrideMinor: overrideMinor,
-                  note: note,
-                ),
-              );
+      final result = await service.createDisbursementContract(
+        CreateDisbursementContractCommand(
+          liabilityAccountId: current.liability.id,
+          disbursementAccountId:
+              current.createDisbursementTransaction
+                  ? current.disbursementAccountId
+                  : null,
+          principal: principal,
+          totalPeriods: totalPeriods,
+          borrowingDate: current.borrowingDate,
+          firstRepaymentDate: current.firstRepaymentDate,
+          repaymentMethod: current.method,
+          interestRatePeriod: ratePpm == null ? null : current.ratePeriod,
+          interestRatePpm: ratePpm,
+          interestAccrualMethod: current.accrualMethod,
+          totalFeeMinor: totalFee.minorUnits,
+          equalInstallmentOverrideMinor: overrideMinor,
+          note: note,
+        ),
+      );
       ref.invalidate(
         installmentContractsByAccountProvider(current.liability.id),
       );
+      ref.invalidate(creditAccountOverviewProvider(current.liability.id));
       return UiActionOutcome.success(result.contractId);
     } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Installment form submission failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const UiActionOutcome.failure(UiError.unknown());
     } finally {
       final latest = _loadedOrNull();
@@ -269,6 +264,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
     required this.method,
     required this.ratePeriod,
     required this.accrualMethod,
+    required this.createDisbursementTransaction,
     required this.submitting,
     this.disbursementAccountId,
   });
@@ -292,6 +288,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
       method: InstallmentRepaymentMethod.equalInstallment,
       ratePeriod: InterestRatePeriod.monthly,
       accrualMethod: InterestAccrualMethod.daily,
+      createDisbursementTransaction: true,
       submitting: false,
     );
   }
@@ -305,6 +302,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
   final InstallmentRepaymentMethod method;
   final InterestRatePeriod ratePeriod;
   final InterestAccrualMethod accrualMethod;
+  final bool createDisbursementTransaction;
   final bool submitting;
 
   bool get isDisbursement => sourceType == InstallmentSourceType.disbursement;
@@ -318,6 +316,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
     InstallmentRepaymentMethod? method,
     InterestRatePeriod? ratePeriod,
     InterestAccrualMethod? accrualMethod,
+    bool? createDisbursementTransaction,
     bool? submitting,
   }) {
     return InstallmentFormLoaded(
@@ -335,15 +334,11 @@ class InstallmentFormLoaded extends InstallmentFormState {
       method: method ?? this.method,
       ratePeriod: ratePeriod ?? this.ratePeriod,
       accrualMethod: accrualMethod ?? this.accrualMethod,
+      createDisbursementTransaction:
+          createDisbursementTransaction ?? this.createDisbursementTransaction,
       submitting: submitting ?? this.submitting,
     );
   }
-}
-
-InstallmentSourceType _defaultSourceType(Account liability) {
-  return liability.profileKey == AccountProfileKind.loan.key
-      ? InstallmentSourceType.disbursement
-      : InstallmentSourceType.billConversion;
 }
 
 Account? _findAccount(List<Account> accounts, String? id) {

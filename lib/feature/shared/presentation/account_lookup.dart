@@ -59,7 +59,7 @@ class AccountLookup {
 
   /// 给定一个账户视角,计算该账户在当前交易中的余额变动。
   ///
-  /// 用于「账户流水」场景:列表项展示对当前账户的 ±delta。
+  /// 用于「账户交易」场景:列表项展示对当前账户的 ±delta。
   /// 公式与 `balance_expressions.dart` 中 SQL 公式一致(asset/expense 借增贷减,
   /// liability/income 贷增借减,equity 同 liability 方向)。
   Money? balanceDeltaForAccount({
