@@ -495,10 +495,15 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
       _progress = 0;
     });
 
+    var downloadCompleted = false;
     try {
-      final apk = await widget.updateService.downloadApk(
-        widget.updateInfo,
-        supportedAbis: widget.supportedAbis,
+      final package = widget.updateInfo.resolvePackage(widget.supportedAbis);
+      if (package == null) {
+        return;
+      }
+      final download = await widget.updatePlatform.downloadApk(
+        package,
+        versionName: widget.updateInfo.versionName,
         onProgress: (progress) {
           if (!mounted) {
             return;
@@ -506,7 +511,18 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
           setState(() => _progress = progress.fraction);
         },
       );
-      await widget.updatePlatform.installApk(apk.path);
+      try {
+        await widget.updateService.verifyDownloadedApk(download.file, package);
+      } catch (_) {
+        try {
+          await widget.updatePlatform.removeApkDownload(download.downloadId);
+        } catch (_) {
+          // The invalid package should not hide the verification failure.
+        }
+        rethrow;
+      }
+      downloadCompleted = true;
+      await widget.updatePlatform.installApk(download.file.path);
       if (mounted && !widget.updateInfo.required) {
         Navigator.of(context).pop();
       }
@@ -515,8 +531,8 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
         return;
       }
       final message =
-          error.code == 'installPermissionRequired'
-              ? '请允许 SmartFlow 安装未知应用后重试'
+          error.code == 'downloadFailed' || !downloadCompleted
+              ? '下载失败，请稍后重试'
               : '安装失败，请稍后重试';
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -527,7 +543,11 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
       }
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('下载失败，请稍后重试')));
+        ..showSnackBar(
+          SnackBar(
+            content: Text(downloadCompleted ? '安装失败，请稍后重试' : '下载失败，请稍后重试'),
+          ),
+        );
     } finally {
       if (mounted) {
         setState(() => _isDownloading = false);
@@ -571,6 +591,13 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
             const SizedBox(height: AppSpacing.space8),
             Text(
               progress == null ? '正在下载' : '已下载 ${(progress * 100).round()}%',
+              style: textStyles.listSupporting.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.space4),
+            Text(
+              '切换到其他应用后仍会继续下载',
               style: textStyles.listSupporting.copyWith(
                 color: colors.onSurfaceVariant,
               ),
