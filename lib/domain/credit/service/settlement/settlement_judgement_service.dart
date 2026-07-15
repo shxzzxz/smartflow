@@ -8,13 +8,17 @@ class SettlementJudgementService {
     required int expectedPrincipalMinor,
     required int allocatedPrincipalMinor,
     required bool hasAllocation,
+    required bool hasExpectedRepayment,
   }) {
+    if (!hasAllocation) {
+      return hasExpectedRepayment
+          ? BillItemStatus.pending
+          : BillItemStatus.paid;
+    }
     if (allocatedPrincipalMinor >= expectedPrincipalMinor) {
       return BillItemStatus.paid;
     }
-    return hasAllocation
-        ? BillItemStatus.partiallyPaid
-        : BillItemStatus.pending;
+    return BillItemStatus.partiallyPaid;
   }
 
   BillStatus projectBillStatus(
