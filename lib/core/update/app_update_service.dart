@@ -148,6 +148,25 @@ class AppUpdateService {
       client.close(force: true);
     }
   }
+
+  Future<void> verifyDownloadedApk(File file, AppUpdatePackage package) async {
+    if (!await file.exists()) {
+      throw const FileSystemException('Downloaded APK does not exist.');
+    }
+
+    final expectedSize = package.size;
+    if (expectedSize != null && await file.length() != expectedSize) {
+      throw const FormatException('Downloaded APK size mismatch.');
+    }
+
+    final expectedHash = package.sha256;
+    if (expectedHash != null && expectedHash.isNotEmpty) {
+      final digest = await sha256.bind(file.openRead()).first;
+      if (digest.toString().toLowerCase() != expectedHash) {
+        throw const FormatException('Downloaded APK checksum mismatch.');
+      }
+    }
+  }
 }
 
 class _DigestSink implements Sink<Digest> {
