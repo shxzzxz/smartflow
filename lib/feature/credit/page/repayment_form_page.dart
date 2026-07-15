@@ -6,8 +6,9 @@ import '../../../application/ledger/ledger_command_api.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
-import '../../../design_system/widget/app_plain_form_row.dart';
+import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_submit_button.dart';
+import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/repayment_form_view_model.dart';
@@ -125,7 +126,8 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
           AppSpacing.space24,
         ),
         children: [
-          AppPlainFormSection(
+          AppFormSection(
+            title: '还款信息',
             children: [
               AccountPlainFormRow(
                 label: '债务账户',

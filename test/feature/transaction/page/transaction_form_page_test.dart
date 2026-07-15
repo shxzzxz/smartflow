@@ -9,6 +9,7 @@ import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_form_page.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
+import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
 
 void main() {
   testWidgets('form validator blocks invalid daily expense submit', (
@@ -41,6 +42,12 @@ void main() {
     final state = tester.container().read(transactionFormViewModelProvider);
     expect(state.amountText, '1');
     expect(state.noteText, '午餐');
+  });
+
+  testWidgets('uses the shared transaction amount input', (tester) async {
+    await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
+
+    expect(find.byType(TransactionAmountInput), findsOneWidget);
   });
 }
 

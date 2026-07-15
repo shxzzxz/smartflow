@@ -7,9 +7,10 @@ import '../../../core/money/money.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
+import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
-import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
+import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/reimbursement_form_view_model.dart';
@@ -121,7 +122,8 @@ class _ReimbursementCloseFormPageState
                     : '少收 ${gap.abs().format()}（计入原报销支出分类）',
               ),
             ),
-          AppPlainFormSection(
+          AppFormSection(
+            title: '到账信息',
             children: [
               MoneyPlainFormRow(
                 label: '实收金额',

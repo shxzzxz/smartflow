@@ -166,11 +166,15 @@ class AppPlainTextFormField extends StatelessWidget {
     this.maxLines = 1,
     this.minLines,
     this.onChanged,
+    this.onFieldSubmitted,
     this.textAlign = TextAlign.left,
     this.readOnly = false,
     this.onTap,
     this.enabled,
     this.autofocus = false,
+    this.focusNode,
+    this.showCursor,
+    this.style,
   });
 
   final TextEditingController controller;
@@ -182,11 +186,15 @@ class AppPlainTextFormField extends StatelessWidget {
   final int? maxLines;
   final int? minLines;
   final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onFieldSubmitted;
   final TextAlign textAlign;
   final bool readOnly;
   final VoidCallback? onTap;
   final bool? enabled;
   final bool autofocus;
+  final FocusNode? focusNode;
+  final bool? showCursor;
+  final TextStyle? style;
 
   @override
   Widget build(BuildContext context) {
@@ -200,12 +208,15 @@ class AppPlainTextFormField extends StatelessWidget {
       maxLines: maxLines,
       minLines: minLines,
       onChanged: onChanged,
+      onFieldSubmitted: onFieldSubmitted,
       textAlign: textAlign,
       readOnly: readOnly,
       onTap: onTap,
       enabled: enabled,
       autofocus: autofocus,
-      style: context.appTextStyles.formPlainValue,
+      focusNode: focusNode,
+      showCursor: showCursor,
+      style: style ?? context.appTextStyles.formPlainValue,
     );
   }
 }

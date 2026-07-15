@@ -12,6 +12,7 @@ import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../design_system/widget/app_surface.dart';
+import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/bill_repayment_allocation_view_model.dart';
@@ -706,7 +707,7 @@ class _EditableAllocationMoneyCellState
           borderRadius: BorderRadius.circular(AppRadius.radiusSm),
         ),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space2),
-        child: TextField(
+        child: AppPlainTextFormField(
           controller: _controller,
           focusNode: _focusNode,
           textAlign: TextAlign.right,
@@ -714,13 +715,7 @@ class _EditableAllocationMoneyCellState
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           textInputAction: TextInputAction.done,
           inputFormatters: [moneyInputFormatter],
-          decoration: const InputDecoration(
-            isDense: true,
-            contentPadding: EdgeInsets.symmetric(vertical: AppSpacing.space6),
-            border: InputBorder.none,
-            isCollapsed: false,
-          ),
-          onSubmitted: (_) => _commit(),
+          onFieldSubmitted: (_) => _commit(),
         ),
       );
     }

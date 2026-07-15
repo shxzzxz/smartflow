@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../application/ledger/ledger_query_api.dart';
-import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
-import '../../../design_system/widget/app_surface.dart';
+import '../../../widget/business/finance/money_input.dart';
 import '../../../widget/business/form/plain_transaction_fields.dart';
 
 class CreditRepaymentFormSection extends StatelessWidget {
@@ -19,28 +19,13 @@ class CreditRepaymentFormSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.space4,
-            0,
-            AppSpacing.space4,
-            AppSpacing.space6,
-          ),
-          child: Text(title, style: context.appTextStyles.dateSectionTitle),
-        ),
-        AppSurface(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.space10,
-              vertical: AppSpacing.space4,
-            ),
-            child: AppPlainFormSection(children: children),
-          ),
-        ),
-      ],
+    return AppFormSection(
+      title: title,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space16,
+        vertical: AppSpacing.space8,
+      ),
+      children: children,
     );
   }
 }

@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../application/credit/credit_query_api.dart';
-import '../../../core/money/money.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
+import '../../../design_system/widget/app_form_section.dart';
+import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
+import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/bill_conversion_installment_form_view_model.dart';
@@ -133,7 +135,8 @@ class _BillConversionInstallmentFormPageState
           AppSpacing.space24,
         ),
         children: [
-          AppPlainFormSection(
+          AppFormSection(
+            title: '分期设置',
             children: [
               AppPlainValueRow(
                 label: '账单',
@@ -155,7 +158,7 @@ class _BillConversionInstallmentFormPageState
                 items: billRepaymentAllocationModeItems,
                 onChanged: notifier.setAllocationMode,
               ),
-              _IntegerPlainFormRow(
+              AppPlainIntegerFormRow(
                 label: '期数',
                 controller: _totalPeriodsController,
                 hintText: '总期数',
@@ -207,14 +210,14 @@ class _BillConversionInstallmentFormPageState
                   label: '还款固定额',
                   controller: _overrideInstallmentController,
                   hintText: '前 n-1 期固定额（可选）',
-                  validator: _validateOptionalMoney,
+                  validator: validateOptionalNonNegativeMoneyText,
                 ),
               if (state.method == InstallmentRepaymentMethod.flatFee)
                 MoneyPlainFormRow(
                   label: '总手续费',
                   controller: _totalFeeController,
                   hintText: '所有期次手续费合计（可选）',
-                  validator: _validateOptionalMoney,
+                  validator: validateOptionalNonNegativeMoneyText,
                 ),
               NotePlainFormRow(controller: _noteController),
             ],
@@ -303,52 +306,10 @@ class _BillConversionInstallmentFormPageState
     );
   }
 
-  String? _validateOptionalMoney(String? value) {
-    final trimmed = value?.trim() ?? '';
-    if (trimmed.isEmpty) return null;
-    try {
-      final money = Money.parse(trimmed);
-      return money.minorUnits >= 0 ? null : '金额不能小于 0';
-    } on FormatException {
-      return '请输入有效金额';
-    }
-  }
-
   String? _validatePositiveInt(String? value) {
     final n = int.tryParse((value ?? '').trim());
     if (n == null || n <= 0) return '期数必须为正整数';
     return null;
-  }
-}
-
-class _IntegerPlainFormRow extends StatelessWidget {
-  const _IntegerPlainFormRow({
-    required this.label,
-    required this.controller,
-    required this.hintText,
-    this.validator,
-  });
-
-  final String label;
-  final TextEditingController controller;
-  final String hintText;
-  final String? Function(String?)? validator;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppPlainFormRow(
-      label: label,
-      child: TextFormField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        decoration: InputDecoration(
-          hintText: hintText,
-          isDense: true,
-          border: InputBorder.none,
-        ),
-        validator: validator,
-      ),
-    );
   }
 }
 

@@ -5,6 +5,7 @@ import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/design_system/widget/app_form_section.dart';
 import 'package:smartflow/feature/category/page/category_form_page.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 
@@ -29,6 +30,30 @@ void main() {
 
     expect(find.text('请输入分类名称'), findsWidgets);
     expect(service.createCommands, isEmpty);
+  });
+
+  testWidgets('uses whitespace sections instead of field dividers', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          categoryAppServiceProvider.overrideWith(
+            (ref) => _FakeCategoryAppService(),
+          ),
+          categoryTreeProvider(
+            AccountType.expense,
+          ).overrideWith((ref) => Stream.value(const <CategoryNode>[])),
+        ],
+        child: const MaterialApp(home: CategoryFormPage()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(AppFormSection), findsAtLeastNWidgets(3));
+    expect(find.byType(Divider), findsNothing);
   });
 }
 

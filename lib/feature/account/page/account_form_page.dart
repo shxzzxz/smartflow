@@ -3,14 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
+import '../../../design_system/widget/app_form_section.dart';
+import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
+import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/icon_choice_grid.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -120,109 +122,112 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
               ),
               if (!_isEditMode) ...[
                 _AccountKindTabs(kind: formState.kind, onChanged: _setKind),
-                const Divider(height: 1),
               ],
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.space28,
-                    AppSpacing.space24,
-                    AppSpacing.space28,
+                    AppSpacing.space20,
+                    AppSpacing.space16,
+                    AppSpacing.space20,
                     AppSpacing.space24,
                   ),
                   children: [
-                    IconChoiceGrid(
-                      choices: _accountIconGridItems,
-                      selectedKey: formState.iconKey,
-                      onChanged: notifier.setIconKey,
-                    ),
-                    const SizedBox(height: AppSpacing.space20),
-                    const Divider(height: 1),
-                    AppPlainFormRow(
-                      label: '账户名称',
-                      child: AppPlainTextFormField(
-                        controller: _nameController,
-                        hintText: '请输入账户名称',
-                        textInputAction: TextInputAction.next,
-                        validator:
-                            (value) =>
-                                value == null || value.trim().isEmpty
-                                    ? '请输入账户名称'
-                                    : null,
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    if (showsManualBalanceField(formState.kind)) ...[
-                      AppPlainFormRow(
-                        label: manualBalanceLabel(
-                          kind: formState.kind,
-                          isEdit: _isEditMode,
-                        ),
-                        child: AppPlainTextFormField(
-                          controller: _openingBalanceController,
-                          hintText: manualBalanceHint(
-                            kind: formState.kind,
-                            isEdit: _isEditMode,
-                          ),
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          validator: _validateMoney,
-                        ),
-                      ),
-                      const Divider(height: 1),
-                    ],
-                    if (isLiabilityAccountKind(formState.kind)) ...[
-                      AppPlainFormRow(
-                        label: '信用额度',
-                        child: AppPlainTextFormField(
-                          controller: _creditLimitController,
-                          hintText: '请输入信用额度（可选）',
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          validator: _validateOptionalMoney,
-                        ),
-                      ),
-                      const Divider(height: 1),
-                      if (formState.kind == AccountProfileKind.credit) ...[
-                        AppPlainFormRow(
-                          label: '出账还款日',
-                          child: _BillingRepaymentFields(
-                            billingDay: formState.billingDay,
-                            repaymentDay: formState.repaymentDay,
-                            onSelectBillingDay:
-                                () => _pickMonthlyDay(
-                                  title: '选择出账日',
-                                  selectedDay: formState.billingDay,
-                                  onChanged: notifier.setBillingDay,
-                                ),
-                            onSelectRepaymentDay:
-                                () => _pickMonthlyDay(
-                                  title: '选择还款日',
-                                  selectedDay: formState.repaymentDay,
-                                  onChanged: notifier.setRepaymentDay,
-                                ),
-                          ),
-                        ),
-                        const Divider(height: 1),
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('出账日交易计入下期'),
-                          value: formState.billingDayToNext,
-                          onChanged: notifier.setBillingDayToNext,
+                    AppFormSection(
+                      title: '账户图标',
+                      description: '选择一个容易识别的图标',
+                      children: [
+                        IconChoiceGrid(
+                          choices: _accountIconGridItems,
+                          selectedKey: formState.iconKey,
+                          onChanged: notifier.setIconKey,
                         ),
                       ],
-                      const Divider(height: 1),
-                    ],
-                    AppPlainFormRow(
-                      label: '备注',
-                      child: AppPlainTextFormField(
-                        controller: _noteController,
-                        hintText: '请输入备注（可选）',
-                      ),
                     ),
-                    const Divider(height: 1),
+                    const SizedBox(height: AppSpacing.space24),
+                    AppFormSection(
+                      title: '基本信息',
+                      children: [
+                        AppPlainTextFormRow(
+                          label: '账户名称',
+                          requiredIndicator: true,
+                          controller: _nameController,
+                          hintText: '请输入账户名称',
+                          textInputAction: TextInputAction.next,
+                          validator:
+                              (value) =>
+                                  value == null || value.trim().isEmpty
+                                      ? '请输入账户名称'
+                                      : null,
+                        ),
+                        if (showsManualBalanceField(formState.kind))
+                          MoneyPlainFormRow(
+                            label: manualBalanceLabel(
+                              kind: formState.kind,
+                              isEdit: _isEditMode,
+                            ),
+                            controller: _openingBalanceController,
+                            hintText: manualBalanceHint(
+                              kind: formState.kind,
+                              isEdit: _isEditMode,
+                            ),
+                            validator: validateNonNegativeMoneyText,
+                          ),
+                      ],
+                    ),
+                    if (isLiabilityAccountKind(formState.kind)) ...[
+                      const SizedBox(height: AppSpacing.space24),
+                      AppFormSection(
+                        title:
+                            formState.kind == AccountProfileKind.credit
+                                ? '信用设置'
+                                : '负债设置',
+                        children: [
+                          MoneyPlainFormRow(
+                            label: '信用额度',
+                            controller: _creditLimitController,
+                            hintText: '请输入信用额度（可选）',
+                            validator: validateOptionalNonNegativeMoneyText,
+                          ),
+                          if (formState.kind == AccountProfileKind.credit) ...[
+                            AppPlainFormRow(
+                              label: '出账还款日',
+                              child: _BillingRepaymentFields(
+                                billingDay: formState.billingDay,
+                                repaymentDay: formState.repaymentDay,
+                                onSelectBillingDay:
+                                    () => _pickMonthlyDay(
+                                      title: '选择出账日',
+                                      selectedDay: formState.billingDay,
+                                      onChanged: notifier.setBillingDay,
+                                    ),
+                                onSelectRepaymentDay:
+                                    () => _pickMonthlyDay(
+                                      title: '选择还款日',
+                                      selectedDay: formState.repaymentDay,
+                                      onChanged: notifier.setRepaymentDay,
+                                    ),
+                              ),
+                            ),
+                            AppPlainSwitchRow(
+                              label: '出账日计入下期',
+                              value: formState.billingDayToNext,
+                              onChanged: notifier.setBillingDayToNext,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.space24),
+                    AppFormSection(
+                      title: '其他',
+                      children: [
+                        AppPlainTextFormRow(
+                          label: '备注',
+                          controller: _noteController,
+                          hintText: '请输入备注（可选）',
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -231,19 +236,6 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
         ),
       ),
     );
-  }
-
-  String? _validateMoney(String? value) {
-    final money = Money.tryParse(value ?? '0');
-    if (money == null) return '请输入有效金额';
-    if (money.minorUnits < 0) return '请输入非负金额';
-    return null;
-  }
-
-  String? _validateOptionalMoney(String? value) {
-    final text = value?.trim() ?? '';
-    if (text.isEmpty) return null;
-    return _validateMoney(text);
   }
 
   Future<void> _pickMonthlyDay({

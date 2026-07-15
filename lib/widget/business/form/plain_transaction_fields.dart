@@ -1,79 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
+import 'package:smartflow/design_system/token/form.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
-import 'package:smartflow/design_system/widget/app_form_field.dart';
+import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_row.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 
 import '../icon/business_icon.dart';
-
-final moneyInputFormatter = FilteringTextInputFormatter.allow(
-  RegExp(r'^\d*\.?\d{0,2}'),
-);
-
-String appendMoneyInputText(String current, String input) {
-  if (input == '.') {
-    if (current.contains('.')) return current;
-    return current.isEmpty ? '0.' : '$current.';
-  }
-
-  if (input.length != 1 || !RegExp(r'^\d$').hasMatch(input)) {
-    return current;
-  }
-
-  final next = current == '0' ? input : '$current$input';
-  final decimalIndex = next.indexOf('.');
-  if (decimalIndex >= 0 && next.length - decimalIndex > 3) {
-    return current;
-  }
-  return next;
-}
-
-String deleteLastMoneyInputText(String current) {
-  if (current.isEmpty) return current;
-  return current.substring(0, current.length - 1);
-}
-
-String? validatePositiveMoneyText(
-  String? value, {
-  String invalidMessage = '请输入有效金额',
-  String nonPositiveMessage = '金额必须大于 0',
-}) {
-  final money = Money.tryParse(value);
-  if (money == null) return invalidMessage;
-  return money.minorUnits > 0 ? null : nonPositiveMessage;
-}
-
-String? validateNonNegativeMoneyText(
-  String? value, {
-  String invalidMessage = '请输入有效金额',
-  String negativeMessage = '金额不能小于 0',
-}) {
-  final money = Money.tryParse(value);
-  if (money == null) return invalidMessage;
-  return money.minorUnits >= 0 ? null : negativeMessage;
-}
-
-String? validateOptionalNonNegativeMoneyText(
-  String? value, {
-  String invalidMessage = '请输入有效金额',
-  String negativeMessage = '金额不能小于 0',
-}) {
-  final trimmed = value?.trim() ?? '';
-  if (trimmed.isEmpty) return null;
-  return validateNonNegativeMoneyText(
-    trimmed,
-    invalidMessage: invalidMessage,
-    negativeMessage: negativeMessage,
-  );
-}
-
-int? parseMoneyMinorUnitsOrNull(String? value) {
-  return Money.tryParse(value)?.minorUnits;
-}
 
 bool containsAccount(List<Account> accounts, String? accountId) {
   if (accountId == null) return false;
@@ -97,44 +32,6 @@ Account? effectiveAccount(String? selectedId, List<Account> accounts) {
   return findAccountById(effectiveAccountId(selectedId, accounts), accounts);
 }
 
-class MoneyPlainFormRow extends StatelessWidget {
-  const MoneyPlainFormRow({
-    required this.label,
-    required this.controller,
-    super.key,
-    this.hintText,
-    this.validator,
-    this.onChanged,
-    this.textAlign = TextAlign.left,
-    this.minHeight = 56,
-  });
-
-  final String label;
-  final TextEditingController controller;
-  final String? hintText;
-  final FormFieldValidator<String>? validator;
-  final ValueChanged<String>? onChanged;
-  final TextAlign textAlign;
-  final double minHeight;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppPlainFormRow(
-      label: label,
-      minHeight: minHeight,
-      child: AppPlainTextFormField(
-        controller: controller,
-        hintText: hintText,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [moneyInputFormatter],
-        validator: validator,
-        onChanged: onChanged,
-        textAlign: textAlign,
-      ),
-    );
-  }
-}
-
 class NotePlainFormRow extends StatelessWidget {
   const NotePlainFormRow({
     required this.controller,
@@ -142,7 +39,7 @@ class NotePlainFormRow extends StatelessWidget {
     this.label = '备注',
     this.hintText = '请输入备注（可选）',
     this.textAlign = TextAlign.left,
-    this.minHeight = 56,
+    this.minHeight = AppFormTokens.rowMinHeight,
   });
 
   final String label;
@@ -153,15 +50,13 @@ class NotePlainFormRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppPlainFormRow(
+    return AppPlainTextFormRow(
       label: label,
+      controller: controller,
+      hintText: hintText,
+      maxLines: 1,
+      textAlign: textAlign,
       minHeight: minHeight,
-      child: AppPlainTextFormField(
-        controller: controller,
-        hintText: hintText,
-        maxLines: 1,
-        textAlign: textAlign,
-      ),
     );
   }
 }
@@ -173,7 +68,7 @@ class DateTimePlainFormRow extends StatelessWidget {
     required this.onTap,
     super.key,
     this.valueAlignment = AppPlainRowValueAlignment.start,
-    this.minHeight = 56,
+    this.minHeight = AppFormTokens.rowMinHeight,
   });
 
   final String label;
@@ -184,9 +79,11 @@ class DateTimePlainFormRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppPlainValueRow(
+    return AppPlainSelectFormRow<String>(
       label: label,
       value: value,
+      valueText: value,
+      placeholder: value,
       onTap: onTap,
       valueAlignment: valueAlignment,
       minHeight: minHeight,
@@ -202,7 +99,7 @@ class DropdownPlainFormRow<T> extends StatelessWidget {
     required this.onChanged,
     super.key,
     this.isExpanded = true,
-    this.minHeight = 56,
+    this.minHeight = AppFormTokens.rowMinHeight,
   });
 
   final String label;
@@ -253,7 +150,7 @@ class ValueWithUnitPlainFormRow<T> extends StatelessWidget {
     this.keyboardType,
     this.inputFormatters,
     this.validator,
-    this.minHeight = 56,
+    this.minHeight = AppFormTokens.rowMinHeight,
   });
 
   final String label;

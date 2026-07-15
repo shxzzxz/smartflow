@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,10 +7,14 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
+import '../../../design_system/widget/app_form_field.dart';
+import '../../../design_system/widget/app_form_section.dart';
+import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
+import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
@@ -310,138 +313,108 @@ class _ConfigSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return AppFormSection(
+      title: '分期配置',
+      spacing: AppSpacing.space4,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space12,
+        vertical: AppSpacing.space4,
+      ),
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.space4,
-            0,
-            AppSpacing.space4,
-            AppSpacing.space4,
-          ),
-          child: Text('分期配置', style: styles.dateSectionTitle),
+        AppPlainFormRow(
+          label: '借款日期',
+          minHeight: _rowMinHeight,
+          child: _readOnly(context, _formatDate(contract.borrowingDate)),
         ),
-        AppSurface(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.space12,
-              vertical: AppSpacing.space4,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                AppPlainFormSection(
-                  children: [
-                    AppPlainFormRow(
-                      label: '借款日期',
-                      minHeight: _rowMinHeight,
-                      child: _readOnly(
-                        context,
-                        _formatDate(contract.borrowingDate),
-                      ),
-                    ),
-                    AppPlainFormRow(
-                      label: '分期类型',
-                      minHeight: _rowMinHeight,
-                      child: _readOnly(
-                        context,
-                        _sourceTypeLabel(contract.sourceType),
-                      ),
-                    ),
-                    AppPlainFormRow(
-                      label: '本金',
-                      minHeight: _rowMinHeight,
-                      child: _readOnly(context, contract.principal.format()),
-                    ),
-                    _IntegerPlainFormRow(
-                      label: '期数',
-                      controller: periodsController,
-                      hintText: '总期数',
-                      minHeight: _rowMinHeight,
-                      validator: (value) {
-                        final n = int.tryParse((value ?? '').trim());
-                        if (n == null || n <= 0) return '期数必须为正整数';
-                        if (n < paidCount + 1) {
-                          return '期数必须不小于已还期数 + 1（当前 ${paidCount + 1}）';
-                        }
-                        return null;
-                      },
-                    ),
-                    DateTimePlainFormRow(
-                      label: '首期还款日',
-                      value: _formatDate(firstRepaymentDate),
-                      onTap: onPickFirstDate,
-                      minHeight: _rowMinHeight,
-                    ),
-                    DateTimePlainFormRow(
-                      label: '末期还款日',
-                      value: _formatDate(lastRepaymentDate),
-                      onTap: onPickLastDate,
-                      minHeight: _rowMinHeight,
-                    ),
-                    DropdownPlainFormRow<InstallmentRepaymentMethod>(
-                      label: '分期方式',
-                      value: method,
-                      items: installmentRepaymentMethodItems,
-                      onChanged: onMethodChanged,
-                      minHeight: _rowMinHeight,
-                    ),
-                    if (method != InstallmentRepaymentMethod.flatFee &&
-                        method != InstallmentRepaymentMethod.custom)
-                      DropdownPlainFormRow<InterestAccrualMethod>(
-                        label: '计息方式',
-                        value: accrualMethod,
-                        items: interestAccrualMethodItems,
-                        onChanged: onAccrualMethodChanged,
-                        minHeight: _rowMinHeight,
-                      ),
-                    if (method != InstallmentRepaymentMethod.flatFee &&
-                        method != InstallmentRepaymentMethod.custom)
-                      ValueWithUnitPlainFormRow<InterestRatePeriod>(
-                        label: '利率(%)',
-                        controller: rateController,
-                        hintText: '例：7.2',
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        unit: ratePeriod,
-                        unitItems: interestRatePeriodItems,
-                        onUnitChanged: onRatePeriodChanged,
-                        minHeight: _rowMinHeight,
-                      ),
-                    if (method == InstallmentRepaymentMethod.flatFee)
-                      MoneyPlainFormRow(
-                        label: '总手续费',
-                        controller: feeController,
-                        hintText: '各期合计（可选）',
-                        minHeight: _rowMinHeight,
-                      ),
-                    if (method == InstallmentRepaymentMethod.equalInstallment)
-                      MoneyPlainFormRow(
-                        label: '还款固定额',
-                        controller: overrideInstallmentController,
-                        hintText: '前 n-1 期固定额（可选）',
-                        minHeight: _rowMinHeight,
-                      ),
-                  ],
-                ),
-                Divider(
-                  height: 1,
-                  color: colors.outlineVariant.withValues(alpha: 0.55),
-                ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: onRecalculate,
-                    icon: const Icon(Icons.refresh, size: 18),
-                    label: const Text('按配置重算'),
-                  ),
-                ),
-              ],
-            ),
+        AppPlainFormRow(
+          label: '分期类型',
+          minHeight: _rowMinHeight,
+          child: _readOnly(context, _sourceTypeLabel(contract.sourceType)),
+        ),
+        AppPlainFormRow(
+          label: '本金',
+          minHeight: _rowMinHeight,
+          child: _readOnly(context, contract.principal.format()),
+        ),
+        AppPlainIntegerFormRow(
+          label: '期数',
+          controller: periodsController,
+          hintText: '总期数',
+          minHeight: _rowMinHeight,
+          validator: (value) {
+            final n = int.tryParse((value ?? '').trim());
+            if (n == null || n <= 0) return '期数必须为正整数';
+            if (n < paidCount + 1) {
+              return '期数必须不小于已还期数 + 1（当前 ${paidCount + 1}）';
+            }
+            return null;
+          },
+        ),
+        DateTimePlainFormRow(
+          label: '首期还款日',
+          value: _formatDate(firstRepaymentDate),
+          onTap: onPickFirstDate,
+          minHeight: _rowMinHeight,
+        ),
+        DateTimePlainFormRow(
+          label: '末期还款日',
+          value: _formatDate(lastRepaymentDate),
+          onTap: onPickLastDate,
+          minHeight: _rowMinHeight,
+        ),
+        DropdownPlainFormRow<InstallmentRepaymentMethod>(
+          label: '分期方式',
+          value: method,
+          items: installmentRepaymentMethodItems,
+          onChanged: onMethodChanged,
+          minHeight: _rowMinHeight,
+        ),
+        if (method != InstallmentRepaymentMethod.flatFee &&
+            method != InstallmentRepaymentMethod.custom)
+          DropdownPlainFormRow<InterestAccrualMethod>(
+            label: '计息方式',
+            value: accrualMethod,
+            items: interestAccrualMethodItems,
+            onChanged: onAccrualMethodChanged,
+            minHeight: _rowMinHeight,
+          ),
+        if (method != InstallmentRepaymentMethod.flatFee &&
+            method != InstallmentRepaymentMethod.custom)
+          ValueWithUnitPlainFormRow<InterestRatePeriod>(
+            label: '利率(%)',
+            controller: rateController,
+            hintText: '例：7.2',
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            unit: ratePeriod,
+            unitItems: interestRatePeriodItems,
+            onUnitChanged: onRatePeriodChanged,
+            minHeight: _rowMinHeight,
+          ),
+        if (method == InstallmentRepaymentMethod.flatFee)
+          MoneyPlainFormRow(
+            label: '总手续费',
+            controller: feeController,
+            hintText: '各期合计（可选）',
+            minHeight: _rowMinHeight,
+          ),
+        if (method == InstallmentRepaymentMethod.equalInstallment)
+          MoneyPlainFormRow(
+            label: '还款固定额',
+            controller: overrideInstallmentController,
+            hintText: '前 n-1 期固定额（可选）',
+            minHeight: _rowMinHeight,
+          ),
+        Divider(
+          height: 1,
+          color: colors.outlineVariant.withValues(alpha: 0.55),
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: onRecalculate,
+            icon: const Icon(Icons.refresh, size: 18),
+            label: const Text('按配置重算'),
           ),
         ),
       ],
@@ -784,20 +757,14 @@ class _EditableMoneyCellState extends State<_EditableMoneyCell> {
           borderRadius: BorderRadius.circular(AppRadius.radiusSm),
         ),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space2),
-        child: TextField(
+        child: AppPlainTextFormField(
           controller: _controller,
           focusNode: _focusNode,
           textAlign: TextAlign.right,
           style: widget.style,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           textInputAction: TextInputAction.done,
-          decoration: const InputDecoration(
-            isDense: true,
-            contentPadding: EdgeInsets.symmetric(vertical: AppSpacing.space6),
-            border: InputBorder.none,
-            isCollapsed: false,
-          ),
-          onSubmitted: (_) => _commit(),
+          onFieldSubmitted: (_) => _commit(),
         ),
       );
     }
@@ -989,41 +956,6 @@ class _MetricCell extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
       ],
-    );
-  }
-}
-
-class _IntegerPlainFormRow extends StatelessWidget {
-  const _IntegerPlainFormRow({
-    required this.label,
-    required this.controller,
-    required this.hintText,
-    this.validator,
-    this.minHeight = 56,
-  });
-
-  final String label;
-  final TextEditingController controller;
-  final String hintText;
-  final String? Function(String?)? validator;
-  final double minHeight;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppPlainFormRow(
-      label: label,
-      minHeight: minHeight,
-      child: TextFormField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        decoration: InputDecoration(
-          hintText: hintText,
-          isDense: true,
-          border: InputBorder.none,
-        ),
-        validator: validator,
-      ),
     );
   }
 }

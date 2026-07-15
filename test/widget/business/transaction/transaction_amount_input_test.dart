@@ -1,0 +1,44 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/widget/business/finance/money_input.dart';
+import 'package:smartflow/widget/business/finance/money_text.dart';
+import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
+
+void main() {
+  testWidgets('participates in validation and edits the note', (tester) async {
+    final formKey = GlobalKey<FormState>();
+    final amountController = TextEditingController();
+    final noteController = TextEditingController();
+    addTearDown(amountController.dispose);
+    addTearDown(noteController.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Form(
+            key: formKey,
+            child: TransactionAmountInput(
+              amountController: amountController,
+              noteController: noteController,
+              semantic: MoneySemantic.expense,
+              amountValidator: validatePositiveMoneyText,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(formKey.currentState!.validate(), false);
+    await tester.pump();
+    expect(find.text('请输入有效金额'), findsOneWidget);
+
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('transaction-note-input')),
+        matching: find.byType(TextFormField),
+      ),
+      '午餐',
+    );
+    expect(noteController.text, '午餐');
+  });
+}

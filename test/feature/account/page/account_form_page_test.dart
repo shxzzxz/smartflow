@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/design_system/widget/app_form_section.dart';
 import 'package:smartflow/feature/account/page/account_form_page.dart';
 
 void main() {
@@ -21,6 +22,26 @@ void main() {
 
     expect(find.text('请输入账户名称'), findsWidgets);
     expect(service.createCommands, isEmpty);
+  });
+
+  testWidgets('uses whitespace sections instead of field dividers', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          accountAppServiceProvider.overrideWith(
+            (ref) => _FakeAccountAppService(),
+          ),
+        ],
+        child: const MaterialApp(home: AccountFormPage()),
+      ),
+    );
+
+    expect(find.byType(AppFormSection), findsAtLeastNWidgets(3));
+    expect(find.byType(Divider), findsNothing);
   });
 }
 

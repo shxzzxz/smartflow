@@ -7,9 +7,11 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
+import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
+import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -93,7 +95,8 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
         children: [
           const AppPageHeader(title: '退款', showBackButton: true),
           const SizedBox(height: AppSpacing.space14),
-          AppPlainFormSection(
+          AppFormSection(
+            title: '退款信息',
             children: [
               if (state.remaining != null)
                 AppPlainValueRow(

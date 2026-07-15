@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_text_styles.dart';
+import '../token/form.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
 
@@ -10,7 +11,7 @@ class AppPlainFormSection extends StatelessWidget {
   const AppPlainFormSection({
     required this.children,
     super.key,
-    this.spacing = 0,
+    this.spacing = AppSpacing.space4,
   });
 
   final List<Widget> children;
@@ -35,8 +36,11 @@ class AppPlainFormRow extends StatelessWidget {
     required this.child,
     super.key,
     this.onTap,
-    this.labelWidth = 92,
-    this.minHeight = 56,
+    this.enabled = true,
+    this.requiredIndicator = false,
+    this.supportingText,
+    this.labelWidth = AppFormTokens.labelWidth,
+    this.minHeight = AppFormTokens.rowMinHeight,
     this.crossAxisAlignment = CrossAxisAlignment.center,
     this.errorText,
   });
@@ -44,6 +48,9 @@ class AppPlainFormRow extends StatelessWidget {
   final String label;
   final Widget child;
   final VoidCallback? onTap;
+  final bool enabled;
+  final bool requiredIndicator;
+  final String? supportingText;
   final double labelWidth;
   final double minHeight;
   final CrossAxisAlignment crossAxisAlignment;
@@ -52,6 +59,7 @@ class AppPlainFormRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final message = errorText ?? supportingText;
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -62,32 +70,61 @@ class AppPlainFormRow extends StatelessWidget {
             children: [
               SizedBox(
                 width: labelWidth,
-                child: Text(label, style: context.appTextStyles.formValue),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        label,
+                        style: context.appTextStyles.formLabel,
+                      ),
+                    ),
+                    if (requiredIndicator) ...[
+                      const SizedBox(width: AppSpacing.space2),
+                      Text(
+                        '*',
+                        style: context.appTextStyles.formLabel.copyWith(
+                          color: colors.error,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
               Expanded(child: child),
             ],
           ),
         ),
-        if (errorText != null) ...[
+        if (message != null) ...[
           const SizedBox(height: AppSpacing.space2),
           Padding(
             padding: EdgeInsets.only(left: labelWidth),
             child: Text(
-              errorText!,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: colors.error),
+              message,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color:
+                    errorText == null ? colors.onSurfaceVariant : colors.error,
+              ),
             ),
           ),
         ],
       ],
     );
 
-    if (onTap == null) return content;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-      child: content,
+    final interactive =
+        onTap == null
+            ? content
+            : InkWell(
+              onTap: enabled ? onTap : null,
+              borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+              child: content,
+            );
+    if (enabled) return interactive;
+    return IgnorePointer(
+      child: Opacity(
+        opacity: AppFormTokens.disabledOpacity,
+        child: interactive,
+      ),
     );
   }
 }
@@ -102,8 +139,8 @@ class AppPlainValueRow extends StatelessWidget {
     this.enabled = true,
     this.valueAlignment = AppPlainRowValueAlignment.end,
     this.valueColor,
-    this.labelWidth = 92,
-    this.minHeight = 56,
+    this.labelWidth = AppFormTokens.labelWidth,
+    this.minHeight = AppFormTokens.rowMinHeight,
     this.maxLines = 1,
   }) : assert(value != null || child != null);
 
@@ -137,6 +174,7 @@ class AppPlainValueRow extends StatelessWidget {
       label: label,
       labelWidth: labelWidth,
       minHeight: minHeight,
+      enabled: enabled,
       onTap: enabled ? onTap : null,
       child: Align(
         alignment:
@@ -155,7 +193,7 @@ class AppPlainSwitchRow extends StatelessWidget {
     required this.value,
     required this.onChanged,
     super.key,
-    this.labelWidth = 92,
+    this.labelWidth = AppFormTokens.labelWidth,
   });
 
   final String label;
@@ -168,7 +206,7 @@ class AppPlainSwitchRow extends StatelessWidget {
     return AppPlainFormRow(
       label: label,
       labelWidth: labelWidth,
-      minHeight: 56,
+      minHeight: AppFormTokens.rowMinHeight,
       child: Align(
         alignment: Alignment.centerRight,
         child: Switch(

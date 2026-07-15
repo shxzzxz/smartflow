@@ -8,7 +8,8 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_form_field.dart';
-import '../../../design_system/widget/app_plain_form_row.dart';
+import '../../../design_system/widget/app_form_section.dart';
+import '../../../design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/icon_choice_grid.dart';
 import '../../shared/provider/ledger_query_providers.dart';
@@ -155,53 +156,64 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
               ),
               if (!_isEditMode) ...[
                 _TypeTabs(type: formState.type, onChanged: notifier.setType),
-                const Divider(height: 1),
               ],
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.space28,
-                    AppSpacing.space24,
-                    AppSpacing.space28,
+                    AppSpacing.space20,
+                    AppSpacing.space16,
+                    AppSpacing.space20,
                     AppSpacing.space24,
                   ),
                   children: [
-                    IconChoiceGrid(
-                      choices: _categoryIconGridItemsForType(formState.type),
-                      selectedKey: formState.iconKey,
-                      onChanged: notifier.setIconKey,
+                    AppFormSection(
+                      title: '分类图标',
+                      description: '图标会用于记账和统计展示',
+                      children: [
+                        IconChoiceGrid(
+                          choices: _categoryIconGridItemsForType(
+                            formState.type,
+                          ),
+                          selectedKey: formState.iconKey,
+                          onChanged: notifier.setIconKey,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: AppSpacing.space20),
-                    const Divider(height: 1),
-                    AppPlainFormRow(
-                      label: '分类名称',
-                      child: AppPlainTextFormField(
-                        controller: _nameController,
-                        hintText: '请输入分类名称',
-                        validator:
-                            (value) =>
-                                value == null || value.trim().isEmpty
-                                    ? '请输入分类名称'
-                                    : null,
-                      ),
+                    const SizedBox(height: AppSpacing.space24),
+                    AppFormSection(
+                      title: '基本信息',
+                      children: [
+                        AppPlainTextFormRow(
+                          label: '分类名称',
+                          requiredIndicator: true,
+                          controller: _nameController,
+                          hintText: '请输入分类名称',
+                          validator:
+                              (value) =>
+                                  value == null || value.trim().isEmpty
+                                      ? '请输入分类名称'
+                                      : null,
+                        ),
+                        AppPlainSelectFormRow<String>(
+                          label: '父分类',
+                          value: formState.parentId ?? '',
+                          valueText: effectiveParent?.name ?? '无',
+                          placeholder: '无',
+                          onTap: () => _showParentSheet(parentOptions),
+                        ),
+                      ],
                     ),
-                    const Divider(height: 1),
-                    AppPlainFormRow(
-                      label: '父分类',
-                      onTap: () => _showParentSheet(parentOptions),
-                      child: AppPlainValueText(
-                        text: effectiveParent?.name ?? '无',
-                      ),
+                    const SizedBox(height: AppSpacing.space24),
+                    AppFormSection(
+                      title: '其他',
+                      children: [
+                        AppPlainTextFormRow(
+                          label: '备注',
+                          controller: _noteController,
+                          hintText: '请输入备注（可选）',
+                        ),
+                      ],
                     ),
-                    const Divider(height: 1),
-                    AppPlainFormRow(
-                      label: '备注',
-                      child: AppPlainTextFormField(
-                        controller: _noteController,
-                        hintText: '请输入备注（可选）',
-                      ),
-                    ),
-                    const Divider(height: 1),
                   ],
                 ),
               ),
