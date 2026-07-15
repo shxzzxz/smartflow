@@ -50,42 +50,31 @@ void main() {
     expect(find.text('查看全部'), findsNothing);
   });
 
-  testWidgets('does not show unattributed repayment records', (tester) async {
+  testWidgets('does not calculate available credit before overview loads', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(480, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
       _app(
-        account: _account(kind: AccountProfileKind.credit),
-        creditOverview: AccountCreditOverviewState.loaded(
-          overview: CreditAccountOverviewReadModel(
-            creditAccount: const CreditLiabilityAccountReadModel(
-              id: 'credit-account',
-              accountId: 'account',
-              kind: CreditLiabilityAccountKind.credit,
-              billingDayToNext: true,
-            ),
-            liabilityBalance: Money.zero(),
-            buckets: const CreditDebtBucketsReadModel(
-              billDebt: Money(minorUnits: 0),
-              futureContractDebt: Money(minorUnits: 0),
-              unattributedDebt: Money(minorUnits: 0),
-            ),
-            unattributedRepayments: [
-              CreditRepaymentRecordReadModel(
-                id: 'repayment',
-                repaymentType: RepaymentType.unattributed,
-                allocated: RepaymentAmountBreakdown.zero,
-                displayTime: DateTime(2026, 7, 14),
-                timeSource: CreditRepaymentTimeSource.recordCreatedAt,
-              ),
-            ],
-          ),
+        account: AccountView(
+          id: 'account',
+          name: '测试账户',
+          kind: AccountProfileKind.credit,
+          balance: const Money(minorUnits: 20000),
+          iconKey: AccountProfileKind.credit.iconKey,
+          isArchived: false,
+          creditLimit: const Money(minorUnits: 100000),
+          billingDay: 5,
+          repaymentDay: 25,
+          billingDayToNext: true,
         ),
+        creditOverview: const AccountCreditOverviewState.loading(),
       ),
     );
 
-    expect(find.text('未归属还款记录'), findsNothing);
+    expect(find.textContaining('800.00'), findsNothing);
   });
 
   testWidgets('opens the full bill list from the bill section header', (

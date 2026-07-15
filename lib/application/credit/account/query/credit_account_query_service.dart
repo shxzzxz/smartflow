@@ -1,7 +1,6 @@
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
 import 'package:smartflow/domain/credit/entity/credit_liability_account.dart';
-import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
@@ -11,7 +10,6 @@ import 'package:smartflow/domain/credit/service/debt/credit_debt_bucket_service.
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
-import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 import 'credit_account_queries.dart';
 import 'credit_account_read_models.dart';
@@ -86,10 +84,6 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
       installments: _installments,
       repayments: _repayments,
     );
-    final repayments = await _repayments.listByTarget(
-      RepaymentTargetType.account,
-      accountId,
-    );
     return CreditAccountOverviewReadModel(
       creditAccount: _accountReadModel(creditAccount),
       liabilityBalance: account.balance,
@@ -102,10 +96,6 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
         futureContractDebt: domainBuckets.futureContractDebt,
         unattributedDebt: domainBuckets.unattributedDebt,
       ),
-      unattributedRepayments: [
-        for (final repayment in repayments)
-          await _repaymentRecord(repayment, fallbackTime: DateTime.now()),
-      ],
     );
   }
 
@@ -233,35 +223,6 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
     }
     result.sort((a, b) => a.accountId.compareTo(b.accountId));
     return result;
-  }
-
-  Future<CreditRepaymentRecordReadModel> _repaymentRecord(
-    Repayment repayment, {
-    required DateTime fallbackTime,
-  }) async {
-    final rootTransactionId = repayment.rootTransactionId;
-    final detail =
-        rootTransactionId == null
-            ? null
-            : await _ledger.findCurrentParentTransactionByRoot(
-              rootTransactionId,
-            );
-    final usesTransaction = detail != null;
-    return CreditRepaymentRecordReadModel(
-      id: repayment.id,
-      repaymentType: repayment.repaymentType,
-      allocated: repayment.totalAllocated(),
-      displayTime:
-          usesTransaction
-              ? detail.occurredAt
-              : repayment.createdAt ?? fallbackTime,
-      timeSource:
-          usesTransaction
-              ? CreditRepaymentTimeSource.transaction
-              : CreditRepaymentTimeSource.recordCreatedAt,
-      rootTransactionId: rootTransactionId,
-      paidFromAccountId: usesTransaction ? detail.paidFromAccountId : null,
-    );
   }
 
   Future<List<CreditLiabilityAccount>> _matchingCreditAccounts(

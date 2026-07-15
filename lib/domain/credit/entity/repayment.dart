@@ -75,6 +75,13 @@ class Repayment {
             'Bill conversion installment repayment must not have ledger transaction.',
       );
     }
+    if (repaymentType == RepaymentType.unattributed &&
+        rootTransactionId == null) {
+      throw BusinessException(
+        CreditErrorCode.repaymentInvalidCommand,
+        message: 'Unattributed repayment must have ledger transaction.',
+      );
+    }
     _ensureItemsValid();
   }
 

@@ -116,7 +116,7 @@ void main() {
           allocations: [
             BillRepaymentAllocation(
               billItemId: openItemId,
-              allocated: RepaymentAmountBreakdown(
+              allocated: RepaymentAmountDto(
                 principal: const Money(minorUnits: 10000),
                 interest: Money.zero(),
                 fee: Money.zero(),
@@ -161,7 +161,7 @@ void main() {
             allocations: [
               BillRepaymentAllocation(
                 billItemId: june.items.single.id,
-                allocated: RepaymentAmountBreakdown(
+                allocated: RepaymentAmountDto(
                   principal: const Money(minorUnits: 5000),
                   interest: Money.zero(),
                   fee: Money.zero(),
@@ -256,7 +256,7 @@ void main() {
                 allocations: [
                   BillRepaymentAllocation(
                     billItemId: june.items.single.id,
-                    allocated: RepaymentAmountBreakdown(
+                    allocated: RepaymentAmountDto(
                       principal: const Money(minorUnits: 5000),
                       interest: Money.zero(),
                       fee: Money.zero(),

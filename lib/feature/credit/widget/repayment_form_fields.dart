@@ -106,7 +106,7 @@ class CreditRepaymentTransactionFields extends StatelessWidget {
   });
 
   final bool createTransaction;
-  final ValueChanged<bool> onCreateTransactionChanged;
+  final ValueChanged<bool>? onCreateTransactionChanged;
   final String occurredAtText;
   final VoidCallback onPickDate;
   final Account? repaymentAccount;
@@ -118,11 +118,12 @@ class CreditRepaymentTransactionFields extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        AppPlainSwitchRow(
-          label: '生成交易',
-          value: createTransaction,
-          onChanged: onCreateTransactionChanged,
-        ),
+        if (onCreateTransactionChanged != null)
+          AppPlainSwitchRow(
+            label: '生成交易',
+            value: createTransaction,
+            onChanged: onCreateTransactionChanged!,
+          ),
         if (createTransaction) ...[
           DateTimePlainFormRow(
             label: '还款日期',

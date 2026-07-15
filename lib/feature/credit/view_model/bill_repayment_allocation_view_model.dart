@@ -10,14 +10,14 @@ class BillRepaymentAllocationLine {
     required this.billItemId,
     required this.itemType,
     required this.expected,
-    this.alreadyAllocated = credit.RepaymentAmountBreakdown.zero,
+    this.alreadyAllocated = credit.RepaymentAmountDto.zero,
     this.label = '',
   });
 
   final String billItemId;
   final credit.BillItemType itemType;
   final credit.RepaymentAmountBreakdown expected;
-  final credit.RepaymentAmountBreakdown alreadyAllocated;
+  final credit.RepaymentAmountDto alreadyAllocated;
   final String label;
 
   int get remainingPrincipal => _remaining(
@@ -153,7 +153,7 @@ class BillRepaymentAllocationViewModel {
     for (final allocation in allocations) {
       final line = byId[allocation.billItemId];
       final allocated = allocation.allocated;
-      if (line == null || allocated.hasNegativePart) {
+      if (line == null || _hasNegativeAmount(allocated)) {
         hasOverAllocation = true;
         continue;
       }
@@ -224,7 +224,7 @@ class _MutableAllocationDraft {
         if (!_items[id]!.isZero)
           credit.BillRepaymentAllocation(
             billItemId: id,
-            allocated: _items[id]!.toBreakdown(),
+            allocated: _items[id]!.toDto(),
           ),
     ];
   }
@@ -239,8 +239,8 @@ class _MutableBreakdown {
   bool get isZero =>
       principal == 0 && interest == 0 && fee == 0 && discount == 0;
 
-  credit.RepaymentAmountBreakdown toBreakdown() {
-    return credit.RepaymentAmountBreakdown(
+  credit.RepaymentAmountDto toDto() {
+    return credit.RepaymentAmountDto(
       principal: Money(minorUnits: principal),
       interest: Money(minorUnits: interest),
       fee: Money(minorUnits: fee),
@@ -325,7 +325,14 @@ credit.RepaymentAmountBreakdown _total(
 ) {
   return allocations.fold(
     credit.RepaymentAmountBreakdown.zero,
-    (sum, allocation) => sum + allocation.allocated,
+    (sum, allocation) =>
+        sum +
+        credit.RepaymentAmountBreakdown(
+          principal: allocation.allocated.principal,
+          interest: allocation.allocated.interest,
+          fee: allocation.allocated.fee,
+          discount: allocation.allocated.discount,
+        ),
   );
 }
 
@@ -339,4 +346,11 @@ credit.RepaymentAmountBreakdown _subtract(
     fee: left.fee - right.fee,
     discount: left.discount - right.discount,
   );
+}
+
+bool _hasNegativeAmount(credit.RepaymentAmountDto amount) {
+  return amount.principal.minorUnits < 0 ||
+      amount.interest.minorUnits < 0 ||
+      amount.fee.minorUnits < 0 ||
+      amount.discount.minorUnits < 0;
 }

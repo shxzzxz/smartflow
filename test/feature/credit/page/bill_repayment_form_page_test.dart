@@ -96,7 +96,7 @@ credit_query.BillDetailReadModel _billDetailWithTwoConsumptionItems() {
         expectedPrincipal: const Money(minorUnits: 5000),
         expectedInterest: Money.zero(),
         expectedFee: Money.zero(),
-        allocated: credit_query.RepaymentAmountBreakdown.zero,
+        allocated: credit_query.RepaymentAmountDto.zero,
         isOverdue: false,
       ),
       credit_query.BillItemReadModel(
@@ -107,7 +107,7 @@ credit_query.BillDetailReadModel _billDetailWithTwoConsumptionItems() {
         expectedPrincipal: const Money(minorUnits: 5000),
         expectedInterest: Money.zero(),
         expectedFee: Money.zero(),
-        allocated: credit_query.RepaymentAmountBreakdown.zero,
+        allocated: credit_query.RepaymentAmountDto.zero,
         isOverdue: false,
       ),
     ],

@@ -18,81 +18,71 @@ import '../../helper/test_app_database.dart';
 
 void main() {
   group('CreditAccountQueryService', () {
-    test(
-      'derives debt buckets, available credit, and unattributed records',
-      () async {
-        final fixture = _Fixture();
-        addTearDown(fixture.close);
-        await fixture.seedCreditAccount(
-          balance: 10000,
-          creditLimit: const Money(minorUnits: 15000),
-        );
-        final schedules = await fixture.seedContract(
-          principal: 5000,
-          schedulePrincipals: [2000, 3000],
-        );
-        await fixture.seedBill(
-          id: 'bill-billed',
-          status: credit.BillStatus.billed,
+    test('derives debt buckets and available credit', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      await fixture.seedCreditAccount(
+        balance: 10000,
+        creditLimit: const Money(minorUnits: 15000),
+      );
+      final schedules = await fixture.seedContract(
+        principal: 5000,
+        schedulePrincipals: [2000, 3000],
+      );
+      await fixture.seedBill(
+        id: 'bill-billed',
+        status: credit.BillStatus.billed,
+        items: [
+          _BillItemSeed.consumption(id: 'bill-consumption', principal: 3000),
+          _BillItemSeed.installment(
+            id: 'bill-installment',
+            principal: 2000,
+            contractId: schedules.contractId,
+            scheduleId: schedules.scheduleIds[0],
+          ),
+        ],
+      );
+      await fixture.seedBill(
+        id: 'bill-open',
+        period: credit.BillPeriod(year: 2026, month: 8),
+        status: credit.BillStatus.open,
+        items: [
+          _BillItemSeed.consumption(id: 'open-consumption', principal: 1000),
+        ],
+      );
+      await fixture.repayments.saveRepayment(
+        Repayment(
+          id: 'unattributed-1',
+          repaymentType: credit.RepaymentType.unattributed,
+          targetType: credit.RepaymentTargetType.account,
+          targetId: 'credit-1',
+          rootTransactionId: 'tx-root',
           items: [
-            _BillItemSeed.consumption(id: 'bill-consumption', principal: 3000),
-            _BillItemSeed.installment(
-              id: 'bill-installment',
-              principal: 2000,
-              contractId: schedules.contractId,
-              scheduleId: schedules.scheduleIds[0],
+            RepaymentItem(
+              id: 'unattributed-item-1',
+              repaymentId: 'unattributed-1',
+              allocated: credit.RepaymentAmountBreakdown(
+                principal: const Money(minorUnits: 500),
+                interest: Money.zero(),
+                fee: Money.zero(),
+                discount: Money.zero(),
+              ),
             ),
           ],
-        );
-        await fixture.seedBill(
-          id: 'bill-open',
-          period: credit.BillPeriod(year: 2026, month: 8),
-          status: credit.BillStatus.open,
-          items: [
-            _BillItemSeed.consumption(id: 'open-consumption', principal: 1000),
-          ],
-        );
-        await fixture.repayments.saveRepayment(
-          Repayment(
-            id: 'unattributed-1',
-            repaymentType: credit.RepaymentType.unattributed,
-            targetType: credit.RepaymentTargetType.account,
-            targetId: 'credit-1',
-            items: [
-              RepaymentItem(
-                id: 'unattributed-item-1',
-                repaymentId: 'unattributed-1',
-                allocated: credit.RepaymentAmountBreakdown(
-                  principal: const Money(minorUnits: 500),
-                  interest: Money.zero(),
-                  fee: Money.zero(),
-                  discount: Money.zero(),
-                ),
-              ),
-            ],
-          ),
-        );
+        ),
+      );
 
-        final overview = await fixture.query.findOverview('credit-1');
+      final overview = await fixture.query.findOverview('credit-1');
 
-        expect(overview!.liabilityBalance, const Money(minorUnits: 10000));
-        expect(overview.availableCredit, const Money(minorUnits: 5000));
-        expect(overview.buckets.billDebt, const Money(minorUnits: 6000));
-        expect(
-          overview.buckets.futureContractDebt,
-          const Money(minorUnits: 3000),
-        );
-        expect(
-          overview.buckets.unattributedDebt,
-          const Money(minorUnits: 1000),
-        );
-        expect(overview.unattributedRepayments, hasLength(1));
-        expect(
-          overview.unattributedRepayments.single.timeSource,
-          credit.CreditRepaymentTimeSource.recordCreatedAt,
-        );
-      },
-    );
+      expect(overview!.liabilityBalance, const Money(minorUnits: 10000));
+      expect(overview.availableCredit, const Money(minorUnits: 5000));
+      expect(overview.buckets.billDebt, const Money(minorUnits: 6000));
+      expect(
+        overview.buckets.futureContractDebt,
+        const Money(minorUnits: 3000),
+      );
+      expect(overview.buckets.unattributedDebt, const Money(minorUnits: 1000));
+    });
 
     test('lists due calendar items and monthly bill summaries', () async {
       final fixture = _Fixture();

@@ -120,15 +120,12 @@ class _BillDetailContent extends StatelessWidget {
       ),
       children: [
         _SummarySurface(summary: summary),
-        if (_hasBillActions(detail)) ...[
-          const SizedBox(height: AppSpacing.space8),
-          _BillActionBar(
-            detail: detail,
-            onRepay: onRepay,
-            onInstallment: onInstallment,
-            onSync: onSync,
-          ),
-        ],
+        const SizedBox(height: AppSpacing.space8),
+        _BillActionBar(
+          onRepay: onRepay,
+          onInstallment: onInstallment,
+          onSync: onSync,
+        ),
         const SizedBox(height: AppSpacing.space8),
         Text('明细', style: context.appTextStyles.dateSectionTitle),
         const SizedBox(height: AppSpacing.space4),
@@ -242,13 +239,11 @@ class _SummarySurface extends StatelessWidget {
 
 class _BillActionBar extends StatelessWidget {
   const _BillActionBar({
-    required this.detail,
     required this.onRepay,
     required this.onInstallment,
     required this.onSync,
   });
 
-  final BillDetailReadModel detail;
   final VoidCallback onRepay;
   final VoidCallback onInstallment;
   final VoidCallback onSync;
@@ -263,38 +258,29 @@ class _BillActionBar extends StatelessWidget {
         ),
         child: Row(
           children: [
-            if (detail.summary.pendingPrincipal.minorUnits > 0) ...[
-              Expanded(
-                child: _ActionButton(
-                  icon: RemixIcons.bank_card_line,
-                  label: '还款',
-                  onTap: onRepay,
-                ),
+            Expanded(
+              child: _ActionButton(
+                icon: RemixIcons.bank_card_line,
+                label: '还款',
+                onTap: onRepay,
               ),
-            ],
-            if (_canConvertToInstallment(detail)) ...[
-              if (detail.summary.pendingPrincipal.minorUnits > 0)
-                const SizedBox(width: AppSpacing.space6),
-              Expanded(
-                child: _ActionButton(
-                  icon: RemixIcons.calendar_schedule_line,
-                  label: '账单分期',
-                  onTap: onInstallment,
-                ),
+            ),
+            const SizedBox(width: AppSpacing.space6),
+            Expanded(
+              child: _ActionButton(
+                icon: RemixIcons.calendar_schedule_line,
+                label: '账单分期',
+                onTap: onInstallment,
               ),
-            ],
-            if (_canRefreshBill(detail)) ...[
-              if (detail.summary.pendingPrincipal.minorUnits > 0 ||
-                  _canConvertToInstallment(detail))
-                const SizedBox(width: AppSpacing.space6),
-              Expanded(
-                child: _ActionButton(
-                  icon: RemixIcons.refresh_line,
-                  label: '刷新',
-                  onTap: onSync,
-                ),
+            ),
+            const SizedBox(width: AppSpacing.space6),
+            Expanded(
+              child: _ActionButton(
+                icon: RemixIcons.refresh_line,
+                label: '刷新',
+                onTap: onSync,
               ),
-            ],
+            ),
           ],
         ),
       ),
@@ -504,26 +490,6 @@ String _itemStatusLabel(BillItemReadModel item) {
     BillItemStatus.paid => '已核销',
     BillItemStatus.skipped => '已跳过',
   };
-}
-
-bool _canConvertToInstallment(BillDetailReadModel detail) {
-  return detail.summary.status == BillStatus.billed &&
-      detail.items.any(
-        (item) =>
-            item.itemType == BillItemType.consumption &&
-            (item.status == BillItemStatus.pending ||
-                item.status == BillItemStatus.partiallyPaid),
-      );
-}
-
-bool _canRefreshBill(BillDetailReadModel detail) {
-  return true;
-}
-
-bool _hasBillActions(BillDetailReadModel detail) {
-  return detail.summary.pendingPrincipal.minorUnits > 0 ||
-      _canConvertToInstallment(detail) ||
-      _canRefreshBill(detail);
 }
 
 String _repaymentSupportingText(BillRepaymentReadModel repayment) {

@@ -85,6 +85,19 @@ void main() {
       );
     });
 
+    test('rejects unattributed repayment without ledger transaction', () {
+      expect(
+        () => Repayment(
+          id: 'repayment-1',
+          repaymentType: RepaymentType.unattributed,
+          targetType: RepaymentTargetType.account,
+          targetId: 'account-1',
+          items: [_item(id: 'item-1', repaymentId: 'repayment-1')],
+        ),
+        throwsA(_creditInvalidCommand()),
+      );
+    });
+
     test('rejects contract level repayment item pointing to bill item', () {
       expect(
         () => Repayment(

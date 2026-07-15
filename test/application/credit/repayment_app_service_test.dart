@@ -377,7 +377,7 @@ void main() {
         final result = await fixture.service.createContractPrepaymentRepayment(
           credit.CreateContractPrepaymentRepaymentCommand(
             contractId: contractId,
-            principal: const Money(minorUnits: 20000),
+            amount: _amount(principal: 20000),
           ),
         );
 
@@ -450,8 +450,7 @@ void main() {
         final result = await fixture.service.createContractPrepaymentRepayment(
           credit.CreateContractPrepaymentRepaymentCommand(
             contractId: contractId,
-            principal: Money.zero(),
-            fee: const Money(minorUnits: 500),
+            amount: _amount(fee: 500),
           ),
         );
 
@@ -498,7 +497,7 @@ void main() {
         await fixture.service.createContractPrepaymentRepayment(
           credit.CreateContractPrepaymentRepaymentCommand(
             contractId: contractId,
-            principal: const Money(minorUnits: 30000),
+            amount: _amount(principal: 30000),
             transactionInfo: credit.RepaymentTransactionInfo(
               paidFromAccountId: 'cash-1',
               occurredAt: DateTime(2027, 1, 1),
@@ -543,8 +542,7 @@ void main() {
         final result = await fixture.service.createContractPrepaymentRepayment(
           credit.CreateContractPrepaymentRepaymentCommand(
             contractId: contractId,
-            principal: const Money(minorUnits: 80000),
-            fee: const Money(minorUnits: 500),
+            amount: _amount(principal: 80000, fee: 500),
           ),
         );
 
@@ -600,11 +598,12 @@ void main() {
         final result = await fixture.service.createUnattributedRepayment(
           credit.CreateUnattributedRepaymentCommand(
             accountId: 'credit-1',
-            amount: const Money(minorUnits: 2000),
+            amount: _amount(principal: 2000),
+            transactionInfo: _transactionInfo(),
           ),
         );
 
-        expect(result.transactionId, isNull);
+        expect(result.transactionId, isNotNull);
         final repayment = await fixture.repayments.findRepayment(
           result.repaymentId,
         );
@@ -725,7 +724,7 @@ void main() {
         await fixture.service.createContractPrepaymentRepayment(
           credit.CreateContractPrepaymentRepaymentCommand(
             contractId: result.contractId!,
-            principal: const Money(minorUnits: 1000),
+            amount: _amount(principal: 1000),
           ),
         );
 
@@ -771,7 +770,7 @@ void main() {
         final result = await fixture.service.createContractPrepaymentRepayment(
           credit.CreateContractPrepaymentRepaymentCommand(
             contractId: contractId,
-            principal: const Money(minorUnits: 80000),
+            amount: _amount(principal: 80000),
           ),
         );
         expect(
@@ -830,7 +829,7 @@ void main() {
       final result = await fixture.service.createContractPrepaymentRepayment(
         credit.CreateContractPrepaymentRepaymentCommand(
           contractId: contractId,
-          principal: const Money(minorUnits: 80000),
+          amount: _amount(principal: 80000),
         ),
       );
 
@@ -876,8 +875,15 @@ void main() {
         final result = await fixture.service.createUnattributedRepayment(
           credit.CreateUnattributedRepaymentCommand(
             accountId: 'credit-1',
-            amount: const Money(minorUnits: 2000),
+            amount: _amount(principal: 2000),
+            transactionInfo: _transactionInfo(),
           ),
+        );
+        fixture.transactionQuery.details[result
+            .rootTransactionId!] = _transactionDetail(
+          transactionId: result.transactionId!,
+          rootTransactionId: result.rootTransactionId!,
+          occurredAt: DateTime(2026, 7, 1),
         );
 
         await fixture.service.deleteRepayment(
@@ -1046,7 +1052,8 @@ void main() {
           () => fixture.service.createUnattributedRepayment(
             credit.CreateUnattributedRepaymentCommand(
               accountId: 'credit-1',
-              amount: const Money(minorUnits: 2001),
+              amount: _amount(principal: 2001),
+              transactionInfo: _transactionInfo(),
             ),
           ),
           throwsA(
@@ -1079,7 +1086,8 @@ void main() {
         () => fixture.service.createUnattributedRepayment(
           credit.CreateUnattributedRepaymentCommand(
             accountId: 'credit-1',
-            amount: const Money(minorUnits: 1),
+            amount: _amount(principal: 1),
+            transactionInfo: _transactionInfo(),
           ),
         ),
         throwsA(
@@ -1103,12 +1111,33 @@ credit.BillRepaymentAllocation _allocation({
 }) {
   return credit.BillRepaymentAllocation(
     billItemId: billItemId,
-    allocated: credit.RepaymentAmountBreakdown(
+    allocated: credit.RepaymentAmountDto(
       principal: Money(minorUnits: principal),
       interest: Money(minorUnits: interest),
       fee: Money(minorUnits: fee),
       discount: Money(minorUnits: discount),
     ),
+  );
+}
+
+credit.RepaymentAmountDto _amount({
+  int principal = 0,
+  int interest = 0,
+  int fee = 0,
+  int discount = 0,
+}) {
+  return credit.RepaymentAmountDto(
+    principal: Money(minorUnits: principal),
+    interest: Money(minorUnits: interest),
+    fee: Money(minorUnits: fee),
+    discount: Money(minorUnits: discount),
+  );
+}
+
+credit.RepaymentTransactionInfo _transactionInfo() {
+  return credit.RepaymentTransactionInfo(
+    paidFromAccountId: 'cash-1',
+    occurredAt: DateTime(2026, 7, 1),
   );
 }
 

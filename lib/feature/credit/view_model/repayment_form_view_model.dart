@@ -70,10 +70,10 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
     return RepaymentFormState.loaded(
       liabilityAccounts: liabilityAccounts,
       repaymentSourceAccounts: repaymentSourceAccounts,
-      principalText: view.principal.format(),
-      interestText: view.interest?.format() ?? '',
-      feeText: view.fee?.format() ?? '',
-      discountText: view.discount?.format() ?? '',
+      principalText: view.amount.principal.format(),
+      interestText: _positiveText(view.amount.interest),
+      feeText: _positiveText(view.amount.fee),
+      discountText: _positiveText(view.amount.discount),
       noteText: view.note ?? '',
       liabilityAccountId: view.liabilityAccountId,
       paidFromAccountId: view.paidFromAccountId,
@@ -143,16 +143,19 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
       final service = ref.read(repaymentAppServiceProvider);
       final editTransactionId = args.editTransactionId;
       final note = trimToNull(current.noteText);
+      final amount = credit.RepaymentAmountDto(
+        principal: principal,
+        interest: _parseOptionalMoney(current.interestText) ?? Money.zero(),
+        fee: _parseOptionalMoney(current.feeText) ?? Money.zero(),
+        discount: _parseOptionalMoney(current.discountText) ?? Money.zero(),
+      );
       final result =
           editTransactionId == null
               ? await service.createLiabilityRepayment(
                 credit.CreateLiabilityRepaymentCommand(
                   liabilityAccountId: liabilityAccountId,
                   paidFromAccountId: paidFromAccountId,
-                  principal: principal,
-                  interest: _parseOptionalMoney(current.interestText),
-                  fee: _parseOptionalMoney(current.feeText),
-                  discount: _parseOptionalMoney(current.discountText),
+                  amount: amount,
                   occurredAt: current.occurredAt,
                   note: note,
                 ),
@@ -162,10 +165,7 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
                   transactionId: editTransactionId,
                   liabilityAccountId: liabilityAccountId,
                   paidFromAccountId: paidFromAccountId,
-                  principal: principal,
-                  interest: _parseOptionalMoney(current.interestText),
-                  fee: _parseOptionalMoney(current.feeText),
-                  discount: _parseOptionalMoney(current.discountText),
+                  amount: amount,
                   occurredAt: current.occurredAt,
                   note: note,
                 ),
@@ -383,6 +383,10 @@ Money? _parseOptionalMoney(String value) {
   if (trimmed.isEmpty) return null;
   final money = Money.tryParse(trimmed);
   return money != null && money.minorUnits > 0 ? money : null;
+}
+
+String _positiveText(Money value) {
+  return value.minorUnits > 0 ? value.format() : '';
 }
 
 const Object _sentinel = Object();

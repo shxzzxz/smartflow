@@ -1,7 +1,7 @@
-import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
-import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
+
+import '../repayment_amount_dto.dart';
 
 class RepaymentTransactionInfo {
   const RepaymentTransactionInfo({
@@ -24,7 +24,7 @@ class BillRepaymentAllocation {
   });
 
   final String billItemId;
-  final RepaymentAmountBreakdown allocated;
+  final RepaymentAmountDto allocated;
 }
 
 class CreateBillRepaymentCommand {
@@ -76,19 +76,13 @@ class CreateBillConversionInstallmentRepaymentCommand {
 class CreateContractPrepaymentRepaymentCommand {
   const CreateContractPrepaymentRepaymentCommand({
     required this.contractId,
-    required this.principal,
-    this.interest,
-    this.fee,
-    this.discount,
+    required this.amount,
     this.transactionInfo,
     this.note,
   });
 
   final String contractId;
-  final Money principal;
-  final Money? interest;
-  final Money? fee;
-  final Money? discount;
+  final RepaymentAmountDto amount;
   final RepaymentTransactionInfo? transactionInfo;
   final String? note;
 }
@@ -97,19 +91,13 @@ class CreateUnattributedRepaymentCommand {
   const CreateUnattributedRepaymentCommand({
     required this.accountId,
     required this.amount,
-    this.interest,
-    this.fee,
-    this.discount,
-    this.transactionInfo,
+    required this.transactionInfo,
     this.note,
   });
 
   final String accountId;
-  final Money amount;
-  final Money? interest;
-  final Money? fee;
-  final Money? discount;
-  final RepaymentTransactionInfo? transactionInfo;
+  final RepaymentAmountDto amount;
+  final RepaymentTransactionInfo transactionInfo;
   final String? note;
 }
 
@@ -157,20 +145,14 @@ class CreateLiabilityRepaymentCommand {
   const CreateLiabilityRepaymentCommand({
     required this.liabilityAccountId,
     required this.paidFromAccountId,
-    required this.principal,
+    required this.amount,
     required this.occurredAt,
-    this.interest,
-    this.fee,
-    this.discount,
     this.note,
   });
 
   final String liabilityAccountId;
   final String paidFromAccountId;
-  final Money principal;
-  final Money? interest;
-  final Money? fee;
-  final Money? discount;
+  final RepaymentAmountDto amount;
   final DateTime occurredAt;
   final String? note;
 }
@@ -180,21 +162,15 @@ class CorrectLiabilityRepaymentCommand {
     required this.transactionId,
     required this.liabilityAccountId,
     required this.paidFromAccountId,
-    required this.principal,
+    required this.amount,
     required this.occurredAt,
-    this.interest,
-    this.fee,
-    this.discount,
     this.note,
   });
 
   final String transactionId;
   final String liabilityAccountId;
   final String paidFromAccountId;
-  final Money principal;
-  final Money? interest;
-  final Money? fee;
-  final Money? discount;
+  final RepaymentAmountDto amount;
   final DateTime occurredAt;
   final String? note;
 }
@@ -203,20 +179,14 @@ class CorrectLiabilityRepaymentCommand {
 /// 避免表单层自己从分录里凑账户与金额。
 class LiabilityRepaymentEditView {
   const LiabilityRepaymentEditView({
-    required this.principal,
+    required this.amount,
     required this.liabilityAccountId,
     required this.paidFromAccountId,
     required this.occurredAt,
-    this.interest,
-    this.fee,
-    this.discount,
     this.note,
   });
 
-  final Money principal;
-  final Money? interest;
-  final Money? fee;
-  final Money? discount;
+  final RepaymentAmountDto amount;
   final String liabilityAccountId;
   final String paidFromAccountId;
   final DateTime occurredAt;

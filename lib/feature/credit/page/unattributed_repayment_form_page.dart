@@ -134,10 +134,8 @@ class _UnattributedRepaymentFormPageState
                 discountController: _discountController,
               ),
               CreditRepaymentTransactionFields(
-                createTransaction: state.createTransaction,
-                onCreateTransactionChanged:
-                    (value) =>
-                        ref.read(provider.notifier).setCreateTransaction(value),
+                createTransaction: true,
+                onCreateTransactionChanged: null,
                 occurredAtText: _formatDateTime(state.occurredAt),
                 onPickDate: () => _pickDate(provider, state.occurredAt),
                 repaymentAccount: paidFromAccount,

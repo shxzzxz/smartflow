@@ -75,9 +75,6 @@ class UnattributedRepaymentFormViewModel
   void setPaidFromAccountId(String? value) =>
       _update((state) => state.copyWith(paidFromAccountId: value));
 
-  void setCreateTransaction(bool value) =>
-      _update((state) => state.copyWith(createTransaction: value));
-
   Future<SubmitOutcome> submit() async {
     final current = state.asData?.value;
     if (current == null || !current.isLoaded || current.overview == null) {
@@ -100,11 +97,11 @@ class UnattributedRepaymentFormViewModel
       return _invalidCommand('还款本金不能超过未归属欠款');
     }
 
-    final paidFromAccountId =
-        current.createTransaction
-            ? _selectedId(current.paidFromAccountId, current.repaymentAccounts)
-            : null;
-    if (current.createTransaction && paidFromAccountId == null) {
+    final paidFromAccountId = _selectedId(
+      current.paidFromAccountId,
+      current.repaymentAccounts,
+    );
+    if (paidFromAccountId == null) {
       return _invalidCommand('请选择还款账户');
     }
 
@@ -115,17 +112,16 @@ class UnattributedRepaymentFormViewModel
           .createUnattributedRepayment(
             credit.CreateUnattributedRepaymentCommand(
               accountId: accountId,
-              amount: principal,
-              interest: _positiveOrNull(interest),
-              fee: _positiveOrNull(fee),
-              discount: _positiveOrNull(discount),
-              transactionInfo:
-                  paidFromAccountId == null
-                      ? null
-                      : credit.RepaymentTransactionInfo(
-                        paidFromAccountId: paidFromAccountId,
-                        occurredAt: current.occurredAt,
-                      ),
+              amount: credit.RepaymentAmountDto(
+                principal: principal,
+                interest: interest,
+                fee: fee,
+                discount: discount,
+              ),
+              transactionInfo: credit.RepaymentTransactionInfo(
+                paidFromAccountId: paidFromAccountId,
+                occurredAt: current.occurredAt,
+              ),
               note: trimToNull(current.noteText),
             ),
           );
@@ -182,7 +178,6 @@ class UnattributedRepaymentFormState {
     required this.discountText,
     required this.noteText,
     required this.occurredAt,
-    required this.createTransaction,
     required this.submitting,
     this.overview,
     this.paidFromAccountId,
@@ -210,7 +205,6 @@ class UnattributedRepaymentFormState {
       noteText: noteText,
       occurredAt: occurredAt,
       paidFromAccountId: paidFromAccountId,
-      createTransaction: true,
       submitting: false,
     );
   }
@@ -227,7 +221,6 @@ class UnattributedRepaymentFormState {
       discountText: '',
       noteText: '',
       occurredAt: DateTime.now(),
-      createTransaction: true,
       submitting: false,
     );
   }
@@ -246,7 +239,6 @@ class UnattributedRepaymentFormState {
       discountText: '',
       noteText: '',
       occurredAt: DateTime.now(),
-      createTransaction: true,
       submitting: false,
     );
   }
@@ -261,7 +253,6 @@ class UnattributedRepaymentFormState {
   final String noteText;
   final DateTime occurredAt;
   final String? paidFromAccountId;
-  final bool createTransaction;
   final bool submitting;
 
   bool get isLoaded => status == UnattributedRepaymentFormLoadStatus.loaded;
@@ -281,7 +272,6 @@ class UnattributedRepaymentFormState {
     String? noteText,
     DateTime? occurredAt,
     Object? paidFromAccountId = _sentinel,
-    bool? createTransaction,
     bool? submitting,
   }) {
     return UnattributedRepaymentFormState(
@@ -298,7 +288,6 @@ class UnattributedRepaymentFormState {
           paidFromAccountId == _sentinel
               ? this.paidFromAccountId
               : paidFromAccountId as String?,
-      createTransaction: createTransaction ?? this.createTransaction,
       submitting: submitting ?? this.submitting,
     );
   }
@@ -323,10 +312,6 @@ Money? _parseOptionalNonNegativeMoney(String value) {
   if (trimmed.isEmpty) return Money.zero();
   final money = Money.tryParse(trimmed);
   return money != null && money.minorUnits >= 0 ? money : null;
-}
-
-Money? _positiveOrNull(Money value) {
-  return value.minorUnits > 0 ? value : null;
 }
 
 const Object _sentinel = Object();

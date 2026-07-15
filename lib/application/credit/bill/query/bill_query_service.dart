@@ -14,6 +14,7 @@ import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 import 'bill_read_models.dart';
+import '../../repayment/repayment_amount_dto.dart';
 
 abstract interface class BillQueryService {
   Future<List<BillSummaryReadModel>> listBillsByAccount(String accountId);
@@ -168,7 +169,7 @@ class BillQueryServiceImpl implements BillQueryService {
       expectedPrincipal: item.expectedPrincipal,
       expectedInterest: item.expectedInterest,
       expectedFee: item.expectedFee,
-      allocated: allocated,
+      allocated: _amountDto(allocated),
       accountKind: accountKind,
       installmentSourceType: contract?.sourceType,
       contractId: item.contractId,
@@ -226,7 +227,7 @@ class BillQueryServiceImpl implements BillQueryService {
     return BillRepaymentReadModel(
       id: repayment.id,
       repaymentType: repayment.repaymentType,
-      allocated: total,
+      allocated: _amountDto(total),
       displayTime:
           usesTransaction
               ? detail.occurredAt
@@ -253,5 +254,14 @@ class BillQueryServiceImpl implements BillQueryService {
 
   DateTime _dateOnly(DateTime value) {
     return DateTime(value.year, value.month, value.day);
+  }
+
+  RepaymentAmountDto _amountDto(RepaymentAmountBreakdown amount) {
+    return RepaymentAmountDto(
+      principal: amount.principal,
+      interest: amount.interest,
+      fee: amount.fee,
+      discount: amount.discount,
+    );
   }
 }

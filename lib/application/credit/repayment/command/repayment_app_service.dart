@@ -22,6 +22,7 @@ import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 import 'repayment_command.dart';
+import '../repayment_amount_dto.dart';
 import '../../settlement/credit_settlement_coordinator.dart';
 
 abstract interface class RepaymentAppService {
@@ -114,7 +115,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
   ) async {
     await _validateLiabilityRepaymentPrincipal(
       liabilityAccountId: command.liabilityAccountId,
-      principal: command.principal,
+      principal: command.amount.principal,
     );
 
     return _ledger.postRepayment(
@@ -122,12 +123,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         liabilityAccountId: command.liabilityAccountId,
         paidFromAccountId: command.paidFromAccountId,
         occurredAt: command.occurredAt,
-        amount: RepaymentAmountBreakdown(
-          principal: command.principal,
-          interest: command.interest ?? Money.zero(),
-          fee: command.fee ?? Money.zero(),
-          discount: command.discount ?? Money.zero(),
-        ),
+        amount: _domainAmount(command.amount),
         note: command.note,
       ),
     );
@@ -156,19 +152,14 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
 
     await _validateLiabilityRepaymentPrincipal(
       liabilityAccountId: command.liabilityAccountId,
-      principal: command.principal,
+      principal: command.amount.principal,
       editingRepaymentSnapshot: snapshot,
     );
 
     return _ledger.correctRepayment(
       CreditLedgerCorrectRepaymentCommand(
         transactionId: command.transactionId,
-        amount: RepaymentAmountBreakdown(
-          principal: command.principal,
-          interest: command.interest ?? Money.zero(),
-          fee: command.fee ?? Money.zero(),
-          discount: command.discount ?? Money.zero(),
-        ),
+        amount: _domainAmount(command.amount),
         liabilityAccountId: command.liabilityAccountId,
         paidFromAccountId: command.paidFromAccountId,
         occurredAt: command.occurredAt,
@@ -224,10 +215,12 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
 
     return LiabilityRepaymentEditViewLoadResult.loaded(
       LiabilityRepaymentEditView(
-        principal: principal,
-        interest: (interest?.minorUnits ?? 0) > 0 ? interest : null,
-        fee: (fee?.minorUnits ?? 0) > 0 ? fee : null,
-        discount: (discount?.minorUnits ?? 0) > 0 ? discount : null,
+        amount: RepaymentAmountDto(
+          principal: principal,
+          interest: interest ?? Money.zero(),
+          fee: fee ?? Money.zero(),
+          discount: discount ?? Money.zero(),
+        ),
         liabilityAccountId: liabilityAccountId,
         paidFromAccountId: paidFromAccountId,
         occurredAt: snapshot.occurredAt,
@@ -261,7 +254,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
                 id: _idGenerator.newId(),
                 repaymentId: repaymentId,
                 billItemId: allocation.billItemId,
-                allocated: allocation.allocated,
+                allocated: _domainAmount(allocation.allocated),
               ),
             )
             .toList();
@@ -326,7 +319,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
                 id: _idGenerator.newId(),
                 repaymentId: repaymentId,
                 billItemId: allocation.billItemId,
-                allocated: allocation.allocated,
+                allocated: _domainAmount(allocation.allocated),
               ),
             )
             .toList();
@@ -367,12 +360,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       );
     }
     final repaymentId = _idGenerator.newId();
-    final total = RepaymentAmountBreakdown(
-      principal: command.principal,
-      interest: command.interest ?? Money.zero(),
-      fee: command.fee ?? Money.zero(),
-      discount: command.discount ?? Money.zero(),
-    );
+    final total = _domainAmount(command.amount);
     _repaymentPolicy.validateActiveContractRepayment(
       contract: contract,
       total: total,
@@ -425,12 +413,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         message: 'Credit liability account does not exist.',
       );
     }
-    final total = RepaymentAmountBreakdown(
-      principal: command.amount,
-      interest: command.interest ?? Money.zero(),
-      fee: command.fee ?? Money.zero(),
-      discount: command.discount ?? Money.zero(),
-    );
+    final total = _domainAmount(command.amount);
     final bucket = await _unattributedDebtBucket(command.accountId);
     _repaymentPolicy.validateUnattributedRepayment(
       total: total,
@@ -440,7 +423,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     final repaymentId = _idGenerator.newId();
 
     return _transactionRunner.run(() async {
-      final post = await _postLedgerTransactionIfNeeded(
+      final post = await _postLedgerTransaction(
         liabilityAccountId: command.accountId,
         repaymentId: repaymentId,
         total: total,
@@ -453,7 +436,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         repaymentType: RepaymentType.unattributed,
         targetType: RepaymentTargetType.account,
         targetId: command.accountId,
-        rootTransactionId: post?.rootTransactionId,
+        rootTransactionId: post.rootTransactionId,
         items: [
           RepaymentItem(
             id: _idGenerator.newId(),
@@ -465,8 +448,8 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       await _repayments.saveRepayment(repayment);
       return CreateRepaymentResult(
         repaymentId: repaymentId,
-        transactionId: post?.transactionId,
-        rootTransactionId: post?.rootTransactionId,
+        transactionId: post.transactionId,
+        rootTransactionId: post.rootTransactionId,
       );
     });
   }
@@ -667,7 +650,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       for (final allocation in allocations)
         domain_repayment.BillRepaymentAllocationDraft(
           billItemId: allocation.billItemId,
-          allocated: allocation.allocated,
+          allocated: _domainAmount(allocation.allocated),
         ),
     ];
   }
@@ -715,6 +698,24 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     required RepaymentType repaymentType,
   }) {
     if (transactionInfo == null) return Future.value(null);
+    return _postLedgerTransaction(
+      liabilityAccountId: liabilityAccountId,
+      repaymentId: repaymentId,
+      total: total,
+      transactionInfo: transactionInfo,
+      note: note,
+      repaymentType: repaymentType,
+    );
+  }
+
+  Future<CreditLedgerPostedTransaction> _postLedgerTransaction({
+    required String liabilityAccountId,
+    required String repaymentId,
+    required RepaymentAmountBreakdown total,
+    required RepaymentTransactionInfo transactionInfo,
+    required String? note,
+    required RepaymentType repaymentType,
+  }) {
     return _ledger.postRepayment(
       CreditLedgerPostRepaymentCommand(
         amount: total,
@@ -729,6 +730,15 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
           ownerRole: repaymentType.code,
         ),
       ),
+    );
+  }
+
+  RepaymentAmountBreakdown _domainAmount(RepaymentAmountDto amount) {
+    return RepaymentAmountBreakdown(
+      principal: amount.principal,
+      interest: amount.interest,
+      fee: amount.fee,
+      discount: amount.discount,
     );
   }
 

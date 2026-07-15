@@ -13,7 +13,7 @@ void main() {
       expectedPrincipal: const Money(minorUnits: 10000),
       expectedInterest: Money.zero(),
       expectedFee: Money.zero(),
-      allocated: RepaymentAmountBreakdown.zero,
+      allocated: RepaymentAmountDto.zero,
       isOverdue: false,
       contractId: 'contract-1',
       scheduleId: 'schedule-1',
@@ -31,7 +31,7 @@ void main() {
       expectedPrincipal: const Money(minorUnits: 10000),
       expectedInterest: Money.zero(),
       expectedFee: Money.zero(),
-      allocated: RepaymentAmountBreakdown.zero,
+      allocated: RepaymentAmountDto.zero,
       isOverdue: false,
       contractId: 'unexpected-contract',
     );

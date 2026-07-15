@@ -126,7 +126,12 @@ void main() {
       manualAllocations: [
         credit.BillRepaymentAllocation(
           billItemId: 'a',
-          allocated: _breakdown(principal: 120),
+          allocated: const credit.RepaymentAmountDto(
+            principal: Money(minorUnits: 120),
+            interest: Money(minorUnits: 0),
+            fee: Money(minorUnits: 0),
+            discount: Money(minorUnits: 0),
+          ),
         ),
       ],
     );
@@ -146,8 +151,7 @@ BillRepaymentAllocationLine _line(
   int principal = 0,
   int interest = 0,
   int fee = 0,
-  credit.RepaymentAmountBreakdown alreadyAllocated =
-      credit.RepaymentAmountBreakdown.zero,
+  credit.RepaymentAmountDto alreadyAllocated = credit.RepaymentAmountDto.zero,
 }) {
   return BillRepaymentAllocationLine(
     billItemId: id,

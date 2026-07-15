@@ -22,3 +22,4 @@ export 'installment/command/installment_app_service.dart';
 export 'installment/command/installment_command.dart';
 export 'repayment/command/repayment_app_service.dart';
 export 'repayment/command/repayment_command.dart';
+export 'repayment/repayment_amount_dto.dart';

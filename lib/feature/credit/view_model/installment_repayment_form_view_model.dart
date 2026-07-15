@@ -113,10 +113,12 @@ class InstallmentRepaymentFormViewModel
       await service.createContractPrepaymentRepayment(
         CreateContractPrepaymentRepaymentCommand(
           contractId: current.contract!.id,
-          principal: principal,
-          interest: _positiveOrNull(interest),
-          fee: _positiveOrNull(fee),
-          discount: _positiveOrNull(discount),
+          amount: RepaymentAmountDto(
+            principal: principal,
+            interest: interest,
+            fee: fee,
+            discount: discount,
+          ),
           transactionInfo:
               paidFromAccountId == null
                   ? null
@@ -333,10 +335,6 @@ Money? _parseOptionalNonNegativeMoney(String value) {
   if (trimmed.isEmpty) return Money.zero();
   final money = Money.tryParse(trimmed);
   return money != null && money.minorUnits >= 0 ? money : null;
-}
-
-Money? _positiveOrNull(Money value) {
-  return value.minorUnits > 0 ? value : null;
 }
 
 const Object _sentinel = Object();

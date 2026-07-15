@@ -538,13 +538,13 @@ BillRepaymentAllocationReview? _allocationReviewFromState(
         discount == null) {
       return null;
     }
-    final allocated = credit.RepaymentAmountBreakdown(
+    final allocated = credit.RepaymentAmountDto(
       principal: principal,
       interest: interest,
       fee: fee,
       discount: discount,
     );
-    if (!_hasPositivePart(allocated)) continue;
+    if (!_hasPositiveAmount(allocated)) continue;
     allocations.add(
       credit.BillRepaymentAllocation(
         billItemId: line.billItemId,
@@ -609,14 +609,27 @@ credit.RepaymentAmountBreakdown _pendingBreakdown(
   );
 }
 
-credit.RepaymentAmountBreakdown _add(
-  credit.RepaymentAmountBreakdown? current,
+credit.RepaymentAmountDto _add(
+  credit.RepaymentAmountDto? current,
   credit.RepaymentAmountBreakdown addition,
 ) {
-  return (current ?? credit.RepaymentAmountBreakdown.zero) + addition;
+  final value = current ?? credit.RepaymentAmountDto.zero;
+  return credit.RepaymentAmountDto(
+    principal: value.principal + addition.principal,
+    interest: value.interest + addition.interest,
+    fee: value.fee + addition.fee,
+    discount: value.discount + addition.discount,
+  );
 }
 
 bool _hasPositivePart(credit.RepaymentAmountBreakdown value) {
+  return value.principal.minorUnits > 0 ||
+      value.interest.minorUnits > 0 ||
+      value.fee.minorUnits > 0 ||
+      value.discount.minorUnits > 0;
+}
+
+bool _hasPositiveAmount(credit.RepaymentAmountDto value) {
   return value.principal.minorUnits > 0 ||
       value.interest.minorUnits > 0 ||
       value.fee.minorUnits > 0 ||

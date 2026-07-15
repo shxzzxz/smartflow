@@ -356,11 +356,8 @@ List<_InfoItem> _creditAccountMetrics(
       creditOverview is AccountCreditOverviewLoaded
           ? creditOverview.overview
           : null;
-  final creditLimit =
-      loadedOverview?.creditAccount.creditLimit ?? account.creditLimit;
-  final availableCredit =
-      loadedOverview?.availableCredit ??
-      (creditLimit == null ? null : creditLimit - account.balance);
+  final creditLimit = loadedOverview?.creditAccount.creditLimit;
+  final availableCredit = loadedOverview?.availableCredit;
   final items = [
     _InfoItem(label: '信用额度', value: creditLimit?.format() ?? '-'),
     _InfoItem(label: '剩余额度', value: availableCredit?.format() ?? '-'),

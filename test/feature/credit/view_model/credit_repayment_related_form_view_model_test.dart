@@ -44,7 +44,7 @@ void main() {
 
     expect(outcome, isA<SubmitSuccess>());
     expect(
-      repayment.liabilityRepaymentCommands.single.principal,
+      repayment.liabilityRepaymentCommands.single.amount.principal,
       const Money(minorUnits: 1234),
     );
     expect(
@@ -107,11 +107,11 @@ void main() {
       expect(outcome, isA<SubmitSuccess>());
       expect(repayment.prepaymentCommands.single.contractId, 'contract');
       expect(
-        repayment.prepaymentCommands.single.principal,
+        repayment.prepaymentCommands.single.amount.principal,
         const Money(minorUnits: 1000),
       );
       expect(
-        repayment.prepaymentCommands.single.discount,
+        repayment.prepaymentCommands.single.amount.discount,
         const Money(minorUnits: 100),
       );
       expect(
@@ -339,31 +339,12 @@ void main() {
     expect(outcome, isA<SubmitSuccess>());
     final command = repayment.unattributedCommands.single;
     expect(command.accountId, 'loan');
-    expect(command.amount, const Money(minorUnits: 2500));
-    expect(command.interest, const Money(minorUnits: 100));
-    expect(command.fee, const Money(minorUnits: 200));
-    expect(command.discount, const Money(minorUnits: 50));
-    expect(command.transactionInfo!.paidFromAccountId, 'cash');
+    expect(command.amount.principal, const Money(minorUnits: 2500));
+    expect(command.amount.interest, const Money(minorUnits: 100));
+    expect(command.amount.fee, const Money(minorUnits: 200));
+    expect(command.amount.discount, const Money(minorUnits: 50));
+    expect(command.transactionInfo.paidFromAccountId, 'cash');
   });
-
-  test(
-    'unattributed repayment form can submit without ledger transaction',
-    () async {
-      final repayment = _FakeRepaymentAppService();
-      final container = _container(repaymentAppService: repayment);
-      final provider = unattributedRepaymentFormViewModelProvider('loan');
-      final subscription = container.listen(provider, (_, _) {});
-      addTearDown(subscription.close);
-
-      await container.read(provider.future);
-      final outcome =
-          await (container.read(provider.notifier)
-            ..setCreateTransaction(false)).submit();
-
-      expect(outcome, isA<SubmitSuccess>());
-      expect(repayment.unattributedCommands.single.transactionInfo, isNull);
-    },
-  );
 
   test('refund form submits refund command', () async {
     final posting = _FakePostingService();
@@ -626,7 +607,7 @@ credit_query.InstallmentScheduleReadModel _schedule() {
 
 credit_query.BillDetailReadModel _billDetail() {
   final period = credit_query.BillPeriod(year: 2026, month: 6);
-  final allocated = credit_query.RepaymentAmountBreakdown(
+  final allocated = credit_query.RepaymentAmountDto(
     principal: const Money(minorUnits: 4000),
     interest: const Money(minorUnits: 100),
     fee: Money.zero(),
@@ -688,7 +669,7 @@ credit_query.BillDetailReadModel _billDetailWithTwoConsumptionItems() {
         expectedPrincipal: const Money(minorUnits: 5000),
         expectedInterest: Money.zero(),
         expectedFee: Money.zero(),
-        allocated: credit_query.RepaymentAmountBreakdown.zero,
+        allocated: credit_query.RepaymentAmountDto.zero,
         isOverdue: false,
       ),
       credit_query.BillItemReadModel(
@@ -699,7 +680,7 @@ credit_query.BillDetailReadModel _billDetailWithTwoConsumptionItems() {
         expectedPrincipal: const Money(minorUnits: 5000),
         expectedInterest: Money.zero(),
         expectedFee: Money.zero(),
-        allocated: credit_query.RepaymentAmountBreakdown.zero,
+        allocated: credit_query.RepaymentAmountDto.zero,
         isOverdue: false,
       ),
     ],
@@ -734,7 +715,7 @@ credit_query.BillDetailReadModel _openBillDetailWithInstallment() {
         expectedPrincipal: const Money(minorUnits: 5000),
         expectedInterest: Money.zero(),
         expectedFee: Money.zero(),
-        allocated: credit_query.RepaymentAmountBreakdown.zero,
+        allocated: credit_query.RepaymentAmountDto.zero,
         isOverdue: false,
       ),
       credit_query.BillItemReadModel(
@@ -745,7 +726,7 @@ credit_query.BillDetailReadModel _openBillDetailWithInstallment() {
         expectedPrincipal: const Money(minorUnits: 3000),
         expectedInterest: Money.zero(),
         expectedFee: Money.zero(),
-        allocated: credit_query.RepaymentAmountBreakdown.zero,
+        allocated: credit_query.RepaymentAmountDto.zero,
         isOverdue: false,
       ),
     ],
@@ -771,7 +752,6 @@ credit_query.CreditAccountOverviewReadModel _creditOverview() {
       futureContractDebt: Money(minorUnits: 0),
       unattributedDebt: Money(minorUnits: 2500),
     ),
-    unattributedRepayments: const [],
   );
 }
 

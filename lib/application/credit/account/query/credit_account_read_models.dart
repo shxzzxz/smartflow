@@ -2,8 +2,6 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
 import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
-import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
-import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 class CreditDebtBucketsReadModel {
   const CreditDebtBucketsReadModel({
@@ -22,7 +20,6 @@ class CreditAccountOverviewReadModel {
     required this.creditAccount,
     required this.liabilityBalance,
     required this.buckets,
-    required this.unattributedRepayments,
     this.availableCredit,
   });
 
@@ -30,29 +27,6 @@ class CreditAccountOverviewReadModel {
   final Money liabilityBalance;
   final Money? availableCredit;
   final CreditDebtBucketsReadModel buckets;
-  final List<CreditRepaymentRecordReadModel> unattributedRepayments;
-}
-
-enum CreditRepaymentTimeSource { transaction, recordCreatedAt }
-
-class CreditRepaymentRecordReadModel {
-  const CreditRepaymentRecordReadModel({
-    required this.id,
-    required this.repaymentType,
-    required this.allocated,
-    required this.displayTime,
-    required this.timeSource,
-    this.rootTransactionId,
-    this.paidFromAccountId,
-  });
-
-  final String id;
-  final RepaymentType repaymentType;
-  final RepaymentAmountBreakdown allocated;
-  final DateTime displayTime;
-  final CreditRepaymentTimeSource timeSource;
-  final String? rootTransactionId;
-  final String? paidFromAccountId;
 }
 
 enum CreditDueCalendarItemSource { billItem, schedule }
