@@ -301,12 +301,13 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
     final schedules = await _repository.listSchedules(contractId);
     final prepaymentPrincipalMinor = await _prepaymentSumMinor(contractId);
     final calculationContract = _contractForRecalculation(contract, command);
-    final recalculations = _prepaymentRecalculator.recalculateAllPending(
-      contract: calculationContract,
-      schedules: schedules,
-      prepaymentPrincipalMinor: prepaymentPrincipalMinor,
-      equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
-    );
+    final recalculations = _prepaymentRecalculator
+        .recalculateAllPendingWithRegeneratedDates(
+          contract: calculationContract,
+          schedules: schedules,
+          prepaymentPrincipalMinor: prepaymentPrincipalMinor,
+          equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
+        );
 
     return [
       for (final recalculation in recalculations)

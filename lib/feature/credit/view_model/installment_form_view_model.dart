@@ -67,6 +67,10 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
     );
   }
 
+  void setLastRepaymentDate(DateTime value) {
+    _updateLoaded((state) => state.copyWith(lastRepaymentDate: value));
+  }
+
   void setMethod(InstallmentRepaymentMethod value) =>
       _updateLoaded((state) => state.copyWith(method: value));
 
@@ -100,6 +104,12 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
     if (totalPeriods == null || totalPeriods <= 0) {
       return _invalidAction('请输入有效期数');
     }
+    final lastRepaymentDate = current.lastRepaymentDate;
+    if (lastRepaymentDate != null &&
+        totalPeriods > 1 &&
+        !lastRepaymentDate.isAfter(current.firstRepaymentDate)) {
+      return _invalidAction('末期还款日必须晚于首期还款日');
+    }
     if (current.isDisbursement &&
         current.createDisbursementTransaction &&
         current.disbursementAccountId == null) {
@@ -129,6 +139,7 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
           totalPeriods: totalPeriods,
           borrowingDate: current.borrowingDate,
           firstRepaymentDate: current.firstRepaymentDate,
+          lastRepaymentDate: current.lastRepaymentDate,
           repaymentMethod: current.method,
           interestRatePeriod: ratePpm == null ? null : current.ratePeriod,
           interestRatePpm: ratePpm,
@@ -220,6 +231,7 @@ sealed class InstallmentFormState {
     required InstallmentSourceType sourceType,
     required DateTime borrowingDate,
     required DateTime firstRepaymentDate,
+    DateTime? lastRepaymentDate,
   }) {
     return InstallmentFormLoaded.initial(
       liabilityAccounts: liabilityAccounts,
@@ -228,6 +240,7 @@ sealed class InstallmentFormState {
       sourceType: sourceType,
       borrowingDate: borrowingDate,
       firstRepaymentDate: firstRepaymentDate,
+      lastRepaymentDate: lastRepaymentDate,
     );
   }
 
@@ -260,6 +273,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
     required this.sourceType,
     required this.borrowingDate,
     required this.firstRepaymentDate,
+    required this.lastRepaymentDate,
     required this.firstDateTouched,
     required this.method,
     required this.ratePeriod,
@@ -276,6 +290,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
     required InstallmentSourceType sourceType,
     required DateTime borrowingDate,
     required DateTime firstRepaymentDate,
+    DateTime? lastRepaymentDate,
   }) {
     return InstallmentFormLoaded(
       liabilityAccounts: liabilityAccounts,
@@ -284,6 +299,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
       sourceType: sourceType,
       borrowingDate: borrowingDate,
       firstRepaymentDate: firstRepaymentDate,
+      lastRepaymentDate: lastRepaymentDate,
       firstDateTouched: false,
       method: InstallmentRepaymentMethod.equalInstallment,
       ratePeriod: InterestRatePeriod.monthly,
@@ -298,6 +314,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
   final String? disbursementAccountId;
   final DateTime borrowingDate;
   final DateTime firstRepaymentDate;
+  final DateTime? lastRepaymentDate;
   final bool firstDateTouched;
   final InstallmentRepaymentMethod method;
   final InterestRatePeriod ratePeriod;
@@ -312,6 +329,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
     Object? disbursementAccountId = _sentinel,
     DateTime? borrowingDate,
     DateTime? firstRepaymentDate,
+    DateTime? lastRepaymentDate,
     bool? firstDateTouched,
     InstallmentRepaymentMethod? method,
     InterestRatePeriod? ratePeriod,
@@ -330,6 +348,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
               : disbursementAccountId as String?,
       borrowingDate: borrowingDate ?? this.borrowingDate,
       firstRepaymentDate: firstRepaymentDate ?? this.firstRepaymentDate,
+      lastRepaymentDate: lastRepaymentDate ?? this.lastRepaymentDate,
       firstDateTouched: firstDateTouched ?? this.firstDateTouched,
       method: method ?? this.method,
       ratePeriod: ratePeriod ?? this.ratePeriod,

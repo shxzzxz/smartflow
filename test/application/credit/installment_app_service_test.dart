@@ -131,7 +131,7 @@ void main() {
     );
 
     test(
-      'explicit recalculation changes pending amounts and preserves dates',
+      'explicit recalculation changes pending amounts and regenerates pending dates',
       () async {
         final fixture = _Fixture();
         fixture.installments.putContract(
@@ -189,7 +189,7 @@ void main() {
 
         expect(preview.map((row) => row.expectedRepaymentDate), [
           DateTime(2026, 7, 10),
-          DateTime(2026, 9, 10),
+          DateTime(2026, 8, 10),
         ]);
         final schedules = fixture.installments.schedulesFor('contract-1');
         expect(preview.map((row) => row.expectedPrincipal.minorUnits), [
@@ -199,9 +199,46 @@ void main() {
         expect(preview.map((row) => row.expectedFee.minorUnits), [250, 250]);
         expect(schedules[0].expectedPrincipal, preview[0].expectedPrincipal);
         expect(schedules[0].expectedFee, preview[0].expectedFee);
-        expect(schedules[0].expectedRepaymentDate, DateTime(2026, 7, 10));
+        expect(schedules[1].expectedRepaymentDate, DateTime(2026, 8, 10));
         expect(schedules[2].expectedPrincipal, const Money(minorUnits: 99));
         expect(schedules[2].status, InstallmentScheduleStatus.skipped);
+      },
+    );
+
+    test(
+      'explicit recalculation regenerates pending dates from edited terms',
+      () async {
+        final fixture = _Fixture();
+        final result = await fixture.service.createDisbursementContract(
+          CreateDisbursementContractCommand(
+            liabilityAccountId: 'loan-liability',
+            principal: const Money(minorUnits: 120000),
+            totalPeriods: 12,
+            borrowingDate: DateTime(2026, 6, 14),
+            firstRepaymentDate: DateTime(2026, 7, 12),
+            repaymentMethod: InstallmentRepaymentMethod.interestFirst,
+          ),
+        );
+
+        final preview = await fixture.service.previewContractRecalculation(
+          RecalculateContractSchedulesCommand(
+            contractId: result.contractId,
+            terms: ContractRecalculationTerms(
+              totalPeriods: 12,
+              firstRepaymentDate: DateTime(2026, 8, 12),
+              lastRepaymentDate: DateTime(2027, 7, 12),
+              repaymentMethod: InstallmentRepaymentMethod.interestFirst,
+              interestRatePeriod: null,
+              interestRatePpm: null,
+              interestAccrualMethod: InterestAccrualMethod.daily,
+              totalFeeMinor: 0,
+            ),
+          ),
+        );
+
+        expect(preview, hasLength(12));
+        expect(preview.first.expectedRepaymentDate, DateTime(2026, 8, 12));
+        expect(preview.last.expectedRepaymentDate, DateTime(2027, 7, 12));
       },
     );
 

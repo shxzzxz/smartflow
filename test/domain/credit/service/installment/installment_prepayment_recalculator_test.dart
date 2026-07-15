@@ -382,6 +382,68 @@ void main() {
     expect(result.single.expectedInterest.minorUnits, 310);
   });
 
+  test(
+    'explicit terms recalculation regenerates pending dates and freezes completed dates',
+    () {
+      const recalculator = InstallmentPrepaymentRecalculator();
+      final contract = InstallmentContract(
+        id: 'contract',
+        liabilityAccountId: 'liability',
+        sourceType: InstallmentSourceType.disbursement,
+        principal: const Money(minorUnits: 10000),
+        totalPeriods: 4,
+        borrowingDate: DateTime(2026, 1, 1),
+        firstRepaymentDate: DateTime(2026, 3, 1),
+        lastRepaymentDate: DateTime(2026, 6, 1),
+        repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+        interestAccrualMethod: InterestAccrualMethod.monthly,
+        totalFeeMinor: 0,
+        status: InstallmentContractStatus.active,
+        createdAt: DateTime(2026, 1, 1),
+      );
+      final schedules = [
+        _schedule(
+          id: 'paid-1',
+          periodNo: 1,
+          date: DateTime(2026, 2, 1),
+          principal: 2500,
+          status: InstallmentScheduleStatus.paid,
+        ),
+        _schedule(
+          id: 'pending-2',
+          periodNo: 2,
+          date: DateTime(2026, 3, 1),
+          principal: 2500,
+        ),
+        _schedule(
+          id: 'pending-3',
+          periodNo: 3,
+          date: DateTime(2026, 4, 1),
+          principal: 2500,
+        ),
+        _schedule(
+          id: 'pending-4',
+          periodNo: 4,
+          date: DateTime(2026, 5, 1),
+          principal: 2500,
+        ),
+      ];
+
+      final result = recalculator.recalculateAllPendingWithRegeneratedDates(
+        contract: contract,
+        schedules: schedules,
+        prepaymentPrincipalMinor: 0,
+      );
+
+      expect(schedules.first.expectedRepaymentDate, DateTime(2026, 2, 1));
+      expect(result.map((item) => item.expectedRepaymentDate), [
+        DateTime(2026, 4, 1),
+        DateTime(2026, 5, 1),
+        DateTime(2026, 6, 1),
+      ]);
+    },
+  );
+
   test('prepayment principal reduces allocation and every pending balance', () {
     const recalculator = InstallmentPrepaymentRecalculator();
     final schedules = [
