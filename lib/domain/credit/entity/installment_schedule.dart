@@ -78,6 +78,21 @@ class InstallmentSchedule {
     _status = _settlement.projectScheduleStatus(status);
   }
 
+  bool reconcileRepaymentStatus({
+    required int allocatedPrincipalMinor,
+    required bool hasAllocation,
+  }) {
+    if (_status == InstallmentScheduleStatus.skipped) return false;
+    final nextStatus = _settlement.judgeScheduleFromRepayment(
+      expectedPrincipalMinor: expectedPrincipal.minorUnits,
+      allocatedPrincipalMinor: allocatedPrincipalMinor,
+      hasAllocation: hasAllocation,
+    );
+    if (_status == nextStatus) return false;
+    _status = nextStatus;
+    return true;
+  }
+
   void _ensurePending() {
     if (_status != InstallmentScheduleStatus.pending) {
       throw BusinessException(

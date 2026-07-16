@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
+import 'package:smartflow/application/credit/credit_command_api.dart';
 
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
@@ -11,6 +12,7 @@ import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_swipe_action.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../presentation/contract_status_validation_presentation.dart';
 import '../view_model/installment_detail_view_model.dart';
 
 class InstallmentDetailPage extends ConsumerWidget {
@@ -44,6 +46,7 @@ class InstallmentDetailPage extends ConsumerWidget {
       body: switch (detailAsync) {
         AsyncData(value: final InstallmentDetailLoaded loaded) => _Body(
           loaded: loaded,
+          onValidate: () => _confirmStatusValidation(context, ref),
         ),
         AsyncData(value: InstallmentDetailNotFound()) => const Center(
           child: Text('合同不存在'),
@@ -88,12 +91,53 @@ class InstallmentDetailPage extends ConsumerWidget {
         ).showSnackBar(SnackBar(content: Text('删除失败：${error.message}')));
     }
   }
+
+  Future<void> _confirmStatusValidation(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('校验合同状态'),
+            content: const Text('将根据实际还款记录重新计算还款计划和合同状态。不会修改金额、日期、账单或交易。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('校验'),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true) return;
+    final outcome =
+        await ref
+            .read(installmentDetailViewModelProvider(contractId).notifier)
+            .validateContractStatuses();
+    if (!context.mounted) return;
+    switch (outcome) {
+      case UiActionSuccess<ContractStatusValidationResult>(:final value):
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(contractStatusValidationMessage(value))),
+        );
+      case UiActionFailure<ContractStatusValidationResult>(:final error):
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('校验失败：${error.message}')));
+    }
+  }
 }
 
 class _Body extends StatelessWidget {
-  const _Body({required this.loaded});
+  const _Body({required this.loaded, required this.onValidate});
 
   final InstallmentDetailLoaded loaded;
+  final VoidCallback onValidate;
 
   @override
   Widget build(BuildContext context) {
@@ -116,7 +160,7 @@ class _Body extends StatelessWidget {
           paidFeeMinor: loaded.paidFeeMinor,
         ),
         const SizedBox(height: AppSpacing.space8),
-        _ActionBar(contract: contract),
+        _ActionBar(contract: contract, onValidate: onValidate),
         const SizedBox(height: AppSpacing.space12),
         Text('还款计划', style: context.appTextStyles.dateSectionTitle),
         const SizedBox(height: AppSpacing.space6),
@@ -328,15 +372,14 @@ class _StatusChip extends StatelessWidget {
 }
 
 class _ActionBar extends StatelessWidget {
-  const _ActionBar({required this.contract});
+  const _ActionBar({required this.contract, required this.onValidate});
 
   final InstallmentContractReadModel contract;
+  final VoidCallback onValidate;
 
   @override
   Widget build(BuildContext context) {
-    if (contract.status != InstallmentContractStatus.active) {
-      return const SizedBox.shrink();
-    }
+    final active = contract.status == InstallmentContractStatus.active;
     return AppSurface(
       child: Padding(
         padding: const EdgeInsets.symmetric(
@@ -345,19 +388,31 @@ class _ActionBar extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Expanded(
-              child: _ActionButton(
-                icon: RemixIcons.bank_card_line,
-                label: '提前还款',
-                onTap: () => context.push('/installments/${contract.id}/repay'),
+            if (active) ...[
+              Expanded(
+                child: _ActionButton(
+                  icon: RemixIcons.bank_card_line,
+                  label: '提前还款',
+                  onTap:
+                      () => context.push('/installments/${contract.id}/repay'),
+                ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.space6),
+              const SizedBox(width: AppSpacing.space6),
+              Expanded(
+                child: _ActionButton(
+                  icon: RemixIcons.edit_line,
+                  label: '编辑合同',
+                  onTap:
+                      () => context.push('/installments/${contract.id}/edit'),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.space6),
+            ],
             Expanded(
               child: _ActionButton(
-                icon: RemixIcons.edit_line,
-                label: '编辑合同',
-                onTap: () => context.push('/installments/${contract.id}/edit'),
+                icon: RemixIcons.refresh_line,
+                label: '校验状态',
+                onTap: onValidate,
               ),
             ),
           ],

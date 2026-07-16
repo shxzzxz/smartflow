@@ -59,6 +59,9 @@ void main() {
           installmentContractEditViewModelProvider('contract-1').notifier,
         );
         await _readState(container);
+        viewModel
+          ..setFirstRepaymentDate(DateTime(2026, 3, 1))
+          ..setLastRepaymentDate(DateTime(2026, 5, 1));
 
         final outcome = await viewModel.recalculate(
           totalPeriodsText: '3',
@@ -71,6 +74,8 @@ void main() {
         expect(service.previewCommands, hasLength(1));
         final previewCommand = service.previewCommands.single;
         expect(previewCommand.terms!.totalPeriods, 3);
+        expect(previewCommand.terms!.firstRepaymentDate, DateTime(2026, 3, 1));
+        expect(previewCommand.terms!.lastRepaymentDate, DateTime(2026, 5, 1));
         expect(previewCommand.terms!.interestRatePpm, 120000);
         expect(previewCommand.terms!.totalFeeMinor, 30);
         final loaded =
@@ -386,6 +391,16 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   @override
   Future<void> restoreSchedule(RestoreInstallmentScheduleCommand command) {
     throw UnimplementedError();
+  }
+
+  @override
+  Future<ContractStatusValidationResult> validateContractStatuses(
+    ValidateContractStatusesCommand command,
+  ) async {
+    return const ContractStatusValidationResult(
+      repairedScheduleCount: 0,
+      contractStatusChanged: false,
+    );
   }
 
   @override

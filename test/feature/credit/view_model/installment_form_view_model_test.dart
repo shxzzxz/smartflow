@@ -35,11 +35,14 @@ void main() {
       final viewModel = container.read(
         installmentFormViewModelProvider(args).notifier,
       );
-      viewModel.setDisbursementAccountId('cash');
+      viewModel
+        ..setDisbursementAccountId('cash')
+        ..setFirstRepaymentDate(DateTime(2026, 8, 12))
+        ..setLastRepaymentDate(DateTime(2027, 7, 12));
 
       final outcome = await viewModel.submit(
         principalText: '12.34',
-        totalPeriodsText: '3',
+        totalPeriodsText: '12',
         rateText: '7.2',
         totalFeeText: '',
         overrideInstallmentText: '4.56',
@@ -52,7 +55,9 @@ void main() {
       expect(command.liabilityAccountId, 'loan');
       expect(command.disbursementAccountId, 'cash');
       expect(command.principal, const Money(minorUnits: 1234));
-      expect(command.totalPeriods, 3);
+      expect(command.totalPeriods, 12);
+      expect(command.firstRepaymentDate, DateTime(2026, 8, 12));
+      expect(command.lastRepaymentDate, DateTime(2027, 7, 12));
       expect(command.interestRatePpm, 72000);
       expect(command.equalInstallmentOverrideMinor, 456);
       expect(command.note, 'note');
@@ -131,6 +136,39 @@ void main() {
         expect(command.principal, const Money(minorUnits: 10000));
         expect(command.totalFeeMinor, 300);
         expect(command.interestRatePeriod, isNull);
+      },
+    );
+
+    test(
+      'rejects a multi-period contract whose last date is not later',
+      () async {
+        final service = _FakeInstallmentAppService();
+        final args = _args('loan');
+        final container = _container(service: service);
+        await _readState(container, args);
+        final viewModel = container.read(
+          installmentFormViewModelProvider(args).notifier,
+        );
+        viewModel
+          ..setDisbursementAccountId('cash')
+          ..setFirstRepaymentDate(DateTime(2026, 8, 12))
+          ..setLastRepaymentDate(DateTime(2026, 8, 12));
+
+        final outcome = await viewModel.submit(
+          principalText: '100',
+          totalPeriodsText: '12',
+          rateText: '',
+          totalFeeText: '',
+          overrideInstallmentText: '',
+          noteText: '',
+        );
+
+        expect(outcome, isA<UiActionFailure<String>>());
+        expect(
+          (outcome as UiActionFailure<String>).error.message,
+          '末期还款日必须晚于首期还款日',
+        );
+        expect(service.disbursementCommands, isEmpty);
       },
     );
 

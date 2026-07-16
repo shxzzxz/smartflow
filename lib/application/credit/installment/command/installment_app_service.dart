@@ -19,6 +19,7 @@ import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 import 'installment_command.dart';
+import 'installment_status_validation_coordinator.dart';
 import '../../settlement/credit_settlement_coordinator.dart';
 
 abstract interface class InstallmentAppService {
@@ -41,6 +42,10 @@ abstract interface class InstallmentAppService {
   Future<void> skipSchedule(SkipInstallmentScheduleCommand command);
 
   Future<void> restoreSchedule(RestoreInstallmentScheduleCommand command);
+
+  Future<ContractStatusValidationResult> validateContractStatuses(
+    ValidateContractStatusesCommand command,
+  );
 
   /// 删除合同：仅允许无提前还款且所有计划均未发生还款的合同。
   Future<void> deleteContract(DeleteContractCommand command);
@@ -72,6 +77,11 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
        _lifecycle = lifecycle,
        _prepaymentRecalculator = prepaymentRecalculator,
        _repaymentPolicy = repaymentPolicy,
+       _statusValidation = InstallmentStatusValidationCoordinator(
+         installments: repository,
+         bills: bills,
+         repayments: repayments,
+       ),
        _repaymentSettlement = CreditSettlementCoordinator(
          bills: bills,
          repayments: repayments,
@@ -89,6 +99,7 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
   final InstallmentLifecycleService _lifecycle;
   final InstallmentPrepaymentRecalculator _prepaymentRecalculator;
   final RepaymentPolicyService _repaymentPolicy;
+  final InstallmentStatusValidationCoordinator _statusValidation;
   final CreditSettlementCoordinator _repaymentSettlement;
 
   @override
@@ -285,6 +296,13 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
     );
   }
 
+  @override
+  Future<ContractStatusValidationResult> validateContractStatuses(
+    ValidateContractStatusesCommand command,
+  ) {
+    return _runner.run(() => _statusValidation.validate(command.contractId));
+  }
+
   Future<List<RecalculatedSchedulePreview>> _buildPendingRecalculationPreview(
     RecalculateContractSchedulesCommand command,
   ) async {
@@ -301,12 +319,13 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
     final schedules = await _repository.listSchedules(contractId);
     final prepaymentPrincipalMinor = await _prepaymentSumMinor(contractId);
     final calculationContract = _contractForRecalculation(contract, command);
-    final recalculations = _prepaymentRecalculator.recalculateAllPending(
-      contract: calculationContract,
-      schedules: schedules,
-      prepaymentPrincipalMinor: prepaymentPrincipalMinor,
-      equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
-    );
+    final recalculations = _prepaymentRecalculator
+        .recalculateAllPendingWithRegeneratedDates(
+          contract: calculationContract,
+          schedules: schedules,
+          prepaymentPrincipalMinor: prepaymentPrincipalMinor,
+          equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
+        );
 
     return [
       for (final recalculation in recalculations)

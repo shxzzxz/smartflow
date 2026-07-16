@@ -322,6 +322,8 @@ class CreditBillGenerationService {
         status: _statusFor(
           itemId: consumptionId,
           expectedPrincipalMinor: consumptionMinor,
+          expectedInterestMinor: 0,
+          expectedFeeMinor: 0,
           allocated: allocated,
         ),
         createdAt: existingConsumption?.createdAt,
@@ -390,6 +392,8 @@ class CreditBillGenerationService {
       status: _statusFor(
         itemId: itemId,
         expectedPrincipalMinor: schedule.expectedPrincipal.minorUnits,
+        expectedInterestMinor: schedule.expectedInterest.minorUnits,
+        expectedFeeMinor: schedule.expectedFee.minorUnits,
         allocated: allocated,
       ),
       createdAt: existing?.createdAt,
@@ -399,12 +403,18 @@ class CreditBillGenerationService {
   BillItemStatus _statusFor({
     required String itemId,
     required int expectedPrincipalMinor,
+    required int expectedInterestMinor,
+    required int expectedFeeMinor,
     required Map<String, RepaymentAmountBreakdown> allocated,
   }) {
     return _judgement.judgeBillItem(
       expectedPrincipalMinor: expectedPrincipalMinor,
       allocatedPrincipalMinor: allocated[itemId]?.principal.minorUnits ?? 0,
       hasAllocation: allocated.containsKey(itemId),
+      hasExpectedRepayment:
+          expectedPrincipalMinor != 0 ||
+          expectedInterestMinor != 0 ||
+          expectedFeeMinor != 0,
     );
   }
 

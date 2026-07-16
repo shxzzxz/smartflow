@@ -117,6 +117,32 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     }
   }
 
+  Future<UiActionOutcome<ContractStatusValidationResult>>
+  validateContractStatuses() async {
+    final loaded = _loadedOrNull();
+    if (loaded == null) {
+      return UiActionOutcome.failure(
+        UiError(
+          code: CreditErrorCode.contractInvalidCommand.code,
+          message: '合同尚未加载',
+        ),
+      );
+    }
+    try {
+      final result = await ref
+          .read(installmentAppServiceProvider)
+          .validateContractStatuses(
+            ValidateContractStatusesCommand(contractId: loaded.contract.id),
+          );
+      _invalidateContract(loaded.contract);
+      return UiActionOutcome.success(result);
+    } on AppException catch (exception) {
+      return UiActionOutcome.failure(UiError.fromException(exception));
+    } on Exception {
+      return const UiActionOutcome.failure(UiError.unknown());
+    }
+  }
+
   InstallmentDetailLoaded? _loadedOrNull() {
     final current = state.asData?.value;
     return current is InstallmentDetailLoaded ? current : null;

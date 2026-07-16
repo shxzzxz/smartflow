@@ -77,6 +77,32 @@ class BillItemReadModel {
   final InstallmentSourceType? installmentSourceType;
   final String? contractId;
   final String? scheduleId;
+
+  Money get remainingPrincipal =>
+      _remaining(expectedPrincipal, allocated.principal);
+
+  Money get remainingInterest =>
+      _remaining(expectedInterest, allocated.interest);
+
+  Money get remainingFee => _remaining(expectedFee, allocated.fee);
+
+  /// Total amount still payable for this bill item.
+  ///
+  /// Discounts reduce the amount due even though they are not one of the
+  /// expected amount components.
+  Money get remainingTotal {
+    final remaining =
+        remainingPrincipal.minorUnits +
+        remainingInterest.minorUnits +
+        remainingFee.minorUnits -
+        allocated.discount.minorUnits;
+    return Money(minorUnits: remaining < 0 ? 0 : remaining);
+  }
+
+  static Money _remaining(Money expected, Money allocated) {
+    final remaining = expected.minorUnits - allocated.minorUnits;
+    return Money(minorUnits: remaining < 0 ? 0 : remaining);
+  }
 }
 
 enum BillRepaymentTimeSource { transaction, recordCreatedAt }

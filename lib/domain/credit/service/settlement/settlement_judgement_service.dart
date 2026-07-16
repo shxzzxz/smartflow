@@ -8,13 +8,17 @@ class SettlementJudgementService {
     required int expectedPrincipalMinor,
     required int allocatedPrincipalMinor,
     required bool hasAllocation,
+    required bool hasExpectedRepayment,
   }) {
+    if (!hasAllocation) {
+      return hasExpectedRepayment
+          ? BillItemStatus.pending
+          : BillItemStatus.paid;
+    }
     if (allocatedPrincipalMinor >= expectedPrincipalMinor) {
       return BillItemStatus.paid;
     }
-    return hasAllocation
-        ? BillItemStatus.partiallyPaid
-        : BillItemStatus.pending;
+    return BillItemStatus.partiallyPaid;
   }
 
   BillStatus projectBillStatus(
@@ -38,6 +42,18 @@ class SettlementJudgementService {
       BillItemStatus.pending => InstallmentScheduleStatus.pending,
       BillItemStatus.skipped => InstallmentScheduleStatus.skipped,
     };
+  }
+
+  InstallmentScheduleStatus judgeScheduleFromRepayment({
+    required int expectedPrincipalMinor,
+    required int allocatedPrincipalMinor,
+    required bool hasAllocation,
+  }) {
+    if (!hasAllocation) return InstallmentScheduleStatus.pending;
+    if (allocatedPrincipalMinor >= expectedPrincipalMinor) {
+      return InstallmentScheduleStatus.paid;
+    }
+    return InstallmentScheduleStatus.partiallyPaid;
   }
 
   InstallmentContractStatus projectContractStatus({

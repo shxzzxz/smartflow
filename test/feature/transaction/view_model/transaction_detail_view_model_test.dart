@@ -649,6 +649,16 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   }
 
   @override
+  Future<ContractStatusValidationResult> validateContractStatuses(
+    ValidateContractStatusesCommand command,
+  ) async {
+    return const ContractStatusValidationResult(
+      repairedScheduleCount: 0,
+      contractStatusChanged: false,
+    );
+  }
+
+  @override
   Future<void> deleteContract(DeleteContractCommand command) async {
     deleteContractCommands.add(command);
   }

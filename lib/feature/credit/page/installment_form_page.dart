@@ -151,6 +151,17 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                 value: _formatDate(state.firstRepaymentDate),
                 onTap: () => _pickFirstRepaymentDate(state.firstRepaymentDate),
               ),
+              DateTimePlainFormRow(
+                label: '末期还款日',
+                value:
+                    state.lastRepaymentDate == null
+                        ? '按期数自动计算'
+                        : _formatDate(state.lastRepaymentDate!),
+                onTap:
+                    () => _pickLastRepaymentDate(
+                      state.lastRepaymentDate ?? state.firstRepaymentDate,
+                    ),
+              ),
               DropdownPlainFormRow<InstallmentRepaymentMethod>(
                 label: '分期方式',
                 value: state.method,
@@ -228,6 +239,18 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
     ref
         .read(installmentFormViewModelProvider(_args).notifier)
         .setFirstRepaymentDate(picked);
+  }
+
+  Future<void> _pickLastRepaymentDate(DateTime initialDate) async {
+    final picked = await showAppDatePicker(
+      context: context,
+      initialDate: initialDate,
+      title: '选择末期还款日',
+    );
+    if (picked == null || !mounted) return;
+    ref
+        .read(installmentFormViewModelProvider(_args).notifier)
+        .setLastRepaymentDate(picked);
   }
 
   Future<void> _pickAccount({

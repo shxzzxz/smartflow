@@ -36,6 +36,7 @@ void main() {
 
       expect(find.text('创建放款交易'), findsOneWidget);
       expect(find.text('到账账户'), findsOneWidget);
+      expect(find.text('末期还款日'), findsOneWidget);
 
       await tester.tap(find.byType(Switch));
       await tester.pumpAndSettle();

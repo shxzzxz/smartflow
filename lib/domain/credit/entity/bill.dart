@@ -129,6 +129,10 @@ class Bill {
           expectedPrincipalMinor: item.expectedPrincipal.minorUnits,
           allocatedPrincipalMinor: allocation.principalMinor,
           hasAllocation: allocation.hasAllocation,
+          hasExpectedRepayment:
+              item.expectedPrincipal.minorUnits != 0 ||
+              item.expectedInterest.minorUnits != 0 ||
+              item.expectedFee.minorUnits != 0,
         ),
       );
       if (item.scheduleId != null) {
