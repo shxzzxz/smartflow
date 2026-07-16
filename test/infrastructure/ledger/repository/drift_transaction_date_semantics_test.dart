@@ -1,7 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_port_api.dart';
-import 'package:smartflow/application/ledger/transaction/query/transaction_queries.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_balance_aggregate_repository.dart';
@@ -20,7 +19,7 @@ void main() {
     final page =
         await transactions
             .watchPage(
-          TransactionListQuery(
+              TransactionListQuery(
                 occurredFrom: DateTime(2026, 4, 1),
                 occurredUntil: DateTime(2026, 5, 1),
               ),
