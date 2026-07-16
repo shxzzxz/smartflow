@@ -74,6 +74,26 @@ void main() {
       expect(entriesAreBalanced(refund.entries), isTrue);
     });
 
+    test('keeps posting time independent when transaction time changes', () {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final transaction = engine.createExpense(
+        ExpenseInstruction(
+          amount: Money.parse('12.30'),
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'food',
+          occurredAt: DateTime(2026, 5, 1),
+        ),
+      );
+      final postedAt = transaction.postedAt;
+
+      transaction.updateBasicInfo(occurredAt: DateTime(2026, 5, 2));
+
+      expect(transaction.occurredAt, DateTime(2026, 5, 2));
+      expect(transaction.postedAt, postedAt);
+    });
+
     test('creates replacement chain original to reversal to correction', () {
       final engine = PostingEngine(
         idGenerator: SequentialIdGenerator(prefix: 'tx'),

@@ -110,6 +110,21 @@ Patch<String?> _nullableStringPatch(String? value) {
   return value == null ? const Patch<String?>.clear() : Patch.set(value);
 }
 
+Future<UiActionOutcome<void>> _changePostedAt({
+  required Transaction transaction,
+  required TransactionUpdateAppService updateService,
+  required DateTime value,
+}) {
+  return detailVoidOutcomeFromAction(() {
+    return updateService.updateBasicInfo(
+      UpdateTransactionBasicInfoCommand(
+        transactionId: transaction.id,
+        postedAt: value,
+      ),
+    );
+  });
+}
+
 final class _DefaultActionDispatcher
     implements TransactionDetailActionDispatcher {
   const _DefaultActionDispatcher({
@@ -157,14 +172,11 @@ final class _DefaultActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> changePostedAt(DateTime value) async {
-    return detailVoidOutcomeFromAction(() {
-      return updateService.updateBasicInfo(
-        UpdateTransactionBasicInfoCommand(
-          transactionId: transaction.id,
-          postedAt: value,
-        ),
-      );
-    });
+    return _changePostedAt(
+      transaction: transaction,
+      updateService: updateService,
+      value: value,
+    );
   }
 
   @override
@@ -224,14 +236,11 @@ final class _InstallmentActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> changePostedAt(DateTime value) async {
-    return detailVoidOutcomeFromAction(() {
-      return updateService.updateBasicInfo(
-        UpdateTransactionBasicInfoCommand(
-          transactionId: transaction.id,
-          postedAt: value,
-        ),
-      );
-    });
+    return _changePostedAt(
+      transaction: transaction,
+      updateService: updateService,
+      value: value,
+    );
   }
 
   @override
@@ -298,14 +307,11 @@ final class _CreditRepaymentActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> changePostedAt(DateTime value) async {
-    return detailVoidOutcomeFromAction(() {
-      return updateService.updateBasicInfo(
-        UpdateTransactionBasicInfoCommand(
-          transactionId: transaction.id,
-          postedAt: value,
-        ),
-      );
-    });
+    return _changePostedAt(
+      transaction: transaction,
+      updateService: updateService,
+      value: value,
+    );
   }
 
   @override
@@ -357,14 +363,11 @@ final class _UnknownActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> changePostedAt(DateTime value) async {
-    return detailVoidOutcomeFromAction(() {
-      return updateService.updateBasicInfo(
-        UpdateTransactionBasicInfoCommand(
-          transactionId: transaction.id,
-          postedAt: value,
-        ),
-      );
-    });
+    return _changePostedAt(
+      transaction: transaction,
+      updateService: updateService,
+      value: value,
+    );
   }
 
   @override
