@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../token/form.dart';
 import '../token/typography.dart';
 
 extension AppTextStyleContext on BuildContext {
@@ -81,7 +82,9 @@ class AppTextStyles {
   );
 
   TextStyle get formSwitchDescription => _bodySmall.copyWith(
-    color: _colors.onSurfaceVariant.withValues(alpha: 0.8),
+    color: _colors.onSurfaceVariant.withValues(
+      alpha: AppFormTokens.switchDescriptionOpacity,
+    ),
     fontSize: AppTypography.fontSizeCompact,
     fontWeight: AppTypography.bodyWeight,
     height: 1.35,

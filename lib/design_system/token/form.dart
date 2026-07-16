@@ -3,5 +3,6 @@ abstract final class AppFormTokens {
   static const double rowMinHeight = 48;
   static const double disabledOpacity = 0.56;
   static const double subduedOpacity = 0.52;
+  static const double switchDescriptionOpacity = 0.8;
   static const double amountInputWidth = 116;
 }

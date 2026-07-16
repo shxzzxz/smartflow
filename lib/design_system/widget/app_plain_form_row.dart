@@ -208,34 +208,22 @@ class AppPlainSwitchRow extends StatelessWidget {
     final description = this.description?.trim();
     final labelStyle = context.appTextStyles.formLabel;
     final descriptionStyle = context.appTextStyles.formSwitchDescription;
+    TextStyle styleForState(TextStyle style) {
+      if (enabled) return style;
+      return style.copyWith(
+        color: style.color?.withValues(alpha: AppFormTokens.disabledOpacity),
+      );
+    }
+
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: AppFormTokens.rowMinHeight),
       child: SwitchListTile.adaptive(
         contentPadding: EdgeInsets.zero,
-        title: Text(
-          label,
-          style:
-              enabled
-                  ? labelStyle
-                  : labelStyle.copyWith(
-                    color: labelStyle.color?.withValues(
-                      alpha: AppFormTokens.disabledOpacity,
-                    ),
-                  ),
-        ),
+        minTileHeight: AppFormTokens.rowMinHeight,
+        title: Text(label, style: styleForState(labelStyle)),
         subtitle:
             description != null && description.isNotEmpty
-                ? Text(
-                  description,
-                  style:
-                      enabled
-                          ? descriptionStyle
-                          : descriptionStyle.copyWith(
-                            color: descriptionStyle.color?.withValues(
-                              alpha: AppFormTokens.disabledOpacity,
-                            ),
-                          ),
-                )
+                ? Text(description, style: styleForState(descriptionStyle))
                 : null,
         value: value,
         onChanged: enabled ? onChanged : null,

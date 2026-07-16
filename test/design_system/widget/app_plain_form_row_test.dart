@@ -105,23 +105,28 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: Column(
-            children: [
-              const AppPlainFormRow(label: '账户', child: Text('现金')),
-              AppPlainSwitchRow(
-                key: const Key('described-switch'),
-                label: '创建放款交易',
-                description: '迁移已有贷款时可关闭，仅创建合同和还款计划',
-                value: true,
-                onChanged: (_) {},
+          body: Center(
+            child: SizedBox(
+              width: 220,
+              child: Column(
+                children: [
+                  const AppPlainFormRow(label: '账户', child: Text('现金')),
+                  AppPlainSwitchRow(
+                    key: const Key('described-switch'),
+                    label: '创建放款交易',
+                    description: '迁移已有贷款时可关闭，仅创建合同和还款计划',
+                    value: true,
+                    onChanged: (_) {},
+                  ),
+                  AppPlainSwitchRow(
+                    key: const Key('plain-switch'),
+                    label: '参与统计',
+                    value: false,
+                    onChanged: (_) {},
+                  ),
+                ],
               ),
-              AppPlainSwitchRow(
-                key: const Key('plain-switch'),
-                label: '参与统计',
-                value: false,
-                onChanged: (_) {},
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -138,6 +143,7 @@ void main() {
       tester.getSize(find.byKey(const Key('described-switch'))).height,
       greaterThan(tester.getSize(find.byKey(const Key('plain-switch'))).height),
     );
+    expect(tester.getSize(find.byKey(const Key('plain-switch'))).height, 48);
     expect(find.text('参与统计'), findsOneWidget);
     expect(find.byType(Switch), findsNWidgets(2));
   });
