@@ -44,8 +44,56 @@ void main() {
       final accountRow = loaded.accountRows.singleWhere(
         (row) => row.label == '收支账户',
       );
-      expect(accountRow.permission, isA<DetailEditDenied>());
+      expect(accountRow.permission, isA<DetailEditAllowed>());
     });
+
+    test(
+      'dispatches plain expense account change to ledger correction service',
+      () async {
+        final correction = _FakeTransactionCorrectionAppService();
+        final container = _container(
+          detail: _detail(purpose: BusinessPurpose.dailyExpense),
+          correction: correction,
+        );
+        await _readState(container);
+
+        final outcome = await container
+            .read(transactionDetailViewModelProvider('tx-1').notifier)
+            .changeAccount(AccountSelectionPurpose.settlement, 'bank');
+
+        expect(outcome, isA<UiActionSuccess<void>>());
+        final command = correction.expenseCommands.single;
+        expect(command.transactionId, 'tx-1');
+        expect(command.paidFromAccountId, 'bank');
+      },
+    );
+
+    test(
+      'dispatches plain income account change to ledger correction service',
+      () async {
+        final correction = _FakeTransactionCorrectionAppService();
+        final container = _container(
+          detail: _detail(
+            purpose: BusinessPurpose.dailyIncome,
+            entries: [
+              _entry('cash', EntryDirection.debit),
+              _entry('salary', EntryDirection.credit),
+            ],
+          ),
+          correction: correction,
+        );
+        await _readState(container);
+
+        final outcome = await container
+            .read(transactionDetailViewModelProvider('tx-1').notifier)
+            .changeAccount(AccountSelectionPurpose.settlement, 'bank');
+
+        expect(outcome, isA<UiActionSuccess<void>>());
+        final command = correction.incomeCommands.single;
+        expect(command.transactionId, 'tx-1');
+        expect(command.receiveAccountId, 'bank');
+      },
+    );
 
     test(
       'dispatches installment disbursement account change to credit app service',
@@ -348,6 +396,7 @@ ProviderContainer _container({
     ),
     'loan': _account('loan', '贷款', type: AccountType.liability),
     'food': _account('food', '午餐', type: AccountType.expense, iconKey: 'meal'),
+    'salary': _account('salary', '工资', type: AccountType.income),
   };
   final container = ProviderContainer(
     overrides: [
@@ -502,6 +551,8 @@ class _FakeTransactionUpdateAppService implements TransactionUpdateAppService {
 class _FakeTransactionCorrectionAppService
     implements TransactionCorrectionAppService {
   final canceledTransactionIds = <String>[];
+  final expenseCommands = <CorrectExpenseCommand>[];
+  final incomeCommands = <CorrectIncomeCommand>[];
   final reimbursementAdvanceCommands = <CorrectReimbursementAdvanceCommand>[];
 
   @override
@@ -527,13 +578,17 @@ class _FakeTransactionCorrectionAppService
   @override
   Future<PostedTransactionResult> correctExpense(
     CorrectExpenseCommand command,
-  ) {
-    throw UnimplementedError();
+  ) async {
+    expenseCommands.add(command);
+    return _posted();
   }
 
   @override
-  Future<PostedTransactionResult> correctIncome(CorrectIncomeCommand command) {
-    throw UnimplementedError();
+  Future<PostedTransactionResult> correctIncome(
+    CorrectIncomeCommand command,
+  ) async {
+    incomeCommands.add(command);
+    return _posted();
   }
 
   @override

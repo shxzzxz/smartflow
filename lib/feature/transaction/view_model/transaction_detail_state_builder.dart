@@ -302,9 +302,10 @@ DetailBehaviorConfig _behaviorConfigFor(Transaction transaction) {
       canEditOccurredAt: const DetailEditPermission.allowed(),
       canEditPostedAt: postedAtPermission,
       canEditNote: const DetailEditPermission.allowed(),
-      canEditSettlementAccount: const DetailEditPermission.denied(
-        reason: '结算账户变更需要通过更正交易完成',
-      ),
+      canEditSettlementAccount:
+          transaction.businessState == BusinessState.current
+              ? const DetailEditPermission.allowed()
+              : const DetailEditPermission.denied(reason: '仅当前有效交易可以修改结算账户'),
     );
   }
 

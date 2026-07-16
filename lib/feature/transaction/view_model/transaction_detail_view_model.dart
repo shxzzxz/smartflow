@@ -34,8 +34,14 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     );
   }
 
-  Future<List<Account>> accountOptions(AccountSelectionPurpose purpose) {
-    return ref.read(accountsForSelectionPurposeProvider(purpose).future);
+  Future<List<Account>> accountOptions(AccountSelectionPurpose purpose) async {
+    final provider = accountsForSelectionPurposeProvider(purpose);
+    final subscription = ref.listen(provider, (_, _) {});
+    try {
+      return await ref.read(provider.future);
+    } finally {
+      subscription.close();
+    }
   }
 
   Future<UiActionOutcome<void>> delete() {

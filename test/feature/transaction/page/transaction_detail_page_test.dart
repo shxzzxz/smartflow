@@ -12,8 +12,9 @@ import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {
-  testWidgets('renders detail state and forwards note edits', (tester) async {
+  testWidgets('renders detail state and forwards inline edits', (tester) async {
     final update = _FakeTransactionUpdateAppService();
+    final correction = _FakeTransactionCorrectionAppService();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -25,11 +26,14 @@ void main() {
           ),
           accountsForSelectionPurposeProvider(
             AccountSelectionPurpose.settlement,
-          ).overrideWith((ref) => Stream.value([_accounts['cash']!])),
+          ).overrideWith(
+            (ref) => Stream.value([_accounts['cash']!, _accounts['bank']!]),
+          ),
           accountsForSelectionPurposeProvider(
             AccountSelectionPurpose.reimbursementReceivable,
           ).overrideWith((ref) => Stream.value(const <Account>[])),
           transactionUpdateAppServiceProvider.overrideWithValue(update),
+          transactionCorrectionAppServiceProvider.overrideWithValue(correction),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
@@ -54,11 +58,27 @@ void main() {
     expect(update.basicInfoCommands, hasLength(1));
     expect(update.basicInfoCommands.single.transactionId, 'tx-1');
     expect(find.text('备注已更新'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('现金'));
+    await tester.pumpAndSettle();
+    expect(find.text('选择收支账户'), findsOneWidget);
+
+    await tester.tap(find.text('银行卡'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final command = correction.expenseCommands.single;
+    expect(command.transactionId, 'tx-1');
+    expect(command.paidFromAccountId, 'bank');
+    expect(find.text('收支账户已更新'), findsOneWidget);
   });
 }
 
 final _accounts = <String, Account>{
   'cash': _account('cash', '现金', iconKey: 'cash'),
+  'bank': _account('bank', '银行卡', iconKey: 'account'),
   'food': _account('food', '午餐', type: AccountType.expense, iconKey: 'meal'),
 };
 
@@ -139,4 +159,23 @@ class _FakeTransactionUpdateAppService implements TransactionUpdateAppService {
   ) {
     throw UnimplementedError();
   }
+}
+
+class _FakeTransactionCorrectionAppService
+    implements TransactionCorrectionAppService {
+  final expenseCommands = <CorrectExpenseCommand>[];
+
+  @override
+  Future<PostedTransactionResult> correctExpense(
+    CorrectExpenseCommand command,
+  ) async {
+    expenseCommands.add(command);
+    return const PostedTransactionResult(
+      transactionId: 'tx-2',
+      rootTransactionId: 'tx-1',
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

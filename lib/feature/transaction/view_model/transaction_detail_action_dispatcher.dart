@@ -183,7 +183,60 @@ final class _DefaultActionDispatcher
   Future<UiActionOutcome<void>> changeSettlementAccount(
     String accountId,
   ) async {
-    return detailNotEditable('结算账户变更需要通过更正交易完成');
+    switch (transaction.businessPurpose) {
+      case BusinessPurpose.dailyExpense:
+        return detailVoidOutcomeFromAction(() {
+          return correctionService.correctExpense(
+            CorrectExpenseCommand(
+              transactionId: transaction.id,
+              paidFromAccountId: accountId,
+            ),
+          );
+        });
+      case BusinessPurpose.dailyIncome:
+        return detailVoidOutcomeFromAction(() {
+          return correctionService.correctIncome(
+            CorrectIncomeCommand(
+              transactionId: transaction.id,
+              receiveAccountId: accountId,
+            ),
+          );
+        });
+      case BusinessPurpose.reimbursementAdvance:
+        return detailVoidOutcomeFromAction(() {
+          return correctionService.correctReimbursementAdvance(
+            CorrectReimbursementAdvanceCommand(
+              transactionId: transaction.id,
+              paidFromAccountId: accountId,
+            ),
+          );
+        });
+      case BusinessPurpose.borrowing:
+        return detailVoidOutcomeFromAction(() {
+          return correctionService.correctBorrowing(
+            CorrectBorrowingCommand(
+              transactionId: transaction.id,
+              receiveAccountId: accountId,
+            ),
+          );
+        });
+      case BusinessPurpose.debtRepayment:
+        return detailVoidOutcomeFromAction(() {
+          return correctionService.correctRepayment(
+            CorrectRepaymentCommand(
+              transactionId: transaction.id,
+              paidFromAccountId: accountId,
+            ),
+          );
+        });
+      case BusinessPurpose.transfer:
+      case BusinessPurpose.refund:
+      case BusinessPurpose.reimbursementReceipt:
+      case BusinessPurpose.reimbursementClose:
+      case BusinessPurpose.openingBalance:
+      case BusinessPurpose.balanceAdjustment:
+        return detailInvalidCommand('当前交易不支持在详情页修改账户');
+    }
   }
 }
 
