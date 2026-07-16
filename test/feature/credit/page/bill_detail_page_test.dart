@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/theme/app_theme_extension.dart';
 import 'package:smartflow/feature/credit/page/bill_detail_page.dart';
 import 'package:smartflow/feature/credit/view_model/bill_detail_view_model.dart';
 
@@ -46,6 +47,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final settledStatus = tester.widget<Text>(find.text('已了结'));
+    final successColor =
+        AppTheme.light().extension<AppThemeExtension>()!.success;
+    expect(settledStatus.style?.color, successColor);
     expect(find.text('还款'), findsOneWidget);
     expect(find.text('账单分期'), findsOneWidget);
     expect(find.text('刷新'), findsOneWidget);
