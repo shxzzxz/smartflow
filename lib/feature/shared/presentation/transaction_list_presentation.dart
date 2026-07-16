@@ -5,6 +5,8 @@ import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
 import 'account_lookup.dart';
 
+const _noAccountLabel = '无账户';
+
 class TransactionDayGroup {
   const TransactionDayGroup({
     required this.date,
@@ -50,7 +52,7 @@ class TransactionAccountFlowPresentation {
     this.out,
     this.in_,
     this.separator = '->',
-    this.fallbackLabel = '未分配账户',
+    this.fallbackLabel = _noAccountLabel,
   });
 
   final AccountEndpointPresentation? out;
@@ -211,7 +213,7 @@ TransactionAccountFlowPresentation resolveAccountFlow(
   final out = endpointOf(flowOutAccount(item, accountLookup));
   final in_ = endpointOf(flowInAccount(item, accountLookup));
   final fallbackText = transactionAccountLabel(item, accountLookup);
-  final fallbackLabel = fallbackText.isEmpty ? '未分配账户' : fallbackText;
+  final fallbackLabel = fallbackText.isEmpty ? _noAccountLabel : fallbackText;
 
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense => TransactionAccountFlowPresentation(

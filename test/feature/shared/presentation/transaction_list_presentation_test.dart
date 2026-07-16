@@ -95,6 +95,18 @@ void main() {
       expect(row.amountText, '-12.34');
       expect(row.amountTone, FinanceTone.neutral);
     });
+
+    test(
+      'uses no account label when the referenced account is unavailable',
+      () {
+        final row = buildTransactionRowPresentation(
+          item: _item(),
+          accountLookup: AccountLookup({'food': _accounts['food']!}),
+        );
+
+        expect(row.accountFlow.singleEndpoint.label, '无账户');
+      },
+    );
   });
 }
 
