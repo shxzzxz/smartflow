@@ -44,6 +44,18 @@ class SettlementJudgementService {
     };
   }
 
+  InstallmentScheduleStatus judgeScheduleFromRepayment({
+    required int expectedPrincipalMinor,
+    required int allocatedPrincipalMinor,
+    required bool hasAllocation,
+  }) {
+    if (!hasAllocation) return InstallmentScheduleStatus.pending;
+    if (allocatedPrincipalMinor >= expectedPrincipalMinor) {
+      return InstallmentScheduleStatus.paid;
+    }
+    return InstallmentScheduleStatus.partiallyPaid;
+  }
+
   InstallmentContractStatus projectContractStatus({
     required InstallmentContractStatus current,
     required Iterable<InstallmentScheduleStatus> scheduleStatuses,

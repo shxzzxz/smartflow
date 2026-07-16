@@ -138,6 +138,22 @@ void main() {
       expect(service.restoreCommands.single.scheduleId, 'schedule-1');
     });
 
+    test('status validation delegates to command service', () async {
+      final service = _FakeInstallmentAppService();
+      final container = _container(contract: _contract(), service: service);
+      await container.read(
+        installmentDetailViewModelProvider('contract-1').future,
+      );
+
+      final outcome =
+          await container
+              .read(installmentDetailViewModelProvider('contract-1').notifier)
+              .validateContractStatuses();
+
+      expect(outcome, isA<UiActionSuccess<ContractStatusValidationResult>>());
+      expect(service.validationCommands.single.contractId, 'contract-1');
+    });
+
     test('maps AppException to UI failure', () async {
       final service = _FakeInstallmentAppService(
         deleteException: BusinessException(
@@ -272,6 +288,7 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   final deleteCommands = <DeleteContractCommand>[];
   final skipCommands = <SkipInstallmentScheduleCommand>[];
   final restoreCommands = <RestoreInstallmentScheduleCommand>[];
+  final validationCommands = <ValidateContractStatusesCommand>[];
 
   @override
   Future<void> deleteContract(DeleteContractCommand command) async {
@@ -290,6 +307,17 @@ class _FakeInstallmentAppService implements InstallmentAppService {
     RestoreInstallmentScheduleCommand command,
   ) async {
     restoreCommands.add(command);
+  }
+
+  @override
+  Future<ContractStatusValidationResult> validateContractStatuses(
+    ValidateContractStatusesCommand command,
+  ) async {
+    validationCommands.add(command);
+    return const ContractStatusValidationResult(
+      repairedScheduleCount: 0,
+      contractStatusChanged: false,
+    );
   }
 
   @override

@@ -55,6 +55,49 @@ class DeleteContractCommand {
   final String contractId;
 }
 
+class ValidateContractStatusesCommand {
+  const ValidateContractStatusesCommand({required this.contractId});
+
+  final String contractId;
+}
+
+class ContractStatusValidationResult {
+  const ContractStatusValidationResult({
+    required this.repairedScheduleCount,
+    required this.contractStatusChanged,
+    this.issues = const [],
+  });
+
+  final int repairedScheduleCount;
+  final bool contractStatusChanged;
+  final List<ContractStatusValidationIssue> issues;
+
+  bool get hasChanges => repairedScheduleCount > 0 || contractStatusChanged;
+}
+
+class ContractStatusValidationIssue {
+  const ContractStatusValidationIssue({
+    required this.type,
+    required this.message,
+    this.scheduleId,
+  });
+
+  final ContractStatusValidationIssueType type;
+  final String message;
+  final String? scheduleId;
+}
+
+enum ContractStatusValidationIssueType {
+  skippedScheduleHasAllocation,
+  repaymentMissing,
+  zeroAllocation,
+  noSchedules,
+  scheduleMissing,
+  repaymentTargetMismatch,
+  billItemMissing,
+  billItemReferenceMismatch,
+}
+
 class RecalculateContractSchedulesCommand {
   const RecalculateContractSchedulesCommand({
     required this.contractId,

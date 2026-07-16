@@ -71,6 +71,43 @@ void main() {
     expect(repaymentService.deleteCommands.single.repaymentId, 'repayment-1');
   });
 
+  testWidgets(
+    'settled contract exposes status validation with result summary',
+    (tester) async {
+      final service = _FakeInstallmentAppService(
+        validationResult: const ContractStatusValidationResult(
+          repairedScheduleCount: 2,
+          contractStatusChanged: true,
+          issues: [
+            ContractStatusValidationIssue(
+              type:
+                  ContractStatusValidationIssueType
+                      .skippedScheduleHasAllocation,
+              message: '已跳过的还款计划存在还款分摊。',
+            ),
+          ],
+        ),
+      );
+      await tester.pumpWidget(
+        _app(
+          service: service,
+          scheduleStatus: InstallmentScheduleStatus.paid,
+          contractStatus: InstallmentContractStatus.settled,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('校验状态'));
+      await tester.pumpAndSettle();
+      expect(find.text('校验合同状态'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, '校验'));
+      await tester.pumpAndSettle();
+
+      expect(service.validationCommands.single.contractId, 'contract-1');
+      expect(find.text('校验完成，已修复 2 个还款计划及合同状态，另有 1 项数据冲突未处理'), findsOneWidget);
+    },
+  );
+
   testWidgets('schedule and repayment rows use whitespace without dividers', (
     tester,
   ) async {
@@ -107,6 +144,7 @@ void main() {
 Widget _app({
   required _FakeInstallmentAppService service,
   required InstallmentScheduleStatus scheduleStatus,
+  InstallmentContractStatus contractStatus = InstallmentContractStatus.active,
   _FakeRepaymentAppService? repaymentService,
   int scheduleCount = 1,
   List<ContractRepayment> repayments = const [],
@@ -114,7 +152,7 @@ Widget _app({
   final container = ProviderContainer(
     overrides: [
       installmentContractProvider.overrideWith(
-        (ref, contractId) async => _contract(),
+        (ref, contractId) async => _contract(status: contractStatus),
       ),
       installmentSchedulesProvider.overrideWith(
         (ref, contractId) async => [
@@ -139,7 +177,9 @@ Widget _app({
   );
 }
 
-InstallmentContractReadModel _contract() {
+InstallmentContractReadModel _contract({
+  InstallmentContractStatus status = InstallmentContractStatus.active,
+}) {
   return InstallmentContractReadModel(
     id: 'contract-1',
     liabilityAccountId: 'loan',
@@ -153,7 +193,7 @@ InstallmentContractReadModel _contract() {
     repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
     interestAccrualMethod: InterestAccrualMethod.daily,
     totalFeeMinor: 0,
-    status: InstallmentContractStatus.active,
+    status: status,
     createdAt: DateTime(2026, 1, 1),
   );
 }
@@ -187,8 +227,17 @@ ContractRepayment _repayment(String id) {
 }
 
 class _FakeInstallmentAppService implements InstallmentAppService {
+  _FakeInstallmentAppService({
+    this.validationResult = const ContractStatusValidationResult(
+      repairedScheduleCount: 0,
+      contractStatusChanged: false,
+    ),
+  });
+
+  final ContractStatusValidationResult validationResult;
   final skipCommands = <SkipInstallmentScheduleCommand>[];
   final restoreCommands = <RestoreInstallmentScheduleCommand>[];
+  final validationCommands = <ValidateContractStatusesCommand>[];
 
   @override
   Future<void> skipSchedule(SkipInstallmentScheduleCommand command) async {
@@ -200,6 +249,14 @@ class _FakeInstallmentAppService implements InstallmentAppService {
     RestoreInstallmentScheduleCommand command,
   ) async {
     restoreCommands.add(command);
+  }
+
+  @override
+  Future<ContractStatusValidationResult> validateContractStatuses(
+    ValidateContractStatusesCommand command,
+  ) async {
+    validationCommands.add(command);
+    return validationResult;
   }
 
   @override
