@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
+import 'package:smartflow/design_system/token/list.dart';
 import 'package:smartflow/design_system/token/radius.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/widget/app_surface.dart';
@@ -94,7 +95,9 @@ class _AccountCreditSummaryRow extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.space10),
               ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 140),
+                constraints: const BoxConstraints(
+                  maxWidth: AppListTokens.trailingMaxWidth,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -104,7 +107,7 @@ class _AccountCreditSummaryRow extends StatelessWidget {
                       child: MoneyText(
                         money: presentation.amount,
                         style: styles.amountList,
-                        semantic: MoneySemantic.neutral,
+                        semantic: MoneySemantic.liability,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.space4),
@@ -160,7 +163,7 @@ class _StatusBadge extends StatelessWidget {
         vertical: AppSpacing.space2,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withValues(alpha: AppListTokens.statusBackgroundOpacity),
         borderRadius: BorderRadius.circular(AppRadius.radiusMd),
       ),
       child: Text(
@@ -181,8 +184,10 @@ class _SummaryDivider extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
-      height: 1,
-      color: colors.outlineVariant.withValues(alpha: 0.45),
+      height: AppListTokens.dividerThickness,
+      color: colors.outlineVariant.withValues(
+        alpha: AppListTokens.dividerOpacity,
+      ),
     );
   }
 }

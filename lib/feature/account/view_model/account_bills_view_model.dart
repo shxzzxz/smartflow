@@ -1,37 +1,83 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../app/provider.dart';
 import '../../../application/credit/credit_query_api.dart';
+import '../../../core/error/app_exception.dart';
 import '../../credit/provider/bill_query_providers.dart';
+import '../../credit/provider/credit_account_query_providers.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
+import 'account_detail_view_model.dart';
 import 'account_views_provider.dart';
 
 part 'account_bills_view_model.g.dart';
 
+final _logger = Logger('feature.account.bills');
+
 @riverpod
-AccountBillsPageState accountBillsViewModel(Ref ref, String accountId) {
-  final account = ref.watch(accountViewProvider(accountId));
-  final bills = ref.watch(billSummariesByAccountProvider(accountId));
+class AccountBillsViewModel extends _$AccountBillsViewModel {
+  @override
+  AccountBillsPageState build(String accountId) {
+    final account = ref.watch(accountViewProvider(accountId));
+    final bills = ref.watch(billSummariesByAccountProvider(accountId));
 
-  if (account case AsyncError()) {
-    return const AccountBillsPageState.error(message: '账户加载失败，请稍后重试');
-  }
-  if (bills case AsyncError()) {
-    return const AccountBillsPageState.error(message: '账单加载失败，请稍后重试');
-  }
-  if (account case AsyncData(value: null)) {
-    return const AccountBillsPageState.notFound();
+    if (account case AsyncError()) {
+      return const AccountBillsPageState.error(message: '账户加载失败，请稍后重试');
+    }
+    if (bills case AsyncError()) {
+      return const AccountBillsPageState.error(message: '账单加载失败，请稍后重试');
+    }
+    if (account case AsyncData(value: null)) {
+      return const AccountBillsPageState.notFound();
+    }
+
+    final accountValue = account.value;
+    final billValues = bills.value;
+    if (accountValue == null || billValues == null) {
+      return const AccountBillsPageState.loading();
+    }
+
+    return AccountBillsPageState.loaded(
+      bills: billValues,
+      canGenerateHistoricalBill:
+          accountValue.isCreditLiability && !accountValue.isArchived,
+    );
   }
 
-  final accountValue = account.value;
-  final billValues = bills.value;
-  if (accountValue == null || billValues == null) {
-    return const AccountBillsPageState.loading();
+  Future<UiActionOutcome<void>> generateHistoricalBill(DateTime month) async {
+    final keepAlive = ref.keepAlive();
+    try {
+      await ref
+          .read(creditBillGenerationAppServiceProvider)
+          .generateBillForPeriod(
+            accountId: accountId,
+            period: BillPeriod(year: month.year, month: month.month),
+            now: DateTime.now(),
+          );
+      if (ref.mounted) {
+        _invalidateAccount();
+      }
+      return const UiActionOutcome.success(null);
+    } on AppException catch (exception) {
+      return UiActionOutcome.failure(UiError.fromException(exception));
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Historical bill generation failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
+      return const UiActionOutcome.failure(UiError.unknown());
+    } finally {
+      keepAlive.close();
+    }
   }
 
-  return AccountBillsPageState.loaded(
-    bills: billValues,
-    canGenerateHistoricalBill:
-        accountValue.isCreditLiability && !accountValue.isArchived,
-  );
+  void _invalidateAccount() {
+    ref
+      ..invalidate(accountDetailViewModelProvider(accountId))
+      ..invalidate(creditAccountOverviewProvider(accountId))
+      ..invalidate(billSummariesByAccountProvider(accountId));
+  }
 }
 
 sealed class AccountBillsPageState {

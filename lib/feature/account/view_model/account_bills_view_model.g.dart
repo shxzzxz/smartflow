@@ -9,17 +9,11 @@ part of 'account_bills_view_model.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(accountBillsViewModel)
+@ProviderFor(AccountBillsViewModel)
 final accountBillsViewModelProvider = AccountBillsViewModelFamily._();
 
 final class AccountBillsViewModelProvider
-    extends
-        $FunctionalProvider<
-          AccountBillsPageState,
-          AccountBillsPageState,
-          AccountBillsPageState
-        >
-    with $Provider<AccountBillsPageState> {
+    extends $NotifierProvider<AccountBillsViewModel, AccountBillsPageState> {
   AccountBillsViewModelProvider._({
     required AccountBillsViewModelFamily super.from,
     required String super.argument,
@@ -43,15 +37,7 @@ final class AccountBillsViewModelProvider
 
   @$internal
   @override
-  $ProviderElement<AccountBillsPageState> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  AccountBillsPageState create(Ref ref) {
-    final argument = this.argument as String;
-    return accountBillsViewModel(ref, argument);
-  }
+  AccountBillsViewModel create() => AccountBillsViewModel();
 
   /// {@macro riverpod.override_with_value}
   Override overrideWithValue(AccountBillsPageState value) {
@@ -73,10 +59,17 @@ final class AccountBillsViewModelProvider
 }
 
 String _$accountBillsViewModelHash() =>
-    r'38ef2b73d2b64673cf8b69c96bd5b1e1474bf268';
+    r'6e79e05de9a84dffffd7f1d8876dc69f98681663';
 
 final class AccountBillsViewModelFamily extends $Family
-    with $FunctionalFamilyOverride<AccountBillsPageState, String> {
+    with
+        $ClassFamilyOverride<
+          AccountBillsViewModel,
+          AccountBillsPageState,
+          AccountBillsPageState,
+          AccountBillsPageState,
+          String
+        > {
   AccountBillsViewModelFamily._()
     : super(
         retry: null,
@@ -91,4 +84,26 @@ final class AccountBillsViewModelFamily extends $Family
 
   @override
   String toString() => r'accountBillsViewModelProvider';
+}
+
+abstract class _$AccountBillsViewModel
+    extends $Notifier<AccountBillsPageState> {
+  late final _$args = ref.$arg as String;
+  String get accountId => _$args;
+
+  AccountBillsPageState build(String accountId);
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<AccountBillsPageState, AccountBillsPageState>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AccountBillsPageState, AccountBillsPageState>,
+              AccountBillsPageState,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, () => build(_$args));
+  }
 }

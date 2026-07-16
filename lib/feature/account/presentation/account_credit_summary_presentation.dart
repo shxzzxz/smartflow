@@ -1,5 +1,6 @@
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 enum AccountCreditSummaryTone { neutral, primary, warning, success, danger }
 
@@ -59,7 +60,7 @@ AccountCreditSummaryPresentation billAccountCreditSummary(
 
 AccountCreditSummaryPresentation installmentAccountCreditSummary(
   InstallmentContractReadModel contract, {
-  required bool isCreditAccount,
+  required AccountProfileKind accountKind,
 }) {
   return AccountCreditSummaryPresentation(
     id: contract.id,
@@ -69,7 +70,7 @@ AccountCreditSummaryPresentation installmentAccountCreditSummary(
       AccountCreditSummarySupportingItem(
         text: _installmentSourceLabel(
           contract.sourceType,
-          isCreditAccount: isCreditAccount,
+          accountKind: accountKind,
         ),
       ),
       AccountCreditSummarySupportingItem(text: '${contract.totalPeriods} 期'),
@@ -129,11 +130,15 @@ String _fullDate(DateTime date) {
 
 String _installmentSourceLabel(
   InstallmentSourceType sourceType, {
-  required bool isCreditAccount,
+  required AccountProfileKind accountKind,
 }) {
   return switch (sourceType) {
     InstallmentSourceType.billConversion => '账单分期',
-    InstallmentSourceType.disbursement => isCreditAccount ? '现金分期' : '贷款分期',
+    InstallmentSourceType.disbursement => switch (accountKind) {
+      AccountProfileKind.credit => '现金分期',
+      AccountProfileKind.loan => '贷款分期',
+      AccountProfileKind.fund || AccountProfileKind.reimbursement => '放款分期',
+    },
   };
 }
 

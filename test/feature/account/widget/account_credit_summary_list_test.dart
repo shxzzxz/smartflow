@@ -49,6 +49,11 @@ void main() {
     final warning = Theme.of(context).extension<AppThemeExtension>()!.warning;
     final statusText = tester.widget<Text>(find.text('已出账'));
     expect(statusText.style?.color, warning);
+    final amountText = tester.widget<Text>(find.text('3200.00'));
+    expect(
+      amountText.style?.color,
+      Theme.of(context).extension<AppThemeExtension>()!.liability,
+    );
 
     await tester.tap(find.text('2026年07月'));
     expect(tapped, isTrue);

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/account/presentation/account_credit_summary_presentation.dart';
+import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 void main() {
   group('billAccountCreditSummary', () {
@@ -42,7 +43,7 @@ void main() {
     test('uses borrowing date as title and exposes supporting information', () {
       final presentation = installmentAccountCreditSummary(
         _contract(),
-        isCreditAccount: true,
+        accountKind: AccountProfileKind.credit,
       );
 
       expect(presentation.title, '2026年05月10日');
@@ -59,7 +60,7 @@ void main() {
     test('uses loan label and success for a settled loan contract', () {
       final presentation = installmentAccountCreditSummary(
         _contract(status: InstallmentContractStatus.settled),
-        isCreditAccount: false,
+        accountKind: AccountProfileKind.loan,
       );
 
       expect(presentation.supportingItems.first.text, '贷款分期');
