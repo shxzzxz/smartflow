@@ -38,4 +38,25 @@ void main() {
 
     expect(billItemDestination(item), isNull);
   });
+
+  test('bill item remaining total includes interest and fee', () {
+    final item = BillItemReadModel(
+      id: 'item-1',
+      itemType: BillItemType.consumption,
+      status: BillItemStatus.partiallyPaid,
+      repaymentDate: DateTime(2026, 7, 20),
+      expectedPrincipal: const Money(minorUnits: 10000),
+      expectedInterest: const Money(minorUnits: 500),
+      expectedFee: const Money(minorUnits: 200),
+      allocated: const RepaymentAmountDto(
+        principal: Money(minorUnits: 3000),
+        interest: Money(minorUnits: 100),
+        fee: Money(minorUnits: 50),
+        discount: Money(minorUnits: 0),
+      ),
+      isOverdue: false,
+    );
+
+    expect(item.remainingTotal, const Money(minorUnits: 7550));
+  });
 }

@@ -428,7 +428,7 @@ class _BillItemRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.space10),
-            Text(item.expectedPrincipal.format(), style: styles.amountList),
+            Text(item.remainingTotal.format(), style: styles.amountList),
           ],
         ),
       ),
