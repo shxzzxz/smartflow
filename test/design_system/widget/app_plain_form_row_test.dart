@@ -3,6 +3,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_row.dart';
 
 void main() {
+  testWidgets('uses compact touch-safe height for a plain row', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ListView(
+            children: [
+              AppPlainFormRow(
+                key: Key('plain-row'),
+                label: '账户',
+                child: Text('现金'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.getSize(find.byKey(const Key('plain-row'))).height, 48);
+  });
+
   testWidgets('shows required label and supporting text', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -87,6 +107,7 @@ void main() {
         home: Scaffold(
           body: Column(
             children: [
+              const AppPlainFormRow(label: '账户', child: Text('现金')),
               AppPlainSwitchRow(
                 key: const Key('described-switch'),
                 label: '创建放款交易',
@@ -106,9 +127,11 @@ void main() {
       ),
     );
 
+    final plainLabel = tester.widget<Text>(find.text('账户'));
     final label = tester.widget<Text>(find.text('创建放款交易'));
     final description = tester.widget<Text>(find.text('迁移已有贷款时可关闭，仅创建合同和还款计划'));
 
+    expect(label.style, plainLabel.style);
     expect(label.style!.fontSize, greaterThan(description.style!.fontSize!));
     expect(label.style!.color, isNot(description.style!.color));
     expect(

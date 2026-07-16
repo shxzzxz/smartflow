@@ -10,7 +10,7 @@ class AppFormSection extends StatelessWidget {
     super.key,
     this.title,
     this.description,
-    this.spacing = AppSpacing.space12,
+    this.spacing = AppSpacing.space4,
     this.padding = const EdgeInsets.all(AppSpacing.space16),
     this.border = false,
   });
