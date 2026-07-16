@@ -1,6 +1,10 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../app/provider.dart';
 import '../../../application/credit/credit_query_api.dart';
+import '../../../application/ledger/ledger_command_api.dart';
+import '../../../core/error/app_exception.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
 import '../../credit/provider/bill_query_providers.dart';
 import '../../credit/provider/credit_account_query_providers.dart';
 import '../../credit/provider/installment_query_providers.dart';
@@ -44,6 +48,19 @@ class AccountDetailViewModel extends _$AccountDetailViewModel {
     ref
         .read(accountTransactionsViewModelProvider(accountId).notifier)
         .loadMore();
+  }
+
+  Future<UiActionOutcome<void>> deleteAccount() async {
+    try {
+      await ref
+          .read(accountAppServiceProvider)
+          .archiveAccount(ArchiveAccountCommand(id: accountId));
+      return const UiActionOutcome.success(null);
+    } on AppException catch (exception) {
+      return UiActionOutcome.failure(UiError.fromException(exception));
+    } on Exception {
+      return const UiActionOutcome.failure(UiError.unknown());
+    }
   }
 }
 

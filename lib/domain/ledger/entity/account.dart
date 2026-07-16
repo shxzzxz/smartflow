@@ -75,6 +75,16 @@ class Account {
 
   bool get supportsManualBalance => type.supportsManualBalance(subtype);
 
+  void archive(DateTime archivedAt) {
+    if (!type.isUserAccount || systemKey != null) {
+      LedgerViolationReason.accountArchiveNotAllowed.throwException();
+    }
+    if (isArchived) {
+      LedgerViolationReason.accountArchived.throwException();
+    }
+    this.archivedAt = archivedAt;
+  }
+
   /// 是否可以作为"用户账户"被编辑(通过 EditAccountCommand 修改属性)。
   /// 系统类账户(income / expense / equity)走 CategoryService 或其它路径。
   LedgerViolationReason? checkEditable() {

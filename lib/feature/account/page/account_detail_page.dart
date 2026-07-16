@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../design_system/theme/app_text_styles.dart';
+import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
 import '../presentation/account_credit_summary_presentation.dart';
@@ -36,6 +38,15 @@ class AccountDetailPage extends ConsumerWidget {
               onPressed: () => context.push('/account/$accountId/edit'),
               icon: const Icon(RemixIcons.edit_line),
               tooltip: '编辑账户',
+            ),
+          if (loadedAccount != null && !loadedAccount.isArchived)
+            IconButton(
+              onPressed: () => _confirmDelete(context, ref),
+              color:
+                  Theme.of(context).extension<AppThemeExtension>()?.danger ??
+                  Theme.of(context).colorScheme.error,
+              icon: const Icon(RemixIcons.delete_bin_line),
+              tooltip: '删除账户',
             ),
         ],
       ),
@@ -68,6 +79,48 @@ class AccountDetailPage extends ConsumerWidget {
         ),
       },
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        final danger =
+            Theme.of(dialogContext).extension<AppThemeExtension>()?.danger ??
+            Theme.of(dialogContext).colorScheme.error;
+        return AlertDialog(
+          title: const Text('删除账户？'),
+          content: const Text('删除后账户将不再显示，但历史交易会保留。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: TextButton.styleFrom(foregroundColor: danger),
+              child: const Text('删除'),
+            ),
+          ],
+        );
+      },
+    );
+    if (!context.mounted || confirmed != true) return;
+
+    final outcome =
+        await ref
+            .read(accountDetailViewModelProvider(accountId).notifier)
+            .deleteAccount();
+    if (!context.mounted) return;
+
+    switch (outcome) {
+      case UiActionSuccess<void>():
+        context.go('/account');
+      case UiActionFailure<void>(:final error):
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 }
 
@@ -144,7 +197,7 @@ class _AccountDetailContent extends StatelessWidget {
       leading: [
         _AccountInfoSection(account: account, creditOverview: creditOverview),
         const SizedBox(height: AppSpacing.space12),
-        _AccountActionBar(account: account),
+        if (!account.isArchived) _AccountActionBar(account: account),
         if (showInstallments) ...[
           const SizedBox(height: AppSpacing.space20),
           _BillSection(accountId: account.id, bills: bills),

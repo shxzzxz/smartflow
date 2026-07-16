@@ -16,6 +16,10 @@ enum LedgerViolationReason {
     LedgerErrorCode.accountInvalidRole,
     'Account subtype does not match account type.',
   ),
+  accountArchiveNotAllowed(
+    LedgerErrorCode.accountUnavailable,
+    'This account cannot be archived.',
+  ),
   accountTargetBalanceNegative(
     LedgerErrorCode.accountInvalidCommand,
     'Target balance cannot be negative.',

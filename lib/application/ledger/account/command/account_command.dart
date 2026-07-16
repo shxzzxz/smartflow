@@ -49,3 +49,9 @@ class EditAccountCommand {
   final Patch<String>? note;
   final Money? targetBalance;
 }
+
+class ArchiveAccountCommand {
+  const ArchiveAccountCommand({required this.id});
+
+  final String id;
+}

@@ -70,6 +70,34 @@ void main() {
         ),
       );
     });
+
+    test('rejects an archived account as a posting target', () async {
+      final cash = _account('cash', AccountType.asset);
+      cash.archive(DateTime(2026, 7, 16));
+      final accountRepository = _FakeAccountRepository([
+        cash,
+        _account('food', AccountType.expense),
+      ]);
+      final service = _service(accountRepository);
+
+      await expectLater(
+        () => service.postExpense(
+          ExpenseInstruction(
+            amount: const Money(minorUnits: 1234),
+            paidFromAccountId: 'cash',
+            expenseAccountId: 'food',
+            occurredAt: DateTime(2026, 1, 2),
+          ),
+        ),
+        throwsA(
+          isA<BusinessException>().having(
+            (error) => error.code,
+            'code',
+            LedgerErrorCode.accountUnavailable.code,
+          ),
+        ),
+      );
+    });
   });
 }
 

@@ -15,6 +15,8 @@ abstract interface class AccountAppService {
   Future<Account> createAccount(CreateAccountCommand command);
 
   Future<void> editAccount(EditAccountCommand command);
+
+  Future<void> archiveAccount(ArchiveAccountCommand command);
 }
 
 class AccountAppServiceImpl implements AccountAppService {
@@ -111,6 +113,18 @@ class AccountAppServiceImpl implements AccountAppService {
           );
       await _transactionRepository.save(adjustment.transaction);
       await _repository.saveAll(adjustment.accounts);
+    });
+  }
+
+  @override
+  Future<void> archiveAccount(ArchiveAccountCommand command) async {
+    await _runner.run<void>(() async {
+      final account = await _repository.findById(command.id);
+      if (account == null) {
+        throw BusinessException(LedgerErrorCode.accountNotFound);
+      }
+      account.archive(DateTime.now());
+      await _repository.save(account);
     });
   }
 }

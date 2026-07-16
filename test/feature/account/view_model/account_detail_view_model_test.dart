@@ -4,9 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
+import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/feature/account/view_model/account_detail_view_model.dart';
+import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
@@ -135,7 +139,77 @@ void main() {
       final bills = (loaded.bills as AccountBillsLoaded).bills;
       expect(bills.map((bill) => bill.period.month), [7, 6]);
     });
+
+    test('deletes the account through the archive command', () async {
+      final commandService = _FakeAccountAppService();
+      final container = _deleteContainer(commandService);
+
+      final outcome =
+          await container
+              .read(accountDetailViewModelProvider('cash').notifier)
+              .deleteAccount();
+
+      expect(outcome, isA<UiActionSuccess<void>>());
+      expect(commandService.archiveCommands.single.id, 'cash');
+    });
+
+    test('maps archive business failures to a UI failure', () async {
+      final commandService = _FakeAccountAppService(
+        exception: BusinessException(
+          LedgerErrorCode.accountUnavailable,
+          message: '账户当前不可用。',
+        ),
+      );
+      final container = _deleteContainer(commandService);
+
+      final outcome =
+          await container
+              .read(accountDetailViewModelProvider('cash').notifier)
+              .deleteAccount();
+
+      expect(outcome, isA<UiActionFailure<void>>());
+      final failure = outcome as UiActionFailure<void>;
+      expect(failure.error.code, LedgerErrorCode.accountUnavailable.code);
+      expect(failure.error.message, '账户当前不可用。');
+    });
+
+    test(
+      'maps unexpected archive exceptions to an unknown UI failure',
+      () async {
+        final container = _deleteContainer(
+          _FakeAccountAppService(exception: Exception('unexpected')),
+        );
+
+        final outcome =
+            await container
+                .read(accountDetailViewModelProvider('cash').notifier)
+                .deleteAccount();
+
+        expect(outcome, isA<UiActionFailure<void>>());
+        final failure = outcome as UiActionFailure<void>;
+        expect(failure.error.code, 'unknown');
+        expect(failure.error.message, '未知错误，请稍后重试。');
+      },
+    );
   });
+}
+
+ProviderContainer _deleteContainer(_FakeAccountAppService commandService) {
+  final transactionService = _FakeTransactionQueryService();
+  final accountQueryService = _FakeAccountQueryService(accountsById: _accounts);
+  return _container(
+    transactionService,
+    accountQueryService,
+    overrides: [
+      accountAppServiceProvider.overrideWithValue(commandService),
+      accountListProvider.overrideWith(
+        (ref) => Stream.value([_account('cash', '现金')]),
+      ),
+      creditLiabilityAccountsByAccountIdProvider.overrideWith(
+        (ref) => Stream.value(const {}),
+      ),
+    ],
+  );
 }
 
 ProviderContainer _container(
@@ -321,6 +395,30 @@ class _FakeCreditAccountQueryService implements CreditAccountQueryService {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeAccountAppService implements AccountAppService {
+  _FakeAccountAppService({this.exception});
+
+  final Object? exception;
+  final archiveCommands = <ArchiveAccountCommand>[];
+
+  @override
+  Future<Account> createAccount(CreateAccountCommand command) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> editAccount(EditAccountCommand command) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> archiveAccount(ArchiveAccountCommand command) async {
+    archiveCommands.add(command);
+    final exception = this.exception;
+    if (exception != null) throw exception;
+  }
 }
 
 class _ReplayStream<T> {

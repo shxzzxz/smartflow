@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
+import 'package:smartflow/application/ledger/ledger_command_api.dart';
+import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/account/page/account_bills_page.dart';
@@ -20,6 +22,77 @@ import 'package:smartflow/widget/business/finance/finance_tone.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 
 void main() {
+  testWidgets('hides new transaction actions for an archived account', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(account: _account(kind: AccountProfileKind.fund, isArchived: true)),
+    );
+
+    expect(find.text('记账'), findsNothing);
+    expect(find.text('转账'), findsNothing);
+    expect(find.byTooltip('编辑账户'), findsNothing);
+    expect(find.byTooltip('删除账户'), findsNothing);
+  });
+
+  testWidgets('deletes an account after confirmation', (tester) async {
+    final account = _account(kind: AccountProfileKind.fund);
+    final detailState = AccountDetailPageState.loaded(
+      account: account,
+      transactions: const AccountTransactionsState.loaded(
+        groups: [],
+        hasMore: false,
+        isLoadingMore: false,
+      ),
+      contracts: const AccountContractsState.notApplicable(),
+      bills: const AccountBillsState.notApplicable(),
+      creditOverview: const AccountCreditOverviewState.notApplicable(),
+    );
+    final commandService = _FakeAccountAppService();
+    final router = GoRouter(
+      initialLocation: '/account/account',
+      routes: [
+        GoRoute(
+          path: '/account',
+          builder: (context, state) => const Scaffold(body: Text('账户列表')),
+        ),
+        GoRoute(
+          path: '/account/:id',
+          builder:
+              (context, state) =>
+                  AccountDetailPage(accountId: state.pathParameters['id']!),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          accountAppServiceProvider.overrideWithValue(commandService),
+          accountDetailViewModelProvider(
+            account.id,
+          ).overrideWith(() => _FixedAccountDetailViewModel(detailState)),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.light(),
+          routerConfig: router,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('删除账户'));
+    await tester.pumpAndSettle();
+    expect(find.text('删除账户？'), findsOneWidget);
+    expect(find.text('删除后账户将不再显示，但历史交易会保留。'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, '删除'));
+    await tester.pumpAndSettle();
+
+    expect(commandService.archiveCommands.single.id, account.id);
+    expect(find.text('账户列表'), findsOneWidget);
+  });
+
   testWidgets('shows bill view-all action without historical bill button', (
     tester,
   ) async {
@@ -258,6 +331,25 @@ class _FixedAccountDetailViewModel extends AccountDetailViewModel {
   void loadMoreTransactions() {}
 }
 
+class _FakeAccountAppService implements AccountAppService {
+  final archiveCommands = <ArchiveAccountCommand>[];
+
+  @override
+  Future<Account> createAccount(CreateAccountCommand command) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> editAccount(EditAccountCommand command) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> archiveAccount(ArchiveAccountCommand command) async {
+    archiveCommands.add(command);
+  }
+}
+
 BillSummaryReadModel _bill(int year, int month) {
   return BillSummaryReadModel(
     id: 'bill-$year-$month',
@@ -273,14 +365,17 @@ BillSummaryReadModel _bill(int year, int month) {
   );
 }
 
-AccountView _account({required AccountProfileKind kind}) {
+AccountView _account({
+  required AccountProfileKind kind,
+  bool isArchived = false,
+}) {
   return AccountView(
     id: 'account',
     name: '测试账户',
     kind: kind,
     balance: Money.zero(),
     iconKey: kind.iconKey,
-    isArchived: false,
+    isArchived: isArchived,
     creditLimit:
         kind == AccountProfileKind.credit
             ? const Money(minorUnits: 100000)
