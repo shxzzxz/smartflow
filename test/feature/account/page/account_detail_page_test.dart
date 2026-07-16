@@ -238,7 +238,10 @@ Widget _app({
         account.id,
       ).overrideWith(() => _FixedAccountDetailViewModel(state)),
     ],
-    child: MaterialApp(home: AccountDetailPage(accountId: account.id)),
+    child: MaterialApp(
+      theme: AppTheme.light(),
+      home: AccountDetailPage(accountId: account.id),
+    ),
   );
 }
 
