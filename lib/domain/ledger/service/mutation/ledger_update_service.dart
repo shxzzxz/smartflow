@@ -18,6 +18,7 @@ class LedgerUpdateService {
     UpdateTransactionBasicInfoInstruction instruction,
   ) async {
     if (instruction.occurredAt == null &&
+        instruction.postedAt == null &&
         instruction.counterpartyName == null &&
         instruction.note == null) {
       return _empty(instruction.transactionId);
@@ -33,6 +34,7 @@ class LedgerUpdateService {
 
     transaction.updateBasicInfo(
       occurredAt: instruction.occurredAt,
+      postedAt: instruction.postedAt,
       counterpartyName: instruction.counterpartyName,
       note: instruction.note,
     );

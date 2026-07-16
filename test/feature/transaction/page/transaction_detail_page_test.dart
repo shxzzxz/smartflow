@@ -42,6 +42,8 @@ void main() {
     expect(find.text('交易详情'), findsOneWidget);
     expect(find.text('午餐'), findsOneWidget);
     expect(find.text('退款'), findsOneWidget);
+    expect(find.text('交易时间'), findsOneWidget);
+    expect(find.text('入账时间'), findsOneWidget);
 
     await tester.tap(find.text('点击添加备注'));
     await tester.pumpAndSettle();

@@ -222,6 +222,36 @@ void main() {
       expect(failure.error.message, '交易当前不可编辑');
     });
 
+    test('updates posted time through the ledger basic info service', () async {
+      final update = _FakeTransactionUpdateAppService();
+      final container = _container(
+        detail: _detail(purpose: BusinessPurpose.dailyExpense),
+        update: update,
+      );
+      await _readState(container);
+
+      final postedAt = DateTime(2026, 2, 3, 10);
+      final outcome = await container
+          .read(transactionDetailViewModelProvider('tx-1').notifier)
+          .changePostedAt(postedAt);
+
+      expect(outcome, isA<UiActionSuccess<void>>());
+      expect(update.basicInfoCommands.single.postedAt, postedAt);
+    });
+
+    test('marks posted time read-only for a historical transaction', () async {
+      final container = _container(
+        detail: _detail(
+          purpose: BusinessPurpose.dailyExpense,
+          businessState: BusinessState.replaced,
+        ),
+      );
+
+      final state = await _readState(container) as TransactionDetailLoaded;
+
+      expect(state.behavior.canEditPostedAt, isA<DetailEditDenied>());
+    });
+
     test('submits reimbursement close command', () async {
       final posting = _FakeTransactionPostingAppService();
       final detail = _detail(
@@ -262,7 +292,7 @@ void main() {
       expect(command.note, 'done');
     });
 
-    test('unknown owner only allows note edit', () async {
+    test('unknown owner still allows note and posted time edits', () async {
       final update = _FakeTransactionUpdateAppService();
       final detail = _detail(
         purpose: BusinessPurpose.dailyExpense,
@@ -273,6 +303,7 @@ void main() {
       final state = await _readState(container);
       final loaded = state as TransactionDetailLoaded;
       expect(loaded.behavior.bannerText, contains('unknown-owner'));
+      expect(loaded.behavior.canEditPostedAt, isA<DetailEditAllowed>());
       expect(loaded.showExcludeStats, false);
       final editAction = loaded.actionButtons.singleWhere(
         (button) => button.kind == DetailActionKind.edit,
@@ -288,7 +319,12 @@ void main() {
           .read(transactionDetailViewModelProvider('tx-1').notifier)
           .changeNote('new note');
       expect(noteOutcome, isA<UiActionSuccess<void>>());
-      expect(update.basicInfoCommands.single.note, isNotNull);
+      final postedOutcome = await container
+          .read(transactionDetailViewModelProvider('tx-1').notifier)
+          .changePostedAt(DateTime(2026, 3, 1));
+      expect(postedOutcome, isA<UiActionSuccess<void>>());
+      expect(update.basicInfoCommands.first.note, isNotNull);
+      expect(update.basicInfoCommands.last.postedAt, DateTime(2026, 3, 1));
     });
   });
 }
@@ -361,6 +397,7 @@ Future<TransactionDetailUiState> _readState(ProviderContainer container) {
 
 TransactionDetail _detail({
   BusinessPurpose purpose = BusinessPurpose.dailyExpense,
+  BusinessState businessState = BusinessState.current,
   TransactionOwnership? ownership,
   List<Entry>? entries,
   Money? refundedTotal,
@@ -374,7 +411,7 @@ TransactionDetail _detail({
       occurredAt: DateTime(2026, 1, 1, 8),
       primaryAmount: const Money(minorUnits: 10000),
       mutationKind: MutationKind.original,
-      businessState: BusinessState.current,
+      businessState: businessState,
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,

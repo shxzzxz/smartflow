@@ -13,13 +13,28 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
     beforeOpen: (_) async {
       await ensureBuiltinData(database);
     },
-    onUpgrade: (migrator, _, _) async {
-      // Development channel policy: schema changes are destructive. Rebuild
-      // explicitly so an existing database never opens with a partial schema.
-      for (final table in database.allTables.toList().reversed) {
-        await migrator.drop(table);
+    onUpgrade: (migrator, from, _) async {
+      if (from < 19) {
+        // Versions before v19 still follow the development-channel rebuild
+        // policy. The v19 -> v20 step below is the first compatible upgrade.
+        for (final table in database.allTables.toList().reversed) {
+          await migrator.drop(table);
+        }
+        await _createCurrentSchema(database, migrator);
+        return;
       }
-      await _createCurrentSchema(database, migrator);
+      if (from < 20) {
+        await migrator.alterTable(
+          TableMigration(
+            database.transactions,
+            newColumns: [database.transactions.postedAt],
+            columnTransformer: {
+              database.transactions.postedAt: database.transactions.occurredAt,
+            },
+          ),
+        );
+        await _createTransactionRowIndexes(database);
+      }
     },
   );
 }
@@ -116,22 +131,26 @@ Future<void> _createRepaymentIndexes(AppDatabase database) async {
 
 Future<void> _createTransactionRowIndexes(AppDatabase database) async {
   await database.customStatement(
-    'CREATE INDEX transactions_current_main_occurred_idx '
+    'CREATE INDEX IF NOT EXISTS transactions_current_main_occurred_idx '
     'ON transactions (business_state, parent_transaction_id, '
     'occurred_at, id)',
   );
   await database.customStatement(
-    'CREATE INDEX transactions_root_current_child_purpose_idx '
+    'CREATE INDEX IF NOT EXISTS transactions_root_current_child_purpose_idx '
     'ON transactions (root_transaction_id, business_state, '
     'parent_transaction_id, business_purpose)',
   );
   await database.customStatement(
-    'CREATE INDEX transactions_current_occurred_stats_idx '
+    'CREATE INDEX IF NOT EXISTS transactions_current_occurred_stats_idx '
     'ON transactions (business_state, occurred_at, '
     'is_excluded_from_stats)',
   );
   await database.customStatement(
-    'CREATE INDEX transactions_owner_idx '
+    'CREATE INDEX IF NOT EXISTS transactions_current_posted_billing_idx '
+    'ON transactions (business_state, business_purpose, posted_at)',
+  );
+  await database.customStatement(
+    'CREATE INDEX IF NOT EXISTS transactions_owner_idx '
     'ON transactions (owner_type, owner_id, owner_role)',
   );
 }

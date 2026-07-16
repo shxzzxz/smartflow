@@ -1488,6 +1488,17 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _postedAtMeta = const VerificationMeta(
+    'postedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> postedAt = GeneratedColumn<DateTime>(
+    'posted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _primaryAmountMinorMeta =
       const VerificationMeta('primaryAmountMinor');
   @override
@@ -1680,6 +1691,7 @@ class $TransactionsTable extends Transactions
     rootTransactionId,
     businessPurpose,
     occurredAt,
+    postedAt,
     primaryAmountMinor,
     counterpartyName,
     note,
@@ -1731,6 +1743,14 @@ class $TransactionsTable extends Transactions
       );
     } else if (isInserting) {
       context.missing(_occurredAtMeta);
+    }
+    if (data.containsKey('posted_at')) {
+      context.handle(
+        _postedAtMeta,
+        postedAt.isAcceptableOrUnknown(data['posted_at']!, _postedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_postedAtMeta);
     }
     if (data.containsKey('primary_amount_minor')) {
       context.handle(
@@ -1862,6 +1882,11 @@ class $TransactionsTable extends Transactions
             DriftSqlType.dateTime,
             data['${effectivePrefix}occurred_at'],
           )!,
+      postedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}posted_at'],
+          )!,
       primaryAmountMinor:
           attachedDatabase.typeMapping.read(
             DriftSqlType.int,
@@ -1980,6 +2005,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final String? rootTransactionId;
   final BusinessPurpose businessPurpose;
   final DateTime occurredAt;
+  final DateTime postedAt;
   final int primaryAmountMinor;
   final String? counterpartyName;
   final String? note;
@@ -2002,6 +2028,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     this.rootTransactionId,
     required this.businessPurpose,
     required this.occurredAt,
+    required this.postedAt,
     required this.primaryAmountMinor,
     this.counterpartyName,
     this.note,
@@ -2033,6 +2060,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       );
     }
     map['occurred_at'] = Variable<DateTime>(occurredAt);
+    map['posted_at'] = Variable<DateTime>(postedAt);
     map['primary_amount_minor'] = Variable<int>(primaryAmountMinor);
     if (!nullToAbsent || counterpartyName != null) {
       map['counterparty_name'] = Variable<String>(counterpartyName);
@@ -2098,6 +2126,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
               : Value(rootTransactionId),
       businessPurpose: Value(businessPurpose),
       occurredAt: Value(occurredAt),
+      postedAt: Value(postedAt),
       primaryAmountMinor: Value(primaryAmountMinor),
       counterpartyName:
           counterpartyName == null && nullToAbsent
@@ -2156,6 +2185,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
         serializer.fromJson<String>(json['businessPurpose']),
       ),
       occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
+      postedAt: serializer.fromJson<DateTime>(json['postedAt']),
       primaryAmountMinor: serializer.fromJson<int>(json['primaryAmountMinor']),
       counterpartyName: serializer.fromJson<String?>(json['counterpartyName']),
       note: serializer.fromJson<String?>(json['note']),
@@ -2203,6 +2233,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
         $TransactionsTable.$converterbusinessPurpose.toJson(businessPurpose),
       ),
       'occurredAt': serializer.toJson<DateTime>(occurredAt),
+      'postedAt': serializer.toJson<DateTime>(postedAt),
       'primaryAmountMinor': serializer.toJson<int>(primaryAmountMinor),
       'counterpartyName': serializer.toJson<String?>(counterpartyName),
       'note': serializer.toJson<String?>(note),
@@ -2240,6 +2271,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     Value<String?> rootTransactionId = const Value.absent(),
     BusinessPurpose? businessPurpose,
     DateTime? occurredAt,
+    DateTime? postedAt,
     int? primaryAmountMinor,
     Value<String?> counterpartyName = const Value.absent(),
     Value<String?> note = const Value.absent(),
@@ -2265,6 +2297,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
             : this.rootTransactionId,
     businessPurpose: businessPurpose ?? this.businessPurpose,
     occurredAt: occurredAt ?? this.occurredAt,
+    postedAt: postedAt ?? this.postedAt,
     primaryAmountMinor: primaryAmountMinor ?? this.primaryAmountMinor,
     counterpartyName:
         counterpartyName.present
@@ -2309,6 +2342,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
               : this.businessPurpose,
       occurredAt:
           data.occurredAt.present ? data.occurredAt.value : this.occurredAt,
+      postedAt: data.postedAt.present ? data.postedAt.value : this.postedAt,
       primaryAmountMinor:
           data.primaryAmountMinor.present
               ? data.primaryAmountMinor.value
@@ -2367,6 +2401,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('rootTransactionId: $rootTransactionId, ')
           ..write('businessPurpose: $businessPurpose, ')
           ..write('occurredAt: $occurredAt, ')
+          ..write('postedAt: $postedAt, ')
           ..write('primaryAmountMinor: $primaryAmountMinor, ')
           ..write('counterpartyName: $counterpartyName, ')
           ..write('note: $note, ')
@@ -2398,6 +2433,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     rootTransactionId,
     businessPurpose,
     occurredAt,
+    postedAt,
     primaryAmountMinor,
     counterpartyName,
     note,
@@ -2424,6 +2460,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.rootTransactionId == this.rootTransactionId &&
           other.businessPurpose == this.businessPurpose &&
           other.occurredAt == this.occurredAt &&
+          other.postedAt == this.postedAt &&
           other.primaryAmountMinor == this.primaryAmountMinor &&
           other.counterpartyName == this.counterpartyName &&
           other.note == this.note &&
@@ -2450,6 +2487,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<String?> rootTransactionId;
   final Value<BusinessPurpose> businessPurpose;
   final Value<DateTime> occurredAt;
+  final Value<DateTime> postedAt;
   final Value<int> primaryAmountMinor;
   final Value<String?> counterpartyName;
   final Value<String?> note;
@@ -2473,6 +2511,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.rootTransactionId = const Value.absent(),
     this.businessPurpose = const Value.absent(),
     this.occurredAt = const Value.absent(),
+    this.postedAt = const Value.absent(),
     this.primaryAmountMinor = const Value.absent(),
     this.counterpartyName = const Value.absent(),
     this.note = const Value.absent(),
@@ -2497,6 +2536,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.rootTransactionId = const Value.absent(),
     required BusinessPurpose businessPurpose,
     required DateTime occurredAt,
+    required DateTime postedAt,
     required int primaryAmountMinor,
     this.counterpartyName = const Value.absent(),
     this.note = const Value.absent(),
@@ -2518,6 +2558,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   }) : id = Value(id),
        businessPurpose = Value(businessPurpose),
        occurredAt = Value(occurredAt),
+       postedAt = Value(postedAt),
        primaryAmountMinor = Value(primaryAmountMinor),
        mutationKind = Value(mutationKind),
        businessState = Value(businessState),
@@ -2527,6 +2568,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<String>? rootTransactionId,
     Expression<String>? businessPurpose,
     Expression<DateTime>? occurredAt,
+    Expression<DateTime>? postedAt,
     Expression<int>? primaryAmountMinor,
     Expression<String>? counterpartyName,
     Expression<String>? note,
@@ -2551,6 +2593,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (rootTransactionId != null) 'root_transaction_id': rootTransactionId,
       if (businessPurpose != null) 'business_purpose': businessPurpose,
       if (occurredAt != null) 'occurred_at': occurredAt,
+      if (postedAt != null) 'posted_at': postedAt,
       if (primaryAmountMinor != null)
         'primary_amount_minor': primaryAmountMinor,
       if (counterpartyName != null) 'counterparty_name': counterpartyName,
@@ -2583,6 +2626,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<String?>? rootTransactionId,
     Value<BusinessPurpose>? businessPurpose,
     Value<DateTime>? occurredAt,
+    Value<DateTime>? postedAt,
     Value<int>? primaryAmountMinor,
     Value<String?>? counterpartyName,
     Value<String?>? note,
@@ -2607,6 +2651,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       rootTransactionId: rootTransactionId ?? this.rootTransactionId,
       businessPurpose: businessPurpose ?? this.businessPurpose,
       occurredAt: occurredAt ?? this.occurredAt,
+      postedAt: postedAt ?? this.postedAt,
       primaryAmountMinor: primaryAmountMinor ?? this.primaryAmountMinor,
       counterpartyName: counterpartyName ?? this.counterpartyName,
       note: note ?? this.note,
@@ -2648,6 +2693,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     }
     if (occurredAt.present) {
       map['occurred_at'] = Variable<DateTime>(occurredAt.value);
+    }
+    if (postedAt.present) {
+      map['posted_at'] = Variable<DateTime>(postedAt.value);
     }
     if (primaryAmountMinor.present) {
       map['primary_amount_minor'] = Variable<int>(primaryAmountMinor.value);
@@ -2731,6 +2779,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('rootTransactionId: $rootTransactionId, ')
           ..write('businessPurpose: $businessPurpose, ')
           ..write('occurredAt: $occurredAt, ')
+          ..write('postedAt: $postedAt, ')
           ..write('primaryAmountMinor: $primaryAmountMinor, ')
           ..write('counterpartyName: $counterpartyName, ')
           ..write('note: $note, ')
@@ -9939,6 +9988,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<String?> rootTransactionId,
       required BusinessPurpose businessPurpose,
       required DateTime occurredAt,
+      required DateTime postedAt,
       required int primaryAmountMinor,
       Value<String?> counterpartyName,
       Value<String?> note,
@@ -9964,6 +10014,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String?> rootTransactionId,
       Value<BusinessPurpose> businessPurpose,
       Value<DateTime> occurredAt,
+      Value<DateTime> postedAt,
       Value<int> primaryAmountMinor,
       Value<String?> counterpartyName,
       Value<String?> note,
@@ -10011,6 +10062,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<DateTime> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get postedAt => $composableBuilder(
+    column: $table.postedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10133,6 +10189,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get postedAt => $composableBuilder(
+    column: $table.postedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get primaryAmountMinor => $composableBuilder(
     column: $table.primaryAmountMinor,
     builder: (column) => ColumnOrderings(column),
@@ -10248,6 +10309,9 @@ class $$TransactionsTableAnnotationComposer
     column: $table.occurredAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<DateTime> get postedAt =>
+      $composableBuilder(column: $table.postedAt, builder: (column) => column);
 
   GeneratedColumn<int> get primaryAmountMinor => $composableBuilder(
     column: $table.primaryAmountMinor,
@@ -10365,6 +10429,7 @@ class $$TransactionsTableTableManager
                 Value<String?> rootTransactionId = const Value.absent(),
                 Value<BusinessPurpose> businessPurpose = const Value.absent(),
                 Value<DateTime> occurredAt = const Value.absent(),
+                Value<DateTime> postedAt = const Value.absent(),
                 Value<int> primaryAmountMinor = const Value.absent(),
                 Value<String?> counterpartyName = const Value.absent(),
                 Value<String?> note = const Value.absent(),
@@ -10390,6 +10455,7 @@ class $$TransactionsTableTableManager
                 rootTransactionId: rootTransactionId,
                 businessPurpose: businessPurpose,
                 occurredAt: occurredAt,
+                postedAt: postedAt,
                 primaryAmountMinor: primaryAmountMinor,
                 counterpartyName: counterpartyName,
                 note: note,
@@ -10415,6 +10481,7 @@ class $$TransactionsTableTableManager
                 Value<String?> rootTransactionId = const Value.absent(),
                 required BusinessPurpose businessPurpose,
                 required DateTime occurredAt,
+                required DateTime postedAt,
                 required int primaryAmountMinor,
                 Value<String?> counterpartyName = const Value.absent(),
                 Value<String?> note = const Value.absent(),
@@ -10440,6 +10507,7 @@ class $$TransactionsTableTableManager
                 rootTransactionId: rootTransactionId,
                 businessPurpose: businessPurpose,
                 occurredAt: occurredAt,
+                postedAt: postedAt,
                 primaryAmountMinor: primaryAmountMinor,
                 counterpartyName: counterpartyName,
                 note: note,

@@ -21,6 +21,7 @@ TransactionDetailUiState buildTransactionDetailLoadedState({
     occurredAtText: formatTransactionDetailDateTime(
       detail.transaction.occurredAt,
     ),
+    postedAtText: formatTransactionDetailDateTime(detail.transaction.postedAt),
     createdAtText: formatTransactionDetailDateTime(detail.createdAt),
     noteText: detail.transaction.note,
     accountRows: _accountRows(detail, accountLookup, behavior),
@@ -287,6 +288,10 @@ DetailEditPermission _accountEditPermission(
 }
 
 DetailBehaviorConfig _behaviorConfigFor(Transaction transaction) {
+  final postedAtPermission =
+      transaction.businessState == BusinessState.current
+          ? const DetailEditPermission.allowed()
+          : const DetailEditPermission.denied(reason: '仅当前有效交易可以修改入账时间');
   final ownership = transaction.ownership;
   if (ownership == null) {
     return DetailBehaviorConfig(
@@ -295,6 +300,7 @@ DetailBehaviorConfig _behaviorConfigFor(Transaction transaction) {
               ? '/transaction/${transaction.id}/repayment/edit'
               : '/transaction/${transaction.id}/edit',
       canEditOccurredAt: const DetailEditPermission.allowed(),
+      canEditPostedAt: postedAtPermission,
       canEditNote: const DetailEditPermission.allowed(),
       canEditSettlementAccount: const DetailEditPermission.denied(
         reason: '结算账户变更需要通过更正交易完成',
@@ -310,6 +316,7 @@ DetailBehaviorConfig _behaviorConfigFor(Transaction transaction) {
         bannerText: '此为分期合同放款，金额、账户、日期等需在合同详情页内调整',
         editRoute: '/installments/${ownership.ownerId}',
         canEditOccurredAt: const DetailEditPermission.allowed(),
+        canEditPostedAt: postedAtPermission,
         canEditNote: const DetailEditPermission.allowed(),
         canEditSettlementAccount: const DetailEditPermission.allowed(),
       );
@@ -323,6 +330,7 @@ DetailBehaviorConfig _behaviorConfigFor(Transaction transaction) {
       return DetailBehaviorConfig(
         bannerText: '此为信贷${repaymentType.label}交易，金额调整请在信贷页面处理',
         canEditOccurredAt: const DetailEditPermission.allowed(),
+        canEditPostedAt: postedAtPermission,
         canEditNote: const DetailEditPermission.allowed(),
         canEditSettlementAccount: const DetailEditPermission.allowed(),
       );
@@ -330,13 +338,16 @@ DetailBehaviorConfig _behaviorConfigFor(Transaction transaction) {
   }
 
   return DetailBehaviorConfig(
-    bannerText: '该交易属于当前版本未识别的业务来源：${ownership.ownerType}',
+    bannerText:
+        '该交易属于当前版本未识别的业务来源：${ownership.ownerType}；'
+        '仅允许修改备注和入账时间',
     canEditOccurredAt: const DetailEditPermission.denied(
-      reason: '该交易属于当前版本未识别的业务来源，仅允许修改备注',
+      reason: '该交易属于当前版本未识别的业务来源，仅允许修改备注和入账时间',
     ),
+    canEditPostedAt: postedAtPermission,
     canEditNote: const DetailEditPermission.allowed(),
     canEditSettlementAccount: const DetailEditPermission.denied(
-      reason: '该交易属于当前版本未识别的业务来源，仅允许修改备注',
+      reason: '该交易属于当前版本未识别的业务来源，仅允许修改备注和入账时间',
     ),
   );
 }

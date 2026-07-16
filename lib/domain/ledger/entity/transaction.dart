@@ -13,6 +13,7 @@ class Transaction {
     required this.rootTransactionId,
     required this.businessPurpose,
     required this.occurredAt,
+    DateTime? postedAt,
     required this.primaryAmount,
     required this.mutationKind,
     required this.businessState,
@@ -28,12 +29,13 @@ class Transaction {
     this.mutationReason,
     this.details = const [],
     this.entries = const [],
-  });
+  }) : postedAt = postedAt ?? occurredAt;
 
   final String id;
   final String rootTransactionId;
   final BusinessPurpose businessPurpose;
   DateTime occurredAt;
+  DateTime postedAt;
   final Money primaryAmount;
   String? counterpartyName;
   String? note;
@@ -86,7 +88,7 @@ class Transaction {
     }
   }
 
-  /// 基础信息(occurredAt / settlement / reimbursement account)更新路径。
+  /// 基础信息(occurredAt / postedAt / settlement / reimbursement account)更新路径。
   void assertCanBeBasicsUpdated() {
     if (businessState != BusinessState.current) {
       LedgerViolationReason.transactionNotCurrent.throwException(
@@ -107,10 +109,12 @@ class Transaction {
 
   void updateBasicInfo({
     DateTime? occurredAt,
+    DateTime? postedAt,
     Patch<String?>? counterpartyName,
     Patch<String?>? note,
   }) {
     if (occurredAt != null) this.occurredAt = occurredAt;
+    if (postedAt != null) this.postedAt = postedAt;
     if (counterpartyName != null) {
       this.counterpartyName = switch (counterpartyName) {
         PatchSet<String?>(:final value) => _blankToNull(value),
@@ -236,6 +240,7 @@ class Transaction {
     String? rootTransactionId,
     BusinessPurpose? businessPurpose,
     DateTime? occurredAt,
+    DateTime? postedAt,
     Money? primaryAmount,
     String? counterpartyName,
     Patch<String>? notePatch,
@@ -258,6 +263,7 @@ class Transaction {
       rootTransactionId: rootTransactionId ?? this.rootTransactionId,
       businessPurpose: businessPurpose ?? this.businessPurpose,
       occurredAt: occurredAt ?? this.occurredAt,
+      postedAt: postedAt ?? this.postedAt,
       primaryAmount: primaryAmount ?? this.primaryAmount,
       counterpartyName: counterpartyName ?? this.counterpartyName,
       note: switch (notePatch) {

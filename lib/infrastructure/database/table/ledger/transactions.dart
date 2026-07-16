@@ -13,6 +13,7 @@ class Transactions extends Table {
   TextColumn get businessPurpose =>
       textEnum<BusinessPurpose>().named('business_purpose')();
   DateTimeColumn get occurredAt => dateTime().named('occurred_at')();
+  DateTimeColumn get postedAt => dateTime().named('posted_at')();
   IntColumn get primaryAmountMinor => integer().named('primary_amount_minor')();
   TextColumn get counterpartyName =>
       text().named('counterparty_name').nullable()();

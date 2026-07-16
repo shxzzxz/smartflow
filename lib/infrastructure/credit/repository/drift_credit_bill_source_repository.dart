@@ -64,12 +64,12 @@ class DriftCreditBillSourceRepository implements CreditBillSourceRepository {
           )
           ..where(_database.transactions.businessPurpose.isInValues(purposes))
           ..where(
-            _database.transactions.occurredAt.isBiggerOrEqualValue(
+            _database.transactions.postedAt.isBiggerOrEqualValue(
               startInclusive,
             ),
           )
           ..where(
-            _database.transactions.occurredAt.isSmallerThanValue(endExclusive),
+            _database.transactions.postedAt.isSmallerThanValue(endExclusive),
           );
     final row = await query.getSingle();
     return row.read(sumExpr) ?? 0;

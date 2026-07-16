@@ -121,6 +121,7 @@ class DriftPostingRepository
             id: transactionId,
             businessPurpose: transaction.businessPurpose,
             occurredAt: transaction.occurredAt,
+            postedAt: transaction.postedAt,
             primaryAmountMinor: transaction.primaryAmount.minorUnits,
             mutationKind: transaction.mutationKind,
             businessState: transaction.businessState,
@@ -275,6 +276,7 @@ class DriftPostingRepository
       TransactionsCompanion(
         businessPurpose: Value(transaction.businessPurpose),
         occurredAt: Value(transaction.occurredAt),
+        postedAt: Value(transaction.postedAt),
         primaryAmountMinor: Value(transaction.primaryAmount.minorUnits),
         mutationKind: Value(transaction.mutationKind),
         businessState: Value(transaction.businessState),

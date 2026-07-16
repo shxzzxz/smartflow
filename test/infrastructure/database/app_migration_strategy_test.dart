@@ -33,8 +33,54 @@ void main() {
           await upgradedDatabase
               .customSelect('PRAGMA user_version')
               .getSingle();
-      expect(version.read<int>('user_version'), 19);
+      expect(version.read<int>('user_version'), 20);
       await _insertNoTransactionContract(upgradedDatabase);
+    },
+  );
+
+  test(
+    'opening a v19 database preserves transactions and backfills posted_at',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'smartflow-posted-at-migration-test-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File(
+        '${directory.path}${Platform.pathSeparator}smartflow.sqlite',
+      );
+
+      final staleDatabase = _openDatabase(file);
+      await staleDatabase.customStatement('DROP TABLE transactions');
+      await staleDatabase.customStatement(_v19TransactionsSql);
+      await staleDatabase.customStatement(
+        "INSERT INTO transactions "
+        "(id, root_transaction_id, business_purpose, occurred_at, "
+        "primary_amount_minor, note, mutation_kind, business_state, "
+        "is_excluded_from_stats, is_excluded_from_budget, source_kind) "
+        "VALUES ('tx-1', 'tx-1', 'dailyExpense', 1735689600, 1234, "
+        "'preserve me', 'original', 'current', 0, 0, 'manual')",
+      );
+      await staleDatabase.customStatement('PRAGMA user_version = 19');
+      await staleDatabase.close();
+
+      final upgradedDatabase = _openDatabase(file);
+      addTearDown(upgradedDatabase.close);
+      final version =
+          await upgradedDatabase
+              .customSelect('PRAGMA user_version')
+              .getSingle();
+      expect(version.read<int>('user_version'), 20);
+
+      final row =
+          await upgradedDatabase
+              .customSelect(
+                'SELECT occurred_at, posted_at, primary_amount_minor, note '
+                "FROM transactions WHERE id = 'tx-1'",
+              )
+              .getSingle();
+      expect(row.read<int>('posted_at'), row.read<int>('occurred_at'));
+      expect(row.read<int>('primary_amount_minor'), 1234);
+      expect(row.read<String>('note'), 'preserve me');
     },
   );
 }
@@ -87,5 +133,31 @@ CREATE TABLE installment_contracts (
       AND disbursement_account_id IS NULL
       AND disbursement_transaction_id IS NULL)
   )
+)
+''';
+
+const _v19TransactionsSql = '''
+CREATE TABLE transactions (
+  id TEXT NOT NULL PRIMARY KEY,
+  root_transaction_id TEXT NULL,
+  business_purpose TEXT NOT NULL,
+  occurred_at INTEGER NOT NULL,
+  primary_amount_minor INTEGER NOT NULL,
+  counterparty_name TEXT NULL,
+  note TEXT NULL,
+  parent_transaction_id TEXT NULL,
+  reimbursement_expense_account_id TEXT NULL,
+  mutation_kind TEXT NOT NULL,
+  mutation_previous_transaction_id TEXT NULL,
+  mutation_reason TEXT NULL,
+  business_state TEXT NOT NULL,
+  is_excluded_from_stats INTEGER NOT NULL DEFAULT 0,
+  is_excluded_from_budget INTEGER NOT NULL DEFAULT 0,
+  source_kind TEXT NOT NULL,
+  owner_type TEXT NULL,
+  owner_id TEXT NULL,
+  owner_role TEXT NULL,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', CURRENT_TIMESTAMP)),
+  updated_at INTEGER NOT NULL DEFAULT (strftime('%s', CURRENT_TIMESTAMP))
 )
 ''';

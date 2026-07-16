@@ -17,6 +17,7 @@ sealed class TransactionDetailUiState with _$TransactionDetailUiState {
     required DetailBehaviorConfig behavior,
     required DetailHero hero,
     required String occurredAtText,
+    required String postedAtText,
     required String createdAtText,
     required List<DetailAccountRow> accountRows,
     required DetailRefund? refund,
@@ -38,6 +39,7 @@ sealed class TransactionDetailUiState with _$TransactionDetailUiState {
 abstract class DetailBehaviorConfig with _$DetailBehaviorConfig {
   const factory DetailBehaviorConfig({
     required DetailEditPermission canEditOccurredAt,
+    required DetailEditPermission canEditPostedAt,
     required DetailEditPermission canEditNote,
     required DetailEditPermission canEditSettlementAccount,
     String? bannerText,

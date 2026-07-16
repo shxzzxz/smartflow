@@ -61,6 +61,14 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     });
   }
 
+  Future<UiActionOutcome<void>> changePostedAt(DateTime value) {
+    return _runAction((loaded) {
+      return _actionDispatcherFor(
+        loaded.detail.transaction,
+      ).changePostedAt(value);
+    });
+  }
+
   Future<UiActionOutcome<void>> changeAccount(
     AccountSelectionPurpose purpose,
     String accountId,

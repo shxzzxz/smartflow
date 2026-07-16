@@ -46,6 +46,7 @@ class TransactionUpdateAppServiceImpl implements TransactionUpdateAppService {
         UpdateTransactionBasicInfoInstruction(
           transactionId: command.transactionId,
           occurredAt: command.occurredAt,
+          postedAt: command.postedAt,
           counterpartyName: command.counterpartyName,
           note: command.note,
         ),

@@ -13,6 +13,8 @@ abstract interface class TransactionDetailActionDispatcher {
 
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value);
 
+  Future<UiActionOutcome<void>> changePostedAt(DateTime value);
+
   Future<UiActionOutcome<void>> changeSettlementAccount(String accountId);
 }
 
@@ -37,7 +39,9 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
     final role = InstallmentOwnerRole.fromWire(ownership.ownerRole);
     if (role != null) {
       return _InstallmentActionDispatcher(
+        transaction: transaction,
         installmentAppService: installmentAppService,
+        updateService: updateService,
         contractId: ownership.ownerId!,
       );
     }
@@ -50,6 +54,7 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
       return _CreditRepaymentActionDispatcher(
         transaction: transaction,
         repaymentAppService: repaymentAppService,
+        updateService: updateService,
         repaymentId: ownership.ownerId!,
       );
     }
@@ -151,6 +156,18 @@ final class _DefaultActionDispatcher
   }
 
   @override
+  Future<UiActionOutcome<void>> changePostedAt(DateTime value) async {
+    return detailVoidOutcomeFromAction(() {
+      return updateService.updateBasicInfo(
+        UpdateTransactionBasicInfoCommand(
+          transactionId: transaction.id,
+          postedAt: value,
+        ),
+      );
+    });
+  }
+
+  @override
   Future<UiActionOutcome<void>> changeSettlementAccount(
     String accountId,
   ) async {
@@ -161,11 +178,15 @@ final class _DefaultActionDispatcher
 final class _InstallmentActionDispatcher
     implements TransactionDetailActionDispatcher {
   const _InstallmentActionDispatcher({
+    required this.transaction,
     required this.installmentAppService,
+    required this.updateService,
     required this.contractId,
   });
 
+  final Transaction transaction;
   final InstallmentAppService installmentAppService;
+  final TransactionUpdateAppService updateService;
   final String contractId;
 
   @override
@@ -202,6 +223,18 @@ final class _InstallmentActionDispatcher
   }
 
   @override
+  Future<UiActionOutcome<void>> changePostedAt(DateTime value) async {
+    return detailVoidOutcomeFromAction(() {
+      return updateService.updateBasicInfo(
+        UpdateTransactionBasicInfoCommand(
+          transactionId: transaction.id,
+          postedAt: value,
+        ),
+      );
+    });
+  }
+
+  @override
   Future<UiActionOutcome<void>> changeSettlementAccount(
     String accountId,
   ) async {
@@ -221,11 +254,13 @@ final class _CreditRepaymentActionDispatcher
   const _CreditRepaymentActionDispatcher({
     required this.transaction,
     required this.repaymentAppService,
+    required this.updateService,
     required this.repaymentId,
   });
 
   final Transaction transaction;
   final RepaymentAppService repaymentAppService;
+  final TransactionUpdateAppService updateService;
   final String repaymentId;
 
   @override
@@ -262,6 +297,18 @@ final class _CreditRepaymentActionDispatcher
   }
 
   @override
+  Future<UiActionOutcome<void>> changePostedAt(DateTime value) async {
+    return detailVoidOutcomeFromAction(() {
+      return updateService.updateBasicInfo(
+        UpdateTransactionBasicInfoCommand(
+          transactionId: transaction.id,
+          postedAt: value,
+        ),
+      );
+    });
+  }
+
+  @override
   Future<UiActionOutcome<void>> changeSettlementAccount(
     String accountId,
   ) async {
@@ -288,7 +335,7 @@ final class _UnknownActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> delete() async {
-    return detailNotEditable('该交易属于当前版本未识别的业务来源，仅允许修改备注');
+    return detailNotEditable('该交易属于当前版本未识别的业务来源，仅允许修改备注和入账时间');
   }
 
   @override
@@ -305,13 +352,25 @@ final class _UnknownActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
-    return detailNotEditable('该交易属于当前版本未识别的业务来源，仅允许修改备注');
+    return detailNotEditable('该交易属于当前版本未识别的业务来源，仅允许修改备注和入账时间');
+  }
+
+  @override
+  Future<UiActionOutcome<void>> changePostedAt(DateTime value) async {
+    return detailVoidOutcomeFromAction(() {
+      return updateService.updateBasicInfo(
+        UpdateTransactionBasicInfoCommand(
+          transactionId: transaction.id,
+          postedAt: value,
+        ),
+      );
+    });
   }
 
   @override
   Future<UiActionOutcome<void>> changeSettlementAccount(
     String accountId,
   ) async {
-    return detailNotEditable('该交易属于当前版本未识别的业务来源，仅允许修改备注');
+    return detailNotEditable('该交易属于当前版本未识别的业务来源，仅允许修改备注和入账时间');
   }
 }

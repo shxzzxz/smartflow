@@ -779,6 +779,7 @@ class PostingEngine {
       rootTransactionId: original.rootTransactionId,
       businessPurpose: original.businessPurpose,
       occurredAt: original.occurredAt,
+      postedAt: original.postedAt,
       primaryAmount: -original.primaryAmount,
       counterpartyName: original.counterpartyName,
       note: original.note,
@@ -813,6 +814,7 @@ class PostingEngine {
     );
     final correction = replacement.copyWith(
       rootTransactionId: original.rootTransactionId,
+      postedAt: original.postedAt,
       // 取 replacement 的 parent:子交易迁移时新候选已挂到新父,
       // 用 original 会让更正后的子交易仍指向被红冲的旧父。
       parentTransactionId: replacement.parentTransactionId,
@@ -848,6 +850,7 @@ class PostingEngine {
       rootTransactionId: original.rootTransactionId,
       businessPurpose: original.businessPurpose,
       occurredAt: original.occurredAt,
+      postedAt: original.postedAt,
       primaryAmount: -original.primaryAmount,
       counterpartyName: original.counterpartyName,
       note: original.note,

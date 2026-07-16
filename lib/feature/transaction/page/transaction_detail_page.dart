@@ -126,6 +126,7 @@ class _DetailBody extends ConsumerWidget {
               _PrimaryMetaCard(
                 state: state,
                 onOccurredAtTap: () => _editOccurredAt(context, ref),
+                onPostedAtTap: () => _editPostedAt(context, ref),
                 onAccountTap: (row) => _handleAccountTap(context, ref, row),
                 onNoteTap: () => _editNote(context, ref),
               ),
@@ -212,6 +213,28 @@ class _DetailBody extends ConsumerWidget {
         .changeOccurredAt(updated);
     if (!context.mounted) return;
     _handleActionOutcome(context, outcome, successMessage: '交易时间已更新');
+  }
+
+  Future<void> _editPostedAt(BuildContext context, WidgetRef ref) async {
+    switch (state.behavior.canEditPostedAt) {
+      case DetailEditDenied(:final reason):
+        _showMessage(context, reason);
+        return;
+      case DetailEditAllowed():
+        break;
+    }
+    final current = state.detail.transaction.postedAt;
+    final updated = await showAppDateTimePicker(
+      context: context,
+      initialDateTime: current,
+      title: '选择入账时间',
+    );
+    if (updated == null || !context.mounted || updated == current) return;
+    final outcome = await ref
+        .read(transactionDetailViewModelProvider(state.transactionId).notifier)
+        .changePostedAt(updated);
+    if (!context.mounted) return;
+    _handleActionOutcome(context, outcome, successMessage: '入账时间已更新');
   }
 
   Future<void> _handleAccountTap(
@@ -360,12 +383,14 @@ class _PrimaryMetaCard extends StatelessWidget {
   const _PrimaryMetaCard({
     required this.state,
     required this.onOccurredAtTap,
+    required this.onPostedAtTap,
     required this.onAccountTap,
     required this.onNoteTap,
   });
 
   final TransactionDetailLoaded state;
   final VoidCallback onOccurredAtTap;
+  final VoidCallback onPostedAtTap;
   final ValueChanged<DetailAccountRow> onAccountTap;
   final VoidCallback onNoteTap;
 
@@ -380,6 +405,11 @@ class _PrimaryMetaCard extends StatelessWidget {
           label: '交易时间',
           value: state.occurredAtText,
           onTap: onOccurredAtTap,
+        ),
+        AppPlainValueRow(
+          label: '入账时间',
+          value: state.postedAtText,
+          onTap: onPostedAtTap,
         ),
         AppPlainValueRow(label: '创建时间', value: state.createdAtText),
         for (final row in state.accountRows)

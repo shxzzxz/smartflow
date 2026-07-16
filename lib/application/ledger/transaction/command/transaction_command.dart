@@ -432,12 +432,14 @@ class UpdateTransactionBasicInfoCommand {
   const UpdateTransactionBasicInfoCommand({
     required this.transactionId,
     this.occurredAt,
+    this.postedAt,
     this.counterpartyName,
     this.note,
   });
 
   final String transactionId;
   final DateTime? occurredAt;
+  final DateTime? postedAt;
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;
 }

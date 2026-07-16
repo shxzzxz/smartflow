@@ -9,6 +9,7 @@ Transaction mapTransaction(TransactionRow row) {
     rootTransactionId: row.rootTransactionId ?? row.id,
     businessPurpose: row.businessPurpose,
     occurredAt: row.occurredAt,
+    postedAt: row.postedAt,
     primaryAmount: Money(minorUnits: row.primaryAmountMinor),
     counterpartyName: row.counterpartyName,
     note: row.note,

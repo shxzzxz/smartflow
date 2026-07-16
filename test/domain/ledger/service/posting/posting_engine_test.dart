@@ -25,6 +25,7 @@ void main() {
 
       expect(transaction.businessPurpose, BusinessPurpose.dailyExpense);
       expect(transaction.rootTransactionId, transaction.id);
+      expect(transaction.postedAt, transaction.occurredAt);
       expect(
         transaction.details.single.type,
         TransactionDetailType.primaryExpense,
@@ -67,6 +68,7 @@ void main() {
 
       expect(refund.rootTransactionId, parent.rootTransactionId);
       expect(refund.parentTransactionId, parent.id);
+      expect(refund.postedAt, DateTime(2026, 5, 2));
       expect(refund.isExcludedFromStats, isTrue);
       expect(refund.isExcludedFromBudget, isTrue);
       expect(entriesAreBalanced(refund.entries), isTrue);
@@ -84,6 +86,7 @@ void main() {
           occurredAt: DateTime(2026, 5, 1),
         ),
       );
+      original.updateBasicInfo(postedAt: DateTime(2026, 5, 3));
       final candidate = engine.createExpense(
         ExpenseInstruction(
           amount: Money.parse('11.00'),
@@ -123,6 +126,8 @@ void main() {
         replacement.correctionTransaction.rootTransactionId,
         original.rootTransactionId,
       );
+      expect(replacement.reversalTransaction.postedAt, original.postedAt);
+      expect(replacement.correctionTransaction.postedAt, original.postedAt);
     });
   });
 }
