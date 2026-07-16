@@ -9,10 +9,11 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/account/page/account_bills_page.dart';
 import 'package:smartflow/feature/account/page/account_detail_page.dart';
-import 'package:smartflow/feature/account/view_model/account_bills_view_model.dart';
 import 'package:smartflow/feature/account/view_model/account_detail_view_model.dart';
 import 'package:smartflow/feature/account/view_model/account_transactions_view_model.dart';
 import 'package:smartflow/feature/account/view_model/account_view.dart';
+import 'package:smartflow/feature/account/view_model/account_views_provider.dart';
+import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
@@ -117,11 +118,11 @@ void main() {
           accountDetailViewModelProvider(
             account.id,
           ).overrideWith(() => _FixedAccountDetailViewModel(detailState)),
-          accountBillsViewModelProvider(account.id).overrideWith(
-            (ref) => AccountBillsPageState.loaded(
-              bills: [_bill(2026, 7), _bill(2026, 6), _bill(2026, 5)],
-              canGenerateHistoricalBill: true,
-            ),
+          accountViewProvider(
+            account.id,
+          ).overrideWith((ref) => AsyncValue.data(account)),
+          billSummariesByAccountProvider(account.id).overrideWith(
+            (ref) async => [_bill(2026, 7), _bill(2026, 6), _bill(2026, 5)],
           ),
         ],
         child: MaterialApp.router(

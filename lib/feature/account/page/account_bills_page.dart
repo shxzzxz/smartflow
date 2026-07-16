@@ -5,7 +5,6 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_month_picker.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/account_bills_view_model.dart';
-import '../view_model/account_credit_actions.dart';
 import '../widget/account_bill_list.dart';
 
 class AccountBillsPage extends ConsumerWidget {
@@ -56,7 +55,7 @@ class AccountBillsPage extends ConsumerWidget {
     );
     if (selected == null) return;
     final outcome = await ref
-        .read(accountCreditActionsProvider(accountId).notifier)
+        .read(accountBillsViewModelProvider(accountId).notifier)
         .generateHistoricalBill(selected);
     if (!context.mounted) return;
     final message = switch (outcome) {

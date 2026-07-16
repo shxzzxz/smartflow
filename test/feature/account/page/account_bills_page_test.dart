@@ -8,7 +8,10 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_month_picker.dart';
 import 'package:smartflow/feature/account/page/account_bills_page.dart';
-import 'package:smartflow/feature/account/view_model/account_bills_view_model.dart';
+import 'package:smartflow/feature/account/view_model/account_view.dart';
+import 'package:smartflow/feature/account/view_model/account_views_provider.dart';
+import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
+import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 void main() {
   testWidgets('shows all account bills and historical generation action', (
@@ -17,12 +20,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          accountBillsViewModelProvider('card').overrideWith(
-            (ref) => AccountBillsPageState.loaded(
-              bills: [_bill(7), _bill(6), _bill(5)],
-              canGenerateHistoricalBill: true,
-            ),
-          ),
+          accountViewProvider(
+            'card',
+          ).overrideWith((ref) => AsyncValue.data(_account())),
+          billSummariesByAccountProvider(
+            'card',
+          ).overrideWith((ref) async => [_bill(7), _bill(6), _bill(5)]),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
@@ -30,6 +33,7 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
     expect(find.text('2026年07月'), findsOneWidget);
     expect(find.text('2026年06月'), findsOneWidget);
@@ -41,6 +45,17 @@ void main() {
 
     expect(find.byType(AppMonthPickerDialog), findsOneWidget);
   });
+}
+
+AccountView _account() {
+  return AccountView(
+    id: 'card',
+    name: '信用卡',
+    kind: AccountProfileKind.credit,
+    balance: Money.zero(),
+    iconKey: 'card',
+    isArchived: false,
+  );
 }
 
 BillSummaryReadModel _bill(int month) {
