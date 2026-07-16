@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_month_picker.dart';
 import 'package:smartflow/feature/account/page/account_bills_page.dart';
 import 'package:smartflow/feature/account/view_model/account_bills_view_model.dart';
@@ -23,7 +24,10 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(home: AccountBillsPage(accountId: 'card')),
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const AccountBillsPage(accountId: 'card'),
+        ),
       ),
     );
 

@@ -3,17 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../application/credit/credit_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
+import '../presentation/account_credit_summary_presentation.dart';
 import '../view_model/account_detail_view_model.dart';
 import '../view_model/account_transactions_view_model.dart';
 import '../view_model/account_view.dart';
 import '../widget/account_bill_list.dart';
+import '../widget/account_credit_summary_list.dart';
 
 class AccountDetailPage extends ConsumerWidget {
   const AccountDetailPage({required this.accountId, super.key});
@@ -147,7 +148,10 @@ class _AccountDetailContent extends StatelessWidget {
           const SizedBox(height: AppSpacing.space20),
           _BillSection(accountId: account.id, bills: bills),
           const SizedBox(height: AppSpacing.space20),
-          _InstallmentSection(contracts: contracts),
+          _InstallmentSection(
+            contracts: contracts,
+            isCreditAccount: account.isCredit,
+          ),
           const SizedBox(height: AppSpacing.space20),
         ],
         const _OverviewHeader(title: '账户交易'),
@@ -597,21 +601,6 @@ class _OverviewHeader extends StatelessWidget {
   }
 }
 
-class _ListDivider extends StatelessWidget {
-  const _ListDivider({required this.color});
-
-  final ColorScheme color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
-      height: 1,
-      color: color.outlineVariant.withValues(alpha: 0.45),
-    );
-  }
-}
-
 class _BillSection extends StatelessWidget {
   const _BillSection({required this.accountId, required this.bills});
 
@@ -648,42 +637,32 @@ class _BillSection extends StatelessWidget {
 }
 
 class _InstallmentSection extends StatelessWidget {
-  const _InstallmentSection({required this.contracts});
+  const _InstallmentSection({
+    required this.contracts,
+    required this.isCreditAccount,
+  });
 
   final AccountContractsState contracts;
+  final bool isCreditAccount;
 
   @override
   Widget build(BuildContext context) {
-    final styles = context.appTextStyles;
-    return _OverviewSection(title: '分期合同', child: _buildBody(context, styles));
+    return _OverviewSection(title: '分期合同', child: _buildBody(context));
   }
 
-  Widget _buildBody(BuildContext context, AppTextStyles styles) {
+  Widget _buildBody(BuildContext context) {
     return switch (contracts) {
-      AccountContractsLoaded(:final contracts) =>
-        contracts.isEmpty
-            ? AppSurface(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.space20),
-                child: Text(
-                  '暂无分期合同',
-                  style: styles.formLabel.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            )
-            : AppSurface(
-              child: Column(
-                children: [
-                  for (var i = 0; i < contracts.length; i++) ...[
-                    _ContractRow(contract: contracts[i]),
-                    if (i < contracts.length - 1)
-                      _ListDivider(color: Theme.of(context).colorScheme),
-                  ],
-                ],
-              ),
+      AccountContractsLoaded(:final contracts) => AccountCreditSummaryList(
+        items: [
+          for (final contract in contracts)
+            installmentAccountCreditSummary(
+              contract,
+              isCreditAccount: isCreditAccount,
             ),
+        ],
+        emptyMessage: '暂无分期合同',
+        onTap: (summary) => context.push('/installments/${summary.id}'),
+      ),
       AccountContractsError(:final message) => AppSurface(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.space12),
@@ -699,93 +678,6 @@ class _InstallmentSection extends StatelessWidget {
       AccountContractsNotApplicable() => const SizedBox.shrink(),
     };
   }
-}
-
-class _ContractRow extends StatelessWidget {
-  const _ContractRow({required this.contract});
-
-  final InstallmentContractReadModel contract;
-
-  @override
-  Widget build(BuildContext context) {
-    final styles = context.appTextStyles;
-    final colors = Theme.of(context).colorScheme;
-    final (statusLabel, statusColor) = switch (contract.status) {
-      InstallmentContractStatus.active => ('进行中', colors.primary),
-      InstallmentContractStatus.settled => ('已结清', colors.tertiary),
-    };
-    final progress =
-        contract.status == InstallmentContractStatus.settled
-            ? '${contract.totalPeriods}/${contract.totalPeriods} 期'
-            : '${contract.totalPeriods} 期';
-    final meta = '$progress · ${_methodShort(contract.repaymentMethod)}';
-    return InkWell(
-      onTap: () => context.push('/installments/${contract.id}'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space12,
-          vertical: AppSpacing.space12,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(contract.principal.format(), style: styles.listTitle),
-                  const SizedBox(height: AppSpacing.space4),
-                  Text(
-                    meta,
-                    style: styles.listSupporting.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.space8),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space6,
-                    vertical: AppSpacing.space2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-                  ),
-                  child: Text(
-                    statusLabel,
-                    style: styles.badgeLabel.copyWith(color: statusColor),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.space4),
-                Icon(
-                  RemixIcons.arrow_right_s_line,
-                  color: colors.onSurfaceVariant,
-                  size: AppSpacing.space18,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-String _methodShort(InstallmentRepaymentMethod method) {
-  return switch (method) {
-    InstallmentRepaymentMethod.equalInstallment => '等额本息',
-    InstallmentRepaymentMethod.equalPrincipal => '等额本金',
-    InstallmentRepaymentMethod.interestFirst => '先息后本',
-    InstallmentRepaymentMethod.flatFee => '一次性手续费',
-    InstallmentRepaymentMethod.custom => '自定义',
-  };
 }
 
 void _openTransactionForm(BuildContext context, AccountView account) {
