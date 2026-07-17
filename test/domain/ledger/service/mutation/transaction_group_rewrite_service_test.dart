@@ -1,0 +1,185 @@
+import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/patch/patch.dart';
+import 'package:smartflow/domain/ledger/entity/account.dart';
+import 'package:smartflow/domain/ledger/entity/transaction.dart';
+import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
+import 'package:smartflow/domain/ledger/port/account_repository.dart';
+import 'package:smartflow/domain/ledger/port/system_account_resolver.dart';
+import 'package:smartflow/domain/ledger/port/transaction_group_repository.dart';
+import 'package:smartflow/domain/ledger/service/account/account_role_policy.dart';
+import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_plan.dart';
+import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_service.dart';
+import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
+import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
+import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_violation_reason.dart';
+import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
+import 'package:test/test.dart';
+
+import '../../../../helper/sequential_id_generator.dart';
+
+void main() {
+  test(
+    'editing zero-cash reimbursement close preserves its actual amount',
+    () async {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final parent = engine.createReimbursementAdvance(
+        ReimbursementAdvanceInstruction(
+          amount: Money.parse('100.00'),
+          receivableAccountId: 'receivable',
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'expense',
+          occurredAt: DateTime(2026, 7, 1),
+        ),
+      );
+      final close = engine.createReimbursementClose(
+        instruction: ReimbursementCloseInstruction(
+          advanceTransactionId: parent.id,
+          actualReceivedAmount: Money.zero(),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'bank',
+          occurredAt: DateTime(2026, 7, 2),
+        ),
+        advance: parent,
+        outstanding: parent.primaryAmount,
+        gapIncomeAccountId: null,
+      );
+      final service = TransactionGroupRewriteService(
+        transactionGroupRepository: _TransactionGroupRepository(
+          TransactionGroup(
+            parentTransaction: parent,
+            childTransactions: [close],
+          ),
+        ),
+        accountRepository: _AccountRepository(),
+        postingInstructionResolver: const DefaultPostingInstructionResolver(),
+        postingEngine: engine,
+        accountPostingService: _AccountPostingService(),
+        accountRolePolicy: _AccountRolePolicy(),
+        systemAccountResolver: _SystemAccountResolver(),
+      );
+
+      final result = await service.rewriteReimbursementClose(
+        EditReimbursementCloseTransactionInstruction(
+          transactionId: close.id,
+          note: const Patch<String?>.set('metadata only'),
+        ),
+      );
+
+      final rewritten = result.currentTransaction;
+      expect(rewritten.note, 'metadata only');
+      expect(
+        rewritten.entries.where((entry) => entry.accountId == 'bank'),
+        isEmpty,
+      );
+      expect(
+        rewritten.details
+            .singleWhere(
+              (detail) =>
+                  detail.type == TransactionDetailType.reimbursementGapExpense,
+            )
+            .amount,
+        Money.parse('100.00'),
+      );
+    },
+  );
+}
+
+class _TransactionGroupRepository implements TransactionGroupRepository {
+  _TransactionGroupRepository(this.group);
+
+  final TransactionGroup group;
+
+  @override
+  Future<TransactionGroup?> findByTransactionId(String transactionId) async =>
+      group;
+
+  @override
+  Future<TransactionGroup?> findByParentId(String parentTransactionId) async =>
+      group;
+
+  @override
+  Future<void> applyRewrite(TransactionGroupRewritePlan plan) async {}
+
+  @override
+  Future<void> deleteChild(String childTransactionId) async {}
+
+  @override
+  Future<void> deleteGroup(String parentTransactionId) async {}
+}
+
+class _AccountRepository implements AccountRepository {
+  @override
+  Future<List<Account>> findByIds(Set<String> ids) async => const [];
+
+  @override
+  Future<Account?> findById(String id) async => null;
+
+  @override
+  Future<List<Account>> findChildrenOf(String parentId) async => const [];
+
+  @override
+  Future<void> create(Account account) async {}
+
+  @override
+  Future<void> save(Account account) async {}
+
+  @override
+  Future<void> saveAll(Iterable<Account> accounts) async {}
+}
+
+class _AccountPostingService implements AccountPostingService {
+  @override
+  List<Account> apply({
+    required Transaction transaction,
+    required Map<String, Account> accounts,
+  }) => const [];
+
+  @override
+  List<Account> applyAll({
+    required Iterable<Transaction> transactions,
+    required Map<String, Account> accounts,
+  }) => const [];
+
+  @override
+  List<Account> applyRewrite({
+    required Iterable<Transaction> before,
+    required Iterable<Transaction> after,
+    required Map<String, Account> accounts,
+  }) => const [];
+
+  @override
+  List<Account> removeAll({
+    required Iterable<Transaction> transactions,
+    required Map<String, Account> accounts,
+  }) => const [];
+}
+
+class _AccountRolePolicy implements AccountRolePolicy {
+  @override
+  Future<LedgerViolationReason?> validate(AccountRoleContext context) async =>
+      null;
+}
+
+class _SystemAccountResolver implements SystemAccountResolver {
+  @override
+  Future<String> resolveDiscountIncome() async => 'discount';
+
+  @override
+  Future<String> resolveFeeExpense() async => 'fee';
+
+  @override
+  Future<String> resolveGhostAccount() async => 'ghost';
+
+  @override
+  Future<String> resolveInterestExpense() async => 'interest';
+
+  @override
+  Future<String> resolveOpeningBalance() async => 'opening';
+
+  @override
+  Future<String> resolveReimbursementGapIncome() async => 'gap-income';
+}

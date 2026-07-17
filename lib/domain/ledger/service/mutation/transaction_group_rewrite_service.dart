@@ -266,7 +266,8 @@ class TransactionGroupRewriteService {
         ) ??
         Money.zero();
     final actual =
-        instruction.actualReceivedAmount ?? currentClose.primaryAmount;
+        instruction.actualReceivedAmount ??
+        _reimbursementCloseActualAmount(currentClose);
     final accounts = _resolveReimbursementAccounts(
       child: currentClose,
       receiveAccountId: instruction.receiveAccountId,
@@ -506,5 +507,27 @@ class TransactionGroupRewriteService {
       if (detail.type == type) return detail.amount;
     }
     return null;
+  }
+
+  Money _reimbursementCloseActualAmount(Transaction transaction) {
+    final outstanding =
+        _detailAmount(
+          transaction,
+          TransactionDetailType.reimbursementCloseMain,
+        ) ??
+        Money.zero();
+    final gapIncome =
+        _detailAmount(
+          transaction,
+          TransactionDetailType.reimbursementGapIncome,
+        ) ??
+        Money.zero();
+    final gapExpense =
+        _detailAmount(
+          transaction,
+          TransactionDetailType.reimbursementGapExpense,
+        ) ??
+        Money.zero();
+    return outstanding + gapIncome - gapExpense;
   }
 }
