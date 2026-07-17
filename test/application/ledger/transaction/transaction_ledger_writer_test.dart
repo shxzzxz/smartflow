@@ -5,10 +5,12 @@ import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
+import 'package:smartflow/domain/ledger/port/transaction_group_repository.dart';
 import 'package:smartflow/domain/ledger/port/transaction_repository.dart';
-import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_planner.dart';
+import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_plan.dart';
+import 'package:smartflow/domain/ledger/service/mutation/transaction_deletion_result.dart';
+import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_result.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
-import 'package:smartflow/domain/ledger/valobj/posting_result.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -21,6 +23,7 @@ void main() {
       final writer = TransactionLedgerWriter(
         transactionRunner: runner,
         transactionRepository: transactions,
+        transactionGroupRepository: transactions,
         accountRepository: accounts,
       );
       final before = _transaction('tx-1', amount: 1000);
@@ -31,6 +34,7 @@ void main() {
         return TransactionGroupRewriteResult(
           plan: TransactionGroupRewritePlan(
             rewrites: [TransactionRewrite(before: before, after: after)],
+            rowUpdates: const [],
             currentGroup: TransactionGroup(
               parentTransaction: after,
               childTransactions: const [],
@@ -57,12 +61,15 @@ void main() {
       final writer = TransactionLedgerWriter(
         transactionRunner: runner,
         transactionRepository: transactions,
+        transactionGroupRepository: transactions,
         accountRepository: accounts,
       );
 
       await writer.planAndPersistDeletion(() async {
         expect(runner.inTransaction, isTrue);
         return TransactionDeletionResult(
+          targetTransactionId: 'parent',
+          deletesGroup: true,
           deletedTransactions: [_transaction('parent'), _transaction('child')],
           accounts: const [],
         );
@@ -102,7 +109,8 @@ class _TrackingRunner implements TransactionRunner {
   }
 }
 
-class _FakeTransactionRepository implements TransactionRepository {
+class _FakeTransactionRepository
+    implements TransactionRepository, TransactionGroupRepository {
   _FakeTransactionRepository(this.runner);
 
   final _TrackingRunner runner;
@@ -110,15 +118,21 @@ class _FakeTransactionRepository implements TransactionRepository {
   Set<String> deletedIds = const {};
 
   @override
-  Future<void> rewriteAll(Iterable<Transaction> transactions) async {
+  Future<void> applyRewrite(TransactionGroupRewritePlan plan) async {
     expect(runner.inTransaction, isTrue);
-    rewrittenIds.addAll(transactions.map((transaction) => transaction.id));
+    rewrittenIds.addAll(plan.rewrites.map((rewrite) => rewrite.after.id));
   }
 
   @override
-  Future<void> deleteAll(Set<String> transactionIds) async {
+  Future<void> deleteGroup(String parentTransactionId) async {
     expect(runner.inTransaction, isTrue);
-    deletedIds = transactionIds;
+    deletedIds = {'parent', 'child'};
+  }
+
+  @override
+  Future<void> deleteChild(String childTransactionId) async {
+    expect(runner.inTransaction, isTrue);
+    deletedIds = {childTransactionId};
   }
 
   @override

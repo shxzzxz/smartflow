@@ -49,6 +49,13 @@ void main() {
     expect(find.text('交易时间'), findsOneWidget);
     expect(find.text('入账时间'), findsOneWidget);
 
+    await tester.tap(find.byTooltip('更多'));
+    await tester.pumpAndSettle();
+    expect(find.text('删除后交易及其账务记录将无法恢复。'), findsOneWidget);
+    expect(find.textContaining('冲销记录'), findsNothing);
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+
     await tester.tap(find.text('点击添加备注'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '新的备注');

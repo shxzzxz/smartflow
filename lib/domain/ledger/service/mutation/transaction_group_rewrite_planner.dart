@@ -6,23 +6,7 @@ import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import '../posting/posting_engine.dart';
 import '../posting/posting_instruction_resolver.dart';
-
-class TransactionRewrite {
-  const TransactionRewrite({required this.before, required this.after});
-
-  final Transaction before;
-  final Transaction after;
-}
-
-class TransactionGroupRewritePlan {
-  const TransactionGroupRewritePlan({
-    required this.rewrites,
-    required this.currentGroup,
-  });
-
-  final List<TransactionRewrite> rewrites;
-  final TransactionGroup currentGroup;
-}
+import 'transaction_group_rewrite_plan.dart';
 
 class TransactionGroupRewritePlanner {
   const TransactionGroupRewritePlanner({
@@ -39,7 +23,7 @@ class TransactionGroupRewritePlanner {
     required Transaction candidateParent,
   }) async {
     final currentParent = currentGroup.parentTransaction;
-    _validatePurposeChange(
+    _ensurePurposeChangeSupported(
       current: currentParent.businessPurpose,
       target: candidateParent.businessPurpose,
     );
@@ -77,9 +61,15 @@ class TransactionGroupRewritePlanner {
     }
 
     final rewrittenChildren = <Transaction>[];
-    final rewrites = <TransactionRewrite>[
-      TransactionRewrite(before: currentParent, after: rewrittenParent),
-    ];
+    final rewrites = <TransactionRewrite>[];
+    final rowUpdates = <Transaction>[];
+    if (currentParent.hasSameAccountingExpressionAs(rewrittenParent)) {
+      rowUpdates.add(rewrittenParent);
+    } else {
+      rewrites.add(
+        TransactionRewrite(before: currentParent, after: rewrittenParent),
+      );
+    }
     for (final child in currentGroup.childTransactions) {
       final rewritten = _rewriteChild(
         child: child,
@@ -87,13 +77,18 @@ class TransactionGroupRewritePlanner {
         parent: rewrittenParent,
       );
       rewrittenChildren.add(rewritten);
-      if (!_sameTransaction(child, rewritten)) {
+      if (!child.hasSameAccountingExpressionAs(rewritten)) {
         rewrites.add(TransactionRewrite(before: child, after: rewritten));
+      } else if (!identical(child, rewritten) &&
+          (child.isExcludedFromStats != rewritten.isExcludedFromStats ||
+              child.isExcludedFromBudget != rewritten.isExcludedFromBudget)) {
+        rowUpdates.add(rewritten);
       }
     }
 
     return TransactionGroupRewritePlan(
       rewrites: rewrites,
+      rowUpdates: rowUpdates,
       currentGroup: TransactionGroup(
         parentTransaction: rewrittenParent,
         childTransactions: rewrittenChildren,
@@ -202,7 +197,7 @@ class TransactionGroupRewritePlanner {
     return accountId;
   }
 
-  void _validatePurposeChange({
+  void _ensurePurposeChangeSupported({
     required BusinessPurpose current,
     required BusinessPurpose target,
   }) {
@@ -215,32 +210,5 @@ class TransactionGroupRewritePlanner {
     if (!supported) {
       LedgerViolationReason.unsupportedEditSource.throwException();
     }
-  }
-
-  bool _sameTransaction(Transaction left, Transaction right) {
-    if (left.businessPurpose != right.businessPurpose ||
-        left.primaryAmount != right.primaryAmount ||
-        left.parentTransactionId != right.parentTransactionId ||
-        left.isExcludedFromStats != right.isExcludedFromStats ||
-        left.isExcludedFromBudget != right.isExcludedFromBudget ||
-        left.details.length != right.details.length ||
-        left.entries.length != right.entries.length) {
-      return false;
-    }
-    for (var index = 0; index < left.details.length; index++) {
-      final a = left.details[index];
-      final b = right.details[index];
-      if (a.type != b.type || a.amount != b.amount) return false;
-    }
-    for (var index = 0; index < left.entries.length; index++) {
-      final a = left.entries[index];
-      final b = right.entries[index];
-      if (a.accountId != b.accountId ||
-          a.direction != b.direction ||
-          a.amount != b.amount) {
-        return false;
-      }
-    }
-    return true;
   }
 }

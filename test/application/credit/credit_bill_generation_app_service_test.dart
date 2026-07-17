@@ -730,6 +730,7 @@ class _Fixture {
   late final TransactionLedgerWriter ledgerWriter = TransactionLedgerWriter(
     transactionRunner: runner,
     transactionRepository: postingRepository,
+    transactionGroupRepository: postingRepository,
     accountRepository: accountRepository,
   );
   late final TransactionEditAppService editAppService =

@@ -8,13 +8,15 @@ import '../../port/system_account_resolver.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
-import '../../valobj/posting_result.dart';
 import '../account/account_role_policy.dart';
 import '../posting/account_posting_service.dart';
 import '../posting/ledger_posting_service.dart';
 import '../posting/posting_engine.dart';
 import '../posting/posting_instruction_resolver.dart';
 import 'transaction_group_rewrite_planner.dart';
+import 'transaction_group_rewrite_plan.dart';
+import 'transaction_group_rewrite_result.dart';
+import 'transaction_deletion_result.dart';
 
 class TransactionGroupRewriteService {
   TransactionGroupRewriteService({
@@ -185,26 +187,15 @@ class TransactionGroupRewriteService {
   Future<TransactionGroupRewriteResult> rewriteReimbursementReceipt(
     EditReimbursementReceiptTransactionInstruction instruction,
   ) async {
-    final rootGroup = await _transactionGroupRepository.findByTransactionId(
-      instruction.transactionId,
+    final target = await _loadReimbursementChild(
+      transactionId: instruction.transactionId,
+      purpose: BusinessPurpose.reimbursementReceipt,
+      targetViolation:
+          LedgerViolationReason.reimbursementReceiptTransactionRequired,
+      requireOpenGroup: true,
     );
-    if (rootGroup == null) {
-      LedgerViolationReason.transactionNotFound.throwException();
-    }
-    final group = _currentGroup(rootGroup);
-    final currentReceipt = group.findTransaction(instruction.transactionId);
-    if (currentReceipt == null ||
-        currentReceipt.id == group.parentTransaction.id ||
-        currentReceipt.businessPurpose !=
-            BusinessPurpose.reimbursementReceipt) {
-      LedgerViolationReason.reimbursementReceiptTransactionRequired
-          .throwException();
-    }
-    if (group.reimbursementClosed) {
-      LedgerViolationReason.reimbursementAlreadyClosed.throwException();
-    }
-    final advanceViolation = _validateReimbursementAdvance(rootGroup);
-    if (advanceViolation != null) advanceViolation.throwException();
+    final group = target.group;
+    final currentReceipt = target.child;
     final remaining =
         group.parentTransaction.primaryAmount -
         group.reimbursementReceivedTotal() +
@@ -214,20 +205,17 @@ class TransactionGroupRewriteService {
       LedgerViolationReason.reimbursementReceiptExceedsOutstanding
           .throwException();
     }
-    final receiveAccountId =
-        instruction.receiveAccountId ??
-        _firstEntryAccount(currentReceipt, EntryDirection.debit);
-    final receivableAccountId =
-        instruction.receivableAccountId ??
-        _firstEntryAccount(currentReceipt, EntryDirection.credit);
-    if (receiveAccountId == null || receivableAccountId == null) {
-      LedgerViolationReason.reimbursementReceiptAccountsUnresolved
-          .throwException();
-    }
+    final accounts = _resolveReimbursementAccounts(
+      child: currentReceipt,
+      receiveAccountId: instruction.receiveAccountId,
+      receivableAccountId: instruction.receivableAccountId,
+      unresolvedViolation:
+          LedgerViolationReason.reimbursementReceiptAccountsUnresolved,
+    );
     final roleViolation = await _accountRolePolicy.validate(
       AccountRoleContext.reimbursementReceipt(
-        receivableAccountId: receivableAccountId,
-        receiveAccountId: receiveAccountId,
+        receivableAccountId: accounts.receivableAccountId,
+        receiveAccountId: accounts.receiveAccountId,
       ),
     );
     if (roleViolation != null) roleViolation.throwException();
@@ -235,8 +223,8 @@ class TransactionGroupRewriteService {
       instruction: ReimbursementReceiptInstruction(
         advanceTransactionId: group.parentTransaction.id,
         amount: amount,
-        receivableAccountId: receivableAccountId,
-        receiveAccountId: receiveAccountId,
+        receivableAccountId: accounts.receivableAccountId,
+        receiveAccountId: accounts.receiveAccountId,
         occurredAt: currentReceipt.occurredAt,
         counterpartyName: currentReceipt.counterpartyName,
         note: currentReceipt.note,
@@ -262,22 +250,15 @@ class TransactionGroupRewriteService {
   Future<TransactionGroupRewriteResult> rewriteReimbursementClose(
     EditReimbursementCloseTransactionInstruction instruction,
   ) async {
-    final rootGroup = await _transactionGroupRepository.findByTransactionId(
-      instruction.transactionId,
+    final target = await _loadReimbursementChild(
+      transactionId: instruction.transactionId,
+      purpose: BusinessPurpose.reimbursementClose,
+      targetViolation:
+          LedgerViolationReason.reimbursementCloseTransactionRequired,
+      requireOpenGroup: false,
     );
-    if (rootGroup == null) {
-      LedgerViolationReason.transactionNotFound.throwException();
-    }
-    final group = _currentGroup(rootGroup);
-    final currentClose = group.findTransaction(instruction.transactionId);
-    if (currentClose == null ||
-        currentClose.id == group.parentTransaction.id ||
-        currentClose.businessPurpose != BusinessPurpose.reimbursementClose) {
-      LedgerViolationReason.reimbursementCloseTransactionRequired
-          .throwException();
-    }
-    final advanceViolation = _validateReimbursementAdvance(rootGroup);
-    if (advanceViolation != null) advanceViolation.throwException();
+    final group = target.group;
+    final currentClose = target.child;
     final outstanding =
         _detailAmount(
           currentClose,
@@ -286,24 +267,21 @@ class TransactionGroupRewriteService {
         Money.zero();
     final actual =
         instruction.actualReceivedAmount ?? currentClose.primaryAmount;
-    final receiveAccountId =
-        instruction.receiveAccountId ??
-        _firstEntryAccount(currentClose, EntryDirection.debit);
-    final receivableAccountId =
-        instruction.receivableAccountId ??
-        _firstEntryAccount(currentClose, EntryDirection.credit);
-    if (receiveAccountId == null || receivableAccountId == null) {
-      LedgerViolationReason.reimbursementCloseAccountsUnresolved
-          .throwException();
-    }
+    final accounts = _resolveReimbursementAccounts(
+      child: currentClose,
+      receiveAccountId: instruction.receiveAccountId,
+      receivableAccountId: instruction.receivableAccountId,
+      unresolvedViolation:
+          LedgerViolationReason.reimbursementCloseAccountsUnresolved,
+    );
     final gapIncomeAccountId =
         actual.minorUnits > outstanding.minorUnits
             ? await _systemAccountResolver.resolveReimbursementGapIncome()
             : null;
     final roleViolation = await _accountRolePolicy.validate(
       AccountRoleContext.reimbursementClose(
-        receivableAccountId: receivableAccountId,
-        receiveAccountId: receiveAccountId,
+        receivableAccountId: accounts.receivableAccountId,
+        receiveAccountId: accounts.receiveAccountId,
         receivesCash: actual.minorUnits > 0,
       ),
     );
@@ -312,8 +290,8 @@ class TransactionGroupRewriteService {
       instruction: ReimbursementCloseInstruction(
         advanceTransactionId: group.parentTransaction.id,
         actualReceivedAmount: actual,
-        receivableAccountId: receivableAccountId,
-        receiveAccountId: receiveAccountId,
+        receivableAccountId: accounts.receivableAccountId,
+        receiveAccountId: accounts.receiveAccountId,
         occurredAt: currentClose.occurredAt,
         counterpartyName: currentClose.counterpartyName,
         note: currentClose.note,
@@ -367,6 +345,8 @@ class TransactionGroupRewriteService {
       accounts: accounts,
     );
     return TransactionDeletionResult(
+      targetTransactionId: target.id,
+      deletesGroup: target.id == group.parentTransaction.id,
       deletedTransactions: deleted,
       accounts: changedAccounts,
     );
@@ -380,6 +360,55 @@ class TransactionGroupRewriteService {
     };
     final accounts = await _accountRepository.findByIds(ids);
     return {for (final account in accounts) account.id: account};
+  }
+
+  Future<({TransactionGroup group, Transaction child})>
+  _loadReimbursementChild({
+    required String transactionId,
+    required BusinessPurpose purpose,
+    required LedgerViolationReason targetViolation,
+    required bool requireOpenGroup,
+  }) async {
+    final rootGroup = await _transactionGroupRepository.findByTransactionId(
+      transactionId,
+    );
+    if (rootGroup == null) {
+      LedgerViolationReason.transactionNotFound.throwException();
+    }
+    final group = _currentGroup(rootGroup);
+    final child = group.findTransaction(transactionId);
+    if (child == null ||
+        child.id == group.parentTransaction.id ||
+        child.businessPurpose != purpose) {
+      targetViolation.throwException();
+    }
+    if (requireOpenGroup && group.reimbursementClosed) {
+      LedgerViolationReason.reimbursementAlreadyClosed.throwException();
+    }
+    final advanceViolation = _validateReimbursementAdvance(rootGroup);
+    if (advanceViolation != null) advanceViolation.throwException();
+    return (group: group, child: child);
+  }
+
+  ({String receiveAccountId, String receivableAccountId})
+  _resolveReimbursementAccounts({
+    required Transaction child,
+    required String? receiveAccountId,
+    required String? receivableAccountId,
+    required LedgerViolationReason unresolvedViolation,
+  }) {
+    final resolvedReceiveAccountId =
+        receiveAccountId ?? _firstEntryAccount(child, EntryDirection.debit);
+    final resolvedReceivableAccountId =
+        receivableAccountId ?? _firstEntryAccount(child, EntryDirection.credit);
+    if (resolvedReceiveAccountId == null ||
+        resolvedReceivableAccountId == null) {
+      unresolvedViolation.throwException();
+    }
+    return (
+      receiveAccountId: resolvedReceiveAccountId,
+      receivableAccountId: resolvedReceivableAccountId,
+    );
   }
 
   TransactionGroup _currentGroup(TransactionGroup group) {
@@ -409,9 +438,14 @@ class TransactionGroupRewriteService {
     required Transaction original,
     required Transaction rewritten,
   }) async {
-    final rewrite = TransactionRewrite(before: original, after: rewritten);
+    final accountingExpressionChanged =
+        !original.hasSameAccountingExpressionAs(rewritten);
     final plan = TransactionGroupRewritePlan(
-      rewrites: [rewrite],
+      rewrites:
+          accountingExpressionChanged
+              ? [TransactionRewrite(before: original, after: rewritten)]
+              : const [],
+      rowUpdates: accountingExpressionChanged ? const [] : [rewritten],
       currentGroup: TransactionGroup(
         parentTransaction: group.parentTransaction,
         childTransactions: [
@@ -420,12 +454,14 @@ class TransactionGroupRewriteService {
         ],
       ),
     );
-    final accounts = await _loadAccountsFor([original, rewritten]);
-    final changedAccounts = _accountPostingService.applyRewrite(
-      before: [original],
-      after: [rewritten],
-      accounts: accounts,
-    );
+    final changedAccounts =
+        accountingExpressionChanged
+            ? _accountPostingService.applyRewrite(
+              before: [original],
+              after: [rewritten],
+              accounts: await _loadAccountsFor([original, rewritten]),
+            )
+            : const <Account>[];
     return TransactionGroupRewriteResult(
       plan: plan,
       accounts: changedAccounts,

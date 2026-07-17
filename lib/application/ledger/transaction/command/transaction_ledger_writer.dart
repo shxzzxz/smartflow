@@ -1,6 +1,10 @@
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
+import 'package:smartflow/domain/ledger/port/transaction_group_repository.dart';
 import 'package:smartflow/domain/ledger/port/transaction_repository.dart';
+import 'package:smartflow/domain/ledger/service/mutation/transaction_deletion_result.dart';
+import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_result.dart';
+import 'package:smartflow/domain/ledger/service/mutation/transaction_update_result.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_result.dart';
 
 import 'transaction_command.dart';
@@ -9,13 +13,16 @@ class TransactionLedgerWriter {
   const TransactionLedgerWriter({
     required TransactionRunner transactionRunner,
     required TransactionRepository transactionRepository,
+    required TransactionGroupRepository transactionGroupRepository,
     required AccountRepository accountRepository,
   }) : _transactionRunner = transactionRunner,
        _transactionRepository = transactionRepository,
+       _transactionGroupRepository = transactionGroupRepository,
        _accountRepository = accountRepository;
 
   final TransactionRunner _transactionRunner;
   final TransactionRepository _transactionRepository;
+  final TransactionGroupRepository _transactionGroupRepository;
   final AccountRepository _accountRepository;
 
   Future<PostedTransactionResult> planAndPersistRewrite(
@@ -55,9 +62,7 @@ class TransactionLedgerWriter {
   Future<PostedTransactionResult> _persistRewrite(
     TransactionGroupRewriteResult rewrite,
   ) async {
-    await _transactionRepository.rewriteAll(
-      rewrite.plan.rewrites.map((item) => item.after),
-    );
+    await _transactionGroupRepository.applyRewrite(rewrite.plan);
     await _accountRepository.saveAll(rewrite.accounts);
     return PostedTransactionResult(
       transactionId: rewrite.currentTransaction.id,
@@ -65,9 +70,15 @@ class TransactionLedgerWriter {
   }
 
   Future<void> _persistDeletion(TransactionDeletionResult deletion) async {
-    await _transactionRepository.deleteAll({
-      for (final transaction in deletion.deletedTransactions) transaction.id,
-    });
+    if (deletion.deletesGroup) {
+      await _transactionGroupRepository.deleteGroup(
+        deletion.targetTransactionId,
+      );
+    } else {
+      await _transactionGroupRepository.deleteChild(
+        deletion.targetTransactionId,
+      );
+    }
     await _accountRepository.saveAll(deletion.accounts);
   }
 

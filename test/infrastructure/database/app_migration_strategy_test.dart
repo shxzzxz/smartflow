@@ -121,6 +121,8 @@ void main() {
         "is_excluded_from_stats, is_excluded_from_budget, source_kind) VALUES "
         "('parent-old', 'parent-old', 'dailyExpense', 100, 100, 1000, "
         "'old version', NULL, 'original', 'replaced', 1, 1, 'manual'), "
+        "('parent-middle', 'parent-old', 'dailyExpense', 150, 160, 1100, "
+        "'middle version', NULL, 'correction', 'replaced', 1, 1, 'manual'), "
         "('parent-current', 'parent-old', 'dailyExpense', 200, 210, 1200, "
         "'current version', NULL, 'correction', 'current', 1, 1, 'manual'), "
         "('refund-current', 'parent-old', 'refund', 300, 310, 200, "
@@ -164,7 +166,7 @@ void main() {
         "start_date, first_repayment_date, last_repayment_date, "
         "repayment_method, interest_accrual_method, status) "
         "VALUES ('contract-1', 'liability-1', 'disbursement', 'asset-1', "
-        "'parent-current', 1200, 1, 0, 0, 0, 'equalInstallment', "
+        "'parent-middle', 1200, 1, 0, 0, 0, 'equalInstallment', "
         "'daily', 'active')",
       );
       await staleDatabase.customStatement('PRAGMA user_version = 20');
@@ -270,6 +272,44 @@ void main() {
               )
               .getSingle();
       expect(account.read<int>('balance_minor'), 77777);
+    },
+  );
+
+  test(
+    'opening a v20 database rejects orphan external transaction references',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'smartflow-orphan-reference-migration-test-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File(
+        '${directory.path}${Platform.pathSeparator}smartflow.sqlite',
+      );
+
+      final staleDatabase = _openDatabase(file);
+      await staleDatabase.customStatement('DROP TABLE transactions');
+      await staleDatabase.customStatement('DROP TABLE repayments');
+      await staleDatabase.customStatement(_v20TransactionsSql);
+      await staleDatabase.customStatement(_v20RepaymentsSql);
+      await staleDatabase.customStatement(
+        "INSERT INTO installment_contracts "
+        "(id, liability_account_id, source_type, disbursement_account_id, "
+        "disbursement_transaction_id, principal_minor, total_periods, "
+        "start_date, first_repayment_date, last_repayment_date, "
+        "repayment_method, interest_accrual_method, status) "
+        "VALUES ('orphan-contract', 'liability-1', 'disbursement', 'asset-1', "
+        "'missing-transaction', 1200, 1, 0, 0, 0, 'equalInstallment', "
+        "'daily', 'active')",
+      );
+      await staleDatabase.customStatement('PRAGMA user_version = 20');
+      await staleDatabase.close();
+
+      final upgradingDatabase = _openDatabase(file);
+      addTearDown(upgradingDatabase.close);
+      await expectLater(
+        upgradingDatabase.customSelect('SELECT 1').get(),
+        throwsA(isA<StateError>()),
+      );
     },
   );
 }

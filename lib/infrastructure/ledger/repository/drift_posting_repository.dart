@@ -9,6 +9,7 @@ import '../../../domain/ledger/entity/transaction.dart';
 import '../../../domain/ledger/entity/transaction_detail_record.dart';
 import '../../../domain/ledger/port/transaction_group_repository.dart';
 import '../../../domain/ledger/port/transaction_repository.dart';
+import '../../../domain/ledger/service/mutation/transaction_group_rewrite_plan.dart';
 import '../../database/app_database.dart';
 import '../mapper/account_mapper.dart';
 import '../mapper/transaction_mapper.dart';
@@ -94,12 +95,37 @@ class DriftPostingRepository
   }
 
   @override
-  Future<void> rewriteAll(Iterable<Transaction> transactions) {
-    return Future.forEach<Transaction>(transactions, _rewriteTransaction);
+  Future<void> applyRewrite(TransactionGroupRewritePlan plan) async {
+    await Future.forEach<Transaction>(plan.rowUpdates, updateTransaction);
+    await Future.forEach<TransactionRewrite>(
+      plan.rewrites,
+      (rewrite) => _rewriteTransaction(rewrite.after),
+    );
   }
 
   @override
-  Future<void> deleteAll(Set<String> transactionIds) async {
+  Future<void> deleteGroup(String parentTransactionId) async {
+    final rows =
+        await (_database.selectOnly(_database.transactions)
+              ..addColumns([_database.transactions.id])
+              ..where(
+                _database.transactions.id.equals(parentTransactionId) |
+                    _database.transactions.parentTransactionId.equals(
+                      parentTransactionId,
+                    ),
+              ))
+            .get();
+    await _deleteTransactions({
+      for (final row in rows) row.read(_database.transactions.id)!,
+    });
+  }
+
+  @override
+  Future<void> deleteChild(String childTransactionId) {
+    return _deleteTransactions({childTransactionId});
+  }
+
+  Future<void> _deleteTransactions(Set<String> transactionIds) async {
     if (transactionIds.isEmpty) return;
     await (_database.delete(_database.entries)
       ..where((row) => row.transactionId.isIn(transactionIds))).go();

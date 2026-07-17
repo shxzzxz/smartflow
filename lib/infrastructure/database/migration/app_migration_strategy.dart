@@ -183,6 +183,22 @@ JOIN transaction_id_map AS parent
 WHERE child.business_state = 'current'
   AND child.parent_transaction_id IS NOT NULL
 ''');
+  await database.customStatement('''
+CREATE TEMP TABLE transaction_reference_map (
+  old_id TEXT NOT NULL PRIMARY KEY,
+  new_id TEXT NOT NULL
+)
+''');
+  await database.customStatement('''
+INSERT INTO transaction_reference_map (old_id, new_id)
+SELECT version.id, current_parent.new_id
+FROM transactions AS version
+JOIN transaction_id_map AS current_parent
+  ON current_parent.parent_id IS NULL
+ AND current_parent.new_id = COALESCE(version.root_transaction_id, version.id)
+WHERE version.parent_transaction_id IS NULL
+''');
+  await _validateExternalTransactionReferences(database);
 
   await database.customStatement(_transactionsV21Sql);
   await database.customStatement('''
@@ -280,7 +296,7 @@ SELECT
     WHEN repayment.root_transaction_id IS NULL THEN NULL
     ELSE (
       SELECT mapping.new_id
-      FROM transaction_id_map AS mapping
+      FROM transaction_reference_map AS mapping
       WHERE mapping.old_id = repayment.root_transaction_id
          OR mapping.new_id = repayment.root_transaction_id
       LIMIT 1
@@ -293,21 +309,9 @@ FROM repayments AS repayment
 
   await database.customStatement('''
 UPDATE installment_contracts
-SET disbursement_account_id = NULL,
-    disbursement_transaction_id = NULL
-WHERE disbursement_transaction_id IS NOT NULL
-  AND NOT EXISTS (
-    SELECT 1
-    FROM transaction_id_map AS mapping
-    WHERE mapping.old_id = installment_contracts.disbursement_transaction_id
-       OR mapping.new_id = installment_contracts.disbursement_transaction_id
-  )
-''');
-  await database.customStatement('''
-UPDATE installment_contracts
 SET disbursement_transaction_id = (
   SELECT mapping.new_id
-  FROM transaction_id_map AS mapping
+  FROM transaction_reference_map AS mapping
   WHERE mapping.old_id = installment_contracts.disbursement_transaction_id
      OR mapping.new_id = installment_contracts.disbursement_transaction_id
   LIMIT 1
@@ -323,10 +327,46 @@ WHERE disbursement_transaction_id IS NOT NULL
   await database.customStatement(
     'ALTER TABLE repayments_v21 RENAME TO repayments',
   );
+  await database.customStatement('DROP TABLE transaction_reference_map');
   await database.customStatement('DROP TABLE transaction_id_map');
 
   await _createTransactionRowIndexes(database);
   await _createRepaymentIndexes(database);
+}
+
+Future<void> _validateExternalTransactionReferences(
+  AppDatabase database,
+) async {
+  final row =
+      await database.customSelect('''
+SELECT
+  (SELECT COUNT(*)
+   FROM repayments AS repayment
+   WHERE repayment.root_transaction_id IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1
+       FROM transaction_reference_map AS mapping
+       WHERE mapping.old_id = repayment.root_transaction_id
+          OR mapping.new_id = repayment.root_transaction_id
+     )) AS orphan_repayments,
+  (SELECT COUNT(*)
+   FROM installment_contracts AS contract
+   WHERE contract.disbursement_transaction_id IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1
+       FROM transaction_reference_map AS mapping
+       WHERE mapping.old_id = contract.disbursement_transaction_id
+          OR mapping.new_id = contract.disbursement_transaction_id
+     )) AS orphan_contracts
+''').getSingle();
+  final orphanRepayments = row.read<int>('orphan_repayments');
+  final orphanContracts = row.read<int>('orphan_contracts');
+  if (orphanRepayments > 0 || orphanContracts > 0) {
+    throw StateError(
+      'Cannot migrate orphan ledger transaction references: '
+      '$orphanRepayments repayments, $orphanContracts installment contracts.',
+    );
+  }
 }
 
 const _transactionsV21Sql = '''

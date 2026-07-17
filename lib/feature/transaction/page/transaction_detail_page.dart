@@ -69,7 +69,7 @@ class TransactionDetailPage extends ConsumerWidget {
       builder:
           (ctx) => AlertDialog(
             title: const Text('删除交易'),
-            content: const Text('删除后会写入冲销记录，历史链路仍可追溯。'),
+            content: const Text('删除后交易及其账务记录将无法恢复。'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),

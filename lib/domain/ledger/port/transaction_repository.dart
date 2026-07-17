@@ -8,8 +8,4 @@ abstract interface class TransactionRepository {
   Future<void> save(Transaction transaction);
 
   Future<void> saveAll(Iterable<Transaction> transactions);
-
-  Future<void> rewriteAll(Iterable<Transaction> transactions);
-
-  Future<void> deleteAll(Set<String> transactionIds);
 }

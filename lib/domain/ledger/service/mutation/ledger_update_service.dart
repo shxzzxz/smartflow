@@ -1,8 +1,9 @@
 import '../../port/transaction_group_repository.dart';
 import '../../port/transaction_repository.dart';
+import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
-import '../../valobj/posting_result.dart';
+import 'transaction_update_result.dart';
 
 class LedgerUpdateService {
   const LedgerUpdateService({
@@ -29,6 +30,20 @@ class LedgerUpdateService {
     );
     if (transaction == null) {
       LedgerViolationReason.transactionNotFound.throwException();
+    }
+    if (transaction.parentTransactionId != null &&
+        (transaction.businessPurpose == BusinessPurpose.refund ||
+            transaction.businessPurpose ==
+                BusinessPurpose.reimbursementReceipt)) {
+      final group = await _transactionGroupRepository.findByTransactionId(
+        transaction.id,
+      );
+      if (group == null) {
+        LedgerViolationReason.transactionNotFound.throwException();
+      }
+      if (group.reimbursementClosed) {
+        LedgerViolationReason.reimbursementAlreadyClosed.throwException();
+      }
     }
     transaction.assertCanBeBasicsUpdated();
 

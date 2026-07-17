@@ -136,6 +136,7 @@ TransactionLedgerWriter transactionLedgerWriter(Ref ref) {
   return TransactionLedgerWriter(
     transactionRunner: ref.watch(transactionRunnerProvider),
     transactionRepository: ref.watch(ledgerRepositoryProvider),
+    transactionGroupRepository: ref.watch(ledgerRepositoryProvider),
     accountRepository: ref.watch(accountRepositoryProvider),
   );
 }

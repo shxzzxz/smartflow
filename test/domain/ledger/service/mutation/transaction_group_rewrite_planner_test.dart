@@ -13,6 +13,49 @@ import '../../../../helper/sequential_id_generator.dart';
 
 void main() {
   test(
+    'metadata-only parent edit updates the row without rewriting lines',
+    () async {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final current = engine.createExpense(
+        ExpenseInstruction(
+          amount: Money.parse('100.00'),
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'food',
+          occurredAt: DateTime(2026, 7, 1),
+          note: 'before',
+        ),
+      );
+      final candidate = engine.createExpense(
+        ExpenseInstruction(
+          amount: Money.parse('100.00'),
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'food',
+          occurredAt: current.occurredAt,
+          note: 'after',
+        ),
+      );
+      final planner = TransactionGroupRewritePlanner(
+        postingEngine: engine,
+        postingInstructionResolver: const DefaultPostingInstructionResolver(),
+      );
+
+      final plan = await planner.planParentRewrite(
+        currentGroup: TransactionGroup(
+          parentTransaction: current,
+          childTransactions: const [],
+        ),
+        candidateParent: candidate,
+      );
+
+      expect(plan.rewrites, isEmpty);
+      expect(plan.rowUpdates.single.id, current.id);
+      expect(plan.rowUpdates.single.note, 'after');
+    },
+  );
+
+  test(
     'editing an expense category rewrites the refund offset without changing child identity',
     () async {
       final engine = PostingEngine(

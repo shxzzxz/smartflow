@@ -44,6 +44,31 @@ class Transaction {
 
   Set<String> get accountIds => entries.map((entry) => entry.accountId).toSet();
 
+  bool hasSameAccountingExpressionAs(Transaction other) {
+    if (businessPurpose != other.businessPurpose ||
+        primaryAmount != other.primaryAmount ||
+        parentTransactionId != other.parentTransactionId ||
+        details.length != other.details.length ||
+        entries.length != other.entries.length) {
+      return false;
+    }
+    for (var index = 0; index < details.length; index++) {
+      final left = details[index];
+      final right = other.details[index];
+      if (left.type != right.type || left.amount != right.amount) return false;
+    }
+    for (var index = 0; index < entries.length; index++) {
+      final left = entries[index];
+      final right = other.entries[index];
+      if (left.accountId != right.accountId ||
+          left.direction != right.direction ||
+          left.amount != right.amount) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /// 基础信息(occurredAt / postedAt / settlement / reimbursement account)更新路径。
   void assertCanBeBasicsUpdated() {}
 
