@@ -57,11 +57,6 @@ class DriftCreditBillSourceRepository implements CreditBillSourceRepository {
           ..addColumns([sumExpr])
           ..where(_database.entries.accountId.equals(accountId))
           ..where(_database.entries.direction.equalsValue(direction))
-          ..where(
-            _database.transactions.businessState.equalsValue(
-              BusinessState.current,
-            ),
-          )
           ..where(_database.transactions.businessPurpose.isInValues(purposes))
           ..where(
             _database.transactions.postedAt.isBiggerOrEqualValue(

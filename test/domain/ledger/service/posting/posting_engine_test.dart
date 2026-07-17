@@ -24,7 +24,6 @@ void main() {
       );
 
       expect(transaction.businessPurpose, BusinessPurpose.dailyExpense);
-      expect(transaction.rootTransactionId, transaction.id);
       expect(transaction.postedAt, transaction.occurredAt);
       expect(
         transaction.details.single.type,
@@ -66,7 +65,6 @@ void main() {
         refundOffsetAccountId: 'food',
       );
 
-      expect(refund.rootTransactionId, parent.rootTransactionId);
       expect(refund.parentTransactionId, parent.id);
       expect(refund.postedAt, DateTime(2026, 5, 2));
       expect(refund.isExcludedFromStats, isTrue);
@@ -94,60 +92,83 @@ void main() {
       expect(transaction.postedAt, postedAt);
     });
 
-    test('creates replacement chain original to reversal to correction', () {
+    test('expense edit patch converts a reimbursement advance to expense', () {
+      final current = ReimbursementAdvanceInstruction(
+        amount: Money.parse('12.30'),
+        receivableAccountId: 'receivable',
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'food',
+        occurredAt: DateTime(2026, 5, 1),
+      );
+
+      final edited = const ExpenseEditPatch().applyTo(current);
+
+      expect(edited.amount, current.amount);
+      expect(edited.paidFromAccountId, 'cash');
+      expect(edited.expenseAccountId, 'food');
+    });
+
+    test('advance edit patch converts an expense to reimbursement advance', () {
+      final current = ExpenseInstruction(
+        amount: Money.parse('12.30'),
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'food',
+        occurredAt: DateTime(2026, 5, 1),
+      );
+
+      final edited = const ReimbursementAdvanceEditPatch(
+        receivableAccountId: 'receivable',
+      ).applyTo(current);
+
+      expect(edited.amount, current.amount);
+      expect(edited.receivableAccountId, 'receivable');
+      expect(edited.paidFromAccountId, 'cash');
+      expect(edited.expenseAccountId, 'food');
+    });
+
+    test('reimbursement children inherit parent reporting flags', () {
       final engine = PostingEngine(
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
-      final original = engine.createExpense(
-        ExpenseInstruction(
-          amount: Money.parse('10.00'),
-          paidFromAccountId: 'cash',
-          expenseAccountId: 'food',
-          occurredAt: DateTime(2026, 5, 1),
+      final advance = engine
+          .createReimbursementAdvance(
+            ReimbursementAdvanceInstruction(
+              amount: Money.parse('100.00'),
+              receivableAccountId: 'receivable',
+              paidFromAccountId: 'cash',
+              expenseAccountId: 'travel',
+              occurredAt: DateTime(2026, 5, 1),
+            ),
+          )
+          .copyWith(isExcludedFromStats: true, isExcludedFromBudget: true);
+
+      final receipt = engine.createReimbursementReceipt(
+        instruction: ReimbursementReceiptInstruction(
+          advanceTransactionId: advance.id,
+          amount: Money.parse('20.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'bank',
+          occurredAt: DateTime(2026, 5, 2),
         ),
+        advance: advance,
       );
-      original.updateBasicInfo(postedAt: DateTime(2026, 5, 3));
-      final candidate = engine.createExpense(
-        ExpenseInstruction(
-          amount: Money.parse('11.00'),
-          paidFromAccountId: 'card',
-          expenseAccountId: 'food',
-          occurredAt: DateTime(2026, 5, 1),
+      final close = engine.createReimbursementClose(
+        instruction: ReimbursementCloseInstruction(
+          advanceTransactionId: advance.id,
+          actualReceivedAmount: Money.parse('80.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'bank',
+          occurredAt: DateTime(2026, 5, 3),
         ),
+        advance: advance,
+        outstanding: Money.parse('80.00'),
+        gapIncomeAccountId: null,
       );
 
-      final replacement = engine.createReplacement(
-        original: original,
-        replacement: candidate,
-        reason: MutationReason.correction,
-      );
-
-      expect(
-        replacement.replacedTransaction.businessState,
-        BusinessState.replaced,
-      );
-      expect(
-        replacement.reversalTransaction.businessState,
-        BusinessState.compensation,
-      );
-      expect(
-        replacement.reversalTransaction.mutationPreviousTransactionId,
-        original.id,
-      );
-      expect(
-        replacement.correctionTransaction.businessState,
-        BusinessState.current,
-      );
-      expect(
-        replacement.correctionTransaction.mutationPreviousTransactionId,
-        replacement.reversalTransaction.id,
-      );
-      expect(
-        replacement.correctionTransaction.rootTransactionId,
-        original.rootTransactionId,
-      );
-      expect(replacement.reversalTransaction.postedAt, original.postedAt);
-      expect(replacement.correctionTransaction.postedAt, original.postedAt);
+      expect(receipt.isExcludedFromStats, isTrue);
+      expect(receipt.isExcludedFromBudget, isTrue);
+      expect(close.isExcludedFromStats, isTrue);
+      expect(close.isExcludedFromBudget, isTrue);
     });
   });
 }

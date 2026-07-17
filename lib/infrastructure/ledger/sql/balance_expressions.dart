@@ -38,14 +38,12 @@ Expression<int> balanceDeltaExpr({
 /// 把 [TransactionScopeFilter] 翻译成 `transactions` 表上的 where 条件表达式。
 ///
 /// repository 在任何需要 lens 过滤的 typed query 里调用本函数,把过滤条件注入,
-/// 避免业务字面量(如 `business_state = 'current'`)散布在 SQL 字符串里。
+/// 避免统计与预算范围判断散布在各处查询中。
 Expression<bool> applyTransactionScope({
   required $TransactionsTable transactions,
   required TransactionScopeFilter scope,
 }) {
-  Expression<bool> condition = transactions.businessState.isInValues(
-    scope.businessStates,
-  );
+  Expression<bool> condition = const Constant(true);
 
   final excludedFromStats = scope.excludedFromStats;
   if (excludedFromStats != null) {

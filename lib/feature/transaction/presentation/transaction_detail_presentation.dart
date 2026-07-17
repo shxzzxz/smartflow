@@ -85,24 +85,6 @@ List<DetailSheetItem> reimbursementSheetItems(
       .toList(growable: false);
 }
 
-List<DetailSheetItem> historySheetItems(
-  Iterable<TransactionHistorySnapshot> history,
-) {
-  return history
-      .map((item) {
-        final semantic = semanticForTransactionPurpose(item.businessPurpose);
-        return DetailSheetItem(
-          id: item.id,
-          title: transactionPurposeLabel(item.businessPurpose),
-          occurredAtText: formatTransactionDetailDateTime(item.occurredAt),
-          amount: signedAmountForSemantic(item.primaryAmount, semantic),
-          semantic: semantic,
-          showSign: semantic == MoneySemantic.income,
-        );
-      })
-      .toList(growable: false);
-}
-
 String formatTransactionDetailDateTime(DateTime value) {
   String two(int n) => n.toString().padLeft(2, '0');
   return '${value.year}年${two(value.month)}月${two(value.day)}日 '

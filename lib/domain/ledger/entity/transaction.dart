@@ -10,13 +10,10 @@ import 'transaction_detail_record.dart';
 class Transaction {
   Transaction({
     required this.id,
-    required this.rootTransactionId,
     required this.businessPurpose,
     required this.occurredAt,
     DateTime? postedAt,
     required this.primaryAmount,
-    required this.mutationKind,
-    required this.businessState,
     required this.isExcludedFromStats,
     required this.isExcludedFromBudget,
     required this.sourceKind,
@@ -25,14 +22,11 @@ class Transaction {
     this.note,
     this.parentTransactionId,
     this.reimbursementExpenseAccountId,
-    this.mutationPreviousTransactionId,
-    this.mutationReason,
     this.details = const [],
     this.entries = const [],
   }) : postedAt = postedAt ?? occurredAt;
 
   final String id;
-  final String rootTransactionId;
   final BusinessPurpose businessPurpose;
   DateTime occurredAt;
   DateTime postedAt;
@@ -41,10 +35,6 @@ class Transaction {
   String? note;
   final String? parentTransactionId;
   final String? reimbursementExpenseAccountId;
-  final MutationKind mutationKind;
-  final String? mutationPreviousTransactionId;
-  final MutationReason? mutationReason;
-  BusinessState businessState;
   bool isExcludedFromStats;
   bool isExcludedFromBudget;
   final SourceKind sourceKind;
@@ -54,58 +44,8 @@ class Transaction {
 
   Set<String> get accountIds => entries.map((entry) => entry.accountId).toSet();
 
-  /// 删除路径:仅 current 可删,replaced / canceled / compensation 拒绝。
-  void assertCanBeDeleted() {
-    if (businessState != BusinessState.current) {
-      LedgerViolationReason.transactionNotCurrent.throwException(
-        message: 'Only current transaction can be deleted.',
-      );
-    }
-  }
-
-  /// 更正路径:current + purpose 匹配 + 无 active children。
-  /// [hasActiveChildren] 由 application 层基于 TransactionDetail.children 派生。
-  void assertCanBeCorrectedAs(
-    BusinessPurpose expected, {
-    required bool hasActiveChildren,
-  }) {
-    if (businessState != BusinessState.current) {
-      LedgerViolationReason.transactionNotCurrent.throwException(
-        message: 'Only current transaction can be corrected.',
-      );
-    }
-    if (businessPurpose != expected) {
-      LedgerViolationReason.transactionCorrectionPurposeMismatch.throwException(
-        message: 'Correction command purpose must match the transaction.',
-      );
-    }
-    if (hasActiveChildren) {
-      LedgerViolationReason.transactionHasChildren.throwException(
-        message:
-            'Transactions with child records cannot be corrected; '
-            'use updateBasicInfo / updateReportingFlag for editable fields.',
-      );
-    }
-  }
-
   /// 基础信息(occurredAt / postedAt / settlement / reimbursement account)更新路径。
-  void assertCanBeBasicsUpdated() {
-    if (businessState != BusinessState.current) {
-      LedgerViolationReason.transactionNotCurrent.throwException(
-        message: 'Only current transaction can be updated.',
-      );
-    }
-  }
-
-  Transaction markReplaced() {
-    businessState = BusinessState.replaced;
-    return this;
-  }
-
-  Transaction markCanceled() {
-    businessState = BusinessState.canceled;
-    return this;
-  }
+  void assertCanBeBasicsUpdated() {}
 
   void updateBasicInfo({
     DateTime? occurredAt,
@@ -237,7 +177,6 @@ class Transaction {
 
   Transaction copyWith({
     String? id,
-    String? rootTransactionId,
     BusinessPurpose? businessPurpose,
     DateTime? occurredAt,
     DateTime? postedAt,
@@ -246,10 +185,6 @@ class Transaction {
     Patch<String>? notePatch,
     String? parentTransactionId,
     String? reimbursementExpenseAccountId,
-    MutationKind? mutationKind,
-    String? mutationPreviousTransactionId,
-    MutationReason? mutationReason,
-    BusinessState? businessState,
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
     SourceKind? sourceKind,
@@ -260,7 +195,6 @@ class Transaction {
     final nextId = id ?? this.id;
     return Transaction(
       id: nextId,
-      rootTransactionId: rootTransactionId ?? this.rootTransactionId,
       businessPurpose: businessPurpose ?? this.businessPurpose,
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,
@@ -274,11 +208,6 @@ class Transaction {
       parentTransactionId: parentTransactionId ?? this.parentTransactionId,
       reimbursementExpenseAccountId:
           reimbursementExpenseAccountId ?? this.reimbursementExpenseAccountId,
-      mutationKind: mutationKind ?? this.mutationKind,
-      mutationPreviousTransactionId:
-          mutationPreviousTransactionId ?? this.mutationPreviousTransactionId,
-      mutationReason: mutationReason ?? this.mutationReason,
-      businessState: businessState ?? this.businessState,
       isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
       isExcludedFromBudget: isExcludedFromBudget ?? this.isExcludedFromBudget,
       sourceKind: sourceKind ?? this.sourceKind,

@@ -473,7 +473,6 @@ class _FakeRepaymentAppService implements credit.RepaymentAppService {
     if (exception != null) throw exception;
     return const credit_port.CreditLedgerPostedTransaction(
       transactionId: 'transaction',
-      rootTransactionId: 'root',
     );
   }
 
@@ -485,7 +484,6 @@ class _FakeRepaymentAppService implements credit.RepaymentAppService {
     return const credit.CreateRepaymentResult(
       repaymentId: 'repayment',
       transactionId: 'transaction',
-      rootTransactionId: 'root',
     );
   }
 
@@ -508,7 +506,6 @@ class _FakeRepaymentAppService implements credit.RepaymentAppService {
     return const credit.CreateRepaymentResult(
       repaymentId: 'repayment',
       transactionId: 'transaction',
-      rootTransactionId: 'root',
     );
   }
 
@@ -520,7 +517,6 @@ class _FakeRepaymentAppService implements credit.RepaymentAppService {
     return const credit.CreateRepaymentResult(
       repaymentId: 'repayment',
       transactionId: 'transaction',
-      rootTransactionId: 'root',
     );
   }
 
@@ -560,10 +556,7 @@ class _FakePostingService implements TransactionPostingAppService {
 }
 
 PostedTransactionResult _posted() {
-  return const PostedTransactionResult(
-    transactionId: 'transaction',
-    rootTransactionId: 'root',
-  );
+  return const PostedTransactionResult(transactionId: 'transaction');
 }
 
 Account _account(String id, AccountType type) {
@@ -758,12 +751,9 @@ credit_query.CreditAccountOverviewReadModel _creditOverview() {
 TransactionDetail _detail() {
   final transaction = Transaction(
     id: 'parent',
-    rootTransactionId: 'parent',
     businessPurpose: BusinessPurpose.reimbursementAdvance,
     occurredAt: DateTime(2026),
     primaryAmount: const Money(minorUnits: 1000),
-    mutationKind: MutationKind.original,
-    businessState: BusinessState.current,
     sourceKind: SourceKind.manual,
     isExcludedFromStats: false,
     isExcludedFromBudget: false,

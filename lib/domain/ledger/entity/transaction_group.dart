@@ -1,16 +1,13 @@
 import '../../../core/money/money.dart';
 import '../valobj/ledger_enum.dart';
-import '../valobj/transaction_ownership.dart';
 import 'transaction.dart';
 
-class RootTransactionGroup {
-  const RootTransactionGroup({
-    required this.rootTransactionId,
+class TransactionGroup {
+  const TransactionGroup({
     required this.parentTransaction,
     required this.childTransactions,
   });
 
-  final String rootTransactionId;
   final Transaction parentTransaction;
   final List<Transaction> childTransactions;
 
@@ -28,25 +25,34 @@ class RootTransactionGroup {
 
   Money refundedTotal() {
     return childTransactions
-        .where((tx) => tx.businessPurpose == BusinessPurpose.refund)
-        .fold(const Money(minorUnits: 0), (sum, tx) => sum + tx.primaryAmount);
+        .where(
+          (transaction) =>
+              transaction.businessPurpose == BusinessPurpose.refund,
+        )
+        .fold(
+          Money.zero(),
+          (sum, transaction) => sum + transaction.primaryAmount,
+        );
   }
 
   Money reimbursementReceivedTotal() {
     return childTransactions
         .where(
-          (tx) =>
-              tx.businessPurpose == BusinessPurpose.reimbursementReceipt ||
-              tx.businessPurpose == BusinessPurpose.reimbursementClose,
+          (transaction) =>
+              transaction.businessPurpose ==
+                  BusinessPurpose.reimbursementReceipt ||
+              transaction.businessPurpose == BusinessPurpose.reimbursementClose,
         )
-        .fold(const Money(minorUnits: 0), (sum, tx) => sum + tx.primaryAmount);
+        .fold(
+          Money.zero(),
+          (sum, transaction) => sum + transaction.primaryAmount,
+        );
   }
 
-  bool get reimbursementClosed {
-    return childTransactions.any(
-      (tx) => tx.businessPurpose == BusinessPurpose.reimbursementClose,
-    );
-  }
+  bool get reimbursementClosed => childTransactions.any(
+    (transaction) =>
+        transaction.businessPurpose == BusinessPurpose.reimbursementClose,
+  );
 
   void updateReportingFlags({
     bool? isExcludedFromStats,
@@ -58,12 +64,6 @@ class RootTransactionGroup {
         isExcludedFromBudget: isExcludedFromBudget,
         parentPurpose: parentTransaction.businessPurpose,
       );
-    }
-  }
-
-  void updateOwnership(TransactionOwnership ownership) {
-    for (final transaction in transactions) {
-      transaction.updateOwnership(ownership);
     }
   }
 }

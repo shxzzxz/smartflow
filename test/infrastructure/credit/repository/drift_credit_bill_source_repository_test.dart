@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_bill_source_repository.dart';
@@ -49,13 +48,10 @@ Future<void> _insertExpense(
       .insert(
         TransactionsCompanion.insert(
           id: id,
-          rootTransactionId: Value(id),
           businessPurpose: BusinessPurpose.dailyExpense,
           occurredAt: occurredAt,
           postedAt: postedAt,
           primaryAmountMinor: amountMinor,
-          mutationKind: MutationKind.original,
-          businessState: BusinessState.current,
           sourceKind: SourceKind.manual,
         ),
       );
@@ -84,13 +80,10 @@ Future<void> _insertRefund(
       .insert(
         TransactionsCompanion.insert(
           id: id,
-          rootTransactionId: Value(id),
           businessPurpose: BusinessPurpose.refund,
           occurredAt: occurredAt,
           postedAt: postedAt,
           primaryAmountMinor: amountMinor,
-          mutationKind: MutationKind.original,
-          businessState: BusinessState.current,
           sourceKind: SourceKind.manual,
         ),
       );

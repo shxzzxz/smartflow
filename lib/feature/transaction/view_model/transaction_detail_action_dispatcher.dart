@@ -20,7 +20,7 @@ abstract interface class TransactionDetailActionDispatcher {
 
 TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
   required Transaction transaction,
-  required TransactionCorrectionAppService correctionService,
+  required TransactionEditAppService editService,
   required TransactionUpdateAppService updateService,
   required InstallmentAppService installmentAppService,
   required RepaymentAppService repaymentAppService,
@@ -29,7 +29,7 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
   if (ownership == null) {
     return _DefaultActionDispatcher(
       transaction: transaction,
-      correctionService: correctionService,
+      editService: editService,
       updateService: updateService,
     );
   }
@@ -129,18 +129,18 @@ final class _DefaultActionDispatcher
     implements TransactionDetailActionDispatcher {
   const _DefaultActionDispatcher({
     required this.transaction,
-    required this.correctionService,
+    required this.editService,
     required this.updateService,
   });
 
   final Transaction transaction;
-  final TransactionCorrectionAppService correctionService;
+  final TransactionEditAppService editService;
   final TransactionUpdateAppService updateService;
 
   @override
   Future<UiActionOutcome<void>> delete() async {
     return detailVoidOutcomeFromAction(() {
-      return correctionService.deleteTransaction(
+      return editService.deleteTransaction(
         DeleteTransactionCommand(transactionId: transaction.id),
       );
     });
@@ -186,8 +186,8 @@ final class _DefaultActionDispatcher
     switch (transaction.businessPurpose) {
       case BusinessPurpose.dailyExpense:
         return detailVoidOutcomeFromAction(() {
-          return correctionService.correctExpense(
-            CorrectExpenseCommand(
+          return editService.editExpense(
+            EditExpenseCommand(
               transactionId: transaction.id,
               paidFromAccountId: accountId,
             ),
@@ -195,8 +195,8 @@ final class _DefaultActionDispatcher
         });
       case BusinessPurpose.dailyIncome:
         return detailVoidOutcomeFromAction(() {
-          return correctionService.correctIncome(
-            CorrectIncomeCommand(
+          return editService.editIncome(
+            EditIncomeCommand(
               transactionId: transaction.id,
               receiveAccountId: accountId,
             ),
@@ -204,8 +204,8 @@ final class _DefaultActionDispatcher
         });
       case BusinessPurpose.reimbursementAdvance:
         return detailVoidOutcomeFromAction(() {
-          return correctionService.correctReimbursementAdvance(
-            CorrectReimbursementAdvanceCommand(
+          return editService.editReimbursementAdvance(
+            EditReimbursementAdvanceCommand(
               transactionId: transaction.id,
               paidFromAccountId: accountId,
             ),
@@ -213,8 +213,8 @@ final class _DefaultActionDispatcher
         });
       case BusinessPurpose.borrowing:
         return detailVoidOutcomeFromAction(() {
-          return correctionService.correctBorrowing(
-            CorrectBorrowingCommand(
+          return editService.editBorrowing(
+            EditBorrowingCommand(
               transactionId: transaction.id,
               receiveAccountId: accountId,
             ),
@@ -222,8 +222,8 @@ final class _DefaultActionDispatcher
         });
       case BusinessPurpose.debtRepayment:
         return detailVoidOutcomeFromAction(() {
-          return correctionService.correctRepayment(
-            CorrectRepaymentCommand(
+          return editService.editRepayment(
+            EditRepaymentCommand(
               transactionId: transaction.id,
               paidFromAccountId: accountId,
             ),

@@ -683,7 +683,7 @@ class _Fixture {
     );
     postingAppService = TransactionPostingAppServiceImpl(
       accountRepository: accountRepository,
-      rootGroupRepository: postingRepository,
+      transactionGroupRepository: postingRepository,
       systemAccountResolver: DriftSystemAccountResolver(database),
       ledgerWriter: ledgerWriter,
       idGenerator: ids,
@@ -732,10 +732,10 @@ class _Fixture {
     transactionRepository: postingRepository,
     accountRepository: accountRepository,
   );
-  late final TransactionCorrectionAppService correctionAppService =
-      TransactionCorrectionAppServiceImpl(
+  late final TransactionEditAppService editAppService =
+      TransactionEditAppServiceImpl(
         accountRepository: accountRepository,
-        rootGroupRepository: postingRepository,
+        transactionGroupRepository: postingRepository,
         systemAccountResolver: DriftSystemAccountResolver(database),
         ledgerWriter: ledgerWriter,
         idGenerator: ids,
@@ -743,13 +743,13 @@ class _Fixture {
   late final TransactionUpdateAppService updateAppService =
       TransactionUpdateAppServiceImpl(
         transactionRepository: postingRepository,
-        rootGroupRepository: postingRepository,
+        transactionGroupRepository: postingRepository,
         ledgerWriter: ledgerWriter,
       );
   late final LedgerCreditLedgerPort creditLedgerPort = LedgerCreditLedgerPort(
     accountQueryService: accountQueryService,
     postingService: postingAppService,
-    correctionService: correctionAppService,
+    editService: editAppService,
     updateService: updateAppService,
     transactionQueryService: transactionQueryService,
   );

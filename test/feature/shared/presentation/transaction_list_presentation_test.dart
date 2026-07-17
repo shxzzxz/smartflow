@@ -123,9 +123,7 @@ TransactionListReadModel _item({
 }) {
   return TransactionListReadModel(
     id: id,
-    rootTransactionId: id,
     businessPurpose: BusinessPurpose.dailyExpense,
-    businessState: BusinessState.current,
     occurredAt: occurredAt ?? DateTime(2026, 1, 1, 8, 30),
     primaryAmount: const Money(minorUnits: 1234),
     note: ' 午餐 ',

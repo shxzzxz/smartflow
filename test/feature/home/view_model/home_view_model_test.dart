@@ -133,9 +133,7 @@ Future<void> _flush() async {
 TransactionListReadModel _item() {
   return TransactionListReadModel(
     id: 'tx-1',
-    rootTransactionId: 'tx-1',
     businessPurpose: BusinessPurpose.dailyIncome,
-    businessState: BusinessState.current,
     occurredAt: DateTime(2026, 1, 1, 8),
     primaryAmount: const Money(minorUnits: 10000),
     isExcludedFromStats: false,

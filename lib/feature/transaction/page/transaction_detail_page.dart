@@ -130,10 +130,6 @@ class _DetailBody extends ConsumerWidget {
                 onAccountTap: (row) => _handleAccountTap(context, ref, row),
                 onNoteTap: () => _editNote(context, ref),
               ),
-              if (state.historyItems.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.space12),
-                _HistoryCard(items: state.historyItems),
-              ],
               if (state.showExcludeStats || state.showExcludeBudget) ...[
                 const SizedBox(height: AppSpacing.space12),
                 _ExclusionCard(state: state),
@@ -429,25 +425,6 @@ class _PrimaryMetaCard extends StatelessWidget {
           value: hasNote ? note : '点击添加备注',
           valueColor: hasNote ? null : colors.onSurfaceVariant,
           onTap: onNoteTap,
-        ),
-      ],
-    );
-  }
-}
-
-class _HistoryCard extends StatelessWidget {
-  const _HistoryCard({required this.items});
-
-  final List<DetailSheetItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    return _RowCard(
-      rows: [
-        AppPlainValueRow(
-          label: '历史链路',
-          value: '${items.length} 条记录',
-          onTap: () => _showChildrenSheet(context, title: '历史链路', items: items),
         ),
       ],
     );

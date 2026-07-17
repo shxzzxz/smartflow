@@ -157,7 +157,7 @@ final class AccountTransactionsViewModelProvider
 }
 
 String _$accountTransactionsViewModelHash() =>
-    r'8fa67ea1ddebff606d68eb1d5e06ce7c480701a5';
+    r'ebe2bd8a1b56e503a251fe41c39ff69f87410de1';
 
 final class AccountTransactionsViewModelFamily extends $Family
     with

@@ -1,4 +1,4 @@
-import '../../port/root_transaction_group_repository.dart';
+import '../../port/transaction_group_repository.dart';
 import '../../port/transaction_repository.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
@@ -7,12 +7,12 @@ import '../../valobj/posting_result.dart';
 class LedgerUpdateService {
   const LedgerUpdateService({
     required TransactionRepository transactionRepository,
-    required RootTransactionGroupRepository rootGroupRepository,
+    required TransactionGroupRepository transactionGroupRepository,
   }) : _transactionRepository = transactionRepository,
-       _rootGroupRepository = rootGroupRepository;
+       _transactionGroupRepository = transactionGroupRepository;
 
   final TransactionRepository _transactionRepository;
-  final RootTransactionGroupRepository _rootGroupRepository;
+  final TransactionGroupRepository _transactionGroupRepository;
 
   Future<TransactionUpdateResult> updateBasicInfo(
     UpdateTransactionBasicInfoInstruction instruction,
@@ -53,7 +53,7 @@ class LedgerUpdateService {
       return _empty(instruction.transactionId);
     }
 
-    final group = await _rootGroupRepository.findByTransactionId(
+    final group = await _transactionGroupRepository.findByTransactionId(
       instruction.transactionId,
     );
     if (group == null) {
@@ -77,21 +77,17 @@ class LedgerUpdateService {
   Future<TransactionUpdateResult> updateOwnership(
     UpdateTransactionOwnershipInstruction instruction,
   ) async {
-    final group = await _rootGroupRepository.findByTransactionId(
+    final transaction = await _transactionRepository.findCompleteById(
       instruction.transactionId,
     );
-    if (group == null) {
+    if (transaction == null) {
       LedgerViolationReason.transactionNotFound.throwException();
     }
-    group.updateOwnership(instruction.ownership);
-    final current = group.findTransaction(instruction.transactionId);
-    if (current == null) {
-      LedgerViolationReason.transactionNotFound.throwException();
-    }
+    transaction.updateOwnership(instruction.ownership);
     return TransactionUpdateResult(
-      transactions: group.transactions.toList(),
+      transactions: [transaction],
       accounts: const [],
-      currentTransaction: current,
+      currentTransaction: transaction,
     );
   }
 

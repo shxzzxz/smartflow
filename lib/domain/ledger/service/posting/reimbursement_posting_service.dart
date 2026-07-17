@@ -1,8 +1,8 @@
 import '../../entity/account.dart';
-import '../../entity/root_transaction_group.dart';
+import '../../entity/transaction_group.dart';
 import '../../entity/transaction.dart';
 import '../../port/account_repository.dart';
-import '../../port/root_transaction_group_repository.dart';
+import '../../port/transaction_group_repository.dart';
 import '../../port/system_account_resolver.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
@@ -14,20 +14,20 @@ import 'posting_engine.dart';
 
 class ReimbursementPostingService {
   const ReimbursementPostingService({
-    required RootTransactionGroupRepository rootGroupRepository,
+    required TransactionGroupRepository transactionGroupRepository,
     required AccountRepository accountRepository,
     required SystemAccountResolver systemAccountResolver,
     required PostingEngine postingEngine,
     required AccountPostingService accountPostingService,
     required AccountRolePolicy accountRolePolicy,
-  }) : _rootGroupRepository = rootGroupRepository,
+  }) : _transactionGroupRepository = transactionGroupRepository,
        _accountRepository = accountRepository,
        _systemAccountResolver = systemAccountResolver,
        _postingEngine = postingEngine,
        _accountPostingService = accountPostingService,
        _accountRolePolicy = accountRolePolicy;
 
-  final RootTransactionGroupRepository _rootGroupRepository;
+  final TransactionGroupRepository _transactionGroupRepository;
   final AccountRepository _accountRepository;
   final SystemAccountResolver _systemAccountResolver;
   final PostingEngine _postingEngine;
@@ -109,10 +109,8 @@ class ReimbursementPostingService {
     );
   }
 
-  Future<RootTransactionGroup> _loadOpenAdvance(
-    String advanceTransactionId,
-  ) async {
-    final group = await _rootGroupRepository.findByTransactionId(
+  Future<TransactionGroup> _loadOpenAdvance(String advanceTransactionId) async {
+    final group = await _transactionGroupRepository.findByTransactionId(
       advanceTransactionId,
     );
     final advanceViolation = _validateOpenAdvance(group, advanceTransactionId);
@@ -121,7 +119,7 @@ class ReimbursementPostingService {
   }
 
   LedgerViolationReason? _validateOpenAdvance(
-    RootTransactionGroup? group,
+    TransactionGroup? group,
     String advanceTransactionId,
   ) {
     if (group == null ||
@@ -129,10 +127,6 @@ class ReimbursementPostingService {
         group.parentTransaction.businessPurpose !=
             BusinessPurpose.reimbursementAdvance) {
       return LedgerViolationReason.reimbursementAdvanceNotFound;
-    }
-    final advance = group.parentTransaction;
-    if (advance.businessState != BusinessState.current) {
-      return LedgerViolationReason.reimbursementAdvanceNotCurrent;
     }
     if (group.reimbursementClosed) {
       return LedgerViolationReason.reimbursementAlreadyClosed;

@@ -14,7 +14,7 @@ import 'package:smartflow/shared/account_profile/account_selection_purpose.dart'
 void main() {
   testWidgets('renders detail state and forwards inline edits', (tester) async {
     final update = _FakeTransactionUpdateAppService();
-    final correction = _FakeTransactionCorrectionAppService();
+    final editService = _FakeTransactionEditAppService();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -33,7 +33,7 @@ void main() {
             AccountSelectionPurpose.reimbursementReceivable,
           ).overrideWith((ref) => Stream.value(const <Account>[])),
           transactionUpdateAppServiceProvider.overrideWithValue(update),
-          transactionCorrectionAppServiceProvider.overrideWithValue(correction),
+          transactionEditAppServiceProvider.overrideWithValue(editService),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
@@ -69,7 +69,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    final command = correction.expenseCommands.single;
+    final command = editService.expenseCommands.single;
     expect(command.transactionId, 'tx-1');
     expect(command.paidFromAccountId, 'bank');
     expect(find.text('收支账户已更新'), findsOneWidget);
@@ -86,12 +86,9 @@ TransactionDetail _detail() {
   return TransactionDetail(
     transaction: Transaction(
       id: 'tx-1',
-      rootTransactionId: 'tx-1',
       businessPurpose: BusinessPurpose.dailyExpense,
       occurredAt: DateTime(2026, 1, 1, 8),
       primaryAmount: const Money(minorUnits: 10000),
-      mutationKind: MutationKind.original,
-      businessState: BusinessState.current,
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
@@ -140,10 +137,7 @@ class _FakeTransactionUpdateAppService implements TransactionUpdateAppService {
     UpdateTransactionBasicInfoCommand command,
   ) async {
     basicInfoCommands.add(command);
-    return const PostedTransactionResult(
-      transactionId: 'tx-1',
-      rootTransactionId: 'tx-1',
-    );
+    return const PostedTransactionResult(transactionId: 'tx-1');
   }
 
   @override
@@ -161,19 +155,15 @@ class _FakeTransactionUpdateAppService implements TransactionUpdateAppService {
   }
 }
 
-class _FakeTransactionCorrectionAppService
-    implements TransactionCorrectionAppService {
-  final expenseCommands = <CorrectExpenseCommand>[];
+class _FakeTransactionEditAppService implements TransactionEditAppService {
+  final expenseCommands = <EditExpenseCommand>[];
 
   @override
-  Future<PostedTransactionResult> correctExpense(
-    CorrectExpenseCommand command,
+  Future<PostedTransactionResult> editExpense(
+    EditExpenseCommand command,
   ) async {
     expenseCommands.add(command);
-    return const PostedTransactionResult(
-      transactionId: 'tx-2',
-      rootTransactionId: 'tx-1',
-    );
+    return const PostedTransactionResult(transactionId: 'tx-2');
   }
 
   @override

@@ -76,9 +76,7 @@ final _accounts = <String, Account>{
 TransactionListReadModel _item() {
   return TransactionListReadModel(
     id: 'tx-1',
-    rootTransactionId: 'tx-1',
     businessPurpose: BusinessPurpose.dailyExpense,
-    businessState: BusinessState.current,
     occurredAt: DateTime(2026, 1, 1, 8, 30),
     primaryAmount: const Money(minorUnits: 1234),
     note: ' 午餐 ',

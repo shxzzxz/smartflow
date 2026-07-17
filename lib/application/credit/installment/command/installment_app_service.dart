@@ -213,8 +213,8 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
         if (txId != null) {
           if (command.disbursementAccountId != null ||
               command.borrowingDate != null) {
-            await _ledger.correctBorrowing(
-              CreditLedgerCorrectBorrowingCommand(
+            await _ledger.editBorrowing(
+              CreditLedgerEditBorrowingCommand(
                 transactionId: txId,
                 receiveAccountId: command.disbursementAccountId,
                 occurredAt: command.borrowingDate,

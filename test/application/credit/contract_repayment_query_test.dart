@@ -16,7 +16,7 @@ void main() {
           repaymentType: RepaymentType.prepayment,
           targetType: RepaymentTargetType.contract,
           targetId: 'contract',
-          rootTransactionId: 'root',
+          transactionId: 'root',
           items: const [
             RepaymentItem(
               id: 'item',
@@ -75,8 +75,8 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
   final CreditLedgerTransactionSnapshot transaction;
 
   @override
-  Future<CreditLedgerTransactionSnapshot?> findCurrentParentTransactionByRoot(
-    String rootTransactionId,
+  Future<CreditLedgerTransactionSnapshot?> findParentTransaction(
+    String transactionId,
   ) async => transaction;
 
   @override

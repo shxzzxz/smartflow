@@ -215,9 +215,7 @@ final _accounts = <String, Account>{
 TransactionListReadModel _item(String id, {DateTime? occurredAt}) {
   return TransactionListReadModel(
     id: id,
-    rootTransactionId: id,
     businessPurpose: BusinessPurpose.dailyExpense,
-    businessState: BusinessState.current,
     occurredAt: occurredAt ?? DateTime(2026, 1, 1, 8, 30),
     primaryAmount: const Money(minorUnits: 1234),
     isExcludedFromStats: false,

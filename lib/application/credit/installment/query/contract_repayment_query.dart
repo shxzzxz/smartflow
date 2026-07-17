@@ -48,16 +48,14 @@ class ContractRepaymentQueryImpl implements ContractRepaymentQuery {
     final result = <ContractRepayment>[];
     for (final repayment in repayments) {
       final transaction =
-          repayment.rootTransactionId == null
+          repayment.transactionId == null
               ? null
-              : await _ledger.findCurrentParentTransactionByRoot(
-                repayment.rootTransactionId!,
-              );
+              : await _ledger.findParentTransaction(repayment.transactionId!);
       final allocated = repayment.totalAllocated();
       result.add(
         ContractRepayment(
           id: repayment.id,
-          transactionId: repayment.rootTransactionId,
+          transactionId: repayment.transactionId,
           repaymentType: repayment.repaymentType,
           occurredAt:
               transaction?.occurredAt ??

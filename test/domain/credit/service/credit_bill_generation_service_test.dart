@@ -581,9 +581,9 @@ class _FakeRepaymentRepository implements RepaymentRepository {
   }
 
   @override
-  Future<Repayment?> findByRootTransaction(String rootTransactionId) async {
+  Future<Repayment?> findByTransaction(String transactionId) async {
     return _repayments.values
-        .where((repayment) => repayment.rootTransactionId == rootTransactionId)
+        .where((repayment) => repayment.transactionId == transactionId)
         .firstOrNull;
   }
 

@@ -1,0 +1,485 @@
+import 'package:test/test.dart';
+import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/error/app_exception.dart';
+import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
+import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_planner.dart';
+import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
+import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
+import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
+
+import '../../../../helper/sequential_id_generator.dart';
+
+void main() {
+  test(
+    'editing an expense category rewrites the refund offset without changing child identity',
+    () async {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final parent = engine.createExpense(
+        ExpenseInstruction(
+          amount: Money.parse('100.00'),
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'food',
+          occurredAt: DateTime(2026, 7, 1),
+        ),
+      );
+      final refund = engine.createRefund(
+        instruction: RefundInstruction(
+          parentTransactionId: parent.id,
+          amount: Money.parse('20.00'),
+          refundToAccountId: 'cash',
+          occurredAt: DateTime(2026, 7, 2),
+        ),
+        parent: parent,
+        refundOffsetAccountId: 'food',
+      );
+      final candidate = engine.createExpense(
+        ExpenseInstruction(
+          amount: Money.parse('100.00'),
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'transport',
+          occurredAt: parent.occurredAt,
+        ),
+      );
+      final planner = TransactionGroupRewritePlanner(
+        postingEngine: engine,
+        postingInstructionResolver: const DefaultPostingInstructionResolver(),
+      );
+
+      final plan = await planner.planParentRewrite(
+        currentGroup: TransactionGroup(
+          parentTransaction: parent,
+          childTransactions: [refund],
+        ),
+        candidateParent: candidate,
+      );
+
+      final rewrittenParent = plan.currentGroup.parentTransaction;
+      final rewrittenRefund = plan.currentGroup.childTransactions.single;
+      expect(rewrittenParent.id, parent.id);
+      expect(rewrittenRefund.id, refund.id);
+      expect(rewrittenRefund.parentTransactionId, parent.id);
+      expect(rewrittenRefund.businessPurpose, BusinessPurpose.refund);
+      expect(rewrittenRefund.primaryAmount, refund.primaryAmount);
+      expect(
+        rewrittenRefund.entries
+            .singleWhere((entry) => entry.direction == EntryDirection.credit)
+            .accountId,
+        'transport',
+      );
+      expect(plan.rewrites.map((rewrite) => rewrite.before.id), {
+        parent.id,
+        refund.id,
+      });
+    },
+  );
+
+  test(
+    'reimbursement advance with a receipt cannot be edited as an expense',
+    () async {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final parent = engine.createReimbursementAdvance(
+        ReimbursementAdvanceInstruction(
+          amount: Money.parse('100.00'),
+          receivableAccountId: 'receivable',
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'travel',
+          occurredAt: DateTime(2026, 7, 1),
+        ),
+      );
+      final receipt = engine.createReimbursementReceipt(
+        instruction: ReimbursementReceiptInstruction(
+          advanceTransactionId: parent.id,
+          amount: Money.parse('20.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'bank',
+          occurredAt: DateTime(2026, 7, 2),
+        ),
+        advance: parent,
+      );
+      final candidate = engine.createExpense(
+        ExpenseInstruction(
+          amount: parent.primaryAmount,
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'travel',
+          occurredAt: parent.occurredAt,
+        ),
+      );
+      final planner = TransactionGroupRewritePlanner(
+        postingEngine: engine,
+        postingInstructionResolver: const DefaultPostingInstructionResolver(),
+      );
+
+      await expectLater(
+        planner.planParentRewrite(
+          currentGroup: TransactionGroup(
+            parentTransaction: parent,
+            childTransactions: [receipt],
+          ),
+          candidateParent: candidate,
+        ),
+        throwsA(isA<BusinessException>()),
+      );
+    },
+  );
+
+  test(
+    'expense with refund can become reimbursement advance and resets group reporting flags',
+    () async {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final parent = engine.createExpense(
+        ExpenseInstruction(
+          amount: Money.parse('100.00'),
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'travel',
+          occurredAt: DateTime(2026, 7, 1),
+          isExcludedFromStats: true,
+          isExcludedFromBudget: true,
+        ),
+      );
+      final refund = engine.createRefund(
+        instruction: RefundInstruction(
+          parentTransactionId: parent.id,
+          amount: Money.parse('20.00'),
+          refundToAccountId: 'cash',
+          occurredAt: DateTime(2026, 7, 2),
+        ),
+        parent: parent,
+        refundOffsetAccountId: 'travel',
+      );
+      final candidate = engine.createReimbursementAdvance(
+        ReimbursementAdvanceInstruction(
+          amount: parent.primaryAmount,
+          receivableAccountId: 'receivable',
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'travel',
+          occurredAt: parent.occurredAt,
+        ),
+      );
+      final planner = TransactionGroupRewritePlanner(
+        postingEngine: engine,
+        postingInstructionResolver: const DefaultPostingInstructionResolver(),
+      );
+
+      final plan = await planner.planParentRewrite(
+        currentGroup: TransactionGroup(
+          parentTransaction: parent,
+          childTransactions: [refund],
+        ),
+        candidateParent: candidate,
+      );
+
+      final rewrittenRefund = plan.currentGroup.childTransactions.single;
+      expect(plan.currentGroup.parentTransaction.id, parent.id);
+      expect(plan.currentGroup.parentTransaction.isExcludedFromStats, isFalse);
+      expect(plan.currentGroup.parentTransaction.isExcludedFromBudget, isFalse);
+      expect(rewrittenRefund.id, refund.id);
+      expect(rewrittenRefund.isExcludedFromStats, isFalse);
+      expect(rewrittenRefund.isExcludedFromBudget, isFalse);
+      expect(
+        rewrittenRefund.entries
+            .singleWhere((entry) => entry.direction == EntryDirection.credit)
+            .accountId,
+        'receivable',
+      );
+    },
+  );
+
+  test('closed reimbursement rejects a parent amount edit', () async {
+    final engine = PostingEngine(
+      idGenerator: SequentialIdGenerator(prefix: 'tx'),
+    );
+    final parent = engine.createReimbursementAdvance(
+      ReimbursementAdvanceInstruction(
+        amount: Money.parse('100.00'),
+        receivableAccountId: 'receivable',
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'travel',
+        occurredAt: DateTime(2026, 7, 1),
+      ),
+    );
+    final close = engine.createReimbursementClose(
+      instruction: ReimbursementCloseInstruction(
+        advanceTransactionId: parent.id,
+        actualReceivedAmount: Money.parse('100.00'),
+        receivableAccountId: 'receivable',
+        receiveAccountId: 'bank',
+        occurredAt: DateTime(2026, 7, 2),
+      ),
+      advance: parent,
+      outstanding: parent.primaryAmount,
+      gapIncomeAccountId: null,
+    );
+    final candidate = engine.createReimbursementAdvance(
+      ReimbursementAdvanceInstruction(
+        amount: Money.parse('120.00'),
+        receivableAccountId: 'receivable',
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'travel',
+        occurredAt: parent.occurredAt,
+      ),
+    );
+    final planner = TransactionGroupRewritePlanner(
+      postingEngine: engine,
+      postingInstructionResolver: const DefaultPostingInstructionResolver(),
+    );
+
+    await expectLater(
+      planner.planParentRewrite(
+        currentGroup: TransactionGroup(
+          parentTransaction: parent,
+          childTransactions: [close],
+        ),
+        candidateParent: candidate,
+      ),
+      throwsA(isA<BusinessException>()),
+    );
+  });
+
+  test(
+    'advance amount cannot fall below received reimbursement total',
+    () async {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final parent = engine.createReimbursementAdvance(
+        ReimbursementAdvanceInstruction(
+          amount: Money.parse('100.00'),
+          receivableAccountId: 'receivable',
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'travel',
+          occurredAt: DateTime(2026, 7, 1),
+        ),
+      );
+      final receipt = engine.createReimbursementReceipt(
+        instruction: ReimbursementReceiptInstruction(
+          advanceTransactionId: parent.id,
+          amount: Money.parse('60.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'bank',
+          occurredAt: DateTime(2026, 7, 2),
+        ),
+        advance: parent,
+      );
+      final candidate = engine.createReimbursementAdvance(
+        ReimbursementAdvanceInstruction(
+          amount: Money.parse('50.00'),
+          receivableAccountId: 'receivable',
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'travel',
+          occurredAt: parent.occurredAt,
+        ),
+      );
+      final planner = TransactionGroupRewritePlanner(
+        postingEngine: engine,
+        postingInstructionResolver: const DefaultPostingInstructionResolver(),
+      );
+
+      await expectLater(
+        planner.planParentRewrite(
+          currentGroup: TransactionGroup(
+            parentTransaction: parent,
+            childTransactions: [receipt],
+          ),
+          candidateParent: candidate,
+        ),
+        throwsA(
+          isA<BusinessException>().having(
+            (error) => error.code,
+            'code',
+            LedgerErrorCode.transactionInvalidCommand.code,
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'editing reimbursement receivable account rebases receipt entries without changing receipt facts',
+    () async {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final parent = engine.createReimbursementAdvance(
+        ReimbursementAdvanceInstruction(
+          amount: Money.parse('100.00'),
+          receivableAccountId: 'receivable-old',
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'travel',
+          occurredAt: DateTime(2026, 7, 1),
+        ),
+      );
+      final receipt = engine.createReimbursementReceipt(
+        instruction: ReimbursementReceiptInstruction(
+          advanceTransactionId: parent.id,
+          amount: Money.parse('20.00'),
+          receivableAccountId: 'receivable-old',
+          receiveAccountId: 'bank',
+          occurredAt: DateTime(2026, 7, 2),
+          note: 'receipt-note',
+        ),
+        advance: parent,
+      );
+      final candidate = engine.createReimbursementAdvance(
+        ReimbursementAdvanceInstruction(
+          amount: parent.primaryAmount,
+          receivableAccountId: 'receivable-new',
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'travel',
+          occurredAt: parent.occurredAt,
+        ),
+      );
+      final planner = TransactionGroupRewritePlanner(
+        postingEngine: engine,
+        postingInstructionResolver: const DefaultPostingInstructionResolver(),
+      );
+
+      final plan = await planner.planParentRewrite(
+        currentGroup: TransactionGroup(
+          parentTransaction: parent,
+          childTransactions: [receipt],
+        ),
+        candidateParent: candidate,
+      );
+
+      final rewritten = plan.currentGroup.childTransactions.single;
+      expect(rewritten.id, receipt.id);
+      expect(rewritten.primaryAmount, receipt.primaryAmount);
+      expect(rewritten.occurredAt, receipt.occurredAt);
+      expect(rewritten.note, receipt.note);
+      expect(
+        rewritten.entries
+            .singleWhere((entry) => entry.direction == EntryDirection.credit)
+            .accountId,
+        'receivable-new',
+      );
+      expect(
+        rewritten.entries
+            .singleWhere((entry) => entry.direction == EntryDirection.debit)
+            .accountId,
+        'bank',
+      );
+    },
+  );
+
+  test('receivable rebase does not rewrite close gap-income entry', () async {
+    final engine = PostingEngine(
+      idGenerator: SequentialIdGenerator(prefix: 'tx'),
+    );
+    final parent = engine.createReimbursementAdvance(
+      ReimbursementAdvanceInstruction(
+        amount: Money.parse('100.00'),
+        receivableAccountId: 'receivable-old',
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'travel',
+        occurredAt: DateTime(2026, 7, 1),
+      ),
+    );
+    final close = engine.createReimbursementClose(
+      instruction: ReimbursementCloseInstruction(
+        advanceTransactionId: parent.id,
+        actualReceivedAmount: Money.parse('10.00'),
+        receivableAccountId: 'receivable-old',
+        receiveAccountId: 'bank',
+        occurredAt: DateTime(2026, 7, 2),
+      ),
+      advance: parent,
+      outstanding: Money.zero(),
+      gapIncomeAccountId: 'gap-income',
+    );
+    final candidate = engine.createReimbursementAdvance(
+      ReimbursementAdvanceInstruction(
+        amount: parent.primaryAmount,
+        receivableAccountId: 'receivable-new',
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'travel',
+        occurredAt: parent.occurredAt,
+      ),
+    );
+    final planner = TransactionGroupRewritePlanner(
+      postingEngine: engine,
+      postingInstructionResolver: const DefaultPostingInstructionResolver(),
+    );
+
+    final plan = await planner.planParentRewrite(
+      currentGroup: TransactionGroup(
+        parentTransaction: parent,
+        childTransactions: [close],
+      ),
+      candidateParent: candidate,
+    );
+
+    expect(
+      plan.currentGroup.childTransactions.single.entries
+          .singleWhere((entry) => entry.direction == EntryDirection.credit)
+          .accountId,
+      'gap-income',
+    );
+  });
+
+  test('editing advance category rebases close gap-expense entry', () async {
+    final engine = PostingEngine(
+      idGenerator: SequentialIdGenerator(prefix: 'tx'),
+    );
+    final parent = engine.createReimbursementAdvance(
+      ReimbursementAdvanceInstruction(
+        amount: Money.parse('100.00'),
+        receivableAccountId: 'receivable',
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'travel-old',
+        occurredAt: DateTime(2026, 7, 1),
+      ),
+    );
+    final close = engine.createReimbursementClose(
+      instruction: ReimbursementCloseInstruction(
+        advanceTransactionId: parent.id,
+        actualReceivedAmount: Money.parse('90.00'),
+        receivableAccountId: 'receivable',
+        receiveAccountId: 'bank',
+        occurredAt: DateTime(2026, 7, 2),
+      ),
+      advance: parent,
+      outstanding: parent.primaryAmount,
+      gapIncomeAccountId: null,
+    );
+    final candidate = engine.createReimbursementAdvance(
+      ReimbursementAdvanceInstruction(
+        amount: parent.primaryAmount,
+        receivableAccountId: 'receivable',
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'travel-new',
+        occurredAt: parent.occurredAt,
+      ),
+    );
+    final planner = TransactionGroupRewritePlanner(
+      postingEngine: engine,
+      postingInstructionResolver: const DefaultPostingInstructionResolver(),
+    );
+
+    final plan = await planner.planParentRewrite(
+      currentGroup: TransactionGroup(
+        parentTransaction: parent,
+        childTransactions: [close],
+      ),
+      candidateParent: candidate,
+    );
+
+    expect(
+      plan.currentGroup.childTransactions.single.entries
+          .singleWhere(
+            (entry) =>
+                entry.direction == EntryDirection.debit &&
+                entry.accountId != 'bank',
+          )
+          .accountId,
+      'travel-new',
+    );
+  });
+}

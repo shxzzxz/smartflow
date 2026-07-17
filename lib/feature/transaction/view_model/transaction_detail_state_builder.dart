@@ -27,7 +27,6 @@ TransactionDetailUiState buildTransactionDetailLoadedState({
     accountRows: _accountRows(detail, accountLookup, behavior),
     refund: _refundState(detail),
     reimbursement: _reimbursementState(detail),
-    historyItems: historySheetItems(detail.history),
     showExcludeStats: canShowExcludeStats(detail.transaction),
     showExcludeBudget: canShowExcludeBudget(detail.transaction),
     excludeStats: detail.transaction.isExcludedFromStats,
@@ -288,10 +287,7 @@ DetailEditPermission _accountEditPermission(
 }
 
 DetailBehaviorConfig _behaviorConfigFor(Transaction transaction) {
-  final postedAtPermission =
-      transaction.businessState == BusinessState.current
-          ? const DetailEditPermission.allowed()
-          : const DetailEditPermission.denied(reason: '仅当前有效交易可以修改入账时间');
+  const postedAtPermission = DetailEditPermission.allowed();
   final ownership = transaction.ownership;
   if (ownership == null) {
     return DetailBehaviorConfig(
@@ -302,10 +298,7 @@ DetailBehaviorConfig _behaviorConfigFor(Transaction transaction) {
       canEditOccurredAt: const DetailEditPermission.allowed(),
       canEditPostedAt: postedAtPermission,
       canEditNote: const DetailEditPermission.allowed(),
-      canEditSettlementAccount:
-          transaction.businessState == BusinessState.current
-              ? const DetailEditPermission.allowed()
-              : const DetailEditPermission.denied(reason: '仅当前有效交易可以修改结算账户'),
+      canEditSettlementAccount: const DetailEditPermission.allowed(),
     );
   }
 

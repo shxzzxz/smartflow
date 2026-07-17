@@ -21,7 +21,7 @@ void main() {
       final fixture = _Fixture();
       addTearDown(fixture.close);
       await fixture.seedBill();
-      await fixture.seedRepayment(rootTransactionId: null);
+      await fixture.seedRepayment(transactionId: null);
 
       final detail = await fixture.query.findBillDetail('bill-1');
 
@@ -46,7 +46,7 @@ void main() {
       );
       addTearDown(fixture.close);
       await fixture.seedBill();
-      await fixture.seedRepayment(rootTransactionId: 'tx-root');
+      await fixture.seedRepayment(transactionId: 'tx-root');
 
       final detail = await fixture.query.findBillDetail('bill-1');
 
@@ -124,14 +124,14 @@ class _Fixture {
     ]);
   }
 
-  Future<void> seedRepayment({required String? rootTransactionId}) {
+  Future<void> seedRepayment({required String? transactionId}) {
     return repayments.saveRepayment(
       Repayment(
         id: 'repayment-1',
         repaymentType: credit.RepaymentType.bill,
         targetType: credit.RepaymentTargetType.bill,
         targetId: 'bill-1',
-        rootTransactionId: rootTransactionId,
+        transactionId: transactionId,
         items: [
           RepaymentItem(
             id: 'repayment-item-1',
@@ -155,12 +155,9 @@ class _Fixture {
 ledger.TransactionDetail _transactionDetail() {
   final transaction = ledger.Transaction(
     id: 'tx-root',
-    rootTransactionId: 'tx-root',
     businessPurpose: ledger.BusinessPurpose.debtRepayment,
     occurredAt: DateTime(2026, 6, 20),
     primaryAmount: const Money(minorUnits: 1000),
-    mutationKind: ledger.MutationKind.original,
-    businessState: ledger.BusinessState.current,
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
     sourceKind: ledger.SourceKind.manual,
@@ -194,10 +191,10 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
   final Map<String, ledger.TransactionDetail> details;
 
   @override
-  Future<CreditLedgerTransactionSnapshot?> findCurrentParentTransactionByRoot(
-    String rootTransactionId,
+  Future<CreditLedgerTransactionSnapshot?> findParentTransaction(
+    String transactionId,
   ) async {
-    final detail = details[rootTransactionId];
+    final detail = details[transactionId];
     if (detail == null) return null;
     return CreditLedgerTransactionSnapshot(
       transactionId: detail.transaction.id,

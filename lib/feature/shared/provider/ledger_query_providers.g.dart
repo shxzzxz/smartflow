@@ -552,7 +552,7 @@ final class BalanceSheetComparisonProvider
 }
 
 String _$balanceSheetComparisonHash() =>
-    r'3074d4a48f31dc81aabfc69f6d6645cf53838e18';
+    r'6192570695ceacfa37474f19d3846b8743d6c9c2';
 
 @ProviderFor(netAssetTrend)
 final netAssetTrendProvider = NetAssetTrendFamily._();
@@ -611,7 +611,7 @@ final class NetAssetTrendProvider
   }
 }
 
-String _$netAssetTrendHash() => r'02f663fc1ea286e5ee9a693a7a32a5610a1aa41d';
+String _$netAssetTrendHash() => r'60df911f334c23a62a7c447e52ac27dbb9d98093';
 
 final class NetAssetTrendFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<NetAssetTrendPoint>>, int> {

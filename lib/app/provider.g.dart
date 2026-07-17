@@ -865,58 +865,55 @@ final class TransactionPostingAppServiceProvider
 }
 
 String _$transactionPostingAppServiceHash() =>
-    r'373f71c813c0b0500e1b0cd6d1ec64b38f45cc11';
+    r'98ec00bf722d670c85dea360c2f0faba86aeddac';
 
-@ProviderFor(transactionCorrectionAppService)
-final transactionCorrectionAppServiceProvider =
-    TransactionCorrectionAppServiceProvider._();
+@ProviderFor(transactionEditAppService)
+final transactionEditAppServiceProvider = TransactionEditAppServiceProvider._();
 
-final class TransactionCorrectionAppServiceProvider
+final class TransactionEditAppServiceProvider
     extends
         $FunctionalProvider<
-          TransactionCorrectionAppService,
-          TransactionCorrectionAppService,
-          TransactionCorrectionAppService
+          TransactionEditAppService,
+          TransactionEditAppService,
+          TransactionEditAppService
         >
-    with $Provider<TransactionCorrectionAppService> {
-  TransactionCorrectionAppServiceProvider._()
+    with $Provider<TransactionEditAppService> {
+  TransactionEditAppServiceProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'transactionCorrectionAppServiceProvider',
+        name: r'transactionEditAppServiceProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$transactionCorrectionAppServiceHash();
+  String debugGetCreateSourceHash() => _$transactionEditAppServiceHash();
 
   @$internal
   @override
-  $ProviderElement<TransactionCorrectionAppService> $createElement(
+  $ProviderElement<TransactionEditAppService> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  TransactionCorrectionAppService create(Ref ref) {
-    return transactionCorrectionAppService(ref);
+  TransactionEditAppService create(Ref ref) {
+    return transactionEditAppService(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(TransactionCorrectionAppService value) {
+  Override overrideWithValue(TransactionEditAppService value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<TransactionCorrectionAppService>(
-        value,
-      ),
+      providerOverride: $SyncValueProvider<TransactionEditAppService>(value),
     );
   }
 }
 
-String _$transactionCorrectionAppServiceHash() =>
-    r'f84d743254b88057ce8c4d95508f59f759c9eeb4';
+String _$transactionEditAppServiceHash() =>
+    r'4d7750ec15cde155d51c35072cbbb15082fd380f';
 
 @ProviderFor(transactionUpdateAppService)
 final transactionUpdateAppServiceProvider =
@@ -965,7 +962,7 @@ final class TransactionUpdateAppServiceProvider
 }
 
 String _$transactionUpdateAppServiceHash() =>
-    r'bcd801d84c5097c8e448b6bc6bbd3ff84c822c9a';
+    r'bad05f7f024db61c13646f6a61202f1e5d0f1a94';
 
 @ProviderFor(transactionQueryService)
 final transactionQueryServiceProvider = TransactionQueryServiceProvider._();
@@ -1485,7 +1482,7 @@ final class CreditLedgerPortProvider
   }
 }
 
-String _$creditLedgerPortHash() => r'4ad4fcd96552bbe5a5df98ecdecf091002918e48';
+String _$creditLedgerPortHash() => r'1f96d6e525884e954ee199e05cec518062c2ac94';
 
 @ProviderFor(repaymentAppService)
 final repaymentAppServiceProvider = RepaymentAppServiceProvider._();

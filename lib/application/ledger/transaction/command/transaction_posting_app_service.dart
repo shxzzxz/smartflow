@@ -1,6 +1,6 @@
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
-import 'package:smartflow/domain/ledger/port/root_transaction_group_repository.dart';
+import 'package:smartflow/domain/ledger/port/transaction_group_repository.dart';
 import 'package:smartflow/domain/ledger/port/system_account_resolver.dart';
 import 'package:smartflow/domain/ledger/service/account/account_role_policy.dart';
 import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
@@ -53,7 +53,7 @@ abstract interface class TransactionPostingAppService {
 class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
   TransactionPostingAppServiceImpl({
     required AccountRepository accountRepository,
-    required RootTransactionGroupRepository rootGroupRepository,
+    required TransactionGroupRepository transactionGroupRepository,
     required SystemAccountResolver systemAccountResolver,
     required TransactionLedgerWriter ledgerWriter,
     required IdGenerator idGenerator,
@@ -81,7 +81,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
        _refundPostingService =
            refundPostingService ??
            RefundPostingService(
-             rootGroupRepository: rootGroupRepository,
+             transactionGroupRepository: transactionGroupRepository,
              accountRepository: accountRepository,
              postingInstructionResolver:
                  postingInstructionResolver ??
@@ -96,7 +96,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
        _reimbursementPostingService =
            reimbursementPostingService ??
            ReimbursementPostingService(
-             rootGroupRepository: rootGroupRepository,
+             transactionGroupRepository: transactionGroupRepository,
              accountRepository: accountRepository,
              systemAccountResolver: systemAccountResolver,
              postingEngine:

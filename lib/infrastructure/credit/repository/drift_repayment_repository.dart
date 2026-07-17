@@ -25,10 +25,10 @@ class DriftRepaymentRepository implements RepaymentRepository {
   }
 
   @override
-  Future<Repayment?> findByRootTransaction(String rootTransactionId) async {
+  Future<Repayment?> findByTransaction(String transactionId) async {
     final row =
         await (_database.select(_database.repayments)..where(
-          (repayment) => repayment.rootTransactionId.equals(rootTransactionId),
+          (repayment) => repayment.transactionId.equals(transactionId),
         )).getSingleOrNull();
     if (row == null) return null;
     return _mapRepayment(row, await listItems(row.id));
@@ -190,7 +190,7 @@ class DriftRepaymentRepository implements RepaymentRepository {
       repaymentType: repayment.repaymentType.code,
       targetType: repayment.targetType.code,
       targetId: repayment.targetId,
-      rootTransactionId: Value(repayment.rootTransactionId),
+      transactionId: Value(repayment.transactionId),
       createdAt: Value(repayment.createdAt ?? now),
       updatedAt: Value(now),
     );
@@ -216,7 +216,7 @@ class DriftRepaymentRepository implements RepaymentRepository {
       repaymentType: RepaymentType.fromCode(row.repaymentType),
       targetType: RepaymentTargetType.fromCode(row.targetType),
       targetId: row.targetId,
-      rootTransactionId: row.rootTransactionId,
+      transactionId: row.transactionId,
       items: items,
       createdAt: row.createdAt,
     );

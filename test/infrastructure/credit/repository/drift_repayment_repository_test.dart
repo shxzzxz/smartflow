@@ -18,7 +18,7 @@ void main() {
         repaymentType: RepaymentType.bill,
         targetType: RepaymentTargetType.bill,
         targetId: 'bill-1',
-        rootTransactionId: 'tx-root-1',
+        transactionId: 'tx-root-1',
         items: [
           _item(
             id: 'item-1',
@@ -43,7 +43,7 @@ void main() {
       final row = await database.select(database.repayments).getSingle();
       expect(row.repaymentType, 'BILL');
       expect(row.targetType, 'BILL');
-      expect(row.rootTransactionId, 'tx-root-1');
+      expect(row.transactionId, 'tx-root-1');
 
       final byId = await repository.findRepayment('repayment-1');
       expect(byId, isNotNull);
@@ -51,7 +51,7 @@ void main() {
       expect(byId.totalAllocated().principal, const Money(minorUnits: 1500));
       expect(byId.totalAllocated().discount, const Money(minorUnits: 20));
 
-      final byRoot = await repository.findByRootTransaction('tx-root-1');
+      final byRoot = await repository.findByTransaction('tx-root-1');
       expect(byRoot?.id, 'repayment-1');
 
       final byTarget = await repository.listByTarget(
@@ -104,7 +104,7 @@ void main() {
           repaymentType: RepaymentType.unattributed,
           targetType: RepaymentTargetType.account,
           targetId: 'account-1',
-          rootTransactionId: 'tx-root-1',
+          transactionId: 'tx-root-1',
           items: [
             _item(id: 'item-1', repaymentId: 'repayment-1', principal: 1000),
           ],

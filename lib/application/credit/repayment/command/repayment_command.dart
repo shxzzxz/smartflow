@@ -105,37 +105,32 @@ class CreateRepaymentResult {
   const CreateRepaymentResult({
     required this.repaymentId,
     this.transactionId,
-    this.rootTransactionId,
     this.contractId,
   });
 
   final String repaymentId;
   final String? transactionId;
-  final String? rootTransactionId;
   final String? contractId;
 }
 
 class DeleteCreditRepaymentCommand {
-  const DeleteCreditRepaymentCommand({
-    this.repaymentId,
-    this.rootTransactionId,
-  });
+  const DeleteCreditRepaymentCommand({this.repaymentId, this.transactionId});
 
   final String? repaymentId;
-  final String? rootTransactionId;
+  final String? transactionId;
 }
 
 class EditCreditRepaymentTransactionCommand {
   const EditCreditRepaymentTransactionCommand({
     this.repaymentId,
-    this.rootTransactionId,
+    this.transactionId,
     this.paidFromAccountId,
     this.occurredAt,
     this.note,
   });
 
   final String? repaymentId;
-  final String? rootTransactionId;
+  final String? transactionId;
   final String? paidFromAccountId;
   final DateTime? occurredAt;
   final Patch<String?>? note;
@@ -157,8 +152,8 @@ class CreateLiabilityRepaymentCommand {
   final String? note;
 }
 
-class CorrectLiabilityRepaymentCommand {
-  const CorrectLiabilityRepaymentCommand({
+class EditLiabilityRepaymentCommand {
+  const EditLiabilityRepaymentCommand({
     required this.transactionId,
     required this.liabilityAccountId,
     required this.paidFromAccountId,

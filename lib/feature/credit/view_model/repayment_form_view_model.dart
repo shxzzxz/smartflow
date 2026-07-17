@@ -160,8 +160,8 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
                   note: note,
                 ),
               )
-              : await service.correctLiabilityRepayment(
-                credit.CorrectLiabilityRepaymentCommand(
+              : await service.editLiabilityRepayment(
+                credit.EditLiabilityRepaymentCommand(
                   transactionId: editTransactionId,
                   liabilityAccountId: liabilityAccountId,
                   paidFromAccountId: paidFromAccountId,

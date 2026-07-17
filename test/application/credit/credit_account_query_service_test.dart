@@ -56,7 +56,7 @@ void main() {
           repaymentType: credit.RepaymentType.unattributed,
           targetType: credit.RepaymentTargetType.account,
           targetId: 'credit-1',
-          rootTransactionId: 'tx-root',
+          transactionId: 'tx-root',
           items: [
             RepaymentItem(
               id: 'unattributed-item-1',

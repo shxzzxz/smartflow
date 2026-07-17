@@ -111,10 +111,7 @@ class _FakeTransactionPostingAppService
     CreateExpenseCommand command,
   ) async {
     commands.add(command);
-    return const PostedTransactionResult(
-      transactionId: 'transaction-1',
-      rootTransactionId: 'transaction-1',
-    );
+    return const PostedTransactionResult(transactionId: 'transaction-1');
   }
 
   @override

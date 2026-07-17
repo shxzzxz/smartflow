@@ -157,7 +157,7 @@ LedgerPostingService ledgerPostingService(Ref ref) {
 TransactionPostingAppService transactionPostingAppService(Ref ref) {
   return TransactionPostingAppServiceImpl(
     accountRepository: ref.watch(accountRepositoryProvider),
-    rootGroupRepository: ref.watch(ledgerRepositoryProvider),
+    transactionGroupRepository: ref.watch(ledgerRepositoryProvider),
     systemAccountResolver: ref.watch(systemAccountResolverProvider),
     ledgerWriter: ref.watch(transactionLedgerWriterProvider),
     idGenerator: ref.watch(idGeneratorProvider),
@@ -166,10 +166,10 @@ TransactionPostingAppService transactionPostingAppService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-TransactionCorrectionAppService transactionCorrectionAppService(Ref ref) {
-  return TransactionCorrectionAppServiceImpl(
+TransactionEditAppService transactionEditAppService(Ref ref) {
+  return TransactionEditAppServiceImpl(
     accountRepository: ref.watch(accountRepositoryProvider),
-    rootGroupRepository: ref.watch(ledgerRepositoryProvider),
+    transactionGroupRepository: ref.watch(ledgerRepositoryProvider),
     systemAccountResolver: ref.watch(systemAccountResolverProvider),
     ledgerWriter: ref.watch(transactionLedgerWriterProvider),
     idGenerator: ref.watch(idGeneratorProvider),
@@ -180,7 +180,7 @@ TransactionCorrectionAppService transactionCorrectionAppService(Ref ref) {
 TransactionUpdateAppService transactionUpdateAppService(Ref ref) {
   return TransactionUpdateAppServiceImpl(
     transactionRepository: ref.watch(ledgerRepositoryProvider),
-    rootGroupRepository: ref.watch(ledgerRepositoryProvider),
+    transactionGroupRepository: ref.watch(ledgerRepositoryProvider),
     ledgerWriter: ref.watch(transactionLedgerWriterProvider),
   );
 }
@@ -258,7 +258,7 @@ CreditLedgerPort creditLedgerPort(Ref ref) {
   return LedgerCreditLedgerPort(
     accountQueryService: ref.watch(accountQueryServiceProvider),
     postingService: ref.watch(transactionPostingAppServiceProvider),
-    correctionService: ref.watch(transactionCorrectionAppServiceProvider),
+    editService: ref.watch(transactionEditAppServiceProvider),
     updateService: ref.watch(transactionUpdateAppServiceProvider),
     transactionQueryService: ref.watch(transactionQueryServiceProvider),
   );

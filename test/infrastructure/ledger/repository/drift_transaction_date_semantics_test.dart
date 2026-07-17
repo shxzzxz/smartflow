@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_port_api.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
@@ -64,13 +63,10 @@ Future<void> _insertExpense(AppDatabase database) async {
       .insert(
         TransactionsCompanion.insert(
           id: 'tx-occurred-march',
-          rootTransactionId: const Value('tx-occurred-march'),
           businessPurpose: BusinessPurpose.dailyExpense,
           occurredAt: DateTime(2026, 3, 31),
           postedAt: DateTime(2026, 4, 1),
           primaryAmountMinor: 1200,
-          mutationKind: MutationKind.original,
-          businessState: BusinessState.current,
           sourceKind: SourceKind.manual,
         ),
       );

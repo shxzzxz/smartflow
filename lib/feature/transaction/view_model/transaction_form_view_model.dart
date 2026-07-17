@@ -153,7 +153,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       if (editTransactionId == null) {
         await _submitCreate(amount, options);
       } else {
-        await _submitCorrection(editTransactionId, amount, options);
+        await _submitEdit(editTransactionId, amount, options);
       }
       return const SubmitOutcome.success();
     } on AppException catch (exception) {
@@ -169,7 +169,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     state = state.copyWith(submitting: true);
     try {
       await ref
-          .read(transactionCorrectionAppServiceProvider)
+          .read(transactionEditAppServiceProvider)
           .deleteTransaction(
             DeleteTransactionCommand(transactionId: transactionId),
           );
@@ -297,12 +297,12 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     }
   }
 
-  Future<void> _submitCorrection(
+  Future<void> _submitEdit(
     String transactionId,
     Money amount,
     TransactionFormSubmitOptions options,
   ) async {
-    final correctionService = ref.read(transactionCorrectionAppServiceProvider);
+    final editService = ref.read(transactionEditAppServiceProvider);
     final note = _stringPatch(trimToNull(state.noteText));
 
     switch (state.mode) {
@@ -323,8 +323,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           options.reimbursementAccounts,
         );
         if (reimbursementAccountId == null) {
-          await correctionService.correctExpense(
-            CorrectExpenseCommand(
+          await editService.editExpense(
+            EditExpenseCommand(
               transactionId: transactionId,
               amount: amount,
               paidFromAccountId: paidFromAccountId,
@@ -336,8 +336,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             ),
           );
         } else {
-          await correctionService.correctReimbursementAdvance(
-            CorrectReimbursementAdvanceCommand(
+          await editService.editReimbursementAdvance(
+            EditReimbursementAdvanceCommand(
               transactionId: transactionId,
               amount: amount,
               receivableAccountId: reimbursementAccountId,
@@ -358,8 +358,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           options.settlementAccounts,
         );
         if (receiveAccountId == null) throw _invalidCommandException('请选择收入账户');
-        await correctionService.correctIncome(
-          CorrectIncomeCommand(
+        await editService.editIncome(
+          EditIncomeCommand(
             transactionId: transactionId,
             amount: amount,
             receiveAccountId: receiveAccountId,
@@ -381,8 +381,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         if (fromAccountId == null || toAccountId == null) {
           throw _invalidCommandException('请选择转出和转入账户');
         }
-        await correctionService.correctTransfer(
-          CorrectTransferCommand(
+        await editService.editTransfer(
+          EditTransferCommand(
             transactionId: transactionId,
             amount: amount,
             fromAccountId: fromAccountId,
@@ -403,8 +403,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         if (liabilityAccountId == null || receiveAccountId == null) {
           throw _invalidCommandException('请选择借出和借入账户');
         }
-        await correctionService.correctBorrowing(
-          CorrectBorrowingCommand(
+        await editService.editBorrowing(
+          EditBorrowingCommand(
             transactionId: transactionId,
             amount: amount,
             liabilityAccountId: liabilityAccountId,

@@ -29,65 +29,75 @@ class LedgerPostingService {
   final AccountRolePolicy _accountRolePolicy;
 
   Future<PostingResult> postExpense(ExpenseInstruction instruction) async {
-    final roleViolation = await _accountRolePolicy.validate(
-      AccountRoleContext.expense(
-        paidFromAccountId: instruction.paidFromAccountId,
-        expenseAccountId: instruction.expenseAccountId,
-      ),
-    );
-    if (roleViolation != null) roleViolation.throwException();
-
-    return _applyPosting(_postingEngine.createExpense(instruction));
+    return _applyPosting(await createCandidate(instruction));
   }
 
   Future<PostingResult> postIncome(IncomeInstruction instruction) async {
-    final roleViolation = await _accountRolePolicy.validate(
-      AccountRoleContext.income(
-        receiveAccountId: instruction.receiveAccountId,
-        incomeAccountId: instruction.incomeAccountId,
-      ),
-    );
-    if (roleViolation != null) roleViolation.throwException();
-
-    return _applyPosting(_postingEngine.createIncome(instruction));
+    return _applyPosting(await createCandidate(instruction));
   }
 
   Future<PostingResult> postTransfer(TransferInstruction instruction) async {
-    final hasFee =
-        instruction.feeAmount != null && instruction.feeAmount!.minorUnits > 0;
-    final roleViolation = await _accountRolePolicy.validate(
-      AccountRoleContext.transfer(
-        fromAccountId: instruction.fromAccountId,
-        toAccountId: instruction.toAccountId,
-      ),
-    );
-    if (roleViolation != null) roleViolation.throwException();
-
-    return _applyPosting(
-      _postingEngine.createTransfer(
-        instruction,
-        feeExpenseAccountId:
-            hasFee ? await _systemAccountResolver.resolveFeeExpense() : null,
-      ),
-    );
+    return _applyPosting(await createCandidate(instruction));
   }
 
   Future<PostingResult> postRepayment(RepaymentInstruction instruction) async {
+    return _applyPosting(await createCandidate(instruction));
+  }
+
+  Future<PostingResult> postBorrowing(BorrowingInstruction instruction) async {
+    return _applyPosting(await createCandidate(instruction));
+  }
+
+  Future<Transaction> createCandidate(PostingInstruction instruction) async {
     final roleViolation = await _accountRolePolicy.validate(
-      AccountRoleContext.repayment(
-        liabilityAccountId: instruction.liabilityAccountId,
-        paidFromAccountId: instruction.paidFromAccountId,
-      ),
+      switch (instruction) {
+        ExpenseInstruction i => AccountRoleContext.expense(
+          paidFromAccountId: i.paidFromAccountId,
+          expenseAccountId: i.expenseAccountId,
+        ),
+        IncomeInstruction i => AccountRoleContext.income(
+          receiveAccountId: i.receiveAccountId,
+          incomeAccountId: i.incomeAccountId,
+        ),
+        ReimbursementAdvanceInstruction i =>
+          AccountRoleContext.reimbursementAdvance(
+            receivableAccountId: i.receivableAccountId,
+            paidFromAccountId: i.paidFromAccountId,
+            expenseCategoryId: i.expenseAccountId,
+          ),
+        TransferInstruction i => AccountRoleContext.transfer(
+          fromAccountId: i.fromAccountId,
+          toAccountId: i.toAccountId,
+        ),
+        RepaymentInstruction i => AccountRoleContext.repayment(
+          liabilityAccountId: i.liabilityAccountId,
+          paidFromAccountId: i.paidFromAccountId,
+        ),
+        BorrowingInstruction i => AccountRoleContext.borrowing(
+          liabilityAccountId: i.liabilityAccountId,
+          receiveAccountId: i.receiveAccountId,
+        ),
+      },
     );
     if (roleViolation != null) roleViolation.throwException();
 
-    final hasInterest =
-        instruction.interest != null && instruction.interest!.minorUnits > 0;
-    final hasFee = instruction.fee != null && instruction.fee!.minorUnits > 0;
-    final hasDiscount =
-        instruction.discount != null && instruction.discount!.minorUnits > 0;
-    return _applyPosting(
-      _postingEngine.createRepayment(
+    if (instruction is TransferInstruction) {
+      final hasFee =
+          instruction.feeAmount != null &&
+          instruction.feeAmount!.minorUnits > 0;
+      return _postingEngine.createTransfer(
+        instruction,
+        feeExpenseAccountId:
+            hasFee ? await _systemAccountResolver.resolveFeeExpense() : null,
+      );
+    }
+    if (instruction is RepaymentInstruction) {
+      final hasInterest =
+          instruction.interest != null && instruction.interest!.minorUnits > 0;
+      final hasFee = instruction.fee != null && instruction.fee!.minorUnits > 0;
+      final hasDiscount =
+          instruction.discount != null && instruction.discount!.minorUnits > 0;
+      return _postingEngine.createRepayment(
         instruction,
         interestExpenseAccountId:
             hasInterest
@@ -99,20 +109,9 @@ class LedgerPostingService {
             hasDiscount
                 ? await _systemAccountResolver.resolveDiscountIncome()
                 : null,
-      ),
-    );
-  }
-
-  Future<PostingResult> postBorrowing(BorrowingInstruction instruction) async {
-    final roleViolation = await _accountRolePolicy.validate(
-      AccountRoleContext.borrowing(
-        liabilityAccountId: instruction.liabilityAccountId,
-        receiveAccountId: instruction.receiveAccountId,
-      ),
-    );
-    if (roleViolation != null) roleViolation.throwException();
-
-    return _applyPosting(_postingEngine.createBorrowing(instruction));
+      );
+    }
+    return _postingEngine.create(instruction);
   }
 
   Future<PostingResult> postOpeningBalance(

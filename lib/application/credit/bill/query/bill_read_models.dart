@@ -114,7 +114,7 @@ class BillRepaymentReadModel {
     required this.allocated,
     required this.displayTime,
     required this.timeSource,
-    this.rootTransactionId,
+    this.transactionId,
     this.paidFromAccountId,
   });
 
@@ -123,7 +123,7 @@ class BillRepaymentReadModel {
   final RepaymentAmountDto allocated;
   final DateTime displayTime;
   final BillRepaymentTimeSource timeSource;
-  final String? rootTransactionId;
+  final String? transactionId;
   final String? paidFromAccountId;
 
   Money get cashPaid =>

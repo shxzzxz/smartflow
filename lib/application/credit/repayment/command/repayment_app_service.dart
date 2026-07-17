@@ -30,8 +30,8 @@ abstract interface class RepaymentAppService {
     CreateLiabilityRepaymentCommand command,
   );
 
-  Future<CreditLedgerPostedTransaction> correctLiabilityRepayment(
-    CorrectLiabilityRepaymentCommand command,
+  Future<CreditLedgerPostedTransaction> editLiabilityRepayment(
+    EditLiabilityRepaymentCommand command,
   );
 
   Future<LiabilityRepaymentEditViewLoadResult> loadLiabilityRepaymentEditView(
@@ -130,8 +130,8 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
   }
 
   @override
-  Future<CreditLedgerPostedTransaction> correctLiabilityRepayment(
-    CorrectLiabilityRepaymentCommand command,
+  Future<CreditLedgerPostedTransaction> editLiabilityRepayment(
+    EditLiabilityRepaymentCommand command,
   ) async {
     final snapshot = await _ledger.findRepaymentTransaction(
       command.transactionId,
@@ -146,7 +146,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       throw BusinessException(
         CreditErrorCode.repaymentNotEditable,
         message:
-            'RepaymentAppService.correctLiabilityRepayment only handles DEBT_REPAYMENT.',
+            'RepaymentAppService.editLiabilityRepayment only handles DEBT_REPAYMENT.',
       );
     }
 
@@ -156,8 +156,8 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       editingRepaymentSnapshot: snapshot,
     );
 
-    return _ledger.correctRepayment(
-      CreditLedgerCorrectRepaymentCommand(
+    return _ledger.editRepayment(
+      CreditLedgerEditRepaymentCommand(
         transactionId: command.transactionId,
         amount: _domainAmount(command.amount),
         liabilityAccountId: command.liabilityAccountId,
@@ -274,7 +274,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         repaymentType: RepaymentType.bill,
         targetType: RepaymentTargetType.bill,
         targetId: bill.id,
-        rootTransactionId: post?.rootTransactionId,
+        transactionId: post?.transactionId,
         items: items,
       )..validateAgainstLedgerTransaction(total);
       await _repayments.saveRepayment(repayment);
@@ -282,7 +282,6 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       return CreateRepaymentResult(
         repaymentId: repaymentId,
         transactionId: post?.transactionId,
-        rootTransactionId: post?.rootTransactionId,
       );
     });
   }
@@ -380,7 +379,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         repaymentType: RepaymentType.prepayment,
         targetType: RepaymentTargetType.contract,
         targetId: contract.id,
-        rootTransactionId: post?.rootTransactionId,
+        transactionId: post?.transactionId,
         items: [
           RepaymentItem(
             id: _idGenerator.newId(),
@@ -397,7 +396,6 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       return CreateRepaymentResult(
         repaymentId: repaymentId,
         transactionId: post?.transactionId,
-        rootTransactionId: post?.rootTransactionId,
       );
     });
   }
@@ -436,7 +434,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         repaymentType: RepaymentType.unattributed,
         targetType: RepaymentTargetType.account,
         targetId: command.accountId,
-        rootTransactionId: post.rootTransactionId,
+        transactionId: post.transactionId,
         items: [
           RepaymentItem(
             id: _idGenerator.newId(),
@@ -449,7 +447,6 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       return CreateRepaymentResult(
         repaymentId: repaymentId,
         transactionId: post.transactionId,
-        rootTransactionId: post.rootTransactionId,
       );
     });
   }
@@ -460,13 +457,13 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
   ) async {
     final repayment = await _findRepaymentForCommand(
       repaymentId: command.repaymentId,
-      rootTransactionId: command.rootTransactionId,
+      transactionId: command.transactionId,
     );
-    final rootTransactionId = repayment.rootTransactionId;
-    if (rootTransactionId == null) {
+    final transactionId = repayment.transactionId;
+    if (transactionId == null) {
       throw BusinessException(CreditErrorCode.repaymentNotEditable);
     }
-    final detail = await _currentParentTransactionDetail(rootTransactionId);
+    final detail = await _currentParentTransactionDetail(transactionId);
     final currentTransactionId = detail.transactionId;
 
     if (command.paidFromAccountId == null) {
@@ -481,8 +478,8 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     }
 
     final liabilityAccountId = await _liabilityAccountIdForRepayment(repayment);
-    await _ledger.correctRepayment(
-      CreditLedgerCorrectRepaymentCommand(
+    await _ledger.editRepayment(
+      CreditLedgerEditRepaymentCommand(
         transactionId: currentTransactionId,
         amount: repayment.totalAllocated(),
         liabilityAccountId: liabilityAccountId,
@@ -497,13 +494,13 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
   Future<void> deleteRepayment(DeleteCreditRepaymentCommand command) async {
     final repayment = await _findRepaymentForCommand(
       repaymentId: command.repaymentId,
-      rootTransactionId: command.rootTransactionId,
+      transactionId: command.transactionId,
     );
 
     CreditLedgerTransactionSnapshot? transactionDetail;
-    if (repayment.rootTransactionId != null) {
+    if (repayment.transactionId != null) {
       transactionDetail = await _currentParentTransactionDetail(
-        repayment.rootTransactionId!,
+        repayment.transactionId!,
       );
     }
 
@@ -526,15 +523,15 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
 
   Future<Repayment> _findRepaymentForCommand({
     required String? repaymentId,
-    required String? rootTransactionId,
+    required String? transactionId,
   }) async {
-    if ((repaymentId == null) == (rootTransactionId == null)) {
+    if ((repaymentId == null) == (transactionId == null)) {
       throw BusinessException(CreditErrorCode.repaymentInvalidCommand);
     }
     final repayment =
         repaymentId != null
             ? await _repayments.findRepayment(repaymentId)
-            : await _repayments.findByRootTransaction(rootTransactionId!);
+            : await _repayments.findByTransaction(transactionId!);
     if (repayment == null) {
       throw BusinessException(CreditErrorCode.repaymentNotFound);
     }
@@ -612,11 +609,9 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
   }
 
   Future<CreditLedgerTransactionSnapshot> _currentParentTransactionDetail(
-    String rootTransactionId,
+    String transactionId,
   ) async {
-    final detail = await _ledger.findCurrentParentTransactionByRoot(
-      rootTransactionId,
-    );
+    final detail = await _ledger.findParentTransaction(transactionId);
     if (detail == null) {
       throw BusinessException(
         CreditErrorCode.repaymentNotFound,

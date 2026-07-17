@@ -69,9 +69,7 @@ class _FakeLunarResolver implements CalendarLunarLabelResolver {
 TransactionListReadModel _item({required DateTime occurredAt}) {
   return TransactionListReadModel(
     id: 'tx-1',
-    rootTransactionId: 'tx-1',
     businessPurpose: BusinessPurpose.dailyIncome,
-    businessState: BusinessState.current,
     occurredAt: occurredAt,
     primaryAmount: const Money(minorUnits: 5000),
     isExcludedFromStats: false,

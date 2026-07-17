@@ -434,11 +434,10 @@ class BalanceAdjustmentInstruction {
   final String? note;
 }
 
-class ReplaceParentTransactionInstruction {
-  const ReplaceParentTransactionInstruction({
+class EditParentTransactionInstruction {
+  const EditParentTransactionInstruction({
     required this.transactionId,
-    required this.expectedCurrentPurpose,
-    required this.replacementPatch,
+    required this.editPatch,
     this.occurredAt,
     this.counterpartyName,
     this.note,
@@ -447,8 +446,7 @@ class ReplaceParentTransactionInstruction {
   });
 
   final String transactionId;
-  final BusinessPurpose expectedCurrentPurpose;
-  final PostingReplacementPatch replacementPatch;
+  final PostingEditPatch editPatch;
   final DateTime? occurredAt;
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;
@@ -456,24 +454,24 @@ class ReplaceParentTransactionInstruction {
   final bool? isExcludedFromBudget;
 }
 
-class ReplaceRefundTransactionInstruction {
-  const ReplaceRefundTransactionInstruction({
+class EditRefundTransactionInstruction {
+  const EditRefundTransactionInstruction({
     required this.transactionId,
-    required this.replacementPatch,
+    required this.editPatch,
     this.occurredAt,
     this.counterpartyName,
     this.note,
   });
 
   final String transactionId;
-  final RefundReplacementPatch replacementPatch;
+  final RefundEditPatch editPatch;
   final DateTime? occurredAt;
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;
 }
 
-class ReplaceReimbursementReceiptTransactionInstruction {
-  const ReplaceReimbursementReceiptTransactionInstruction({
+class EditReimbursementReceiptTransactionInstruction {
+  const EditReimbursementReceiptTransactionInstruction({
     required this.transactionId,
     this.amount,
     this.receivableAccountId,
@@ -492,8 +490,8 @@ class ReplaceReimbursementReceiptTransactionInstruction {
   final Patch<String?>? note;
 }
 
-class ReplaceReimbursementCloseTransactionInstruction {
-  const ReplaceReimbursementCloseTransactionInstruction({
+class EditReimbursementCloseTransactionInstruction {
+  const EditReimbursementCloseTransactionInstruction({
     required this.transactionId,
     this.actualReceivedAmount,
     this.receivableAccountId,
@@ -556,16 +554,16 @@ class UpdateTransactionOwnershipInstruction {
   final TransactionOwnership ownership;
 }
 
-sealed class PostingReplacementPatch {
-  const PostingReplacementPatch();
+sealed class PostingEditPatch {
+  const PostingEditPatch();
 
   BusinessPurpose get targetPurpose;
 
   PostingInstruction applyTo(PostingInstruction current);
 }
 
-class ExpenseReplacementPatch extends PostingReplacementPatch {
-  const ExpenseReplacementPatch({
+class ExpenseEditPatch extends PostingEditPatch {
+  const ExpenseEditPatch({
     this.amount,
     this.paidFromAccountId,
     this.expenseAccountId,
@@ -599,14 +597,14 @@ class ExpenseReplacementPatch extends PostingReplacementPatch {
         ownership: current.ownership,
       );
     }
-    return LedgerViolationReason.unsupportedReplacementSource.throwException(
-      message: 'This transaction cannot be replaced as an expense.',
+    return LedgerViolationReason.unsupportedEditSource.throwException(
+      message: 'This transaction cannot be edited as an expense.',
     );
   }
 }
 
-class IncomeReplacementPatch extends PostingReplacementPatch {
-  const IncomeReplacementPatch({
+class IncomeEditPatch extends PostingEditPatch {
+  const IncomeEditPatch({
     this.amount,
     this.receiveAccountId,
     this.incomeAccountId,
@@ -628,14 +626,14 @@ class IncomeReplacementPatch extends PostingReplacementPatch {
         incomeAccountId: incomeAccountId,
       );
     }
-    return LedgerViolationReason.unsupportedReplacementSource.throwException(
-      message: 'This transaction cannot be replaced as an income.',
+    return LedgerViolationReason.unsupportedEditSource.throwException(
+      message: 'This transaction cannot be edited as an income.',
     );
   }
 }
 
-class TransferReplacementPatch extends PostingReplacementPatch {
-  const TransferReplacementPatch({
+class TransferEditPatch extends PostingEditPatch {
+  const TransferEditPatch({
     this.amount,
     this.fromAccountId,
     this.toAccountId,
@@ -664,14 +662,14 @@ class TransferReplacementPatch extends PostingReplacementPatch {
         sourceKind: current.sourceKind,
       );
     }
-    return LedgerViolationReason.unsupportedReplacementSource.throwException(
-      message: 'This transaction cannot be replaced as a transfer.',
+    return LedgerViolationReason.unsupportedEditSource.throwException(
+      message: 'This transaction cannot be edited as a transfer.',
     );
   }
 }
 
-class ReimbursementAdvanceReplacementPatch extends PostingReplacementPatch {
-  const ReimbursementAdvanceReplacementPatch({
+class ReimbursementAdvanceEditPatch extends PostingEditPatch {
+  const ReimbursementAdvanceEditPatch({
     this.amount,
     this.receivableAccountId,
     this.paidFromAccountId,
@@ -696,15 +694,32 @@ class ReimbursementAdvanceReplacementPatch extends PostingReplacementPatch {
         expenseAccountId: expenseAccountId,
       );
     }
-    return LedgerViolationReason.unsupportedReplacementSource.throwException(
-      message:
-          'This transaction cannot be replaced as a reimbursement advance.',
+    if (current is ExpenseInstruction) {
+      final receivable = receivableAccountId;
+      if (receivable == null) {
+        return LedgerViolationReason.reimbursementAdvanceReceivableRequired
+            .throwException();
+      }
+      return ReimbursementAdvanceInstruction(
+        amount: amount ?? current.amount,
+        receivableAccountId: receivable,
+        paidFromAccountId: paidFromAccountId ?? current.paidFromAccountId,
+        expenseAccountId: expenseAccountId ?? current.expenseAccountId,
+        occurredAt: current.occurredAt,
+        counterpartyName: current.counterpartyName,
+        note: current.note,
+        sourceKind: current.sourceKind,
+        ownership: current.ownership,
+      );
+    }
+    return LedgerViolationReason.unsupportedEditSource.throwException(
+      message: 'This transaction cannot be edited as a reimbursement advance.',
     );
   }
 }
 
-class BorrowingReplacementPatch extends PostingReplacementPatch {
-  const BorrowingReplacementPatch({
+class BorrowingEditPatch extends PostingEditPatch {
+  const BorrowingEditPatch({
     this.amount,
     this.liabilityAccountId,
     this.receiveAccountId,
@@ -726,14 +741,14 @@ class BorrowingReplacementPatch extends PostingReplacementPatch {
         receiveAccountId: receiveAccountId,
       );
     }
-    return LedgerViolationReason.unsupportedReplacementSource.throwException(
-      message: 'This transaction cannot be replaced as borrowing.',
+    return LedgerViolationReason.unsupportedEditSource.throwException(
+      message: 'This transaction cannot be edited as borrowing.',
     );
   }
 }
 
-class RepaymentReplacementPatch extends PostingReplacementPatch {
-  const RepaymentReplacementPatch({
+class RepaymentEditPatch extends PostingEditPatch {
+  const RepaymentEditPatch({
     this.principal,
     this.interest,
     this.fee,
@@ -769,14 +784,14 @@ class RepaymentReplacementPatch extends PostingReplacementPatch {
         sourceKind: current.sourceKind,
       );
     }
-    return LedgerViolationReason.unsupportedReplacementSource.throwException(
-      message: 'This transaction cannot be replaced as repayment.',
+    return LedgerViolationReason.unsupportedEditSource.throwException(
+      message: 'This transaction cannot be edited as repayment.',
     );
   }
 }
 
-class RefundReplacementPatch {
-  const RefundReplacementPatch({this.amount, this.refundToAccountId});
+class RefundEditPatch {
+  const RefundEditPatch({this.amount, this.refundToAccountId});
 
   final Money? amount;
   final String? refundToAccountId;

@@ -143,12 +143,9 @@ TransactionDetail _detail({
 }) {
   final transaction = Transaction(
     id: 'tx-1',
-    rootTransactionId: 'tx-1',
     businessPurpose: purpose,
     occurredAt: DateTime(2026, 1, 2, 8, 30),
     primaryAmount: const Money(minorUnits: 1234),
-    mutationKind: MutationKind.original,
-    businessState: BusinessState.current,
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
     sourceKind: SourceKind.manual,

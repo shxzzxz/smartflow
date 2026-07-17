@@ -40,7 +40,7 @@ void main() {
       );
 
       expect(result.transactionId, isNull);
-      expect(result.rootTransactionId, isNull);
+      expect(result.transactionId, isNull);
 
       final repayment = await fixture.repayments.findRepayment(
         result.repaymentId,
@@ -85,7 +85,6 @@ void main() {
         );
 
         expect(result.transactionId, 'tx-current');
-        expect(result.rootTransactionId, 'tx-root');
         expect(
           fixture.posting.repaymentCommand!.principal,
           const Money(minorUnits: 400),
@@ -112,7 +111,7 @@ void main() {
         final repayment = await fixture.repayments.findRepayment(
           result.repaymentId,
         );
-        expect(repayment!.rootTransactionId, 'tx-root');
+        expect(repayment!.transactionId, 'tx-current');
 
         final bill = await fixture.bills.findBill('bill-1');
         expect(bill!.items.single.status, credit.BillItemStatus.partiallyPaid);
@@ -311,7 +310,7 @@ void main() {
             );
 
         expect(result.transactionId, isNull);
-        expect(result.rootTransactionId, isNull);
+        expect(result.transactionId, isNull);
         expect(result.contractId, isNotNull);
         final repayment = await fixture.repayments.findRepayment(
           result.repaymentId,
@@ -880,9 +879,8 @@ void main() {
           ),
         );
         fixture.transactionQuery.details[result
-            .rootTransactionId!] = _transactionDetail(
+            .transactionId!] = _transactionDetail(
           transactionId: result.transactionId!,
-          rootTransactionId: result.rootTransactionId!,
           occurredAt: DateTime(2026, 7, 1),
         );
 
@@ -930,9 +928,8 @@ void main() {
             ),
           ),
         );
-        fixture.transactionQuery.details['tx-root'] = _transactionDetail(
+        fixture.transactionQuery.details['tx-current'] = _transactionDetail(
           transactionId: 'tx-current',
-          rootTransactionId: 'tx-root',
           occurredAt: DateTime(2026, 6, 20),
         );
 
@@ -954,13 +951,13 @@ void main() {
         expect(basicInfo.transactionId, 'tx-current');
         expect(basicInfo.occurredAt, DateTime(2026, 6, 21));
         expect((basicInfo.note as PatchSet<String?>).value, 'updated');
-        final correction = fixture.correction.repaymentCommands.single;
-        expect(correction.transactionId, 'tx-current');
-        expect(correction.liabilityAccountId, 'credit-1');
-        expect(correction.paidFromAccountId, 'bank-1');
-        expect(correction.principal, const Money(minorUnits: 1000));
+        final edit = fixture.edit.repaymentCommands.single;
+        expect(edit.transactionId, 'tx-current');
+        expect(edit.liabilityAccountId, 'credit-1');
+        expect(edit.paidFromAccountId, 'bank-1');
+        expect(edit.principal, const Money(minorUnits: 1000));
         expect(
-          (correction.interest as PatchSet<Money?>).value,
+          (edit.interest as PatchSet<Money?>).value,
           const Money(minorUnits: 50),
         );
 
@@ -968,7 +965,7 @@ void main() {
           credit.DeleteCreditRepaymentCommand(repaymentId: result.repaymentId),
         );
 
-        expect(fixture.correction.deletedTransactionIds.single, 'tx-current');
+        expect(fixture.edit.deletedTransactionIds.single, 'tx-current');
       },
     );
 
@@ -994,9 +991,8 @@ void main() {
             ),
           ),
         );
-        fixture.transactionQuery.details['tx-root'] = _transactionDetail(
+        fixture.transactionQuery.details['tx-current'] = _transactionDetail(
           transactionId: 'tx-current',
-          rootTransactionId: 'tx-root',
           occurredAt: DateTime(2026, 6, 20),
         );
         await fixture.database.customStatement(
@@ -1018,7 +1014,7 @@ void main() {
           ),
         );
 
-        expect(fixture.correction.deletedTransactionIds, ['tx-current']);
+        expect(fixture.edit.deletedTransactionIds, ['tx-current']);
         expect(await fixture.deletedTransactionMarkerExists(), false);
         expect(
           await fixture.repayments.findRepayment(result.repaymentId),
@@ -1144,17 +1140,13 @@ credit.RepaymentTransactionInfo _transactionInfo() {
 ledger_query.TransactionDetail _transactionDetail({
   required String transactionId,
   required DateTime occurredAt,
-  String? rootTransactionId,
 }) {
   return ledger_query.TransactionDetail(
     transaction: ledger_query.Transaction(
       id: transactionId,
-      rootTransactionId: rootTransactionId ?? transactionId,
       businessPurpose: ledger_query.BusinessPurpose.debtRepayment,
       occurredAt: occurredAt,
       primaryAmount: const Money(minorUnits: 1050),
-      mutationKind: ledger_query.MutationKind.original,
-      businessState: ledger_query.BusinessState.current,
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: ledger_query.SourceKind.manual,
@@ -1168,7 +1160,7 @@ ledger_query.TransactionDetail _transactionDetail({
 class _Fixture {
   _Fixture() {
     runner = DriftTransactionRunner(database);
-    correction.onDeleteTransaction = _recordDeletedTransactionInDatabase;
+    edit.onDeleteTransaction = _recordDeletedTransactionInDatabase;
     service = credit.RepaymentAppServiceImpl(
       bills: bills,
       repayments: repayments,
@@ -1176,7 +1168,7 @@ class _Fixture {
       ledger: _FakeCreditLedgerPort(
         accountQuery: accountQuery,
         posting: posting,
-        correction: correction,
+        edit: edit,
         update: update,
         transactionQuery: transactionQuery,
       ),
@@ -1188,7 +1180,7 @@ class _Fixture {
   final database = createTestDatabase();
   final ids = SequentialIdGenerator(prefix: 'repayment');
   final posting = _FakePostingService();
-  final correction = _FakeCorrectionService();
+  final edit = _FakeEditService();
   final update = _FakeUpdateService();
   final transactionQuery = _FakeTransactionQueryService();
   final accountQuery = _FakeAccountQueryService();
@@ -1372,18 +1364,18 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
   const _FakeCreditLedgerPort({
     required _FakeAccountQueryService accountQuery,
     required _FakePostingService posting,
-    required _FakeCorrectionService correction,
+    required _FakeEditService edit,
     required _FakeUpdateService update,
     required _FakeTransactionQueryService transactionQuery,
   }) : _accountQuery = accountQuery,
        _posting = posting,
-       _correction = correction,
+       _edit = edit,
        _update = update,
        _transactionQuery = transactionQuery;
 
   final _FakeAccountQueryService _accountQuery;
   final _FakePostingService _posting;
-  final _FakeCorrectionService _correction;
+  final _FakeEditService _edit;
   final _FakeUpdateService _update;
   final _FakeTransactionQueryService _transactionQuery;
 
@@ -1423,19 +1415,16 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
                 ),
       ),
     );
-    return CreditLedgerPostedTransaction(
-      transactionId: result.transactionId,
-      rootTransactionId: result.rootTransactionId,
-    );
+    return CreditLedgerPostedTransaction(transactionId: result.transactionId);
   }
 
   @override
-  Future<CreditLedgerPostedTransaction> correctRepayment(
-    CreditLedgerCorrectRepaymentCommand command,
+  Future<CreditLedgerPostedTransaction> editRepayment(
+    CreditLedgerEditRepaymentCommand command,
   ) async {
     final amount = command.amount;
-    final result = await _correction.correctRepayment(
-      ledger.CorrectRepaymentCommand(
+    final result = await _edit.editRepayment(
+      ledger.EditRepaymentCommand(
         transactionId: command.transactionId,
         principal: amount?.principal,
         interest:
@@ -1456,10 +1445,7 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
         note: command.note,
       ),
     );
-    return CreditLedgerPostedTransaction(
-      transactionId: result.transactionId,
-      rootTransactionId: result.rootTransactionId,
-    );
+    return CreditLedgerPostedTransaction(transactionId: result.transactionId);
   }
 
   @override
@@ -1475,17 +1461,18 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
 
   @override
   Future<void> deleteTransaction(String transactionId) {
-    return _correction.deleteTransaction(
+    return _edit.deleteTransaction(
       ledger.DeleteTransactionCommand(transactionId: transactionId),
     );
   }
 
   @override
-  Future<CreditLedgerTransactionSnapshot?> findCurrentParentTransactionByRoot(
-    String rootTransactionId,
+  Future<CreditLedgerTransactionSnapshot?> findParentTransaction(
+    String transactionId,
   ) async {
-    final detail = await _transactionQuery
-        .findCurrentParentTransactionDetailByRoot(rootTransactionId);
+    final detail = await _transactionQuery.findParentTransactionDetail(
+      transactionId,
+    );
     if (detail == null) return null;
     return CreditLedgerTransactionSnapshot(
       transactionId: detail.transaction.id,
@@ -1501,7 +1488,7 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
   }
 
   @override
-  Future<void> correctBorrowing(CreditLedgerCorrectBorrowingCommand command) {
+  Future<void> editBorrowing(CreditLedgerEditBorrowingCommand command) {
     throw UnimplementedError();
   }
 
@@ -1551,9 +1538,9 @@ class _BillItemSeed {
   final String? scheduleId;
 }
 
-class _FakeCorrectionService implements ledger.TransactionCorrectionAppService {
+class _FakeEditService implements ledger.TransactionEditAppService {
   final deletedTransactionIds = <String>[];
-  final repaymentCommands = <ledger.CorrectRepaymentCommand>[];
+  final repaymentCommands = <ledger.EditRepaymentCommand>[];
   Future<void> Function(String transactionId)? onDeleteTransaction;
 
   @override
@@ -1565,14 +1552,11 @@ class _FakeCorrectionService implements ledger.TransactionCorrectionAppService {
   }
 
   @override
-  Future<ledger.PostedTransactionResult> correctRepayment(
-    ledger.CorrectRepaymentCommand command,
+  Future<ledger.PostedTransactionResult> editRepayment(
+    ledger.EditRepaymentCommand command,
   ) async {
     repaymentCommands.add(command);
-    return const ledger.PostedTransactionResult(
-      transactionId: 'tx-current',
-      rootTransactionId: 'tx-root',
-    );
+    return const ledger.PostedTransactionResult(transactionId: 'tx-current');
   }
 
   @override
@@ -1587,10 +1571,7 @@ class _FakeUpdateService implements ledger.TransactionUpdateAppService {
     ledger.UpdateTransactionBasicInfoCommand command,
   ) async {
     basicInfoCommands.add(command);
-    return const ledger.PostedTransactionResult(
-      transactionId: 'tx-current',
-      rootTransactionId: 'tx-root',
-    );
+    return const ledger.PostedTransactionResult(transactionId: 'tx-current');
   }
 
   @override
@@ -1609,9 +1590,10 @@ class _FakeTransactionQueryService
   }
 
   @override
-  Future<ledger_query.TransactionDetail?>
-  findCurrentParentTransactionDetailByRoot(String rootTransactionId) async {
-    return details[rootTransactionId];
+  Future<ledger_query.TransactionDetail?> findParentTransactionDetail(
+    String transactionId,
+  ) async {
+    return details[transactionId];
   }
 
   @override
@@ -1626,10 +1608,7 @@ class _FakePostingService implements ledger.TransactionPostingAppService {
     ledger.CreateRepaymentCommand command,
   ) async {
     repaymentCommand = command;
-    return const ledger.PostedTransactionResult(
-      transactionId: 'tx-current',
-      rootTransactionId: 'tx-root',
-    );
+    return const ledger.PostedTransactionResult(transactionId: 'tx-current');
   }
 
   @override

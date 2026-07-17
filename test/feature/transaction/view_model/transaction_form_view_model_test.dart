@@ -264,40 +264,37 @@ void main() {
       expect(state.incomeCategoryId, 'salary');
     });
 
-    test(
-      'submits reimbursement advance correction for edited advance',
-      () async {
-        final correction = _FakeTransactionCorrectionAppService();
-        final container = _container(correctionService: correction);
-        final viewModel = container.read(
-          transactionFormViewModelProvider.notifier,
-        );
+    test('submits reimbursement advance edit for edited advance', () async {
+      final editService = _FakeTransactionEditAppService();
+      final container = _container(editService: editService);
+      final viewModel = container.read(
+        transactionFormViewModelProvider.notifier,
+      );
 
-        viewModel
-          ..setAmountText('30')
-          ..setExpenseCategory(rootId: 'travel', categoryId: 'hotel')
-          ..setFromAccountId('cash')
-          ..setReimbursementAccountId('company');
+      viewModel
+        ..setAmountText('30')
+        ..setExpenseCategory(rootId: 'travel', categoryId: 'hotel')
+        ..setFromAccountId('cash')
+        ..setReimbursementAccountId('company');
 
-        final outcome = await viewModel.submit(
-          _options(
-            editTransactionId: 'tx-1',
-            settlementAccounts: [_account('cash')],
-            reimbursementAccounts: [_account('company')],
-          ),
-        );
+      final outcome = await viewModel.submit(
+        _options(
+          editTransactionId: 'tx-1',
+          settlementAccounts: [_account('cash')],
+          reimbursementAccounts: [_account('company')],
+        ),
+      );
 
-        expect(outcome, isA<SubmitSuccess>());
-        final command = correction.reimbursementAdvanceCommands.single;
-        expect(command.transactionId, 'tx-1');
-        expect(command.receivableAccountId, 'company');
-        expect(command.expenseCategoryId, 'hotel');
-      },
-    );
+      expect(outcome, isA<SubmitSuccess>());
+      final command = editService.reimbursementAdvanceCommands.single;
+      expect(command.transactionId, 'tx-1');
+      expect(command.receivableAccountId, 'company');
+      expect(command.expenseCategoryId, 'hotel');
+    });
 
     test('deletes transaction through action outcome', () async {
-      final correction = _FakeTransactionCorrectionAppService();
-      final container = _container(correctionService: correction);
+      final editService = _FakeTransactionEditAppService();
+      final container = _container(editService: editService);
       final viewModel = container.read(
         transactionFormViewModelProvider.notifier,
       );
@@ -305,7 +302,7 @@ void main() {
       final outcome = await viewModel.deleteTransaction('tx-1');
 
       expect(outcome, isA<UiActionSuccess<void>>());
-      expect(correction.deletedTransactionIds, ['tx-1']);
+      expect(editService.deletedTransactionIds, ['tx-1']);
       expect(
         container.read(transactionFormViewModelProvider).submitting,
         false,
@@ -316,15 +313,15 @@ void main() {
 
 ProviderContainer _container({
   TransactionPostingAppService? postingService,
-  TransactionCorrectionAppService? correctionService,
+  TransactionEditAppService? editService,
 }) {
   final container = ProviderContainer(
     overrides: [
       transactionPostingAppServiceProvider.overrideWith(
         (ref) => postingService ?? _FakeTransactionPostingAppService(),
       ),
-      transactionCorrectionAppServiceProvider.overrideWith(
-        (ref) => correctionService ?? _FakeTransactionCorrectionAppService(),
+      transactionEditAppServiceProvider.overrideWith(
+        (ref) => editService ?? _FakeTransactionEditAppService(),
       ),
     ],
   );
@@ -418,10 +415,7 @@ class _FakeTransactionPostingAppService
   PostedTransactionResult _postedResult() {
     final exception = this.exception;
     if (exception != null) throw exception;
-    return const PostedTransactionResult(
-      transactionId: 'transaction-1',
-      rootTransactionId: 'transaction-1',
-    );
+    return const PostedTransactionResult(transactionId: 'transaction-1');
   }
 
   @override
@@ -463,45 +457,35 @@ class _FakeTransactionPostingAppService
   }
 }
 
-class _FakeTransactionCorrectionAppService
-    implements TransactionCorrectionAppService {
-  final reimbursementAdvanceCommands = <CorrectReimbursementAdvanceCommand>[];
+class _FakeTransactionEditAppService implements TransactionEditAppService {
+  final reimbursementAdvanceCommands = <EditReimbursementAdvanceCommand>[];
   final deletedTransactionIds = <String>[];
 
   @override
-  Future<PostedTransactionResult> correctExpense(
-    CorrectExpenseCommand command,
-  ) {
+  Future<PostedTransactionResult> editExpense(EditExpenseCommand command) {
     throw UnimplementedError();
   }
 
   @override
-  Future<PostedTransactionResult> correctIncome(CorrectIncomeCommand command) {
+  Future<PostedTransactionResult> editIncome(EditIncomeCommand command) {
     throw UnimplementedError();
   }
 
   @override
-  Future<PostedTransactionResult> correctTransfer(
-    CorrectTransferCommand command,
-  ) {
+  Future<PostedTransactionResult> editTransfer(EditTransferCommand command) {
     throw UnimplementedError();
   }
 
   @override
-  Future<PostedTransactionResult> correctReimbursementAdvance(
-    CorrectReimbursementAdvanceCommand command,
+  Future<PostedTransactionResult> editReimbursementAdvance(
+    EditReimbursementAdvanceCommand command,
   ) async {
     reimbursementAdvanceCommands.add(command);
-    return const PostedTransactionResult(
-      transactionId: 'transaction-1',
-      rootTransactionId: 'transaction-1',
-    );
+    return const PostedTransactionResult(transactionId: 'transaction-1');
   }
 
   @override
-  Future<PostedTransactionResult> correctBorrowing(
-    CorrectBorrowingCommand command,
-  ) {
+  Future<PostedTransactionResult> editBorrowing(EditBorrowingCommand command) {
     throw UnimplementedError();
   }
 
@@ -511,28 +495,26 @@ class _FakeTransactionCorrectionAppService
   }
 
   @override
-  Future<PostedTransactionResult> correctRefund(CorrectRefundCommand command) {
+  Future<PostedTransactionResult> editRefund(EditRefundCommand command) {
     throw UnimplementedError();
   }
 
   @override
-  Future<PostedTransactionResult> correctReimbursementClose(
-    CorrectReimbursementCloseCommand command,
+  Future<PostedTransactionResult> editReimbursementClose(
+    EditReimbursementCloseCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<PostedTransactionResult> correctReimbursementReceipt(
-    CorrectReimbursementReceiptCommand command,
+  Future<PostedTransactionResult> editReimbursementReceipt(
+    EditReimbursementReceiptCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<PostedTransactionResult> correctRepayment(
-    CorrectRepaymentCommand command,
-  ) {
+  Future<PostedTransactionResult> editRepayment(EditRepaymentCommand command) {
     throw UnimplementedError();
   }
 }

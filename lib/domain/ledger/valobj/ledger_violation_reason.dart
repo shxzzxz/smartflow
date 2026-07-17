@@ -152,9 +152,9 @@ enum LedgerViolationReason {
     LedgerErrorCode.transactionNotEditable,
     'A refund transaction is required.',
   ),
-  reimbursementAdvanceNotCurrent(
-    LedgerErrorCode.transactionNotEditable,
-    'Reimbursement advance is not current.',
+  reimbursementAdvanceReceivableRequired(
+    LedgerErrorCode.transactionInvalidCommand,
+    'A reimbursement receivable account is required.',
   ),
   reimbursementAlreadyClosed(
     LedgerErrorCode.transactionNotEditable,
@@ -228,25 +228,9 @@ enum LedgerViolationReason {
     LedgerErrorCode.transactionInvalidCommand,
     'Repayment total paid must be positive.',
   ),
-  transactionCorrectionPurposeMismatch(
+  transactionGroupHasIncompatibleChildren(
     LedgerErrorCode.transactionNotEditable,
-    'Correction command purpose must match the transaction.',
-  ),
-  transactionGroupChildMigrationNotSupported(
-    LedgerErrorCode.transactionNotEditable,
-    'This transaction group cannot be migrated.',
-  ),
-  transactionGroupHasUnconvertibleChildren(
-    LedgerErrorCode.transactionNotEditable,
-    'This transaction group has unsupported child records.',
-  ),
-  transactionHasChildren(
-    LedgerErrorCode.transactionNotEditable,
-    'Transactions with child records cannot be corrected.',
-  ),
-  transactionNotCurrent(
-    LedgerErrorCode.transactionNotEditable,
-    'Only current transaction can be changed.',
+    'This transaction group has child records incompatible with the edit.',
   ),
   transactionNotFound(
     LedgerErrorCode.transactionNotFound,
@@ -280,9 +264,9 @@ enum LedgerViolationReason {
     LedgerErrorCode.transactionPostingFailed,
     'Cannot resolve transaction as a posting instruction.',
   ),
-  unsupportedReplacementSource(
+  unsupportedEditSource(
     LedgerErrorCode.transactionInvalidCommand,
-    'This transaction cannot be replaced with the requested purpose.',
+    'This transaction cannot be edited to the requested purpose.',
   );
 
   const LedgerViolationReason(this.errorCode, this.defaultMessage);

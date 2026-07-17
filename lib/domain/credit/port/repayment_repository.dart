@@ -5,7 +5,7 @@ import '../valobj/repayment_enums.dart';
 abstract interface class RepaymentRepository {
   Future<Repayment?> findRepayment(String repaymentId);
 
-  Future<Repayment?> findByRootTransaction(String rootTransactionId);
+  Future<Repayment?> findByTransaction(String transactionId);
 
   Future<List<Repayment>> listByTarget(
     RepaymentTargetType targetType,

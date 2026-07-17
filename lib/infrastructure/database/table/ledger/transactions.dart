@@ -8,8 +8,6 @@ class Transactions extends Table {
   String get tableName => 'transactions';
 
   TextColumn get id => text()();
-  TextColumn get rootTransactionId =>
-      text().named('root_transaction_id').nullable()();
   TextColumn get businessPurpose =>
       textEnum<BusinessPurpose>().named('business_purpose')();
   DateTimeColumn get occurredAt => dateTime().named('occurred_at')();
@@ -22,14 +20,6 @@ class Transactions extends Table {
       text().named('parent_transaction_id').nullable()();
   TextColumn get reimbursementExpenseAccountId =>
       text().named('reimbursement_expense_account_id').nullable()();
-  TextColumn get mutationKind =>
-      textEnum<MutationKind>().named('mutation_kind')();
-  TextColumn get mutationPreviousTransactionId =>
-      text().named('mutation_previous_transaction_id').nullable()();
-  TextColumn get mutationReason =>
-      textEnum<MutationReason>().named('mutation_reason').nullable()();
-  TextColumn get businessState =>
-      textEnum<BusinessState>().named('business_state')();
   BoolColumn get isExcludedFromStats =>
       boolean()
           .named('is_excluded_from_stats')

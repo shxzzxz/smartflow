@@ -1,4 +1,4 @@
-import 'package:smartflow/domain/ledger/port/root_transaction_group_repository.dart';
+import 'package:smartflow/domain/ledger/port/transaction_group_repository.dart';
 import 'package:smartflow/domain/ledger/port/transaction_repository.dart';
 import 'package:smartflow/domain/ledger/service/mutation/ledger_update_service.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
@@ -23,7 +23,7 @@ abstract interface class TransactionUpdateAppService {
 class TransactionUpdateAppServiceImpl implements TransactionUpdateAppService {
   TransactionUpdateAppServiceImpl({
     required TransactionRepository transactionRepository,
-    required RootTransactionGroupRepository rootGroupRepository,
+    required TransactionGroupRepository transactionGroupRepository,
     required TransactionLedgerWriter ledgerWriter,
     LedgerUpdateService? ledgerUpdateService,
   }) : _ledgerWriter = ledgerWriter,
@@ -31,7 +31,7 @@ class TransactionUpdateAppServiceImpl implements TransactionUpdateAppService {
            ledgerUpdateService ??
            LedgerUpdateService(
              transactionRepository: transactionRepository,
-             rootGroupRepository: rootGroupRepository,
+             transactionGroupRepository: transactionGroupRepository,
            );
 
   final TransactionLedgerWriter _ledgerWriter;

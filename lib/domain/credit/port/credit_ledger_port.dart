@@ -4,13 +4,9 @@ import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 
 class CreditLedgerPostedTransaction {
-  const CreditLedgerPostedTransaction({
-    required this.transactionId,
-    required this.rootTransactionId,
-  });
+  const CreditLedgerPostedTransaction({required this.transactionId});
 
   final String transactionId;
-  final String rootTransactionId;
 }
 
 class CreditLedgerAccountSnapshot {
@@ -170,8 +166,8 @@ class CreditLedgerPostBorrowingCommand {
   final CreditLedgerOwnership? ownership;
 }
 
-class CreditLedgerCorrectRepaymentCommand {
-  const CreditLedgerCorrectRepaymentCommand({
+class CreditLedgerEditRepaymentCommand {
+  const CreditLedgerEditRepaymentCommand({
     required this.transactionId,
     this.liabilityAccountId,
     this.paidFromAccountId,
@@ -188,8 +184,8 @@ class CreditLedgerCorrectRepaymentCommand {
   final Patch<String?>? note;
 }
 
-class CreditLedgerCorrectBorrowingCommand {
-  const CreditLedgerCorrectBorrowingCommand({
+class CreditLedgerEditBorrowingCommand {
+  const CreditLedgerEditBorrowingCommand({
     required this.transactionId,
     this.receiveAccountId,
     this.occurredAt,
@@ -233,11 +229,11 @@ abstract interface class CreditLedgerPort {
     CreditLedgerPostBorrowingCommand command,
   );
 
-  Future<CreditLedgerPostedTransaction> correctRepayment(
-    CreditLedgerCorrectRepaymentCommand command,
+  Future<CreditLedgerPostedTransaction> editRepayment(
+    CreditLedgerEditRepaymentCommand command,
   );
 
-  Future<void> correctBorrowing(CreditLedgerCorrectBorrowingCommand command);
+  Future<void> editBorrowing(CreditLedgerEditBorrowingCommand command);
 
   Future<void> updateBasicInfo(CreditLedgerUpdateBasicInfoCommand command);
 
@@ -248,8 +244,8 @@ abstract interface class CreditLedgerPort {
 
   Future<void> deleteTransaction(String transactionId);
 
-  Future<CreditLedgerTransactionSnapshot?> findCurrentParentTransactionByRoot(
-    String rootTransactionId,
+  Future<CreditLedgerTransactionSnapshot?> findParentTransaction(
+    String transactionId,
   );
 
   Future<CreditLedgerRepaymentSnapshot?> findRepaymentTransaction(

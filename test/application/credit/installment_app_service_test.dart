@@ -1054,7 +1054,7 @@ void main() {
             repaymentType: RepaymentType.prepayment,
             targetType: RepaymentTargetType.contract,
             targetId: 'with-repayment',
-            rootTransactionId: 'tx-repay',
+            transactionId: 'tx-repay',
             items: [
               RepaymentItem(
                 id: 'repayment-item-1',
@@ -1176,12 +1176,12 @@ class _Fixture {
   final bills = _FakeBillRepository();
   final creditAccounts = _FakeCreditAccountRepository();
   final posting = _FakePostingService();
-  final correction = _FakeCorrectionService();
+  final edit = _FakeEditService();
   final update = _FakeUpdateService();
   final query = _FakeTransactionQueryService();
   late final ledger = _FakeCreditLedgerPort(
     posting: posting,
-    correction: correction,
+    edit: edit,
     update: update,
   );
 
@@ -1399,9 +1399,9 @@ class _FakeRepaymentRepository implements RepaymentRepository {
   }
 
   @override
-  Future<Repayment?> findByRootTransaction(String rootTransactionId) async {
+  Future<Repayment?> findByTransaction(String transactionId) async {
     for (final repayment in repayments.values) {
-      if (repayment.rootTransactionId == rootTransactionId) {
+      if (repayment.transactionId == transactionId) {
         return repayment;
       }
     }
@@ -1481,17 +1481,14 @@ class _FakePostingService implements TransactionPostingAppService {
   ) async {
     borrowingCommands.add(command);
     final id = 'tx-borrowing-${borrowingCommands.length}';
-    return PostedTransactionResult(transactionId: id, rootTransactionId: id);
+    return PostedTransactionResult(transactionId: id);
   }
 
   @override
   Future<PostedTransactionResult> createRepayment(
     CreateRepaymentCommand command,
   ) async {
-    return const PostedTransactionResult(
-      transactionId: 'tx-repay',
-      rootTransactionId: 'tx-repay',
-    );
+    return const PostedTransactionResult(transactionId: 'tx-repay');
   }
 
   @override
@@ -1501,14 +1498,14 @@ class _FakePostingService implements TransactionPostingAppService {
 class _FakeCreditLedgerPort implements CreditLedgerPort {
   _FakeCreditLedgerPort({
     required _FakePostingService posting,
-    required _FakeCorrectionService correction,
+    required _FakeEditService edit,
     required _FakeUpdateService update,
   }) : _posting = posting,
-       _correction = correction,
+       _edit = edit,
        _update = update;
 
   final _FakePostingService _posting;
-  final _FakeCorrectionService _correction;
+  final _FakeEditService _edit;
   final _FakeUpdateService _update;
   final deletedTransactionIds = <String>[];
 
@@ -1526,10 +1523,7 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
         note: command.note,
       ),
     );
-    return CreditLedgerPostedTransaction(
-      transactionId: result.transactionId,
-      rootTransactionId: result.rootTransactionId,
-    );
+    return CreditLedgerPostedTransaction(transactionId: result.transactionId);
   }
 
   @override
@@ -1550,9 +1544,9 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
   }
 
   @override
-  Future<void> correctBorrowing(CreditLedgerCorrectBorrowingCommand command) {
-    return _correction.correctBorrowing(
-      CorrectBorrowingCommand(
+  Future<void> editBorrowing(CreditLedgerEditBorrowingCommand command) {
+    return _edit.editBorrowing(
+      EditBorrowingCommand(
         transactionId: command.transactionId,
         receiveAccountId: command.receiveAccountId,
         occurredAt: command.occurredAt,
@@ -1561,20 +1555,17 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
   }
 
   @override
-  Future<CreditLedgerPostedTransaction> correctRepayment(
-    CreditLedgerCorrectRepaymentCommand command,
+  Future<CreditLedgerPostedTransaction> editRepayment(
+    CreditLedgerEditRepaymentCommand command,
   ) async {
-    final result = await _correction.correctRepayment(
-      CorrectRepaymentCommand(
+    final result = await _edit.editRepayment(
+      EditRepaymentCommand(
         transactionId: command.transactionId,
         paidFromAccountId: command.paidFromAccountId,
         occurredAt: command.occurredAt,
       ),
     );
-    return CreditLedgerPostedTransaction(
-      transactionId: result.transactionId,
-      rootTransactionId: result.rootTransactionId,
-    );
+    return CreditLedgerPostedTransaction(transactionId: result.transactionId);
   }
 
   @override
@@ -1594,8 +1585,8 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
   }
 
   @override
-  Future<CreditLedgerTransactionSnapshot?> findCurrentParentTransactionByRoot(
-    String rootTransactionId,
+  Future<CreditLedgerTransactionSnapshot?> findParentTransaction(
+    String transactionId,
   ) {
     throw UnimplementedError();
   }
@@ -1620,7 +1611,7 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
   }
 }
 
-class _FakeCorrectionService implements TransactionCorrectionAppService {
+class _FakeEditService implements TransactionEditAppService {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -1633,20 +1624,14 @@ class _FakeUpdateService implements TransactionUpdateAppService {
     UpdateTransactionOwnershipCommand command,
   ) async {
     ownershipCommands.add(command);
-    return PostedTransactionResult(
-      transactionId: command.transactionId,
-      rootTransactionId: command.transactionId,
-    );
+    return PostedTransactionResult(transactionId: command.transactionId);
   }
 
   @override
   Future<PostedTransactionResult> updateBasicInfo(
     UpdateTransactionBasicInfoCommand command,
   ) async {
-    return PostedTransactionResult(
-      transactionId: command.transactionId,
-      rootTransactionId: command.transactionId,
-    );
+    return PostedTransactionResult(transactionId: command.transactionId);
   }
 
   @override

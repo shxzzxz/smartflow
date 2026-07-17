@@ -48,12 +48,12 @@ void main() {
     });
 
     test(
-      'dispatches plain expense account change to ledger correction service',
+      'dispatches plain expense account change to ledger edit service',
       () async {
-        final correction = _FakeTransactionCorrectionAppService();
+        final editService = _FakeTransactionEditAppService();
         final container = _container(
           detail: _detail(purpose: BusinessPurpose.dailyExpense),
-          correction: correction,
+          editService: editService,
         );
         await _readState(container);
 
@@ -62,16 +62,16 @@ void main() {
             .changeAccount(AccountSelectionPurpose.settlement, 'bank');
 
         expect(outcome, isA<UiActionSuccess<void>>());
-        final command = correction.expenseCommands.single;
+        final command = editService.expenseCommands.single;
         expect(command.transactionId, 'tx-1');
         expect(command.paidFromAccountId, 'bank');
       },
     );
 
     test(
-      'dispatches plain income account change to ledger correction service',
+      'dispatches plain income account change to ledger edit service',
       () async {
-        final correction = _FakeTransactionCorrectionAppService();
+        final editService = _FakeTransactionEditAppService();
         final container = _container(
           detail: _detail(
             purpose: BusinessPurpose.dailyIncome,
@@ -80,7 +80,7 @@ void main() {
               _entry('salary', EntryDirection.credit),
             ],
           ),
-          correction: correction,
+          editService: editService,
         );
         await _readState(container);
 
@@ -89,7 +89,7 @@ void main() {
             .changeAccount(AccountSelectionPurpose.settlement, 'bank');
 
         expect(outcome, isA<UiActionSuccess<void>>());
-        final command = correction.incomeCommands.single;
+        final command = editService.incomeCommands.single;
         expect(command.transactionId, 'tx-1');
         expect(command.receiveAccountId, 'bank');
       },
@@ -287,19 +287,6 @@ void main() {
       expect(update.basicInfoCommands.single.postedAt, postedAt);
     });
 
-    test('marks posted time read-only for a historical transaction', () async {
-      final container = _container(
-        detail: _detail(
-          purpose: BusinessPurpose.dailyExpense,
-          businessState: BusinessState.replaced,
-        ),
-      );
-
-      final state = await _readState(container) as TransactionDetailLoaded;
-
-      expect(state.behavior.canEditPostedAt, isA<DetailEditDenied>());
-    });
-
     test('submits reimbursement close command', () async {
       final posting = _FakeTransactionPostingAppService();
       final detail = _detail(
@@ -380,7 +367,7 @@ void main() {
 ProviderContainer _container({
   required TransactionDetail detail,
   _FakeTransactionUpdateAppService? update,
-  _FakeTransactionCorrectionAppService? correction,
+  _FakeTransactionEditAppService? editService,
   _FakeTransactionPostingAppService? posting,
   _FakeInstallmentAppService? installment,
   _FakeRepaymentAppService? repayment,
@@ -417,8 +404,8 @@ ProviderContainer _container({
       transactionUpdateAppServiceProvider.overrideWithValue(
         update ?? _FakeTransactionUpdateAppService(),
       ),
-      transactionCorrectionAppServiceProvider.overrideWithValue(
-        correction ?? _FakeTransactionCorrectionAppService(),
+      transactionEditAppServiceProvider.overrideWithValue(
+        editService ?? _FakeTransactionEditAppService(),
       ),
       transactionPostingAppServiceProvider.overrideWithValue(
         posting ?? _FakeTransactionPostingAppService(),
@@ -446,7 +433,6 @@ Future<TransactionDetailUiState> _readState(ProviderContainer container) {
 
 TransactionDetail _detail({
   BusinessPurpose purpose = BusinessPurpose.dailyExpense,
-  BusinessState businessState = BusinessState.current,
   TransactionOwnership? ownership,
   List<Entry>? entries,
   Money? refundedTotal,
@@ -455,12 +441,9 @@ TransactionDetail _detail({
   return TransactionDetail(
     transaction: Transaction(
       id: 'tx-1',
-      rootTransactionId: 'tx-1',
       businessPurpose: purpose,
       occurredAt: DateTime(2026, 1, 1, 8),
       primaryAmount: const Money(minorUnits: 10000),
-      mutationKind: MutationKind.original,
-      businessState: businessState,
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
@@ -509,10 +492,7 @@ Account _account(
 }
 
 PostedTransactionResult _posted() {
-  return const PostedTransactionResult(
-    transactionId: 'tx-1',
-    rootTransactionId: 'tx-1',
-  );
+  return const PostedTransactionResult(transactionId: 'tx-1');
 }
 
 class _FakeTransactionUpdateAppService implements TransactionUpdateAppService {
@@ -548,12 +528,11 @@ class _FakeTransactionUpdateAppService implements TransactionUpdateAppService {
   }
 }
 
-class _FakeTransactionCorrectionAppService
-    implements TransactionCorrectionAppService {
+class _FakeTransactionEditAppService implements TransactionEditAppService {
   final canceledTransactionIds = <String>[];
-  final expenseCommands = <CorrectExpenseCommand>[];
-  final incomeCommands = <CorrectIncomeCommand>[];
-  final reimbursementAdvanceCommands = <CorrectReimbursementAdvanceCommand>[];
+  final expenseCommands = <EditExpenseCommand>[];
+  final incomeCommands = <EditIncomeCommand>[];
+  final reimbursementAdvanceCommands = <EditReimbursementAdvanceCommand>[];
 
   @override
   Future<void> deleteTransaction(DeleteTransactionCommand command) async {
@@ -561,66 +540,58 @@ class _FakeTransactionCorrectionAppService
   }
 
   @override
-  Future<PostedTransactionResult> correctReimbursementAdvance(
-    CorrectReimbursementAdvanceCommand command,
+  Future<PostedTransactionResult> editReimbursementAdvance(
+    EditReimbursementAdvanceCommand command,
   ) async {
     reimbursementAdvanceCommands.add(command);
     return _posted();
   }
 
   @override
-  Future<PostedTransactionResult> correctBorrowing(
-    CorrectBorrowingCommand command,
-  ) {
+  Future<PostedTransactionResult> editBorrowing(EditBorrowingCommand command) {
     throw UnimplementedError();
   }
 
   @override
-  Future<PostedTransactionResult> correctExpense(
-    CorrectExpenseCommand command,
+  Future<PostedTransactionResult> editExpense(
+    EditExpenseCommand command,
   ) async {
     expenseCommands.add(command);
     return _posted();
   }
 
   @override
-  Future<PostedTransactionResult> correctIncome(
-    CorrectIncomeCommand command,
-  ) async {
+  Future<PostedTransactionResult> editIncome(EditIncomeCommand command) async {
     incomeCommands.add(command);
     return _posted();
   }
 
   @override
-  Future<PostedTransactionResult> correctRefund(CorrectRefundCommand command) {
+  Future<PostedTransactionResult> editRefund(EditRefundCommand command) {
     throw UnimplementedError();
   }
 
   @override
-  Future<PostedTransactionResult> correctReimbursementClose(
-    CorrectReimbursementCloseCommand command,
+  Future<PostedTransactionResult> editReimbursementClose(
+    EditReimbursementCloseCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<PostedTransactionResult> correctReimbursementReceipt(
-    CorrectReimbursementReceiptCommand command,
+  Future<PostedTransactionResult> editReimbursementReceipt(
+    EditReimbursementReceiptCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<PostedTransactionResult> correctRepayment(
-    CorrectRepaymentCommand command,
-  ) {
+  Future<PostedTransactionResult> editRepayment(EditRepaymentCommand command) {
     throw UnimplementedError();
   }
 
   @override
-  Future<PostedTransactionResult> correctTransfer(
-    CorrectTransferCommand command,
-  ) {
+  Future<PostedTransactionResult> editTransfer(EditTransferCommand command) {
     throw UnimplementedError();
   }
 }

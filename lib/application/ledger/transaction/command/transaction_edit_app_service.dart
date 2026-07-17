@@ -1,58 +1,49 @@
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
-import 'package:smartflow/domain/ledger/port/root_transaction_group_repository.dart';
+import 'package:smartflow/domain/ledger/port/transaction_group_repository.dart';
 import 'package:smartflow/domain/ledger/port/system_account_resolver.dart';
 import 'package:smartflow/domain/ledger/service/account/account_role_policy.dart';
-import 'package:smartflow/domain/ledger/service/mutation/child_transaction_migration_policy.dart';
-import 'package:smartflow/domain/ledger/service/mutation/ledger_correction_service.dart';
+import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
-import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
 import 'transaction_command.dart';
 import 'transaction_ledger_writer.dart';
 
-abstract interface class TransactionCorrectionAppService {
-  Future<PostedTransactionResult> correctExpense(CorrectExpenseCommand command);
+abstract interface class TransactionEditAppService {
+  Future<PostedTransactionResult> editExpense(EditExpenseCommand command);
 
-  Future<PostedTransactionResult> correctIncome(CorrectIncomeCommand command);
+  Future<PostedTransactionResult> editIncome(EditIncomeCommand command);
 
-  Future<PostedTransactionResult> correctTransfer(
-    CorrectTransferCommand command,
+  Future<PostedTransactionResult> editTransfer(EditTransferCommand command);
+
+  Future<PostedTransactionResult> editReimbursementAdvance(
+    EditReimbursementAdvanceCommand command,
   );
 
-  Future<PostedTransactionResult> correctReimbursementAdvance(
-    CorrectReimbursementAdvanceCommand command,
+  Future<PostedTransactionResult> editRefund(EditRefundCommand command);
+
+  Future<PostedTransactionResult> editReimbursementReceipt(
+    EditReimbursementReceiptCommand command,
   );
 
-  Future<PostedTransactionResult> correctRefund(CorrectRefundCommand command);
-
-  Future<PostedTransactionResult> correctReimbursementReceipt(
-    CorrectReimbursementReceiptCommand command,
+  Future<PostedTransactionResult> editReimbursementClose(
+    EditReimbursementCloseCommand command,
   );
 
-  Future<PostedTransactionResult> correctReimbursementClose(
-    CorrectReimbursementCloseCommand command,
-  );
+  Future<PostedTransactionResult> editBorrowing(EditBorrowingCommand command);
 
-  Future<PostedTransactionResult> correctBorrowing(
-    CorrectBorrowingCommand command,
-  );
-
-  Future<PostedTransactionResult> correctRepayment(
-    CorrectRepaymentCommand command,
-  );
+  Future<PostedTransactionResult> editRepayment(EditRepaymentCommand command);
 
   Future<void> deleteTransaction(DeleteTransactionCommand command);
 }
 
-class TransactionCorrectionAppServiceImpl
-    implements TransactionCorrectionAppService {
-  TransactionCorrectionAppServiceImpl({
+class TransactionEditAppServiceImpl implements TransactionEditAppService {
+  TransactionEditAppServiceImpl({
     required AccountRepository accountRepository,
-    required RootTransactionGroupRepository rootGroupRepository,
+    required TransactionGroupRepository transactionGroupRepository,
     required SystemAccountResolver systemAccountResolver,
     required TransactionLedgerWriter ledgerWriter,
     required IdGenerator idGenerator,
@@ -61,12 +52,12 @@ class TransactionCorrectionAppServiceImpl
     PostingInstructionResolver? postingInstructionResolver,
     AccountPostingService accountPostingService =
         const DefaultAccountPostingService(),
-    LedgerCorrectionService? ledgerCorrectionService,
+    TransactionGroupRewriteService? transactionGroupRewriteService,
   }) : _ledgerWriter = ledgerWriter,
-       _ledgerCorrectionService =
-           ledgerCorrectionService ??
-           LedgerCorrectionService(
-             rootGroupRepository: rootGroupRepository,
+       _transactionGroupRewriteService =
+           transactionGroupRewriteService ??
+           TransactionGroupRewriteService(
+             transactionGroupRepository: transactionGroupRepository,
              accountRepository: accountRepository,
              postingInstructionResolver:
                  postingInstructionResolver ??
@@ -78,33 +69,23 @@ class TransactionCorrectionAppServiceImpl
                  accountRolePolicy ??
                  AccountRolePolicy(accountRepository: accountRepository),
              systemAccountResolver: systemAccountResolver,
-             childMigrationPolicy: RefundOnlyChildMigrationPolicy(
-               postingEngine:
-                   postingEngine ?? PostingEngine(idGenerator: idGenerator),
-               postingInstructionResolver:
-                   postingInstructionResolver ??
-                   const DefaultPostingInstructionResolver(),
-             ),
            );
 
   final TransactionLedgerWriter _ledgerWriter;
-  final LedgerCorrectionService _ledgerCorrectionService;
+  final TransactionGroupRewriteService _transactionGroupRewriteService;
 
   @override
-  Future<PostedTransactionResult> correctExpense(
-    CorrectExpenseCommand cmd,
-  ) async {
-    return _ledgerWriter.persistMutation(
-      await _ledgerCorrectionService.replaceParentTransaction(
-        ReplaceParentTransactionInstruction(
+  Future<PostedTransactionResult> editExpense(EditExpenseCommand cmd) async {
+    return _ledgerWriter.planAndPersistRewrite(
+      () => _transactionGroupRewriteService.rewriteParentTransaction(
+        EditParentTransactionInstruction(
           transactionId: cmd.transactionId,
-          expectedCurrentPurpose: BusinessPurpose.dailyExpense,
           occurredAt: cmd.occurredAt,
           counterpartyName: cmd.counterpartyName,
           note: cmd.note,
           isExcludedFromStats: cmd.isExcludedFromStats,
           isExcludedFromBudget: cmd.isExcludedFromBudget,
-          replacementPatch: ExpenseReplacementPatch(
+          editPatch: ExpenseEditPatch(
             amount: cmd.amount,
             paidFromAccountId: cmd.paidFromAccountId,
             expenseAccountId: cmd.expenseAccountId,
@@ -115,19 +96,16 @@ class TransactionCorrectionAppServiceImpl
   }
 
   @override
-  Future<PostedTransactionResult> correctIncome(
-    CorrectIncomeCommand cmd,
-  ) async {
-    return _ledgerWriter.persistMutation(
-      await _ledgerCorrectionService.replaceParentTransaction(
-        ReplaceParentTransactionInstruction(
+  Future<PostedTransactionResult> editIncome(EditIncomeCommand cmd) async {
+    return _ledgerWriter.planAndPersistRewrite(
+      () => _transactionGroupRewriteService.rewriteParentTransaction(
+        EditParentTransactionInstruction(
           transactionId: cmd.transactionId,
-          expectedCurrentPurpose: BusinessPurpose.dailyIncome,
           occurredAt: cmd.occurredAt,
           counterpartyName: cmd.counterpartyName,
           note: cmd.note,
           isExcludedFromStats: cmd.isExcludedFromStats,
-          replacementPatch: IncomeReplacementPatch(
+          editPatch: IncomeEditPatch(
             amount: cmd.amount,
             receiveAccountId: cmd.receiveAccountId,
             incomeAccountId: cmd.incomeAccountId,
@@ -138,18 +116,15 @@ class TransactionCorrectionAppServiceImpl
   }
 
   @override
-  Future<PostedTransactionResult> correctTransfer(
-    CorrectTransferCommand cmd,
-  ) async {
-    return _ledgerWriter.persistMutation(
-      await _ledgerCorrectionService.replaceParentTransaction(
-        ReplaceParentTransactionInstruction(
+  Future<PostedTransactionResult> editTransfer(EditTransferCommand cmd) async {
+    return _ledgerWriter.planAndPersistRewrite(
+      () => _transactionGroupRewriteService.rewriteParentTransaction(
+        EditParentTransactionInstruction(
           transactionId: cmd.transactionId,
-          expectedCurrentPurpose: BusinessPurpose.transfer,
           occurredAt: cmd.occurredAt,
           counterpartyName: cmd.counterpartyName,
           note: cmd.note,
-          replacementPatch: TransferReplacementPatch(
+          editPatch: TransferEditPatch(
             amount: cmd.amount,
             fromAccountId: cmd.fromAccountId,
             toAccountId: cmd.toAccountId,
@@ -161,20 +136,19 @@ class TransactionCorrectionAppServiceImpl
   }
 
   @override
-  Future<PostedTransactionResult> correctReimbursementAdvance(
-    CorrectReimbursementAdvanceCommand cmd,
+  Future<PostedTransactionResult> editReimbursementAdvance(
+    EditReimbursementAdvanceCommand cmd,
   ) async {
-    return _ledgerWriter.persistMutation(
-      await _ledgerCorrectionService.replaceParentTransaction(
-        ReplaceParentTransactionInstruction(
+    return _ledgerWriter.planAndPersistRewrite(
+      () => _transactionGroupRewriteService.rewriteParentTransaction(
+        EditParentTransactionInstruction(
           transactionId: cmd.transactionId,
-          expectedCurrentPurpose: BusinessPurpose.reimbursementAdvance,
           occurredAt: cmd.occurredAt,
           counterpartyName: cmd.counterpartyName,
           note: cmd.note,
           isExcludedFromStats: cmd.isExcludedFromStats,
           isExcludedFromBudget: cmd.isExcludedFromBudget,
-          replacementPatch: ReimbursementAdvanceReplacementPatch(
+          editPatch: ReimbursementAdvanceEditPatch(
             amount: cmd.amount,
             receivableAccountId: cmd.receivableAccountId,
             paidFromAccountId: cmd.paidFromAccountId,
@@ -186,17 +160,15 @@ class TransactionCorrectionAppServiceImpl
   }
 
   @override
-  Future<PostedTransactionResult> correctRefund(
-    CorrectRefundCommand cmd,
-  ) async {
-    return _ledgerWriter.persistMutation(
-      await _ledgerCorrectionService.replaceRefundTransaction(
-        ReplaceRefundTransactionInstruction(
+  Future<PostedTransactionResult> editRefund(EditRefundCommand cmd) async {
+    return _ledgerWriter.planAndPersistRewrite(
+      () => _transactionGroupRewriteService.rewriteRefundTransaction(
+        EditRefundTransactionInstruction(
           transactionId: cmd.transactionId,
           occurredAt: cmd.occurredAt,
           counterpartyName: cmd.counterpartyName,
           note: cmd.note,
-          replacementPatch: RefundReplacementPatch(
+          editPatch: RefundEditPatch(
             amount: cmd.amount,
             refundToAccountId: cmd.refundToAccountId,
           ),
@@ -206,12 +178,12 @@ class TransactionCorrectionAppServiceImpl
   }
 
   @override
-  Future<PostedTransactionResult> correctReimbursementReceipt(
-    CorrectReimbursementReceiptCommand cmd,
+  Future<PostedTransactionResult> editReimbursementReceipt(
+    EditReimbursementReceiptCommand cmd,
   ) async {
-    return _ledgerWriter.persistMutation(
-      await _ledgerCorrectionService.replaceReimbursementReceipt(
-        ReplaceReimbursementReceiptTransactionInstruction(
+    return _ledgerWriter.planAndPersistRewrite(
+      () => _transactionGroupRewriteService.rewriteReimbursementReceipt(
+        EditReimbursementReceiptTransactionInstruction(
           transactionId: cmd.transactionId,
           amount: cmd.amount,
           receivableAccountId: cmd.receivableAccountId,
@@ -225,12 +197,12 @@ class TransactionCorrectionAppServiceImpl
   }
 
   @override
-  Future<PostedTransactionResult> correctReimbursementClose(
-    CorrectReimbursementCloseCommand cmd,
+  Future<PostedTransactionResult> editReimbursementClose(
+    EditReimbursementCloseCommand cmd,
   ) async {
-    return _ledgerWriter.persistMutation(
-      await _ledgerCorrectionService.replaceReimbursementClose(
-        ReplaceReimbursementCloseTransactionInstruction(
+    return _ledgerWriter.planAndPersistRewrite(
+      () => _transactionGroupRewriteService.rewriteReimbursementClose(
+        EditReimbursementCloseTransactionInstruction(
           transactionId: cmd.transactionId,
           actualReceivedAmount: cmd.actualReceivedAmount,
           receivableAccountId: cmd.receivableAccountId,
@@ -244,18 +216,17 @@ class TransactionCorrectionAppServiceImpl
   }
 
   @override
-  Future<PostedTransactionResult> correctBorrowing(
-    CorrectBorrowingCommand cmd,
+  Future<PostedTransactionResult> editBorrowing(
+    EditBorrowingCommand cmd,
   ) async {
-    return _ledgerWriter.persistMutation(
-      await _ledgerCorrectionService.replaceParentTransaction(
-        ReplaceParentTransactionInstruction(
+    return _ledgerWriter.planAndPersistRewrite(
+      () => _transactionGroupRewriteService.rewriteParentTransaction(
+        EditParentTransactionInstruction(
           transactionId: cmd.transactionId,
-          expectedCurrentPurpose: BusinessPurpose.borrowing,
           occurredAt: cmd.occurredAt,
           counterpartyName: cmd.counterpartyName,
           note: cmd.note,
-          replacementPatch: BorrowingReplacementPatch(
+          editPatch: BorrowingEditPatch(
             amount: cmd.amount,
             liabilityAccountId: cmd.liabilityAccountId,
             receiveAccountId: cmd.receiveAccountId,
@@ -266,18 +237,17 @@ class TransactionCorrectionAppServiceImpl
   }
 
   @override
-  Future<PostedTransactionResult> correctRepayment(
-    CorrectRepaymentCommand cmd,
+  Future<PostedTransactionResult> editRepayment(
+    EditRepaymentCommand cmd,
   ) async {
-    return _ledgerWriter.persistMutation(
-      await _ledgerCorrectionService.replaceParentTransaction(
-        ReplaceParentTransactionInstruction(
+    return _ledgerWriter.planAndPersistRewrite(
+      () => _transactionGroupRewriteService.rewriteParentTransaction(
+        EditParentTransactionInstruction(
           transactionId: cmd.transactionId,
-          expectedCurrentPurpose: BusinessPurpose.debtRepayment,
           occurredAt: cmd.occurredAt,
           counterpartyName: cmd.counterpartyName,
           note: cmd.note,
-          replacementPatch: RepaymentReplacementPatch(
+          editPatch: RepaymentEditPatch(
             principal: cmd.principal,
             interest: cmd.interest,
             fee: cmd.fee,
@@ -292,9 +262,9 @@ class TransactionCorrectionAppServiceImpl
 
   @override
   Future<void> deleteTransaction(DeleteTransactionCommand command) async {
-    return _ledgerWriter.persistCancellation(
-      await _ledgerCorrectionService.cancelTransaction(
-        CancelTransactionInstruction(transactionId: command.transactionId),
+    return _ledgerWriter.planAndPersistDeletion(
+      () => _transactionGroupRewriteService.deleteCurrentTransaction(
+        command.transactionId,
       ),
     );
   }

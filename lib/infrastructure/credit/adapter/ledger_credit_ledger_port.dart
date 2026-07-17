@@ -10,18 +10,18 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
   const LedgerCreditLedgerPort({
     required ledger_query.AccountQueryService accountQueryService,
     required ledger_command.TransactionPostingAppService postingService,
-    required ledger_command.TransactionCorrectionAppService correctionService,
+    required ledger_command.TransactionEditAppService editService,
     required ledger_command.TransactionUpdateAppService updateService,
     required ledger_query.TransactionQueryService transactionQueryService,
   }) : _accountQueryService = accountQueryService,
        _postingService = postingService,
-       _correctionService = correctionService,
+       _editService = editService,
        _updateService = updateService,
        _transactionQueryService = transactionQueryService;
 
   final ledger_query.AccountQueryService _accountQueryService;
   final ledger_command.TransactionPostingAppService _postingService;
-  final ledger_command.TransactionCorrectionAppService _correctionService;
+  final ledger_command.TransactionEditAppService _editService;
   final ledger_command.TransactionUpdateAppService _updateService;
   final ledger_query.TransactionQueryService _transactionQueryService;
 
@@ -76,12 +76,12 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
   }
 
   @override
-  Future<CreditLedgerPostedTransaction> correctRepayment(
-    CreditLedgerCorrectRepaymentCommand command,
+  Future<CreditLedgerPostedTransaction> editRepayment(
+    CreditLedgerEditRepaymentCommand command,
   ) async {
     final amount = command.amount;
-    final result = await _correctionService.correctRepayment(
-      ledger_command.CorrectRepaymentCommand(
+    final result = await _editService.editRepayment(
+      ledger_command.EditRepaymentCommand(
         transactionId: command.transactionId,
         principal: amount?.principal,
         interest:
@@ -106,9 +106,9 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
   }
 
   @override
-  Future<void> correctBorrowing(CreditLedgerCorrectBorrowingCommand command) {
-    return _correctionService.correctBorrowing(
-      ledger_command.CorrectBorrowingCommand(
+  Future<void> editBorrowing(CreditLedgerEditBorrowingCommand command) {
+    return _editService.editBorrowing(
+      ledger_command.EditBorrowingCommand(
         transactionId: command.transactionId,
         receiveAccountId: command.receiveAccountId,
         occurredAt: command.occurredAt,
@@ -142,17 +142,18 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
 
   @override
   Future<void> deleteTransaction(String transactionId) {
-    return _correctionService.deleteTransaction(
+    return _editService.deleteTransaction(
       ledger_command.DeleteTransactionCommand(transactionId: transactionId),
     );
   }
 
   @override
-  Future<CreditLedgerTransactionSnapshot?> findCurrentParentTransactionByRoot(
-    String rootTransactionId,
+  Future<CreditLedgerTransactionSnapshot?> findParentTransaction(
+    String transactionId,
   ) async {
-    final detail = await _transactionQueryService
-        .findCurrentParentTransactionDetailByRoot(rootTransactionId);
+    final detail = await _transactionQueryService.findParentTransactionDetail(
+      transactionId,
+    );
     if (detail == null) return null;
     return CreditLedgerTransactionSnapshot(
       transactionId: detail.transaction.id,
@@ -211,10 +212,7 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
   CreditLedgerPostedTransaction _posted(
     ledger_command.PostedTransactionResult result,
   ) {
-    return CreditLedgerPostedTransaction(
-      transactionId: result.transactionId,
-      rootTransactionId: result.rootTransactionId,
-    );
+    return CreditLedgerPostedTransaction(transactionId: result.transactionId);
   }
 
   ledger_command.TransactionOwnership? _ownership(

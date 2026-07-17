@@ -22,7 +22,6 @@ sealed class TransactionDetailUiState with _$TransactionDetailUiState {
     required List<DetailAccountRow> accountRows,
     required DetailRefund? refund,
     required DetailReimbursement? reimbursement,
-    required List<DetailSheetItem> historyItems,
     required bool showExcludeStats,
     required bool showExcludeBudget,
     required bool excludeStats,

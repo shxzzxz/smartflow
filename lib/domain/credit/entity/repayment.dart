@@ -10,7 +10,7 @@ class Repayment {
     required this.targetType,
     required this.targetId,
     required List<RepaymentItem> items,
-    this.rootTransactionId,
+    this.transactionId,
     this.createdAt,
   }) : _items = List.unmodifiable(items) {
     _ensureValid();
@@ -21,7 +21,7 @@ class Repayment {
   final RepaymentTargetType targetType;
   final String targetId;
   final DateTime? createdAt;
-  String? rootTransactionId;
+  String? transactionId;
   List<RepaymentItem> _items;
 
   List<RepaymentItem> get items => _items;
@@ -51,7 +51,7 @@ class Repayment {
   void validateAgainstLedgerTransaction(
     RepaymentAmountBreakdown transactionParts,
   ) {
-    if (rootTransactionId == null) return;
+    if (transactionId == null) return;
     if (totalAllocated() != transactionParts) {
       throw BusinessException(
         CreditErrorCode.repaymentInvalidCommand,
@@ -67,16 +67,14 @@ class Repayment {
 
   void _ensureValid() {
     validateTarget();
-    if (repaymentType == RepaymentType.installment &&
-        rootTransactionId != null) {
+    if (repaymentType == RepaymentType.installment && transactionId != null) {
       throw BusinessException(
         CreditErrorCode.repaymentInvalidCommand,
         message:
             'Bill conversion installment repayment must not have ledger transaction.',
       );
     }
-    if (repaymentType == RepaymentType.unattributed &&
-        rootTransactionId == null) {
+    if (repaymentType == RepaymentType.unattributed && transactionId == null) {
       throw BusinessException(
         CreditErrorCode.repaymentInvalidCommand,
         message: 'Unattributed repayment must have ledger transaction.',

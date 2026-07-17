@@ -224,8 +224,8 @@ class AdjustBalanceCommand {
   final String? note;
 }
 
-class CorrectExpenseCommand {
-  const CorrectExpenseCommand({
+class EditExpenseCommand {
+  const EditExpenseCommand({
     required this.transactionId,
     this.amount,
     this.paidFromAccountId,
@@ -248,8 +248,8 @@ class CorrectExpenseCommand {
   final bool? isExcludedFromBudget;
 }
 
-class CorrectIncomeCommand {
-  const CorrectIncomeCommand({
+class EditIncomeCommand {
+  const EditIncomeCommand({
     required this.transactionId,
     this.amount,
     this.receiveAccountId,
@@ -270,8 +270,8 @@ class CorrectIncomeCommand {
   final bool? isExcludedFromStats;
 }
 
-class CorrectTransferCommand {
-  const CorrectTransferCommand({
+class EditTransferCommand {
+  const EditTransferCommand({
     required this.transactionId,
     this.amount,
     this.fromAccountId,
@@ -292,8 +292,8 @@ class CorrectTransferCommand {
   final Patch<String?>? note;
 }
 
-class CorrectReimbursementAdvanceCommand {
-  const CorrectReimbursementAdvanceCommand({
+class EditReimbursementAdvanceCommand {
+  const EditReimbursementAdvanceCommand({
     required this.transactionId,
     this.amount,
     this.receivableAccountId,
@@ -318,8 +318,8 @@ class CorrectReimbursementAdvanceCommand {
   final bool? isExcludedFromBudget;
 }
 
-class CorrectRefundCommand {
-  const CorrectRefundCommand({
+class EditRefundCommand {
+  const EditRefundCommand({
     required this.transactionId,
     this.amount,
     this.refundToAccountId,
@@ -336,8 +336,8 @@ class CorrectRefundCommand {
   final Patch<String?>? note;
 }
 
-class CorrectReimbursementReceiptCommand {
-  const CorrectReimbursementReceiptCommand({
+class EditReimbursementReceiptCommand {
+  const EditReimbursementReceiptCommand({
     required this.transactionId,
     this.amount,
     this.receivableAccountId,
@@ -356,8 +356,8 @@ class CorrectReimbursementReceiptCommand {
   final Patch<String?>? note;
 }
 
-class CorrectReimbursementCloseCommand {
-  const CorrectReimbursementCloseCommand({
+class EditReimbursementCloseCommand {
+  const EditReimbursementCloseCommand({
     required this.transactionId,
     this.actualReceivedAmount,
     this.receivableAccountId,
@@ -376,8 +376,8 @@ class CorrectReimbursementCloseCommand {
   final Patch<String?>? note;
 }
 
-class CorrectBorrowingCommand {
-  const CorrectBorrowingCommand({
+class EditBorrowingCommand {
+  const EditBorrowingCommand({
     required this.transactionId,
     this.amount,
     this.liabilityAccountId,
@@ -396,8 +396,8 @@ class CorrectBorrowingCommand {
   final Patch<String?>? note;
 }
 
-class CorrectRepaymentCommand {
-  const CorrectRepaymentCommand({
+class EditRepaymentCommand {
+  const EditRepaymentCommand({
     required this.transactionId,
     this.principal,
     this.liabilityAccountId,
@@ -468,11 +468,7 @@ class UpdateTransactionOwnershipCommand {
 
 /// transaction_service 的所有入账写入命令统一返回此结果。
 class PostedTransactionResult {
-  const PostedTransactionResult({
-    required this.transactionId,
-    required this.rootTransactionId,
-  });
+  const PostedTransactionResult({required this.transactionId});
 
   final String transactionId;
-  final String rootTransactionId;
 }

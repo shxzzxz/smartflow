@@ -6,8 +6,7 @@ class Repayments extends Table {
   TextColumn get repaymentType => text().named('repayment_type')();
   TextColumn get targetType => text().named('target_type')();
   TextColumn get targetId => text().named('target_id')();
-  TextColumn get rootTransactionId =>
-      text().named('root_transaction_id').nullable()();
+  TextColumn get transactionId => text().named('transaction_id').nullable()();
   DateTimeColumn get createdAt =>
       dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt =>
@@ -32,6 +31,6 @@ class Repayments extends Table {
         'OR (repayment_type = \'UNATTRIBUTED\' '
         'AND target_type = \'ACCOUNT\')'
         ')',
-    'CHECK (repayment_type <> \'INSTALLMENT\' OR root_transaction_id IS NULL)',
+    'CHECK (repayment_type <> \'INSTALLMENT\' OR transaction_id IS NULL)',
   ];
 }

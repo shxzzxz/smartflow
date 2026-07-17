@@ -1,8 +1,8 @@
 import '../../entity/account.dart';
-import '../../entity/root_transaction_group.dart';
+import '../../entity/transaction_group.dart';
 import '../../entity/transaction.dart';
 import '../../port/account_repository.dart';
-import '../../port/root_transaction_group_repository.dart';
+import '../../port/transaction_group_repository.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
@@ -14,20 +14,20 @@ import 'posting_instruction_resolver.dart';
 
 class RefundPostingService {
   const RefundPostingService({
-    required RootTransactionGroupRepository rootGroupRepository,
+    required TransactionGroupRepository transactionGroupRepository,
     required AccountRepository accountRepository,
     required PostingInstructionResolver postingInstructionResolver,
     required PostingEngine postingEngine,
     required AccountPostingService accountPostingService,
     required AccountRolePolicy accountRolePolicy,
-  }) : _rootGroupRepository = rootGroupRepository,
+  }) : _transactionGroupRepository = transactionGroupRepository,
        _accountRepository = accountRepository,
        _postingInstructionResolver = postingInstructionResolver,
        _postingEngine = postingEngine,
        _accountPostingService = accountPostingService,
        _accountRolePolicy = accountRolePolicy;
 
-  final RootTransactionGroupRepository _rootGroupRepository;
+  final TransactionGroupRepository _transactionGroupRepository;
   final AccountRepository _accountRepository;
   final PostingInstructionResolver _postingInstructionResolver;
   final PostingEngine _postingEngine;
@@ -35,7 +35,7 @@ class RefundPostingService {
   final AccountRolePolicy _accountRolePolicy;
 
   Future<PostingResult> postRefund(RefundInstruction instruction) async {
-    final group = await _rootGroupRepository.findByTransactionId(
+    final group = await _transactionGroupRepository.findByTransactionId(
       instruction.parentTransactionId,
     );
     if (group == null) {
@@ -76,16 +76,13 @@ class RefundPostingService {
 
   LedgerViolationReason? _validateRefundParent(
     Transaction parent,
-    RootTransactionGroup group,
+    TransactionGroup group,
     RefundInstruction instruction,
   ) {
     if (parent.id != instruction.parentTransactionId ||
         (parent.businessPurpose != BusinessPurpose.dailyExpense &&
             parent.businessPurpose != BusinessPurpose.reimbursementAdvance)) {
       return LedgerViolationReason.refundParentNotExpense;
-    }
-    if (parent.businessState != BusinessState.current) {
-      return LedgerViolationReason.refundParentNotCurrent;
     }
     if (parent.businessPurpose == BusinessPurpose.reimbursementAdvance &&
         group.reimbursementClosed) {

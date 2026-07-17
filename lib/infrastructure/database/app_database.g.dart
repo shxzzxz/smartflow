@@ -1454,18 +1454,6 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _rootTransactionIdMeta = const VerificationMeta(
-    'rootTransactionId',
-  );
-  @override
-  late final GeneratedColumn<String> rootTransactionId =
-      GeneratedColumn<String>(
-        'root_transaction_id',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
   @override
   late final GeneratedColumnWithTypeConverter<BusinessPurpose, String>
   businessPurpose = GeneratedColumn<String>(
@@ -1551,46 +1539,6 @@ class $TransactionsTable extends Transactions
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
-  @override
-  late final GeneratedColumnWithTypeConverter<MutationKind, String>
-  mutationKind = GeneratedColumn<String>(
-    'mutation_kind',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  ).withConverter<MutationKind>($TransactionsTable.$convertermutationKind);
-  static const VerificationMeta _mutationPreviousTransactionIdMeta =
-      const VerificationMeta('mutationPreviousTransactionId');
-  @override
-  late final GeneratedColumn<String> mutationPreviousTransactionId =
-      GeneratedColumn<String>(
-        'mutation_previous_transaction_id',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
-  @override
-  late final GeneratedColumnWithTypeConverter<MutationReason?, String>
-  mutationReason = GeneratedColumn<String>(
-    'mutation_reason',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  ).withConverter<MutationReason?>(
-    $TransactionsTable.$convertermutationReasonn,
-  );
-  @override
-  late final GeneratedColumnWithTypeConverter<BusinessState, String>
-  businessState = GeneratedColumn<String>(
-    'business_state',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  ).withConverter<BusinessState>($TransactionsTable.$converterbusinessState);
   static const VerificationMeta _isExcludedFromStatsMeta =
       const VerificationMeta('isExcludedFromStats');
   @override
@@ -1688,7 +1636,6 @@ class $TransactionsTable extends Transactions
   @override
   List<GeneratedColumn> get $columns => [
     id,
-    rootTransactionId,
     businessPurpose,
     occurredAt,
     postedAt,
@@ -1697,10 +1644,6 @@ class $TransactionsTable extends Transactions
     note,
     parentTransactionId,
     reimbursementExpenseAccountId,
-    mutationKind,
-    mutationPreviousTransactionId,
-    mutationReason,
-    businessState,
     isExcludedFromStats,
     isExcludedFromBudget,
     sourceKind,
@@ -1726,15 +1669,6 @@ class $TransactionsTable extends Transactions
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
-    }
-    if (data.containsKey('root_transaction_id')) {
-      context.handle(
-        _rootTransactionIdMeta,
-        rootTransactionId.isAcceptableOrUnknown(
-          data['root_transaction_id']!,
-          _rootTransactionIdMeta,
-        ),
-      );
     }
     if (data.containsKey('occurred_at')) {
       context.handle(
@@ -1793,15 +1727,6 @@ class $TransactionsTable extends Transactions
         reimbursementExpenseAccountId.isAcceptableOrUnknown(
           data['reimbursement_expense_account_id']!,
           _reimbursementExpenseAccountIdMeta,
-        ),
-      );
-    }
-    if (data.containsKey('mutation_previous_transaction_id')) {
-      context.handle(
-        _mutationPreviousTransactionIdMeta,
-        mutationPreviousTransactionId.isAcceptableOrUnknown(
-          data['mutation_previous_transaction_id']!,
-          _mutationPreviousTransactionIdMeta,
         ),
       );
     }
@@ -1867,10 +1792,6 @@ class $TransactionsTable extends Transactions
             DriftSqlType.string,
             data['${effectivePrefix}id'],
           )!,
-      rootTransactionId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}root_transaction_id'],
-      ),
       businessPurpose: $TransactionsTable.$converterbusinessPurpose.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -1907,28 +1828,6 @@ class $TransactionsTable extends Transactions
       reimbursementExpenseAccountId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}reimbursement_expense_account_id'],
-      ),
-      mutationKind: $TransactionsTable.$convertermutationKind.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}mutation_kind'],
-        )!,
-      ),
-      mutationPreviousTransactionId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}mutation_previous_transaction_id'],
-      ),
-      mutationReason: $TransactionsTable.$convertermutationReasonn.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}mutation_reason'],
-        ),
-      ),
-      businessState: $TransactionsTable.$converterbusinessState.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}business_state'],
-        )!,
       ),
       isExcludedFromStats:
           attachedDatabase.typeMapping.read(
@@ -1980,29 +1879,12 @@ class $TransactionsTable extends Transactions
   $converterbusinessPurpose = const EnumNameConverter<BusinessPurpose>(
     BusinessPurpose.values,
   );
-  static JsonTypeConverter2<MutationKind, String, String>
-  $convertermutationKind = const EnumNameConverter<MutationKind>(
-    MutationKind.values,
-  );
-  static JsonTypeConverter2<MutationReason, String, String>
-  $convertermutationReason = const EnumNameConverter<MutationReason>(
-    MutationReason.values,
-  );
-  static JsonTypeConverter2<MutationReason?, String?, String?>
-  $convertermutationReasonn = JsonTypeConverter2.asNullable(
-    $convertermutationReason,
-  );
-  static JsonTypeConverter2<BusinessState, String, String>
-  $converterbusinessState = const EnumNameConverter<BusinessState>(
-    BusinessState.values,
-  );
   static JsonTypeConverter2<SourceKind, String, String> $convertersourceKind =
       const EnumNameConverter<SourceKind>(SourceKind.values);
 }
 
 class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final String id;
-  final String? rootTransactionId;
   final BusinessPurpose businessPurpose;
   final DateTime occurredAt;
   final DateTime postedAt;
@@ -2011,10 +1893,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final String? note;
   final String? parentTransactionId;
   final String? reimbursementExpenseAccountId;
-  final MutationKind mutationKind;
-  final String? mutationPreviousTransactionId;
-  final MutationReason? mutationReason;
-  final BusinessState businessState;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
   final SourceKind sourceKind;
@@ -2025,7 +1903,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final DateTime updatedAt;
   const TransactionRow({
     required this.id,
-    this.rootTransactionId,
     required this.businessPurpose,
     required this.occurredAt,
     required this.postedAt,
@@ -2034,10 +1911,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     this.note,
     this.parentTransactionId,
     this.reimbursementExpenseAccountId,
-    required this.mutationKind,
-    this.mutationPreviousTransactionId,
-    this.mutationReason,
-    required this.businessState,
     required this.isExcludedFromStats,
     required this.isExcludedFromBudget,
     required this.sourceKind,
@@ -2051,9 +1924,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    if (!nullToAbsent || rootTransactionId != null) {
-      map['root_transaction_id'] = Variable<String>(rootTransactionId);
-    }
     {
       map['business_purpose'] = Variable<String>(
         $TransactionsTable.$converterbusinessPurpose.toSql(businessPurpose),
@@ -2074,26 +1944,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     if (!nullToAbsent || reimbursementExpenseAccountId != null) {
       map['reimbursement_expense_account_id'] = Variable<String>(
         reimbursementExpenseAccountId,
-      );
-    }
-    {
-      map['mutation_kind'] = Variable<String>(
-        $TransactionsTable.$convertermutationKind.toSql(mutationKind),
-      );
-    }
-    if (!nullToAbsent || mutationPreviousTransactionId != null) {
-      map['mutation_previous_transaction_id'] = Variable<String>(
-        mutationPreviousTransactionId,
-      );
-    }
-    if (!nullToAbsent || mutationReason != null) {
-      map['mutation_reason'] = Variable<String>(
-        $TransactionsTable.$convertermutationReasonn.toSql(mutationReason),
-      );
-    }
-    {
-      map['business_state'] = Variable<String>(
-        $TransactionsTable.$converterbusinessState.toSql(businessState),
       );
     }
     map['is_excluded_from_stats'] = Variable<bool>(isExcludedFromStats);
@@ -2120,10 +1970,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   TransactionsCompanion toCompanion(bool nullToAbsent) {
     return TransactionsCompanion(
       id: Value(id),
-      rootTransactionId:
-          rootTransactionId == null && nullToAbsent
-              ? const Value.absent()
-              : Value(rootTransactionId),
       businessPurpose: Value(businessPurpose),
       occurredAt: Value(occurredAt),
       postedAt: Value(postedAt),
@@ -2141,16 +1987,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           reimbursementExpenseAccountId == null && nullToAbsent
               ? const Value.absent()
               : Value(reimbursementExpenseAccountId),
-      mutationKind: Value(mutationKind),
-      mutationPreviousTransactionId:
-          mutationPreviousTransactionId == null && nullToAbsent
-              ? const Value.absent()
-              : Value(mutationPreviousTransactionId),
-      mutationReason:
-          mutationReason == null && nullToAbsent
-              ? const Value.absent()
-              : Value(mutationReason),
-      businessState: Value(businessState),
       isExcludedFromStats: Value(isExcludedFromStats),
       isExcludedFromBudget: Value(isExcludedFromBudget),
       sourceKind: Value(sourceKind),
@@ -2178,9 +2014,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return TransactionRow(
       id: serializer.fromJson<String>(json['id']),
-      rootTransactionId: serializer.fromJson<String?>(
-        json['rootTransactionId'],
-      ),
       businessPurpose: $TransactionsTable.$converterbusinessPurpose.fromJson(
         serializer.fromJson<String>(json['businessPurpose']),
       ),
@@ -2194,18 +2027,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       ),
       reimbursementExpenseAccountId: serializer.fromJson<String?>(
         json['reimbursementExpenseAccountId'],
-      ),
-      mutationKind: $TransactionsTable.$convertermutationKind.fromJson(
-        serializer.fromJson<String>(json['mutationKind']),
-      ),
-      mutationPreviousTransactionId: serializer.fromJson<String?>(
-        json['mutationPreviousTransactionId'],
-      ),
-      mutationReason: $TransactionsTable.$convertermutationReasonn.fromJson(
-        serializer.fromJson<String?>(json['mutationReason']),
-      ),
-      businessState: $TransactionsTable.$converterbusinessState.fromJson(
-        serializer.fromJson<String>(json['businessState']),
       ),
       isExcludedFromStats: serializer.fromJson<bool>(
         json['isExcludedFromStats'],
@@ -2228,7 +2049,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'rootTransactionId': serializer.toJson<String?>(rootTransactionId),
       'businessPurpose': serializer.toJson<String>(
         $TransactionsTable.$converterbusinessPurpose.toJson(businessPurpose),
       ),
@@ -2240,18 +2060,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'parentTransactionId': serializer.toJson<String?>(parentTransactionId),
       'reimbursementExpenseAccountId': serializer.toJson<String?>(
         reimbursementExpenseAccountId,
-      ),
-      'mutationKind': serializer.toJson<String>(
-        $TransactionsTable.$convertermutationKind.toJson(mutationKind),
-      ),
-      'mutationPreviousTransactionId': serializer.toJson<String?>(
-        mutationPreviousTransactionId,
-      ),
-      'mutationReason': serializer.toJson<String?>(
-        $TransactionsTable.$convertermutationReasonn.toJson(mutationReason),
-      ),
-      'businessState': serializer.toJson<String>(
-        $TransactionsTable.$converterbusinessState.toJson(businessState),
       ),
       'isExcludedFromStats': serializer.toJson<bool>(isExcludedFromStats),
       'isExcludedFromBudget': serializer.toJson<bool>(isExcludedFromBudget),
@@ -2268,7 +2076,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
 
   TransactionRow copyWith({
     String? id,
-    Value<String?> rootTransactionId = const Value.absent(),
     BusinessPurpose? businessPurpose,
     DateTime? occurredAt,
     DateTime? postedAt,
@@ -2277,10 +2084,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     Value<String?> note = const Value.absent(),
     Value<String?> parentTransactionId = const Value.absent(),
     Value<String?> reimbursementExpenseAccountId = const Value.absent(),
-    MutationKind? mutationKind,
-    Value<String?> mutationPreviousTransactionId = const Value.absent(),
-    Value<MutationReason?> mutationReason = const Value.absent(),
-    BusinessState? businessState,
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
     SourceKind? sourceKind,
@@ -2291,10 +2094,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     DateTime? updatedAt,
   }) => TransactionRow(
     id: id ?? this.id,
-    rootTransactionId:
-        rootTransactionId.present
-            ? rootTransactionId.value
-            : this.rootTransactionId,
     businessPurpose: businessPurpose ?? this.businessPurpose,
     occurredAt: occurredAt ?? this.occurredAt,
     postedAt: postedAt ?? this.postedAt,
@@ -2312,14 +2111,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
         reimbursementExpenseAccountId.present
             ? reimbursementExpenseAccountId.value
             : this.reimbursementExpenseAccountId,
-    mutationKind: mutationKind ?? this.mutationKind,
-    mutationPreviousTransactionId:
-        mutationPreviousTransactionId.present
-            ? mutationPreviousTransactionId.value
-            : this.mutationPreviousTransactionId,
-    mutationReason:
-        mutationReason.present ? mutationReason.value : this.mutationReason,
-    businessState: businessState ?? this.businessState,
     isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
     isExcludedFromBudget: isExcludedFromBudget ?? this.isExcludedFromBudget,
     sourceKind: sourceKind ?? this.sourceKind,
@@ -2332,10 +2123,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   TransactionRow copyWithCompanion(TransactionsCompanion data) {
     return TransactionRow(
       id: data.id.present ? data.id.value : this.id,
-      rootTransactionId:
-          data.rootTransactionId.present
-              ? data.rootTransactionId.value
-              : this.rootTransactionId,
       businessPurpose:
           data.businessPurpose.present
               ? data.businessPurpose.value
@@ -2360,22 +2147,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           data.reimbursementExpenseAccountId.present
               ? data.reimbursementExpenseAccountId.value
               : this.reimbursementExpenseAccountId,
-      mutationKind:
-          data.mutationKind.present
-              ? data.mutationKind.value
-              : this.mutationKind,
-      mutationPreviousTransactionId:
-          data.mutationPreviousTransactionId.present
-              ? data.mutationPreviousTransactionId.value
-              : this.mutationPreviousTransactionId,
-      mutationReason:
-          data.mutationReason.present
-              ? data.mutationReason.value
-              : this.mutationReason,
-      businessState:
-          data.businessState.present
-              ? data.businessState.value
-              : this.businessState,
       isExcludedFromStats:
           data.isExcludedFromStats.present
               ? data.isExcludedFromStats.value
@@ -2398,7 +2169,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   String toString() {
     return (StringBuffer('TransactionRow(')
           ..write('id: $id, ')
-          ..write('rootTransactionId: $rootTransactionId, ')
           ..write('businessPurpose: $businessPurpose, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('postedAt: $postedAt, ')
@@ -2409,12 +2179,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write(
             'reimbursementExpenseAccountId: $reimbursementExpenseAccountId, ',
           )
-          ..write('mutationKind: $mutationKind, ')
-          ..write(
-            'mutationPreviousTransactionId: $mutationPreviousTransactionId, ',
-          )
-          ..write('mutationReason: $mutationReason, ')
-          ..write('businessState: $businessState, ')
           ..write('isExcludedFromStats: $isExcludedFromStats, ')
           ..write('isExcludedFromBudget: $isExcludedFromBudget, ')
           ..write('sourceKind: $sourceKind, ')
@@ -2428,9 +2192,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   }
 
   @override
-  int get hashCode => Object.hashAll([
+  int get hashCode => Object.hash(
     id,
-    rootTransactionId,
     businessPurpose,
     occurredAt,
     postedAt,
@@ -2439,10 +2202,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     note,
     parentTransactionId,
     reimbursementExpenseAccountId,
-    mutationKind,
-    mutationPreviousTransactionId,
-    mutationReason,
-    businessState,
     isExcludedFromStats,
     isExcludedFromBudget,
     sourceKind,
@@ -2451,13 +2210,12 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     ownerRole,
     createdAt,
     updatedAt,
-  ]);
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is TransactionRow &&
           other.id == this.id &&
-          other.rootTransactionId == this.rootTransactionId &&
           other.businessPurpose == this.businessPurpose &&
           other.occurredAt == this.occurredAt &&
           other.postedAt == this.postedAt &&
@@ -2467,11 +2225,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.parentTransactionId == this.parentTransactionId &&
           other.reimbursementExpenseAccountId ==
               this.reimbursementExpenseAccountId &&
-          other.mutationKind == this.mutationKind &&
-          other.mutationPreviousTransactionId ==
-              this.mutationPreviousTransactionId &&
-          other.mutationReason == this.mutationReason &&
-          other.businessState == this.businessState &&
           other.isExcludedFromStats == this.isExcludedFromStats &&
           other.isExcludedFromBudget == this.isExcludedFromBudget &&
           other.sourceKind == this.sourceKind &&
@@ -2484,7 +2237,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
 
 class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<String> id;
-  final Value<String?> rootTransactionId;
   final Value<BusinessPurpose> businessPurpose;
   final Value<DateTime> occurredAt;
   final Value<DateTime> postedAt;
@@ -2493,10 +2245,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<String?> note;
   final Value<String?> parentTransactionId;
   final Value<String?> reimbursementExpenseAccountId;
-  final Value<MutationKind> mutationKind;
-  final Value<String?> mutationPreviousTransactionId;
-  final Value<MutationReason?> mutationReason;
-  final Value<BusinessState> businessState;
   final Value<bool> isExcludedFromStats;
   final Value<bool> isExcludedFromBudget;
   final Value<SourceKind> sourceKind;
@@ -2508,7 +2256,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<int> rowid;
   const TransactionsCompanion({
     this.id = const Value.absent(),
-    this.rootTransactionId = const Value.absent(),
     this.businessPurpose = const Value.absent(),
     this.occurredAt = const Value.absent(),
     this.postedAt = const Value.absent(),
@@ -2517,10 +2264,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.note = const Value.absent(),
     this.parentTransactionId = const Value.absent(),
     this.reimbursementExpenseAccountId = const Value.absent(),
-    this.mutationKind = const Value.absent(),
-    this.mutationPreviousTransactionId = const Value.absent(),
-    this.mutationReason = const Value.absent(),
-    this.businessState = const Value.absent(),
     this.isExcludedFromStats = const Value.absent(),
     this.isExcludedFromBudget = const Value.absent(),
     this.sourceKind = const Value.absent(),
@@ -2533,7 +2276,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   });
   TransactionsCompanion.insert({
     required String id,
-    this.rootTransactionId = const Value.absent(),
     required BusinessPurpose businessPurpose,
     required DateTime occurredAt,
     required DateTime postedAt,
@@ -2542,10 +2284,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.note = const Value.absent(),
     this.parentTransactionId = const Value.absent(),
     this.reimbursementExpenseAccountId = const Value.absent(),
-    required MutationKind mutationKind,
-    this.mutationPreviousTransactionId = const Value.absent(),
-    this.mutationReason = const Value.absent(),
-    required BusinessState businessState,
     this.isExcludedFromStats = const Value.absent(),
     this.isExcludedFromBudget = const Value.absent(),
     required SourceKind sourceKind,
@@ -2560,12 +2298,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
        occurredAt = Value(occurredAt),
        postedAt = Value(postedAt),
        primaryAmountMinor = Value(primaryAmountMinor),
-       mutationKind = Value(mutationKind),
-       businessState = Value(businessState),
        sourceKind = Value(sourceKind);
   static Insertable<TransactionRow> custom({
     Expression<String>? id,
-    Expression<String>? rootTransactionId,
     Expression<String>? businessPurpose,
     Expression<DateTime>? occurredAt,
     Expression<DateTime>? postedAt,
@@ -2574,10 +2309,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<String>? note,
     Expression<String>? parentTransactionId,
     Expression<String>? reimbursementExpenseAccountId,
-    Expression<String>? mutationKind,
-    Expression<String>? mutationPreviousTransactionId,
-    Expression<String>? mutationReason,
-    Expression<String>? businessState,
     Expression<bool>? isExcludedFromStats,
     Expression<bool>? isExcludedFromBudget,
     Expression<String>? sourceKind,
@@ -2590,7 +2321,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (rootTransactionId != null) 'root_transaction_id': rootTransactionId,
       if (businessPurpose != null) 'business_purpose': businessPurpose,
       if (occurredAt != null) 'occurred_at': occurredAt,
       if (postedAt != null) 'posted_at': postedAt,
@@ -2602,11 +2332,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
         'parent_transaction_id': parentTransactionId,
       if (reimbursementExpenseAccountId != null)
         'reimbursement_expense_account_id': reimbursementExpenseAccountId,
-      if (mutationKind != null) 'mutation_kind': mutationKind,
-      if (mutationPreviousTransactionId != null)
-        'mutation_previous_transaction_id': mutationPreviousTransactionId,
-      if (mutationReason != null) 'mutation_reason': mutationReason,
-      if (businessState != null) 'business_state': businessState,
       if (isExcludedFromStats != null)
         'is_excluded_from_stats': isExcludedFromStats,
       if (isExcludedFromBudget != null)
@@ -2623,7 +2348,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
 
   TransactionsCompanion copyWith({
     Value<String>? id,
-    Value<String?>? rootTransactionId,
     Value<BusinessPurpose>? businessPurpose,
     Value<DateTime>? occurredAt,
     Value<DateTime>? postedAt,
@@ -2632,10 +2356,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<String?>? note,
     Value<String?>? parentTransactionId,
     Value<String?>? reimbursementExpenseAccountId,
-    Value<MutationKind>? mutationKind,
-    Value<String?>? mutationPreviousTransactionId,
-    Value<MutationReason?>? mutationReason,
-    Value<BusinessState>? businessState,
     Value<bool>? isExcludedFromStats,
     Value<bool>? isExcludedFromBudget,
     Value<SourceKind>? sourceKind,
@@ -2648,7 +2368,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   }) {
     return TransactionsCompanion(
       id: id ?? this.id,
-      rootTransactionId: rootTransactionId ?? this.rootTransactionId,
       businessPurpose: businessPurpose ?? this.businessPurpose,
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,
@@ -2658,11 +2377,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       parentTransactionId: parentTransactionId ?? this.parentTransactionId,
       reimbursementExpenseAccountId:
           reimbursementExpenseAccountId ?? this.reimbursementExpenseAccountId,
-      mutationKind: mutationKind ?? this.mutationKind,
-      mutationPreviousTransactionId:
-          mutationPreviousTransactionId ?? this.mutationPreviousTransactionId,
-      mutationReason: mutationReason ?? this.mutationReason,
-      businessState: businessState ?? this.businessState,
       isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
       isExcludedFromBudget: isExcludedFromBudget ?? this.isExcludedFromBudget,
       sourceKind: sourceKind ?? this.sourceKind,
@@ -2680,9 +2394,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
-    }
-    if (rootTransactionId.present) {
-      map['root_transaction_id'] = Variable<String>(rootTransactionId.value);
     }
     if (businessPurpose.present) {
       map['business_purpose'] = Variable<String>(
@@ -2714,28 +2425,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     if (reimbursementExpenseAccountId.present) {
       map['reimbursement_expense_account_id'] = Variable<String>(
         reimbursementExpenseAccountId.value,
-      );
-    }
-    if (mutationKind.present) {
-      map['mutation_kind'] = Variable<String>(
-        $TransactionsTable.$convertermutationKind.toSql(mutationKind.value),
-      );
-    }
-    if (mutationPreviousTransactionId.present) {
-      map['mutation_previous_transaction_id'] = Variable<String>(
-        mutationPreviousTransactionId.value,
-      );
-    }
-    if (mutationReason.present) {
-      map['mutation_reason'] = Variable<String>(
-        $TransactionsTable.$convertermutationReasonn.toSql(
-          mutationReason.value,
-        ),
-      );
-    }
-    if (businessState.present) {
-      map['business_state'] = Variable<String>(
-        $TransactionsTable.$converterbusinessState.toSql(businessState.value),
       );
     }
     if (isExcludedFromStats.present) {
@@ -2776,7 +2465,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   String toString() {
     return (StringBuffer('TransactionsCompanion(')
           ..write('id: $id, ')
-          ..write('rootTransactionId: $rootTransactionId, ')
           ..write('businessPurpose: $businessPurpose, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('postedAt: $postedAt, ')
@@ -2787,12 +2475,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write(
             'reimbursementExpenseAccountId: $reimbursementExpenseAccountId, ',
           )
-          ..write('mutationKind: $mutationKind, ')
-          ..write(
-            'mutationPreviousTransactionId: $mutationPreviousTransactionId, ',
-          )
-          ..write('mutationReason: $mutationReason, ')
-          ..write('businessState: $businessState, ')
           ..write('isExcludedFromStats: $isExcludedFromStats, ')
           ..write('isExcludedFromBudget: $isExcludedFromBudget, ')
           ..write('sourceKind: $sourceKind, ')
@@ -8201,18 +7883,17 @@ class $RepaymentsTable extends Repayments
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _rootTransactionIdMeta = const VerificationMeta(
-    'rootTransactionId',
+  static const VerificationMeta _transactionIdMeta = const VerificationMeta(
+    'transactionId',
   );
   @override
-  late final GeneratedColumn<String> rootTransactionId =
-      GeneratedColumn<String>(
-        'root_transaction_id',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
+  late final GeneratedColumn<String> transactionId = GeneratedColumn<String>(
+    'transaction_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -8243,7 +7924,7 @@ class $RepaymentsTable extends Repayments
     repaymentType,
     targetType,
     targetId,
-    rootTransactionId,
+    transactionId,
     createdAt,
     updatedAt,
   ];
@@ -8291,12 +7972,12 @@ class $RepaymentsTable extends Repayments
     } else if (isInserting) {
       context.missing(_targetIdMeta);
     }
-    if (data.containsKey('root_transaction_id')) {
+    if (data.containsKey('transaction_id')) {
       context.handle(
-        _rootTransactionIdMeta,
-        rootTransactionId.isAcceptableOrUnknown(
-          data['root_transaction_id']!,
-          _rootTransactionIdMeta,
+        _transactionIdMeta,
+        transactionId.isAcceptableOrUnknown(
+          data['transaction_id']!,
+          _transactionIdMeta,
         ),
       );
     }
@@ -8341,9 +8022,9 @@ class $RepaymentsTable extends Repayments
             DriftSqlType.string,
             data['${effectivePrefix}target_id'],
           )!,
-      rootTransactionId: attachedDatabase.typeMapping.read(
+      transactionId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}root_transaction_id'],
+        data['${effectivePrefix}transaction_id'],
       ),
       createdAt:
           attachedDatabase.typeMapping.read(
@@ -8369,7 +8050,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
   final String repaymentType;
   final String targetType;
   final String targetId;
-  final String? rootTransactionId;
+  final String? transactionId;
   final DateTime createdAt;
   final DateTime updatedAt;
   const RepaymentRow({
@@ -8377,7 +8058,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
     required this.repaymentType,
     required this.targetType,
     required this.targetId,
-    this.rootTransactionId,
+    this.transactionId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -8388,8 +8069,8 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
     map['repayment_type'] = Variable<String>(repaymentType);
     map['target_type'] = Variable<String>(targetType);
     map['target_id'] = Variable<String>(targetId);
-    if (!nullToAbsent || rootTransactionId != null) {
-      map['root_transaction_id'] = Variable<String>(rootTransactionId);
+    if (!nullToAbsent || transactionId != null) {
+      map['transaction_id'] = Variable<String>(transactionId);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -8402,10 +8083,10 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
       repaymentType: Value(repaymentType),
       targetType: Value(targetType),
       targetId: Value(targetId),
-      rootTransactionId:
-          rootTransactionId == null && nullToAbsent
+      transactionId:
+          transactionId == null && nullToAbsent
               ? const Value.absent()
-              : Value(rootTransactionId),
+              : Value(transactionId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -8421,9 +8102,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
       repaymentType: serializer.fromJson<String>(json['repaymentType']),
       targetType: serializer.fromJson<String>(json['targetType']),
       targetId: serializer.fromJson<String>(json['targetId']),
-      rootTransactionId: serializer.fromJson<String?>(
-        json['rootTransactionId'],
-      ),
+      transactionId: serializer.fromJson<String?>(json['transactionId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -8436,7 +8115,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
       'repaymentType': serializer.toJson<String>(repaymentType),
       'targetType': serializer.toJson<String>(targetType),
       'targetId': serializer.toJson<String>(targetId),
-      'rootTransactionId': serializer.toJson<String?>(rootTransactionId),
+      'transactionId': serializer.toJson<String?>(transactionId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -8447,7 +8126,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
     String? repaymentType,
     String? targetType,
     String? targetId,
-    Value<String?> rootTransactionId = const Value.absent(),
+    Value<String?> transactionId = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => RepaymentRow(
@@ -8455,10 +8134,8 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
     repaymentType: repaymentType ?? this.repaymentType,
     targetType: targetType ?? this.targetType,
     targetId: targetId ?? this.targetId,
-    rootTransactionId:
-        rootTransactionId.present
-            ? rootTransactionId.value
-            : this.rootTransactionId,
+    transactionId:
+        transactionId.present ? transactionId.value : this.transactionId,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -8472,10 +8149,10 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
       targetType:
           data.targetType.present ? data.targetType.value : this.targetType,
       targetId: data.targetId.present ? data.targetId.value : this.targetId,
-      rootTransactionId:
-          data.rootTransactionId.present
-              ? data.rootTransactionId.value
-              : this.rootTransactionId,
+      transactionId:
+          data.transactionId.present
+              ? data.transactionId.value
+              : this.transactionId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -8488,7 +8165,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
           ..write('repaymentType: $repaymentType, ')
           ..write('targetType: $targetType, ')
           ..write('targetId: $targetId, ')
-          ..write('rootTransactionId: $rootTransactionId, ')
+          ..write('transactionId: $transactionId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -8501,7 +8178,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
     repaymentType,
     targetType,
     targetId,
-    rootTransactionId,
+    transactionId,
     createdAt,
     updatedAt,
   );
@@ -8513,7 +8190,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
           other.repaymentType == this.repaymentType &&
           other.targetType == this.targetType &&
           other.targetId == this.targetId &&
-          other.rootTransactionId == this.rootTransactionId &&
+          other.transactionId == this.transactionId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -8523,7 +8200,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
   final Value<String> repaymentType;
   final Value<String> targetType;
   final Value<String> targetId;
-  final Value<String?> rootTransactionId;
+  final Value<String?> transactionId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -8532,7 +8209,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
     this.repaymentType = const Value.absent(),
     this.targetType = const Value.absent(),
     this.targetId = const Value.absent(),
-    this.rootTransactionId = const Value.absent(),
+    this.transactionId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -8542,7 +8219,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
     required String repaymentType,
     required String targetType,
     required String targetId,
-    this.rootTransactionId = const Value.absent(),
+    this.transactionId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -8555,7 +8232,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
     Expression<String>? repaymentType,
     Expression<String>? targetType,
     Expression<String>? targetId,
-    Expression<String>? rootTransactionId,
+    Expression<String>? transactionId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -8565,7 +8242,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
       if (repaymentType != null) 'repayment_type': repaymentType,
       if (targetType != null) 'target_type': targetType,
       if (targetId != null) 'target_id': targetId,
-      if (rootTransactionId != null) 'root_transaction_id': rootTransactionId,
+      if (transactionId != null) 'transaction_id': transactionId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -8577,7 +8254,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
     Value<String>? repaymentType,
     Value<String>? targetType,
     Value<String>? targetId,
-    Value<String?>? rootTransactionId,
+    Value<String?>? transactionId,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -8587,7 +8264,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
       repaymentType: repaymentType ?? this.repaymentType,
       targetType: targetType ?? this.targetType,
       targetId: targetId ?? this.targetId,
-      rootTransactionId: rootTransactionId ?? this.rootTransactionId,
+      transactionId: transactionId ?? this.transactionId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -8609,8 +8286,8 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
     if (targetId.present) {
       map['target_id'] = Variable<String>(targetId.value);
     }
-    if (rootTransactionId.present) {
-      map['root_transaction_id'] = Variable<String>(rootTransactionId.value);
+    if (transactionId.present) {
+      map['transaction_id'] = Variable<String>(transactionId.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -8631,7 +8308,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
           ..write('repaymentType: $repaymentType, ')
           ..write('targetType: $targetType, ')
           ..write('targetId: $targetId, ')
-          ..write('rootTransactionId: $rootTransactionId, ')
+          ..write('transactionId: $transactionId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -9985,7 +9662,6 @@ typedef $$AppMetadataTableProcessedTableManager =
 typedef $$TransactionsTableCreateCompanionBuilder =
     TransactionsCompanion Function({
       required String id,
-      Value<String?> rootTransactionId,
       required BusinessPurpose businessPurpose,
       required DateTime occurredAt,
       required DateTime postedAt,
@@ -9994,10 +9670,6 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<String?> note,
       Value<String?> parentTransactionId,
       Value<String?> reimbursementExpenseAccountId,
-      required MutationKind mutationKind,
-      Value<String?> mutationPreviousTransactionId,
-      Value<MutationReason?> mutationReason,
-      required BusinessState businessState,
       Value<bool> isExcludedFromStats,
       Value<bool> isExcludedFromBudget,
       required SourceKind sourceKind,
@@ -10011,7 +9683,6 @@ typedef $$TransactionsTableCreateCompanionBuilder =
 typedef $$TransactionsTableUpdateCompanionBuilder =
     TransactionsCompanion Function({
       Value<String> id,
-      Value<String?> rootTransactionId,
       Value<BusinessPurpose> businessPurpose,
       Value<DateTime> occurredAt,
       Value<DateTime> postedAt,
@@ -10020,10 +9691,6 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String?> note,
       Value<String?> parentTransactionId,
       Value<String?> reimbursementExpenseAccountId,
-      Value<MutationKind> mutationKind,
-      Value<String?> mutationPreviousTransactionId,
-      Value<MutationReason?> mutationReason,
-      Value<BusinessState> businessState,
       Value<bool> isExcludedFromStats,
       Value<bool> isExcludedFromBudget,
       Value<SourceKind> sourceKind,
@@ -10046,11 +9713,6 @@ class $$TransactionsTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get rootTransactionId => $composableBuilder(
-    column: $table.rootTransactionId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10093,29 +9755,6 @@ class $$TransactionsTableFilterComposer
   ColumnFilters<String> get reimbursementExpenseAccountId => $composableBuilder(
     column: $table.reimbursementExpenseAccountId,
     builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnWithTypeConverterFilters<MutationKind, MutationKind, String>
-  get mutationKind => $composableBuilder(
-    column: $table.mutationKind,
-    builder: (column) => ColumnWithTypeConverterFilters(column),
-  );
-
-  ColumnFilters<String> get mutationPreviousTransactionId => $composableBuilder(
-    column: $table.mutationPreviousTransactionId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnWithTypeConverterFilters<MutationReason?, MutationReason, String>
-  get mutationReason => $composableBuilder(
-    column: $table.mutationReason,
-    builder: (column) => ColumnWithTypeConverterFilters(column),
-  );
-
-  ColumnWithTypeConverterFilters<BusinessState, BusinessState, String>
-  get businessState => $composableBuilder(
-    column: $table.businessState,
-    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnFilters<bool> get isExcludedFromStats => $composableBuilder(
@@ -10174,11 +9813,6 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get rootTransactionId => $composableBuilder(
-    column: $table.rootTransactionId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get businessPurpose => $composableBuilder(
     column: $table.businessPurpose,
     builder: (column) => ColumnOrderings(column),
@@ -10219,27 +9853,6 @@ class $$TransactionsTableOrderingComposer
         column: $table.reimbursementExpenseAccountId,
         builder: (column) => ColumnOrderings(column),
       );
-
-  ColumnOrderings<String> get mutationKind => $composableBuilder(
-    column: $table.mutationKind,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get mutationPreviousTransactionId =>
-      $composableBuilder(
-        column: $table.mutationPreviousTransactionId,
-        builder: (column) => ColumnOrderings(column),
-      );
-
-  ColumnOrderings<String> get mutationReason => $composableBuilder(
-    column: $table.mutationReason,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get businessState => $composableBuilder(
-    column: $table.businessState,
-    builder: (column) => ColumnOrderings(column),
-  );
 
   ColumnOrderings<bool> get isExcludedFromStats => $composableBuilder(
     column: $table.isExcludedFromStats,
@@ -10294,11 +9907,6 @@ class $$TransactionsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get rootTransactionId => $composableBuilder(
-    column: $table.rootTransactionId,
-    builder: (column) => column,
-  );
-
   GeneratedColumnWithTypeConverter<BusinessPurpose, String>
   get businessPurpose => $composableBuilder(
     column: $table.businessPurpose,
@@ -10334,30 +9942,6 @@ class $$TransactionsTableAnnotationComposer
   GeneratedColumn<String> get reimbursementExpenseAccountId =>
       $composableBuilder(
         column: $table.reimbursementExpenseAccountId,
-        builder: (column) => column,
-      );
-
-  GeneratedColumnWithTypeConverter<MutationKind, String> get mutationKind =>
-      $composableBuilder(
-        column: $table.mutationKind,
-        builder: (column) => column,
-      );
-
-  GeneratedColumn<String> get mutationPreviousTransactionId =>
-      $composableBuilder(
-        column: $table.mutationPreviousTransactionId,
-        builder: (column) => column,
-      );
-
-  GeneratedColumnWithTypeConverter<MutationReason?, String>
-  get mutationReason => $composableBuilder(
-    column: $table.mutationReason,
-    builder: (column) => column,
-  );
-
-  GeneratedColumnWithTypeConverter<BusinessState, String> get businessState =>
-      $composableBuilder(
-        column: $table.businessState,
         builder: (column) => column,
       );
 
@@ -10426,7 +10010,6 @@ class $$TransactionsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
-                Value<String?> rootTransactionId = const Value.absent(),
                 Value<BusinessPurpose> businessPurpose = const Value.absent(),
                 Value<DateTime> occurredAt = const Value.absent(),
                 Value<DateTime> postedAt = const Value.absent(),
@@ -10436,11 +10019,6 @@ class $$TransactionsTableTableManager
                 Value<String?> parentTransactionId = const Value.absent(),
                 Value<String?> reimbursementExpenseAccountId =
                     const Value.absent(),
-                Value<MutationKind> mutationKind = const Value.absent(),
-                Value<String?> mutationPreviousTransactionId =
-                    const Value.absent(),
-                Value<MutationReason?> mutationReason = const Value.absent(),
-                Value<BusinessState> businessState = const Value.absent(),
                 Value<bool> isExcludedFromStats = const Value.absent(),
                 Value<bool> isExcludedFromBudget = const Value.absent(),
                 Value<SourceKind> sourceKind = const Value.absent(),
@@ -10452,7 +10030,6 @@ class $$TransactionsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
-                rootTransactionId: rootTransactionId,
                 businessPurpose: businessPurpose,
                 occurredAt: occurredAt,
                 postedAt: postedAt,
@@ -10461,10 +10038,6 @@ class $$TransactionsTableTableManager
                 note: note,
                 parentTransactionId: parentTransactionId,
                 reimbursementExpenseAccountId: reimbursementExpenseAccountId,
-                mutationKind: mutationKind,
-                mutationPreviousTransactionId: mutationPreviousTransactionId,
-                mutationReason: mutationReason,
-                businessState: businessState,
                 isExcludedFromStats: isExcludedFromStats,
                 isExcludedFromBudget: isExcludedFromBudget,
                 sourceKind: sourceKind,
@@ -10478,7 +10051,6 @@ class $$TransactionsTableTableManager
           createCompanionCallback:
               ({
                 required String id,
-                Value<String?> rootTransactionId = const Value.absent(),
                 required BusinessPurpose businessPurpose,
                 required DateTime occurredAt,
                 required DateTime postedAt,
@@ -10488,11 +10060,6 @@ class $$TransactionsTableTableManager
                 Value<String?> parentTransactionId = const Value.absent(),
                 Value<String?> reimbursementExpenseAccountId =
                     const Value.absent(),
-                required MutationKind mutationKind,
-                Value<String?> mutationPreviousTransactionId =
-                    const Value.absent(),
-                Value<MutationReason?> mutationReason = const Value.absent(),
-                required BusinessState businessState,
                 Value<bool> isExcludedFromStats = const Value.absent(),
                 Value<bool> isExcludedFromBudget = const Value.absent(),
                 required SourceKind sourceKind,
@@ -10504,7 +10071,6 @@ class $$TransactionsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
-                rootTransactionId: rootTransactionId,
                 businessPurpose: businessPurpose,
                 occurredAt: occurredAt,
                 postedAt: postedAt,
@@ -10513,10 +10079,6 @@ class $$TransactionsTableTableManager
                 note: note,
                 parentTransactionId: parentTransactionId,
                 reimbursementExpenseAccountId: reimbursementExpenseAccountId,
-                mutationKind: mutationKind,
-                mutationPreviousTransactionId: mutationPreviousTransactionId,
-                mutationReason: mutationReason,
-                businessState: businessState,
                 isExcludedFromStats: isExcludedFromStats,
                 isExcludedFromBudget: isExcludedFromBudget,
                 sourceKind: sourceKind,
@@ -13190,7 +12752,7 @@ typedef $$RepaymentsTableCreateCompanionBuilder =
       required String repaymentType,
       required String targetType,
       required String targetId,
-      Value<String?> rootTransactionId,
+      Value<String?> transactionId,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -13201,7 +12763,7 @@ typedef $$RepaymentsTableUpdateCompanionBuilder =
       Value<String> repaymentType,
       Value<String> targetType,
       Value<String> targetId,
-      Value<String?> rootTransactionId,
+      Value<String?> transactionId,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -13236,8 +12798,8 @@ class $$RepaymentsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get rootTransactionId => $composableBuilder(
-    column: $table.rootTransactionId,
+  ColumnFilters<String> get transactionId => $composableBuilder(
+    column: $table.transactionId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13281,8 +12843,8 @@ class $$RepaymentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get rootTransactionId => $composableBuilder(
-    column: $table.rootTransactionId,
+  ColumnOrderings<String> get transactionId => $composableBuilder(
+    column: $table.transactionId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -13322,8 +12884,8 @@ class $$RepaymentsTableAnnotationComposer
   GeneratedColumn<String> get targetId =>
       $composableBuilder(column: $table.targetId, builder: (column) => column);
 
-  GeneratedColumn<String> get rootTransactionId => $composableBuilder(
-    column: $table.rootTransactionId,
+  GeneratedColumn<String> get transactionId => $composableBuilder(
+    column: $table.transactionId,
     builder: (column) => column,
   );
 
@@ -13369,7 +12931,7 @@ class $$RepaymentsTableTableManager
                 Value<String> repaymentType = const Value.absent(),
                 Value<String> targetType = const Value.absent(),
                 Value<String> targetId = const Value.absent(),
-                Value<String?> rootTransactionId = const Value.absent(),
+                Value<String?> transactionId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -13378,7 +12940,7 @@ class $$RepaymentsTableTableManager
                 repaymentType: repaymentType,
                 targetType: targetType,
                 targetId: targetId,
-                rootTransactionId: rootTransactionId,
+                transactionId: transactionId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -13389,7 +12951,7 @@ class $$RepaymentsTableTableManager
                 required String repaymentType,
                 required String targetType,
                 required String targetId,
-                Value<String?> rootTransactionId = const Value.absent(),
+                Value<String?> transactionId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -13398,7 +12960,7 @@ class $$RepaymentsTableTableManager
                 repaymentType: repaymentType,
                 targetType: targetType,
                 targetId: targetId,
-                rootTransactionId: rootTransactionId,
+                transactionId: transactionId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

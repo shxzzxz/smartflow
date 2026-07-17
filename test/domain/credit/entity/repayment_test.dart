@@ -14,7 +14,7 @@ void main() {
         repaymentType: RepaymentType.bill,
         targetType: RepaymentTargetType.bill,
         targetId: 'bill-1',
-        rootTransactionId: 'tx-1',
+        transactionId: 'tx-1',
         items: [
           _item(
             id: 'item-1',
@@ -72,7 +72,7 @@ void main() {
           repaymentType: RepaymentType.installment,
           targetType: RepaymentTargetType.bill,
           targetId: 'bill-1',
-          rootTransactionId: 'tx-1',
+          transactionId: 'tx-1',
           items: [
             _item(
               id: 'item-1',

@@ -216,13 +216,11 @@ class BillQueryServiceImpl implements BillQueryService {
     required DateTime fallbackTime,
   }) async {
     final total = repayment.totalAllocated();
-    final rootTransactionId = repayment.rootTransactionId;
+    final transactionId = repayment.transactionId;
     final detail =
-        rootTransactionId == null
+        transactionId == null
             ? null
-            : await _ledger.findCurrentParentTransactionByRoot(
-              rootTransactionId,
-            );
+            : await _ledger.findParentTransaction(transactionId);
     final usesTransaction = detail != null;
     return BillRepaymentReadModel(
       id: repayment.id,
@@ -236,7 +234,7 @@ class BillQueryServiceImpl implements BillQueryService {
           usesTransaction
               ? BillRepaymentTimeSource.transaction
               : BillRepaymentTimeSource.recordCreatedAt,
-      rootTransactionId: rootTransactionId,
+      transactionId: transactionId,
       paidFromAccountId: usesTransaction ? detail.paidFromAccountId : null,
     );
   }

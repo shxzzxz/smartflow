@@ -7,7 +7,6 @@ import '../../entity/transaction_detail_record.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
-import '../../valobj/posting_result.dart';
 import 'posting_rule.dart';
 
 class PostingEngine {
@@ -37,14 +36,11 @@ class PostingEngine {
     return _validated(
       Transaction(
         id: transactionId,
-        rootTransactionId: transactionId,
         businessPurpose: BusinessPurpose.dailyExpense,
         occurredAt: instruction.occurredAt,
         primaryAmount: instruction.amount,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
-        mutationKind: MutationKind.original,
-        businessState: BusinessState.current,
         isExcludedFromStats: instruction.isExcludedFromStats,
         isExcludedFromBudget: instruction.isExcludedFromBudget,
         sourceKind: instruction.sourceKind,
@@ -85,14 +81,11 @@ class PostingEngine {
     return _validated(
       Transaction(
         id: transactionId,
-        rootTransactionId: transactionId,
         businessPurpose: BusinessPurpose.dailyIncome,
         occurredAt: instruction.occurredAt,
         primaryAmount: instruction.amount,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
-        mutationKind: MutationKind.original,
-        businessState: BusinessState.current,
         isExcludedFromStats: instruction.isExcludedFromStats,
         isExcludedFromBudget: false,
         sourceKind: instruction.sourceKind,
@@ -136,15 +129,12 @@ class PostingEngine {
     return _validated(
       Transaction(
         id: transactionId,
-        rootTransactionId: transactionId,
         businessPurpose: BusinessPurpose.reimbursementAdvance,
         occurredAt: instruction.occurredAt,
         primaryAmount: instruction.amount,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
         reimbursementExpenseAccountId: instruction.expenseAccountId,
-        mutationKind: MutationKind.original,
-        businessState: BusinessState.current,
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
         sourceKind: instruction.sourceKind,
@@ -189,15 +179,12 @@ class PostingEngine {
     return _validated(
       Transaction(
         id: transactionId,
-        rootTransactionId: parent.rootTransactionId,
         parentTransactionId: parent.id,
         businessPurpose: BusinessPurpose.refund,
         occurredAt: instruction.occurredAt,
         primaryAmount: instruction.amount,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
-        mutationKind: MutationKind.original,
-        businessState: BusinessState.current,
         isExcludedFromStats: parent.isExcludedFromStats,
         isExcludedFromBudget: parent.isExcludedFromBudget,
         sourceKind: parent.sourceKind,
@@ -260,14 +247,11 @@ class PostingEngine {
     return _validated(
       Transaction(
         id: transactionId,
-        rootTransactionId: transactionId,
         businessPurpose: BusinessPurpose.transfer,
         occurredAt: instruction.occurredAt,
         primaryAmount: instruction.amount,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
-        mutationKind: MutationKind.original,
-        businessState: BusinessState.current,
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
         sourceKind: instruction.sourceKind,
@@ -323,17 +307,14 @@ class PostingEngine {
     return _validated(
       Transaction(
         id: transactionId,
-        rootTransactionId: advance.rootTransactionId,
         parentTransactionId: advance.id,
         businessPurpose: BusinessPurpose.reimbursementReceipt,
         occurredAt: instruction.occurredAt,
         primaryAmount: instruction.amount,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
-        mutationKind: MutationKind.original,
-        businessState: BusinessState.current,
-        isExcludedFromStats: false,
-        isExcludedFromBudget: false,
+        isExcludedFromStats: advance.isExcludedFromStats,
+        isExcludedFromBudget: advance.isExcludedFromBudget,
         sourceKind: advance.sourceKind,
         ownership: advance.ownership,
         details: [
@@ -412,14 +393,11 @@ class PostingEngine {
     return _validated(
       Transaction(
         id: transactionId,
-        rootTransactionId: transactionId,
         businessPurpose: BusinessPurpose.debtRepayment,
         occurredAt: instruction.occurredAt,
         primaryAmount: totalPaid,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
-        mutationKind: MutationKind.original,
-        businessState: BusinessState.current,
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
         sourceKind: instruction.sourceKind,
@@ -502,14 +480,11 @@ class PostingEngine {
     return _validated(
       Transaction(
         id: transactionId,
-        rootTransactionId: transactionId,
         businessPurpose: BusinessPurpose.borrowing,
         occurredAt: instruction.occurredAt,
         primaryAmount: instruction.amount,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
-        mutationKind: MutationKind.original,
-        businessState: BusinessState.current,
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
         sourceKind: instruction.sourceKind,
@@ -568,14 +543,11 @@ class PostingEngine {
     return _validated(
       Transaction(
         id: transactionId,
-        rootTransactionId: transactionId,
         businessPurpose: BusinessPurpose.openingBalance,
         occurredAt: instruction.occurredAt,
         primaryAmount: amount,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
-        mutationKind: MutationKind.original,
-        businessState: BusinessState.current,
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
         sourceKind: SourceKind.manual,
@@ -624,14 +596,11 @@ class PostingEngine {
     return _validated(
       Transaction(
         id: transactionId,
-        rootTransactionId: transactionId,
         businessPurpose: BusinessPurpose.balanceAdjustment,
         occurredAt: instruction.occurredAt,
         primaryAmount: amount,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
-        mutationKind: MutationKind.original,
-        businessState: BusinessState.current,
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
         sourceKind: SourceKind.manual,
@@ -748,145 +717,19 @@ class PostingEngine {
     return _validated(
       Transaction(
         id: transactionId,
-        rootTransactionId: advance.rootTransactionId,
         parentTransactionId: advance.id,
         businessPurpose: BusinessPurpose.reimbursementClose,
         occurredAt: instruction.occurredAt,
         primaryAmount: actual.minorUnits > 0 ? actual : outstanding,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
-        mutationKind: MutationKind.original,
-        businessState: BusinessState.current,
-        isExcludedFromStats: false,
-        isExcludedFromBudget: false,
+        isExcludedFromStats: advance.isExcludedFromStats,
+        isExcludedFromBudget: advance.isExcludedFromBudget,
         sourceKind: advance.sourceKind,
         ownership: advance.ownership,
         details: details,
         entries: entries,
       ),
-    );
-  }
-
-  TransactionReplacement createReplacement({
-    required Transaction original,
-    required Transaction replacement,
-    required MutationReason reason,
-  }) {
-    final replaced = original.copyWith(businessState: BusinessState.replaced);
-    final reversalId = _idGenerator.newId();
-    final reversal = Transaction(
-      id: reversalId,
-      rootTransactionId: original.rootTransactionId,
-      businessPurpose: original.businessPurpose,
-      occurredAt: original.occurredAt,
-      postedAt: original.postedAt,
-      primaryAmount: -original.primaryAmount,
-      counterpartyName: original.counterpartyName,
-      note: original.note,
-      parentTransactionId: original.parentTransactionId,
-      reimbursementExpenseAccountId: original.reimbursementExpenseAccountId,
-      mutationKind: MutationKind.reversal,
-      mutationPreviousTransactionId: original.id,
-      mutationReason: reason,
-      businessState: BusinessState.compensation,
-      isExcludedFromStats: original.isExcludedFromStats,
-      isExcludedFromBudget: original.isExcludedFromBudget,
-      sourceKind: original.sourceKind,
-      ownership: original.ownership,
-      details: [
-        for (final detail in original.details)
-          _detail(
-            transactionId: reversalId,
-            lineNo: detail.lineNo,
-            type: detail.type,
-            amount: -detail.amount,
-          ),
-      ],
-      entries: [
-        for (final entry in original.entries)
-          _entry(
-            transactionId: reversalId,
-            accountId: entry.accountId,
-            direction: entry.direction,
-            amount: -entry.amount,
-          ),
-      ],
-    );
-    final correction = replacement.copyWith(
-      rootTransactionId: original.rootTransactionId,
-      postedAt: original.postedAt,
-      // 取 replacement 的 parent:子交易迁移时新候选已挂到新父,
-      // 用 original 会让更正后的子交易仍指向被红冲的旧父。
-      parentTransactionId: replacement.parentTransactionId,
-      reimbursementExpenseAccountId:
-          replacement.reimbursementExpenseAccountId ??
-          original.reimbursementExpenseAccountId,
-      mutationKind: MutationKind.correction,
-      mutationPreviousTransactionId: reversal.id,
-      mutationReason: null,
-      businessState: BusinessState.current,
-      sourceKind: original.sourceKind,
-      ownership: original.ownership,
-    );
-
-    reversal.validateSelf(allowNegativeAmounts: true);
-    correction.validateSelf();
-
-    return TransactionReplacement(
-      replacedTransaction: replaced,
-      reversalTransaction: reversal,
-      correctionTransaction: correction,
-    );
-  }
-
-  TransactionCancellation createCancellation({
-    required Transaction original,
-    required MutationReason reason,
-  }) {
-    final canceled = original.copyWith(businessState: BusinessState.canceled);
-    final reversalId = _idGenerator.newId();
-    final reversal = Transaction(
-      id: reversalId,
-      rootTransactionId: original.rootTransactionId,
-      businessPurpose: original.businessPurpose,
-      occurredAt: original.occurredAt,
-      postedAt: original.postedAt,
-      primaryAmount: -original.primaryAmount,
-      counterpartyName: original.counterpartyName,
-      note: original.note,
-      parentTransactionId: original.parentTransactionId,
-      reimbursementExpenseAccountId: original.reimbursementExpenseAccountId,
-      mutationKind: MutationKind.reversal,
-      mutationPreviousTransactionId: original.id,
-      mutationReason: reason,
-      businessState: BusinessState.compensation,
-      isExcludedFromStats: original.isExcludedFromStats,
-      isExcludedFromBudget: original.isExcludedFromBudget,
-      sourceKind: original.sourceKind,
-      ownership: original.ownership,
-      details: [
-        for (final detail in original.details)
-          _detail(
-            transactionId: reversalId,
-            lineNo: detail.lineNo,
-            type: detail.type,
-            amount: -detail.amount,
-          ),
-      ],
-      entries: [
-        for (final entry in original.entries)
-          _entry(
-            transactionId: reversalId,
-            accountId: entry.accountId,
-            direction: entry.direction,
-            amount: -entry.amount,
-          ),
-      ],
-    );
-    reversal.validateSelf(allowNegativeAmounts: true);
-    return TransactionCancellation(
-      canceledTransaction: canceled,
-      reversalTransaction: reversal,
     );
   }
 

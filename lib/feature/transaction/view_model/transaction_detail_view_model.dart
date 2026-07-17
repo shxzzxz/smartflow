@@ -89,9 +89,9 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
           ).changeSettlementAccount(accountId);
         case AccountSelectionPurpose.reimbursementReceivable:
           await ref
-              .read(transactionCorrectionAppServiceProvider)
-              .correctReimbursementAdvance(
-                CorrectReimbursementAdvanceCommand(
+              .read(transactionEditAppServiceProvider)
+              .editReimbursementAdvance(
+                EditReimbursementAdvanceCommand(
                   transactionId: loaded.detail.transaction.id,
                   receivableAccountId: accountId,
                 ),
@@ -185,7 +185,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
   ) {
     return createTransactionDetailActionDispatcher(
       transaction: transaction,
-      correctionService: ref.read(transactionCorrectionAppServiceProvider),
+      editService: ref.read(transactionEditAppServiceProvider),
       updateService: ref.read(transactionUpdateAppServiceProvider),
       installmentAppService: ref.read(installmentAppServiceProvider),
       repaymentAppService: ref.read(repaymentAppServiceProvider),

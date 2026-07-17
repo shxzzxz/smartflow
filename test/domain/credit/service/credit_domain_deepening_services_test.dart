@@ -422,7 +422,7 @@ class _FakeRepaymentRepository implements RepaymentRepository {
   Future<void> deleteRepayment(String repaymentId) async {}
 
   @override
-  Future<Repayment?> findByRootTransaction(String rootTransactionId) async {
+  Future<Repayment?> findByTransaction(String transactionId) async {
     return null;
   }
 

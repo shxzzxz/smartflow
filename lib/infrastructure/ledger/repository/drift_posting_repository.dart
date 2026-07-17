@@ -4,18 +4,17 @@ import 'package:uuid/uuid.dart';
 import '../../../core/money/money.dart';
 import '../../../domain/ledger/entity/account.dart';
 import '../../../domain/ledger/entity/entry.dart';
-import '../../../domain/ledger/entity/root_transaction_group.dart';
+import '../../../domain/ledger/entity/transaction_group.dart';
 import '../../../domain/ledger/entity/transaction.dart';
 import '../../../domain/ledger/entity/transaction_detail_record.dart';
-import '../../../domain/ledger/valobj/ledger_enum.dart';
-import '../../../domain/ledger/port/root_transaction_group_repository.dart';
+import '../../../domain/ledger/port/transaction_group_repository.dart';
 import '../../../domain/ledger/port/transaction_repository.dart';
 import '../../database/app_database.dart';
 import '../mapper/account_mapper.dart';
 import '../mapper/transaction_mapper.dart';
 
 class DriftPostingRepository
-    implements TransactionRepository, RootTransactionGroupRepository {
+    implements TransactionRepository, TransactionGroupRepository {
   const DriftPostingRepository(this._database);
 
   final AppDatabase _database;
@@ -49,23 +48,20 @@ class DriftPostingRepository
   }
 
   @override
-  Future<RootTransactionGroup?> findByTransactionId(
-    String transactionId,
-  ) async {
+  Future<TransactionGroup?> findByTransactionId(String transactionId) async {
     final tx = await findById(transactionId);
     if (tx == null) return null;
-    return findByRootId(tx.rootTransactionId);
+    return findByParentId(tx.parentTransactionId ?? tx.id);
   }
 
   @override
-  Future<RootTransactionGroup?> findByRootId(String rootTransactionId) async {
+  Future<TransactionGroup?> findByParentId(String parentTransactionId) async {
     final rows =
-        await (_database.select(_database.transactions)
-              ..where((row) => row.rootTransactionId.equals(rootTransactionId))
-              ..where(
-                (row) => row.businessState.equalsValue(BusinessState.current),
-              ))
-            .get();
+        await (_database.select(_database.transactions)..where(
+          (row) =>
+              row.id.equals(parentTransactionId) |
+              row.parentTransactionId.equals(parentTransactionId),
+        )).get();
     if (rows.isEmpty) return null;
 
     final complete = await _findCompleteTransactionsByIds({
@@ -81,8 +77,7 @@ class DriftPostingRepository
       }
     }
     if (parent == null) return null;
-    return RootTransactionGroup(
-      rootTransactionId: rootTransactionId,
+    return TransactionGroup(
       parentTransaction: parent,
       childTransactions: children,
     );
@@ -96,6 +91,22 @@ class DriftPostingRepository
   @override
   Future<void> saveAll(Iterable<Transaction> transactions) {
     return Future.forEach<Transaction>(transactions, _saveTransaction);
+  }
+
+  @override
+  Future<void> rewriteAll(Iterable<Transaction> transactions) {
+    return Future.forEach<Transaction>(transactions, _rewriteTransaction);
+  }
+
+  @override
+  Future<void> deleteAll(Set<String> transactionIds) async {
+    if (transactionIds.isEmpty) return;
+    await (_database.delete(_database.entries)
+      ..where((row) => row.transactionId.isIn(transactionIds))).go();
+    await (_database.delete(_database.transactionDetails)
+      ..where((row) => row.transactionId.isIn(transactionIds))).go();
+    await (_database.delete(_database.transactions)
+      ..where((row) => row.id.isIn(transactionIds))).go();
   }
 
   Future<void> _saveTransaction(Transaction transaction) async {
@@ -112,8 +123,6 @@ class DriftPostingRepository
 
     final now = DateTime.now();
     final transactionId = transaction.id;
-    final rootTransactionId = transaction.rootTransactionId;
-
     await _database
         .into(_database.transactions)
         .insert(
@@ -123,23 +132,16 @@ class DriftPostingRepository
             occurredAt: transaction.occurredAt,
             postedAt: transaction.postedAt,
             primaryAmountMinor: transaction.primaryAmount.minorUnits,
-            mutationKind: transaction.mutationKind,
-            businessState: transaction.businessState,
             sourceKind: transaction.sourceKind,
             ownerType: Value(transaction.ownership?.ownerType),
             ownerId: Value(transaction.ownership?.ownerId),
             ownerRole: Value(transaction.ownership?.ownerRole),
-            rootTransactionId: Value(rootTransactionId),
             counterpartyName: Value(transaction.counterpartyName),
             note: Value(transaction.note),
             parentTransactionId: Value(transaction.parentTransactionId),
             reimbursementExpenseAccountId: Value(
               transaction.reimbursementExpenseAccountId,
             ),
-            mutationPreviousTransactionId: Value(
-              transaction.mutationPreviousTransactionId,
-            ),
-            mutationReason: Value(transaction.mutationReason),
             isExcludedFromStats: Value(transaction.isExcludedFromStats),
             isExcludedFromBudget: Value(transaction.isExcludedFromBudget),
             createdAt: Value(now),
@@ -168,6 +170,46 @@ class DriftPostingRepository
           (entry) => EntriesCompanion.insert(
             id: entry.id.isEmpty ? _uuid.v7() : entry.id,
             transactionId: transactionId,
+            accountId: entry.accountId,
+            direction: entry.direction,
+            amountMinor: entry.amount.minorUnits,
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        ),
+      );
+    });
+  }
+
+  Future<void> _rewriteTransaction(Transaction transaction) async {
+    await updateTransaction(transaction);
+    await (_database.delete(_database.entries)
+      ..where((row) => row.transactionId.equals(transaction.id))).go();
+    await (_database.delete(_database.transactionDetails)
+      ..where((row) => row.transactionId.equals(transaction.id))).go();
+
+    final now = DateTime.now();
+    await _database.batch((batch) {
+      batch.insertAll(
+        _database.transactionDetails,
+        transaction.details.map(
+          (detail) => TransactionDetailsCompanion.insert(
+            id: detail.id.isEmpty ? _uuid.v7() : detail.id,
+            transactionId: transaction.id,
+            lineNo: detail.lineNo,
+            detailType: detail.type,
+            amountMinor: detail.amount.minorUnits,
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        ),
+      );
+      batch.insertAll(
+        _database.entries,
+        transaction.entries.map(
+          (entry) => EntriesCompanion.insert(
+            id: entry.id.isEmpty ? _uuid.v7() : entry.id,
+            transactionId: transaction.id,
             accountId: entry.accountId,
             direction: entry.direction,
             amountMinor: entry.amount.minorUnits,
@@ -278,8 +320,6 @@ class DriftPostingRepository
         occurredAt: Value(transaction.occurredAt),
         postedAt: Value(transaction.postedAt),
         primaryAmountMinor: Value(transaction.primaryAmount.minorUnits),
-        mutationKind: Value(transaction.mutationKind),
-        businessState: Value(transaction.businessState),
         sourceKind: Value(transaction.sourceKind),
         ownerType: Value(transaction.ownership?.ownerType),
         ownerId: Value(transaction.ownership?.ownerId),
@@ -290,10 +330,6 @@ class DriftPostingRepository
         reimbursementExpenseAccountId: Value(
           transaction.reimbursementExpenseAccountId,
         ),
-        mutationPreviousTransactionId: Value(
-          transaction.mutationPreviousTransactionId,
-        ),
-        mutationReason: Value(transaction.mutationReason),
         isExcludedFromStats: Value(transaction.isExcludedFromStats),
         isExcludedFromBudget: Value(transaction.isExcludedFromBudget),
         updatedAt: Value(now),

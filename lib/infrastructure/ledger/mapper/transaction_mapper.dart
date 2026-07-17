@@ -6,7 +6,6 @@ import '../../database/app_database.dart';
 Transaction mapTransaction(TransactionRow row) {
   return Transaction(
     id: row.id,
-    rootTransactionId: row.rootTransactionId ?? row.id,
     businessPurpose: row.businessPurpose,
     occurredAt: row.occurredAt,
     postedAt: row.postedAt,
@@ -15,10 +14,6 @@ Transaction mapTransaction(TransactionRow row) {
     note: row.note,
     parentTransactionId: row.parentTransactionId,
     reimbursementExpenseAccountId: row.reimbursementExpenseAccountId,
-    mutationKind: row.mutationKind,
-    mutationPreviousTransactionId: row.mutationPreviousTransactionId,
-    mutationReason: row.mutationReason,
-    businessState: row.businessState,
     isExcludedFromStats: row.isExcludedFromStats,
     isExcludedFromBudget: row.isExcludedFromBudget,
     sourceKind: row.sourceKind,
