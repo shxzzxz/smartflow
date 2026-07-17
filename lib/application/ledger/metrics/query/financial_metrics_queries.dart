@@ -7,6 +7,13 @@ class CashflowComparisonQuery {
   final DateTime? asOfDate;
 }
 
+class CashflowReportQuery {
+  const CashflowReportQuery({required this.month, this.asOfDate});
+
+  final MonthKey month;
+  final DateTime? asOfDate;
+}
+
 class BalanceSheetComparisonQuery {
   const BalanceSheetComparisonQuery({required this.month, this.asOfExclusive});
 
@@ -14,6 +21,18 @@ class BalanceSheetComparisonQuery {
 
   /// 不包含上界。当前月页面可传入 DateTime.now()，历史月默认用下月月初。
   final DateTime? asOfExclusive;
+}
+
+class BalanceReportQuery {
+  const BalanceReportQuery({
+    required this.month,
+    this.asOfExclusive,
+    this.trendMonths = 6,
+  });
+
+  final MonthKey month;
+  final DateTime? asOfExclusive;
+  final int trendMonths;
 }
 
 class DailyCashflowSummaryQuery {

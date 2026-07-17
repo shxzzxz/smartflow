@@ -435,54 +435,53 @@ final class TransactionDetailReadRepositoryProvider
 String _$transactionDetailReadRepositoryHash() =>
     r'da8e89f2b6c9563e8f6d4440db8bc7bc2fdd0d26';
 
-@ProviderFor(balanceAggregateRepository)
-final balanceAggregateRepositoryProvider =
-    BalanceAggregateRepositoryProvider._();
+@ProviderFor(ledgerMetricsSource)
+final ledgerMetricsSourceProvider = LedgerMetricsSourceProvider._();
 
-final class BalanceAggregateRepositoryProvider
+final class LedgerMetricsSourceProvider
     extends
         $FunctionalProvider<
-          BalanceAggregateRepository,
-          BalanceAggregateRepository,
-          BalanceAggregateRepository
+          LedgerMetricsSource,
+          LedgerMetricsSource,
+          LedgerMetricsSource
         >
-    with $Provider<BalanceAggregateRepository> {
-  BalanceAggregateRepositoryProvider._()
+    with $Provider<LedgerMetricsSource> {
+  LedgerMetricsSourceProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'balanceAggregateRepositoryProvider',
+        name: r'ledgerMetricsSourceProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$balanceAggregateRepositoryHash();
+  String debugGetCreateSourceHash() => _$ledgerMetricsSourceHash();
 
   @$internal
   @override
-  $ProviderElement<BalanceAggregateRepository> $createElement(
+  $ProviderElement<LedgerMetricsSource> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  BalanceAggregateRepository create(Ref ref) {
-    return balanceAggregateRepository(ref);
+  LedgerMetricsSource create(Ref ref) {
+    return ledgerMetricsSource(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(BalanceAggregateRepository value) {
+  Override overrideWithValue(LedgerMetricsSource value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<BalanceAggregateRepository>(value),
+      providerOverride: $SyncValueProvider<LedgerMetricsSource>(value),
     );
   }
 }
 
-String _$balanceAggregateRepositoryHash() =>
-    r'7aacd32ea77456968cf7c23dedc0c7a4503328ee';
+String _$ledgerMetricsSourceHash() =>
+    r'b797c98126037d964442f03bf95e74630e6f15f0';
 
 @ProviderFor(transactionRunner)
 final transactionRunnerProvider = TransactionRunnerProvider._();
@@ -768,7 +767,7 @@ final class TransactionLedgerWriterProvider
 }
 
 String _$transactionLedgerWriterHash() =>
-    r'113e9d83d6fc721e66f7fdd7032288d0de8cc853';
+    r'c8dff77976aa1adb1212d72576476e0c1d8c4824';
 
 @ProviderFor(ledgerPostingService)
 final ledgerPostingServiceProvider = LedgerPostingServiceProvider._();
@@ -1010,7 +1009,7 @@ final class TransactionQueryServiceProvider
 }
 
 String _$transactionQueryServiceHash() =>
-    r'7981586a24055b84ce8a126a4c9369ad7142d1c1';
+    r'e4701510d765d608982c9d646fa4adcbaa954975';
 
 @ProviderFor(financialMetricsService)
 final financialMetricsServiceProvider = FinancialMetricsServiceProvider._();
@@ -1058,7 +1057,7 @@ final class FinancialMetricsServiceProvider
 }
 
 String _$financialMetricsServiceHash() =>
-    r'7482e97011511fa5fb010f3190c1f715dfc14acc';
+    r'44877ea3eb815867d3503298409cca723c9077ad';
 
 @ProviderFor(creditAccountRepository)
 final creditAccountRepositoryProvider = CreditAccountRepositoryProvider._();
@@ -1482,7 +1481,7 @@ final class CreditLedgerPortProvider
   }
 }
 
-String _$creditLedgerPortHash() => r'1f96d6e525884e954ee199e05cec518062c2ac94';
+String _$creditLedgerPortHash() => r'f68c29fb5a377aca8e8f7bb4d7da07b626d916bf';
 
 @ProviderFor(repaymentAppService)
 final repaymentAppServiceProvider = RepaymentAppServiceProvider._();

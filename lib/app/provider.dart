@@ -3,7 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../infrastructure/database/database_provider.dart';
 import '../infrastructure/ledger/repository/drift_account_query_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_repository.dart';
-import '../infrastructure/ledger/repository/drift_balance_aggregate_repository.dart';
+import '../infrastructure/ledger/repository/drift_ledger_metrics_source.dart';
 import '../infrastructure/ledger/repository/drift_entry_read_repository.dart';
 import '../infrastructure/credit/repository/drift_credit_account_repository.dart';
 import '../infrastructure/credit/repository/drift_bill_repository.dart';
@@ -91,8 +91,8 @@ TransactionDetailReadRepository transactionDetailReadRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-BalanceAggregateRepository balanceAggregateRepository(Ref ref) {
-  return DriftBalanceAggregateRepository(ref.watch(appDatabaseProvider));
+LedgerMetricsSource ledgerMetricsSource(Ref ref) {
+  return DriftLedgerMetricsSource(ref.watch(appDatabaseProvider));
 }
 
 @Riverpod(keepAlive: true)
@@ -192,15 +192,13 @@ TransactionQueryService transactionQueryService(Ref ref) {
     transactionRead: ref.watch(transactionReadRepositoryProvider),
     entryRead: ref.watch(entryReadRepositoryProvider),
     detailRead: ref.watch(transactionDetailReadRepositoryProvider),
-    balanceAggregate: ref.watch(balanceAggregateRepositoryProvider),
+    metricsSource: ref.watch(ledgerMetricsSourceProvider),
   );
 }
 
 @Riverpod(keepAlive: true)
 FinancialMetricsService financialMetricsService(Ref ref) {
-  return FinancialMetricsServiceImpl(
-    ref.watch(balanceAggregateRepositoryProvider),
-  );
+  return FinancialMetricsServiceImpl(ref.watch(ledgerMetricsSourceProvider));
 }
 
 @Riverpod(keepAlive: true)

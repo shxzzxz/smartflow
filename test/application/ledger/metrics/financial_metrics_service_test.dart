@@ -1,0 +1,176 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/ledger/ledger_query_port_api.dart';
+import 'package:smartflow/core/time/month_key.dart';
+
+void main() {
+  test(
+    'builds a current-state cashflow report for the selected month',
+    () async {
+      final aggregate = _FakeLedgerMetricsSource(
+        accountTypeResults: const [
+          {AccountType.income: 2000, AccountType.expense: 700},
+          {AccountType.income: 1000, AccountType.expense: 400},
+          {AccountType.income: 1000, AccountType.expense: 400},
+        ],
+        byDayResult: {
+          DateTime(2026, 1, 5): const {
+            AccountType.income: 2000,
+            AccountType.expense: 1000,
+          },
+          DateTime(2026, 1, 6): const {AccountType.expense: -300},
+        },
+        byAccountResult: const [
+          AccountAggregate(
+            accountId: 'dining',
+            parentAccountId: 'food',
+            accountType: AccountType.expense,
+            amountMinor: 700,
+          ),
+          AccountAggregate(
+            accountId: 'salary',
+            accountType: AccountType.income,
+            amountMinor: 2000,
+          ),
+        ],
+      );
+      final service = FinancialMetricsServiceImpl(aggregate);
+
+      final report =
+          await service
+              .watchCashflowReport(
+                CashflowReportQuery(
+                  month: MonthKey(year: 2026, month: 1),
+                  asOfDate: DateTime(2026, 1, 15),
+                ),
+              )
+              .first;
+
+      expect(report.comparison.current.income.minorUnits, 2000);
+      expect(report.comparison.current.expense.minorUnits, 700);
+      expect(report.comparison.previousSamePeriod.income.minorUnits, 1000);
+      expect(report.comparison.previousSamePeriod.expense.minorUnits, 400);
+      expect(
+        report.dailySummaries
+            .singleWhere((item) => item.date == DateTime(2026, 1, 6))
+            .expense
+            .minorUnits,
+        -300,
+      );
+      expect(
+        report.categories.singleWhere((item) => item.accountId == 'dining'),
+        const AccountMetric(
+          accountId: 'dining',
+          parentAccountId: 'food',
+          accountType: AccountType.expense,
+          amountMinor: 700,
+        ),
+      );
+    },
+  );
+
+  test('builds balance snapshots and trend from aggregate facts', () async {
+    final december = MonthKey(year: 2025, month: 12);
+    final january = MonthKey(year: 2026, month: 1);
+    final aggregate = _FakeLedgerMetricsSource(
+      accountTypeResults: const [
+        {AccountType.asset: 11000, AccountType.liability: 2000},
+        {AccountType.asset: 10000, AccountType.liability: 2000},
+        {},
+      ],
+      byAccountResult: const [
+        AccountAggregate(
+          accountId: 'cash',
+          accountType: AccountType.asset,
+          amountMinor: 11000,
+        ),
+        AccountAggregate(
+          accountId: 'card',
+          accountType: AccountType.liability,
+          amountMinor: 2000,
+        ),
+      ],
+      byMonthResult: {
+        december: const {AccountType.asset: 10000, AccountType.liability: 2000},
+        january: const {AccountType.asset: 1000},
+      },
+    );
+    final service = FinancialMetricsServiceImpl(aggregate);
+
+    final report =
+        await service
+            .watchBalanceReport(
+              BalanceReportQuery(
+                month: january,
+                asOfExclusive: DateTime(2026, 1, 16),
+                trendMonths: 2,
+              ),
+            )
+            .first;
+
+    expect(report.comparison.previous.netAssets.minorUnits, 8000);
+    expect(report.comparison.current.netAssets.minorUnits, 9000);
+    expect(report.trend.map((point) => point.netAssets.minorUnits), [
+      8000,
+      9000,
+    ]);
+    expect(report.accounts.map((item) => item.accountId), ['cash', 'card']);
+  });
+}
+
+class _FakeLedgerMetricsSource implements LedgerMetricsSource {
+  _FakeLedgerMetricsSource({
+    this.accountTypeResults = const [],
+    this.byDayResult = const {},
+    this.byAccountResult = const [],
+    this.byMonthResult = const {},
+  });
+
+  final List<Map<AccountType, int>> accountTypeResults;
+  final Map<DateTime, Map<AccountType, int>> byDayResult;
+  final List<AccountAggregate> byAccountResult;
+  final Map<MonthKey, Map<AccountType, int>> byMonthResult;
+  int _accountTypeIndex = 0;
+
+  @override
+  Future<List<AccountAggregate>> aggregateByAccount({
+    required Set<AccountType> accountTypes,
+    required TransactionScopeFilter scope,
+    DateTimeWindow window = const DateTimeWindow(),
+  }) async {
+    return byAccountResult;
+  }
+
+  @override
+  Future<Map<AccountType, int>> aggregateByAccountType({
+    required Set<AccountType> accountTypes,
+    required TransactionScopeFilter scope,
+    DateTimeWindow window = const DateTimeWindow(),
+  }) async {
+    return accountTypeResults[_accountTypeIndex++];
+  }
+
+  @override
+  Future<Map<DateTime, Map<AccountType, int>>> aggregateByAccountTypeByDay({
+    required Set<AccountType> accountTypes,
+    required TransactionScopeFilter scope,
+    DateTimeWindow window = const DateTimeWindow(),
+  }) async {
+    return byDayResult;
+  }
+
+  @override
+  Future<Map<MonthKey, Map<AccountType, int>>> aggregateByAccountTypeByMonth({
+    required Set<AccountType> accountTypes,
+    required TransactionScopeFilter scope,
+    required DateTimeWindow window,
+  }) async {
+    return byMonthResult;
+  }
+
+  @override
+  Stream<void> watchChanges() => Stream.value(null);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}

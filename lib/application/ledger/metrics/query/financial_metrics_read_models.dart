@@ -1,7 +1,61 @@
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/time/month_key.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 import '../../transaction/query/transaction_read_models.dart';
+
+class AccountMetric {
+  const AccountMetric({
+    required this.accountId,
+    required this.accountType,
+    required this.amountMinor,
+    this.parentAccountId,
+  });
+
+  final String accountId;
+  final String? parentAccountId;
+  final AccountType accountType;
+  final int amountMinor;
+
+  Money get amount => Money(minorUnits: amountMinor);
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountMetric &&
+        other.accountId == accountId &&
+        other.parentAccountId == parentAccountId &&
+        other.accountType == accountType &&
+        other.amountMinor == amountMinor;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(accountId, parentAccountId, accountType, amountMinor);
+}
+
+class CashflowReport {
+  const CashflowReport({
+    required this.comparison,
+    required this.dailySummaries,
+    required this.categories,
+  });
+
+  final CashflowComparison comparison;
+  final List<DailyCashflowSummary> dailySummaries;
+  final List<AccountMetric> categories;
+}
+
+class BalanceReport {
+  const BalanceReport({
+    required this.comparison,
+    required this.trend,
+    required this.accounts,
+  });
+
+  final BalanceSheetComparison comparison;
+  final List<NetAssetTrendPoint> trend;
+  final List<AccountMetric> accounts;
+}
 
 class DailyCashflowSummary {
   const DailyCashflowSummary({

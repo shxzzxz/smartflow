@@ -21,6 +21,9 @@ import '../feature/credit/page/installment_repayment_form_page.dart';
 import '../feature/credit/page/repayment_form_page.dart';
 import '../feature/credit/page/unattributed_repayment_form_page.dart';
 import '../feature/placeholder/page/placeholder_page.dart';
+import '../feature/statistics/page/statistics_page.dart';
+import '../feature/statistics/page/statistics_transactions_page.dart';
+import '../feature/statistics/view_model/statistics_view_model.dart';
 import '../feature/profile/page/installment_guide_page.dart';
 import '../feature/profile/page/profile_page.dart';
 import '../feature/profile/page/software_version_page.dart';
@@ -46,7 +49,29 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/statistics',
-          builder: (context, state) => const PlaceholderPage(title: '统计'),
+          builder: (context, state) => const StatisticsPage(),
+        ),
+        GoRoute(
+          path: '/statistics/transactions',
+          builder: (context, state) {
+            final query = state.uri.queryParameters;
+            final from = DateTime.tryParse(query['from'] ?? '');
+            final until = DateTime.tryParse(query['until'] ?? '');
+            final scope = switch (query['scope']) {
+              'balance' => StatisticsDrilldownScope.balance,
+              _ => StatisticsDrilldownScope.cashflow,
+            };
+            if (until == null) {
+              return const PlaceholderPage(title: '统计流水参数无效');
+            }
+            return StatisticsTransactionsPage(
+              title: query['title'] ?? '统计流水',
+              accountIdsKey: query['accountIds'] ?? '',
+              occurredFrom: from,
+              occurredUntil: until,
+              scope: scope,
+            );
+          },
         ),
         GoRoute(
           path: '/profile',

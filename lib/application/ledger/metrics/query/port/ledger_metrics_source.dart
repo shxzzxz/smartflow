@@ -1,4 +1,5 @@
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
+import 'package:smartflow/core/time/month_key.dart';
 
 import '../../../transaction/query/transaction_scope.dart';
 
@@ -9,11 +10,38 @@ class DateTimeWindow {
   final DateTime? until;
 }
 
-/// 余额累计聚合(entries × account × transaction)。
+class AccountAggregate {
+  const AccountAggregate({
+    required this.accountId,
+    required this.accountType,
+    required this.amountMinor,
+    this.parentAccountId,
+  });
+
+  final String accountId;
+  final String? parentAccountId;
+  final AccountType accountType;
+  final int amountMinor;
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountAggregate &&
+        other.accountId == accountId &&
+        other.parentAccountId == parentAccountId &&
+        other.accountType == accountType &&
+        other.amountMinor == amountMinor;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(accountId, parentAccountId, accountType, amountMinor);
+}
+
+/// 账务指标事实源(entries × account × transaction)。
 ///
 /// 此场景按 account_type 分桶累计,JOIN account 是该领域本分,不在「列表去 account」
 /// 的约束之内。
-abstract interface class BalanceAggregateRepository {
+abstract interface class LedgerMetricsSource {
   /// 按账户类型分桶累计 entries 的余额变化(应用 [TransactionScopeFilter] 口径)。
   Future<Map<AccountType, int>> aggregateByAccountType({
     required Set<AccountType> accountTypes,
@@ -21,12 +49,11 @@ abstract interface class BalanceAggregateRepository {
     DateTimeWindow window = const DateTimeWindow(),
   });
 
-  /// 多窗口批量版,N 个 cutoff 对应 N 个聚合结果。
-  /// 用于净资产趋势等「多时间点截止累计」的场景。
-  Future<List<Map<AccountType, int>>> aggregateByAccountTypeAtCutoffs({
+  /// 按实际分录账户累计余额变化，并返回当前分类父级身份。
+  Future<List<AccountAggregate>> aggregateByAccount({
     required Set<AccountType> accountTypes,
     required TransactionScopeFilter scope,
-    required List<DateTimeWindow> windows,
+    DateTimeWindow window = const DateTimeWindow(),
   });
 
   /// 按 `(occurred_at as date, account_type)` 双维分组累计。
@@ -38,6 +65,15 @@ abstract interface class BalanceAggregateRepository {
     required Set<AccountType> accountTypes,
     required TransactionScopeFilter scope,
     DateTimeWindow window = const DateTimeWindow(),
+  });
+
+  /// 单次扫描有界时间窗口，并按 `(本地月份, account_type)` 累计。
+  ///
+  /// [window] 必须同时包含 from 与 until；实现按本地月边界在 SQL 中分桶。
+  Future<Map<MonthKey, Map<AccountType, int>>> aggregateByAccountTypeByMonth({
+    required Set<AccountType> accountTypes,
+    required TransactionScopeFilter scope,
+    required DateTimeWindow window,
   });
 
   /// 监听底层数据变化(transaction / entries / account 任一表更新触发)。

@@ -60,19 +60,24 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
         (table) => table.occurredAt.isSmallerThanValue(query.occurredUntil!),
       );
     }
-    if (query.accountId != null) {
+    final accountIds =
+        query.accountIds ??
+        (query.accountId == null ? null : <String>{query.accountId!});
+    if (accountIds != null) {
       final subquery =
           _db.selectOnly(_db.entries, distinct: true)
             ..addColumns([_db.entries.transactionId])
-            ..where(_db.entries.accountId.equals(query.accountId!));
+            ..where(_db.entries.accountId.isIn(accountIds));
       select.where((table) => table.id.isInQuery(subquery));
     }
-    select
-      ..orderBy([
-        (table) => OrderingTerm.desc(table.occurredAt),
-        (table) => OrderingTerm.desc(table.id),
-      ])
-      ..limit(query.limit, offset: query.offset);
+    select.orderBy([
+      (table) => OrderingTerm.desc(table.occurredAt),
+      (table) => OrderingTerm.desc(table.id),
+    ]);
+    final limit = query.limit;
+    if (limit != null) {
+      select.limit(limit, offset: query.offset);
+    }
     return select.watch().map((rows) => rows.map(mapTransaction).toList());
   }
 

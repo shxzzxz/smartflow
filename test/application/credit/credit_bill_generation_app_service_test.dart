@@ -19,7 +19,7 @@ import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repos
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_account_query_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_account_repository.dart';
-import 'package:smartflow/infrastructure/ledger/repository/drift_balance_aggregate_repository.dart';
+import 'package:smartflow/infrastructure/ledger/repository/drift_ledger_metrics_source.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_entry_read_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_posting_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_system_account_resolver.dart';
@@ -759,7 +759,7 @@ class _Fixture {
         transactionRead: DriftTransactionReadRepository(database),
         entryRead: DriftEntryReadRepository(database),
         detailRead: DriftTransactionDetailReadRepository(database),
-        balanceAggregate: DriftBalanceAggregateRepository(database),
+        metricsSource: DriftLedgerMetricsSource(database),
       );
   late final CreditAccountAppService creditAccountAppService;
   late final TransactionPostingAppService postingAppService;

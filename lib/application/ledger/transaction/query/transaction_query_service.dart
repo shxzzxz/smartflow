@@ -4,7 +4,7 @@ import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/entity/transaction_detail_record.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
-import '../../metrics/query/port/balance_aggregate_repository.dart';
+import '../../metrics/query/port/ledger_metrics_source.dart';
 import 'port/entry_read_repository.dart';
 import 'port/transaction_detail_read_repository.dart';
 import 'port/transaction_read_repository.dart';
@@ -50,16 +50,16 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     required TransactionReadRepository transactionRead,
     required EntryReadRepository entryRead,
     required TransactionDetailReadRepository detailRead,
-    required BalanceAggregateRepository balanceAggregate,
+    required LedgerMetricsSource metricsSource,
   }) : _txRead = transactionRead,
        _entryRead = entryRead,
        _detailRead = detailRead,
-       _balanceAggregate = balanceAggregate;
+       _metricsSource = metricsSource;
 
   final TransactionReadRepository _txRead;
   final EntryReadRepository _entryRead;
   final TransactionDetailReadRepository _detailRead;
-  final BalanceAggregateRepository _balanceAggregate;
+  final LedgerMetricsSource _metricsSource;
 
   @override
   Stream<List<TransactionListReadModel>> watchTransactions(
@@ -206,7 +206,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   Future<CashflowSummary> _loadCashflowSummary(
     CashflowSummaryQuery query,
   ) async {
-    final result = await _balanceAggregate.aggregateByAccountType(
+    final result = await _metricsSource.aggregateByAccountType(
       accountTypes: const {AccountType.income, AccountType.expense},
       scope: TransactionScopeFilter.stats,
       window: DateTimeWindow(

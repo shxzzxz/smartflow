@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_port_api.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
-import 'package:smartflow/infrastructure/ledger/repository/drift_balance_aggregate_repository.dart';
+import 'package:smartflow/infrastructure/ledger/repository/drift_ledger_metrics_source.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 
 import '../../../helper/test_app_database.dart';
@@ -26,7 +26,7 @@ void main() {
             .first;
     expect(page, isEmpty);
 
-    final balances = await DriftBalanceAggregateRepository(
+    final balances = await DriftLedgerMetricsSource(
       database,
     ).aggregateByAccountType(
       accountTypes: const {AccountType.expense},
