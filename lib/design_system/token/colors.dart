@@ -43,4 +43,10 @@ abstract final class AppColors {
   static const categoryGenericExpense = Color(0xFFFF4D4F);
   static const categoryGenericIncome = Color(0xFF00B85C);
   static const categoryGenericNeutral = Color(0xFF8C8C8C);
+
+  static const chart1Dark = Color(0xFF8BD88F);
+  static const chart2Dark = Color(0xFFD2BFFF);
+  static const chart3Dark = Color(0xFFFFB4AB);
+  static const chart4Dark = Color(0xFFA9C7FF);
+  static const chart5Dark = Color(0xFFFFC266);
 }

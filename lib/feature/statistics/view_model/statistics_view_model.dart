@@ -13,6 +13,16 @@ part 'statistics_view_model.g.dart';
 
 enum StatisticsSection { cashflow, balance }
 
+enum StatisticsPeriodKind { month, year, custom }
+
+enum CashflowChartMetric { expense, income, net }
+
+enum StatisticsCategoryKind { expense, income }
+
+enum StatisticsCategoryLevel { primary, secondary }
+
+enum StatisticsValueMode { amount, percentage }
+
 enum StatisticsDrilldownScope { cashflow, balance }
 
 @riverpod
@@ -23,6 +33,13 @@ class StatisticsViewModel extends _$StatisticsViewModel {
     return StatisticsControlState(
       visibleMonth: DateTime(now.year, now.month),
       section: StatisticsSection.cashflow,
+      periodKind: StatisticsPeriodKind.month,
+      customFrom: DateTime(now.year, now.month),
+      customUntil: DateTime(now.year, now.month, now.day + 1),
+      chartMetric: CashflowChartMetric.expense,
+      categoryKind: StatisticsCategoryKind.expense,
+      categoryLevel: StatisticsCategoryLevel.primary,
+      valueMode: StatisticsValueMode.amount,
     );
   }
 
@@ -40,15 +57,101 @@ class StatisticsViewModel extends _$StatisticsViewModel {
   void selectSection(StatisticsSection section) {
     state = state.copyWith(section: section);
   }
+
+  void selectPeriodKind(StatisticsPeriodKind kind) {
+    state = state.copyWith(periodKind: kind);
+  }
+
+  void selectCustomRange(DateTime from, DateTime untilInclusive) {
+    state = state.copyWith(
+      periodKind: StatisticsPeriodKind.custom,
+      customFrom: DateTime(from.year, from.month, from.day),
+      customUntil: DateTime(
+        untilInclusive.year,
+        untilInclusive.month,
+        untilInclusive.day + 1,
+      ),
+    );
+  }
+
+  void selectChartMetric(CashflowChartMetric metric) =>
+      state = state.copyWith(chartMetric: metric);
+
+  void selectCategoryKind(StatisticsCategoryKind kind) =>
+      state = state.copyWith(categoryKind: kind);
+
+  void selectCategoryLevel(StatisticsCategoryLevel level) =>
+      state = state.copyWith(categoryLevel: level);
+
+  void selectValueMode(StatisticsValueMode mode) =>
+      state = state.copyWith(valueMode: mode);
 }
 
 @riverpod
 StatisticsPageState statisticsPage(Ref ref) {
   final control = ref.watch(statisticsViewModelProvider);
+  final now = ref.watch(currentDateTimeProvider);
+  final range = control.range(now);
   return StatisticsPageState(
     visibleMonth: control.visibleMonth,
     section: control.section,
-    content: ref.watch(statisticsContentProvider(control.visibleMonth)),
+    control: control,
+    periodLabel: control.periodLabel,
+    canAdvance: control.canAdvance(now),
+    lastSelectableDate: now,
+    content: ref.watch(
+      statisticsRangeContentProvider(
+        range.from,
+        range.until,
+        range.balancePointIntervalDays,
+      ),
+    ),
+  );
+}
+
+@riverpod
+Stream<StatisticsRangeReport> statisticsRangeReport(
+  Ref ref,
+  DateTime from,
+  DateTime until,
+  int balancePointIntervalDays,
+) {
+  return ref
+      .watch(financialMetricsServiceProvider)
+      .watchStatisticsRangeReport(
+        StatisticsRangeReportQuery(
+          from: from,
+          until: until,
+          balancePointIntervalDays: balancePointIntervalDays,
+        ),
+      );
+}
+
+@riverpod
+StatisticsContentState statisticsRangeContent(
+  Ref ref,
+  DateTime from,
+  DateTime until,
+  int balancePointIntervalDays,
+) {
+  final report = ref.watch(
+    statisticsRangeReportProvider(from, until, balancePointIntervalDays),
+  );
+  final accounts = ref.watch(accountsByIdProvider);
+  if (report case AsyncError(:final error)) {
+    return StatisticsContentState.error(message: '加载失败：$error');
+  }
+  if (accounts case AsyncError(:final error)) {
+    return StatisticsContentState.error(message: '加载失败：$error');
+  }
+  if (report.value == null || accounts.value == null) {
+    return const StatisticsContentState.loading();
+  }
+  return StatisticsContentState.loaded(
+    presentation: buildRangeStatisticsPresentation(
+      report: report.value!,
+      accountsById: accounts.value!,
+    ),
   );
 }
 
@@ -190,18 +293,101 @@ class StatisticsControlState {
   const StatisticsControlState({
     required this.visibleMonth,
     required this.section,
+    required this.periodKind,
+    required this.customFrom,
+    required this.customUntil,
+    required this.chartMetric,
+    required this.categoryKind,
+    required this.categoryLevel,
+    required this.valueMode,
   });
 
   final DateTime visibleMonth;
   final StatisticsSection section;
+  final StatisticsPeriodKind periodKind;
+  final DateTime customFrom;
+  final DateTime customUntil;
+  final CashflowChartMetric chartMetric;
+  final StatisticsCategoryKind categoryKind;
+  final StatisticsCategoryLevel categoryLevel;
+  final StatisticsValueMode valueMode;
+
+  String get periodLabel => switch (periodKind) {
+    StatisticsPeriodKind.month => '${visibleMonth.year}年${visibleMonth.month}月',
+    StatisticsPeriodKind.year => '${visibleMonth.year}年',
+    StatisticsPeriodKind.custom =>
+      '${customFrom.year}.${customFrom.month}.${customFrom.day} - '
+          '${customUntil.subtract(const Duration(days: 1)).year}.'
+          '${customUntil.subtract(const Duration(days: 1)).month}.'
+          '${customUntil.subtract(const Duration(days: 1)).day}',
+  };
+
+  bool canAdvance(DateTime now) => switch (periodKind) {
+    StatisticsPeriodKind.month =>
+      visibleMonth.year < now.year ||
+          (visibleMonth.year == now.year && visibleMonth.month < now.month),
+    StatisticsPeriodKind.year => visibleMonth.year < now.year,
+    StatisticsPeriodKind.custom => false,
+  };
+
+  StatisticsDateRange range(DateTime now) {
+    switch (periodKind) {
+      case StatisticsPeriodKind.month:
+        final start = DateTime(visibleMonth.year, visibleMonth.month);
+        final end = DateTime(visibleMonth.year, visibleMonth.month + 1);
+        return StatisticsDateRange(
+          from: start,
+          until: _validUntil(start, _capAtTomorrow(end, now)),
+          balancePointIntervalDays: 1,
+        );
+      case StatisticsPeriodKind.year:
+        final start = DateTime(visibleMonth.year);
+        final end = DateTime(visibleMonth.year + 1);
+        return StatisticsDateRange(
+          from: start,
+          until: _validUntil(start, _capAtTomorrow(end, now)),
+          balancePointIntervalDays: 7,
+        );
+      case StatisticsPeriodKind.custom:
+        return StatisticsDateRange(
+          from: customFrom,
+          until: customUntil,
+          balancePointIntervalDays:
+              customUntil.difference(customFrom).inDays > 90 ? 7 : 1,
+        );
+    }
+  }
+
+  static DateTime _capAtTomorrow(DateTime end, DateTime now) {
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    return end.isAfter(tomorrow) ? tomorrow : end;
+  }
+
+  static DateTime _validUntil(DateTime start, DateTime until) {
+    return until.isAfter(start) ? until : start.add(const Duration(days: 1));
+  }
 
   StatisticsControlState copyWith({
     DateTime? visibleMonth,
     StatisticsSection? section,
+    StatisticsPeriodKind? periodKind,
+    DateTime? customFrom,
+    DateTime? customUntil,
+    CashflowChartMetric? chartMetric,
+    StatisticsCategoryKind? categoryKind,
+    StatisticsCategoryLevel? categoryLevel,
+    StatisticsValueMode? valueMode,
   }) {
     return StatisticsControlState(
       visibleMonth: visibleMonth ?? this.visibleMonth,
       section: section ?? this.section,
+      periodKind: periodKind ?? this.periodKind,
+      customFrom: customFrom ?? this.customFrom,
+      customUntil: customUntil ?? this.customUntil,
+      chartMetric: chartMetric ?? this.chartMetric,
+      categoryKind: categoryKind ?? this.categoryKind,
+      categoryLevel: categoryLevel ?? this.categoryLevel,
+      valueMode: valueMode ?? this.valueMode,
     );
   }
 }
@@ -211,11 +397,31 @@ class StatisticsPageState {
     required this.visibleMonth,
     required this.section,
     required this.content,
+    required this.control,
+    required this.periodLabel,
+    required this.canAdvance,
+    required this.lastSelectableDate,
   });
 
   final DateTime visibleMonth;
   final StatisticsSection section;
   final StatisticsContentState content;
+  final StatisticsControlState control;
+  final String periodLabel;
+  final bool canAdvance;
+  final DateTime lastSelectableDate;
+}
+
+class StatisticsDateRange {
+  const StatisticsDateRange({
+    required this.from,
+    required this.until,
+    required this.balancePointIntervalDays,
+  });
+
+  final DateTime from;
+  final DateTime until;
+  final int balancePointIntervalDays;
 }
 
 sealed class StatisticsContentState {

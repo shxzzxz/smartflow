@@ -57,6 +57,31 @@ class BalanceReport {
   final List<AccountMetric> accounts;
 }
 
+class StatisticsRangeReport {
+  const StatisticsRangeReport({
+    required this.from,
+    required this.until,
+    required this.cashflow,
+    required this.dailySummaries,
+    required this.categories,
+    required this.balanceTrend,
+  });
+
+  final DateTime from;
+  final DateTime until;
+  final CashflowSummary cashflow;
+  final List<DailyCashflowSummary> dailySummaries;
+  final List<AccountMetric> categories;
+  final List<BalanceTrendPoint> balanceTrend;
+}
+
+class BalanceTrendPoint {
+  const BalanceTrendPoint({required this.date, required this.balance});
+
+  final DateTime date;
+  final Money balance;
+}
+
 class DailyCashflowSummary {
   const DailyCashflowSummary({
     required this.date,

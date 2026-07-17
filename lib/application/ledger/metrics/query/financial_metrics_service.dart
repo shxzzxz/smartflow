@@ -9,6 +9,10 @@ import 'financial_metrics_read_models.dart';
 import 'port/ledger_metrics_source.dart';
 
 abstract interface class FinancialMetricsService {
+  Stream<StatisticsRangeReport> watchStatisticsRangeReport(
+    StatisticsRangeReportQuery query,
+  );
+
   Stream<CashflowReport> watchCashflowReport(CashflowReportQuery query);
 
   Stream<BalanceReport> watchBalanceReport(BalanceReportQuery query);
@@ -42,6 +46,90 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
     AccountType.asset,
     AccountType.liability,
   };
+
+  @override
+  Stream<StatisticsRangeReport> watchStatisticsRangeReport(
+    StatisticsRangeReportQuery query,
+  ) {
+    return _aggregate.watchChanges().asyncMap((_) async {
+      final window = DateTimeWindow(from: query.from, until: query.until);
+      final results = await Future.wait([
+        _aggregate.aggregateByAccountType(
+          accountTypes: _cashflowTypes,
+          scope: TransactionScopeFilter.stats,
+          window: window,
+        ),
+        _loadDailyCashflowSummaries(window),
+        _aggregate.aggregateByAccount(
+          accountTypes: _cashflowTypes,
+          scope: TransactionScopeFilter.stats,
+          window: window,
+        ),
+        _loadBalanceTrend(query),
+      ]);
+      return StatisticsRangeReport(
+        from: query.from,
+        until: query.until,
+        cashflow: _toCashflowSummary(results[0] as Map<AccountType, int>),
+        dailySummaries: results[1] as List<DailyCashflowSummary>,
+        categories: _toAccountMetrics(results[2] as List<AccountAggregate>),
+        balanceTrend: results[3] as List<BalanceTrendPoint>,
+      );
+    });
+  }
+
+  Future<List<BalanceTrendPoint>> _loadBalanceTrend(
+    StatisticsRangeReportQuery query,
+  ) async {
+    final results = await Future.wait([
+      _aggregate.aggregateByAccountType(
+        accountTypes: _balanceTypes,
+        scope: TransactionScopeFilter.assetLiability,
+        window: DateTimeWindow(until: query.from),
+      ),
+      _aggregate.aggregateByAccountTypeByDay(
+        accountTypes: _balanceTypes,
+        scope: TransactionScopeFilter.assetLiability,
+        window: DateTimeWindow(from: query.from, until: query.until),
+      ),
+    ]);
+    final running = Map<AccountType, int>.from(
+      results[0] as Map<AccountType, int>,
+    );
+    final byDay = results[1] as Map<DateTime, Map<AccountType, int>>;
+    final points = <BalanceTrendPoint>[
+      BalanceTrendPoint(
+        date: query.from,
+        balance: Money(minorUnits: running[AccountType.asset] ?? 0),
+      ),
+    ];
+    var date = DateTime(query.from.year, query.from.month, query.from.day);
+    var index = 0;
+    while (date.isBefore(query.until)) {
+      final delta = byDay[date];
+      if (delta != null) {
+        for (final type in _balanceTypes) {
+          running.update(
+            type,
+            (value) => value + (delta[type] ?? 0),
+            ifAbsent: () => delta[type] ?? 0,
+          );
+        }
+      }
+      final isLast = !date.add(const Duration(days: 1)).isBefore(query.until);
+      if (index % query.balancePointIntervalDays == 0 || isLast) {
+        points.add(
+          BalanceTrendPoint(
+            date: date.add(const Duration(days: 1)),
+            balance: Money(minorUnits: running[AccountType.asset] ?? 0),
+          ),
+        );
+      }
+      date = date.add(const Duration(days: 1));
+      index++;
+    }
+    return points;
+  }
 
   @override
   Stream<CashflowReport> watchCashflowReport(CashflowReportQuery query) {
@@ -176,15 +264,33 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
       scope: TransactionScopeFilter.stats,
       window: window,
     );
-    final dates = byDay.keys.toList()..sort();
-    return [
-      for (final date in dates)
+    final from = window.from;
+    final until = window.until;
+    if (from == null || until == null) {
+      final dates = byDay.keys.toList()..sort();
+      return [
+        for (final date in dates)
+          DailyCashflowSummary(
+            date: date,
+            income: Money(minorUnits: byDay[date]![AccountType.income] ?? 0),
+            expense: Money(minorUnits: byDay[date]![AccountType.expense] ?? 0),
+          ),
+      ];
+    }
+    final result = <DailyCashflowSummary>[];
+    var date = DateTime(from.year, from.month, from.day);
+    while (date.isBefore(until)) {
+      final values = byDay[date] ?? const <AccountType, int>{};
+      result.add(
         DailyCashflowSummary(
           date: date,
-          income: Money(minorUnits: byDay[date]![AccountType.income] ?? 0),
-          expense: Money(minorUnits: byDay[date]![AccountType.expense] ?? 0),
+          income: Money(minorUnits: values[AccountType.income] ?? 0),
+          expense: Money(minorUnits: values[AccountType.expense] ?? 0),
         ),
-    ];
+      );
+      date = date.add(const Duration(days: 1));
+    }
+    return result;
   }
 
   Future<BalanceSheetComparison> _loadBalanceSheetComparison(

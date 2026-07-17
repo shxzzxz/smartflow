@@ -14,6 +14,19 @@ class CashflowReportQuery {
   final DateTime? asOfDate;
 }
 
+class StatisticsRangeReportQuery {
+  StatisticsRangeReportQuery({
+    required this.from,
+    required this.until,
+    this.balancePointIntervalDays = 1,
+  }) : assert(from.isBefore(until)),
+       assert(balancePointIntervalDays > 0);
+
+  final DateTime from;
+  final DateTime until;
+  final int balancePointIntervalDays;
+}
+
 class BalanceSheetComparisonQuery {
   const BalanceSheetComparisonQuery({required this.month, this.asOfExclusive});
 

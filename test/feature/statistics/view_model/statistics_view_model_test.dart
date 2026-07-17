@@ -9,6 +9,38 @@ import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/statistics/view_model/statistics_view_model.dart';
 
 void main() {
+  test('switches month, year and custom statistic ranges', () {
+    final container = ProviderContainer(
+      overrides: [
+        currentDateTimeProvider.overrideWithValue(DateTime(2026, 7, 18)),
+      ],
+    );
+    addTearDown(container.dispose);
+    final notifier = container.read(statisticsViewModelProvider.notifier);
+
+    notifier.pickMonth(DateTime(2026, 3));
+    expect(
+      container.read(statisticsViewModelProvider).range(DateTime(2026, 7, 18)),
+      isA<StatisticsDateRange>()
+          .having((range) => range.from, 'from', DateTime(2026, 3))
+          .having((range) => range.until, 'until', DateTime(2026, 4)),
+    );
+
+    notifier.selectPeriodKind(StatisticsPeriodKind.year);
+    final year = container
+        .read(statisticsViewModelProvider)
+        .range(DateTime(2026, 7, 18));
+    expect(year.from, DateTime(2026));
+    expect(year.until, DateTime(2026, 7, 19));
+
+    notifier.selectCustomRange(DateTime(2026, 2, 3), DateTime(2026, 2, 8));
+    final custom = container
+        .read(statisticsViewModelProvider)
+        .range(DateTime(2026, 7, 18));
+    expect(custom.from, DateTime(2026, 2, 3));
+    expect(custom.until, DateTime(2026, 2, 9));
+  });
+
   test('combines reports into a category-rollup page state', () async {
     final visibleMonth = DateTime(2026, 1);
     final container = ProviderContainer(

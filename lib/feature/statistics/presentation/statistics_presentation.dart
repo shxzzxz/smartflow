@@ -16,6 +16,7 @@ class StatisticsPresentation {
     required this.incomeChangeText,
     required this.expenseChangeText,
     required this.netAssetChangeText,
+    this.rangeBalanceTrend = const [],
   });
 
   final CashflowComparison cashflowComparison;
@@ -31,6 +32,66 @@ class StatisticsPresentation {
   final String incomeChangeText;
   final String expenseChangeText;
   final String netAssetChangeText;
+  final List<BalanceTrendPoint> rangeBalanceTrend;
+}
+
+StatisticsPresentation buildRangeStatisticsPresentation({
+  required StatisticsRangeReport report,
+  required Map<String, Account> accountsById,
+}) {
+  final categoryGroups = _buildCategoryGroups(report.categories, accountsById);
+  final firstBalance =
+      report.balanceTrend.isEmpty
+          ? const Money(minorUnits: 0)
+          : report.balanceTrend.first.balance;
+  final lastBalance =
+      report.balanceTrend.isEmpty
+          ? const Money(minorUnits: 0)
+          : report.balanceTrend.last.balance;
+  return StatisticsPresentation(
+    cashflowComparison: CashflowComparison(
+      current: report.cashflow,
+      previousSamePeriod: const CashflowSummary(
+        income: Money(minorUnits: 0),
+        expense: Money(minorUnits: 0),
+      ),
+      previousFullPeriod: const CashflowSummary(
+        income: Money(minorUnits: 0),
+        expense: Money(minorUnits: 0),
+      ),
+    ),
+    dailySummaries: report.dailySummaries,
+    incomeCategories:
+        categoryGroups
+            .where((item) => item.accountType == AccountType.income)
+            .toList(),
+    expenseCategories:
+        categoryGroups
+            .where((item) => item.accountType == AccountType.expense)
+            .toList(),
+    balanceComparison: BalanceSheetComparison(
+      current: BalanceSheetSnapshot(
+        assets: lastBalance,
+        liabilities: const Money(minorUnits: 0),
+      ),
+      previous: BalanceSheetSnapshot(
+        assets: firstBalance,
+        liabilities: const Money(minorUnits: 0),
+      ),
+    ),
+    netAssetTrend: const [],
+    balanceAccounts: const [],
+    cashflowFrom: report.from,
+    cashflowUntil: report.until,
+    balanceUntil: report.until,
+    incomeChangeText: '',
+    expenseChangeText: '',
+    netAssetChangeText: _changeText(
+      '区间变化',
+      PeriodChange(current: lastBalance, previous: firstBalance),
+    ),
+    rangeBalanceTrend: report.balanceTrend,
+  );
 }
 
 class StatisticsBreakdownItem {
@@ -67,6 +128,78 @@ class StatisticsBreakdownItem {
     );
   }
 }
+
+class StatisticsCashflowBucket {
+  const StatisticsCashflowBucket({
+    required this.date,
+    required this.incomeMinor,
+    required this.expenseMinor,
+  });
+
+  final DateTime date;
+  final int incomeMinor;
+  final int expenseMinor;
+  int get netMinor => incomeMinor - expenseMinor;
+  String get label => '${date.month}/${date.day}';
+}
+
+List<StatisticsCashflowBucket> buildStatisticsCashflowBuckets(
+  List<DailyCashflowSummary> items,
+) {
+  return [
+    for (final item in items)
+      StatisticsCashflowBucket(
+        date: item.date,
+        incomeMinor: item.income.minorUnits,
+        expenseMinor: item.expense.minorUnits,
+      ),
+  ];
+}
+
+List<StatisticsBreakdownItem> selectStatisticsCategoryItems(
+  List<StatisticsBreakdownItem> primary, {
+  required bool secondary,
+}) {
+  final result = <StatisticsBreakdownItem>[
+    ...(secondary ? primary.expand((item) => item.children) : primary),
+  ];
+  result.sort(_compareBreakdown);
+  return result;
+}
+
+double statisticsCategoryShare(
+  StatisticsBreakdownItem item,
+  List<StatisticsBreakdownItem> items,
+) {
+  final total = items.fold<int>(
+    0,
+    (sum, value) => sum + statisticsCategoryMagnitude(value),
+  );
+  return total == 0 ? 0 : statisticsCategoryMagnitude(item) / total;
+}
+
+int statisticsCategoryMagnitude(StatisticsBreakdownItem item) {
+  return item.amount.minorUnits < 0 ? 0 : item.amount.minorUnits;
+}
+
+String statisticsCategoryPercentageText(
+  StatisticsBreakdownItem item,
+  List<StatisticsBreakdownItem> items,
+) {
+  return '${(statisticsCategoryShare(item, items) * 100).toStringAsFixed(1)}%';
+}
+
+String statisticsCategoryValueText(
+  StatisticsBreakdownItem item,
+  List<StatisticsBreakdownItem> items, {
+  required bool percentage,
+}) {
+  return percentage
+      ? statisticsCategoryPercentageText(item, items)
+      : item.amount.abs().format();
+}
+
+String statisticsDateLabel(DateTime date) => '${date.month}/${date.day}';
 
 StatisticsPresentation buildStatisticsPresentation({
   required CashflowReport cashflow,
@@ -133,18 +266,16 @@ List<StatisticsBreakdownItem> _buildCategoryGroups(
     );
     group.amountMinor += metric.amountMinor;
     group.accountIds.add(metric.accountId);
-    if (metric.parentAccountId != null) {
-      group.children.add(
-        StatisticsBreakdownItem(
-          id: metric.accountId,
-          title: accountsById[metric.accountId]?.name ?? '已归档分类',
-          accountIds: {metric.accountId},
-          accountType: metric.accountType,
-          amount: metric.amount,
-          progress: 0,
-        ),
-      );
-    }
+    group.children.add(
+      StatisticsBreakdownItem(
+        id: metric.accountId,
+        title: accountsById[metric.accountId]?.name ?? '已归档分类',
+        accountIds: {metric.accountId},
+        accountType: metric.accountType,
+        amount: metric.amount,
+        progress: 0,
+      ),
+    );
   }
   final result = [
     for (final group in groups.values)

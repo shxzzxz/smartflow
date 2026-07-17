@@ -49,6 +49,7 @@ dependencies:
   remixicon: ^4.9.3
   lunar: 1.7.8
   uuid: ^4.5.3
+  fl_chart: ^1.2.0
 
 dev_dependencies:
   flutter_test:

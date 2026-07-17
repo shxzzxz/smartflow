@@ -15,6 +15,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     required this.asset,
     required this.liability,
     required this.equity,
+    required this.chart1,
+    required this.chart2,
+    required this.chart3,
+    required this.chart4,
+    required this.chart5,
   });
 
   factory AppThemeExtension.light() {
@@ -29,6 +34,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       asset: AppColors.income,
       liability: AppColors.expense,
       equity: AppColors.equity,
+      chart1: AppColors.categoryFood,
+      chart2: AppColors.categoryDining,
+      chart3: AppColors.categoryShopping,
+      chart4: AppColors.categoryTransport,
+      chart5: AppColors.categorySalary,
     );
   }
 
@@ -44,6 +54,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       asset: Color(0xFF8BD88F),
       liability: Color(0xFFFFB68A),
       equity: Color(0xFFD2BFFF),
+      chart1: AppColors.chart1Dark,
+      chart2: AppColors.chart2Dark,
+      chart3: AppColors.chart3Dark,
+      chart4: AppColors.chart4Dark,
+      chart5: AppColors.chart5Dark,
     );
   }
 
@@ -57,6 +72,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   final Color asset;
   final Color liability;
   final Color equity;
+  final Color chart1;
+  final Color chart2;
+  final Color chart3;
+  final Color chart4;
+  final Color chart5;
 
   @override
   AppThemeExtension copyWith({
@@ -70,6 +90,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     Color? asset,
     Color? liability,
     Color? equity,
+    Color? chart1,
+    Color? chart2,
+    Color? chart3,
+    Color? chart4,
+    Color? chart5,
   }) {
     return AppThemeExtension(
       success: success ?? this.success,
@@ -82,6 +107,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       asset: asset ?? this.asset,
       liability: liability ?? this.liability,
       equity: equity ?? this.equity,
+      chart1: chart1 ?? this.chart1,
+      chart2: chart2 ?? this.chart2,
+      chart3: chart3 ?? this.chart3,
+      chart4: chart4 ?? this.chart4,
+      chart5: chart5 ?? this.chart5,
     );
   }
 
@@ -105,6 +135,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       asset: Color.lerp(asset, other.asset, t)!,
       liability: Color.lerp(liability, other.liability, t)!,
       equity: Color.lerp(equity, other.equity, t)!,
+      chart1: Color.lerp(chart1, other.chart1, t)!,
+      chart2: Color.lerp(chart2, other.chart2, t)!,
+      chart3: Color.lerp(chart3, other.chart3, t)!,
+      chart4: Color.lerp(chart4, other.chart4, t)!,
+      chart5: Color.lerp(chart5, other.chart5, t)!,
     );
   }
 }

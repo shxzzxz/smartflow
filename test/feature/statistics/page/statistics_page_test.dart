@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
@@ -10,13 +11,23 @@ import 'package:smartflow/feature/statistics/presentation/statistics_presentatio
 import 'package:smartflow/feature/statistics/view_model/statistics_view_model.dart';
 
 void main() {
-  testWidgets('switches between cashflow and balance reports', (tester) async {
+  testWidgets('shows market-level charts and switches analysis dimensions', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final month = DateTime(2026, 1);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           currentDateTimeProvider.overrideWithValue(DateTime(2026, 1, 15)),
-          statisticsContentProvider(month).overrideWith(
+          statisticsRangeContentProvider(
+            month,
+            DateTime(2026, 1, 16),
+            1,
+          ).overrideWith(
             (ref) =>
                 StatisticsContentState.loaded(presentation: _presentation()),
           ),
@@ -29,21 +40,44 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('收支趋势'), findsOneWidget);
+    expect(find.text('月'), findsOneWidget);
+    expect(find.text('年'), findsOneWidget);
+    expect(find.text('自定义'), findsOneWidget);
+    expect(find.text('收支统计'), findsOneWidget);
+    expect(find.byType(BarChart), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('支出分类'),
+      find.text('分类占比'),
       200,
       scrollable: find.byType(Scrollable).last,
     );
-    expect(find.text('支出分类'), findsOneWidget);
-    expect(find.text('结余'), findsOneWidget);
+    expect(find.byType(PieChart), findsOneWidget);
+    expect(find.text('一级'), findsOneWidget);
+    expect(find.text('二级'), findsOneWidget);
+    expect(find.text('金额'), findsOneWidget);
+    expect(find.text('占比'), findsOneWidget);
 
-    await tester.tap(find.text('资产').first);
+    final categoryKindControl = find.byType(
+      SegmentedButton<StatisticsCategoryKind>,
+    );
+    await tester.scrollUntilVisible(
+      categoryKindControl,
+      100,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(
+      find.descendant(of: categoryKindControl, matching: find.text('收入')),
+    );
     await tester.pump();
+    expect(find.text('工资'), findsOneWidget);
 
-    expect(find.text('净资产趋势'), findsOneWidget);
-    expect(find.text('账户分布'), findsOneWidget);
-    expect(find.text('净资产'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('工资'),
+      100,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('工资'));
+    await tester.pumpAndSettle();
+    expect(find.byType(PieChart), findsOneWidget);
   });
 }
 
@@ -117,5 +151,15 @@ StatisticsPresentation _presentation() {
     incomeChangeText: '较上月同期 +10.00',
     expenseChangeText: '较上月同期 +3.00',
     netAssetChangeText: '较上月 +10.00',
+    rangeBalanceTrend: [
+      BalanceTrendPoint(
+        date: DateTime(2026, 1),
+        balance: const Money(minorUnits: 8000),
+      ),
+      BalanceTrendPoint(
+        date: DateTime(2026, 1, 15),
+        balance: const Money(minorUnits: 9000),
+      ),
+    ],
   );
 }
