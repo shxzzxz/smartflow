@@ -339,7 +339,8 @@ class _CategoryAnalysis extends ConsumerWidget {
         control.categoryKind == StatisticsCategoryKind.expense;
     return StatisticsSectionCard(
       title: showingExpense ? '支出数据' : '收入数据',
-      trailing: IconButton(
+      titleMaxLines: 1,
+      titleTrailing: IconButton(
         tooltip: showingExpense ? '切换为收入数据' : '切换为支出数据',
         onPressed:
             () => notifier.selectCategoryKind(
@@ -355,49 +356,38 @@ class _CategoryAnalysis extends ConsumerWidget {
           height: AppSpacing.space32,
         ),
       ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppSegmentedControl<StatisticsCategoryLevel>(
+            segments: const [
+              AppSegment(value: StatisticsCategoryLevel.primary, label: '主分类'),
+              AppSegment(
+                value: StatisticsCategoryLevel.secondary,
+                label: '子分类',
+              ),
+            ],
+            selected: control.categoryLevel,
+            onChanged: notifier.selectCategoryLevel,
+            size: AppSegmentedControlSize.small,
+          ),
+          const SizedBox(width: AppSpacing.space6),
+          AppSegmentedControl<StatisticsValueMode>(
+            segments: const [
+              AppSegment(value: StatisticsValueMode.amount, label: '金额'),
+              AppSegment(value: StatisticsValueMode.percentage, label: '占比'),
+            ],
+            selected: control.valueMode,
+            onChanged: notifier.selectValueMode,
+            size: AppSegmentedControlSize.small,
+          ),
+        ],
+      ),
       child:
           items.isEmpty
               ? const StatisticsEmptyState(message: '区间内暂无分类数据')
               : Column(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AppSegmentedControl<StatisticsCategoryLevel>(
-                          segments: const [
-                            AppSegment(
-                              value: StatisticsCategoryLevel.primary,
-                              label: '主分类',
-                            ),
-                            AppSegment(
-                              value: StatisticsCategoryLevel.secondary,
-                              label: '子分类',
-                            ),
-                          ],
-                          selected: control.categoryLevel,
-                          onChanged: notifier.selectCategoryLevel,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.space8),
-                      Expanded(
-                        child: AppSegmentedControl<StatisticsValueMode>(
-                          segments: const [
-                            AppSegment(
-                              value: StatisticsValueMode.amount,
-                              label: '金额',
-                            ),
-                            AppSegment(
-                              value: StatisticsValueMode.percentage,
-                              label: '占比',
-                            ),
-                          ],
-                          selected: control.valueMode,
-                          onChanged: notifier.selectValueMode,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.space8),
                   StatisticsDonutChart(
                     items: items,
                     centerLabel:

@@ -11,21 +11,26 @@ class AppSegment<T> {
   final String label;
 }
 
+enum AppSegmentedControlSize { medium, small }
+
 class AppSegmentedControl<T> extends StatelessWidget {
   const AppSegmentedControl({
     required this.segments,
     required this.selected,
     required this.onChanged,
     super.key,
+    this.size = AppSegmentedControlSize.medium,
   });
 
   final List<AppSegment<T>> segments;
   final T selected;
   final ValueChanged<T> onChanged;
+  final AppSegmentedControlSize size;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final compact = size == AppSegmentedControlSize.small;
     return SegmentedButton<T>(
       segments: [
         for (final segment in segments)
@@ -37,11 +42,16 @@ class AppSegmentedControl<T> extends StatelessWidget {
       style: ButtonStyle(
         visualDensity: VisualDensity.compact,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        minimumSize: const WidgetStatePropertyAll(
-          Size(AppSpacing.space48, AppSpacing.space32),
+        minimumSize: WidgetStatePropertyAll(
+          Size(
+            compact ? AppSpacing.space40 : AppSpacing.space48,
+            compact ? AppSpacing.space28 : AppSpacing.space32,
+          ),
         ),
-        padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(horizontal: AppSpacing.space10),
+        padding: WidgetStatePropertyAll(
+          EdgeInsets.symmetric(
+            horizontal: compact ? AppSpacing.space6 : AppSpacing.space10,
+          ),
         ),
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(

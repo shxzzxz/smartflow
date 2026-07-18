@@ -13,12 +13,16 @@ class StatisticsSectionCard extends StatelessWidget {
     required this.child,
     super.key,
     this.subtitle,
+    this.titleMaxLines,
+    this.titleTrailing,
     this.trailing,
     this.emphasis = StatisticsSectionEmphasis.secondary,
   });
 
   final String title;
   final String? subtitle;
+  final int? titleMaxLines;
+  final Widget? titleTrailing;
   final Widget? trailing;
   final Widget child;
   final StatisticsSectionEmphasis emphasis;
@@ -40,12 +44,30 @@ class StatisticsSectionCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style:
-                            emphasis == StatisticsSectionEmphasis.primary
-                                ? context.appTextStyles.sectionTitleStrong
-                                : context.appTextStyles.subsectionTitleStrong,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              title,
+                              maxLines: titleMaxLines,
+                              overflow:
+                                  titleMaxLines == null
+                                      ? TextOverflow.clip
+                                      : TextOverflow.ellipsis,
+                              style:
+                                  emphasis == StatisticsSectionEmphasis.primary
+                                      ? context.appTextStyles.sectionTitleStrong
+                                      : context
+                                          .appTextStyles
+                                          .subsectionTitleStrong,
+                            ),
+                          ),
+                          if (titleTrailing != null) ...[
+                            const SizedBox(width: AppSpacing.space4),
+                            titleTrailing!,
+                          ],
+                        ],
                       ),
                       if (subtitle != null) ...[
                         const SizedBox(height: AppSpacing.space4),

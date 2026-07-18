@@ -61,6 +61,45 @@ void main() {
     expect(find.byType(BarChart), findsNothing);
   });
 
+  testWidgets('keeps category controls in one row on a compact phone', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpStatisticsPage(tester);
+    await tester.scrollUntilVisible(
+      find.text('支出数据'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+
+    final headerY = tester.getCenter(find.text('支出数据')).dy;
+    final categoryLevelY = tester.getCenter(find.text('主分类')).dy;
+    final valueModeY = tester.getCenter(find.text('金额')).dy;
+    expect((headerY - categoryLevelY).abs(), lessThan(8));
+    expect((headerY - valueModeY).abs(), lessThan(8));
+
+    final titleRect = tester.getRect(find.text('支出数据'));
+    final switchRect = tester.getRect(find.byTooltip('切换为收入数据'));
+    final categoryControlRect = tester.getRect(
+      find.byType(SegmentedButton<StatisticsCategoryLevel>),
+    );
+    final valueModeControlRect = tester.getRect(
+      find.byType(SegmentedButton<StatisticsValueMode>),
+    );
+    expect(titleRect.right, lessThanOrEqualTo(switchRect.left));
+    expect(switchRect.right, lessThanOrEqualTo(categoryControlRect.left));
+    expect(
+      categoryControlRect.right,
+      lessThanOrEqualTo(valueModeControlRect.left),
+    );
+    expect(valueModeControlRect.right, lessThanOrEqualTo(360));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('uses the app-styled custom date range picker', (tester) async {
     tester.view.physicalSize = const Size(360, 800);
     tester.view.devicePixelRatio = 1;
