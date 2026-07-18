@@ -4,6 +4,30 @@ import 'package:smartflow/application/ledger/ledger_query_port_api.dart';
 import 'package:smartflow/core/time/month_key.dart';
 
 void main() {
+  test('returns only dates that contain daily cashflow facts', () async {
+    final aggregate = _FakeLedgerMetricsSource(
+      accountTypeResults: const [],
+      byDayResult: {
+        DateTime(2026, 1, 2): const {
+          AccountType.income: 3000,
+          AccountType.expense: 1200,
+        },
+      },
+    );
+    final service = FinancialMetricsServiceImpl(aggregate);
+
+    final summaries =
+        await service
+            .watchDailyCashflowSummaries(
+              DailyCashflowSummaryQuery(month: MonthKey(year: 2026, month: 1)),
+            )
+            .first;
+
+    expect(summaries.map((item) => item.date), [DateTime(2026, 1, 2)]);
+    expect(summaries.single.income.minorUnits, 3000);
+    expect(summaries.single.expense.minorUnits, 1200);
+  });
+
   test(
     'builds cashflow and daily net-asset points for an arbitrary range',
     () async {
@@ -46,9 +70,7 @@ void main() {
 
       expect(report.cashflow.net.minorUnits, 1800);
       expect(report.dailySummaries.map((item) => item.date), [
-        DateTime(2026, 1, 1),
         DateTime(2026, 1, 2),
-        DateTime(2026, 1, 3),
       ]);
       expect(report.categories.single.accountId, 'food');
       expect(report.balanceTrend.map((point) => point.balance.minorUnits), [

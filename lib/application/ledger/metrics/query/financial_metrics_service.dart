@@ -264,33 +264,15 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
       scope: TransactionScopeFilter.stats,
       window: window,
     );
-    final from = window.from;
-    final until = window.until;
-    if (from == null || until == null) {
-      final dates = byDay.keys.toList()..sort();
-      return [
-        for (final date in dates)
-          DailyCashflowSummary(
-            date: date,
-            income: Money(minorUnits: byDay[date]![AccountType.income] ?? 0),
-            expense: Money(minorUnits: byDay[date]![AccountType.expense] ?? 0),
-          ),
-      ];
-    }
-    final result = <DailyCashflowSummary>[];
-    var date = DateTime(from.year, from.month, from.day);
-    while (date.isBefore(until)) {
-      final values = byDay[date] ?? const <AccountType, int>{};
-      result.add(
+    final dates = byDay.keys.toList()..sort();
+    return [
+      for (final date in dates)
         DailyCashflowSummary(
           date: date,
-          income: Money(minorUnits: values[AccountType.income] ?? 0),
-          expense: Money(minorUnits: values[AccountType.expense] ?? 0),
+          income: Money(minorUnits: byDay[date]![AccountType.income] ?? 0),
+          expense: Money(minorUnits: byDay[date]![AccountType.expense] ?? 0),
         ),
-      );
-      date = date.add(const Duration(days: 1));
-    }
-    return result;
+    ];
   }
 
   Future<BalanceSheetComparison> _loadBalanceSheetComparison(

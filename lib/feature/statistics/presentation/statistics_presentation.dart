@@ -60,7 +60,11 @@ StatisticsPresentation buildRangeStatisticsPresentation({
         expense: Money(minorUnits: 0),
       ),
     ),
-    dailySummaries: report.dailySummaries,
+    dailySummaries: _fillDailyCashflowDates(
+      report.dailySummaries,
+      from: report.from,
+      until: report.until,
+    ),
     incomeCategories:
         categoryGroups
             .where((item) => item.accountType == AccountType.income)
@@ -156,6 +160,31 @@ List<StatisticsCashflowBucket> buildStatisticsCashflowBuckets(
   ];
 }
 
+List<DailyCashflowSummary> _fillDailyCashflowDates(
+  List<DailyCashflowSummary> items, {
+  required DateTime from,
+  required DateTime until,
+}) {
+  final byDate = {
+    for (final item in items)
+      DateTime(item.date.year, item.date.month, item.date.day): item,
+  };
+  final result = <DailyCashflowSummary>[];
+  var date = DateTime(from.year, from.month, from.day);
+  while (date.isBefore(until)) {
+    result.add(
+      byDate[date] ??
+          DailyCashflowSummary(
+            date: date,
+            income: const Money(minorUnits: 0),
+            expense: const Money(minorUnits: 0),
+          ),
+    );
+    date = DateTime(date.year, date.month, date.day + 1);
+  }
+  return result;
+}
+
 List<StatisticsBreakdownItem> selectStatisticsCategoryItems(
   List<StatisticsBreakdownItem> primary, {
   required bool secondary,
@@ -227,7 +256,11 @@ StatisticsPresentation buildStatisticsPresentation({
   final normalizedBalanceAccounts = _withProgress(balanceAccounts);
   return StatisticsPresentation(
     cashflowComparison: cashflow.comparison,
-    dailySummaries: cashflow.dailySummaries,
+    dailySummaries: _fillDailyCashflowDates(
+      cashflow.dailySummaries,
+      from: cashflowFrom,
+      until: cashflowUntil,
+    ),
     incomeCategories:
         categoryGroups
             .where((item) => item.accountType == AccountType.income)

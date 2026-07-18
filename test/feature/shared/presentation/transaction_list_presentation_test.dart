@@ -35,6 +35,27 @@ void main() {
       expect(groups.last.expenseMinor, 100);
     });
 
+    test('does not create transaction groups from daily summaries alone', () {
+      final groups = groupTransactionsByDay(
+        items: const [],
+        accountLookup: AccountLookup(_accounts),
+        dailySummaries: [
+          DailyCashflowSummary(
+            date: DateTime(2026, 1, 1),
+            income: const Money(minorUnits: 0),
+            expense: const Money(minorUnits: 0),
+          ),
+          DailyCashflowSummary(
+            date: DateTime(2026, 1, 2),
+            income: const Money(minorUnits: 300),
+            expense: const Money(minorUnits: 100),
+          ),
+        ],
+      );
+
+      expect(groups, isEmpty);
+    });
+
     test('groups controlled row presentations by descending date', () {
       final jan1 = DateTime(2026, 1, 1, 8);
       final jan2 = DateTime(2026, 1, 2, 9);

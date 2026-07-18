@@ -119,9 +119,7 @@ List<TransactionDayGroup> groupTransactionsByDay({
   }
 
   final totalsByDate = _dailySummariesByDate(dailySummaries);
-  final dates =
-      {...groups.keys, ...totalsByDate.keys}.toList()
-        ..sort((a, b) => b.compareTo(a));
+  final dates = groups.keys.toList()..sort((a, b) => b.compareTo(a));
   return [
     for (final date in dates)
       TransactionDayGroup(

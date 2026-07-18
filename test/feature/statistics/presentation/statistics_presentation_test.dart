@@ -4,6 +4,91 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/statistics/presentation/statistics_presentation.dart';
 
 void main() {
+  test('fills missing cashflow dates for a statistics range', () {
+    final presentation = buildRangeStatisticsPresentation(
+      report: StatisticsRangeReport(
+        from: DateTime(2026, 1, 1),
+        until: DateTime(2026, 1, 4),
+        cashflow: const CashflowSummary(
+          income: Money(minorUnits: 2000),
+          expense: Money(minorUnits: 700),
+        ),
+        dailySummaries: [
+          DailyCashflowSummary(
+            date: DateTime(2026, 1, 2),
+            income: const Money(minorUnits: 2000),
+            expense: const Money(minorUnits: 700),
+          ),
+        ],
+        categories: const [],
+        balanceTrend: const [],
+      ),
+      accountsById: const {},
+    );
+
+    expect(presentation.dailySummaries.map((item) => item.date), [
+      DateTime(2026, 1, 1),
+      DateTime(2026, 1, 2),
+      DateTime(2026, 1, 3),
+    ]);
+    expect(presentation.dailySummaries.first.net.minorUnits, 0);
+    expect(presentation.dailySummaries[1].net.minorUnits, 1300);
+    expect(presentation.dailySummaries.last.net.minorUnits, 0);
+  });
+
+  test('fills missing cashflow dates for monthly statistics', () {
+    final presentation = buildStatisticsPresentation(
+      cashflow: CashflowReport(
+        comparison: const CashflowComparison(
+          current: CashflowSummary(
+            income: Money(minorUnits: 2000),
+            expense: Money(minorUnits: 700),
+          ),
+          previousSamePeriod: CashflowSummary(
+            income: Money(minorUnits: 0),
+            expense: Money(minorUnits: 0),
+          ),
+          previousFullPeriod: CashflowSummary(
+            income: Money(minorUnits: 0),
+            expense: Money(minorUnits: 0),
+          ),
+        ),
+        dailySummaries: [
+          DailyCashflowSummary(
+            date: DateTime(2026, 1, 2),
+            income: const Money(minorUnits: 2000),
+            expense: const Money(minorUnits: 700),
+          ),
+        ],
+        categories: const [],
+      ),
+      balance: const BalanceReport(
+        comparison: BalanceSheetComparison(
+          current: BalanceSheetSnapshot(
+            assets: Money(minorUnits: 0),
+            liabilities: Money(minorUnits: 0),
+          ),
+          previous: BalanceSheetSnapshot(
+            assets: Money(minorUnits: 0),
+            liabilities: Money(minorUnits: 0),
+          ),
+        ),
+        trend: [],
+        accounts: [],
+      ),
+      accountsById: const {},
+      cashflowFrom: DateTime(2026, 1, 1),
+      cashflowUntil: DateTime(2026, 1, 4),
+      balanceUntil: DateTime(2026, 1, 4),
+    );
+
+    expect(presentation.dailySummaries.map((item) => item.date), [
+      DateTime(2026, 1, 1),
+      DateTime(2026, 1, 2),
+      DateTime(2026, 1, 3),
+    ]);
+  });
+
   test('keeps zero-value dates in daily cashflow chart buckets', () {
     final buckets = buildStatisticsCashflowBuckets([
       DailyCashflowSummary(
