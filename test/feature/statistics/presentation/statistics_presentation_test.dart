@@ -108,6 +108,55 @@ void main() {
     expect(buckets.last.netMinor, 1300);
   });
 
+  test('groups daily cashflow into calendar months for year charts', () {
+    final buckets = buildStatisticsCashflowBuckets([
+      DailyCashflowSummary(
+        date: DateTime(2026, 1, 1),
+        income: const Money(minorUnits: 1000),
+        expense: const Money(minorUnits: 200),
+      ),
+      DailyCashflowSummary(
+        date: DateTime(2026, 1, 31),
+        income: const Money(minorUnits: 500),
+        expense: const Money(minorUnits: 300),
+      ),
+      DailyCashflowSummary(
+        date: DateTime(2026, 2, 1),
+        income: const Money(minorUnits: 800),
+        expense: const Money(minorUnits: 100),
+      ),
+    ], grouping: StatisticsCashflowGrouping.month);
+
+    expect(buckets.map((item) => item.label), ['1月', '2月']);
+    expect(buckets.first.incomeMinor, 1500);
+    expect(buckets.first.expenseMinor, 500);
+    expect(buckets.last.netMinor, 700);
+  });
+
+  test('groups custom-range cashflow into seven-day buckets', () {
+    final buckets = buildStatisticsCashflowBuckets([
+      DailyCashflowSummary(
+        date: DateTime(2026, 1, 1),
+        income: const Money(minorUnits: 1000),
+        expense: const Money(minorUnits: 0),
+      ),
+      DailyCashflowSummary(
+        date: DateTime(2026, 1, 7),
+        income: const Money(minorUnits: 0),
+        expense: const Money(minorUnits: 300),
+      ),
+      DailyCashflowSummary(
+        date: DateTime(2026, 1, 8),
+        income: const Money(minorUnits: 200),
+        expense: const Money(minorUnits: 50),
+      ),
+    ], grouping: StatisticsCashflowGrouping.week);
+
+    expect(buckets.map((item) => item.label), ['1/1–1/7', '1/8–1/14']);
+    expect(buckets.first.netMinor, 700);
+    expect(buckets.last.netMinor, 150);
+  });
+
   test('selects secondary categories and calculates their share', () {
     const food = StatisticsBreakdownItem(
       id: 'food',

@@ -6,6 +6,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
+import 'package:smartflow/feature/statistics/presentation/statistics_presentation.dart';
 import 'package:smartflow/feature/statistics/view_model/statistics_view_model.dart';
 
 void main() {
@@ -39,6 +40,34 @@ void main() {
         .range(DateTime(2026, 7, 18));
     expect(custom.from, DateTime(2026, 2, 3));
     expect(custom.until, DateTime(2026, 2, 9));
+  });
+
+  test('chooses readable cashflow grouping for each period kind', () {
+    final month = _control(
+      periodKind: StatisticsPeriodKind.month,
+      customFrom: DateTime(2026, 1),
+      customUntil: DateTime(2026, 2),
+    );
+    final year = _control(
+      periodKind: StatisticsPeriodKind.year,
+      customFrom: DateTime(2026, 1),
+      customUntil: DateTime(2027, 1),
+    );
+    final mediumCustom = _control(
+      periodKind: StatisticsPeriodKind.custom,
+      customFrom: DateTime(2026, 1, 1),
+      customUntil: DateTime(2026, 3, 2),
+    );
+    final longCustom = _control(
+      periodKind: StatisticsPeriodKind.custom,
+      customFrom: DateTime(2026, 1, 1),
+      customUntil: DateTime(2026, 8, 1),
+    );
+
+    expect(month.cashflowGrouping, StatisticsCashflowGrouping.day);
+    expect(year.cashflowGrouping, StatisticsCashflowGrouping.month);
+    expect(mediumCustom.cashflowGrouping, StatisticsCashflowGrouping.week);
+    expect(longCustom.cashflowGrouping, StatisticsCashflowGrouping.month);
   });
 
   test('combines reports into a category-rollup page state', () async {
@@ -143,6 +172,24 @@ void main() {
     expect(balance.scope, same(TransactionScopeFilter.assetLiability));
     expect(balance.limit, isNull);
   });
+}
+
+StatisticsControlState _control({
+  required StatisticsPeriodKind periodKind,
+  required DateTime customFrom,
+  required DateTime customUntil,
+}) {
+  return StatisticsControlState(
+    visibleMonth: DateTime(2026, 1),
+    section: StatisticsSection.cashflow,
+    periodKind: periodKind,
+    customFrom: customFrom,
+    customUntil: customUntil,
+    chartMetric: CashflowChartMetric.expense,
+    categoryKind: StatisticsCategoryKind.expense,
+    categoryLevel: StatisticsCategoryLevel.primary,
+    valueMode: StatisticsValueMode.amount,
+  );
 }
 
 Account _account(String id, String name, AccountType type, {String? parentId}) {

@@ -133,29 +133,66 @@ class StatisticsBreakdownItem {
   }
 }
 
+enum StatisticsCashflowGrouping { day, week, month }
+
 class StatisticsCashflowBucket {
   const StatisticsCashflowBucket({
     required this.date,
+    required this.label,
     required this.incomeMinor,
     required this.expenseMinor,
   });
 
   final DateTime date;
+  final String label;
   final int incomeMinor;
   final int expenseMinor;
   int get netMinor => incomeMinor - expenseMinor;
-  String get label => '${date.month}/${date.day}';
 }
 
 List<StatisticsCashflowBucket> buildStatisticsCashflowBuckets(
-  List<DailyCashflowSummary> items,
-) {
+  List<DailyCashflowSummary> items, {
+  StatisticsCashflowGrouping grouping = StatisticsCashflowGrouping.day,
+}) {
+  if (items.isEmpty) {
+    return const [];
+  }
+  final sorted = [...items]
+    ..sort((left, right) => left.date.compareTo(right.date));
+  final anchor = DateTime(
+    sorted.first.date.year,
+    sorted.first.date.month,
+    sorted.first.date.day,
+  );
+  final buckets = <DateTime, _CashflowBucketAccumulator>{};
+  for (final item in sorted) {
+    final date = DateTime(item.date.year, item.date.month, item.date.day);
+    final bucketStart = switch (grouping) {
+      StatisticsCashflowGrouping.day => date,
+      StatisticsCashflowGrouping.week => anchor.add(
+        Duration(days: date.difference(anchor).inDays ~/ 7 * 7),
+      ),
+      StatisticsCashflowGrouping.month => DateTime(date.year, date.month),
+    };
+    final bucket = buckets.putIfAbsent(
+      bucketStart,
+      () => _CashflowBucketAccumulator(date: bucketStart),
+    );
+    bucket.incomeMinor += item.income.minorUnits;
+    bucket.expenseMinor += item.expense.minorUnits;
+  }
   return [
-    for (final item in items)
+    for (final bucket in buckets.values)
       StatisticsCashflowBucket(
-        date: item.date,
-        incomeMinor: item.income.minorUnits,
-        expenseMinor: item.expense.minorUnits,
+        date: bucket.date,
+        label: switch (grouping) {
+          StatisticsCashflowGrouping.day =>
+            '${bucket.date.month}/${bucket.date.day}',
+          StatisticsCashflowGrouping.week => _weekLabel(bucket.date),
+          StatisticsCashflowGrouping.month => '${bucket.date.month}月',
+        },
+        incomeMinor: bucket.incomeMinor,
+        expenseMinor: bucket.expenseMinor,
       ),
   ];
 }
@@ -183,6 +220,19 @@ List<DailyCashflowSummary> _fillDailyCashflowDates(
     date = DateTime(date.year, date.month, date.day + 1);
   }
   return result;
+}
+
+String _weekLabel(DateTime start) {
+  final end = start.add(const Duration(days: 6));
+  return '${start.month}/${start.day}–${end.month}/${end.day}';
+}
+
+class _CashflowBucketAccumulator {
+  _CashflowBucketAccumulator({required this.date});
+
+  final DateTime date;
+  int incomeMinor = 0;
+  int expenseMinor = 0;
 }
 
 List<StatisticsBreakdownItem> selectStatisticsCategoryItems(

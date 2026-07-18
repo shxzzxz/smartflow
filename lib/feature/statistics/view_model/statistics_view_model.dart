@@ -312,6 +312,18 @@ class StatisticsControlState {
   final StatisticsCategoryLevel categoryLevel;
   final StatisticsValueMode valueMode;
 
+  StatisticsCashflowGrouping get cashflowGrouping => switch (periodKind) {
+    StatisticsPeriodKind.month => StatisticsCashflowGrouping.day,
+    StatisticsPeriodKind.year => StatisticsCashflowGrouping.month,
+    StatisticsPeriodKind.custom => switch (customUntil
+        .difference(customFrom)
+        .inDays) {
+      <= 45 => StatisticsCashflowGrouping.day,
+      <= 180 => StatisticsCashflowGrouping.week,
+      _ => StatisticsCashflowGrouping.month,
+    },
+  };
+
   String get periodLabel => switch (periodKind) {
     StatisticsPeriodKind.month => '${visibleMonth.year}年${visibleMonth.month}月',
     StatisticsPeriodKind.year => '${visibleMonth.year}年',

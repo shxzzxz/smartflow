@@ -11,6 +11,38 @@ import 'package:smartflow/feature/statistics/presentation/statistics_presentatio
 import 'package:smartflow/feature/statistics/view_model/statistics_view_model.dart';
 
 void main() {
+  testWidgets('matches the compact-phone visual baseline', (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    const boundaryKey = ValueKey('statistics-page-golden');
+
+    await _pumpStatisticsPage(tester, boundaryKey: boundaryKey);
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byKey(boundaryKey),
+      matchesGoldenFile('goldens/statistics_page_compact.png'),
+    );
+  });
+
+  testWidgets('shows a clear statistics hierarchy on a compact phone', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpStatisticsPage(tester);
+
+    expect(find.text('统计'), findsOneWidget);
+    expect(find.text('本期概览'), findsOneWidget);
+    expect(find.text('收支趋势'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('shows market-level charts and switches analysis dimensions', (
     tester,
   ) async {
@@ -18,43 +50,27 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final month = DateTime(2026, 1);
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          currentDateTimeProvider.overrideWithValue(DateTime(2026, 1, 15)),
-          statisticsRangeContentProvider(
-            month,
-            DateTime(2026, 1, 16),
-            1,
-          ).overrideWith(
-            (ref) =>
-                StatisticsContentState.loaded(presentation: _presentation()),
-          ),
-        ],
-        child: MaterialApp(
-          theme: AppTheme.light(),
-          home: const StatisticsPage(),
-        ),
-      ),
-    );
-    await tester.pump();
+    await _pumpStatisticsPage(tester);
 
     expect(find.text('月'), findsOneWidget);
     expect(find.text('年'), findsOneWidget);
     expect(find.text('自定义'), findsOneWidget);
-    expect(find.text('收支统计'), findsOneWidget);
+    expect(find.text('收支趋势'), findsOneWidget);
     expect(find.byType(BarChart), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('分类占比'),
+      find.text('分类构成'),
       200,
       scrollable: find.byType(Scrollable).last,
     );
     expect(find.byType(PieChart), findsOneWidget);
-    expect(find.text('一级'), findsOneWidget);
-    expect(find.text('二级'), findsOneWidget);
-    expect(find.text('金额'), findsOneWidget);
-    expect(find.text('占比'), findsOneWidget);
+    await tester.tap(find.byTooltip('分类显示选项'));
+    await tester.pumpAndSettle();
+    expect(find.text('一级分类'), findsOneWidget);
+    expect(find.text('二级分类'), findsOneWidget);
+    expect(find.text('显示金额'), findsOneWidget);
+    expect(find.text('显示占比'), findsOneWidget);
+    await tester.tapAt(Offset.zero);
+    await tester.pumpAndSettle();
 
     final categoryKindControl = find.byType(
       SegmentedButton<StatisticsCategoryKind>,
@@ -79,6 +95,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(PieChart), findsOneWidget);
   });
+}
+
+Future<void> _pumpStatisticsPage(
+  WidgetTester tester, {
+  Key? boundaryKey,
+}) async {
+  final month = DateTime(2026, 1);
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        currentDateTimeProvider.overrideWithValue(DateTime(2026, 1, 15)),
+        statisticsRangeContentProvider(
+          month,
+          DateTime(2026, 1, 16),
+          1,
+        ).overrideWith(
+          (ref) => StatisticsContentState.loaded(presentation: _presentation()),
+        ),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.light(),
+        home: RepaintBoundary(key: boundaryKey, child: const StatisticsPage()),
+      ),
+    ),
+  );
+  await tester.pump();
 }
 
 StatisticsPresentation _presentation() {
@@ -112,6 +154,16 @@ StatisticsPresentation _presentation() {
         accountType: AccountType.income,
         amount: Money(minorUnits: 2000),
         progress: 1,
+        children: [
+          StatisticsBreakdownItem(
+            id: 'base-salary',
+            title: '基本工资',
+            accountIds: {'salary'},
+            accountType: AccountType.income,
+            amount: Money(minorUnits: 2000),
+            progress: 1,
+          ),
+        ],
       ),
     ],
     expenseCategories: const [
