@@ -20,7 +20,7 @@ final class BillRepaymentFormViewModelProvider
         > {
   BillRepaymentFormViewModelProvider._({
     required BillRepaymentFormViewModelFamily super.from,
-    required String super.argument,
+    required BillRepaymentFormArgs super.argument,
   }) : super(
          retry: null,
          name: r'billRepaymentFormViewModelProvider',
@@ -56,7 +56,7 @@ final class BillRepaymentFormViewModelProvider
 }
 
 String _$billRepaymentFormViewModelHash() =>
-    r'be0a9b8cb09335c16afdce765c806c501b781311';
+    r'343af7421b2aadfee7efef32216662bcef716a29';
 
 final class BillRepaymentFormViewModelFamily extends $Family
     with
@@ -65,7 +65,7 @@ final class BillRepaymentFormViewModelFamily extends $Family
           AsyncValue<BillRepaymentFormState>,
           BillRepaymentFormState,
           FutureOr<BillRepaymentFormState>,
-          String
+          BillRepaymentFormArgs
         > {
   BillRepaymentFormViewModelFamily._()
     : super(
@@ -76,8 +76,8 @@ final class BillRepaymentFormViewModelFamily extends $Family
         isAutoDispose: true,
       );
 
-  BillRepaymentFormViewModelProvider call(String billId) =>
-      BillRepaymentFormViewModelProvider._(argument: billId, from: this);
+  BillRepaymentFormViewModelProvider call(BillRepaymentFormArgs args) =>
+      BillRepaymentFormViewModelProvider._(argument: args, from: this);
 
   @override
   String toString() => r'billRepaymentFormViewModelProvider';
@@ -85,10 +85,10 @@ final class BillRepaymentFormViewModelFamily extends $Family
 
 abstract class _$BillRepaymentFormViewModel
     extends $AsyncNotifier<BillRepaymentFormState> {
-  late final _$args = ref.$arg as String;
-  String get billId => _$args;
+  late final _$args = ref.$arg as BillRepaymentFormArgs;
+  BillRepaymentFormArgs get args => _$args;
 
-  FutureOr<BillRepaymentFormState> build(String billId);
+  FutureOr<BillRepaymentFormState> build(BillRepaymentFormArgs args);
   @$mustCallSuper
   @override
   void runBuild() {

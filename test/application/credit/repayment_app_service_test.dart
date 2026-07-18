@@ -54,6 +54,69 @@ void main() {
       expect(bill.status, credit.BillStatus.settled);
     });
 
+    test('creates interest-only bill repayment with zero principal', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      await fixture.seedBill(
+        status: credit.BillStatus.billed,
+        itemType: credit.BillItemType.consumption,
+        expectedPrincipal: 1000,
+      );
+
+      final result = await fixture.service.createBillRepayment(
+        credit.CreateBillRepaymentCommand(
+          billId: 'bill-1',
+          allocations: [
+            _allocation(billItemId: 'bill-item-1', principal: 0, interest: 100),
+          ],
+        ),
+      );
+
+      final repayment = await fixture.repayments.findRepayment(
+        result.repaymentId,
+      );
+      expect(repayment!.totalAllocated().principal, Money.zero());
+      expect(repayment.totalAllocated().interest, const Money(minorUnits: 100));
+      final bill = await fixture.bills.findBill('bill-1');
+      expect(bill!.items.single.status, credit.BillItemStatus.partiallyPaid);
+    });
+
+    test('edits bill repayment allocations and reopens settled bill', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      await fixture.seedBill(
+        status: credit.BillStatus.billed,
+        itemType: credit.BillItemType.consumption,
+        expectedPrincipal: 1000,
+      );
+      final created = await fixture.service.createBillRepayment(
+        credit.CreateBillRepaymentCommand(
+          billId: 'bill-1',
+          allocations: [
+            _allocation(billItemId: 'bill-item-1', principal: 1000),
+          ],
+        ),
+      );
+
+      await fixture.service.editBillRepayment(
+        credit.EditBillRepaymentCommand(
+          repaymentId: created.repaymentId,
+          allocations: [_allocation(billItemId: 'bill-item-1', principal: 500)],
+        ),
+      );
+
+      final repayment = await fixture.repayments.findRepayment(
+        created.repaymentId,
+      );
+      expect(
+        repayment!.totalAllocated().principal,
+        const Money(minorUnits: 500),
+      );
+      final bill = await fixture.bills.findBill('bill-1');
+      expect(bill!.items.single.status, credit.BillItemStatus.partiallyPaid);
+      expect(bill.status, credit.BillStatus.billed);
+    });
+
     test(
       'creates ledger transaction and marks partial bill item partially paid',
       () async {

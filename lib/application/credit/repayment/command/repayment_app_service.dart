@@ -42,6 +42,12 @@ abstract interface class RepaymentAppService {
     CreateBillRepaymentCommand command,
   );
 
+  Future<BillRepaymentEditView?> loadBillRepaymentEditView(String repaymentId);
+
+  Future<CreateRepaymentResult> editBillRepayment(
+    EditBillRepaymentCommand command,
+  );
+
   Future<CreateRepaymentResult> createBillConversionInstallmentRepayment(
     CreateBillConversionInstallmentRepaymentCommand command,
   );
@@ -282,6 +288,117 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       return CreateRepaymentResult(
         repaymentId: repaymentId,
         transactionId: post?.transactionId,
+      );
+    });
+  }
+
+  @override
+  Future<BillRepaymentEditView?> loadBillRepaymentEditView(
+    String repaymentId,
+  ) async {
+    final repayment = await _repayments.findRepayment(repaymentId);
+    if (repayment == null || repayment.repaymentType != RepaymentType.bill) {
+      return null;
+    }
+    String? paidFromAccountId;
+    DateTime? occurredAt;
+    String? note;
+    if (repayment.transactionId != null) {
+      final detail = await _ledger.findRepaymentTransaction(
+        repayment.transactionId!,
+      );
+      if (detail != null) {
+        paidFromAccountId = _firstSettlementAccountId(detail);
+        occurredAt = detail.occurredAt;
+        note = detail.note;
+      }
+    }
+    return BillRepaymentEditView(
+      repaymentId: repayment.id,
+      billId: repayment.targetId,
+      allocations: [
+        for (final item in repayment.items)
+          BillRepaymentAllocation(
+            billItemId: item.billItemId!,
+            allocated: RepaymentAmountDto(
+              principal: item.allocated.principal,
+              interest: item.allocated.interest,
+              fee: item.allocated.fee,
+              discount: item.allocated.discount,
+            ),
+          ),
+      ],
+      hasTransaction: repayment.transactionId != null,
+      transactionId: repayment.transactionId,
+      paidFromAccountId: paidFromAccountId,
+      occurredAt: occurredAt,
+      note: note,
+    );
+  }
+
+  @override
+  Future<CreateRepaymentResult> editBillRepayment(
+    EditBillRepaymentCommand command,
+  ) async {
+    final repayment = await _repayments.findRepayment(command.repaymentId);
+    if (repayment == null) {
+      throw BusinessException(CreditErrorCode.repaymentNotFound);
+    }
+    if (repayment.repaymentType != RepaymentType.bill) {
+      throw BusinessException(CreditErrorCode.repaymentNotEditable);
+    }
+    final bill = await _bills.findBill(repayment.targetId);
+    if (bill == null) throw BusinessException(CreditErrorCode.billNotFound);
+    final allocations = _domainAllocations(command.allocations);
+    _repaymentPolicy.validateBillRepayment(
+      bill: bill,
+      allocations: allocations,
+      allowSettled: true,
+    );
+    final oldAllocations = _repaymentPolicy.allocationsFromItems(
+      repayment.items,
+    );
+    final items = [
+      for (final allocation in command.allocations)
+        RepaymentItem(
+          id: _idGenerator.newId(),
+          repaymentId: repayment.id,
+          billItemId: allocation.billItemId,
+          allocated: _domainAmount(allocation.allocated),
+        ),
+    ];
+    final total = _repaymentPolicy.total(allocations);
+    return _transactionRunner.run(() async {
+      final transactionId = repayment.transactionId;
+      if (transactionId != null) {
+        final info = command.transactionInfo;
+        if (info == null) {
+          throw BusinessException(CreditErrorCode.repaymentInvalidCommand);
+        }
+        await _ledger.editRepayment(
+          CreditLedgerEditRepaymentCommand(
+            transactionId: transactionId,
+            amount: total,
+            liabilityAccountId: bill.accountId,
+            paidFromAccountId: info.paidFromAccountId,
+            occurredAt: info.occurredAt,
+            note:
+                info.note == null
+                    ? const Patch<String?>.clear()
+                    : Patch<String?>.set(info.note),
+          ),
+        );
+      }
+      repayment.replaceItems(items);
+      repayment.validateAgainstLedgerTransaction(total);
+      await _repayments.replaceRepaymentItems(repayment.id, items);
+      await _repaymentSettlement.refreshBillStatuses(bill, [
+        ...oldAllocations,
+        ...allocations,
+      ]);
+      return CreateRepaymentResult(
+        repaymentId: repayment.id,
+        transactionId: transactionId,
       );
     });
   }

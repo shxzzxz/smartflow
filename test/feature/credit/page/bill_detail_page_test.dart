@@ -55,6 +55,66 @@ void main() {
     expect(find.text('账单分期'), findsOneWidget);
     expect(find.text('刷新'), findsOneWidget);
   });
+
+  testWidgets('shows repayment date breakdown total and swipe actions', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final detail = BillDetailReadModel(
+      summary: BillSummaryReadModel(
+        id: 'bill',
+        accountId: 'account',
+        period: BillPeriod(year: 2026, month: 7),
+        status: BillStatus.billed,
+        expectedPrincipal: const Money(minorUnits: 200),
+        expectedInterest: const Money(minorUnits: 200),
+        expectedFee: const Money(minorUnits: 200),
+        pendingPrincipal: Money.zero(),
+        itemCount: 1,
+        overdueItemCount: 0,
+      ),
+      items: const [],
+      repayments: [
+        BillRepaymentReadModel(
+          id: 'repayment-id-should-not-show',
+          repaymentType: RepaymentType.bill,
+          allocated: const RepaymentAmountDto(
+            principal: Money(minorUnits: 200),
+            interest: Money(minorUnits: 200),
+            fee: Money(minorUnits: 200),
+            discount: Money(minorUnits: 0),
+          ),
+          displayTime: DateTime(2026, 7, 17),
+          timeSource: BillRepaymentTimeSource.transaction,
+          transactionId: 'transaction-id-should-not-show',
+          paidFromAccountId: 'account-id-should-not-show',
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          billDetailViewModelProvider(
+            'bill',
+          ).overrideWith(() => _FixedBillDetailViewModel(detail)),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const BillDetailPage(billId: 'bill'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('还款日 2026-07-17'), findsOneWidget);
+    expect(find.text('本 2.00 息 2.00 费 2.00'), findsOneWidget);
+    expect(find.text('6.00'), findsOneWidget);
+    expect(find.textContaining('should-not-show'), findsNothing);
+    final dismissible = tester.widget<Dismissible>(find.byType(Dismissible));
+    expect(dismissible.direction, DismissDirection.horizontal);
+  });
 }
 
 class _FixedBillDetailViewModel extends BillDetailViewModel {

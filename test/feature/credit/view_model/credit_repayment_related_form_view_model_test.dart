@@ -124,7 +124,9 @@ void main() {
   test('bill repayment form submits remaining bill allocation', () async {
     final repayment = _FakeRepaymentAppService();
     final container = _container(repaymentAppService: repayment);
-    final provider = billRepaymentFormViewModelProvider('bill');
+    final provider = billRepaymentFormViewModelProvider(
+      const BillRepaymentFormArgs.create('bill'),
+    );
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
 
@@ -157,7 +159,9 @@ void main() {
   test('bill repayment form can submit without ledger transaction', () async {
     final repayment = _FakeRepaymentAppService();
     final container = _container(repaymentAppService: repayment);
-    final provider = billRepaymentFormViewModelProvider('bill');
+    final provider = billRepaymentFormViewModelProvider(
+      const BillRepaymentFormArgs.create('bill'),
+    );
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
 
@@ -170,13 +174,45 @@ void main() {
     expect(repayment.billRepaymentCommands.single.transactionInfo, isNull);
   });
 
+  test('bill repayment form allows interest-only allocation', () async {
+    final repayment = _FakeRepaymentAppService();
+    final container = _container(repaymentAppService: repayment);
+    final provider = billRepaymentFormViewModelProvider(
+      const BillRepaymentFormArgs.create('bill'),
+    );
+    final subscription = container.listen(provider, (_, _) {});
+    addTearDown(subscription.close);
+
+    await container.read(provider.future);
+    final notifier =
+        container.read(provider.notifier)
+          ..setPrincipalText('0')
+          ..setInterestText('2')
+          ..setFeeText('0')
+          ..setManualAllocationText(
+            billItemId: 'bill-item',
+            principalText: '0',
+            interestText: '2',
+            feeText: '0',
+          );
+    final outcome = await notifier.submit();
+
+    expect(outcome, isA<SubmitSuccess>());
+    final allocation =
+        repayment.billRepaymentCommands.single.allocations.single;
+    expect(allocation.allocated.principal, Money.zero());
+    expect(allocation.allocated.interest, const Money(minorUnits: 200));
+  });
+
   test('bill repayment form supports equal allocation mode', () async {
     final repayment = _FakeRepaymentAppService();
     final container = _container(
       repaymentAppService: repayment,
       billDetail: _billDetailWithTwoConsumptionItems(),
     );
-    final provider = billRepaymentFormViewModelProvider('bill');
+    final provider = billRepaymentFormViewModelProvider(
+      const BillRepaymentFormArgs.create('bill'),
+    );
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
 
@@ -205,7 +241,9 @@ void main() {
         repaymentAppService: repayment,
         billDetail: _billDetailWithTwoConsumptionItems(),
       );
-      final provider = billRepaymentFormViewModelProvider('bill');
+      final provider = billRepaymentFormViewModelProvider(
+        const BillRepaymentFormArgs.create('bill'),
+      );
       final subscription = container.listen(provider, (_, _) {});
       addTearDown(subscription.close);
 
@@ -241,7 +279,9 @@ void main() {
       repaymentAppService: repayment,
       billDetail: _billDetailWithTwoConsumptionItems(),
     );
-    final provider = billRepaymentFormViewModelProvider('bill');
+    final provider = billRepaymentFormViewModelProvider(
+      const BillRepaymentFormArgs.create('bill'),
+    );
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
 
@@ -275,7 +315,9 @@ void main() {
       repaymentAppService: repayment,
       billDetail: _openBillDetailWithInstallment(),
     );
-    final provider = billRepaymentFormViewModelProvider('bill');
+    final provider = billRepaymentFormViewModelProvider(
+      const BillRepaymentFormArgs.create('bill'),
+    );
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
 

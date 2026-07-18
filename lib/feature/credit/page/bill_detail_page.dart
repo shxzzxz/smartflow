@@ -9,6 +9,7 @@ import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../design_system/widget/app_swipe_action.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/bill_item_presentation.dart';
 import '../view_model/bill_detail_view_model.dart';
@@ -31,6 +32,8 @@ class BillDetailPage extends ConsumerWidget {
           onSync: () => _syncProjection(context, ref),
           onDeleteRepayment:
               (repayment) => _deleteRepayment(context, ref, repayment),
+          onEditRepayment:
+              (repayment) => _editRepayment(context, ref, repayment),
         ),
         AsyncData(value: null) => const Center(child: Text('账单不存在')),
         AsyncError() => const Center(child: Text('账单加载失败，请稍后重试')),
@@ -57,6 +60,19 @@ class BillDetailPage extends ConsumerWidget {
 
   Future<void> _openInstallment(BuildContext context, WidgetRef ref) async {
     final changed = await context.push<bool>('/bills/$billId/installment');
+    if (changed == true) {
+      ref.read(billDetailViewModelProvider(billId).notifier).reload();
+    }
+  }
+
+  Future<void> _editRepayment(
+    BuildContext context,
+    WidgetRef ref,
+    BillRepaymentReadModel repayment,
+  ) async {
+    final changed = await context.push<bool>(
+      '/repayments/${repayment.id}/edit',
+    );
     if (changed == true) {
       ref.read(billDetailViewModelProvider(billId).notifier).reload();
     }
@@ -101,6 +117,7 @@ class _BillDetailContent extends StatelessWidget {
     required this.onInstallment,
     required this.onSync,
     required this.onDeleteRepayment,
+    required this.onEditRepayment,
   });
 
   final BillDetailReadModel detail;
@@ -108,6 +125,7 @@ class _BillDetailContent extends StatelessWidget {
   final VoidCallback onInstallment;
   final VoidCallback onSync;
   final ValueChanged<BillRepaymentReadModel> onDeleteRepayment;
+  final ValueChanged<BillRepaymentReadModel> onEditRepayment;
 
   @override
   Widget build(BuildContext context) {
@@ -169,6 +187,7 @@ class _BillDetailContent extends StatelessWidget {
                           repayment: detail.repayments[i],
                           onDelete:
                               () => onDeleteRepayment(detail.repayments[i]),
+                          onEdit: () => onEditRepayment(detail.repayments[i]),
                         ),
                         if (i < detail.repayments.length - 1)
                           const Padding(
@@ -290,51 +309,56 @@ class _BillActionBar extends StatelessWidget {
 }
 
 class _BillRepaymentRow extends StatelessWidget {
-  const _BillRepaymentRow({required this.repayment, required this.onDelete});
+  const _BillRepaymentRow({
+    required this.repayment,
+    required this.onDelete,
+    required this.onEdit,
+  });
 
   final BillRepaymentReadModel repayment;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final styles = context.appTextStyles;
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space12,
-        vertical: AppSpacing.space12,
-      ),
-      child: Row(
-        children: [
-          Icon(RemixIcons.refund_2_line, size: 22, color: colors.primary),
-          const SizedBox(width: AppSpacing.space10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(repayment.repaymentType.label, style: styles.formLabel),
-                const SizedBox(height: AppSpacing.space2),
-                Text(
-                  _repaymentSupportingText(repayment),
-                  style: styles.listSupporting.copyWith(
-                    color: colors.onSurfaceVariant,
+    return AppSwipeAction(
+      dismissibleKey: ValueKey('bill-repayment-${repayment.id}'),
+      label: '编辑',
+      icon: RemixIcons.edit_2_line,
+      onTriggered: onEdit,
+      secondaryLabel: '删除',
+      secondaryIcon: RemixIcons.delete_bin_line,
+      onSecondaryTriggered: onDelete,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space12,
+          vertical: AppSpacing.space12,
+        ),
+        child: Row(
+          children: [
+            Icon(RemixIcons.refund_2_line, size: 22, color: colors.primary),
+            const SizedBox(width: AppSpacing.space10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_repaymentDateText(repayment), style: styles.formLabel),
+                  const SizedBox(height: AppSpacing.space2),
+                  Text(
+                    _repaymentBreakdownText(repayment),
+                    style: styles.listSupporting.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: AppSpacing.space10),
-          Text(repayment.cashPaid.format(), style: styles.amountList),
-          IconButton(
-            tooltip: '删除',
-            icon: Icon(
-              RemixIcons.delete_bin_line,
-              color: colors.onSurfaceVariant,
-              size: AppSpacing.space20,
-            ),
-            onPressed: onDelete,
-          ),
-        ],
+            const SizedBox(width: AppSpacing.space10),
+            Text(repayment.cashPaid.format(), style: styles.amountList),
+          ],
+        ),
       ),
     );
   }
@@ -494,15 +518,19 @@ String _itemStatusLabel(BillItemReadModel item) {
   };
 }
 
-String _repaymentSupportingText(BillRepaymentReadModel repayment) {
+String _repaymentDateText(BillRepaymentReadModel repayment) {
   final prefix =
       repayment.timeSource == BillRepaymentTimeSource.transaction
           ? '还款日'
           : '记录于';
-  final account = repayment.paidFromAccountId;
-  final dateText = '$prefix ${_dateLabel(repayment.displayTime)}';
-  if (account == null) return dateText;
-  return '$dateText · $account';
+  return '$prefix ${_dateLabel(repayment.displayTime)}';
+}
+
+String _repaymentBreakdownText(BillRepaymentReadModel repayment) {
+  final amount = repayment.allocated;
+  return '本 ${amount.principal.format()} '
+      '息 ${amount.interest.format()} '
+      '费 ${amount.fee.format()}';
 }
 
 void _showFailure(

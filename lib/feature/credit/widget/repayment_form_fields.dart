@@ -37,12 +37,14 @@ class CreditRepaymentAmountFields extends StatelessWidget {
     required this.feeController,
     required this.discountController,
     super.key,
+    this.principalValidator = validatePositiveMoneyText,
   });
 
   final TextEditingController principalController;
   final TextEditingController interestController;
   final TextEditingController feeController;
   final TextEditingController discountController;
+  final FormFieldValidator<String> principalValidator;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +54,7 @@ class CreditRepaymentAmountFields extends StatelessWidget {
           label: '本金',
           controller: principalController,
           hintText: '请输入还款本金',
-          validator: validatePositiveMoneyText,
+          validator: principalValidator,
         ),
         MoneyPlainFormRow(
           label: '利息',

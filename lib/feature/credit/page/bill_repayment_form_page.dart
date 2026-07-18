@@ -20,9 +20,14 @@ import '../view_model/bill_repayment_form_view_model.dart';
 import '../widget/repayment_form_fields.dart';
 
 class BillRepaymentFormPage extends ConsumerStatefulWidget {
-  const BillRepaymentFormPage({required this.billId, super.key});
+  const BillRepaymentFormPage({required this.billId, super.key})
+    : repaymentId = null;
 
-  final String billId;
+  const BillRepaymentFormPage.edit({required this.repaymentId, super.key})
+    : billId = null;
+
+  final String? billId;
+  final String? repaymentId;
 
   @override
   ConsumerState<BillRepaymentFormPage> createState() =>
@@ -80,11 +85,13 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = billRepaymentFormViewModelProvider(widget.billId);
+    final provider = billRepaymentFormViewModelProvider(_args);
     final asyncState = ref.watch(provider);
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(title: const Text('账单还款')),
+      appBar: AppBar(
+        title: Text(widget.repaymentId == null ? '账单还款' : '编辑账单还款'),
+      ),
       body: switch (asyncState) {
         AsyncData(value: final state) => _buildState(provider, state),
         AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
@@ -137,6 +144,7 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
                 interestController: _interestController,
                 feeController: _feeController,
                 discountController: _discountController,
+                principalValidator: validateOptionalNonNegativeMoneyText,
               ),
               DropdownPlainFormRow<BillRepaymentAllocationMode>(
                 label: '分摊方式',
@@ -149,8 +157,11 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
               CreditRepaymentTransactionFields(
                 createTransaction: state.createTransaction,
                 onCreateTransactionChanged:
-                    (value) =>
-                        ref.read(provider.notifier).setCreateTransaction(value),
+                    state.editingRepaymentId == null
+                        ? (value) => ref
+                            .read(provider.notifier)
+                            .setCreateTransaction(value)
+                        : null,
                 occurredAtText: _formatDateTime(state.occurredAt),
                 onPickDate: () => _pickDate(provider, state.occurredAt),
                 repaymentAccount: paidFromAccount,
@@ -272,10 +283,7 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
     String value,
   ) {
     if (_syncing) return;
-    setter(
-      ref.read(billRepaymentFormViewModelProvider(widget.billId).notifier),
-      value,
-    );
+    setter(ref.read(billRepaymentFormViewModelProvider(_args).notifier), value);
   }
 
   void _showError(String message) {
@@ -283,6 +291,11 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
       SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
+
+  BillRepaymentFormArgs get _args =>
+      widget.repaymentId == null
+          ? BillRepaymentFormArgs.create(widget.billId!)
+          : BillRepaymentFormArgs.edit(widget.repaymentId!);
 }
 
 const List<DropdownMenuItem<BillRepaymentAllocationMode>>

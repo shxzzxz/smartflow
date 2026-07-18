@@ -16,6 +16,10 @@ class AppSwipeAction extends StatelessWidget {
     required this.child,
     super.key,
     this.tone = AppSwipeActionTone.primary,
+    this.secondaryLabel,
+    this.secondaryIcon,
+    this.onSecondaryTriggered,
+    this.secondaryTone = AppSwipeActionTone.danger,
   });
 
   static const _dismissThreshold = 0.4;
@@ -26,16 +30,39 @@ class AppSwipeAction extends StatelessWidget {
   final FutureOr<void> Function() onTriggered;
   final Widget child;
   final AppSwipeActionTone tone;
+  final String? secondaryLabel;
+  final IconData? secondaryIcon;
+  final FutureOr<void> Function()? onSecondaryTriggered;
+  final AppSwipeActionTone secondaryTone;
 
   @override
   Widget build(BuildContext context) {
     return Dismissible(
       key: dismissibleKey,
-      direction: DismissDirection.startToEnd,
-      dismissThresholds: const {DismissDirection.startToEnd: _dismissThreshold},
+      direction:
+          onSecondaryTriggered == null
+              ? DismissDirection.startToEnd
+              : DismissDirection.horizontal,
+      dismissThresholds: const {
+        DismissDirection.startToEnd: _dismissThreshold,
+        DismissDirection.endToStart: _dismissThreshold,
+      },
       background: _ActionBackground(label: label, icon: icon, tone: tone),
+      secondaryBackground:
+          onSecondaryTriggered == null
+              ? null
+              : _ActionBackground(
+                label: secondaryLabel!,
+                icon: secondaryIcon!,
+                tone: secondaryTone,
+                alignment: Alignment.centerRight,
+              ),
       confirmDismiss: (direction) async {
-        if (direction == DismissDirection.startToEnd) await onTriggered();
+        if (direction == DismissDirection.startToEnd) {
+          await onTriggered();
+        } else if (direction == DismissDirection.endToStart) {
+          await onSecondaryTriggered?.call();
+        }
         return false;
       },
       child: child,
@@ -48,11 +75,13 @@ class _ActionBackground extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.tone,
+    this.alignment = Alignment.centerLeft,
   });
 
   final String label;
   final IconData icon;
   final AppSwipeActionTone tone;
+  final Alignment alignment;
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +100,7 @@ class _ActionBackground extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(color: backgroundColor),
       child: Align(
-        alignment: Alignment.centerLeft,
+        alignment: alignment,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space20),
           child: Row(

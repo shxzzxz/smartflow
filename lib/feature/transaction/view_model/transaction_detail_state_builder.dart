@@ -323,6 +323,10 @@ DetailBehaviorConfig _behaviorConfigFor(Transaction transaction) {
     if (repaymentType != null) {
       return DetailBehaviorConfig(
         bannerText: '此为信贷${repaymentType.label}交易，金额调整请在信贷页面处理',
+        editRoute:
+            repaymentType == RepaymentType.bill
+                ? '/repayments/${ownership.ownerId}/edit'
+                : null,
         canEditOccurredAt: const DetailEditPermission.allowed(),
         canEditPostedAt: postedAtPermission,
         canEditNote: const DetailEditPermission.allowed(),

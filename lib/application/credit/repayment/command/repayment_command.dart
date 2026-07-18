@@ -41,6 +41,42 @@ class CreateBillRepaymentCommand {
   final String? note;
 }
 
+class EditBillRepaymentCommand {
+  const EditBillRepaymentCommand({
+    required this.repaymentId,
+    required this.allocations,
+    this.transactionInfo,
+    this.note,
+  });
+
+  final String repaymentId;
+  final List<BillRepaymentAllocation> allocations;
+  final RepaymentTransactionInfo? transactionInfo;
+  final String? note;
+}
+
+class BillRepaymentEditView {
+  const BillRepaymentEditView({
+    required this.repaymentId,
+    required this.billId,
+    required this.allocations,
+    required this.hasTransaction,
+    this.transactionId,
+    this.paidFromAccountId,
+    this.occurredAt,
+    this.note,
+  });
+
+  final String repaymentId;
+  final String billId;
+  final List<BillRepaymentAllocation> allocations;
+  final bool hasTransaction;
+  final String? transactionId;
+  final String? paidFromAccountId;
+  final DateTime? occurredAt;
+  final String? note;
+}
+
 class CreateBillConversionInstallmentRepaymentCommand {
   const CreateBillConversionInstallmentRepaymentCommand({
     required this.billId,

@@ -180,6 +180,7 @@ void main() {
         final state = await _readState(container);
         final loaded = state as TransactionDetailLoaded;
         expect(loaded.behavior.bannerText, contains('金额调整请在信贷页面处理'));
+        expect(loaded.behavior.editRoute, '/repayments/repayment-1/edit');
         expect(loaded.behavior.canEditOccurredAt, isA<DetailEditAllowed>());
         expect(loaded.behavior.canEditNote, isA<DetailEditAllowed>());
         final accountRow = loaded.accountRows.singleWhere(

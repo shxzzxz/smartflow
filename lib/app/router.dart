@@ -197,6 +197,13 @@ final appRouter = GoRouter(
               BillRepaymentFormPage(billId: state.pathParameters['billId']!),
     ),
     GoRoute(
+      path: '/repayments/:repaymentId/edit',
+      builder:
+          (context, state) => BillRepaymentFormPage.edit(
+            repaymentId: state.pathParameters['repaymentId']!,
+          ),
+    ),
+    GoRoute(
       path: '/bills/:billId/installment',
       builder:
           (context, state) => BillConversionInstallmentFormPage(

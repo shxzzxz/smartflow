@@ -24,8 +24,10 @@ class RepaymentPolicyService {
   void validateBillRepayment({
     required Bill bill,
     required List<BillRepaymentAllocationDraft> allocations,
+    bool allowSettled = false,
   }) {
-    if (bill.status == BillStatus.settled || allocations.isEmpty) {
+    if ((!allowSettled && bill.status == BillStatus.settled) ||
+        allocations.isEmpty) {
       throw BusinessException(CreditErrorCode.billInvalidCommand);
     }
 
@@ -48,7 +50,7 @@ class RepaymentPolicyService {
       }
     }
 
-    if (total(allocations).principal.minorUnits <= 0) {
+    if (total(allocations).cashPaid.minorUnits <= 0) {
       throw BusinessException(CreditErrorCode.billInvalidCommand);
     }
   }
