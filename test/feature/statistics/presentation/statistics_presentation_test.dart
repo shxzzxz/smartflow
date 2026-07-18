@@ -157,18 +157,14 @@ void main() {
     expect(buckets.last.netMinor, 150);
   });
 
-  test('clamps the final weekly label to the selected range', () {
-    final buckets = buildStatisticsCashflowBuckets(
-      [
-        DailyCashflowSummary(
-          date: DateTime(2026, 1, 8),
-          income: const Money(minorUnits: 200),
-          expense: const Money(minorUnits: 50),
-        ),
-      ],
-      grouping: StatisticsTimeGrouping.week,
-      until: DateTime(2026, 1, 10),
-    );
+  test('uses the starting day for weekly axis labels', () {
+    final buckets = buildStatisticsCashflowBuckets([
+      DailyCashflowSummary(
+        date: DateTime(2026, 1, 8),
+        income: const Money(minorUnits: 200),
+        expense: const Money(minorUnits: 50),
+      ),
+    ], grouping: StatisticsTimeGrouping.week);
 
     expect(buckets.single.label, '8');
   });

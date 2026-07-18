@@ -7,14 +7,14 @@ import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/widget/business/finance/finance_tone_color.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 
-class MonthlySummaryCard extends StatelessWidget {
-  const MonthlySummaryCard({
+class CashflowSummaryCard extends StatelessWidget {
+  const CashflowSummaryCard({
     required this.summary,
     this.showCaptions = true,
     super.key,
   });
 
-  final MonthlySummaryPresentation summary;
+  final CashflowSummaryPresentation summary;
   final bool showCaptions;
 
   @override
@@ -79,7 +79,7 @@ class _SummaryMetric extends StatelessWidget {
     required this.amountColor,
   });
 
-  final MonthlySummaryMetricPresentation metric;
+  final CashflowSummaryMetricPresentation metric;
   final bool showCaption;
   final Color amountColor;
 

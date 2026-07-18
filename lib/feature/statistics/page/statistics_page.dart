@@ -10,8 +10,8 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_segmented_control.dart';
-import '../../../feature/home/widget/monthly_summary_card.dart';
 import '../../../feature/shared/presentation/transaction_list_presentation.dart';
+import '../../../widget/business/finance/cashflow_summary_card.dart';
 import '../../../widget/business/finance/finance_tone.dart';
 import '../../../widget/business/finance/money_text.dart';
 import '../presentation/statistics_presentation.dart';
@@ -247,23 +247,23 @@ class _Summary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final summary = presentation.cashflowComparison.current;
-    return MonthlySummaryCard(
+    return CashflowSummaryCard(
       showCaptions: false,
-      summary: MonthlySummaryPresentation(
+      summary: CashflowSummaryPresentation(
         metrics: [
-          MonthlySummaryMetricPresentation(
+          CashflowSummaryMetricPresentation(
             label: '收入',
             amountText: summary.income.format(),
             caption: '',
             tone: FinanceTone.income,
           ),
-          MonthlySummaryMetricPresentation(
+          CashflowSummaryMetricPresentation(
             label: '支出',
             amountText: summary.expense.format(),
             caption: '',
             tone: FinanceTone.expense,
           ),
-          MonthlySummaryMetricPresentation(
+          CashflowSummaryMetricPresentation(
             label: '结余',
             amountText: summary.net.format(),
             caption: '',
@@ -297,7 +297,6 @@ class _CashflowSection extends ConsumerWidget {
       ),
       child: StatisticsCashflowChart(
         dailySummaries: presentation.dailySummaries,
-        until: presentation.cashflowUntil,
         grouping: control.trendGrouping,
         metric: control.chartMetric,
       ),
@@ -318,7 +317,6 @@ class _BalanceSection extends StatelessWidget {
       child: StatisticsBalanceTrendChart(
         points: presentation.rangeBalanceTrend,
         grouping: control.trendGrouping,
-        until: presentation.balanceUntil,
       ),
     );
   }

@@ -17,14 +17,12 @@ import 'statistics_section.dart';
 class StatisticsCashflowChart extends StatelessWidget {
   const StatisticsCashflowChart({
     required this.dailySummaries,
-    required this.until,
     required this.grouping,
     required this.metric,
     super.key,
   });
 
   final List<DailyCashflowSummary> dailySummaries;
-  final DateTime until;
   final StatisticsTimeGrouping grouping;
   final CashflowChartMetric metric;
 
@@ -33,7 +31,6 @@ class StatisticsCashflowChart extends StatelessWidget {
     final buckets = buildStatisticsCashflowBuckets(
       dailySummaries,
       grouping: grouping,
-      until: until,
     );
     if (buckets.isEmpty ||
         buckets.every(
@@ -125,20 +122,17 @@ class StatisticsBalanceTrendChart extends StatelessWidget {
   const StatisticsBalanceTrendChart({
     required this.points,
     required this.grouping,
-    required this.until,
     super.key,
   });
 
   final List<BalanceTrendPoint> points;
   final StatisticsTimeGrouping grouping;
-  final DateTime until;
 
   @override
   Widget build(BuildContext context) {
     final buckets = buildStatisticsBalanceTrendBuckets(
       points,
       grouping: grouping,
-      until: until,
     );
     if (buckets.isEmpty) {
       return const StatisticsEmptyState(message: '区间内暂无资产数据');

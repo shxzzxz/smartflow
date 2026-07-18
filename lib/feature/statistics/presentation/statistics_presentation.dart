@@ -151,7 +151,7 @@ extension StatisticsTimeGroupingPresentation on StatisticsTimeGrouping {
     };
   }
 
-  String labelFor(DateTime start, {DateTime? untilExclusive}) => switch (this) {
+  String labelFor(DateTime start) => switch (this) {
     StatisticsTimeGrouping.day => '${start.day}',
     StatisticsTimeGrouping.week => '${start.day}',
     StatisticsTimeGrouping.month => '${start.month}',
@@ -200,7 +200,6 @@ class StatisticsBalanceTrendBucket {
 List<StatisticsCashflowBucket> buildStatisticsCashflowBuckets(
   List<DailyCashflowSummary> items, {
   StatisticsTimeGrouping grouping = StatisticsTimeGrouping.day,
-  DateTime? until,
 }) {
   if (items.isEmpty) {
     return const [];
@@ -227,7 +226,7 @@ List<StatisticsCashflowBucket> buildStatisticsCashflowBuckets(
     for (final bucket in buckets.values)
       StatisticsCashflowBucket(
         date: bucket.date,
-        label: grouping.labelFor(bucket.date, untilExclusive: until),
+        label: grouping.labelFor(bucket.date),
         incomeMinor: bucket.incomeMinor,
         expenseMinor: bucket.expenseMinor,
       ),
@@ -237,7 +236,6 @@ List<StatisticsCashflowBucket> buildStatisticsCashflowBuckets(
 List<StatisticsBalanceTrendBucket> buildStatisticsBalanceTrendBuckets(
   List<BalanceTrendPoint> items, {
   required StatisticsTimeGrouping grouping,
-  DateTime? until,
 }) {
   if (items.isEmpty) {
     return const [];
@@ -264,7 +262,7 @@ List<StatisticsBalanceTrendBucket> buildStatisticsBalanceTrendBuckets(
     for (final entry in buckets.entries)
       StatisticsBalanceTrendBucket(
         date: entry.key,
-        label: grouping.labelFor(entry.key, untilExclusive: until),
+        label: grouping.labelFor(entry.key),
         assets: entry.value.assets,
         liabilities: entry.value.liabilities,
       ),

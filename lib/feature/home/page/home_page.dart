@@ -9,7 +9,7 @@ import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../view_model/home_view_model.dart';
 import '../widget/home_header.dart';
-import '../widget/monthly_summary_card.dart';
+import '../../../widget/business/finance/cashflow_summary_card.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -79,7 +79,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 class _HomeContent extends StatelessWidget {
   const _HomeContent({required this.summary, required this.groups});
 
-  final MonthlySummaryPresentation summary;
+  final CashflowSummaryPresentation summary;
   final List<TransactionDayGroup> groups;
 
   @override
@@ -93,7 +93,7 @@ class _HomeContent extends StatelessWidget {
       ),
       bottomPadding: AppSpacing.space24 + 56, // 留给 FAB
       leading: [
-        MonthlySummaryCard(summary: summary),
+        CashflowSummaryCard(summary: summary),
         const SizedBox(height: AppSpacing.space20),
       ],
       groups: groups,

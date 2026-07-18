@@ -136,7 +136,7 @@ sealed class HomeContentState {
       HomeContentError;
 
   const factory HomeContentState.loaded({
-    required MonthlySummaryPresentation summary,
+    required CashflowSummaryPresentation summary,
     required List<TransactionDayGroup> groups,
   }) = HomeContentLoaded;
 }
@@ -154,6 +154,6 @@ final class HomeContentError extends HomeContentState {
 final class HomeContentLoaded extends HomeContentState {
   const HomeContentLoaded({required this.summary, required this.groups});
 
-  final MonthlySummaryPresentation summary;
+  final CashflowSummaryPresentation summary;
   final List<TransactionDayGroup> groups;
 }

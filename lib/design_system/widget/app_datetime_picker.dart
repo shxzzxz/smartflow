@@ -878,7 +878,7 @@ class _CalendarDayButton extends StatelessWidget {
           selected
               ? colors.primary
               : inRange
-              ? colors.primaryContainer.withValues(alpha: 0.5)
+              ? colors.primaryContainer
               : Colors.transparent,
       borderRadius: BorderRadius.circular(AppRadius.radiusSm),
       child: InkWell(
@@ -890,7 +890,7 @@ class _CalendarDayButton extends StatelessWidget {
             style: context.appTextStyles.detailValue.copyWith(
               color:
                   onTap == null
-                      ? colors.onSurface.withValues(alpha: 0.3)
+                      ? colors.onSurfaceVariant
                       : selected
                       ? colors.onPrimary
                       : colors.onSurface,

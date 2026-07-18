@@ -90,6 +90,15 @@ void main() {
     expect(find.text('开始'), findsOneWidget);
     expect(find.text('结束'), findsOneWidget);
     expect(find.text('确定'), findsOneWidget);
+    await tester.tap(find.text('10'));
+    await tester.pump();
+    expect(find.text('请选择结束日期'), findsOneWidget);
+    await tester.tap(find.text('12'));
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('2026.1.10 - 2026.1.12'), findsOneWidget);
+    expect(find.text('选择时间范围'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -204,6 +213,15 @@ Future<void> _pumpStatisticsPage(
         statisticsRangeContentProvider(
           month,
           DateTime(2026, 1, 16),
+          1,
+        ).overrideWith(
+          (ref) => StatisticsContentState.loaded(
+            presentation: presentation ?? _presentation(),
+          ),
+        ),
+        statisticsRangeContentProvider(
+          DateTime(2026, 1, 10),
+          DateTime(2026, 1, 13),
           1,
         ).overrideWith(
           (ref) => StatisticsContentState.loaded(

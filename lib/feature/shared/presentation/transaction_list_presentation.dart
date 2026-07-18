@@ -78,14 +78,14 @@ class TransactionBadgePresentation {
   final FinanceTone tone;
 }
 
-class MonthlySummaryPresentation {
-  const MonthlySummaryPresentation({required this.metrics});
+class CashflowSummaryPresentation {
+  const CashflowSummaryPresentation({required this.metrics});
 
-  final List<MonthlySummaryMetricPresentation> metrics;
+  final List<CashflowSummaryMetricPresentation> metrics;
 }
 
-class MonthlySummaryMetricPresentation {
-  const MonthlySummaryMetricPresentation({
+class CashflowSummaryMetricPresentation {
+  const CashflowSummaryMetricPresentation({
     required this.label,
     required this.amountText,
     required this.caption,
@@ -321,28 +321,28 @@ List<TransactionBadgePresentation> buildTransactionBadges(
   return badges;
 }
 
-MonthlySummaryPresentation buildMonthlySummaryPresentation(
+CashflowSummaryPresentation buildMonthlySummaryPresentation(
   CashflowComparison comparison, {
   int monthlyBudgetMinor = 1000000,
 }) {
   final summary = comparison.current;
   final incomeMinor = summary.income.minorUnits;
   final expenseMinor = summary.expense.minorUnits;
-  return MonthlySummaryPresentation(
+  return CashflowSummaryPresentation(
     metrics: [
-      MonthlySummaryMetricPresentation(
+      CashflowSummaryMetricPresentation(
         label: '本月收入',
         amountText: formatMonthlyAmount(incomeMinor, showSign: true),
         caption: formatPeriodChangeMetrics(comparison.incomeChange),
         tone: FinanceTone.income,
       ),
-      MonthlySummaryMetricPresentation(
+      CashflowSummaryMetricPresentation(
         label: '本月支出',
         amountText: formatMonthlyAmount(expenseMinor, showSign: false),
         caption: formatPeriodChangeMetrics(comparison.expenseChange),
         tone: FinanceTone.expense,
       ),
-      MonthlySummaryMetricPresentation(
+      CashflowSummaryMetricPresentation(
         label: '本月预算',
         amountText: formatMonthlyAmount(monthlyBudgetMinor, showSign: false),
         caption:
