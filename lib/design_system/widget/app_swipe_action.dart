@@ -46,7 +46,8 @@ class AppSwipeAction extends StatefulWidget {
 }
 
 class _AppSwipeActionState extends State<AppSwipeAction> {
-  static const _primaryThreshold = 0.25;
+  static const _singleActionThreshold = 0.4;
+  static const _progressivePrimaryThreshold = 0.25;
   static const _secondaryThreshold = 0.65;
   static const _resetDuration = Duration(milliseconds: 180);
 
@@ -126,6 +127,11 @@ class _AppSwipeActionState extends State<AppSwipeAction> {
     _reset();
     if (action != null) await action.onTriggered();
   }
+
+  double get _primaryThreshold =>
+      widget.secondaryAction == null
+          ? _singleActionThreshold
+          : _progressivePrimaryThreshold;
 
   void _reset() {
     if (!mounted) return;

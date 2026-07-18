@@ -73,4 +73,35 @@ void main() {
     await tester.pumpAndSettle();
     expect(triggered, isFalse);
   });
+
+  testWidgets('single action keeps the original forty percent threshold', (
+    tester,
+  ) async {
+    var editCount = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: SizedBox(
+            width: 400,
+            child: AppSwipeAction(
+              dismissibleKey: const ValueKey('row'),
+              label: '编辑',
+              icon: Icons.edit,
+              onTriggered: () => editCount++,
+              child: const SizedBox(height: 60, child: Text('交易记录')),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.drag(find.text('交易记录'), const Offset(140, 0));
+    await tester.pumpAndSettle();
+    expect(editCount, 0);
+
+    await tester.drag(find.text('交易记录'), const Offset(180, 0));
+    await tester.pumpAndSettle();
+    expect(editCount, 1);
+  });
 }
