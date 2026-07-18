@@ -31,29 +31,25 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
   Widget build(BuildContext context) {
     final accountsAsync = ref.watch(accountViewsProvider);
     final balanceSheetAsync = ref.watch(balanceSheetComparisonProvider);
-    final trendAsync = ref.watch(netAssetTrendProvider());
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
-        child: switch ((accountsAsync, balanceSheetAsync, trendAsync)) {
+        child: switch ((accountsAsync, balanceSheetAsync)) {
           (
             AsyncData(value: final accounts),
             AsyncData(value: final balanceSheet),
-            AsyncData(value: final trend),
           ) =>
             _AccountsContent(
               accounts: accounts,
               balanceSheet: balanceSheet,
-              trend: trend,
               hideBalances: _hideBalances,
               onToggleHide:
                   () => setState(() => _hideBalances = !_hideBalances),
             ),
-          (AsyncError(:final error), _, _) ||
-          (_, AsyncError(:final error), _) ||
-          (_, _, AsyncError(:final error)) => _AccountsErrorView(error: error),
+          (AsyncError(:final error), _) ||
+          (_, AsyncError(:final error)) => _AccountsErrorView(error: error),
           _ => const Center(child: CircularProgressIndicator()),
         },
       ),
@@ -65,14 +61,12 @@ class _AccountsContent extends StatelessWidget {
   const _AccountsContent({
     required this.accounts,
     required this.balanceSheet,
-    required this.trend,
     required this.hideBalances,
     required this.onToggleHide,
   });
 
   final List<AccountView> accounts;
   final BalanceSheetComparison balanceSheet;
-  final List<NetAssetTrendPoint> trend;
   final bool hideBalances;
   final VoidCallback onToggleHide;
 
@@ -141,12 +135,6 @@ class _AccountsContent extends StatelessWidget {
           total: Money(minorUnits: reimbursementMinor),
           totalSemantic: MoneySemantic.asset,
           accounts: reimbursementAccounts,
-          hideBalances: hideBalances,
-        ),
-        const SizedBox(height: AppSpacing.space24),
-        _TrendSection(
-          comparison: balanceSheet,
-          trend: trend,
           hideBalances: hideBalances,
         ),
       ],
@@ -544,157 +532,6 @@ class _AccountRow extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _TrendSection extends StatelessWidget {
-  const _TrendSection({
-    required this.comparison,
-    required this.trend,
-    required this.hideBalances,
-  });
-
-  final BalanceSheetComparison comparison;
-  final List<NetAssetTrendPoint> trend;
-  final bool hideBalances;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textStyles = context.appTextStyles;
-    return Column(
-      children: [
-        Row(
-          children: [
-            Text('资产趋势', style: textStyles.sectionTitleStrong),
-            const Spacer(),
-            Text('本月', style: textStyles.detailLabel),
-            Icon(RemixIcons.arrow_down_s_line, color: colors.onSurfaceVariant),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.space12),
-        AppSurface(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.space18),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('净资产变化', style: textStyles.formValue),
-                      const SizedBox(height: AppSpacing.space14),
-                      Text(
-                        hideBalances
-                            ? '+¥*,***.**'
-                            : _formatSignedMoney(
-                              comparison.netAssetChange.delta.minorUnits,
-                            ),
-                        style: textStyles.amountPrimary.copyWith(
-                          color: colors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(
-                  width: 190,
-                  height: 86,
-                  child: CustomPaint(
-                    painter: _TrendPainter(
-                      color: colors.primary,
-                      values:
-                          trend
-                              .map((point) => point.netAssets.minorUnits)
-                              .toList(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _TrendPainter extends CustomPainter {
-  const _TrendPainter({required this.color, required this.values});
-
-  final Color color;
-  final List<int> values;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final gridPaint =
-        Paint()
-          ..color = color.withValues(alpha: 0.12)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1;
-    canvas.drawLine(
-      Offset(0, size.height * 0.82),
-      Offset(size.width, size.height * 0.82),
-      gridPaint,
-    );
-
-    final points = _pointsForValues(size);
-    final path = Path()..moveTo(points.first.dx, points.first.dy);
-    for (var i = 1; i < points.length; i++) {
-      path.lineTo(points[i].dx, points[i].dy);
-    }
-    final fillPath =
-        Path.from(path)
-          ..lineTo(size.width, size.height)
-          ..lineTo(0, size.height)
-          ..close();
-    final fillPaint =
-        Paint()
-          ..shader = LinearGradient(
-            colors: [
-              color.withValues(alpha: 0.18),
-              color.withValues(alpha: 0.0),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ).createShader(Offset.zero & size);
-    canvas.drawPath(fillPath, fillPaint);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _TrendPainter oldDelegate) {
-    return oldDelegate.color != color || oldDelegate.values != values;
-  }
-
-  List<Offset> _pointsForValues(Size size) {
-    final source = values.isEmpty ? const [0] : values;
-    if (source.length == 1) {
-      return [
-        Offset(0, size.height * 0.5),
-        Offset(size.width, size.height * 0.5),
-      ];
-    }
-
-    final minValue = source.reduce((a, b) => a < b ? a : b);
-    final maxValue = source.reduce((a, b) => a > b ? a : b);
-    final range = (maxValue - minValue).abs();
-    return [
-      for (var i = 0; i < source.length; i++)
-        Offset(
-          size.width * i / (source.length - 1),
-          range == 0
-              ? size.height * 0.5
-              : size.height * (0.82 - ((source[i] - minValue) / range) * 0.62),
-        ),
-    ];
   }
 }
 
