@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
+import '../../../design_system/theme/app_text_styles.dart';
+import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/chart.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
@@ -15,24 +17,28 @@ import 'statistics_section.dart';
 class StatisticsCashflowChart extends StatelessWidget {
   const StatisticsCashflowChart({
     required this.dailySummaries,
+    required this.until,
     required this.grouping,
     required this.metric,
-    required this.color,
     super.key,
   });
 
   final List<DailyCashflowSummary> dailySummaries;
-  final StatisticsCashflowGrouping grouping;
+  final DateTime until;
+  final StatisticsTimeGrouping grouping;
   final CashflowChartMetric metric;
-  final Color color;
 
   @override
   Widget build(BuildContext context) {
     final buckets = buildStatisticsCashflowBuckets(
       dailySummaries,
       grouping: grouping,
+      until: until,
     );
-    if (buckets.isEmpty) {
+    if (buckets.isEmpty ||
+        buckets.every(
+          (bucket) => bucket.incomeMinor == 0 && bucket.expenseMinor == 0,
+        )) {
       return const StatisticsEmptyState(message: '区间内暂无收支数据');
     }
     final values = [
@@ -40,15 +46,19 @@ class StatisticsCashflowChart extends StatelessWidget {
     ];
     final range = _ChartRange.from(values);
     final colors = Theme.of(context).colorScheme;
+    final color = statisticsCashflowMetricColor(context, metric);
 
     return SizedBox(
       height: AppChartGeometry.primaryPlotHeight,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final barWidth = (constraints.maxWidth / buckets.length * .48).clamp(
-            AppChartGeometry.barWidthMin,
-            AppChartGeometry.barWidthMax,
-          );
+          final barWidth = (constraints.maxWidth /
+                  buckets.length *
+                  AppChartGeometry.barWidthRatio)
+              .clamp(
+                AppChartGeometry.barWidthMin,
+                AppChartGeometry.barWidthMax,
+              );
           return BarChart(
             BarChartData(
               minY: range.min,
@@ -60,14 +70,16 @@ class StatisticsCashflowChart extends StatelessWidget {
                 drawVerticalLine: false,
                 getDrawingHorizontalLine:
                     (_) => FlLine(
-                      color: colors.outlineVariant.withValues(alpha: .45),
-                      strokeWidth: 1,
+                      color: colors.outlineVariant.withValues(
+                        alpha: AppChartGeometry.gridLineOpacity,
+                      ),
+                      strokeWidth: AppChartGeometry.gridLineWidth,
                     ),
               ),
               titlesData: _bottomTitles(
                 context,
                 labels: [for (final bucket in buckets) bucket.label],
-                maxLabels: 5,
+                maxLabels: AppChartGeometry.cashflowAxisLabelLimit,
               ),
               barTouchData: BarTouchData(
                 touchTooltipData: BarTouchTooltipData(
@@ -112,27 +124,37 @@ class StatisticsCashflowChart extends StatelessWidget {
 class StatisticsBalanceTrendChart extends StatelessWidget {
   const StatisticsBalanceTrendChart({
     required this.points,
-    required this.color,
+    required this.grouping,
+    required this.until,
     super.key,
   });
 
   final List<BalanceTrendPoint> points;
-  final Color color;
+  final StatisticsTimeGrouping grouping;
+  final DateTime until;
 
   @override
   Widget build(BuildContext context) {
-    if (points.isEmpty) {
+    final buckets = buildStatisticsBalanceTrendBuckets(
+      points,
+      grouping: grouping,
+      until: until,
+    );
+    if (buckets.isEmpty) {
       return const StatisticsEmptyState(message: '区间内暂无资产数据');
     }
-    final values = [for (final point in points) point.balance.minorUnits / 100];
+    final values = [
+      for (final bucket in buckets) bucket.balance.minorUnits / 100,
+    ];
     final range = _ChartRange.from(values);
     final colors = Theme.of(context).colorScheme;
+    final color = Theme.of(context).extension<AppThemeExtension>()!.asset;
     return SizedBox(
       height: AppChartGeometry.secondaryPlotHeight,
       child: LineChart(
         LineChartData(
           minX: 0,
-          maxX: math.max(1, points.length - 1).toDouble(),
+          maxX: math.max(1, buckets.length - 1).toDouble(),
           minY: range.min,
           maxY: range.max,
           borderData: FlBorderData(show: false),
@@ -140,31 +162,33 @@ class StatisticsBalanceTrendChart extends StatelessWidget {
             drawVerticalLine: false,
             getDrawingHorizontalLine:
                 (_) => FlLine(
-                  color: colors.outlineVariant.withValues(alpha: .45),
-                  strokeWidth: 1,
+                  color: colors.outlineVariant.withValues(
+                    alpha: AppChartGeometry.gridLineOpacity,
+                  ),
+                  strokeWidth: AppChartGeometry.gridLineWidth,
                 ),
           ),
           titlesData: _bottomTitles(
             context,
-            labels: [
-              for (final point in points) statisticsDateLabel(point.date),
-            ],
-            maxLabels: 4,
+            labels: [for (final bucket in buckets) bucket.label],
+            maxLabels: AppChartGeometry.trendAxisLabelLimit,
           ),
           lineTouchData: const LineTouchData(enabled: true),
           lineBarsData: [
             LineChartBarData(
               spots: [
-                for (var i = 0; i < points.length; i++)
+                for (var i = 0; i < buckets.length; i++)
                   FlSpot(i.toDouble(), values[i]),
               ],
               color: color,
               barWidth: AppChartGeometry.lineWidth,
-              isCurved: points.length > 2,
-              dotData: FlDotData(show: points.length <= 12),
+              isCurved: buckets.length > 2,
+              dotData: FlDotData(show: buckets.length <= 12),
               belowBarData: BarAreaData(
                 show: true,
-                color: color.withValues(alpha: .10),
+                color: color.withValues(
+                  alpha: AppChartGeometry.areaFillOpacity,
+                ),
               ),
             ),
           ],
@@ -177,14 +201,12 @@ class StatisticsBalanceTrendChart extends StatelessWidget {
 class StatisticsDonutChart extends StatelessWidget {
   const StatisticsDonutChart({
     required this.items,
-    required this.palette,
     required this.centerLabel,
     required this.centerValue,
     super.key,
   });
 
   final List<StatisticsBreakdownItem> items;
-  final List<Color> palette;
   final String centerLabel;
   final String centerValue;
 
@@ -208,7 +230,7 @@ class StatisticsDonutChart extends StatelessWidget {
                 for (var i = 0; i < items.length; i++)
                   PieChartSectionData(
                     value: statisticsCategoryMagnitude(items[i]).toDouble(),
-                    color: palette[i % palette.length],
+                    color: statisticsChartSeriesColor(context, i),
                     radius: AppChartGeometry.pieSectionRadius,
                     showTitle: false,
                   ),
@@ -228,9 +250,7 @@ class StatisticsDonutChart extends StatelessWidget {
                 const SizedBox(height: AppSpacing.space2),
                 Text(
                   centerValue,
-                  style: textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: context.appTextStyles.subsectionTitleStrong,
                 ),
               ],
             ),
@@ -239,6 +259,29 @@ class StatisticsDonutChart extends StatelessWidget {
       ),
     );
   }
+}
+
+Color statisticsCashflowMetricColor(
+  BuildContext context,
+  CashflowChartMetric metric,
+) {
+  final colors = Theme.of(context).extension<AppThemeExtension>()!;
+  return switch (metric) {
+    CashflowChartMetric.expense => colors.expense,
+    CashflowChartMetric.income => colors.income,
+    CashflowChartMetric.net => colors.equity,
+  };
+}
+
+Color statisticsChartSeriesColor(BuildContext context, int index) {
+  final colors = Theme.of(context).extension<AppThemeExtension>()!;
+  return [
+    colors.chart1,
+    colors.chart2,
+    colors.chart3,
+    colors.chart4,
+    colors.chart5,
+  ][index % 5];
 }
 
 FlTitlesData _bottomTitles(

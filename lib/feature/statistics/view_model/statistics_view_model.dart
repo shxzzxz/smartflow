@@ -19,10 +19,6 @@ enum CashflowChartMetric { expense, income, net }
 
 enum StatisticsCategoryKind { expense, income }
 
-enum StatisticsCategoryLevel { primary, secondary }
-
-enum StatisticsValueMode { amount, percentage }
-
 enum StatisticsDrilldownScope { cashflow, balance }
 
 @riverpod
@@ -312,15 +308,15 @@ class StatisticsControlState {
   final StatisticsCategoryLevel categoryLevel;
   final StatisticsValueMode valueMode;
 
-  StatisticsCashflowGrouping get cashflowGrouping => switch (periodKind) {
-    StatisticsPeriodKind.month => StatisticsCashflowGrouping.day,
-    StatisticsPeriodKind.year => StatisticsCashflowGrouping.month,
+  StatisticsTimeGrouping get trendGrouping => switch (periodKind) {
+    StatisticsPeriodKind.month => StatisticsTimeGrouping.day,
+    StatisticsPeriodKind.year => StatisticsTimeGrouping.month,
     StatisticsPeriodKind.custom => switch (customUntil
         .difference(customFrom)
         .inDays) {
-      <= 45 => StatisticsCashflowGrouping.day,
-      <= 180 => StatisticsCashflowGrouping.week,
-      _ => StatisticsCashflowGrouping.month,
+      <= 45 => StatisticsTimeGrouping.day,
+      <= 180 => StatisticsTimeGrouping.week,
+      _ => StatisticsTimeGrouping.month,
     },
   };
 
@@ -358,14 +354,18 @@ class StatisticsControlState {
         return StatisticsDateRange(
           from: start,
           until: _validUntil(start, _capAtTomorrow(end, now)),
-          balancePointIntervalDays: 7,
+          balancePointIntervalDays: 1,
         );
       case StatisticsPeriodKind.custom:
+        final days = customUntil.difference(customFrom).inDays;
         return StatisticsDateRange(
           from: customFrom,
           until: customUntil,
-          balancePointIntervalDays:
-              customUntil.difference(customFrom).inDays > 90 ? 7 : 1,
+          balancePointIntervalDays: switch (days) {
+            <= 45 => 1,
+            <= 180 => 7,
+            _ => 1,
+          },
         );
     }
   }

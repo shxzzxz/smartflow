@@ -133,7 +133,43 @@ class StatisticsBreakdownItem {
   }
 }
 
-enum StatisticsCashflowGrouping { day, week, month }
+enum StatisticsTimeGrouping { day, week, month }
+
+enum StatisticsCategoryLevel { primary, secondary }
+
+enum StatisticsValueMode { amount, percentage }
+
+extension StatisticsTimeGroupingPresentation on StatisticsTimeGrouping {
+  DateTime bucketStart(DateTime date, {required DateTime anchor}) {
+    return switch (this) {
+      StatisticsTimeGrouping.day => date,
+      StatisticsTimeGrouping.week => anchor.add(
+        Duration(days: date.difference(anchor).inDays ~/ 7 * 7),
+      ),
+      StatisticsTimeGrouping.month => DateTime(date.year, date.month),
+    };
+  }
+
+  String labelFor(
+    DateTime start, {
+    DateTime? untilExclusive,
+    bool includeYear = false,
+  }) => switch (this) {
+    StatisticsTimeGrouping.day => '${start.month}/${start.day}',
+    StatisticsTimeGrouping.week => _weekLabel(
+      start,
+      untilExclusive: untilExclusive,
+    ),
+    StatisticsTimeGrouping.month =>
+      includeYear ? '${start.year}/${start.month}' : '${start.month}月',
+  };
+
+  String get description => switch (this) {
+    StatisticsTimeGrouping.day => '按日汇总，点击柱形查看金额',
+    StatisticsTimeGrouping.week => '按 7 天汇总，避免长区间过密',
+    StatisticsTimeGrouping.month => '按月汇总，突出长期趋势',
+  };
+}
 
 class StatisticsCashflowBucket {
   const StatisticsCashflowBucket({
@@ -150,9 +186,22 @@ class StatisticsCashflowBucket {
   int get netMinor => incomeMinor - expenseMinor;
 }
 
+class StatisticsBalanceTrendBucket {
+  const StatisticsBalanceTrendBucket({
+    required this.date,
+    required this.label,
+    required this.balance,
+  });
+
+  final DateTime date;
+  final String label;
+  final Money balance;
+}
+
 List<StatisticsCashflowBucket> buildStatisticsCashflowBuckets(
   List<DailyCashflowSummary> items, {
-  StatisticsCashflowGrouping grouping = StatisticsCashflowGrouping.day,
+  StatisticsTimeGrouping grouping = StatisticsTimeGrouping.day,
+  DateTime? until,
 }) {
   if (items.isEmpty) {
     return const [];
@@ -164,16 +213,11 @@ List<StatisticsCashflowBucket> buildStatisticsCashflowBuckets(
     sorted.first.date.month,
     sorted.first.date.day,
   );
+  final spansMultipleYears = sorted.first.date.year != sorted.last.date.year;
   final buckets = <DateTime, _CashflowBucketAccumulator>{};
   for (final item in sorted) {
     final date = DateTime(item.date.year, item.date.month, item.date.day);
-    final bucketStart = switch (grouping) {
-      StatisticsCashflowGrouping.day => date,
-      StatisticsCashflowGrouping.week => anchor.add(
-        Duration(days: date.difference(anchor).inDays ~/ 7 * 7),
-      ),
-      StatisticsCashflowGrouping.month => DateTime(date.year, date.month),
-    };
+    final bucketStart = grouping.bucketStart(date, anchor: anchor);
     final bucket = buckets.putIfAbsent(
       bucketStart,
       () => _CashflowBucketAccumulator(date: bucketStart),
@@ -185,14 +229,55 @@ List<StatisticsCashflowBucket> buildStatisticsCashflowBuckets(
     for (final bucket in buckets.values)
       StatisticsCashflowBucket(
         date: bucket.date,
-        label: switch (grouping) {
-          StatisticsCashflowGrouping.day =>
-            '${bucket.date.month}/${bucket.date.day}',
-          StatisticsCashflowGrouping.week => _weekLabel(bucket.date),
-          StatisticsCashflowGrouping.month => '${bucket.date.month}月',
-        },
+        label: grouping.labelFor(
+          bucket.date,
+          untilExclusive: until,
+          includeYear: spansMultipleYears,
+        ),
         incomeMinor: bucket.incomeMinor,
         expenseMinor: bucket.expenseMinor,
+      ),
+  ];
+}
+
+List<StatisticsBalanceTrendBucket> buildStatisticsBalanceTrendBuckets(
+  List<BalanceTrendPoint> items, {
+  required StatisticsTimeGrouping grouping,
+  DateTime? until,
+}) {
+  if (items.isEmpty) {
+    return const [];
+  }
+  final sorted = [...items]
+    ..sort((left, right) => left.date.compareTo(right.date));
+  DateTime effectiveDateAt(int index) {
+    final snapshotDate =
+        index == 0
+            ? sorted[index].date
+            : sorted[index].date.subtract(const Duration(days: 1));
+    return DateTime(snapshotDate.year, snapshotDate.month, snapshotDate.day);
+  }
+
+  final anchor = effectiveDateAt(0);
+  final spansMultipleYears =
+      anchor.year != effectiveDateAt(sorted.length - 1).year;
+  final buckets = <DateTime, BalanceTrendPoint>{};
+  for (var index = 0; index < sorted.length; index++) {
+    final item = sorted[index];
+    final date = effectiveDateAt(index);
+    final bucketStart = grouping.bucketStart(date, anchor: anchor);
+    buckets[bucketStart] = item;
+  }
+  return [
+    for (final entry in buckets.entries)
+      StatisticsBalanceTrendBucket(
+        date: entry.key,
+        label: grouping.labelFor(
+          entry.key,
+          untilExclusive: until,
+          includeYear: spansMultipleYears,
+        ),
+        balance: entry.value.balance,
       ),
   ];
 }
@@ -222,8 +307,11 @@ List<DailyCashflowSummary> _fillDailyCashflowDates(
   return result;
 }
 
-String _weekLabel(DateTime start) {
-  final end = start.add(const Duration(days: 6));
+String _weekLabel(DateTime start, {DateTime? untilExclusive}) {
+  final naturalEnd = start.add(const Duration(days: 6));
+  final rangeEnd = untilExclusive?.subtract(const Duration(days: 1));
+  final end =
+      rangeEnd != null && rangeEnd.isBefore(naturalEnd) ? rangeEnd : naturalEnd;
   return '${start.month}/${start.day}–${end.month}/${end.day}';
 }
 
@@ -279,6 +367,17 @@ String statisticsCategoryValueText(
 }
 
 String statisticsDateLabel(DateTime date) => '${date.month}/${date.day}';
+
+String statisticsCategoryLevelLabel(StatisticsCategoryLevel level) =>
+    switch (level) {
+      StatisticsCategoryLevel.primary => '一级',
+      StatisticsCategoryLevel.secondary => '二级',
+    };
+
+String statisticsValueModeLabel(StatisticsValueMode mode) => switch (mode) {
+  StatisticsValueMode.amount => '金额',
+  StatisticsValueMode.percentage => '占比',
+};
 
 StatisticsPresentation buildStatisticsPresentation({
   required CashflowReport cashflow,

@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as path;
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
@@ -11,6 +15,8 @@ import 'package:smartflow/feature/statistics/presentation/statistics_presentatio
 import 'package:smartflow/feature/statistics/view_model/statistics_view_model.dart';
 
 void main() {
+  setUpAll(_loadAppFonts);
+
   testWidgets('matches the compact-phone visual baseline', (tester) async {
     tester.view.physicalSize = const Size(360, 800);
     tester.view.devicePixelRatio = 1;
@@ -41,6 +47,31 @@ void main() {
     expect(find.text('本期概览'), findsOneWidget);
     expect(find.text('收支趋势'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shows a cashflow empty state when the range has no activity', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpStatisticsPage(
+      tester,
+      presentation: _presentation(
+        dailySummaries: [
+          DailyCashflowSummary(
+            date: DateTime(2026, 1, 5),
+            income: const Money(minorUnits: 0),
+            expense: const Money(minorUnits: 0),
+          ),
+        ],
+      ),
+    );
+
+    expect(find.text('区间内暂无收支数据'), findsOneWidget);
+    expect(find.byType(BarChart), findsNothing);
   });
 
   testWidgets('shows market-level charts and switches analysis dimensions', (
@@ -97,9 +128,58 @@ void main() {
   });
 }
 
+Future<void> _loadAppFonts() async {
+  final primary = FontLoader('HarmonyOS Sans')..addFont(
+    rootBundle.load('assets/fonts/HarmonyOS_Sans/HarmonyOS_Sans_Regular.ttf'),
+  );
+  final fallback = FontLoader('HarmonyOS Sans SC')..addFont(
+    rootBundle.load(
+      'assets/fonts/HarmonyOS_Sans_SC/HarmonyOS_Sans_SC_Regular.ttf',
+    ),
+  );
+  final materialIcons = FontLoader('MaterialIcons')
+    ..addFont(_loadMaterialIcons());
+  await Future.wait([primary.load(), fallback.load(), materialIcons.load()]);
+}
+
+Future<ByteData> _loadMaterialIcons() async {
+  final flutterRoot = _findFlutterRoot();
+  final bytes =
+      await File(
+        path.join(
+          flutterRoot.path,
+          'bin',
+          'cache',
+          'artifacts',
+          'material_fonts',
+          'MaterialIcons-Regular.otf',
+        ),
+      ).readAsBytes();
+  return ByteData.sublistView(bytes);
+}
+
+Directory _findFlutterRoot() {
+  final configuredRoot = Platform.environment['FLUTTER_ROOT'];
+  if (configuredRoot != null) {
+    final directory = Directory(configuredRoot);
+    if (directory.existsSync()) return directory;
+  }
+
+  var directory = Directory.current;
+  while (true) {
+    final fvmRoot = Directory(path.join(directory.path, '.fvm', 'flutter_sdk'));
+    if (fvmRoot.existsSync()) return fvmRoot;
+    if (directory.parent.path == directory.path) break;
+    directory = directory.parent;
+  }
+
+  throw StateError('Unable to locate the Flutter SDK for Material Icons.');
+}
+
 Future<void> _pumpStatisticsPage(
   WidgetTester tester, {
   Key? boundaryKey,
+  StatisticsPresentation? presentation,
 }) async {
   final month = DateTime(2026, 1);
   await tester.pumpWidget(
@@ -111,7 +191,9 @@ Future<void> _pumpStatisticsPage(
           DateTime(2026, 1, 16),
           1,
         ).overrideWith(
-          (ref) => StatisticsContentState.loaded(presentation: _presentation()),
+          (ref) => StatisticsContentState.loaded(
+            presentation: presentation ?? _presentation(),
+          ),
         ),
       ],
       child: MaterialApp(
@@ -123,7 +205,9 @@ Future<void> _pumpStatisticsPage(
   await tester.pump();
 }
 
-StatisticsPresentation _presentation() {
+StatisticsPresentation _presentation({
+  List<DailyCashflowSummary>? dailySummaries,
+}) {
   return StatisticsPresentation(
     cashflowComparison: const CashflowComparison(
       current: CashflowSummary(
@@ -139,13 +223,15 @@ StatisticsPresentation _presentation() {
         expense: Money(minorUnits: 400),
       ),
     ),
-    dailySummaries: [
-      DailyCashflowSummary(
-        date: DateTime(2026, 1, 5),
-        income: const Money(minorUnits: 2000),
-        expense: const Money(minorUnits: 700),
-      ),
-    ],
+    dailySummaries:
+        dailySummaries ??
+        [
+          DailyCashflowSummary(
+            date: DateTime(2026, 1, 5),
+            income: const Money(minorUnits: 2000),
+            expense: const Money(minorUnits: 700),
+          ),
+        ],
     incomeCategories: const [
       StatisticsBreakdownItem(
         id: 'salary',

@@ -42,7 +42,7 @@ void main() {
     expect(custom.until, DateTime(2026, 2, 9));
   });
 
-  test('chooses readable cashflow grouping for each period kind', () {
+  test('chooses readable trend grouping for each period kind', () {
     final month = _control(
       periodKind: StatisticsPeriodKind.month,
       customFrom: DateTime(2026, 1),
@@ -64,10 +64,16 @@ void main() {
       customUntil: DateTime(2026, 8, 1),
     );
 
-    expect(month.cashflowGrouping, StatisticsCashflowGrouping.day);
-    expect(year.cashflowGrouping, StatisticsCashflowGrouping.month);
-    expect(mediumCustom.cashflowGrouping, StatisticsCashflowGrouping.week);
-    expect(longCustom.cashflowGrouping, StatisticsCashflowGrouping.month);
+    expect(month.trendGrouping, StatisticsTimeGrouping.day);
+    expect(year.trendGrouping, StatisticsTimeGrouping.month);
+    expect(mediumCustom.trendGrouping, StatisticsTimeGrouping.week);
+    expect(longCustom.trendGrouping, StatisticsTimeGrouping.month);
+    expect(year.range(DateTime(2026, 7, 18)).balancePointIntervalDays, 1);
+    expect(
+      mediumCustom.range(DateTime(2026, 7, 18)).balancePointIntervalDays,
+      7,
+    );
+    expect(longCustom.range(DateTime(2026, 7, 18)).balancePointIntervalDays, 1);
   });
 
   test('combines reports into a category-rollup page state', () async {

@@ -5,7 +5,6 @@ import 'package:remixicon/remixicon.dart';
 
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
-import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
@@ -220,7 +219,7 @@ class _StatisticsContent extends StatelessWidget {
         const SizedBox(height: AppSpacing.space16),
         _CashflowSection(presentation: presentation, control: control),
         const SizedBox(height: AppSpacing.space16),
-        _BalanceSection(presentation: presentation),
+        _BalanceSection(presentation: presentation, control: control),
         const SizedBox(height: AppSpacing.space16),
         _CategoryAnalysis(presentation: presentation, control: control),
       ],
@@ -235,7 +234,6 @@ class _Summary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final summary = presentation.cashflowComparison.current;
     return AppSurface(
       child: Padding(
@@ -256,7 +254,7 @@ class _Summary extends StatelessWidget {
                       supporting: presentation.incomeChangeText,
                     ),
                   ),
-                  _SummaryDivider(color: colors.outlineVariant),
+                  const _SummaryDivider(),
                   Expanded(
                     child: _SummaryMetric(
                       label: '支出',
@@ -265,7 +263,7 @@ class _Summary extends StatelessWidget {
                       supporting: presentation.expenseChangeText,
                     ),
                   ),
-                  _SummaryDivider(color: colors.outlineVariant),
+                  const _SummaryDivider(),
                   Expanded(
                     child: _SummaryMetric(
                       label: '结余',
@@ -285,16 +283,13 @@ class _Summary extends StatelessWidget {
 }
 
 class _SummaryDivider extends StatelessWidget {
-  const _SummaryDivider({required this.color});
-
-  final Color color;
+  const _SummaryDivider();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.space8),
-      color: color.withValues(alpha: .65),
+    return VerticalDivider(
+      width: AppSpacing.space16,
+      color: Theme.of(context).colorScheme.outlineVariant,
     );
   }
 }
@@ -351,15 +346,10 @@ class _CashflowSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final extension = Theme.of(context).extension<AppThemeExtension>()!;
-    final color = switch (control.chartMetric) {
-      CashflowChartMetric.expense => extension.expense,
-      CashflowChartMetric.income => extension.income,
-      CashflowChartMetric.net => extension.equity,
-    };
     return StatisticsSectionCard(
       title: '收支趋势',
-      subtitle: _groupingDescription(control.cashflowGrouping),
+      subtitle: control.trendGrouping.description,
+      emphasis: StatisticsSectionEmphasis.primary,
       trailing: AppSegmentedControl<CashflowChartMetric>(
         segments: const [
           AppSegment(value: CashflowChartMetric.expense, label: '支出'),
@@ -372,28 +362,29 @@ class _CashflowSection extends ConsumerWidget {
       ),
       child: StatisticsCashflowChart(
         dailySummaries: presentation.dailySummaries,
-        grouping: control.cashflowGrouping,
+        until: presentation.cashflowUntil,
+        grouping: control.trendGrouping,
         metric: control.chartMetric,
-        color: color,
       ),
     );
   }
 }
 
 class _BalanceSection extends StatelessWidget {
-  const _BalanceSection({required this.presentation});
+  const _BalanceSection({required this.presentation, required this.control});
 
   final StatisticsPresentation presentation;
+  final StatisticsControlState control;
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).extension<AppThemeExtension>()!.asset;
     return StatisticsSectionCard(
       title: '资产走势',
       subtitle: presentation.netAssetChangeText,
       child: StatisticsBalanceTrendChart(
         points: presentation.rangeBalanceTrend,
-        color: color,
+        grouping: control.trendGrouping,
+        until: presentation.balanceUntil,
       ),
     );
   }
@@ -420,7 +411,6 @@ class _CategoryAnalysis extends ConsumerWidget {
         control.categoryKind == StatisticsCategoryKind.expense
             ? MoneySemantic.expense
             : MoneySemantic.income;
-    final palette = _chartPalette(context);
     final totalMinor = items.fold<int>(
       0,
       (sum, item) => sum + statisticsCategoryMagnitude(item),
@@ -428,8 +418,8 @@ class _CategoryAnalysis extends ConsumerWidget {
     return StatisticsSectionCard(
       title: '分类构成',
       subtitle:
-          '${_categoryLevelLabel(control.categoryLevel)} · '
-          '${_valueModeLabel(control.valueMode)}',
+          '${statisticsCategoryLevelLabel(control.categoryLevel)} · '
+          '${statisticsValueModeLabel(control.valueMode)}',
       trailing: AppSegmentedControl<StatisticsCategoryKind>(
         segments: const [
           AppSegment(value: StatisticsCategoryKind.expense, label: '支出'),
@@ -454,7 +444,6 @@ class _CategoryAnalysis extends ConsumerWidget {
                   ),
                   StatisticsDonutChart(
                     items: items,
-                    palette: palette,
                     centerLabel:
                         control.categoryKind == StatisticsCategoryKind.expense
                             ? '总支出'
@@ -465,7 +454,7 @@ class _CategoryAnalysis extends ConsumerWidget {
                   for (var i = 0; i < items.length; i++)
                     _CategoryRow(
                       item: items[i],
-                      color: palette[i % palette.length],
+                      color: statisticsChartSeriesColor(context, i),
                       trailing:
                           control.valueMode == StatisticsValueMode.amount
                               ? MoneyText(
@@ -574,7 +563,8 @@ class _CategoryDisplayMenu extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '${_categoryLevelLabel(level)} · ${_valueModeLabel(valueMode)}',
+              '${statisticsCategoryLevelLabel(level)} · '
+              '${statisticsValueModeLabel(valueMode)}',
               style: context.appTextStyles.quickActionLabel(selected: false),
             ),
             const SizedBox(width: AppSpacing.space4),
@@ -655,7 +645,6 @@ class _CategoryDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final children = item.children;
-    final palette = _chartPalette(context);
     final totalMinor = children.fold<int>(
       0,
       (sum, child) => sum + statisticsCategoryMagnitude(child),
@@ -693,14 +682,13 @@ class _CategoryDetailPage extends StatelessWidget {
                       children: [
                         StatisticsDonutChart(
                           items: children,
-                          palette: palette,
                           centerLabel: '合计',
                           centerValue: Money(minorUnits: totalMinor).format(),
                         ),
                         for (var i = 0; i < children.length; i++)
                           _CategoryRow(
                             item: children[i],
-                            color: palette[i % palette.length],
+                            color: statisticsChartSeriesColor(context, i),
                             trailing: MoneyText(
                               money: children[i].amount,
                               semantic: semantic,
@@ -754,34 +742,6 @@ class _PageMessage extends StatelessWidget {
       ),
     );
   }
-}
-
-String _groupingDescription(StatisticsCashflowGrouping grouping) =>
-    switch (grouping) {
-      StatisticsCashflowGrouping.day => '按日汇总，点击柱形查看金额',
-      StatisticsCashflowGrouping.week => '按 7 天汇总，避免长区间过密',
-      StatisticsCashflowGrouping.month => '按月汇总，突出长期趋势',
-    };
-
-String _categoryLevelLabel(StatisticsCategoryLevel level) => switch (level) {
-  StatisticsCategoryLevel.primary => '一级',
-  StatisticsCategoryLevel.secondary => '二级',
-};
-
-String _valueModeLabel(StatisticsValueMode mode) => switch (mode) {
-  StatisticsValueMode.amount => '金额',
-  StatisticsValueMode.percentage => '占比',
-};
-
-List<Color> _chartPalette(BuildContext context) {
-  final colors = Theme.of(context).extension<AppThemeExtension>()!;
-  return [
-    colors.chart1,
-    colors.chart2,
-    colors.chart3,
-    colors.chart4,
-    colors.chart5,
-  ];
 }
 
 void _openTransactions(

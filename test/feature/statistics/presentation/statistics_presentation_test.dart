@@ -125,7 +125,7 @@ void main() {
         income: const Money(minorUnits: 800),
         expense: const Money(minorUnits: 100),
       ),
-    ], grouping: StatisticsCashflowGrouping.month);
+    ], grouping: StatisticsTimeGrouping.month);
 
     expect(buckets.map((item) => item.label), ['1月', '2月']);
     expect(buckets.first.incomeMinor, 1500);
@@ -150,11 +150,78 @@ void main() {
         income: const Money(minorUnits: 200),
         expense: const Money(minorUnits: 50),
       ),
-    ], grouping: StatisticsCashflowGrouping.week);
+    ], grouping: StatisticsTimeGrouping.week);
 
     expect(buckets.map((item) => item.label), ['1/1–1/7', '1/8–1/14']);
     expect(buckets.first.netMinor, 700);
     expect(buckets.last.netMinor, 150);
+  });
+
+  test('clamps the final weekly label to the selected range', () {
+    final buckets = buildStatisticsCashflowBuckets(
+      [
+        DailyCashflowSummary(
+          date: DateTime(2026, 1, 8),
+          income: const Money(minorUnits: 200),
+          expense: const Money(minorUnits: 50),
+        ),
+      ],
+      grouping: StatisticsTimeGrouping.week,
+      until: DateTime(2026, 1, 10),
+    );
+
+    expect(buckets.single.label, '1/8–1/9');
+  });
+
+  test('includes the year in multi-year monthly bucket labels', () {
+    final buckets = buildStatisticsCashflowBuckets([
+      DailyCashflowSummary(
+        date: DateTime(2025, 12, 31),
+        income: const Money(minorUnits: 100),
+        expense: const Money(minorUnits: 0),
+      ),
+      DailyCashflowSummary(
+        date: DateTime(2026, 1, 1),
+        income: const Money(minorUnits: 200),
+        expense: const Money(minorUnits: 0),
+      ),
+    ], grouping: StatisticsTimeGrouping.month);
+
+    expect(buckets.map((item) => item.label), ['2025/12', '2026/1']);
+  });
+
+  test('maps exclusive balance snapshots to their natural month end', () {
+    final buckets = buildStatisticsBalanceTrendBuckets([
+      BalanceTrendPoint(
+        date: DateTime(2026, 1, 1),
+        balance: const Money(minorUnits: 1000),
+      ),
+      BalanceTrendPoint(
+        date: DateTime(2026, 1, 2),
+        balance: const Money(minorUnits: 1100),
+      ),
+      BalanceTrendPoint(
+        date: DateTime(2026, 2, 1),
+        balance: const Money(minorUnits: 1500),
+      ),
+      BalanceTrendPoint(
+        date: DateTime(2026, 3, 1),
+        balance: const Money(minorUnits: 1200),
+      ),
+    ], grouping: StatisticsTimeGrouping.month);
+
+    expect(buckets.map((item) => item.label), ['1月', '2月']);
+    expect(buckets.first.balance.minorUnits, 1500);
+    expect(buckets.last.balance.minorUnits, 1200);
+  });
+
+  test('provides display copy for statistics controls', () {
+    expect(StatisticsTimeGrouping.day.description, contains('按日'));
+    expect(
+      statisticsCategoryLevelLabel(StatisticsCategoryLevel.secondary),
+      '二级',
+    );
+    expect(statisticsValueModeLabel(StatisticsValueMode.percentage), '占比');
   });
 
   test('selects secondary categories and calculates their share', () {
