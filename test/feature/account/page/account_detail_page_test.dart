@@ -9,6 +9,7 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_swipe_action.dart';
 import 'package:smartflow/feature/account/page/account_bills_page.dart';
 import 'package:smartflow/feature/account/page/account_detail_page.dart';
 import 'package:smartflow/feature/account/view_model/account_detail_view_model.dart';
@@ -281,7 +282,7 @@ void main() {
       ),
     );
 
-    expect(find.byType(Dismissible), findsOneWidget);
+    expect(find.byType(AppSwipeAction), findsOneWidget);
     await tester.drag(find.byType(TransactionRow), const Offset(240, 0));
     await tester.pumpAndSettle();
 

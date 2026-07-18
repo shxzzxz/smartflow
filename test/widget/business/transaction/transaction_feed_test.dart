@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_swipe_action.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
@@ -115,7 +116,7 @@ void main() {
       MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
     );
 
-    expect(find.byType(Dismissible), findsOneWidget);
+    expect(find.byType(AppSwipeAction), findsOneWidget);
     await tester.drag(find.byType(TransactionRow), const Offset(400, 0));
     await tester.pumpAndSettle();
 

@@ -21,7 +21,7 @@ class AppSwipeActionItem {
   final AppSwipeActionTone tone;
 }
 
-class AppSwipeAction extends StatelessWidget {
+class AppSwipeAction extends StatefulWidget {
   const AppSwipeAction({
     required this.dismissibleKey,
     required this.label,
@@ -33,8 +33,6 @@ class AppSwipeAction extends StatelessWidget {
     this.secondaryAction,
   });
 
-  static const _dismissThreshold = 0.4;
-
   final Key dismissibleKey;
   final String label;
   final IconData icon;
@@ -44,37 +42,97 @@ class AppSwipeAction extends StatelessWidget {
   final AppSwipeActionItem? secondaryAction;
 
   @override
+  State<AppSwipeAction> createState() => _AppSwipeActionState();
+}
+
+class _AppSwipeActionState extends State<AppSwipeAction> {
+  static const _primaryThreshold = 0.25;
+  static const _secondaryThreshold = 0.65;
+  static const _resetDuration = Duration(milliseconds: 180);
+
+  double _dragExtent = 0;
+  double _availableWidth = 1;
+  bool _dragging = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Dismissible(
-      key: dismissibleKey,
-      direction:
-          secondaryAction == null
-              ? DismissDirection.startToEnd
-              : DismissDirection.horizontal,
-      dismissThresholds: const {
-        DismissDirection.startToEnd: _dismissThreshold,
-        DismissDirection.endToStart: _dismissThreshold,
-      },
-      background: _ActionBackground(label: label, icon: icon, tone: tone),
-      secondaryBackground:
-          secondaryAction == null
-              ? null
-              : _ActionBackground(
-                label: secondaryAction!.label,
-                icon: secondaryAction!.icon,
-                tone: secondaryAction!.tone,
-                alignment: Alignment.centerRight,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _availableWidth = constraints.maxWidth;
+        final action = _activeAction;
+        return ClipRect(
+          key: widget.dismissibleKey,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: _ActionBackground(
+                  label: action.label,
+                  icon: action.icon,
+                  tone: action.tone,
+                ),
               ),
-      confirmDismiss: (direction) async {
-        if (direction == DismissDirection.startToEnd) {
-          await onTriggered();
-        } else if (direction == DismissDirection.endToStart) {
-          await secondaryAction?.onTriggered();
-        }
-        return false;
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onHorizontalDragStart: (_) {
+                  setState(() => _dragging = true);
+                },
+                onHorizontalDragUpdate: (details) {
+                  setState(() {
+                    _dragExtent = (_dragExtent + details.delta.dx).clamp(
+                      0,
+                      _availableWidth,
+                    );
+                  });
+                },
+                onHorizontalDragEnd: (_) => _finishDrag(),
+                onHorizontalDragCancel: _reset,
+                child: AnimatedContainer(
+                  duration: _dragging ? Duration.zero : _resetDuration,
+                  transform: Matrix4.translationValues(_dragExtent, 0, 0),
+                  child: widget.child,
+                ),
+              ),
+            ],
+          ),
+        );
       },
-      child: child,
     );
+  }
+
+  AppSwipeActionItem get _primaryAction => AppSwipeActionItem(
+    label: widget.label,
+    icon: widget.icon,
+    onTriggered: widget.onTriggered,
+    tone: widget.tone,
+  );
+
+  AppSwipeActionItem get _activeAction {
+    final secondary = widget.secondaryAction;
+    if (secondary != null && _dragFraction >= _secondaryThreshold) {
+      return secondary;
+    }
+    return _primaryAction;
+  }
+
+  double get _dragFraction => _dragExtent / _availableWidth;
+
+  Future<void> _finishDrag() async {
+    final fraction = _dragFraction;
+    final action = switch (widget.secondaryAction) {
+      final secondary? when fraction >= _secondaryThreshold => secondary,
+      _ when fraction >= _primaryThreshold => _primaryAction,
+      _ => null,
+    };
+    _reset();
+    if (action != null) await action.onTriggered();
+  }
+
+  void _reset() {
+    if (!mounted) return;
+    setState(() {
+      _dragging = false;
+      _dragExtent = 0;
+    });
   }
 }
 
@@ -83,13 +141,11 @@ class _ActionBackground extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.tone,
-    this.alignment = Alignment.centerLeft,
   });
 
   final String label;
   final IconData icon;
   final AppSwipeActionTone tone;
-  final Alignment alignment;
 
   @override
   Widget build(BuildContext context) {
@@ -105,25 +161,40 @@ class _ActionBackground extends StatelessWidget {
         colors.onErrorContainer,
       ),
     };
-    return DecoratedBox(
-      decoration: BoxDecoration(color: backgroundColor),
-      child: Align(
-        alignment: alignment,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space20),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: AppSpacing.space20, color: foregroundColor),
-              const SizedBox(width: AppSpacing.space8),
-              Text(
-                label,
-                style: styles.formLabel.copyWith(color: foregroundColor),
-              ),
-            ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return DecoratedBox(
+          decoration: BoxDecoration(color: backgroundColor),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child:
+                constraints.maxWidth < AppSpacing.space20 * 4
+                    ? const SizedBox.shrink()
+                    : Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.space20,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            icon,
+                            size: AppSpacing.space20,
+                            color: foregroundColor,
+                          ),
+                          const SizedBox(width: AppSpacing.space8),
+                          Text(
+                            label,
+                            style: styles.formLabel.copyWith(
+                              color: foregroundColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
+import 'package:smartflow/design_system/widget/app_swipe_action.dart';
 import 'package:smartflow/feature/credit/page/bill_detail_page.dart';
 import 'package:smartflow/feature/credit/view_model/bill_detail_view_model.dart';
 
@@ -112,8 +113,7 @@ void main() {
     expect(find.text('本 2.00 息 2.00 费 2.00'), findsOneWidget);
     expect(find.text('6.00'), findsOneWidget);
     expect(find.textContaining('should-not-show'), findsNothing);
-    final dismissible = tester.widget<Dismissible>(find.byType(Dismissible));
-    expect(dismissible.direction, DismissDirection.horizontal);
+    expect(find.byType(AppSwipeAction), findsOneWidget);
   });
 }
 
