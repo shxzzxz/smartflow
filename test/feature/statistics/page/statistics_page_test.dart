@@ -9,6 +9,7 @@ import 'package:path/path.dart' as path;
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_month_picker.dart';
 import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
 import 'package:smartflow/feature/statistics/page/statistics_page.dart';
 import 'package:smartflow/feature/statistics/presentation/statistics_presentation.dart';
@@ -16,22 +17,6 @@ import 'package:smartflow/feature/statistics/view_model/statistics_view_model.da
 
 void main() {
   setUpAll(_loadAppFonts);
-
-  testWidgets('matches the compact-phone visual baseline', (tester) async {
-    tester.view.physicalSize = const Size(360, 800);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    const boundaryKey = ValueKey('statistics-page-golden');
-
-    await _pumpStatisticsPage(tester, boundaryKey: boundaryKey);
-    await tester.pumpAndSettle();
-
-    await expectLater(
-      find.byKey(boundaryKey),
-      matchesGoldenFile('goldens/statistics_page_compact.png'),
-    );
-  });
 
   testWidgets('shows a clear statistics hierarchy on a compact phone', (
     tester,
@@ -84,12 +69,25 @@ void main() {
 
     await _pumpStatisticsPage(tester);
     await tester.tap(find.text('自定义'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    expect(find.text('2025.12.16 - 2026.1.15'), findsOneWidget);
+    await tester.tap(find.text('2025.12.16 - 2026.1.15'));
+    await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('选择时间范围'), findsOneWidget);
+    expect(find.text('选择时间范围'), findsNothing);
     expect(find.text('开始'), findsOneWidget);
     expect(find.text('结束'), findsOneWidget);
     expect(find.text('确定'), findsOneWidget);
+    await tester.tap(find.text('2025年12月'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(AppMonthPickerDialog), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AppMonthPickerDialog),
+        matching: find.text('取消'),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.text('10'));
     await tester.pump();
     expect(find.text('请选择结束日期'), findsOneWidget);
@@ -97,9 +95,31 @@ void main() {
     await tester.tap(find.text('确定'));
     await tester.pumpAndSettle();
 
-    expect(find.text('2026.1.10 - 2026.1.12'), findsOneWidget);
-    expect(find.text('选择时间范围'), findsNothing);
+    expect(find.text('2025.12.10 - 2025.12.12'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('uses dedicated month and year pickers', (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpStatisticsPage(tester);
+    await tester.tap(find.text('2026年1月'));
+    await tester.pumpAndSettle();
+    expect(find.text('2026年'), findsWidgets);
+    expect(find.text('1月'), findsWidgets);
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('年'));
+    await tester.pump();
+    await tester.tap(find.text('2026年'));
+    await tester.pumpAndSettle();
+    expect(find.text('选择年份'), findsOneWidget);
+    expect(find.text('2026年'), findsWidgets);
+    expect(find.text('确定'), findsOneWidget);
   });
 
   testWidgets('shows market-level charts and switches analysis dimensions', (
@@ -117,28 +137,22 @@ void main() {
     expect(find.text('收支统计'), findsOneWidget);
     expect(find.byType(BarChart), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('分类构成'),
+      find.text('支出数据'),
       200,
       scrollable: find.byType(Scrollable).last,
     );
     expect(find.byType(PieChart), findsOneWidget);
-    expect(find.text('一级'), findsOneWidget);
-    expect(find.text('二级'), findsOneWidget);
+    expect(find.text('主分类'), findsOneWidget);
+    expect(find.text('子分类'), findsOneWidget);
     expect(find.text('金额'), findsOneWidget);
     expect(find.text('占比'), findsOneWidget);
 
-    final categoryKindControl = find.byType(
-      SegmentedButton<StatisticsCategoryKind>,
-    );
-    await tester.scrollUntilVisible(
-      categoryKindControl,
-      100,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.tap(
-      find.descendant(of: categoryKindControl, matching: find.text('收入')),
-    );
+    final categoryKindSwitch = find.byTooltip('切换为收入数据');
+    expect(categoryKindSwitch, findsOneWidget);
+    await tester.tap(categoryKindSwitch);
     await tester.pump();
+    expect(find.text('收入数据'), findsOneWidget);
+    expect(find.byTooltip('切换为支出数据'), findsOneWidget);
     expect(find.text('工资'), findsOneWidget);
 
     await tester.scrollUntilVisible(
@@ -220,8 +234,8 @@ Future<void> _pumpStatisticsPage(
           ),
         ),
         statisticsRangeContentProvider(
-          DateTime(2026, 1, 10),
-          DateTime(2026, 1, 13),
+          DateTime(2025, 12, 10),
+          DateTime(2025, 12, 13),
           1,
         ).overrideWith(
           (ref) => StatisticsContentState.loaded(

@@ -4,6 +4,11 @@ import '../theme/app_text_styles.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
 
+const double _wheelItemExtent = 44;
+const double _wheelPanelHeight = 220;
+const double _wheelDialogMaxWidth = 360;
+const double _wheelSelectionOverlayOpacity = 0.26;
+
 class AppMonthSelector extends StatelessWidget {
   const AppMonthSelector({
     required this.visibleMonth,
@@ -101,6 +106,81 @@ Future<DateTime?> showAppMonthPicker({
   );
 }
 
+Future<int?> showAppYearPicker({
+  required BuildContext context,
+  required int initialYear,
+  int firstYear = 2000,
+  int lastYear = 2100,
+  String title = '选择年份',
+}) {
+  return showDialog<int>(
+    context: context,
+    builder:
+        (context) => AppYearPickerDialog(
+          initialYear: initialYear,
+          firstYear: firstYear,
+          lastYear: lastYear,
+          title: title,
+        ),
+  );
+}
+
+class AppYearPickerDialog extends StatefulWidget {
+  const AppYearPickerDialog({
+    required this.initialYear,
+    required this.firstYear,
+    required this.lastYear,
+    required this.title,
+    super.key,
+  });
+
+  final int initialYear;
+  final int firstYear;
+  final int lastYear;
+  final String title;
+
+  @override
+  State<AppYearPickerDialog> createState() => _AppYearPickerDialogState();
+}
+
+class _AppYearPickerDialogState extends State<AppYearPickerDialog> {
+  late int _selectedYear;
+  late FixedExtentScrollController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedYear = widget.initialYear.clamp(widget.firstYear, widget.lastYear);
+    _controller = FixedExtentScrollController(
+      initialItem: _selectedYear - widget.firstYear,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final yearCount = widget.lastYear - widget.firstYear + 1;
+    return _WheelPickerDialogShell(
+      title: widget.title,
+      onConfirm: () => Navigator.of(context).pop(_selectedYear),
+      child: _WheelPicker(
+        controller: _controller,
+        itemCount: yearCount,
+        selectedIndex: _selectedYear - widget.firstYear,
+        itemExtent: _wheelItemExtent,
+        labelBuilder: (index) => '${widget.firstYear + index}年',
+        onSelectedItemChanged:
+            (index) => setState(() => _selectedYear = widget.firstYear + index),
+      ),
+    );
+  }
+}
+
 class AppMonthPickerDialog extends StatefulWidget {
   const AppMonthPickerDialog({
     required this.initialMonth,
@@ -120,8 +200,6 @@ class AppMonthPickerDialog extends StatefulWidget {
 }
 
 class _AppMonthPickerDialogState extends State<AppMonthPickerDialog> {
-  static const _itemExtent = 44.0;
-
   late int _selectedYear;
   late int _selectedMonth;
   late FixedExtentScrollController _yearController;
@@ -149,9 +227,57 @@ class _AppMonthPickerDialogState extends State<AppMonthPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final yearCount = widget.lastYear - widget.firstYear + 1;
+    return _WheelPickerDialogShell(
+      onConfirm:
+          () => Navigator.of(
+            context,
+          ).pop(DateTime(_selectedYear, _selectedMonth)),
+      child: Row(
+        children: [
+          Expanded(
+            child: _WheelPicker(
+              controller: _yearController,
+              itemCount: yearCount,
+              selectedIndex: _selectedYear - widget.firstYear,
+              itemExtent: _wheelItemExtent,
+              labelBuilder: (index) => '${widget.firstYear + index}年',
+              onSelectedItemChanged:
+                  (index) =>
+                      setState(() => _selectedYear = widget.firstYear + index),
+            ),
+          ),
+          Expanded(
+            child: _WheelPicker(
+              controller: _monthController,
+              itemCount: 12,
+              selectedIndex: _selectedMonth - 1,
+              itemExtent: _wheelItemExtent,
+              labelBuilder: (index) => '${index + 1}月',
+              onSelectedItemChanged:
+                  (index) => setState(() => _selectedMonth = index + 1),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
+class _WheelPickerDialogShell extends StatelessWidget {
+  const _WheelPickerDialogShell({
+    required this.child,
+    required this.onConfirm,
+    this.title,
+  });
+
+  final Widget child;
+  final VoidCallback onConfirm;
+  final String? title;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.space24,
@@ -161,7 +287,7 @@ class _AppMonthPickerDialogState extends State<AppMonthPickerDialog> {
         borderRadius: BorderRadius.circular(AppRadius.radiusXl),
       ),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
+        constraints: const BoxConstraints(maxWidth: _wheelDialogMaxWidth),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.space20,
@@ -173,49 +299,29 @@ class _AppMonthPickerDialogState extends State<AppMonthPickerDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (title != null) ...[
+                Text(
+                  title!,
+                  textAlign: TextAlign.center,
+                  style: context.appTextStyles.subsectionTitle,
+                ),
+                const SizedBox(height: AppSpacing.space12),
+              ],
               SizedBox(
-                height: 220,
+                height: _wheelPanelHeight,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
                     Container(
-                      height: _itemExtent,
+                      height: _wheelItemExtent,
                       decoration: BoxDecoration(
-                        color: colors.primaryContainer.withValues(alpha: 0.26),
+                        color: colors.primaryContainer.withValues(
+                          alpha: _wheelSelectionOverlayOpacity,
+                        ),
                         borderRadius: BorderRadius.circular(AppRadius.radiusMd),
                       ),
                     ),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _WheelPicker(
-                            controller: _yearController,
-                            itemCount: yearCount,
-                            selectedIndex: _selectedYear - widget.firstYear,
-                            itemExtent: _itemExtent,
-                            labelBuilder:
-                                (index) => '${widget.firstYear + index}年',
-                            onSelectedItemChanged:
-                                (index) => setState(
-                                  () =>
-                                      _selectedYear = widget.firstYear + index,
-                                ),
-                          ),
-                        ),
-                        Expanded(
-                          child: _WheelPicker(
-                            controller: _monthController,
-                            itemCount: 12,
-                            selectedIndex: _selectedMonth - 1,
-                            itemExtent: _itemExtent,
-                            labelBuilder: (index) => '${index + 1}月',
-                            onSelectedItemChanged:
-                                (index) =>
-                                    setState(() => _selectedMonth = index + 1),
-                          ),
-                        ),
-                      ],
-                    ),
+                    child,
                   ],
                 ),
               ),
@@ -228,13 +334,7 @@ class _AppMonthPickerDialogState extends State<AppMonthPickerDialog> {
                     child: const Text('取消'),
                   ),
                   const SizedBox(width: AppSpacing.space8),
-                  FilledButton(
-                    onPressed:
-                        () => Navigator.of(
-                          context,
-                        ).pop(DateTime(_selectedYear, _selectedMonth)),
-                    child: const Text('确定'),
-                  ),
+                  FilledButton(onPressed: onConfirm, child: const Text('确定')),
                 ],
               ),
             ],

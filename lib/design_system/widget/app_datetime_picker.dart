@@ -36,7 +36,6 @@ Future<DateTimeRange?> showAppDateRangePicker({
   required DateTimeRange initialRange,
   required DateTime firstDate,
   required DateTime lastDate,
-  String title = '选择时间范围',
 }) {
   return showDialog<DateTimeRange>(
     context: context,
@@ -45,7 +44,6 @@ Future<DateTimeRange?> showAppDateRangePicker({
           initialRange: initialRange,
           firstDate: firstDate,
           lastDate: lastDate,
-          title: title,
         ),
   );
 }
@@ -207,14 +205,12 @@ class AppDateRangePickerDialog extends StatefulWidget {
     required this.initialRange,
     required this.firstDate,
     required this.lastDate,
-    this.title = '选择时间范围',
     super.key,
   });
 
   final DateTimeRange initialRange;
   final DateTime firstDate;
   final DateTime lastDate;
-  final String title;
 
   @override
   State<AppDateRangePickerDialog> createState() =>
@@ -245,8 +241,6 @@ class _AppDateRangePickerDialogState extends State<AppDateRangePickerDialog> {
             context,
           ).pop(DateTimeRange(start: _start, end: _end)),
       children: [
-        _TitleBar(title: widget.title),
-        const SizedBox(height: AppSpacing.space6),
         _RangeSummary(start: _start, end: _end, selectingEnd: _selectingEnd),
         const SizedBox(height: AppSpacing.space8),
         _DateRangeCalendarPanel(
@@ -257,6 +251,7 @@ class _AppDateRangePickerDialogState extends State<AppDateRangePickerDialog> {
           lastDate: widget.lastDate,
           onPreviousMonth: _canPreviousMonth ? _previousMonth : null,
           onNextMonth: _canNextMonth ? _nextMonth : null,
+          onMonthPressed: _pickVisibleMonth,
           onDateSelected: _selectDate,
         ),
       ],
@@ -297,6 +292,25 @@ class _AppDateRangePickerDialogState extends State<AppDateRangePickerDialog> {
   void _nextMonth() => setState(() {
     _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + 1);
   });
+
+  Future<void> _pickVisibleMonth() async {
+    final picked = await showAppMonthPicker(
+      context: context,
+      initialMonth: _visibleMonth,
+      firstYear: widget.firstDate.year,
+      lastYear: widget.lastDate.year,
+    );
+    if (picked == null || !mounted) return;
+    final firstMonth = DateTime(widget.firstDate.year, widget.firstDate.month);
+    final lastMonth = DateTime(widget.lastDate.year, widget.lastDate.month);
+    final visibleMonth =
+        picked.isBefore(firstMonth)
+            ? firstMonth
+            : picked.isAfter(lastMonth)
+            ? lastMonth
+            : picked;
+    setState(() => _visibleMonth = visibleMonth);
+  }
 
   void _selectDate(DateTime date) {
     setState(() {
@@ -344,11 +358,7 @@ class _RangeSummary extends StatelessWidget {
           Row(
             children: [
               Expanded(child: _RangeDateValue(label: '开始', date: start)),
-              Icon(
-                Icons.arrow_forward_rounded,
-                size: AppSpacing.space18,
-                color: colors.onSurfaceVariant,
-              ),
+              const SizedBox(width: AppSpacing.space16),
               Expanded(child: _RangeDateValue(label: '结束', date: end)),
             ],
           ),
@@ -402,6 +412,7 @@ class _DateRangeCalendarPanel extends StatelessWidget {
     required this.end,
     required this.firstDate,
     required this.lastDate,
+    required this.onMonthPressed,
     required this.onDateSelected,
     this.onPreviousMonth,
     this.onNextMonth,
@@ -412,6 +423,7 @@ class _DateRangeCalendarPanel extends StatelessWidget {
   final DateTime end;
   final DateTime firstDate;
   final DateTime lastDate;
+  final VoidCallback onMonthPressed;
   final VoidCallback? onPreviousMonth;
   final VoidCallback? onNextMonth;
   final ValueChanged<DateTime> onDateSelected;
@@ -430,10 +442,20 @@ class _DateRangeCalendarPanel extends StatelessWidget {
               onPressed: onPreviousMonth,
             ),
             Expanded(
-              child: Text(
-                '${visibleMonth.year}年${visibleMonth.month}月',
-                textAlign: TextAlign.center,
-                style: context.appTextStyles.subsectionTitle,
+              child: InkWell(
+                onTap: onMonthPressed,
+                borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space6,
+                    vertical: AppSpacing.space4,
+                  ),
+                  child: Text(
+                    '${visibleMonth.year}年${visibleMonth.month}月',
+                    textAlign: TextAlign.center,
+                    style: context.appTextStyles.subsectionTitle,
+                  ),
+                ),
               ),
             ),
             _MonthArrowButton(

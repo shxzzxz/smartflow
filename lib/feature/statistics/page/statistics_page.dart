@@ -8,6 +8,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
+import '../../../design_system/widget/app_month_picker.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_segmented_control.dart';
 import '../../../feature/shared/presentation/transaction_list_presentation.dart';
@@ -34,7 +35,6 @@ class StatisticsPage extends ConsumerWidget {
             _StatisticsHeader(
               state: state.control,
               periodLabel: state.periodLabel,
-              canAdvance: state.canAdvance,
               lastSelectableDate: state.lastSelectableDate,
             ),
             Expanded(
@@ -64,13 +64,11 @@ class _StatisticsHeader extends ConsumerWidget {
   const _StatisticsHeader({
     required this.state,
     required this.periodLabel,
-    required this.canAdvance,
     required this.lastSelectableDate,
   });
 
   final StatisticsControlState state;
   final String periodLabel;
-  final bool canAdvance;
   final DateTime lastSelectableDate;
 
   @override
@@ -83,25 +81,9 @@ class _StatisticsHeader extends ConsumerWidget {
         AppSpacing.space16,
         AppSpacing.space12,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: _PeriodNavigator(
-              label: periodLabel,
-              canGoBack: state.periodKind != StatisticsPeriodKind.custom,
-              canGoForward:
-                  state.periodKind != StatisticsPeriodKind.custom && canAdvance,
-              onPrevious:
-                  () => notifier.shiftMonth(
-                    state.periodKind == StatisticsPeriodKind.year ? -12 : -1,
-                  ),
-              onNext:
-                  () => notifier.shiftMonth(
-                    state.periodKind == StatisticsPeriodKind.year ? 12 : 1,
-                  ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.space4),
           AppSegmentedControl<StatisticsPeriodKind>(
             segments: const [
               AppSegment(value: StatisticsPeriodKind.month, label: '月'),
@@ -109,103 +91,109 @@ class _StatisticsHeader extends ConsumerWidget {
               AppSegment(value: StatisticsPeriodKind.custom, label: '自定义'),
             ],
             selected: state.periodKind,
-            onChanged:
-                (kind) => _selectPeriodKind(
-                  context,
-                  notifier,
-                  kind,
-                  lastSelectableDate,
-                ),
+            onChanged: notifier.selectPeriodKind,
+          ),
+          const SizedBox(height: AppSpacing.space10),
+          _PeriodPicker(
+            label: periodLabel,
+            kind: state.periodKind,
+            onTap: () => _pickPeriod(context, notifier, lastSelectableDate),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _selectPeriodKind(
+  Future<void> _pickPeriod(
     BuildContext context,
     StatisticsViewModel notifier,
-    StatisticsPeriodKind kind,
     DateTime lastSelectableDate,
   ) async {
-    if (kind != StatisticsPeriodKind.custom) {
-      notifier.selectPeriodKind(kind);
-      return;
-    }
-    final initial = DateTimeRange(
-      start: state.customFrom,
-      end: state.customUntil.subtract(const Duration(days: 1)),
-    );
-    final range = await showAppDateRangePicker(
-      context: context,
-      initialRange: initial,
-      firstDate: DateTime(2000),
-      lastDate: lastSelectableDate,
-    );
-    if (range != null) {
-      notifier.selectCustomRange(range.start, range.end);
+    switch (state.periodKind) {
+      case StatisticsPeriodKind.month:
+        final month = await showAppMonthPicker(
+          context: context,
+          initialMonth: state.visibleMonth,
+          lastYear: lastSelectableDate.year,
+        );
+        if (month != null) notifier.pickMonth(month);
+        return;
+      case StatisticsPeriodKind.year:
+        final year = await showAppYearPicker(
+          context: context,
+          initialYear: state.visibleMonth.year,
+          lastYear: lastSelectableDate.year,
+        );
+        if (year != null) {
+          notifier.pickMonth(DateTime(year, state.visibleMonth.month));
+        }
+        return;
+      case StatisticsPeriodKind.custom:
+        final range = await showAppDateRangePicker(
+          context: context,
+          initialRange: DateTimeRange(
+            start: state.customFrom,
+            end: state.customUntil.subtract(const Duration(days: 1)),
+          ),
+          firstDate: DateTime(2000),
+          lastDate: lastSelectableDate,
+        );
+        if (range != null) notifier.selectCustomRange(range.start, range.end);
+        return;
     }
   }
 }
 
-class _PeriodNavigator extends StatelessWidget {
-  const _PeriodNavigator({
+class _PeriodPicker extends StatelessWidget {
+  const _PeriodPicker({
     required this.label,
-    required this.canGoBack,
-    required this.canGoForward,
-    required this.onPrevious,
-    required this.onNext,
+    required this.kind,
+    required this.onTap,
   });
 
   final String label;
-  final bool canGoBack;
-  final bool canGoForward;
-  final VoidCallback onPrevious;
-  final VoidCallback onNext;
+  final StatisticsPeriodKind kind;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Container(
-      height: AppSpacing.space48,
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerLow,
+    return Material(
+      color: colors.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(AppRadius.radiusLg),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.radiusLg),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            tooltip: '上一周期',
-            onPressed: canGoBack ? onPrevious : null,
-            visualDensity: VisualDensity.compact,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(
-              width: AppSpacing.space28,
-              height: AppSpacing.space48,
+        child: SizedBox(
+          height: AppSpacing.space48,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space14),
+            child: Row(
+              children: [
+                Icon(
+                  kind == StatisticsPeriodKind.custom
+                      ? RemixIcons.calendar_2_line
+                      : RemixIcons.calendar_line,
+                  size: AppSpacing.space20,
+                  color: colors.onSurfaceVariant,
+                ),
+                const SizedBox(width: AppSpacing.space10),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: context.appTextStyles.subsectionTitleStrong,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(
+                  RemixIcons.arrow_down_s_line,
+                  color: colors.onSurfaceVariant,
+                ),
+              ],
             ),
-            icon: const Icon(Icons.chevron_left_rounded),
           ),
-          Expanded(
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: context.appTextStyles.subsectionTitleStrong,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          IconButton(
-            tooltip: '下一周期',
-            onPressed: canGoForward ? onNext : null,
-            visualDensity: VisualDensity.compact,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(
-              width: AppSpacing.space28,
-              height: AppSpacing.space48,
-            ),
-            icon: const Icon(Icons.chevron_right_rounded),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -347,15 +335,25 @@ class _CategoryAnalysis extends ConsumerWidget {
       0,
       (sum, item) => sum + statisticsCategoryMagnitude(item),
     );
+    final showingExpense =
+        control.categoryKind == StatisticsCategoryKind.expense;
     return StatisticsSectionCard(
-      title: '分类构成',
-      trailing: AppSegmentedControl<StatisticsCategoryKind>(
-        segments: const [
-          AppSegment(value: StatisticsCategoryKind.expense, label: '支出'),
-          AppSegment(value: StatisticsCategoryKind.income, label: '收入'),
-        ],
-        selected: control.categoryKind,
-        onChanged: notifier.selectCategoryKind,
+      title: showingExpense ? '支出数据' : '收入数据',
+      trailing: IconButton(
+        tooltip: showingExpense ? '切换为收入数据' : '切换为支出数据',
+        onPressed:
+            () => notifier.selectCategoryKind(
+              showingExpense
+                  ? StatisticsCategoryKind.income
+                  : StatisticsCategoryKind.expense,
+            ),
+        icon: const Icon(RemixIcons.arrow_left_right_line),
+        visualDensity: VisualDensity.compact,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints.tightFor(
+          width: AppSpacing.space32,
+          height: AppSpacing.space32,
+        ),
       ),
       child:
           items.isEmpty
@@ -369,11 +367,11 @@ class _CategoryAnalysis extends ConsumerWidget {
                           segments: const [
                             AppSegment(
                               value: StatisticsCategoryLevel.primary,
-                              label: '一级',
+                              label: '主分类',
                             ),
                             AppSegment(
                               value: StatisticsCategoryLevel.secondary,
-                              label: '二级',
+                              label: '子分类',
                             ),
                           ],
                           selected: control.categoryLevel,

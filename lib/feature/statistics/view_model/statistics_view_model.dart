@@ -30,7 +30,11 @@ class StatisticsViewModel extends _$StatisticsViewModel {
       visibleMonth: DateTime(now.year, now.month),
       section: StatisticsSection.cashflow,
       periodKind: StatisticsPeriodKind.month,
-      customFrom: DateTime(now.year, now.month),
+      customFrom: DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).subtract(const Duration(days: 30)),
       customUntil: DateTime(now.year, now.month, now.day + 1),
       chartMetric: CashflowChartMetric.expense,
       categoryKind: StatisticsCategoryKind.expense,
@@ -41,13 +45,6 @@ class StatisticsViewModel extends _$StatisticsViewModel {
 
   void pickMonth(DateTime month) {
     state = state.copyWith(visibleMonth: DateTime(month.year, month.month));
-  }
-
-  void shiftMonth(int delta) {
-    final month = state.visibleMonth;
-    state = state.copyWith(
-      visibleMonth: DateTime(month.year, month.month + delta),
-    );
   }
 
   void selectSection(StatisticsSection section) {
@@ -93,7 +90,6 @@ StatisticsPageState statisticsPage(Ref ref) {
     section: control.section,
     control: control,
     periodLabel: control.periodLabel,
-    canAdvance: control.canAdvance(now),
     lastSelectableDate: now,
     content: ref.watch(
       statisticsRangeContentProvider(
@@ -331,14 +327,6 @@ class StatisticsControlState {
           '${customUntil.subtract(const Duration(days: 1)).day}',
   };
 
-  bool canAdvance(DateTime now) => switch (periodKind) {
-    StatisticsPeriodKind.month =>
-      visibleMonth.year < now.year ||
-          (visibleMonth.year == now.year && visibleMonth.month < now.month),
-    StatisticsPeriodKind.year => visibleMonth.year < now.year,
-    StatisticsPeriodKind.custom => false,
-  };
-
   StatisticsDateRange range(DateTime now) {
     switch (periodKind) {
       case StatisticsPeriodKind.month:
@@ -413,7 +401,6 @@ class StatisticsPageState {
     required this.content,
     required this.control,
     required this.periodLabel,
-    required this.canAdvance,
     required this.lastSelectableDate,
   });
 
@@ -422,7 +409,6 @@ class StatisticsPageState {
   final StatisticsContentState content;
   final StatisticsControlState control;
   final String periodLabel;
-  final bool canAdvance;
   final DateTime lastSelectableDate;
 }
 
