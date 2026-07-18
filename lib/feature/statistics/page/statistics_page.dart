@@ -282,6 +282,7 @@ class _CashflowSection extends ConsumerWidget {
         selected: control.chartMetric,
         onChanged:
             ref.read(statisticsViewModelProvider.notifier).selectChartMetric,
+        tone: AppSegmentedControlTone.neutral,
       ),
       child: StatisticsCashflowChart(
         dailySummaries: presentation.dailySummaries,
@@ -339,23 +340,14 @@ class _CategoryAnalysis extends ConsumerWidget {
         control.categoryKind == StatisticsCategoryKind.expense;
     return StatisticsSectionCard(
       title: showingExpense ? '支出数据' : '收入数据',
-      titleMaxLines: 1,
-      titleTrailing: IconButton(
-        tooltip: showingExpense ? '切换为收入数据' : '切换为支出数据',
-        onPressed:
-            () => notifier.selectCategoryKind(
-              showingExpense
-                  ? StatisticsCategoryKind.income
-                  : StatisticsCategoryKind.expense,
-            ),
-        icon: const Icon(RemixIcons.arrow_left_right_line),
-        visualDensity: VisualDensity.compact,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints.tightFor(
-          width: AppSpacing.space32,
-          height: AppSpacing.space32,
-        ),
-      ),
+      titleTooltip: showingExpense ? '切换为收入数据' : '切换为支出数据',
+      titleActionIcon: RemixIcons.arrow_left_right_line,
+      onTitleTap:
+          () => notifier.selectCategoryKind(
+            showingExpense
+                ? StatisticsCategoryKind.income
+                : StatisticsCategoryKind.expense,
+          ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -370,6 +362,7 @@ class _CategoryAnalysis extends ConsumerWidget {
             selected: control.categoryLevel,
             onChanged: notifier.selectCategoryLevel,
             size: AppSegmentedControlSize.small,
+            tone: AppSegmentedControlTone.neutral,
           ),
           const SizedBox(width: AppSpacing.space6),
           AppSegmentedControl<StatisticsValueMode>(
@@ -380,6 +373,7 @@ class _CategoryAnalysis extends ConsumerWidget {
             selected: control.valueMode,
             onChanged: notifier.selectValueMode,
             size: AppSegmentedControlSize.small,
+            tone: AppSegmentedControlTone.neutral,
           ),
         ],
       ),

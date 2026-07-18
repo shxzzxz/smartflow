@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
+import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
@@ -83,20 +84,71 @@ void main() {
     expect((headerY - valueModeY).abs(), lessThan(8));
 
     final titleRect = tester.getRect(find.text('支出数据'));
-    final switchRect = tester.getRect(find.byTooltip('切换为收入数据'));
+    final toggleRect = tester.getRect(
+      find.byKey(const ValueKey('statistics-section-title-action')),
+    );
+    final switchIconRect = tester.getRect(
+      find.byIcon(RemixIcons.arrow_left_right_line),
+    );
     final categoryControlRect = tester.getRect(
       find.byType(SegmentedButton<StatisticsCategoryLevel>),
     );
     final valueModeControlRect = tester.getRect(
       find.byType(SegmentedButton<StatisticsValueMode>),
     );
-    expect(titleRect.right, lessThanOrEqualTo(switchRect.left));
-    expect(switchRect.right, lessThanOrEqualTo(categoryControlRect.left));
+    expect(toggleRect.contains(titleRect.center), isTrue);
+    expect(toggleRect.contains(switchIconRect.center), isTrue);
+    expect(toggleRect.right, lessThanOrEqualTo(categoryControlRect.left));
     expect(
       categoryControlRect.right,
       lessThanOrEqualTo(valueModeControlRect.left),
     );
     expect(valueModeControlRect.right, lessThanOrEqualTo(360));
+
+    final colors =
+        Theme.of(tester.element(find.byType(StatisticsPage))).colorScheme;
+    final periodControl = tester.widget<SegmentedButton<StatisticsPeriodKind>>(
+      find.byType(SegmentedButton<StatisticsPeriodKind>),
+    );
+    final categoryControl = tester
+        .widget<SegmentedButton<StatisticsCategoryLevel>>(
+          find.byType(SegmentedButton<StatisticsCategoryLevel>),
+        );
+    expect(
+      periodControl.style?.backgroundColor?.resolve({WidgetState.selected}),
+      colors.primaryContainer,
+    );
+    expect(
+      categoryControl.style?.backgroundColor?.resolve({WidgetState.selected}),
+      colors.surfaceContainerHighest,
+    );
+    expect(
+      categoryControl.style?.foregroundColor?.resolve({WidgetState.selected}),
+      colors.onSurface,
+    );
+    final categoryTitle = tester.widget<Text>(find.text('支出数据'));
+    final cashflowTitle = tester.widget<Text>(find.text('收支统计'));
+    expect(categoryTitle.style, cashflowTitle.style);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('keeps the category header stable with larger text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpStatisticsPage(tester, textScaler: const TextScaler.linear(1.3));
+    await tester.scrollUntilVisible(
+      find.text('支出数据'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+
+    expect(find.text('主分类'), findsOneWidget);
+    expect(find.text('金额'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -186,12 +238,17 @@ void main() {
     expect(find.text('金额'), findsOneWidget);
     expect(find.text('占比'), findsOneWidget);
 
-    final categoryKindSwitch = find.byTooltip('切换为收入数据');
-    expect(categoryKindSwitch, findsOneWidget);
-    await tester.tap(categoryKindSwitch);
+    expect(find.byTooltip('切换为收入数据'), findsOneWidget);
+    await tester.tap(find.text('支出数据'));
     await tester.pump();
     expect(find.text('收入数据'), findsOneWidget);
     expect(find.byTooltip('切换为支出数据'), findsOneWidget);
+    await tester.tap(find.byIcon(RemixIcons.arrow_left_right_line));
+    await tester.pump();
+    expect(find.text('支出数据'), findsOneWidget);
+    await tester.tap(find.byIcon(RemixIcons.arrow_left_right_line));
+    await tester.pump();
+    expect(find.text('收入数据'), findsOneWidget);
     expect(find.text('工资'), findsOneWidget);
 
     await tester.scrollUntilVisible(
@@ -257,6 +314,7 @@ Future<void> _pumpStatisticsPage(
   WidgetTester tester, {
   Key? boundaryKey,
   StatisticsPresentation? presentation,
+  TextScaler? textScaler,
 }) async {
   final month = DateTime(2026, 1);
   await tester.pumpWidget(
@@ -284,6 +342,13 @@ Future<void> _pumpStatisticsPage(
       ],
       child: MaterialApp(
         theme: AppTheme.light(),
+        builder:
+            textScaler == null
+                ? null
+                : (context, child) => MediaQuery(
+                  data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+                  child: child!,
+                ),
         home: RepaintBoundary(key: boundaryKey, child: const StatisticsPage()),
       ),
     ),
