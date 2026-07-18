@@ -11,21 +11,31 @@ class AppSegment<T> {
   final String label;
 }
 
+enum AppSegmentedControlSize { medium, small }
+
+enum AppSegmentedControlTone { primary, neutral }
+
 class AppSegmentedControl<T> extends StatelessWidget {
   const AppSegmentedControl({
     required this.segments,
     required this.selected,
     required this.onChanged,
     super.key,
+    this.size = AppSegmentedControlSize.medium,
+    this.tone = AppSegmentedControlTone.primary,
   });
 
   final List<AppSegment<T>> segments;
   final T selected;
   final ValueChanged<T> onChanged;
+  final AppSegmentedControlSize size;
+  final AppSegmentedControlTone tone;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final compact = size == AppSegmentedControlSize.small;
+    final neutral = tone == AppSegmentedControlTone.neutral;
     return SegmentedButton<T>(
       segments: [
         for (final segment in segments)
@@ -37,11 +47,16 @@ class AppSegmentedControl<T> extends StatelessWidget {
       style: ButtonStyle(
         visualDensity: VisualDensity.compact,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        minimumSize: const WidgetStatePropertyAll(
-          Size(AppSpacing.space48, AppSpacing.space32),
+        minimumSize: WidgetStatePropertyAll(
+          Size(
+            compact ? AppSpacing.space32 : AppSpacing.space48,
+            compact ? AppSpacing.space28 : AppSpacing.space32,
+          ),
         ),
-        padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(horizontal: AppSpacing.space10),
+        padding: WidgetStatePropertyAll(
+          EdgeInsets.symmetric(
+            horizontal: compact ? AppSpacing.space2 : AppSpacing.space10,
+          ),
         ),
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(
@@ -52,13 +67,17 @@ class AppSegmentedControl<T> extends StatelessWidget {
         backgroundColor: WidgetStateProperty.resolveWith(
           (states) =>
               states.contains(WidgetState.selected)
-                  ? colors.primaryContainer
+                  ? neutral
+                      ? colors.surfaceContainerHighest
+                      : colors.primaryContainer
                   : colors.surfaceContainerLowest,
         ),
         foregroundColor: WidgetStateProperty.resolveWith(
           (states) =>
               states.contains(WidgetState.selected)
-                  ? colors.onPrimaryContainer
+                  ? neutral
+                      ? colors.onSurface
+                      : colors.onPrimaryContainer
                   : colors.onSurfaceVariant,
         ),
         textStyle: WidgetStateProperty.resolveWith(

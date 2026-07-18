@@ -10,6 +10,21 @@ import 'package:smartflow/feature/statistics/presentation/statistics_presentatio
 import 'package:smartflow/feature/statistics/view_model/statistics_view_model.dart';
 
 void main() {
+  test('defaults to the current month and the last 30 days', () {
+    final container = ProviderContainer(
+      overrides: [
+        currentDateTimeProvider.overrideWithValue(DateTime(2026, 7, 18)),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final state = container.read(statisticsViewModelProvider);
+    expect(state.visibleMonth, DateTime(2026, 7));
+    expect(state.periodKind, StatisticsPeriodKind.month);
+    expect(state.customFrom, DateTime(2026, 6, 18));
+    expect(state.customUntil, DateTime(2026, 7, 19));
+  });
+
   test('switches month, year and custom statistic ranges', () {
     final container = ProviderContainer(
       overrides: [
@@ -137,12 +152,6 @@ void main() {
     expect(loaded.presentation.expenseCategories.single.accountIds, {'dining'});
     expect(loaded.presentation.incomeCategories.single.title, '工资');
     expect(loaded.presentation.balanceAccounts.single.title, '现金');
-
-    container.read(statisticsViewModelProvider.notifier).shiftMonth(1);
-    expect(
-      container.read(statisticsViewModelProvider).visibleMonth,
-      DateTime(2026, 2),
-    );
   });
 
   test('uses report windows and scopes for contribution drilldowns', () async {
