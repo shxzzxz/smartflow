@@ -21,13 +21,18 @@ import '../widget/repayment_form_fields.dart';
 
 class BillRepaymentFormPage extends ConsumerStatefulWidget {
   const BillRepaymentFormPage({required this.billId, super.key})
-    : repaymentId = null;
+    : repaymentId = null,
+      resultTransactionId = null;
 
-  const BillRepaymentFormPage.edit({required this.repaymentId, super.key})
-    : billId = null;
+  const BillRepaymentFormPage.edit({
+    required this.repaymentId,
+    super.key,
+    this.resultTransactionId,
+  }) : billId = null;
 
   final String? billId;
   final String? repaymentId;
+  final String? resultTransactionId;
 
   @override
   ConsumerState<BillRepaymentFormPage> createState() =>
@@ -262,7 +267,7 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
     if (!mounted) return;
     switch (outcome) {
       case SubmitSuccess():
-        context.pop(true);
+        context.pop(widget.resultTransactionId ?? true);
       case SubmitFailure(:final error):
         _showError(error.message);
     }

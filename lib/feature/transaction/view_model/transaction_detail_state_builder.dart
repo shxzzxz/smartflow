@@ -326,6 +326,7 @@ DetailBehaviorConfig _behaviorConfigFor(Transaction transaction) {
         editRoute:
             repaymentType == RepaymentType.bill
                 ? '/repayments/${ownership.ownerId}/edit'
+                    '?transactionId=${transaction.id}'
                 : null,
         canEditOccurredAt: const DetailEditPermission.allowed(),
         canEditPostedAt: postedAtPermission,

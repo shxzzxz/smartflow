@@ -201,6 +201,7 @@ final appRouter = GoRouter(
       builder:
           (context, state) => BillRepaymentFormPage.edit(
             repaymentId: state.pathParameters['repaymentId']!,
+            resultTransactionId: state.uri.queryParameters['transactionId'],
           ),
     ),
     GoRoute(

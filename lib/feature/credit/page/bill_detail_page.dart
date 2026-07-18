@@ -12,6 +12,7 @@ import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_swipe_action.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/bill_item_presentation.dart';
+import '../presentation/bill_repayment_presentation.dart';
 import '../view_model/bill_detail_view_model.dart';
 
 class BillDetailPage extends ConsumerWidget {
@@ -328,9 +329,12 @@ class _BillRepaymentRow extends StatelessWidget {
       label: '编辑',
       icon: RemixIcons.edit_2_line,
       onTriggered: onEdit,
-      secondaryLabel: '删除',
-      secondaryIcon: RemixIcons.delete_bin_line,
-      onSecondaryTriggered: onDelete,
+      secondaryAction: AppSwipeActionItem(
+        label: '删除',
+        icon: RemixIcons.delete_bin_line,
+        onTriggered: onDelete,
+        tone: AppSwipeActionTone.danger,
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space12,
@@ -344,10 +348,13 @@ class _BillRepaymentRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(_repaymentDateText(repayment), style: styles.formLabel),
+                  Text(
+                    billRepaymentDateText(repayment),
+                    style: styles.formLabel,
+                  ),
                   const SizedBox(height: AppSpacing.space2),
                   Text(
-                    _repaymentBreakdownText(repayment),
+                    billRepaymentBreakdownText(repayment),
                     style: styles.listSupporting.copyWith(
                       color: colors.onSurfaceVariant,
                     ),
@@ -516,21 +523,6 @@ String _itemStatusLabel(BillItemReadModel item) {
     BillItemStatus.paid => '已核销',
     BillItemStatus.skipped => '已跳过',
   };
-}
-
-String _repaymentDateText(BillRepaymentReadModel repayment) {
-  final prefix =
-      repayment.timeSource == BillRepaymentTimeSource.transaction
-          ? '还款日'
-          : '记录于';
-  return '$prefix ${_dateLabel(repayment.displayTime)}';
-}
-
-String _repaymentBreakdownText(BillRepaymentReadModel repayment) {
-  final amount = repayment.allocated;
-  return '本 ${amount.principal.format()} '
-      '息 ${amount.interest.format()} '
-      '费 ${amount.fee.format()}';
 }
 
 void _showFailure(

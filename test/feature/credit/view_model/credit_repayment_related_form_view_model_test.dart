@@ -204,6 +204,38 @@ void main() {
     expect(allocation.allocated.interest, const Money(minorUnits: 200));
   });
 
+  test('bill repayment edit form restores discount total', () async {
+    final repayment = _FakeRepaymentAppService(
+      editView: credit.BillRepaymentEditView(
+        repaymentId: 'repayment',
+        billId: 'bill',
+        allocations: [
+          credit.BillRepaymentAllocation(
+            billItemId: 'bill-item',
+            allocated: const credit.RepaymentAmountDto(
+              principal: Money(minorUnits: 1000),
+              interest: Money(minorUnits: 200),
+              fee: Money(minorUnits: 100),
+              discount: Money(minorUnits: 50),
+            ),
+          ),
+        ],
+        hasTransaction: false,
+      ),
+    );
+    final container = _container(repaymentAppService: repayment);
+    final provider = billRepaymentFormViewModelProvider(
+      const BillRepaymentFormArgs.edit('repayment'),
+    );
+    final subscription = container.listen(provider, (_, _) {});
+    addTearDown(subscription.close);
+
+    final state = await container.read(provider.future);
+
+    expect(state.discountText, '0.50');
+    expect(state.allocationReview?.unallocated.discount, Money.zero());
+  });
+
   test('bill repayment form supports equal allocation mode', () async {
     final repayment = _FakeRepaymentAppService();
     final container = _container(
@@ -494,9 +526,10 @@ class _FakeInstallmentAppService implements credit.InstallmentAppService {
 }
 
 class _FakeRepaymentAppService implements credit.RepaymentAppService {
-  _FakeRepaymentAppService({this.exception});
+  _FakeRepaymentAppService({this.exception, this.editView});
 
   final Object? exception;
+  final credit.BillRepaymentEditView? editView;
   final liabilityRepaymentCommands = <credit.CreateLiabilityRepaymentCommand>[];
   final prepaymentCommands =
       <credit.CreateContractPrepaymentRepaymentCommand>[];
@@ -528,6 +561,11 @@ class _FakeRepaymentAppService implements credit.RepaymentAppService {
       transactionId: 'transaction',
     );
   }
+
+  @override
+  Future<credit.BillRepaymentEditView?> loadBillRepaymentEditView(
+    String repaymentId,
+  ) async => editView;
 
   @override
   Future<credit.CreateRepaymentResult> createBillConversionInstallmentRepayment(

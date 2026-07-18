@@ -78,7 +78,7 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
       principalText: pending.principal.format(),
       interestText: _optionalDefaultText(pending.interest),
       feeText: _optionalDefaultText(pending.fee),
-      discountText: '',
+      discountText: _optionalDefaultText(pending.discount),
       paidFromAccountId: _selectedId(
         editView?.paidFromAccountId,
         repaymentAccounts,

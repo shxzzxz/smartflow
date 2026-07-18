@@ -7,6 +7,20 @@ import '../token/spacing.dart';
 
 enum AppSwipeActionTone { primary, danger }
 
+class AppSwipeActionItem {
+  const AppSwipeActionItem({
+    required this.label,
+    required this.icon,
+    required this.onTriggered,
+    this.tone = AppSwipeActionTone.primary,
+  });
+
+  final String label;
+  final IconData icon;
+  final FutureOr<void> Function() onTriggered;
+  final AppSwipeActionTone tone;
+}
+
 class AppSwipeAction extends StatelessWidget {
   const AppSwipeAction({
     required this.dismissibleKey,
@@ -16,10 +30,7 @@ class AppSwipeAction extends StatelessWidget {
     required this.child,
     super.key,
     this.tone = AppSwipeActionTone.primary,
-    this.secondaryLabel,
-    this.secondaryIcon,
-    this.onSecondaryTriggered,
-    this.secondaryTone = AppSwipeActionTone.danger,
+    this.secondaryAction,
   });
 
   static const _dismissThreshold = 0.4;
@@ -30,17 +41,14 @@ class AppSwipeAction extends StatelessWidget {
   final FutureOr<void> Function() onTriggered;
   final Widget child;
   final AppSwipeActionTone tone;
-  final String? secondaryLabel;
-  final IconData? secondaryIcon;
-  final FutureOr<void> Function()? onSecondaryTriggered;
-  final AppSwipeActionTone secondaryTone;
+  final AppSwipeActionItem? secondaryAction;
 
   @override
   Widget build(BuildContext context) {
     return Dismissible(
       key: dismissibleKey,
       direction:
-          onSecondaryTriggered == null
+          secondaryAction == null
               ? DismissDirection.startToEnd
               : DismissDirection.horizontal,
       dismissThresholds: const {
@@ -49,19 +57,19 @@ class AppSwipeAction extends StatelessWidget {
       },
       background: _ActionBackground(label: label, icon: icon, tone: tone),
       secondaryBackground:
-          onSecondaryTriggered == null
+          secondaryAction == null
               ? null
               : _ActionBackground(
-                label: secondaryLabel!,
-                icon: secondaryIcon!,
-                tone: secondaryTone,
+                label: secondaryAction!.label,
+                icon: secondaryAction!.icon,
+                tone: secondaryAction!.tone,
                 alignment: Alignment.centerRight,
               ),
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.startToEnd) {
           await onTriggered();
         } else if (direction == DismissDirection.endToStart) {
-          await onSecondaryTriggered?.call();
+          await secondaryAction?.onTriggered();
         }
         return false;
       },
