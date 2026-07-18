@@ -8,9 +8,14 @@ import 'package:smartflow/widget/business/finance/finance_tone_color.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 
 class MonthlySummaryCard extends StatelessWidget {
-  const MonthlySummaryCard({required this.summary, super.key});
+  const MonthlySummaryCard({
+    required this.summary,
+    this.showCaptions = true,
+    super.key,
+  });
 
   final MonthlySummaryPresentation summary;
+  final bool showCaptions;
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +37,7 @@ class MonthlySummaryCard extends StatelessWidget {
                 Expanded(
                   child: _SummaryMetric(
                     metric: metrics[i],
+                    showCaption: showCaptions,
                     amountColor: financeToneColor(
                       colors,
                       financeColors,
@@ -67,9 +73,14 @@ class _SummaryDivider extends StatelessWidget {
 }
 
 class _SummaryMetric extends StatelessWidget {
-  const _SummaryMetric({required this.metric, required this.amountColor});
+  const _SummaryMetric({
+    required this.metric,
+    required this.showCaption,
+    required this.amountColor,
+  });
 
   final MonthlySummaryMetricPresentation metric;
+  final bool showCaption;
   final Color amountColor;
 
   @override
@@ -96,14 +107,16 @@ class _SummaryMetric extends StatelessWidget {
             maxLines: 1,
           ),
         ),
-        const SizedBox(height: AppSpacing.space6),
-        Text(
-          metric.caption,
-          style: textStyles.metricSupporting.copyWith(
-            color: colors.onSurfaceVariant,
+        if (showCaption) ...[
+          const SizedBox(height: AppSpacing.space6),
+          Text(
+            metric.caption,
+            style: textStyles.metricSupporting.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
-          overflow: TextOverflow.ellipsis,
-        ),
+        ],
       ],
     );
   }

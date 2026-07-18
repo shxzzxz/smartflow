@@ -43,11 +43,11 @@ StatisticsPresentation buildRangeStatisticsPresentation({
   final firstBalance =
       report.balanceTrend.isEmpty
           ? const Money(minorUnits: 0)
-          : report.balanceTrend.first.balance;
+          : report.balanceTrend.first.netAssets;
   final lastBalance =
       report.balanceTrend.isEmpty
           ? const Money(minorUnits: 0)
-          : report.balanceTrend.last.balance;
+          : report.balanceTrend.last.netAssets;
   return StatisticsPresentation(
     cashflowComparison: CashflowComparison(
       current: report.cashflow,
@@ -133,7 +133,7 @@ class StatisticsBreakdownItem {
   }
 }
 
-enum StatisticsTimeGrouping { day, week, month }
+enum StatisticsTimeGrouping { day, week, month, year }
 
 enum StatisticsCategoryLevel { primary, secondary }
 
@@ -147,27 +147,22 @@ extension StatisticsTimeGroupingPresentation on StatisticsTimeGrouping {
         Duration(days: date.difference(anchor).inDays ~/ 7 * 7),
       ),
       StatisticsTimeGrouping.month => DateTime(date.year, date.month),
+      StatisticsTimeGrouping.year => DateTime(date.year),
     };
   }
 
-  String labelFor(
-    DateTime start, {
-    DateTime? untilExclusive,
-    bool includeYear = false,
-  }) => switch (this) {
-    StatisticsTimeGrouping.day => '${start.month}/${start.day}',
-    StatisticsTimeGrouping.week => _weekLabel(
-      start,
-      untilExclusive: untilExclusive,
-    ),
-    StatisticsTimeGrouping.month =>
-      includeYear ? '${start.year}/${start.month}' : '${start.month}月',
+  String labelFor(DateTime start, {DateTime? untilExclusive}) => switch (this) {
+    StatisticsTimeGrouping.day => '${start.day}',
+    StatisticsTimeGrouping.week => '${start.day}',
+    StatisticsTimeGrouping.month => '${start.month}',
+    StatisticsTimeGrouping.year => '${start.year}',
   };
 
   String get description => switch (this) {
     StatisticsTimeGrouping.day => '按日汇总，点击柱形查看金额',
     StatisticsTimeGrouping.week => '按 7 天汇总，避免长区间过密',
     StatisticsTimeGrouping.month => '按月汇总，突出长期趋势',
+    StatisticsTimeGrouping.year => '按年汇总，突出长期趋势',
   };
 }
 
@@ -190,12 +185,16 @@ class StatisticsBalanceTrendBucket {
   const StatisticsBalanceTrendBucket({
     required this.date,
     required this.label,
-    required this.balance,
+    required this.assets,
+    required this.liabilities,
   });
 
   final DateTime date;
   final String label;
-  final Money balance;
+  final Money assets;
+  final Money liabilities;
+
+  Money get netAssets => assets - liabilities;
 }
 
 List<StatisticsCashflowBucket> buildStatisticsCashflowBuckets(
@@ -213,7 +212,6 @@ List<StatisticsCashflowBucket> buildStatisticsCashflowBuckets(
     sorted.first.date.month,
     sorted.first.date.day,
   );
-  final spansMultipleYears = sorted.first.date.year != sorted.last.date.year;
   final buckets = <DateTime, _CashflowBucketAccumulator>{};
   for (final item in sorted) {
     final date = DateTime(item.date.year, item.date.month, item.date.day);
@@ -229,11 +227,7 @@ List<StatisticsCashflowBucket> buildStatisticsCashflowBuckets(
     for (final bucket in buckets.values)
       StatisticsCashflowBucket(
         date: bucket.date,
-        label: grouping.labelFor(
-          bucket.date,
-          untilExclusive: until,
-          includeYear: spansMultipleYears,
-        ),
+        label: grouping.labelFor(bucket.date, untilExclusive: until),
         incomeMinor: bucket.incomeMinor,
         expenseMinor: bucket.expenseMinor,
       ),
@@ -259,8 +253,6 @@ List<StatisticsBalanceTrendBucket> buildStatisticsBalanceTrendBuckets(
   }
 
   final anchor = effectiveDateAt(0);
-  final spansMultipleYears =
-      anchor.year != effectiveDateAt(sorted.length - 1).year;
   final buckets = <DateTime, BalanceTrendPoint>{};
   for (var index = 0; index < sorted.length; index++) {
     final item = sorted[index];
@@ -272,12 +264,9 @@ List<StatisticsBalanceTrendBucket> buildStatisticsBalanceTrendBuckets(
     for (final entry in buckets.entries)
       StatisticsBalanceTrendBucket(
         date: entry.key,
-        label: grouping.labelFor(
-          entry.key,
-          untilExclusive: until,
-          includeYear: spansMultipleYears,
-        ),
-        balance: entry.value.balance,
+        label: grouping.labelFor(entry.key, untilExclusive: until),
+        assets: entry.value.assets,
+        liabilities: entry.value.liabilities,
       ),
   ];
 }
@@ -305,14 +294,6 @@ List<DailyCashflowSummary> _fillDailyCashflowDates(
     date = DateTime(date.year, date.month, date.day + 1);
   }
   return result;
-}
-
-String _weekLabel(DateTime start, {DateTime? untilExclusive}) {
-  final naturalEnd = start.add(const Duration(days: 6));
-  final rangeEnd = untilExclusive?.subtract(const Duration(days: 1));
-  final end =
-      rangeEnd != null && rangeEnd.isBefore(naturalEnd) ? rangeEnd : naturalEnd;
-  return '${start.month}/${start.day}–${end.month}/${end.day}';
 }
 
 class _CashflowBucketAccumulator {

@@ -103,7 +103,7 @@ void main() {
       ),
     ]);
 
-    expect(buckets.map((item) => item.label), ['1/1', '1/2']);
+    expect(buckets.map((item) => item.label), ['1', '2']);
     expect(buckets.first.netMinor, 0);
     expect(buckets.last.netMinor, 1300);
   });
@@ -127,7 +127,7 @@ void main() {
       ),
     ], grouping: StatisticsTimeGrouping.month);
 
-    expect(buckets.map((item) => item.label), ['1月', '2月']);
+    expect(buckets.map((item) => item.label), ['1', '2']);
     expect(buckets.first.incomeMinor, 1500);
     expect(buckets.first.expenseMinor, 500);
     expect(buckets.last.netMinor, 700);
@@ -152,7 +152,7 @@ void main() {
       ),
     ], grouping: StatisticsTimeGrouping.week);
 
-    expect(buckets.map((item) => item.label), ['1/1–1/7', '1/8–1/14']);
+    expect(buckets.map((item) => item.label), ['1', '8']);
     expect(buckets.first.netMinor, 700);
     expect(buckets.last.netMinor, 150);
   });
@@ -170,10 +170,10 @@ void main() {
       until: DateTime(2026, 1, 10),
     );
 
-    expect(buckets.single.label, '1/8–1/9');
+    expect(buckets.single.label, '8');
   });
 
-  test('includes the year in multi-year monthly bucket labels', () {
+  test('keeps multi-year monthly bucket labels numeric', () {
     final buckets = buildStatisticsCashflowBuckets([
       DailyCashflowSummary(
         date: DateTime(2025, 12, 31),
@@ -187,32 +187,37 @@ void main() {
       ),
     ], grouping: StatisticsTimeGrouping.month);
 
-    expect(buckets.map((item) => item.label), ['2025/12', '2026/1']);
+    expect(buckets.map((item) => item.label), ['12', '1']);
   });
 
   test('maps exclusive balance snapshots to their natural month end', () {
     final buckets = buildStatisticsBalanceTrendBuckets([
       BalanceTrendPoint(
         date: DateTime(2026, 1, 1),
-        balance: const Money(minorUnits: 1000),
+        assets: const Money(minorUnits: 1000),
+        liabilities: const Money(minorUnits: 200),
       ),
       BalanceTrendPoint(
         date: DateTime(2026, 1, 2),
-        balance: const Money(minorUnits: 1100),
+        assets: const Money(minorUnits: 1100),
+        liabilities: const Money(minorUnits: 200),
       ),
       BalanceTrendPoint(
         date: DateTime(2026, 2, 1),
-        balance: const Money(minorUnits: 1500),
+        assets: const Money(minorUnits: 1500),
+        liabilities: const Money(minorUnits: 300),
       ),
       BalanceTrendPoint(
         date: DateTime(2026, 3, 1),
-        balance: const Money(minorUnits: 1200),
+        assets: const Money(minorUnits: 1200),
+        liabilities: const Money(minorUnits: 400),
       ),
     ], grouping: StatisticsTimeGrouping.month);
 
-    expect(buckets.map((item) => item.label), ['1月', '2月']);
-    expect(buckets.first.balance.minorUnits, 1500);
-    expect(buckets.last.balance.minorUnits, 1200);
+    expect(buckets.map((item) => item.label), ['1', '2']);
+    expect(buckets.first.assets.minorUnits, 1500);
+    expect(buckets.first.liabilities.minorUnits, 300);
+    expect(buckets.last.netAssets.minorUnits, 800);
   });
 
   test('provides display copy for statistics controls', () {

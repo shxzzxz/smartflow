@@ -31,6 +31,25 @@ Future<DateTime?> showAppDatePicker({
   );
 }
 
+Future<DateTimeRange?> showAppDateRangePicker({
+  required BuildContext context,
+  required DateTimeRange initialRange,
+  required DateTime firstDate,
+  required DateTime lastDate,
+  String title = '选择时间范围',
+}) {
+  return showDialog<DateTimeRange>(
+    context: context,
+    builder:
+        (context) => AppDateRangePickerDialog(
+          initialRange: initialRange,
+          firstDate: firstDate,
+          lastDate: lastDate,
+          title: title,
+        ),
+  );
+}
+
 /// 仅选时分。
 Future<TimeOfDay?> showAppTimePicker({
   required BuildContext context,
@@ -180,6 +199,289 @@ class _AppDatePickerDialogState extends State<AppDatePickerDialog> {
       _visibleMonth = DateTime(picked.year, picked.month);
       _selectedDate = DateTime(picked.year, picked.month, selectedDay);
     });
+  }
+}
+
+class AppDateRangePickerDialog extends StatefulWidget {
+  const AppDateRangePickerDialog({
+    required this.initialRange,
+    required this.firstDate,
+    required this.lastDate,
+    this.title = '选择时间范围',
+    super.key,
+  });
+
+  final DateTimeRange initialRange;
+  final DateTime firstDate;
+  final DateTime lastDate;
+  final String title;
+
+  @override
+  State<AppDateRangePickerDialog> createState() =>
+      _AppDateRangePickerDialogState();
+}
+
+class _AppDateRangePickerDialogState extends State<AppDateRangePickerDialog> {
+  late DateTime _start;
+  late DateTime _end;
+  late DateTime _visibleMonth;
+  bool _selectingEnd = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _start = _clampDate(widget.initialRange.start);
+    _end = _clampDate(widget.initialRange.end);
+    if (_end.isBefore(_start)) _end = _start;
+    _visibleMonth = DateTime(_start.year, _start.month);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _PickerDialogShell(
+      onCancel: () => Navigator.of(context).pop(),
+      onConfirm:
+          () => Navigator.of(
+            context,
+          ).pop(DateTimeRange(start: _start, end: _end)),
+      children: [
+        _TitleBar(title: widget.title),
+        const SizedBox(height: AppSpacing.space6),
+        _RangeSummary(start: _start, end: _end, selectingEnd: _selectingEnd),
+        const SizedBox(height: AppSpacing.space8),
+        _DateRangeCalendarPanel(
+          visibleMonth: _visibleMonth,
+          start: _start,
+          end: _end,
+          firstDate: widget.firstDate,
+          lastDate: widget.lastDate,
+          onPreviousMonth: _canPreviousMonth ? _previousMonth : null,
+          onNextMonth: _canNextMonth ? _nextMonth : null,
+          onDateSelected: _selectDate,
+        ),
+      ],
+    );
+  }
+
+  DateTime _clampDate(DateTime value) {
+    final date = DateTime(value.year, value.month, value.day);
+    final first = DateTime(
+      widget.firstDate.year,
+      widget.firstDate.month,
+      widget.firstDate.day,
+    );
+    final last = DateTime(
+      widget.lastDate.year,
+      widget.lastDate.month,
+      widget.lastDate.day,
+    );
+    if (date.isBefore(first)) return first;
+    if (date.isAfter(last)) return last;
+    return date;
+  }
+
+  bool get _canPreviousMonth => DateTime(
+    _visibleMonth.year,
+    _visibleMonth.month,
+  ).isAfter(DateTime(widget.firstDate.year, widget.firstDate.month));
+
+  bool get _canNextMonth => DateTime(
+    _visibleMonth.year,
+    _visibleMonth.month,
+  ).isBefore(DateTime(widget.lastDate.year, widget.lastDate.month));
+
+  void _previousMonth() => setState(() {
+    _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month - 1);
+  });
+
+  void _nextMonth() => setState(() {
+    _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + 1);
+  });
+
+  void _selectDate(DateTime date) {
+    setState(() {
+      if (!_selectingEnd) {
+        _start = date;
+        _end = date;
+        _selectingEnd = true;
+      } else if (date.isBefore(_start)) {
+        _start = date;
+        _end = date;
+      } else {
+        _end = date;
+        _selectingEnd = false;
+      }
+    });
+  }
+}
+
+class _RangeSummary extends StatelessWidget {
+  const _RangeSummary({
+    required this.start,
+    required this.end,
+    required this.selectingEnd,
+  });
+
+  final DateTime start;
+  final DateTime end;
+  final bool selectingEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space12,
+        vertical: AppSpacing.space10,
+      ),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: _RangeDateValue(label: '开始', date: start)),
+              Icon(
+                Icons.arrow_forward_rounded,
+                size: AppSpacing.space18,
+                color: colors.onSurfaceVariant,
+              ),
+              Expanded(child: _RangeDateValue(label: '结束', date: end)),
+            ],
+          ),
+          if (selectingEnd) ...[
+            const SizedBox(height: AppSpacing.space6),
+            Text(
+              '请选择结束日期',
+              style: context.appTextStyles.listSupporting.copyWith(
+                color: colors.primary,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RangeDateValue extends StatelessWidget {
+  const _RangeDateValue({required this.label, required this.date});
+
+  final String label;
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: context.appTextStyles.listSupporting.copyWith(
+            color: colors.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space2),
+        Text(
+          '${date.year}.${date.month}.${date.day}',
+          style: context.appTextStyles.detailValue,
+        ),
+      ],
+    );
+  }
+}
+
+class _DateRangeCalendarPanel extends StatelessWidget {
+  const _DateRangeCalendarPanel({
+    required this.visibleMonth,
+    required this.start,
+    required this.end,
+    required this.firstDate,
+    required this.lastDate,
+    required this.onDateSelected,
+    this.onPreviousMonth,
+    this.onNextMonth,
+  });
+
+  final DateTime visibleMonth;
+  final DateTime start;
+  final DateTime end;
+  final DateTime firstDate;
+  final DateTime lastDate;
+  final VoidCallback? onPreviousMonth;
+  final VoidCallback? onNextMonth;
+  final ValueChanged<DateTime> onDateSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final days = _calendarDays(visibleMonth);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            _MonthArrowButton(
+              icon: Icons.chevron_left,
+              tooltip: '上个月',
+              onPressed: onPreviousMonth,
+            ),
+            Expanded(
+              child: Text(
+                '${visibleMonth.year}年${visibleMonth.month}月',
+                textAlign: TextAlign.center,
+                style: context.appTextStyles.subsectionTitle,
+              ),
+            ),
+            _MonthArrowButton(
+              icon: Icons.chevron_right,
+              tooltip: '下个月',
+              onPressed: onNextMonth,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space4),
+        Row(
+          children: [
+            for (final weekday in _weekdays)
+              Expanded(
+                child: Text(
+                  weekday,
+                  textAlign: TextAlign.center,
+                  style: context.appTextStyles.formLabel,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space2),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: days.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+            mainAxisSpacing: AppSpacing.space2,
+            crossAxisSpacing: AppSpacing.space2,
+            childAspectRatio: 1,
+          ),
+          itemBuilder: (context, index) {
+            final date = days[index];
+            if (date == null) return const SizedBox.shrink();
+            final enabled =
+                !date.isBefore(firstDate) && !date.isAfter(lastDate);
+            return _CalendarDayButton(
+              date: date,
+              selected: _isSameDate(date, start) || _isSameDate(date, end),
+              inRange: date.isAfter(start) && date.isBefore(end),
+              onTap: enabled ? () => onDateSelected(date) : null,
+            );
+          },
+        ),
+      ],
+    );
   }
 }
 
@@ -559,18 +861,25 @@ class _CalendarDayButton extends StatelessWidget {
     required this.date,
     required this.selected,
     required this.onTap,
+    this.inRange = false,
   });
 
   final DateTime date;
   final bool selected;
-  final VoidCallback onTap;
+  final bool inRange;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
     return Material(
-      color: selected ? colors.primary : Colors.transparent,
+      color:
+          selected
+              ? colors.primary
+              : inRange
+              ? colors.primaryContainer.withValues(alpha: 0.5)
+              : Colors.transparent,
       borderRadius: BorderRadius.circular(AppRadius.radiusSm),
       child: InkWell(
         onTap: onTap,
@@ -579,7 +888,12 @@ class _CalendarDayButton extends StatelessWidget {
           child: Text(
             '${date.day}',
             style: context.appTextStyles.detailValue.copyWith(
-              color: selected ? colors.onPrimary : colors.onSurface,
+              color:
+                  onTap == null
+                      ? colors.onSurface.withValues(alpha: 0.3)
+                      : selected
+                      ? colors.onPrimary
+                      : colors.onSurface,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
             ),
           ),

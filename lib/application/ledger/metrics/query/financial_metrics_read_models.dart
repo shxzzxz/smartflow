@@ -76,10 +76,17 @@ class StatisticsRangeReport {
 }
 
 class BalanceTrendPoint {
-  const BalanceTrendPoint({required this.date, required this.balance});
+  const BalanceTrendPoint({
+    required this.date,
+    required this.assets,
+    required this.liabilities,
+  });
 
   final DateTime date;
-  final Money balance;
+  final Money assets;
+  final Money liabilities;
+
+  Money get netAssets => assets - liabilities;
 }
 
 class DailyCashflowSummary {

@@ -73,11 +73,23 @@ void main() {
         DateTime(2026, 1, 2),
       ]);
       expect(report.categories.single.accountId, 'food');
-      expect(report.balanceTrend.map((point) => point.balance.minorUnits), [
+      expect(report.balanceTrend.map((point) => point.assets.minorUnits), [
         10000,
         10000,
         10500,
         10500,
+      ]);
+      expect(report.balanceTrend.map((point) => point.liabilities.minorUnits), [
+        2000,
+        2000,
+        2000,
+        2200,
+      ]);
+      expect(report.balanceTrend.map((point) => point.netAssets.minorUnits), [
+        8000,
+        8000,
+        8500,
+        8300,
       ]);
     },
   );

@@ -7,9 +7,12 @@ import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_segmented_control.dart';
-import '../../../design_system/widget/app_surface.dart';
+import '../../../feature/home/widget/monthly_summary_card.dart';
+import '../../../feature/shared/presentation/transaction_list_presentation.dart';
+import '../../../widget/business/finance/finance_tone.dart';
 import '../../../widget/business/finance/money_text.dart';
 import '../presentation/statistics_presentation.dart';
 import '../view_model/statistics_view_model.dart';
@@ -75,16 +78,30 @@ class _StatisticsHeader extends ConsumerWidget {
     final notifier = ref.read(statisticsViewModelProvider.notifier);
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space20,
+        AppSpacing.space16,
         AppSpacing.space18,
-        AppSpacing.space20,
+        AppSpacing.space16,
         AppSpacing.space12,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          const AppPageHeader(title: '统计', subtitle: '查看收支结构与资产变化'),
-          const SizedBox(height: AppSpacing.space14),
+          Expanded(
+            child: _PeriodNavigator(
+              label: periodLabel,
+              canGoBack: state.periodKind != StatisticsPeriodKind.custom,
+              canGoForward:
+                  state.periodKind != StatisticsPeriodKind.custom && canAdvance,
+              onPrevious:
+                  () => notifier.shiftMonth(
+                    state.periodKind == StatisticsPeriodKind.year ? -12 : -1,
+                  ),
+              onNext:
+                  () => notifier.shiftMonth(
+                    state.periodKind == StatisticsPeriodKind.year ? 12 : 1,
+                  ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.space4),
           AppSegmentedControl<StatisticsPeriodKind>(
             segments: const [
               AppSegment(value: StatisticsPeriodKind.month, label: '月'),
@@ -98,21 +115,6 @@ class _StatisticsHeader extends ConsumerWidget {
                   notifier,
                   kind,
                   lastSelectableDate,
-                ),
-          ),
-          const SizedBox(height: AppSpacing.space12),
-          _PeriodNavigator(
-            label: periodLabel,
-            canGoBack: state.periodKind != StatisticsPeriodKind.custom,
-            canGoForward:
-                state.periodKind != StatisticsPeriodKind.custom && canAdvance,
-            onPrevious:
-                () => notifier.shiftMonth(
-                  state.periodKind == StatisticsPeriodKind.year ? -12 : -1,
-                ),
-            onNext:
-                () => notifier.shiftMonth(
-                  state.periodKind == StatisticsPeriodKind.year ? 12 : 1,
                 ),
           ),
         ],
@@ -134,11 +136,11 @@ class _StatisticsHeader extends ConsumerWidget {
       start: state.customFrom,
       end: state.customUntil.subtract(const Duration(days: 1)),
     );
-    final range = await showDateRangePicker(
+    final range = await showAppDateRangePicker(
       context: context,
+      initialRange: initial,
       firstDate: DateTime(2000),
       lastDate: lastSelectableDate,
-      initialDateRange: initial,
     );
     if (range != null) {
       notifier.selectCustomRange(range.start, range.end);
@@ -176,13 +178,18 @@ class _PeriodNavigator extends StatelessWidget {
             tooltip: '上一周期',
             onPressed: canGoBack ? onPrevious : null,
             visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(
+              width: AppSpacing.space28,
+              height: AppSpacing.space48,
+            ),
             icon: const Icon(Icons.chevron_left_rounded),
           ),
           Expanded(
             child: Text(
               label,
               textAlign: TextAlign.center,
-              style: context.appTextStyles.dateNavigationTitle,
+              style: context.appTextStyles.subsectionTitleStrong,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -191,6 +198,11 @@ class _PeriodNavigator extends StatelessWidget {
             tooltip: '下一周期',
             onPressed: canGoForward ? onNext : null,
             visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(
+              width: AppSpacing.space28,
+              height: AppSpacing.space48,
+            ),
             icon: const Icon(Icons.chevron_right_rounded),
           ),
         ],
@@ -235,105 +247,30 @@ class _Summary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final summary = presentation.cashflowComparison.current;
-    return AppSurface(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('本期概览', style: context.appTextStyles.sectionTitleStrong),
-            const SizedBox(height: AppSpacing.space16),
-            IntrinsicHeight(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _SummaryMetric(
-                      label: '收入',
-                      value: summary.income,
-                      semantic: MoneySemantic.income,
-                      supporting: presentation.incomeChangeText,
-                    ),
-                  ),
-                  const _SummaryDivider(),
-                  Expanded(
-                    child: _SummaryMetric(
-                      label: '支出',
-                      value: summary.expense,
-                      semantic: MoneySemantic.expense,
-                      supporting: presentation.expenseChangeText,
-                    ),
-                  ),
-                  const _SummaryDivider(),
-                  Expanded(
-                    child: _SummaryMetric(
-                      label: '结余',
-                      value: summary.net,
-                      semantic: MoneySemantic.neutral,
-                      supporting: '收入 - 支出',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+    return MonthlySummaryCard(
+      showCaptions: false,
+      summary: MonthlySummaryPresentation(
+        metrics: [
+          MonthlySummaryMetricPresentation(
+            label: '收入',
+            amountText: summary.income.format(),
+            caption: '',
+            tone: FinanceTone.income,
+          ),
+          MonthlySummaryMetricPresentation(
+            label: '支出',
+            amountText: summary.expense.format(),
+            caption: '',
+            tone: FinanceTone.expense,
+          ),
+          MonthlySummaryMetricPresentation(
+            label: '结余',
+            amountText: summary.net.format(),
+            caption: '',
+            tone: FinanceTone.neutral,
+          ),
+        ],
       ),
-    );
-  }
-}
-
-class _SummaryDivider extends StatelessWidget {
-  const _SummaryDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return VerticalDivider(
-      width: AppSpacing.space16,
-      color: Theme.of(context).colorScheme.outlineVariant,
-    );
-  }
-}
-
-class _SummaryMetric extends StatelessWidget {
-  const _SummaryMetric({
-    required this.label,
-    required this.value,
-    required this.semantic,
-    required this.supporting,
-  });
-
-  final String label;
-  final Money value;
-  final MoneySemantic semantic;
-  final String supporting;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: context.appTextStyles.metricLabel),
-        const SizedBox(height: AppSpacing.space6),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: MoneyText(
-            money: value,
-            semantic: semantic,
-            style: context.appTextStyles.metricValue,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.space6),
-        Text(
-          supporting.isEmpty ? '本期数据' : supporting,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: context.appTextStyles.metricSupporting.copyWith(
-            color: colors.onSurfaceVariant,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -347,9 +284,7 @@ class _CashflowSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return StatisticsSectionCard(
-      title: '收支趋势',
-      subtitle: control.trendGrouping.description,
-      emphasis: StatisticsSectionEmphasis.primary,
+      title: '收支统计',
       trailing: AppSegmentedControl<CashflowChartMetric>(
         segments: const [
           AppSegment(value: CashflowChartMetric.expense, label: '支出'),
@@ -380,7 +315,6 @@ class _BalanceSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return StatisticsSectionCard(
       title: '资产走势',
-      subtitle: presentation.netAssetChangeText,
       child: StatisticsBalanceTrendChart(
         points: presentation.rangeBalanceTrend,
         grouping: control.trendGrouping,
@@ -417,9 +351,6 @@ class _CategoryAnalysis extends ConsumerWidget {
     );
     return StatisticsSectionCard(
       title: '分类构成',
-      subtitle:
-          '${statisticsCategoryLevelLabel(control.categoryLevel)} · '
-          '${statisticsValueModeLabel(control.valueMode)}',
       trailing: AppSegmentedControl<StatisticsCategoryKind>(
         segments: const [
           AppSegment(value: StatisticsCategoryKind.expense, label: '支出'),
@@ -433,15 +364,44 @@ class _CategoryAnalysis extends ConsumerWidget {
               ? const StatisticsEmptyState(message: '区间内暂无分类数据')
               : Column(
                 children: [
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: _CategoryDisplayMenu(
-                      level: control.categoryLevel,
-                      valueMode: control.valueMode,
-                      onLevelChanged: notifier.selectCategoryLevel,
-                      onValueModeChanged: notifier.selectValueMode,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppSegmentedControl<StatisticsCategoryLevel>(
+                          segments: const [
+                            AppSegment(
+                              value: StatisticsCategoryLevel.primary,
+                              label: '一级',
+                            ),
+                            AppSegment(
+                              value: StatisticsCategoryLevel.secondary,
+                              label: '二级',
+                            ),
+                          ],
+                          selected: control.categoryLevel,
+                          onChanged: notifier.selectCategoryLevel,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.space8),
+                      Expanded(
+                        child: AppSegmentedControl<StatisticsValueMode>(
+                          segments: const [
+                            AppSegment(
+                              value: StatisticsValueMode.amount,
+                              label: '金额',
+                            ),
+                            AppSegment(
+                              value: StatisticsValueMode.percentage,
+                              label: '占比',
+                            ),
+                          ],
+                          selected: control.valueMode,
+                          onChanged: notifier.selectValueMode,
+                        ),
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: AppSpacing.space8),
                   StatisticsDonutChart(
                     items: items,
                     centerLabel:
@@ -450,133 +410,76 @@ class _CategoryAnalysis extends ConsumerWidget {
                             : '总收入',
                     centerValue: Money(minorUnits: totalMinor).format(),
                   ),
-                  const SizedBox(height: AppSpacing.space8),
-                  for (var i = 0; i < items.length; i++)
-                    _CategoryRow(
-                      item: items[i],
-                      color: statisticsChartSeriesColor(context, i),
-                      trailing:
-                          control.valueMode == StatisticsValueMode.amount
-                              ? MoneyText(
-                                money: items[i].amount,
-                                semantic: semantic,
-                                style: context.appTextStyles.amountList,
-                              )
-                              : Text(
-                                statisticsCategoryPercentageText(
-                                  items[i],
-                                  items,
-                                ),
-                                style: context.appTextStyles.amountList,
-                              ),
-                      onTap:
-                          control.categoryLevel ==
-                                      StatisticsCategoryLevel.primary &&
-                                  items[i].children.isNotEmpty
-                              ? () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder:
-                                      (_) => _CategoryDetailPage(
-                                        item: items[i],
-                                        semantic: semantic,
-                                        from: presentation.cashflowFrom,
-                                        until: presentation.cashflowUntil,
-                                      ),
-                                ),
-                              )
-                              : () => _openTransactions(
-                                context,
-                                items[i],
-                                presentation.cashflowFrom,
-                                presentation.cashflowUntil,
-                              ),
-                    ),
+                  _CategoryList(
+                    items: items,
+                    semantic: semantic,
+                    valueMode: control.valueMode,
+                    level: control.categoryLevel,
+                    from: presentation.cashflowFrom,
+                    until: presentation.cashflowUntil,
+                  ),
                 ],
               ),
     );
   }
 }
 
-class _CategoryDisplayMenu extends StatelessWidget {
-  const _CategoryDisplayMenu({
-    required this.level,
+class _CategoryList extends StatelessWidget {
+  const _CategoryList({
+    required this.items,
+    required this.semantic,
     required this.valueMode,
-    required this.onLevelChanged,
-    required this.onValueModeChanged,
+    required this.level,
+    required this.from,
+    required this.until,
   });
 
-  final StatisticsCategoryLevel level;
+  final List<StatisticsBreakdownItem> items;
+  final MoneySemantic semantic;
   final StatisticsValueMode valueMode;
-  final ValueChanged<StatisticsCategoryLevel> onLevelChanged;
-  final ValueChanged<StatisticsValueMode> onValueModeChanged;
+  final StatisticsCategoryLevel level;
+  final DateTime from;
+  final DateTime until;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return PopupMenuButton<_CategoryDisplayAction>(
-      tooltip: '分类显示选项',
-      onSelected: (action) {
-        switch (action) {
-          case _CategoryDisplayAction.primary:
-            onLevelChanged(StatisticsCategoryLevel.primary);
-          case _CategoryDisplayAction.secondary:
-            onLevelChanged(StatisticsCategoryLevel.secondary);
-          case _CategoryDisplayAction.amount:
-            onValueModeChanged(StatisticsValueMode.amount);
-          case _CategoryDisplayAction.percentage:
-            onValueModeChanged(StatisticsValueMode.percentage);
-        }
-      },
-      itemBuilder:
-          (context) => [
-            CheckedPopupMenuItem(
-              value: _CategoryDisplayAction.primary,
-              checked: level == StatisticsCategoryLevel.primary,
-              child: const Text('一级分类'),
-            ),
-            CheckedPopupMenuItem(
-              value: _CategoryDisplayAction.secondary,
-              checked: level == StatisticsCategoryLevel.secondary,
-              child: const Text('二级分类'),
-            ),
-            CheckedPopupMenuItem(
-              value: _CategoryDisplayAction.amount,
-              checked: valueMode == StatisticsValueMode.amount,
-              child: const Text('显示金额'),
-            ),
-            CheckedPopupMenuItem(
-              value: _CategoryDisplayAction.percentage,
-              checked: valueMode == StatisticsValueMode.percentage,
-              child: const Text('显示占比'),
-            ),
-          ],
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space10,
-          vertical: AppSpacing.space6,
-        ),
-        decoration: BoxDecoration(
-          border: Border.all(color: colors.outlineVariant),
-          borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '${statisticsCategoryLevelLabel(level)} · '
-              '${statisticsValueModeLabel(valueMode)}',
-              style: context.appTextStyles.quickActionLabel(selected: false),
-            ),
-            const SizedBox(width: AppSpacing.space4),
-            const Icon(RemixIcons.arrow_down_s_line, size: AppSpacing.space18),
-          ],
-        ),
-      ),
+    return Column(
+      children: [
+        for (var i = 0; i < items.length; i++)
+          _CategoryRow(
+            item: items[i],
+            color: statisticsChartSeriesColor(context, i),
+            trailing:
+                valueMode == StatisticsValueMode.amount
+                    ? MoneyText(
+                      money: items[i].amount,
+                      semantic: semantic,
+                      style: context.appTextStyles.amountList,
+                    )
+                    : Text(
+                      statisticsCategoryPercentageText(items[i], items),
+                      style: context.appTextStyles.amountList,
+                    ),
+            onTap:
+                level == StatisticsCategoryLevel.primary &&
+                        items[i].children.isNotEmpty
+                    ? () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder:
+                            (_) => _CategoryDetailPage(
+                              item: items[i],
+                              semantic: semantic,
+                              from: from,
+                              until: until,
+                            ),
+                      ),
+                    )
+                    : () => _openTransactions(context, items[i], from, until),
+          ),
+      ],
     );
   }
 }
-
-enum _CategoryDisplayAction { primary, secondary, amount, percentage }
 
 class _CategoryRow extends StatelessWidget {
   const _CategoryRow({

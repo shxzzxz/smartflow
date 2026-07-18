@@ -63,17 +63,27 @@ void main() {
       customFrom: DateTime(2026, 1, 1),
       customUntil: DateTime(2026, 8, 1),
     );
+    final multiYearCustom = _control(
+      periodKind: StatisticsPeriodKind.custom,
+      customFrom: DateTime(2024, 1, 1),
+      customUntil: DateTime(2026, 8, 1),
+    );
 
     expect(month.trendGrouping, StatisticsTimeGrouping.day);
     expect(year.trendGrouping, StatisticsTimeGrouping.month);
     expect(mediumCustom.trendGrouping, StatisticsTimeGrouping.week);
     expect(longCustom.trendGrouping, StatisticsTimeGrouping.month);
+    expect(multiYearCustom.trendGrouping, StatisticsTimeGrouping.year);
     expect(year.range(DateTime(2026, 7, 18)).balancePointIntervalDays, 1);
     expect(
       mediumCustom.range(DateTime(2026, 7, 18)).balancePointIntervalDays,
       7,
     );
     expect(longCustom.range(DateTime(2026, 7, 18)).balancePointIntervalDays, 1);
+    expect(
+      multiYearCustom.range(DateTime(2026, 7, 18)).balancePointIntervalDays,
+      30,
+    );
   });
 
   test('combines reports into a category-rollup page state', () async {

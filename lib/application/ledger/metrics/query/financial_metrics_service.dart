@@ -100,7 +100,8 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
     final points = <BalanceTrendPoint>[
       BalanceTrendPoint(
         date: query.from,
-        balance: Money(minorUnits: running[AccountType.asset] ?? 0),
+        assets: Money(minorUnits: running[AccountType.asset] ?? 0),
+        liabilities: Money(minorUnits: running[AccountType.liability] ?? 0),
       ),
     ];
     var date = DateTime(query.from.year, query.from.month, query.from.day);
@@ -121,7 +122,8 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
         points.add(
           BalanceTrendPoint(
             date: date.add(const Duration(days: 1)),
-            balance: Money(minorUnits: running[AccountType.asset] ?? 0),
+            assets: Money(minorUnits: running[AccountType.asset] ?? 0),
+            liabilities: Money(minorUnits: running[AccountType.liability] ?? 0),
           ),
         );
       }

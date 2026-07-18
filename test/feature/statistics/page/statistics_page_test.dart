@@ -43,9 +43,11 @@ void main() {
 
     await _pumpStatisticsPage(tester);
 
-    expect(find.text('统计'), findsOneWidget);
-    expect(find.text('本期概览'), findsOneWidget);
-    expect(find.text('收支趋势'), findsOneWidget);
+    expect(find.text('统计'), findsNothing);
+    expect(find.text('查看收支结构与资产变化'), findsNothing);
+    expect(find.text('本期概览'), findsNothing);
+    expect(find.text('收支统计'), findsOneWidget);
+    expect(find.text('按日汇总，点击柱形查看金额'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -74,6 +76,23 @@ void main() {
     expect(find.byType(BarChart), findsNothing);
   });
 
+  testWidgets('uses the app-styled custom date range picker', (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpStatisticsPage(tester);
+    await tester.tap(find.text('自定义'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('选择时间范围'), findsOneWidget);
+    expect(find.text('开始'), findsOneWidget);
+    expect(find.text('结束'), findsOneWidget);
+    expect(find.text('确定'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('shows market-level charts and switches analysis dimensions', (
     tester,
   ) async {
@@ -86,7 +105,7 @@ void main() {
     expect(find.text('月'), findsOneWidget);
     expect(find.text('年'), findsOneWidget);
     expect(find.text('自定义'), findsOneWidget);
-    expect(find.text('收支趋势'), findsOneWidget);
+    expect(find.text('收支统计'), findsOneWidget);
     expect(find.byType(BarChart), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('分类构成'),
@@ -94,14 +113,10 @@ void main() {
       scrollable: find.byType(Scrollable).last,
     );
     expect(find.byType(PieChart), findsOneWidget);
-    await tester.tap(find.byTooltip('分类显示选项'));
-    await tester.pumpAndSettle();
-    expect(find.text('一级分类'), findsOneWidget);
-    expect(find.text('二级分类'), findsOneWidget);
-    expect(find.text('显示金额'), findsOneWidget);
-    expect(find.text('显示占比'), findsOneWidget);
-    await tester.tapAt(Offset.zero);
-    await tester.pumpAndSettle();
+    expect(find.text('一级'), findsOneWidget);
+    expect(find.text('二级'), findsOneWidget);
+    expect(find.text('金额'), findsOneWidget);
+    expect(find.text('占比'), findsOneWidget);
 
     final categoryKindControl = find.byType(
       SegmentedButton<StatisticsCategoryKind>,
@@ -292,11 +307,13 @@ StatisticsPresentation _presentation({
     rangeBalanceTrend: [
       BalanceTrendPoint(
         date: DateTime(2026, 1),
-        balance: const Money(minorUnits: 8000),
+        assets: const Money(minorUnits: 10000),
+        liabilities: const Money(minorUnits: 2000),
       ),
       BalanceTrendPoint(
         date: DateTime(2026, 1, 15),
-        balance: const Money(minorUnits: 9000),
+        assets: const Money(minorUnits: 11500),
+        liabilities: const Money(minorUnits: 2500),
       ),
     ],
   );

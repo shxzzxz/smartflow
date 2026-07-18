@@ -316,7 +316,8 @@ class StatisticsControlState {
         .inDays) {
       <= 45 => StatisticsTimeGrouping.day,
       <= 180 => StatisticsTimeGrouping.week,
-      _ => StatisticsTimeGrouping.month,
+      <= 730 => StatisticsTimeGrouping.month,
+      _ => StatisticsTimeGrouping.year,
     },
   };
 
@@ -364,7 +365,8 @@ class StatisticsControlState {
           balancePointIntervalDays: switch (days) {
             <= 45 => 1,
             <= 180 => 7,
-            _ => 1,
+            <= 730 => 1,
+            _ => 30,
           },
         );
     }

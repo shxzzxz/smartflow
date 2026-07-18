@@ -143,57 +143,120 @@ class StatisticsBalanceTrendChart extends StatelessWidget {
     if (buckets.isEmpty) {
       return const StatisticsEmptyState(message: '区间内暂无资产数据');
     }
-    final values = [
-      for (final bucket in buckets) bucket.balance.minorUnits / 100,
+    final assetValues = [
+      for (final bucket in buckets) bucket.assets.minorUnits / 100,
     ];
-    final range = _ChartRange.from(values);
+    final liabilityValues = [
+      for (final bucket in buckets) bucket.liabilities.minorUnits / 100,
+    ];
+    final netAssetValues = [
+      for (final bucket in buckets) bucket.netAssets.minorUnits / 100,
+    ];
+    final range = _ChartRange.from([
+      ...assetValues,
+      ...liabilityValues,
+      ...netAssetValues,
+    ]);
     final colors = Theme.of(context).colorScheme;
-    final color = Theme.of(context).extension<AppThemeExtension>()!.asset;
-    return SizedBox(
-      height: AppChartGeometry.secondaryPlotHeight,
-      child: LineChart(
-        LineChartData(
-          minX: 0,
-          maxX: math.max(1, buckets.length - 1).toDouble(),
-          minY: range.min,
-          maxY: range.max,
-          borderData: FlBorderData(show: false),
-          gridData: FlGridData(
-            drawVerticalLine: false,
-            getDrawingHorizontalLine:
-                (_) => FlLine(
-                  color: colors.outlineVariant.withValues(
-                    alpha: AppChartGeometry.gridLineOpacity,
-                  ),
-                  strokeWidth: AppChartGeometry.gridLineWidth,
-                ),
-          ),
-          titlesData: _bottomTitles(
-            context,
-            labels: [for (final bucket in buckets) bucket.label],
-            maxLabels: AppChartGeometry.trendAxisLabelLimit,
-          ),
-          lineTouchData: const LineTouchData(enabled: true),
-          lineBarsData: [
-            LineChartBarData(
-              spots: [
-                for (var i = 0; i < buckets.length; i++)
-                  FlSpot(i.toDouble(), values[i]),
-              ],
-              color: color,
-              barWidth: AppChartGeometry.lineWidth,
-              isCurved: buckets.length > 2,
-              dotData: FlDotData(show: buckets.length <= 12),
-              belowBarData: BarAreaData(
-                show: true,
-                color: color.withValues(
-                  alpha: AppChartGeometry.areaFillOpacity,
-                ),
+    final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
+    return Column(
+      children: [
+        SizedBox(
+          height: AppChartGeometry.secondaryPlotHeight,
+          child: LineChart(
+            LineChartData(
+              minX: 0,
+              maxX: math.max(1, buckets.length - 1).toDouble(),
+              minY: range.min,
+              maxY: range.max,
+              borderData: FlBorderData(show: false),
+              gridData: FlGridData(
+                drawVerticalLine: false,
+                getDrawingHorizontalLine:
+                    (_) => FlLine(
+                      color: colors.outlineVariant.withValues(
+                        alpha: AppChartGeometry.gridLineOpacity,
+                      ),
+                      strokeWidth: AppChartGeometry.gridLineWidth,
+                    ),
               ),
+              titlesData: _bottomTitles(
+                context,
+                labels: [for (final bucket in buckets) bucket.label],
+                maxLabels: AppChartGeometry.trendAxisLabelLimit,
+              ),
+              lineTouchData: const LineTouchData(enabled: true),
+              lineBarsData: [
+                _balanceLine(assetValues, financeColors.asset, buckets.length),
+                _balanceLine(
+                  liabilityValues,
+                  financeColors.liability,
+                  buckets.length,
+                ),
+                _balanceLine(
+                  netAssetValues,
+                  financeColors.equity,
+                  buckets.length,
+                ),
+              ],
             ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space12),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: AppSpacing.space16,
+          runSpacing: AppSpacing.space8,
+          children: [
+            _ChartLegendItem(label: '资产', color: financeColors.asset),
+            _ChartLegendItem(label: '负债', color: financeColors.liability),
+            _ChartLegendItem(label: '净资产', color: financeColors.equity),
           ],
         ),
-      ),
+      ],
+    );
+  }
+}
+
+LineChartBarData _balanceLine(
+  List<double> values,
+  Color color,
+  int pointCount,
+) {
+  return LineChartBarData(
+    spots: [
+      for (var i = 0; i < values.length; i++) FlSpot(i.toDouble(), values[i]),
+    ],
+    color: color,
+    barWidth: AppChartGeometry.lineWidth,
+    isCurved: pointCount > 2,
+    dotData: FlDotData(show: pointCount <= 12),
+    belowBarData: BarAreaData(show: false),
+  );
+}
+
+class _ChartLegendItem extends StatelessWidget {
+  const _ChartLegendItem({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: AppSpacing.space12,
+          height: AppSpacing.space4,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(AppRadius.radiusSm),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.space6),
+        Text(label, style: context.appTextStyles.listSupporting),
+      ],
     );
   }
 }
