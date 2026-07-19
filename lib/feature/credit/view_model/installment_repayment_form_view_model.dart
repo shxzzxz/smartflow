@@ -87,7 +87,7 @@ class InstallmentRepaymentFormViewModel
     if (current == null || !current.isLoaded || current.contract == null) {
       return _invalidCommand('分期还款表单尚未加载');
     }
-    final principal = _parsePositiveMoney(current.principalText);
+    final principal = _parseNonNegativeMoney(current.principalText);
     if (principal == null) return _invalidCommand('请输入有效本金');
     final interest = _parseOptionalNonNegativeMoney(current.interestText);
     if (interest == null) return _invalidCommand('请输入有效利息');
@@ -325,9 +325,9 @@ String? _selectedId(String? id, List<Account> accounts) {
   return accounts.isEmpty ? null : accounts.first.id;
 }
 
-Money? _parsePositiveMoney(String value) {
+Money? _parseNonNegativeMoney(String value) {
   final money = Money.tryParse(value);
-  return money != null && money.minorUnits > 0 ? money : null;
+  return money != null && money.minorUnits >= 0 ? money : null;
 }
 
 Money? _parseOptionalNonNegativeMoney(String value) {

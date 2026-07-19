@@ -121,8 +121,18 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
     if (current == null || !current.isLoaded) {
       return _invalidCommand('还款表单尚未加载');
     }
-    final principal = _parsePositiveMoney(current.principalText);
-    if (principal == null) return _invalidCommand('请输入有效还款金额');
+    final principal = _parseNonNegativeMoney(current.principalText);
+    if (principal == null) return _invalidCommand('请输入有效本金');
+    final interest = _parseOptionalNonNegativeMoney(current.interestText);
+    if (interest == null) return _invalidCommand('请输入有效利息');
+    final fee = _parseOptionalNonNegativeMoney(current.feeText);
+    if (fee == null) return _invalidCommand('请输入有效手续费');
+    final discount = _parseOptionalNonNegativeMoney(current.discountText);
+    if (discount == null) return _invalidCommand('请输入有效优惠');
+    final cashPaid = principal + interest + fee - discount;
+    if (cashPaid.minorUnits <= 0) {
+      return _invalidCommand('实付金额必须大于 0');
+    }
     final liabilityAccountId = _selectedId(
       current.liabilityAccountId,
       current.liabilityAccounts,
@@ -145,9 +155,9 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
       final note = trimToNull(current.noteText);
       final amount = credit.RepaymentAmountDto(
         principal: principal,
-        interest: _parseOptionalMoney(current.interestText) ?? Money.zero(),
-        fee: _parseOptionalMoney(current.feeText) ?? Money.zero(),
-        discount: _parseOptionalMoney(current.discountText) ?? Money.zero(),
+        interest: interest,
+        fee: fee,
+        discount: discount,
       );
       final result =
           editTransactionId == null
@@ -373,16 +383,16 @@ String? _selectedId(String? id, List<Account> accounts) {
   return accounts.isEmpty ? null : accounts.first.id;
 }
 
-Money? _parsePositiveMoney(String value) {
+Money? _parseNonNegativeMoney(String value) {
   final money = Money.tryParse(value);
-  return money != null && money.minorUnits > 0 ? money : null;
+  return money != null && money.minorUnits >= 0 ? money : null;
 }
 
-Money? _parseOptionalMoney(String value) {
+Money? _parseOptionalNonNegativeMoney(String value) {
   final trimmed = value.trim();
-  if (trimmed.isEmpty) return null;
+  if (trimmed.isEmpty) return Money.zero();
   final money = Money.tryParse(trimmed);
-  return money != null && money.minorUnits > 0 ? money : null;
+  return money != null && money.minorUnits >= 0 ? money : null;
 }
 
 String _positiveText(Money value) {

@@ -149,10 +149,10 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
                 validator: (value) => value == null ? '请选择债务账户' : null,
               ),
               MoneyPlainFormRow(
-                label: '金额',
+                label: '本金',
                 controller: _principalController,
-                hintText: '请输入还款金额',
-                validator: validatePositiveMoneyText,
+                hintText: '请输入还款本金',
+                validator: validateNonNegativeMoneyText,
               ),
               MoneyPlainFormRow(
                 label: '利息',

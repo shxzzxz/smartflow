@@ -57,6 +57,49 @@ void main() {
     );
   });
 
+  test('repayment form allows interest-only payment', () async {
+    final repayment = _FakeRepaymentAppService();
+    final container = _container(repaymentAppService: repayment);
+    final provider = repaymentFormViewModelProvider(
+      const RepaymentFormArgs(liabilityAccountId: 'loan'),
+    );
+    final subscription = container.listen(provider, (_, _) {});
+    addTearDown(subscription.close);
+    await container.read(provider.future);
+    final viewModel =
+        container.read(provider.notifier)
+          ..setPrincipalText('0')
+          ..setInterestText('1')
+          ..setPaidFromAccountId('cash');
+
+    final outcome = await viewModel.submit();
+
+    expect(outcome, isA<SubmitSuccess>());
+    final amount = repayment.liabilityRepaymentCommands.single.amount;
+    expect(amount.principal, Money.zero());
+    expect(amount.interest, const Money(minorUnits: 100));
+  });
+
+  test('repayment form rejects zero cash payment', () async {
+    final repayment = _FakeRepaymentAppService();
+    final container = _container(repaymentAppService: repayment);
+    final provider = repaymentFormViewModelProvider(
+      const RepaymentFormArgs(liabilityAccountId: 'loan'),
+    );
+    final subscription = container.listen(provider, (_, _) {});
+    addTearDown(subscription.close);
+    await container.read(provider.future);
+    final viewModel =
+        container.read(provider.notifier)
+          ..setPrincipalText('0')
+          ..setPaidFromAccountId('cash');
+
+    final outcome = await viewModel.submit();
+
+    expect(outcome, isA<SubmitFailure>());
+    expect(repayment.liabilityRepaymentCommands, isEmpty);
+  });
+
   test('repayment form maps business exception to failure', () async {
     final repayment = _FakeRepaymentAppService(
       exception: BusinessException(
@@ -120,6 +163,28 @@ void main() {
       );
     },
   );
+
+  test('installment prepayment allows interest-only payment', () async {
+    final repayment = _FakeRepaymentAppService();
+    final container = _container(repaymentAppService: repayment);
+    final provider = installmentRepaymentFormViewModelProvider(
+      const InstallmentRepaymentFormArgs(contractId: 'contract'),
+    );
+    final subscription = container.listen(provider, (_, _) {});
+    addTearDown(subscription.close);
+    await container.read(provider.future);
+    final notifier =
+        container.read(provider.notifier)
+          ..setPrincipalText('0')
+          ..setInterestText('1');
+
+    final outcome = await notifier.submit();
+
+    expect(outcome, isA<SubmitSuccess>());
+    final amount = repayment.prepaymentCommands.single.amount;
+    expect(amount.principal, Money.zero());
+    expect(amount.interest, const Money(minorUnits: 100));
+  });
 
   test('bill repayment form submits remaining bill allocation', () async {
     final repayment = _FakeRepaymentAppService();

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
+import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_rule.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
@@ -37,6 +38,38 @@ void main() {
           ('cash', EntryDirection.credit),
         ]),
       );
+    });
+
+    test('creates and resolves interest-only repayment', () {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+
+      final transaction = engine.createRepayment(
+        RepaymentInstruction(
+          principal: Money.zero(),
+          interest: Money.parse('1.00'),
+          liabilityAccountId: 'loan',
+          paidFromAccountId: 'cash',
+          occurredAt: DateTime(2026, 5, 1),
+        ),
+        interestExpenseAccountId: 'interest-expense',
+      );
+
+      expect(transaction.businessPurpose, BusinessPurpose.debtRepayment);
+      expect(entriesAreBalanced(transaction.entries), isTrue);
+      expect(
+        transaction.details.first.type,
+        TransactionDetailType.repaymentPrincipal,
+      );
+      expect(transaction.details.first.amount, Money.zero());
+      final resolved = const DefaultPostingInstructionResolver().resolve(
+        transaction,
+      );
+      expect(resolved, isA<RepaymentInstruction>());
+      expect((resolved as RepaymentInstruction).principal, Money.zero());
+      expect(resolved.liabilityAccountId, 'loan');
+      expect(resolved.interest, Money.parse('1.00'));
     });
 
     test('creates refund inheriting parent reporting flags', () {

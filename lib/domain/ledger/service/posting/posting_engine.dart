@@ -349,9 +349,9 @@ class PostingEngine {
     String? feeExpenseAccountId,
     String? discountIncomeAccountId,
   }) {
-    if (instruction.principal.minorUnits <= 0) {
+    if (instruction.principal.minorUnits < 0) {
       return LedgerViolationReason.repaymentPrincipalNotPositive.throwException(
-        message: 'Repayment principal must be positive.',
+        message: 'Repayment principal cannot be negative.',
       );
     }
     final interest = instruction.interest;

@@ -138,10 +138,15 @@ class Transaction {
       );
     }
     for (final detail in details) {
-      if (!_amountSignIsValid(
-        amountMinor: detail.amount.minorUnits,
-        expectsNegative: allowNegativeAmounts,
-      )) {
+      final isZeroRepaymentPrincipal =
+          businessPurpose == BusinessPurpose.debtRepayment &&
+          detail.type == TransactionDetailType.repaymentPrincipal &&
+          detail.amount.minorUnits == 0;
+      if (!isZeroRepaymentPrincipal &&
+          !_amountSignIsValid(
+            amountMinor: detail.amount.minorUnits,
+            expectsNegative: allowNegativeAmounts,
+          )) {
         LedgerViolationReason.detailAmountSignInvalid.throwException(
           message:
               'Detail amount must be '
@@ -159,11 +164,23 @@ class Transaction {
         );
       }
     }
+    final hasZeroRepaymentPrincipal =
+        businessPurpose == BusinessPurpose.debtRepayment &&
+        details.any(
+          (detail) =>
+              detail.type == TransactionDetailType.repaymentPrincipal &&
+              detail.amount.minorUnits == 0,
+        );
     for (final entry in entries) {
-      if (!_amountSignIsValid(
-        amountMinor: entry.amount.minorUnits,
-        expectsNegative: allowNegativeAmounts,
-      )) {
+      final isZeroRepaymentEntry =
+          hasZeroRepaymentPrincipal &&
+          entry.direction == EntryDirection.debit &&
+          entry.amount.minorUnits == 0;
+      if (!isZeroRepaymentEntry &&
+          !_amountSignIsValid(
+            amountMinor: entry.amount.minorUnits,
+            expectsNegative: allowNegativeAmounts,
+          )) {
         LedgerViolationReason.entryAmountSignInvalid.throwException(
           message:
               'Entry amount must be '

@@ -37,7 +37,7 @@ class CreditRepaymentAmountFields extends StatelessWidget {
     required this.feeController,
     required this.discountController,
     super.key,
-    this.principalValidator = validatePositiveMoneyText,
+    this.principalValidator = validateNonNegativeMoneyText,
   });
 
   final TextEditingController principalController;
