@@ -48,7 +48,7 @@ class AppSwipeAction extends StatefulWidget {
 class _AppSwipeActionState extends State<AppSwipeAction> {
   static const _singleActionThreshold = 0.4;
   static const _progressivePrimaryThreshold = 0.25;
-  static const _secondaryThreshold = 0.65;
+  static const _secondaryThreshold = 0.55;
   static const _resetDuration = Duration(milliseconds: 180);
 
   double _dragExtent = 0;
@@ -65,11 +65,18 @@ class _AppSwipeActionState extends State<AppSwipeAction> {
           key: widget.dismissibleKey,
           child: Stack(
             children: [
-              Positioned.fill(
-                child: _ActionBackground(
-                  label: action.label,
-                  icon: action.icon,
-                  tone: action.tone,
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: _dragExtent,
+                child: SizedBox(
+                  key: const ValueKey('app-swipe-action-background'),
+                  child: _ActionBackground(
+                    label: action.label,
+                    icon: action.icon,
+                    tone: action.tone,
+                  ),
                 ),
               ),
               GestureDetector(
@@ -167,40 +174,29 @@ class _ActionBackground extends StatelessWidget {
         colors.onErrorContainer,
       ),
     };
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return DecoratedBox(
-          decoration: BoxDecoration(color: backgroundColor),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child:
-                constraints.maxWidth < AppSpacing.space20 * 4
-                    ? const SizedBox.shrink()
-                    : Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.space20,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            icon,
-                            size: AppSpacing.space20,
-                            color: foregroundColor,
-                          ),
-                          const SizedBox(width: AppSpacing.space8),
-                          Text(
-                            label,
-                            style: styles.formLabel.copyWith(
-                              color: foregroundColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+    return DecoratedBox(
+      decoration: BoxDecoration(color: backgroundColor),
+      child: ClipRect(
+        child: OverflowBox(
+          alignment: Alignment.centerLeft,
+          minWidth: 0,
+          maxWidth: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space20),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: AppSpacing.space20, color: foregroundColor),
+                const SizedBox(width: AppSpacing.space8),
+                Text(
+                  label,
+                  style: styles.formLabel.copyWith(color: foregroundColor),
+                ),
+              ],
+            ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
