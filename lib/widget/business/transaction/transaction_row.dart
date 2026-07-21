@@ -4,6 +4,8 @@ import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
+import 'package:smartflow/design_system/token/transaction.dart';
+import 'package:smartflow/design_system/token/typography.dart';
 import 'package:smartflow/design_system/widget/app_swipe_action.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 
@@ -38,55 +40,64 @@ class TransactionRow extends StatelessWidget {
       presentation.amountTone,
     );
 
-    final row = InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space12,
-          vertical: AppSpacing.space8,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            CategoryAvatar(iconKey: presentation.iconKey, size: 24),
-            const SizedBox(width: AppSpacing.space8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _TitleLine(
-                    title: presentation.title,
-                    style: textStyles.listTitle,
-                    badges: presentation.badges,
-                  ),
-                  const SizedBox(height: AppSpacing.space2),
-                  Text(
-                    presentation.subtitle,
-                    style: textStyles.listSupporting,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+    final row = SizedBox(
+      height: AppTransactionTokens.rowHeight,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space8,
+            vertical: AppSpacing.space8,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              CategoryAvatar(
+                iconKey: presentation.iconKey,
+                size: AppSpacing.space32,
               ),
-            ),
-            const SizedBox(width: AppSpacing.space8),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 140),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    presentation.amountText,
-                    style: textStyles.amountList.copyWith(color: amountColor),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: AppSpacing.space2),
-                  _AccountLine(flow: presentation.accountFlow),
-                ],
+              const SizedBox(width: AppSpacing.space8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      height: AppSpacing.space24,
+                      child: _PrimaryLine(
+                        title: presentation.title,
+                        titleStyle: textStyles.transactionTitle,
+                        amount: presentation.amountText,
+                        amountStyle: textStyles.transactionAmount.copyWith(
+                          color: amountColor,
+                        ),
+                        badges: presentation.badges,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.space2),
+                    SizedBox(
+                      height: AppSpacing.space16,
+                      child: Row(
+                        children: [
+                          Text(
+                            presentation.subtitle,
+                            style: textStyles.transactionSupporting,
+                            maxLines: 1,
+                          ),
+                          const SizedBox(width: AppSpacing.space8),
+                          Expanded(
+                            child: _AccountLine(
+                              flow: presentation.accountFlow,
+                              style: textStyles.transactionSupporting,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -105,71 +116,82 @@ class TransactionRow extends StatelessWidget {
   }
 }
 
-class _TitleLine extends StatelessWidget {
-  const _TitleLine({
+class _PrimaryLine extends StatelessWidget {
+  const _PrimaryLine({
     required this.title,
-    required this.style,
+    required this.titleStyle,
+    required this.amount,
+    required this.amountStyle,
     required this.badges,
   });
 
-  static const _minBadgeWidth = 48.0;
-
   final String title;
-  final TextStyle style;
+  final TextStyle titleStyle;
+  final String amount;
+  final TextStyle amountStyle;
   final List<TransactionBadgePresentation> badges;
 
   @override
   Widget build(BuildContext context) {
-    if (badges.isEmpty) {
-      return Text(
-        title,
-        style: style,
-        overflow: TextOverflow.ellipsis,
-        maxLines: 1,
-      );
-    }
+    return Row(
+      children: [
+        Flexible(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: AppTransactionTokens.categoryMaxWidth,
+            ),
+            child: Text(
+              title,
+              style: titleStyle,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+        ),
+        if (badges.isNotEmpty) ...[
+          const SizedBox(width: AppSpacing.space8),
+          Expanded(child: TransactionProgressBadges(badges: badges)),
+          const SizedBox(width: AppSpacing.space8),
+        ] else
+          const Spacer(),
+        ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: AppTransactionTokens.amountMaxWidth,
+          ),
+          child: _ResponsiveAmountText(amount: amount, style: amountStyle),
+        ),
+      ],
+    );
+  }
+}
 
+class _ResponsiveAmountText extends StatelessWidget {
+  const _ResponsiveAmountText({required this.amount, required this.style});
+
+  final String amount;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth;
-        const gap = AppSpacing.space8;
-        if (maxWidth <= gap + _minBadgeWidth) {
-          return Text(
-            title,
-            style: style,
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          );
-        }
-
-        final titlePainter = TextPainter(
-          text: TextSpan(text: title, style: style),
+        final painter = TextPainter(
+          text: TextSpan(text: amount, style: style),
           maxLines: 1,
           textDirection: Directionality.of(context),
           textScaler: MediaQuery.textScalerOf(context),
-        )..layout(maxWidth: double.infinity);
-        final maxTitleWidth = maxWidth - gap - _minBadgeWidth;
-        final titleWidth = titlePainter.width.clamp(0.0, maxTitleWidth);
-        final badgeWidth = maxWidth - titleWidth - gap;
+        )..layout();
+        final effectiveStyle =
+            painter.width <= constraints.maxWidth
+                ? style
+                : style.copyWith(fontSize: AppTypography.fontSizeSm);
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: titleWidth,
-              child: Text(
-                title,
-                style: style,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-            ),
-            const SizedBox(width: gap),
-            SizedBox(
-              width: badgeWidth,
-              child: TransactionProgressBadges(badges: badges),
-            ),
-          ],
+        return Text(
+          amount,
+          style: effectiveStyle,
+          maxLines: 1,
+          textAlign: TextAlign.right,
+          overflow: TextOverflow.clip,
         );
       },
     );
@@ -177,37 +199,36 @@ class _TitleLine extends StatelessWidget {
 }
 
 class _AccountLine extends StatelessWidget {
-  const _AccountLine({required this.flow});
+  const _AccountLine({required this.flow, required this.style});
 
   final TransactionAccountFlowPresentation flow;
+  final TextStyle style;
 
   @override
   Widget build(BuildContext context) {
-    final textStyle = context.appTextStyles.listSupporting;
-
     if (flow.out != null && flow.in_ != null) {
       return Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Flexible(
-            child: AccountEndpointView(
+            child: AccountEndpointView.compactLeading(
               endpoint: _endpoint(flow.out!),
-              style: textStyle,
+              style: style,
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space2),
             child: Text(
               flow.separator,
-              style: textStyle,
+              style: style,
               maxLines: 1,
               overflow: TextOverflow.clip,
             ),
           ),
           Flexible(
-            child: AccountEndpointView(
+            child: AccountEndpointView.compactLeading(
               endpoint: _endpoint(flow.in_!),
-              style: textStyle,
+              style: style,
             ),
           ),
         ],
@@ -215,10 +236,10 @@ class _AccountLine extends StatelessWidget {
     }
 
     return Align(
-      alignment: Alignment.centerRight,
-      child: AccountEndpointView(
+      alignment: Alignment.centerLeft,
+      child: AccountEndpointView.compactLeading(
         endpoint: _endpoint(flow.singleEndpoint),
-        style: textStyle,
+        style: style,
       ),
     );
   }

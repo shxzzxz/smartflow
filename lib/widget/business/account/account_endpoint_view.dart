@@ -10,20 +10,33 @@ class AccountEndpointView extends StatelessWidget {
     required this.endpoint,
     this.style,
     this.iconSize = 14,
+    this.iconLabelSpacing = AppSpacing.space4,
     this.textAlign = TextAlign.right,
+    this.mainAxisAlignment = MainAxisAlignment.end,
     super.key,
   });
+
+  const AccountEndpointView.compactLeading({
+    required this.endpoint,
+    this.style,
+    this.iconSize = 14,
+    super.key,
+  }) : iconLabelSpacing = AppSpacing.space2,
+       textAlign = TextAlign.left,
+       mainAxisAlignment = MainAxisAlignment.start;
 
   final AccountEndpoint endpoint;
   final TextStyle? style;
   final double iconSize;
+  final double iconLabelSpacing;
   final TextAlign textAlign;
+  final MainAxisAlignment mainAxisAlignment;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.end,
+      mainAxisAlignment: mainAxisAlignment,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox.square(
@@ -32,7 +45,7 @@ class AccountEndpointView extends StatelessWidget {
             child: BusinessIcon(iconKey: endpoint.iconKey, size: iconSize),
           ),
         ),
-        const SizedBox(width: AppSpacing.space4),
+        SizedBox(width: iconLabelSpacing),
         Flexible(
           child: Text(
             endpoint.label,

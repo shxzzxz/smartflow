@@ -176,6 +176,34 @@ class AppTextStyles {
     fontFeatures: const [FontFeature.tabularFigures()],
   );
 
+  TextStyle get transactionTitle => _titleSmall.copyWith(
+    color: _colors.onSurface,
+    fontSize: AppTypography.fontSizeLgCompact,
+    fontWeight: AppTypography.titleWeight,
+    height: AppTypography.lineHeightTitle,
+  );
+
+  TextStyle get transactionAmount => _titleSmall.copyWith(
+    fontSize: AppTypography.fontSizeLgCompact,
+    fontWeight: AppTypography.titleWeight,
+    height: AppTypography.lineHeightTitle,
+    fontFeatures: const [FontFeature.tabularFigures()],
+  );
+
+  TextStyle get transactionSupporting => _bodySmall.copyWith(
+    color: _colors.onSurfaceVariant,
+    fontSize: AppTypography.fontSizeXs,
+    fontWeight: AppTypography.bodyWeight,
+    height: AppTypography.lineHeightSupporting,
+  );
+
+  TextStyle get transactionBadge => _labelSmall.copyWith(
+    fontSize: AppTypography.fontSizeXs,
+    fontWeight: AppTypography.emphasisWeight,
+    height: AppTypography.lineHeightTight,
+    letterSpacing: AppTypography.letterSpacingTight,
+  );
+
   TextStyle get amountCompact => _bodySmall.copyWith(
     fontSize: AppTypography.fontSizeXs,
     fontWeight: AppTypography.emphasisWeight,

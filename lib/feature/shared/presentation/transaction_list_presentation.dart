@@ -1,5 +1,6 @@
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/money/money_formatter.dart';
 import 'package:smartflow/widget/business/finance/finance_labels.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
@@ -171,17 +172,11 @@ TransactionRowPresentation buildTransactionRowPresentation({
             accountId: viewAccountId,
             entries: item.entries,
           );
-  final note = item.note?.trim();
-  final hasNote = note != null && note.isNotEmpty;
-
   return TransactionRowPresentation(
     transactionId: item.id,
     iconKey: resolveCategoryIconKey(item, accountLookup),
     title: transactionPrimaryLabel(item, accountLookup),
-    subtitle:
-        hasNote
-            ? '${formatTime(item.occurredAt)}  $note'
-            : formatTime(item.occurredAt),
+    subtitle: formatTime(item.occurredAt),
     amountText:
         balanceDelta == null
             ? formatTransactionAmount(item)
@@ -241,22 +236,6 @@ List<TransactionBadgePresentation> buildTransactionBadges(
 ) {
   final badges = <TransactionBadgePresentation>[];
 
-  if (item.isExcludedFromStats) {
-    badges.add(
-      const TransactionBadgePresentation(
-        label: '不计统计',
-        tone: FinanceTone.equity,
-      ),
-    );
-  }
-  if (item.isExcludedFromBudget) {
-    badges.add(
-      const TransactionBadgePresentation(
-        label: '不计预算',
-        tone: FinanceTone.equity,
-      ),
-    );
-  }
   if (item.refundedTotal != null) {
     badges.add(
       TransactionBadgePresentation(
@@ -314,6 +293,23 @@ List<TransactionBadgePresentation> buildTransactionBadges(
       TransactionBadgePresentation(
         label: '差支 ${formatCompactMoney(item.reimbursementGapExpense!)}',
         tone: FinanceTone.expense,
+      ),
+    );
+  }
+
+  if (item.isExcludedFromStats) {
+    badges.add(
+      const TransactionBadgePresentation(
+        label: '不计统计',
+        tone: FinanceTone.equity,
+      ),
+    );
+  }
+  if (item.isExcludedFromBudget) {
+    badges.add(
+      const TransactionBadgePresentation(
+        label: '不计预算',
+        tone: FinanceTone.equity,
       ),
     );
   }
@@ -481,12 +477,17 @@ String formatTransactionAmount(TransactionListReadModel item) {
     BusinessPurpose.dailyExpense => '-',
     _ => '',
   };
-  return '$prefix${formatMinorAmount(item.primaryAmount.minorUnits)}';
+  final amount = formatMoney(
+    item.primaryAmount.abs(),
+    style: MoneyFormatStyle.compact,
+  );
+  return '$prefix$amount';
 }
 
 String formatAccountDelta(Money delta) {
   final sign = delta.minorUnits >= 0 ? '+' : '-';
-  return '$sign${formatMinorAmount(delta.minorUnits)}';
+  final amount = formatMoney(delta.abs(), style: MoneyFormatStyle.compact);
+  return '$sign$amount';
 }
 
 bool canQuickEditTransaction(TransactionListReadModel item) {
@@ -525,9 +526,7 @@ String formatMonthlyAmount(int minorUnits, {required bool showSign}) {
 }
 
 String formatCompactMoney(Money money) {
-  final formatted = Money(minorUnits: money.minorUnits.abs()).format();
-  final compact = formatted.replaceFirst(RegExp(r'\.?0+$'), '');
-  return compact.isEmpty ? '0' : compact;
+  return formatMoney(money.abs(), style: MoneyFormatStyle.compact);
 }
 
 String formatPeriodChangeMetrics(PeriodChange change) {

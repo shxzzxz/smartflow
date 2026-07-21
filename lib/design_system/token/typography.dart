@@ -22,6 +22,11 @@ abstract final class AppTypography {
   static const double fontSizeCompact = 11;
   static const double fontSizeMicro = 8;
 
+  static const double lineHeightTight = 1;
+  static const double lineHeightTitle = 1.2;
+  static const double lineHeightSupporting = 4 / 3;
+  static const double letterSpacingTight = 0;
+
   static const titleWeight = FontWeight.w600;
   static const bodyWeight = FontWeight.w400;
   static const emphasisWeight = FontWeight.w500;
