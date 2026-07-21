@@ -1,4 +1,5 @@
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../core/money/money_formatter.dart';
 
 enum TransactionFormMode { expense, income, transfer, borrowing }
 
@@ -43,7 +44,10 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
   required Map<String, Account> accountsById,
 }) {
   final transaction = detail.transaction;
-  final amountText = transaction.primaryAmount.format();
+  final amountText = formatMoney(
+    transaction.primaryAmount,
+    style: MoneyFormatStyle.plain,
+  );
   final noteText = transaction.note ?? '';
 
   switch (transaction.businessPurpose) {

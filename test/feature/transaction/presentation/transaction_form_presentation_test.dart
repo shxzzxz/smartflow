@@ -68,6 +68,44 @@ void main() {
       expect(snapshot.fromAccountId, 'cash');
       expect(snapshot.reimbursementAccountId, 'company');
     });
+
+    test('trims insignificant decimal zeros for editing', () {
+      final wholeAmountSnapshot = transactionFormEditSnapshot(
+        detail: _detail(
+          purpose: BusinessPurpose.dailyIncome,
+          primaryAmount: const Money(minorUnits: 120000),
+          entries: [
+            _entry('bank', EntryDirection.debit),
+            _entry('salary', EntryDirection.credit),
+          ],
+        ),
+        expenseTree: const [],
+        incomeTree: const [],
+        accountsById: {
+          'bank': _account('bank'),
+          'salary': _account('salary', type: AccountType.income),
+        },
+      );
+      final oneDecimalSnapshot = transactionFormEditSnapshot(
+        detail: _detail(
+          purpose: BusinessPurpose.dailyIncome,
+          primaryAmount: const Money(minorUnits: 120050),
+          entries: [
+            _entry('bank', EntryDirection.debit),
+            _entry('salary', EntryDirection.credit),
+          ],
+        ),
+        expenseTree: const [],
+        incomeTree: const [],
+        accountsById: {
+          'bank': _account('bank'),
+          'salary': _account('salary', type: AccountType.income),
+        },
+      );
+
+      expect(wholeAmountSnapshot.amountText, '1200');
+      expect(oneDecimalSnapshot.amountText, '1200.5');
+    });
   });
 
   group('transaction semantic helpers', () {
@@ -139,13 +177,14 @@ void main() {
 TransactionDetail _detail({
   required BusinessPurpose purpose,
   required List<Entry> entries,
+  Money primaryAmount = const Money(minorUnits: 1234),
   String? reimbursementExpenseAccountId,
 }) {
   final transaction = Transaction(
     id: 'tx-1',
     businessPurpose: purpose,
     occurredAt: DateTime(2026, 1, 2, 8, 30),
-    primaryAmount: const Money(minorUnits: 1234),
+    primaryAmount: primaryAmount,
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
     sourceKind: SourceKind.manual,

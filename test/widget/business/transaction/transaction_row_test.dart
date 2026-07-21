@@ -8,6 +8,7 @@ import 'package:smartflow/feature/shared/presentation/transaction_list_presentat
 import 'package:smartflow/widget/business/category/category_avatar.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
+import 'package:smartflow/widget/business/transaction/transaction_progress_badges.dart';
 
 void main() {
   testWidgets('renders controlled transaction row presentation', (
@@ -41,10 +42,12 @@ void main() {
     expect(tester.getSize(find.byType(TransactionRow)).height, 58);
     expect(tester.getSize(find.byType(CategoryAvatar)), const Size(32, 32));
     expect(tester.getTopLeft(find.byType(CategoryAvatar)).dx, 8);
-    expect(tester.widget<Text>(find.text('餐饮')).style?.fontSize, 18);
-    expect(tester.widget<Text>(find.text('-12.34')).style?.fontSize, 18);
+    expect(tester.widget<Text>(find.text('餐饮')).style?.fontSize, 15);
+    expect(tester.widget<Text>(find.text('-12.34')).style?.fontSize, 15);
     expect(tester.widget<Text>(find.text('08:30')).style?.fontSize, 12);
     expect(tester.widget<Text>(find.text('不计统计')).style?.fontSize, 12);
+    expect(tester.getTopRight(find.text('-12.34')).dx, closeTo(792, 0.1));
+    expect(tester.getTopRight(find.text('现金')).dx, closeTo(792, 0.1));
 
     await tester.tap(find.text('餐饮'));
     expect(tapped, true);
@@ -85,7 +88,38 @@ void main() {
     },
   );
 
-  testWidgets('falls back to three badge slots in constrained width', (
+  testWidgets(
+    'shows a single badge at its natural width when space is available',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: SizedBox(
+              width: 500,
+              child: TransactionRow(
+                presentation: _presentationWithBadgeLabels(['不计预算']),
+                onTap: () {},
+                enableQuickEdit: false,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final finder = find.text('不计预算');
+      final text = tester.widget<Text>(finder);
+      final painter = TextPainter(
+        text: TextSpan(text: '不计预算', style: text.style),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout();
+
+      expect(tester.getSize(finder).width, greaterThanOrEqualTo(painter.width));
+    },
+  );
+
+  testWidgets('uses the first measured badge combination that fits', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -105,18 +139,60 @@ void main() {
     );
 
     expect(find.text('B1'), findsOneWidget);
-    expect(find.text('B2'), findsOneWidget);
+    expect(find.text('B2'), findsNothing);
     expect(find.text('B3'), findsNothing);
-    expect(find.text('+3'), findsOneWidget);
+    expect(find.text('+4'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('does not shrink an oversized amount below fourteen pixels', (
+  testWidgets('keeps an aggregate badge when four badges do not all fit', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: const Scaffold(
+          body: SizedBox(
+            width: 90,
+            child: TransactionProgressBadges(
+              badges: [
+                TransactionBadgePresentation(
+                  label: 'B1',
+                  tone: FinanceTone.info,
+                ),
+                TransactionBadgePresentation(
+                  label: 'B2',
+                  tone: FinanceTone.info,
+                ),
+                TransactionBadgePresentation(
+                  label: 'B3',
+                  tone: FinanceTone.info,
+                ),
+                TransactionBadgePresentation(
+                  label: 'B4',
+                  tone: FinanceTone.info,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('B1'), findsOneWidget);
+    expect(find.text('B2'), findsOneWidget);
+    expect(find.text('B3'), findsNothing);
+    expect(find.text('+2'), findsOneWidget);
+  });
+
+  testWidgets('prefers the precise amount while it fits the amount column', (
     tester,
   ) async {
     final presentation = _presentationWithBadges(
       0,
-    ).copyWithAmount('-12345678901234567890W');
+      amountText: '52000',
+      compactAmountText: '5.2万',
+    );
 
     await tester.pumpWidget(
       MaterialApp(
@@ -134,10 +210,68 @@ void main() {
       ),
     );
 
-    expect(
-      tester.widget<Text>(find.text('-12345678901234567890W')).style?.fontSize,
-      14,
+    expect(find.text('52000'), findsOneWidget);
+    expect(find.text('5.2万'), findsNothing);
+  });
+
+  testWidgets(
+    'uses the compact amount only when the precise amount does not fit',
+    (tester) async {
+      final presentation = _presentationWithBadges(
+        0,
+        amountText: '-123456789.12',
+        compactAmountText: '-1.23亿',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: SizedBox(
+              width: 300,
+              child: TransactionRow(
+                presentation: presentation,
+                onTap: () {},
+                enableQuickEdit: false,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('-123456789.12'), findsNothing);
+      expect(find.text('-1.23亿'), findsOneWidget);
+    },
+  );
+
+  testWidgets('shows original and actual amounts for adjusted transactions', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: TransactionRow(
+            presentation: _presentationWithBadges(
+              0,
+              amountText: '-80',
+              compactAmountText: '-80',
+              originalAmountText: '-100',
+              originalCompactAmountText: '-100',
+            ),
+            onTap: () {},
+            enableQuickEdit: false,
+          ),
+        ),
+      ),
     );
+
+    expect(find.text('-80'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text('-100')).style?.decoration,
+      TextDecoration.lineThrough,
+    );
+    expect(tester.getTopRight(find.text('-80')).dx, closeTo(792, 0.1));
   });
 
   testWidgets('calls quick edit callback from swipe action', (tester) async {
@@ -170,13 +304,22 @@ void main() {
   });
 }
 
-TransactionRowPresentation _presentationWithBadges(int count) {
+TransactionRowPresentation _presentationWithBadges(
+  int count, {
+  String amountText = '-1.24万',
+  String? compactAmountText,
+  String? originalAmountText,
+  String? originalCompactAmountText,
+}) {
   return TransactionRowPresentation(
     transactionId: 'badge-row',
     iconKey: 'meal',
     title: '超长分类名称',
     subtitle: '08:30',
-    amountText: '-1.24W',
+    amountText: amountText,
+    compactAmountText: compactAmountText,
+    originalAmountText: originalAmountText,
+    originalCompactAmountText: originalCompactAmountText,
     amountTone: FinanceTone.expense,
     accountFlow: const TransactionAccountFlowPresentation(
       out: AccountEndpointPresentation(
@@ -192,20 +335,25 @@ TransactionRowPresentation _presentationWithBadges(int count) {
   );
 }
 
-extension on TransactionRowPresentation {
-  TransactionRowPresentation copyWithAmount(String amountText) {
-    return TransactionRowPresentation(
-      transactionId: transactionId,
-      iconKey: iconKey,
-      title: title,
-      subtitle: subtitle,
-      amountText: amountText,
-      amountTone: this.amountTone,
-      accountFlow: accountFlow,
-      badges: badges,
-      canQuickEdit: canQuickEdit,
-    );
-  }
+TransactionRowPresentation _presentationWithBadgeLabels(List<String> labels) {
+  final presentation = _presentationWithBadges(0);
+  return TransactionRowPresentation(
+    transactionId: presentation.transactionId,
+    iconKey: presentation.iconKey,
+    title: presentation.title,
+    subtitle: presentation.subtitle,
+    amountText: presentation.amountText,
+    compactAmountText: presentation.compactAmountText,
+    originalAmountText: presentation.originalAmountText,
+    originalCompactAmountText: presentation.originalCompactAmountText,
+    amountTone: presentation.amountTone,
+    accountFlow: presentation.accountFlow,
+    badges: [
+      for (final label in labels)
+        TransactionBadgePresentation(label: label, tone: FinanceTone.info),
+    ],
+    canQuickEdit: presentation.canQuickEdit,
+  );
 }
 
 final _accounts = <String, Account>{

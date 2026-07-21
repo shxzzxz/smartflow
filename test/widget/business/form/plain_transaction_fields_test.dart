@@ -16,6 +16,31 @@ void main() {
       expect(appendMoneyInputText('12', 'x'), '12');
     });
 
+    test('limits keypad input to twelve digits in total', () {
+      expect(appendMoneyInputText('12345678901', '2'), '123456789012');
+      expect(appendMoneyInputText('123456789012', '3'), '123456789012');
+      expect(appendMoneyInputText('1234567890.1', '2'), '1234567890.12');
+      expect(appendMoneyInputText('1234567890.12', '3'), '1234567890.12');
+      expect(appendMoneyInputText('123456789012', '.'), '123456789012');
+    });
+
+    test('limits system keyboard input to twelve digits in total', () {
+      const accepted = TextEditingValue(text: '1234567890.12');
+      const overflow = TextEditingValue(text: '12345678901.12');
+
+      expect(
+        moneyInputFormatter.formatEditUpdate(
+          const TextEditingValue(text: '1234567890.1'),
+          accepted,
+        ),
+        accepted,
+      );
+      expect(
+        moneyInputFormatter.formatEditUpdate(accepted, overflow),
+        accepted,
+      );
+    });
+
     test('deletes the last keypad character', () {
       expect(deleteLastMoneyInputText('12.3'), '12.');
       expect(deleteLastMoneyInputText(''), '');
@@ -26,6 +51,7 @@ void main() {
       expect(validatePositiveMoneyText('0'), '金额必须大于 0');
       expect(validatePositiveMoneyText(''), '请输入有效金额');
       expect(validatePositiveMoneyText('1.234'), '请输入有效金额');
+      expect(validatePositiveMoneyText('1234567890123'), '请输入有效金额');
 
       expect(validateNonNegativeMoneyText('0'), isNull);
       expect(validateNonNegativeMoneyText('-0.01'), '金额不能小于 0');

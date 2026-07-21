@@ -61,7 +61,10 @@ void main() {
       final content = container.read(homeContentProvider(visibleMonth));
       expect(content, isA<HomeContentLoaded>());
       final loaded = content as HomeContentLoaded;
-      expect(loaded.summary.metrics.first.amountText, '100.00');
+      expect(
+        loaded.summary.metrics.first.amount,
+        const Money(minorUnits: 10000),
+      );
       expect(loaded.groups.single.incomeMinor, 10000);
       expect(loaded.groups.single.rows.single.transactionId, 'tx-1');
     });

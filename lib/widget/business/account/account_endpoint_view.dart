@@ -25,6 +25,15 @@ class AccountEndpointView extends StatelessWidget {
        textAlign = TextAlign.left,
        mainAxisAlignment = MainAxisAlignment.start;
 
+  const AccountEndpointView.compactTrailing({
+    required this.endpoint,
+    this.style,
+    this.iconSize = 14,
+    super.key,
+  }) : iconLabelSpacing = AppSpacing.space2,
+       textAlign = TextAlign.right,
+       mainAxisAlignment = MainAxisAlignment.end;
+
   final AccountEndpoint endpoint;
   final TextStyle? style;
   final double iconSize;

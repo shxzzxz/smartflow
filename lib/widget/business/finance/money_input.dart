@@ -5,14 +5,18 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/token/form.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 
-final moneyInputFormatter = FilteringTextInputFormatter.allow(
-  RegExp(r'^\d*\.?\d{0,2}'),
+const moneyInputMaxDigits = 12;
+
+final moneyInputFormatter = TextInputFormatter.withFunction(
+  (oldValue, newValue) =>
+      _isAcceptedMoneyInputText(newValue.text) ? newValue : oldValue,
 );
 
 String appendMoneyInputText(String current, String input) {
   if (input == '.') {
     if (current.contains('.')) return current;
-    return current.isEmpty ? '0.' : '$current.';
+    final next = current.isEmpty ? '0.' : '$current.';
+    return _isAcceptedMoneyInputText(next) ? next : current;
   }
 
   if (input.length != 1 || !RegExp(r'^\d$').hasMatch(input)) {
@@ -20,11 +24,7 @@ String appendMoneyInputText(String current, String input) {
   }
 
   final next = current == '0' ? input : '$current$input';
-  final decimalIndex = next.indexOf('.');
-  if (decimalIndex >= 0 && next.length - decimalIndex > 3) {
-    return current;
-  }
-  return next;
+  return _isAcceptedMoneyInputText(next) ? next : current;
 }
 
 String deleteLastMoneyInputText(String current) {
@@ -37,6 +37,7 @@ String? validatePositiveMoneyText(
   String invalidMessage = '请输入有效金额',
   String nonPositiveMessage = '金额必须大于 0',
 }) {
+  if (!_isValidMoneyValueText(value?.trim() ?? '')) return invalidMessage;
   final money = Money.tryParse(value);
   if (money == null) return invalidMessage;
   return money.minorUnits > 0 ? null : nonPositiveMessage;
@@ -47,6 +48,7 @@ String? validateNonNegativeMoneyText(
   String invalidMessage = '请输入有效金额',
   String negativeMessage = '金额不能小于 0',
 }) {
+  if (!_isValidMoneyValueText(value?.trim() ?? '')) return invalidMessage;
   final money = Money.tryParse(value);
   if (money == null) return invalidMessage;
   return money.minorUnits >= 0 ? null : negativeMessage;
@@ -68,6 +70,18 @@ String? validateOptionalNonNegativeMoneyText(
 
 int? parseMoneyMinorUnitsOrNull(String? value) {
   return Money.tryParse(value)?.minorUnits;
+}
+
+bool _isAcceptedMoneyInputText(String text) {
+  if (!RegExp(r'^\d*\.?\d{0,2}$').hasMatch(text)) return false;
+  final digitCount = text.replaceAll('.', '').length;
+  if (digitCount > moneyInputMaxDigits) return false;
+  return !(text.endsWith('.') && digitCount >= moneyInputMaxDigits);
+}
+
+bool _isValidMoneyValueText(String text) {
+  if (!RegExp(r'^-?\d*\.?\d{0,2}$').hasMatch(text)) return false;
+  return text.replaceAll(RegExp(r'[-.]'), '').length <= moneyInputMaxDigits;
 }
 
 class MoneyPlainFormRow extends StatelessWidget {

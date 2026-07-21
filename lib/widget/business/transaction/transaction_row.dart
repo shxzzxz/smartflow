@@ -5,9 +5,9 @@ import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/token/transaction.dart';
-import 'package:smartflow/design_system/token/typography.dart';
 import 'package:smartflow/design_system/widget/app_swipe_action.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
+import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
 
 import '../account/account_endpoint.dart';
 import '../account/account_endpoint_view.dart';
@@ -41,6 +41,7 @@ class TransactionRow extends StatelessWidget {
     );
 
     final row = SizedBox(
+      width: double.infinity,
       height: AppTransactionTokens.rowHeight,
       child: InkWell(
         onTap: onTap,
@@ -59,22 +60,31 @@ class TransactionRow extends StatelessWidget {
               const SizedBox(width: AppSpacing.space8),
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     SizedBox(
+                      width: double.infinity,
                       height: AppSpacing.space24,
                       child: _PrimaryLine(
                         title: presentation.title,
                         titleStyle: textStyles.transactionTitle,
                         amount: presentation.amountText,
+                        compactAmount:
+                            presentation.compactAmountText ??
+                            presentation.amountText,
+                        originalAmount: presentation.originalAmountText,
+                        originalCompactAmount:
+                            presentation.originalCompactAmountText,
                         amountStyle: textStyles.transactionAmount.copyWith(
                           color: amountColor,
                         ),
+                        originalAmountStyle: textStyles.transactionSupporting,
                         badges: presentation.badges,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.space2),
                     SizedBox(
+                      width: double.infinity,
                       height: AppSpacing.space16,
                       child: Row(
                         children: [
@@ -106,12 +116,17 @@ class TransactionRow extends StatelessWidget {
       return row;
     }
 
-    return AppSwipeAction(
-      dismissibleKey: ValueKey('transaction-row-${presentation.transactionId}'),
-      label: '编辑',
-      icon: RemixIcons.edit_2_line,
-      onTriggered: () => onQuickEdit?.call(),
-      child: row,
+    return SizedBox(
+      width: double.infinity,
+      child: AppSwipeAction(
+        dismissibleKey: ValueKey(
+          'transaction-row-${presentation.transactionId}',
+        ),
+        label: '编辑',
+        icon: RemixIcons.edit_2_line,
+        onTriggered: () => onQuickEdit?.call(),
+        child: row,
+      ),
     );
   }
 }
@@ -121,79 +136,80 @@ class _PrimaryLine extends StatelessWidget {
     required this.title,
     required this.titleStyle,
     required this.amount,
+    required this.compactAmount,
+    required this.originalAmount,
+    required this.originalCompactAmount,
     required this.amountStyle,
+    required this.originalAmountStyle,
     required this.badges,
   });
 
   final String title;
   final TextStyle titleStyle;
   final String amount;
+  final String compactAmount;
+  final String? originalAmount;
+  final String? originalCompactAmount;
   final TextStyle amountStyle;
+  final TextStyle originalAmountStyle;
   final List<TransactionBadgePresentation> badges;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Flexible(
-          child: ConstrainedBox(
+        Expanded(
+          child: Row(
+            children: [
+              Flexible(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: AppTransactionTokens.categoryMaxWidth,
+                  ),
+                  child: Text(
+                    title,
+                    style: titleStyle,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
+              ),
+              if (badges.isNotEmpty) ...[
+                const SizedBox(width: AppSpacing.space8),
+                Expanded(child: TransactionProgressBadges(badges: badges)),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(width: AppSpacing.space8),
+        if (originalAmount != null)
+          ConstrainedBox(
             constraints: const BoxConstraints(
-              maxWidth: AppTransactionTokens.categoryMaxWidth,
+              maxWidth: AppTransactionTokens.comparedAmountMaxWidth,
             ),
-            child: Text(
-              title,
-              style: titleStyle,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
+            child: ComparedMoneyText(
+              originalPreciseText: originalAmount!,
+              originalCompactText: originalCompactAmount ?? originalAmount!,
+              actualPreciseText: amount,
+              actualCompactText: compactAmount,
+              originalStyle: originalAmountStyle,
+              actualStyle: amountStyle,
+              maxWidth: AppTransactionTokens.comparedAmountMaxWidth,
+            ),
+          )
+        else
+          ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: AppTransactionTokens.amountMaxWidth,
+            ),
+            child: AdaptiveMoneyText(
+              preciseText: amount,
+              compactText: compactAmount,
+              style: amountStyle,
+              maxWidth: AppTransactionTokens.amountMaxWidth,
             ),
           ),
-        ),
-        if (badges.isNotEmpty) ...[
-          const SizedBox(width: AppSpacing.space8),
-          Expanded(child: TransactionProgressBadges(badges: badges)),
-          const SizedBox(width: AppSpacing.space8),
-        ] else
-          const Spacer(),
-        ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: AppTransactionTokens.amountMaxWidth,
-          ),
-          child: _ResponsiveAmountText(amount: amount, style: amountStyle),
-        ),
       ],
-    );
-  }
-}
-
-class _ResponsiveAmountText extends StatelessWidget {
-  const _ResponsiveAmountText({required this.amount, required this.style});
-
-  final String amount;
-  final TextStyle style;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final painter = TextPainter(
-          text: TextSpan(text: amount, style: style),
-          maxLines: 1,
-          textDirection: Directionality.of(context),
-          textScaler: MediaQuery.textScalerOf(context),
-        )..layout();
-        final effectiveStyle =
-            painter.width <= constraints.maxWidth
-                ? style
-                : style.copyWith(fontSize: AppTypography.fontSizeSm);
-
-        return Text(
-          amount,
-          style: effectiveStyle,
-          maxLines: 1,
-          textAlign: TextAlign.right,
-          overflow: TextOverflow.clip,
-        );
-      },
     );
   }
 }
@@ -208,10 +224,10 @@ class _AccountLine extends StatelessWidget {
   Widget build(BuildContext context) {
     if (flow.out != null && flow.in_ != null) {
       return Row(
-        mainAxisAlignment: MainAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
           Flexible(
-            child: AccountEndpointView.compactLeading(
+            child: AccountEndpointView.compactTrailing(
               endpoint: _endpoint(flow.out!),
               style: style,
             ),
@@ -226,7 +242,7 @@ class _AccountLine extends StatelessWidget {
             ),
           ),
           Flexible(
-            child: AccountEndpointView.compactLeading(
+            child: AccountEndpointView.compactTrailing(
               endpoint: _endpoint(flow.in_!),
               style: style,
             ),
@@ -236,8 +252,8 @@ class _AccountLine extends StatelessWidget {
     }
 
     return Align(
-      alignment: Alignment.centerLeft,
-      child: AccountEndpointView.compactLeading(
+      alignment: Alignment.centerRight,
+      child: AccountEndpointView.compactTrailing(
         endpoint: _endpoint(flow.singleEndpoint),
         style: style,
       ),

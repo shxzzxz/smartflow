@@ -178,14 +178,14 @@ class AppTextStyles {
 
   TextStyle get transactionTitle => _titleSmall.copyWith(
     color: _colors.onSurface,
-    fontSize: AppTypography.fontSizeLgCompact,
-    fontWeight: AppTypography.titleWeight,
+    fontSize: AppTypography.fontSizeMd,
+    fontWeight: AppTypography.emphasisWeight,
     height: AppTypography.lineHeightTitle,
   );
 
   TextStyle get transactionAmount => _titleSmall.copyWith(
-    fontSize: AppTypography.fontSizeLgCompact,
-    fontWeight: AppTypography.titleWeight,
+    fontSize: AppTypography.fontSizeMd,
+    fontWeight: AppTypography.emphasisWeight,
     height: AppTypography.lineHeightTitle,
     fontFeatures: const [FontFeature.tabularFigures()],
   );

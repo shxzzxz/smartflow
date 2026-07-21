@@ -98,7 +98,8 @@ void main() {
       expect(row.title, '餐饮');
       expect(row.transactionId, 'tx-1');
       expect(row.subtitle, '08:30');
-      expect(row.amountText, '-12.34');
+      expect(row.amountText, '-10.04');
+      expect(row.originalAmountText, '-12.34');
       expect(row.amountTone, FinanceTone.expense);
       expect(row.iconKey, 'meal');
       expect(row.accountFlow.out?.label, '现金');

@@ -241,19 +241,19 @@ class _Summary extends StatelessWidget {
         metrics: [
           CashflowSummaryMetricPresentation(
             label: '收入',
-            amountText: summary.income.format(),
+            amount: summary.income,
             caption: '',
             tone: FinanceTone.income,
           ),
           CashflowSummaryMetricPresentation(
             label: '支出',
-            amountText: summary.expense.format(),
+            amount: summary.expense,
             caption: '',
             tone: FinanceTone.expense,
           ),
           CashflowSummaryMetricPresentation(
             label: '结余',
-            amountText: summary.net.format(),
+            amount: summary.net,
             caption: '',
             tone: FinanceTone.neutral,
           ),

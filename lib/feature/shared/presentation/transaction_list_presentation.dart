@@ -33,6 +33,9 @@ class TransactionRowPresentation {
     required this.accountFlow,
     required this.badges,
     required this.canQuickEdit,
+    this.compactAmountText,
+    this.originalAmountText,
+    this.originalCompactAmountText,
   });
 
   final String transactionId;
@@ -40,6 +43,9 @@ class TransactionRowPresentation {
   final String title;
   final String subtitle;
   final String amountText;
+  final String? compactAmountText;
+  final String? originalAmountText;
+  final String? originalCompactAmountText;
   final FinanceTone amountTone;
   final TransactionAccountFlowPresentation accountFlow;
   final List<TransactionBadgePresentation> badges;
@@ -88,13 +94,13 @@ class CashflowSummaryPresentation {
 class CashflowSummaryMetricPresentation {
   const CashflowSummaryMetricPresentation({
     required this.label,
-    required this.amountText,
+    required this.amount,
     required this.caption,
     required this.tone,
   });
 
   final String label;
-  final String amountText;
+  final Money amount;
   final String caption;
   final FinanceTone tone;
 }
@@ -172,6 +178,8 @@ TransactionRowPresentation buildTransactionRowPresentation({
             accountId: viewAccountId,
             entries: item.entries,
           );
+  final comparison =
+      balanceDelta == null ? transactionAmountComparison(item) : null;
   return TransactionRowPresentation(
     transactionId: item.id,
     iconKey: resolveCategoryIconKey(item, accountLookup),
@@ -179,8 +187,36 @@ TransactionRowPresentation buildTransactionRowPresentation({
     subtitle: formatTime(item.occurredAt),
     amountText:
         balanceDelta == null
-            ? formatTransactionAmount(item)
-            : formatAccountDelta(balanceDelta),
+            ? formatTransactionAmount(
+              item,
+              amount: comparison?.actual,
+              style: MoneyFormatStyle.plain,
+            )
+            : formatAccountDelta(balanceDelta, style: MoneyFormatStyle.plain),
+    compactAmountText:
+        balanceDelta == null
+            ? formatTransactionAmount(
+              item,
+              amount: comparison?.actual,
+              style: MoneyFormatStyle.compact,
+            )
+            : formatAccountDelta(balanceDelta, style: MoneyFormatStyle.compact),
+    originalAmountText:
+        comparison == null
+            ? null
+            : formatTransactionAmount(
+              item,
+              amount: comparison.original,
+              style: MoneyFormatStyle.plain,
+            ),
+    originalCompactAmountText:
+        comparison == null
+            ? null
+            : formatTransactionAmount(
+              item,
+              amount: comparison.original,
+              style: MoneyFormatStyle.compact,
+            ),
     amountTone:
         balanceDelta == null
             ? amountTone(item.businessPurpose)
@@ -322,25 +358,24 @@ CashflowSummaryPresentation buildMonthlySummaryPresentation(
   int monthlyBudgetMinor = 1000000,
 }) {
   final summary = comparison.current;
-  final incomeMinor = summary.income.minorUnits;
   final expenseMinor = summary.expense.minorUnits;
   return CashflowSummaryPresentation(
     metrics: [
       CashflowSummaryMetricPresentation(
         label: '本月收入',
-        amountText: formatMonthlyAmount(incomeMinor, showSign: true),
+        amount: summary.income,
         caption: formatPeriodChangeMetrics(comparison.incomeChange),
         tone: FinanceTone.income,
       ),
       CashflowSummaryMetricPresentation(
         label: '本月支出',
-        amountText: formatMonthlyAmount(expenseMinor, showSign: false),
+        amount: summary.expense,
         caption: formatPeriodChangeMetrics(comparison.expenseChange),
         tone: FinanceTone.expense,
       ),
       CashflowSummaryMetricPresentation(
         label: '本月预算',
-        amountText: formatMonthlyAmount(monthlyBudgetMinor, showSign: false),
+        amount: Money(minorUnits: monthlyBudgetMinor),
         caption:
             '${formatPercent(expenseMinor / monthlyBudgetMinor)}/'
             '${formatRoundedMajor(monthlyBudgetMinor)}',
@@ -471,22 +506,57 @@ FinanceTone amountTone(BusinessPurpose purpose) {
   };
 }
 
-String formatTransactionAmount(TransactionListReadModel item) {
+String formatTransactionAmount(
+  TransactionListReadModel item, {
+  Money? amount,
+  MoneyFormatStyle style = MoneyFormatStyle.plain,
+}) {
   final prefix = switch (item.businessPurpose) {
-    BusinessPurpose.dailyIncome => '+',
+    BusinessPurpose.dailyIncome ||
+    BusinessPurpose.refund ||
+    BusinessPurpose.reimbursementReceipt => '+',
     BusinessPurpose.dailyExpense => '-',
     _ => '',
   };
-  final amount = formatMoney(
-    item.primaryAmount.abs(),
-    style: MoneyFormatStyle.compact,
+  final formatted = formatMoney(
+    (amount ?? item.primaryAmount).abs(),
+    style: style,
   );
-  return '$prefix$amount';
+  return '$prefix$formatted';
 }
 
-String formatAccountDelta(Money delta) {
+({Money original, Money actual})? transactionAmountComparison(
+  TransactionListReadModel item,
+) {
+  final refunded = item.refundedTotal;
+  if (refunded != null && refunded.minorUnits > 0) {
+    final actualMinor = item.primaryAmount.minorUnits - refunded.minorUnits;
+    if (actualMinor >= 0) {
+      return (
+        original: item.primaryAmount,
+        actual: Money(minorUnits: actualMinor),
+      );
+    }
+  }
+
+  final discount = detailAmount(item, TransactionDetailType.repaymentDiscount);
+  if (discount != null) {
+    return (
+      original: Money(
+        minorUnits: item.primaryAmount.minorUnits + discount.minorUnits,
+      ),
+      actual: item.primaryAmount,
+    );
+  }
+  return null;
+}
+
+String formatAccountDelta(
+  Money delta, {
+  MoneyFormatStyle style = MoneyFormatStyle.plain,
+}) {
   final sign = delta.minorUnits >= 0 ? '+' : '-';
-  final amount = formatMoney(delta.abs(), style: MoneyFormatStyle.compact);
+  final amount = formatMoney(delta.abs(), style: style);
   return '$sign$amount';
 }
 
