@@ -111,8 +111,32 @@ class _InstallmentContractEditPageState
             feeController: _feeController,
             overrideInstallmentController: _overrideInstallmentController,
             onPickFirstDate:
-                loaded.paidCount > 0 ? null : () => _pickFirstDate(loaded),
-            onPickLastDate: () => _pickLastDate(loaded),
+                loaded.paidCount > 0
+                    ? null
+                    : (onSelected) => _pickFirstDate(loaded, onSelected),
+            onPickLastDate: (onSelected) => _pickLastDate(loaded, onSelected),
+            onFirstDateChanged: (value) {
+              if (value != null) {
+                ref
+                    .read(
+                      installmentContractEditViewModelProvider(
+                        widget.contractId,
+                      ).notifier,
+                    )
+                    .setFirstRepaymentDate(value);
+              }
+            },
+            onLastDateChanged: (value) {
+              if (value != null) {
+                ref
+                    .read(
+                      installmentContractEditViewModelProvider(
+                        widget.contractId,
+                      ).notifier,
+                    )
+                    .setLastRepaymentDate(value);
+              }
+            },
             onMethodChanged:
                 (v) => ref
                     .read(
@@ -168,35 +192,36 @@ class _InstallmentContractEditPageState
     _overrideInstallmentController.text = '';
   }
 
-  Future<void> _pickFirstDate(InstallmentContractEditLoaded loaded) async {
+  Future<void> _pickFirstDate(
+    InstallmentContractEditLoaded loaded,
+    ValueChanged<DateTime?> onSelected,
+  ) async {
     final picked = await showAppDatePicker(
       context: context,
       initialDate: loaded.firstRepaymentDate,
       title: '选择首期还款日',
     );
     if (picked == null || !mounted) return;
-    ref
-        .read(
-          installmentContractEditViewModelProvider(widget.contractId).notifier,
-        )
-        .setFirstRepaymentDate(picked);
+    onSelected(picked);
   }
 
-  Future<void> _pickLastDate(InstallmentContractEditLoaded loaded) async {
+  Future<void> _pickLastDate(
+    InstallmentContractEditLoaded loaded,
+    ValueChanged<DateTime?> onSelected,
+  ) async {
     final picked = await showAppDatePicker(
       context: context,
       initialDate: loaded.lastRepaymentDate,
       title: '选择末期还款日',
     );
     if (picked == null || !mounted) return;
-    ref
-        .read(
-          installmentContractEditViewModelProvider(widget.contractId).notifier,
-        )
-        .setLastRepaymentDate(picked);
+    onSelected(picked);
   }
 
   Future<void> _recalculate() async {
+    final form = _formKey.currentState!;
+    if (!form.validate()) return;
+    form.save();
     final outcome = await ref
         .read(
           installmentContractEditViewModelProvider(widget.contractId).notifier,
@@ -243,7 +268,9 @@ class _InstallmentContractEditPageState
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final form = _formKey.currentState!;
+    if (!form.validate()) return;
+    form.save();
     final outcome = await ref
         .read(
           installmentContractEditViewModelProvider(widget.contractId).notifier,
@@ -285,6 +312,8 @@ class _ConfigSection extends StatelessWidget {
     required this.overrideInstallmentController,
     required this.onPickFirstDate,
     required this.onPickLastDate,
+    required this.onFirstDateChanged,
+    required this.onLastDateChanged,
     required this.onMethodChanged,
     required this.onRatePeriodChanged,
     required this.onAccrualMethodChanged,
@@ -302,8 +331,10 @@ class _ConfigSection extends StatelessWidget {
   final TextEditingController rateController;
   final TextEditingController feeController;
   final TextEditingController overrideInstallmentController;
-  final VoidCallback? onPickFirstDate;
-  final VoidCallback onPickLastDate;
+  final AppPlainSelectTap<DateTime>? onPickFirstDate;
+  final AppPlainSelectTap<DateTime> onPickLastDate;
+  final ValueChanged<DateTime?> onFirstDateChanged;
+  final ValueChanged<DateTime?> onLastDateChanged;
   final ValueChanged<InstallmentRepaymentMethod> onMethodChanged;
   final ValueChanged<InterestRatePeriod> onRatePeriodChanged;
   final ValueChanged<InterestAccrualMethod>? onAccrualMethodChanged;
@@ -353,14 +384,18 @@ class _ConfigSection extends StatelessWidget {
         ),
         DateTimePlainFormRow(
           label: '首期还款日',
+          dateTime: firstRepaymentDate,
           value: _formatDate(firstRepaymentDate),
           onTap: onPickFirstDate,
+          onChanged: onFirstDateChanged,
           minHeight: _rowMinHeight,
         ),
         DateTimePlainFormRow(
           label: '末期还款日',
+          dateTime: lastRepaymentDate,
           value: _formatDate(lastRepaymentDate),
           onTap: onPickLastDate,
+          onChanged: onLastDateChanged,
           minHeight: _rowMinHeight,
         ),
         DropdownPlainFormRow<InstallmentRepaymentMethod>(
@@ -764,7 +799,13 @@ class _EditableMoneyCellState extends State<_EditableMoneyCell> {
           style: widget.style,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           textInputAction: TextInputAction.done,
+          inputFormatters: [moneyInputFormatter],
+          validator:
+              widget.allowZero
+                  ? validateOptionalNonNegativeMoneyText
+                  : validatePositiveMoneyText,
           onFieldSubmitted: (_) => _commit(),
+          onSaved: (_) => _commit(),
         ),
       );
     }

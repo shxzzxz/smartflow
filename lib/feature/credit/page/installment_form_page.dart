@@ -122,12 +122,13 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                   onTap:
                       state.fundAccounts.isEmpty
                           ? null
-                          : () => _pickAccount(
+                          : (onSelected) => _pickAccount(
                             title: '选择到账账户',
                             accounts: state.fundAccounts,
                             selectedId: state.disbursementAccountId,
-                            onSelected: notifier.setDisbursementAccountId,
+                            onSelected: onSelected,
                           ),
+                  onChanged: notifier.setDisbursementAccountId,
                 ),
               MoneyPlainFormRow(
                 label: '本金',
@@ -143,24 +144,41 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
               ),
               DateTimePlainFormRow(
                 label: '借款日期',
+                dateTime: state.borrowingDate,
                 value: _formatDate(state.borrowingDate),
-                onTap: () => _pickBorrowingDate(state.borrowingDate),
+                onTap:
+                    (onSelected) =>
+                        _pickBorrowingDate(state.borrowingDate, onSelected),
+                onChanged: (value) {
+                  if (value != null) notifier.setBorrowingDate(value);
+                },
               ),
               DateTimePlainFormRow(
                 label: '首期还款日',
+                dateTime: state.firstRepaymentDate,
                 value: _formatDate(state.firstRepaymentDate),
-                onTap: () => _pickFirstRepaymentDate(state.firstRepaymentDate),
+                onTap:
+                    (onSelected) => _pickFirstRepaymentDate(
+                      state.firstRepaymentDate,
+                      onSelected,
+                    ),
+                onChanged: (value) {
+                  if (value != null) notifier.setFirstRepaymentDate(value);
+                },
               ),
               DateTimePlainFormRow(
                 label: '末期还款日',
+                dateTime: state.lastRepaymentDate,
                 value:
                     state.lastRepaymentDate == null
                         ? '按期数自动计算'
                         : _formatDate(state.lastRepaymentDate!),
                 onTap:
-                    () => _pickLastRepaymentDate(
+                    (onSelected) => _pickLastRepaymentDate(
                       state.lastRepaymentDate ?? state.firstRepaymentDate,
+                      onSelected,
                     ),
+                onChanged: notifier.setLastRepaymentDate,
               ),
               DropdownPlainFormRow<InstallmentRepaymentMethod>(
                 label: '分期方式',
@@ -217,47 +235,50 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
     );
   }
 
-  Future<void> _pickBorrowingDate(DateTime initialDate) async {
+  Future<void> _pickBorrowingDate(
+    DateTime initialDate,
+    ValueChanged<DateTime?> onSelected,
+  ) async {
     final picked = await showAppDatePicker(
       context: context,
       initialDate: initialDate,
       title: '选择借款日期',
     );
     if (picked == null || !mounted) return;
-    ref
-        .read(installmentFormViewModelProvider(_args).notifier)
-        .setBorrowingDate(picked);
+    onSelected(picked);
   }
 
-  Future<void> _pickFirstRepaymentDate(DateTime initialDate) async {
+  Future<void> _pickFirstRepaymentDate(
+    DateTime initialDate,
+    ValueChanged<DateTime?> onSelected,
+  ) async {
     final picked = await showAppDatePicker(
       context: context,
       initialDate: initialDate,
       title: '选择首期还款日',
     );
     if (picked == null || !mounted) return;
-    ref
-        .read(installmentFormViewModelProvider(_args).notifier)
-        .setFirstRepaymentDate(picked);
+    onSelected(picked);
   }
 
-  Future<void> _pickLastRepaymentDate(DateTime initialDate) async {
+  Future<void> _pickLastRepaymentDate(
+    DateTime initialDate,
+    ValueChanged<DateTime?> onSelected,
+  ) async {
     final picked = await showAppDatePicker(
       context: context,
       initialDate: initialDate,
       title: '选择末期还款日',
     );
     if (picked == null || !mounted) return;
-    ref
-        .read(installmentFormViewModelProvider(_args).notifier)
-        .setLastRepaymentDate(picked);
+    onSelected(picked);
   }
 
   Future<void> _pickAccount({
     required String title,
     required List<Account> accounts,
     required String? selectedId,
-    required ValueChanged<String> onSelected,
+    required ValueChanged<String?> onSelected,
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,

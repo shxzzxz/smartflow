@@ -169,4 +169,40 @@ void main() {
     await tester.tap(find.text('参与统计'));
     expect(changes, 0);
   });
+
+  testWidgets('switch row restores its controlled value on Form reset', (
+    tester,
+  ) async {
+    final formKey = GlobalKey<FormState>();
+    var value = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              return Form(
+                key: formKey,
+                child: AppPlainSwitchRow(
+                  label: '参与统计',
+                  value: value,
+                  onChanged: (next) => setState(() => value = next),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('参与统计'));
+    await tester.pump();
+    expect(value, true);
+
+    formKey.currentState!.reset();
+    await tester.pump();
+
+    expect(value, false);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, false);
+  });
 }

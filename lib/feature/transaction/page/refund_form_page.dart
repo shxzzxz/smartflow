@@ -6,7 +6,6 @@ import '../../../application/ledger/ledger_command_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
-import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
@@ -30,22 +29,6 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
-  bool _syncing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _amountController.addListener(
-      () => _setText(
-        (vm, value) => vm.setAmountText(value),
-        _amountController.text,
-      ),
-    );
-    _noteController.addListener(
-      () =>
-          _setText((vm, value) => vm.setNoteText(value), _noteController.text),
-    );
-  }
 
   @override
   void dispose() {
@@ -77,7 +60,6 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
     if (state.status == RefundFormStatus.notFound) {
       return const Center(child: Text('原交易不存在'));
     }
-    _syncControllers(state);
     final refundToAccount = findAccountById(
       state.refundToAccountId,
       state.accounts,
@@ -118,17 +100,26 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
                 selectedId: state.refundToAccountId,
                 placeholder: '请选择退款账户',
                 onTap:
-                    () => _pickRefundAccount(
-                      provider,
+                    (onSelected) => _pickRefundAccount(
                       state.accounts,
                       selectedId: state.refundToAccountId,
+                      onSelected: onSelected,
                     ),
+                onChanged: ref.read(provider.notifier).setRefundToAccountId,
                 validator: (value) => value == null ? '请选择账户' : null,
               ),
               DateTimePlainFormRow(
                 label: '退款时间',
+                dateTime: state.occurredAt,
                 value: _formatDateTime(state.occurredAt),
-                onTap: () => _pickOccurredAt(provider, state.occurredAt),
+                onTap:
+                    (onSelected) =>
+                        _pickOccurredAt(state.occurredAt, onSelected),
+                onChanged: (value) {
+                  if (value != null) {
+                    ref.read(provider.notifier).setOccurredAt(value);
+                  }
+                },
               ),
               NotePlainFormRow(controller: _noteController),
             ],
@@ -145,9 +136,9 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
   }
 
   Future<void> _pickRefundAccount(
-    RefundFormViewModelProvider provider,
     List<Account> accounts, {
     required String? selectedId,
+    required ValueChanged<String?> onSelected,
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,
@@ -156,12 +147,12 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
       selectedId: selectedId,
     );
     if (!mounted || selected == null) return;
-    ref.read(provider.notifier).setRefundToAccountId(selected);
+    onSelected(selected);
   }
 
   Future<void> _pickOccurredAt(
-    RefundFormViewModelProvider provider,
     DateTime occurredAt,
+    ValueChanged<DateTime?> onSelected,
   ) async {
     final picked = await showAppDateTimePicker(
       context: context,
@@ -169,12 +160,17 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
       title: '选择退款时间',
     );
     if (!mounted || picked == null) return;
-    ref.read(provider.notifier).setOccurredAt(picked);
+    onSelected(picked);
   }
 
   Future<void> _submit(RefundFormViewModelProvider provider) async {
     if (!_formKey.currentState!.validate()) return;
-    final outcome = await ref.read(provider.notifier).submit();
+    final outcome = await ref
+        .read(provider.notifier)
+        .submit(
+          amountText: _amountController.text,
+          noteText: _noteController.text,
+        );
     if (!mounted) return;
     switch (outcome) {
       case SubmitSuccess():
@@ -184,26 +180,6 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
           context,
         ).showSnackBar(SnackBar(content: Text(error.message)));
     }
-  }
-
-  void _syncControllers(RefundFormState state) {
-    _syncing = true;
-    syncTextControllerText(_amountController, state.amountText);
-    syncTextControllerText(_noteController, state.noteText);
-    _syncing = false;
-  }
-
-  void _setText(
-    void Function(RefundFormViewModel, String) setter,
-    String value,
-  ) {
-    if (_syncing) return;
-    setter(
-      ref.read(
-        refundFormViewModelProvider(widget.parentTransactionId).notifier,
-      ),
-      value,
-    );
   }
 }
 

@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/app/provider.dart';
+import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart'
     as credit_query;
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/feature/credit/page/bill_repayment_form_page.dart';
 import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
+import 'package:smartflow/feature/credit/view_model/bill_repayment_form_view_model.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
@@ -65,6 +69,76 @@ void main() {
 
     expect(find.text('30.00'), findsWidgets);
   });
+
+  testWidgets('saving commits the active allocation editor first', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final service = _FailingRepaymentAppService();
+    final container = ProviderContainer(
+      overrides: [
+        billDetailProvider.overrideWith(
+          (ref, id) async => _billDetailWithTwoConsumptionItems(),
+        ),
+        accountsForSelectionPurposeProvider.overrideWith(
+          (ref, purpose) => Stream.value(switch (purpose) {
+            AccountSelectionPurpose.repaymentSource => [
+              _account('cash', AccountType.asset),
+              _account('loan', AccountType.liability),
+            ],
+            _ => const <Account>[],
+          }),
+        ),
+        repaymentAppServiceProvider.overrideWithValue(service),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: BillRepaymentFormPage(billId: 'bill')),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final principalField = find.descendant(
+      of: find.byWidgetPredicate(
+        (widget) => widget is AppPlainTextFormRow && widget.label == '本金',
+      ),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(principalField, '80');
+    await tester.tap(find.byKey(const ValueKey('bill-item-1-principal')));
+    await tester.pump();
+    final editingCell = find.descendant(
+      of: find.byKey(const ValueKey('bill-item-1-principal')),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(editingCell, '30');
+
+    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.pump();
+
+    final state =
+        container
+            .read(
+              billRepaymentFormViewModelProvider(
+                const BillRepaymentFormArgs.create('bill'),
+              ),
+            )
+            .value!;
+    expect(
+      state.manualAllocation('bill-item-1').principal,
+      const Money(minorUnits: 3000),
+    );
+    final command = service.commands.single;
+    final allocation = command.allocations.firstWhere(
+      (candidate) => candidate.billItemId == 'bill-item-1',
+    );
+    expect(allocation.allocated.principal, const Money(minorUnits: 3000));
+  });
 }
 
 Account _account(String id, AccountType type) {
@@ -113,4 +187,19 @@ credit_query.BillDetailReadModel _billDetailWithTwoConsumptionItems() {
     ],
     repayments: const [],
   );
+}
+
+class _FailingRepaymentAppService implements RepaymentAppService {
+  final commands = <CreateBillRepaymentCommand>[];
+
+  @override
+  Future<CreateRepaymentResult> createBillRepayment(
+    CreateBillRepaymentCommand command,
+  ) async {
+    commands.add(command);
+    throw Exception('stop after capturing the command');
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

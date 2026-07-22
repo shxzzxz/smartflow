@@ -58,21 +58,6 @@ class InstallmentRepaymentFormViewModel
     );
   }
 
-  void setPrincipalText(String value) =>
-      _update((state) => state.copyWith(principalText: value));
-
-  void setInterestText(String value) =>
-      _update((state) => state.copyWith(interestText: value));
-
-  void setFeeText(String value) =>
-      _update((state) => state.copyWith(feeText: value));
-
-  void setDiscountText(String value) =>
-      _update((state) => state.copyWith(discountText: value));
-
-  void setNoteText(String value) =>
-      _update((state) => state.copyWith(noteText: value));
-
   void setOccurredAt(DateTime value) =>
       _update((state) => state.copyWith(occurredAt: value));
 
@@ -82,18 +67,24 @@ class InstallmentRepaymentFormViewModel
   void setCreateTransaction(bool value) =>
       _update((state) => state.copyWith(createTransaction: value));
 
-  Future<SubmitOutcome> submit() async {
+  Future<SubmitOutcome> submit({
+    required String principalText,
+    required String interestText,
+    required String feeText,
+    required String discountText,
+    required String noteText,
+  }) async {
     final current = state.asData?.value;
     if (current == null || !current.isLoaded || current.contract == null) {
       return _invalidCommand('分期还款表单尚未加载');
     }
-    final principal = _parseNonNegativeMoney(current.principalText);
+    final principal = _parseNonNegativeMoney(principalText);
     if (principal == null) return _invalidCommand('请输入有效本金');
-    final interest = _parseOptionalNonNegativeMoney(current.interestText);
+    final interest = _parseOptionalNonNegativeMoney(interestText);
     if (interest == null) return _invalidCommand('请输入有效利息');
-    final fee = _parseOptionalNonNegativeMoney(current.feeText);
+    final fee = _parseOptionalNonNegativeMoney(feeText);
     if (fee == null) return _invalidCommand('请输入有效手续费');
-    final discount = _parseOptionalNonNegativeMoney(current.discountText);
+    final discount = _parseOptionalNonNegativeMoney(discountText);
     if (discount == null) return _invalidCommand('请输入有效优惠');
     final cashPaid = principal + interest + fee - discount;
     if (cashPaid.minorUnits <= 0) {
@@ -126,7 +117,7 @@ class InstallmentRepaymentFormViewModel
                     paidFromAccountId: paidFromAccountId,
                     occurredAt: current.occurredAt,
                   ),
-          note: trimToNull(current.noteText),
+          note: trimToNull(noteText),
         ),
       );
       _invalidate(current.contract!);

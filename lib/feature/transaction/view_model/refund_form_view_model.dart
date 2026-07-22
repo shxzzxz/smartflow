@@ -46,24 +46,21 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     );
   }
 
-  void setAmountText(String value) =>
-      _update((state) => state.copyWith(amountText: value));
-
-  void setNoteText(String value) =>
-      _update((state) => state.copyWith(noteText: value));
-
   void setOccurredAt(DateTime value) =>
       _update((state) => state.copyWith(occurredAt: value));
 
   void setRefundToAccountId(String? value) =>
       _update((state) => state.copyWith(refundToAccountId: value));
 
-  Future<SubmitOutcome> submit() async {
+  Future<SubmitOutcome> submit({
+    required String amountText,
+    required String noteText,
+  }) async {
     final current = state.asData?.value;
     if (current == null || !current.isLoaded) {
       return _invalidCommand('退款表单尚未加载');
     }
-    final amount = _parsePositiveMoney(current.amountText);
+    final amount = _parsePositiveMoney(amountText);
     if (amount == null) return _invalidCommand('请输入有效退款金额');
     final refundToAccountId = _selectedId(
       current.refundToAccountId,
@@ -81,7 +78,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
               parentTransactionId: parentTransactionId,
               refundToAccountId: refundToAccountId,
               occurredAt: current.occurredAt,
-              note: trimToNull(current.noteText),
+              note: trimToNull(noteText),
             ),
           );
       ref.invalidate(transactionDetailProvider(parentTransactionId));
@@ -121,8 +118,6 @@ class RefundFormState {
   const RefundFormState({
     required this.status,
     required this.accounts,
-    required this.amountText,
-    required this.noteText,
     required this.occurredAt,
     required this.submitting,
     this.remaining,
@@ -139,8 +134,6 @@ class RefundFormState {
       status: RefundFormStatus.loaded,
       accounts: accounts,
       remaining: remaining,
-      amountText: '',
-      noteText: '',
       occurredAt: occurredAt,
       refundToAccountId: refundToAccountId,
       submitting: false,
@@ -151,8 +144,6 @@ class RefundFormState {
     return RefundFormState(
       status: RefundFormStatus.notFound,
       accounts: accounts,
-      amountText: '',
-      noteText: '',
       occurredAt: DateTime.now(),
       submitting: false,
     );
@@ -161,8 +152,6 @@ class RefundFormState {
   final RefundFormStatus status;
   final List<Account> accounts;
   final Money? remaining;
-  final String amountText;
-  final String noteText;
   final DateTime occurredAt;
   final String? refundToAccountId;
   final bool submitting;
@@ -170,8 +159,6 @@ class RefundFormState {
   bool get isLoaded => status == RefundFormStatus.loaded;
 
   RefundFormState copyWith({
-    String? amountText,
-    String? noteText,
     DateTime? occurredAt,
     Object? refundToAccountId = _sentinel,
     bool? submitting,
@@ -180,8 +167,6 @@ class RefundFormState {
       status: status,
       accounts: accounts,
       remaining: remaining,
-      amountText: amountText ?? this.amountText,
-      noteText: noteText ?? this.noteText,
       occurredAt: occurredAt ?? this.occurredAt,
       refundToAccountId:
           refundToAccountId == _sentinel

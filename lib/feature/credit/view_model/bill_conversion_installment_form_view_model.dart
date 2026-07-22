@@ -10,7 +10,8 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/bill_query_providers.dart';
 import '../provider/credit_account_query_providers.dart';
 import '../provider/installment_query_providers.dart';
-import 'bill_repayment_allocation_view_model.dart';
+import '../presentation/bill_repayment_allocation.dart';
+import 'bill_repayment_command_mapping.dart';
 
 part 'bill_conversion_installment_form_view_model.g.dart';
 
@@ -48,24 +49,6 @@ class BillConversionInstallmentFormViewModel
     );
   }
 
-  void setPrincipalText(String value) =>
-      _updateLoaded((state) => state.copyWith(principalText: value));
-
-  void setTotalPeriodsText(String value) =>
-      _updateLoaded((state) => state.copyWith(totalPeriodsText: value));
-
-  void setRateText(String value) =>
-      _updateLoaded((state) => state.copyWith(rateText: value));
-
-  void setTotalFeeText(String value) =>
-      _updateLoaded((state) => state.copyWith(totalFeeText: value));
-
-  void setOverrideInstallmentText(String value) =>
-      _updateLoaded((state) => state.copyWith(overrideInstallmentText: value));
-
-  void setNoteText(String value) =>
-      _updateLoaded((state) => state.copyWith(noteText: value));
-
   void setBorrowingDate(DateTime value) {
     _updateLoaded((state) {
       return state.copyWith(
@@ -97,27 +80,34 @@ class BillConversionInstallmentFormViewModel
   void setAllocationMode(BillRepaymentAllocationMode value) =>
       _updateLoaded((state) => state.copyWith(allocationMode: value));
 
-  Future<UiActionOutcome<String>> submit() async {
+  Future<UiActionOutcome<String>> submit({
+    required String principalText,
+    required String totalPeriodsText,
+    required String rateText,
+    required String totalFeeText,
+    required String overrideInstallmentText,
+    required String noteText,
+  }) async {
     final current = _loadedOrNull();
     if (current == null) return _invalidAction('账单分期表单尚未加载');
 
-    final principal = _parsePositiveMoney(current.principalText);
+    final principal = _parsePositiveMoney(principalText);
     if (principal == null) return _invalidAction('请输入有效本金');
     if (principal.minorUnits > current.convertiblePrincipal.minorUnits) {
       return _invalidAction('分期本金不能超过可分期本金');
     }
 
-    final totalPeriods = int.tryParse(current.totalPeriodsText.trim());
+    final totalPeriods = int.tryParse(totalPeriodsText.trim());
     if (totalPeriods == null || totalPeriods <= 0) {
       return _invalidAction('请输入有效期数');
     }
 
-    final ratePpm = _parseRatePpm(current.rateText);
-    final totalFee = _parseOptionalMoney(current.totalFeeText);
+    final ratePpm = _parseRatePpm(rateText);
+    final totalFee = _parseOptionalMoney(totalFeeText);
     if (totalFee == null) return _invalidAction('请输入有效手续费');
     final overrideMinor =
         current.method == credit.InstallmentRepaymentMethod.equalInstallment
-            ? _parseOptionalOverride(current.overrideInstallmentText)
+            ? _parseOptionalOverride(overrideInstallmentText)
             : null;
 
     final review = _allocationReview(
@@ -142,7 +132,7 @@ class BillConversionInstallmentFormViewModel
           .createBillConversionInstallmentRepayment(
             credit.CreateBillConversionInstallmentRepaymentCommand(
               billId: billId,
-              allocations: review.allocations,
+              allocations: billRepaymentCommandAllocations(review.allocations),
               totalPeriods: totalPeriods,
               borrowingDate: current.borrowingDate,
               firstRepaymentDate: current.firstRepaymentDate,
@@ -152,7 +142,7 @@ class BillConversionInstallmentFormViewModel
               interestAccrualMethod: current.accrualMethod,
               totalFeeMinor: totalFee.minorUnits,
               equalInstallmentOverrideMinor: overrideMinor,
-              note: trimToNull(current.noteText),
+              note: trimToNull(noteText),
             ),
           );
       _invalidateAfterSubmit(accountId: current.summary.accountId);
@@ -342,7 +332,12 @@ List<BillRepaymentAllocationLine> _conversionLines(
             fee: Money.zero(),
             discount: Money.zero(),
           ),
-          alreadyAllocated: item.allocated,
+          alreadyAllocated: credit.RepaymentAmountBreakdown(
+            principal: item.allocated.principal,
+            interest: item.allocated.interest,
+            fee: item.allocated.fee,
+            discount: item.allocated.discount,
+          ),
         ),
   ];
 }
@@ -361,7 +356,7 @@ BillRepaymentAllocationReview _allocationReview({
   required BillRepaymentAllocationMode mode,
   required credit.RepaymentAmountBreakdown amount,
 }) {
-  return BillRepaymentAllocationViewModel(
+  return BillRepaymentAllocator(
     lines: lines,
   ).suggest(mode: mode, amount: amount);
 }

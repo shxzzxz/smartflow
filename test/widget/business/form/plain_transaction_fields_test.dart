@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -82,6 +83,202 @@ void main() {
       expect(effectiveAccountId(null, const []), isNull);
     });
   });
+
+  testWidgets('account row keeps selection and Form state in sync', (
+    tester,
+  ) async {
+    final formKey = GlobalKey<FormState>();
+    final accounts = [_account('cash'), _account('bank')];
+    late StateSetter rebuild;
+    String? selectedId = 'cash';
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              rebuild = setState;
+              return Form(
+                key: formKey,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                child: AccountPlainFormRow(
+                  label: '账户',
+                  account: findAccountById(selectedId, accounts),
+                  selectedId: selectedId,
+                  placeholder: '请选择账户',
+                  onTap: (onSelected) => onSelected('bank'),
+                  onChanged: (value) => rebuild(() => selectedId = value),
+                  validator: (value) => value == 'bank' ? null : '请选择银行卡',
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    expect(formKey.currentState!.validate(), false);
+    await tester.pump();
+    expect(find.text('请选择银行卡'), findsOneWidget);
+
+    await tester.tap(find.text('cash'));
+    await tester.pump();
+
+    expect(selectedId, 'bank');
+    expect(find.text('请选择银行卡'), findsNothing);
+    expect(formKey.currentState!.validate(), true);
+
+    formKey.currentState!.reset();
+    await tester.pump();
+
+    expect(selectedId, 'cash');
+    expect(find.text('cash'), findsOneWidget);
+  });
+
+  testWidgets('dropdown row restores its controlled value on Form reset', (
+    tester,
+  ) async {
+    final formKey = GlobalKey<FormState>();
+    var selected = _TestChoice.first;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              return Form(
+                key: formKey,
+                child: DropdownPlainFormRow<_TestChoice>(
+                  label: '选项',
+                  value: selected,
+                  items: const [
+                    DropdownMenuItem(
+                      value: _TestChoice.first,
+                      child: Text('第一项'),
+                    ),
+                    DropdownMenuItem(
+                      value: _TestChoice.second,
+                      child: Text('第二项'),
+                    ),
+                  ],
+                  onChanged: (value) => setState(() => selected = value),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('第一项'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('第二项').last);
+    await tester.pumpAndSettle();
+
+    expect(selected, _TestChoice.second);
+
+    formKey.currentState!.reset();
+    await tester.pump();
+
+    expect(selected, _TestChoice.first);
+    expect(find.text('第一项'), findsOneWidget);
+  });
+
+  testWidgets('date row restores its nullable value on Form reset', (
+    tester,
+  ) async {
+    final formKey = GlobalKey<FormState>();
+    DateTime? date;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              return Form(
+                key: formKey,
+                child: DateTimePlainFormRow(
+                  label: '日期',
+                  dateTime: date,
+                  value: date == null ? '自动计算' : _dateText(date!),
+                  onTap: (onSelected) => onSelected(DateTime(2026, 2, 2)),
+                  onChanged: (value) => setState(() => date = value),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('自动计算'));
+    await tester.pump();
+    expect(date, DateTime(2026, 2, 2));
+
+    formKey.currentState!.reset();
+    await tester.pump();
+
+    expect(date, isNull);
+    expect(find.text('自动计算'), findsOneWidget);
+  });
+
+  testWidgets('value-with-unit row restores its unit on Form reset', (
+    tester,
+  ) async {
+    final formKey = GlobalKey<FormState>();
+    final controller = TextEditingController(text: '7.2');
+    addTearDown(controller.dispose);
+    var unit = _TestChoice.first;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              return Form(
+                key: formKey,
+                child: ValueWithUnitPlainFormRow<_TestChoice>(
+                  label: '利率',
+                  controller: controller,
+                  unit: unit,
+                  unitItems: const [
+                    DropdownMenuItem(
+                      value: _TestChoice.first,
+                      child: Text('月'),
+                    ),
+                    DropdownMenuItem(
+                      value: _TestChoice.second,
+                      child: Text('年'),
+                    ),
+                  ],
+                  onUnitChanged: (next) => setState(() => unit = next),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('月'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('年').last);
+    await tester.pumpAndSettle();
+    expect(unit, _TestChoice.second);
+
+    formKey.currentState!.reset();
+    await tester.pump();
+
+    expect(unit, _TestChoice.first);
+    expect(find.text('月'), findsOneWidget);
+  });
+}
+
+enum _TestChoice { first, second }
+
+String _dateText(DateTime date) {
+  return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
 }
 
 Account _account(String id) {

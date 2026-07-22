@@ -2,25 +2,114 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
+import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
+import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/presentation/transaction_form_presentation.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
+import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {
   group('TransactionFormViewModel', () {
-    test('creates daily expense command and returns success', () async {
-      final posting = _FakeTransactionPostingAppService();
-      final container = _container(postingService: posting);
-      final viewModel = container.read(
-        transactionFormViewModelProvider.notifier,
+    test('maps edit loading, data, and not-found snapshots', () {
+      final detail = _transactionDetail();
+      final accounts = {
+        'cash': _account('cash'),
+        'food': _account('food', type: AccountType.expense),
+      };
+      final commonOverrides = [
+        accountsForSelectionPurposeProvider(
+          AccountSelectionPurpose.fund,
+        ).overrideWithValue(const AsyncData(<Account>[])),
+        accountsForSelectionPurposeProvider(
+          AccountSelectionPurpose.borrowingLiability,
+        ).overrideWithValue(const AsyncData(<Account>[])),
+        accountsForSelectionPurposeProvider(
+          AccountSelectionPurpose.reimbursementReceivable,
+        ).overrideWithValue(const AsyncData(<Account>[])),
+        categoryTreeProvider(AccountType.expense).overrideWithValue(
+          AsyncData([CategoryNode(account: accounts['food']!)]),
+        ),
+        categoryTreeProvider(
+          AccountType.income,
+        ).overrideWithValue(const AsyncData(<CategoryNode>[])),
+        accountsByIdProvider.overrideWithValue(AsyncData(accounts)),
+      ];
+
+      final loading = ProviderContainer(
+        overrides: [
+          ...commonOverrides,
+          transactionDetailProvider(
+            'tx-1',
+          ).overrideWithValue(AsyncData(detail)),
+          accountsForSelectionPurposeProvider(
+            AccountSelectionPurpose.settlement,
+          ).overrideWithValue(const AsyncLoading()),
+        ],
+      );
+      addTearDown(loading.dispose);
+      expect(
+        loading.read(
+          transactionFormViewModelProvider(editTransactionId: 'tx-1'),
+        ),
+        isA<AsyncLoading<TransactionFormState?>>(),
       );
 
+      final loaded = ProviderContainer(
+        overrides: [
+          ...commonOverrides,
+          transactionDetailProvider(
+            'tx-1',
+          ).overrideWithValue(AsyncData(detail)),
+          accountsForSelectionPurposeProvider(
+            AccountSelectionPurpose.settlement,
+          ).overrideWithValue(AsyncData([accounts['cash']!])),
+        ],
+      );
+      addTearDown(loaded.dispose);
+      final loadedState =
+          loaded
+              .read(transactionFormViewModelProvider(editTransactionId: 'tx-1'))
+              .requireValue!;
+      expect(loadedState.initialValues.amount, '12.34');
+      expect(loadedState.initialValues.note, 'note');
+      expect(loadedState.mode, TransactionFormMode.expense);
+      expect(loadedState.expenseCategoryId, 'food');
+      expect(loadedState.fromAccountId, 'cash');
+
+      final missing = ProviderContainer(
+        overrides: [
+          ...commonOverrides,
+          accountsForSelectionPurposeProvider(
+            AccountSelectionPurpose.settlement,
+          ).overrideWithValue(AsyncData([accounts['cash']!])),
+          transactionDetailProvider(
+            'tx-1',
+          ).overrideWithValue(const AsyncData(null)),
+        ],
+      );
+      addTearDown(missing.dispose);
+      expect(
+        missing
+            .read(transactionFormViewModelProvider(editTransactionId: 'tx-1'))
+            .requireValue,
+        isNull,
+      );
+    });
+
+    test('creates daily expense command and returns success', () async {
+      final posting = _FakeTransactionPostingAppService();
+      final container = _container(
+        postingService: posting,
+        settlementAccounts: [_account('cash')],
+      );
+      final viewModel = container.read(_provider().notifier);
+
       viewModel
-        ..setAmountText('12.34')
-        ..setNoteText(' lunch ')
         ..setOccurredAt(DateTime(2026, 1, 2, 8, 30))
         ..setExpenseCategory(rootId: 'food', categoryId: 'lunch')
         ..setFromAccountId('cash')
@@ -28,14 +117,12 @@ void main() {
         ..setExcludeBudget(true);
 
       final outcome = await viewModel.submit(
-        _options(settlementAccounts: [_account('cash')]),
+        amountText: '12.34',
+        noteText: ' lunch ',
       );
 
       expect(outcome, isA<SubmitSuccess>());
-      expect(
-        container.read(transactionFormViewModelProvider).submitting,
-        false,
-      );
+      expect(container.read(_provider()).requireValue!.submitting, false);
       final command = posting.expenseCommands.single;
       expect(command.amount, const Money(minorUnits: 1234));
       expect(command.paidFromAccountId, 'cash');
@@ -50,23 +137,19 @@ void main() {
       'creates reimbursement advance command when account is selected',
       () async {
         final posting = _FakeTransactionPostingAppService();
-        final container = _container(postingService: posting);
-        final viewModel = container.read(
-          transactionFormViewModelProvider.notifier,
+        final container = _container(
+          postingService: posting,
+          settlementAccounts: [_account('cash')],
+          reimbursementAccounts: [_account('company')],
         );
+        final viewModel = container.read(_provider().notifier);
 
         viewModel
-          ..setAmountText('20')
           ..setExpenseCategory(rootId: 'travel', categoryId: 'taxi')
           ..setFromAccountId('cash')
           ..setReimbursementAccountId('company');
 
-        final outcome = await viewModel.submit(
-          _options(
-            settlementAccounts: [_account('cash')],
-            reimbursementAccounts: [_account('company')],
-          ),
-        );
+        final outcome = await viewModel.submit(amountText: '20', noteText: '');
 
         expect(outcome, isA<SubmitSuccess>());
         final command = posting.reimbursementAdvanceCommands.single;
@@ -79,21 +162,19 @@ void main() {
 
     test('creates income command', () async {
       final posting = _FakeTransactionPostingAppService();
-      final container = _container(postingService: posting);
-      final viewModel = container.read(
-        transactionFormViewModelProvider.notifier,
+      final container = _container(
+        postingService: posting,
+        settlementAccounts: [_account('bank')],
       );
+      final viewModel = container.read(_provider().notifier);
 
       viewModel
         ..setMode(TransactionFormMode.income)
-        ..setAmountText('88')
         ..setIncomeCategory(rootId: 'salary', categoryId: 'salary')
         ..setToAccountId('bank')
         ..setExcludeStats(true);
 
-      final outcome = await viewModel.submit(
-        _options(settlementAccounts: [_account('bank')]),
-      );
+      final outcome = await viewModel.submit(amountText: '88', noteText: '');
 
       expect(outcome, isA<SubmitSuccess>());
       final command = posting.incomeCommands.single;
@@ -105,20 +186,18 @@ void main() {
 
     test('creates transfer command', () async {
       final posting = _FakeTransactionPostingAppService();
-      final container = _container(postingService: posting);
-      final viewModel = container.read(
-        transactionFormViewModelProvider.notifier,
+      final container = _container(
+        postingService: posting,
+        settlementAccounts: [_account('cash'), _account('bank')],
       );
+      final viewModel = container.read(_provider().notifier);
 
       viewModel
         ..setMode(TransactionFormMode.transfer)
-        ..setAmountText('50')
         ..setFromAccountId('cash')
         ..setToAccountId('bank');
 
-      final outcome = await viewModel.submit(
-        _options(settlementAccounts: [_account('cash'), _account('bank')]),
-      );
+      final outcome = await viewModel.submit(amountText: '50', noteText: '');
 
       expect(outcome, isA<SubmitSuccess>());
       final command = posting.transferCommands.single;
@@ -128,23 +207,19 @@ void main() {
 
     test('creates borrowing command', () async {
       final posting = _FakeTransactionPostingAppService();
-      final container = _container(postingService: posting);
-      final viewModel = container.read(
-        transactionFormViewModelProvider.notifier,
+      final container = _container(
+        postingService: posting,
+        fundAccounts: [_account('bank')],
+        liabilityAccounts: [_account('loan', type: AccountType.liability)],
       );
+      final viewModel = container.read(_provider().notifier);
 
       viewModel
         ..setMode(TransactionFormMode.borrowing)
-        ..setAmountText('100')
         ..setLiabilityAccountId('loan')
         ..setToAccountId('bank');
 
-      final outcome = await viewModel.submit(
-        _options(
-          fundAccounts: [_account('bank')],
-          liabilityAccounts: [_account('loan', type: AccountType.liability)],
-        ),
-      );
+      final outcome = await viewModel.submit(amountText: '100', noteText: '');
 
       expect(outcome, isA<SubmitSuccess>());
       final command = posting.borrowingCommands.single;
@@ -156,15 +231,15 @@ void main() {
       'returns failure and skips service when command state is incomplete',
       () async {
         final posting = _FakeTransactionPostingAppService();
-        final container = _container(postingService: posting);
-        final viewModel = container.read(
-          transactionFormViewModelProvider.notifier,
+        final container = _container(
+          postingService: posting,
+          settlementAccounts: [_account('cash')],
         );
-
-        viewModel.setAmountText('12.00');
+        final viewModel = container.read(_provider().notifier);
 
         final outcome = await viewModel.submit(
-          _options(settlementAccounts: [_account('cash')]),
+          amountText: '12.00',
+          noteText: '',
         );
 
         expect(outcome, isA<SubmitFailure>());
@@ -185,105 +260,87 @@ void main() {
           message: '账户不能用于当前交易。',
         ),
       );
-      final container = _container(postingService: posting);
-      final viewModel = container.read(
-        transactionFormViewModelProvider.notifier,
+      final container = _container(
+        postingService: posting,
+        settlementAccounts: [_account('cash')],
       );
+      final viewModel = container.read(_provider().notifier);
       _fillValidDailyExpense(viewModel);
 
-      final outcome = await viewModel.submit(
-        _options(settlementAccounts: [_account('cash')]),
-      );
+      final outcome = await viewModel.submit(amountText: '12.00', noteText: '');
 
       expect(outcome, isA<SubmitFailure>());
       final failure = outcome as SubmitFailure;
       expect(failure.error.code, LedgerErrorCode.accountInvalidRole.code);
       expect(failure.error.message, '账户不能用于当前交易。');
-      expect(
-        container.read(transactionFormViewModelProvider).submitting,
-        false,
-      );
+      expect(container.read(_provider()).requireValue!.submitting, false);
     });
 
     test('rethrows unexpected exceptions after resetting submitting', () async {
       final unexpected = StateError('unexpected');
       final posting = _FakeTransactionPostingAppService(exception: unexpected);
-      final container = _container(postingService: posting);
-      final viewModel = container.read(
-        transactionFormViewModelProvider.notifier,
+      final container = _container(
+        postingService: posting,
+        settlementAccounts: [_account('cash')],
       );
+      final viewModel = container.read(_provider().notifier);
       _fillValidDailyExpense(viewModel);
 
       await expectLater(
-        () =>
-            viewModel.submit(_options(settlementAccounts: [_account('cash')])),
+        () => viewModel.submit(amountText: '12.00', noteText: ''),
         throwsA(same(unexpected)),
       );
-      expect(
-        container.read(transactionFormViewModelProvider).submitting,
-        false,
-      );
+      expect(container.read(_provider()).requireValue!.submitting, false);
     });
 
-    test('initializes edit state idempotently', () {
-      final container = _container();
+    test('keeps the loaded edit snapshot while choices change', () {
+      final detail = _transactionDetail();
+      final container = _container(
+        editTransactionId: 'tx-1',
+        editDetail: detail,
+        accountsById: {
+          'cash': _account('cash'),
+          'food': _account('food', type: AccountType.expense),
+        },
+        settlementAccounts: [_account('cash')],
+      );
       final viewModel = container.read(
-        transactionFormViewModelProvider.notifier,
+        _provider(editTransactionId: 'tx-1').notifier,
       );
 
-      viewModel.initializeForEdit(
-        transactionId: 'tx-1',
-        snapshot: TransactionFormEditSnapshot(
-          mode: TransactionFormMode.income,
-          amountText: '10.00',
-          noteText: 'salary',
-          occurredAt: DateTime(2026, 2, 3),
-          excludeStats: true,
-          excludeBudget: false,
-          incomeCategoryId: 'salary',
-          incomeRootId: 'salary',
-          toAccountId: 'bank',
-        ),
-      );
-      viewModel.setAmountText('11.00');
-      viewModel.initializeForEdit(
-        transactionId: 'tx-1',
-        snapshot: TransactionFormEditSnapshot(
-          mode: TransactionFormMode.income,
-          amountText: '10.00',
-          noteText: 'salary',
-          occurredAt: DateTime(2026, 2, 3),
-          excludeStats: true,
-          excludeBudget: false,
-        ),
-      );
+      viewModel.setToAccountId('cash');
 
-      final state = container.read(transactionFormViewModelProvider);
-      expect(state.mode, TransactionFormMode.income);
-      expect(state.amountText, '11.00');
-      expect(state.incomeCategoryId, 'salary');
+      final state =
+          container.read(_provider(editTransactionId: 'tx-1')).requireValue!;
+      expect(state.initialValues.amount, '12.34');
+      expect(state.expenseCategoryId, 'food');
+      expect(state.toAccountId, 'cash');
     });
 
     test('submits reimbursement advance edit for edited advance', () async {
       final editService = _FakeTransactionEditAppService();
-      final container = _container(editService: editService);
+      final container = _container(
+        editService: editService,
+        editTransactionId: 'tx-1',
+        editDetail: _transactionDetail(),
+        accountsById: {
+          'cash': _account('cash'),
+          'food': _account('food', type: AccountType.expense),
+          'company': _account('company'),
+        },
+        settlementAccounts: [_account('cash')],
+        reimbursementAccounts: [_account('company')],
+      );
       final viewModel = container.read(
-        transactionFormViewModelProvider.notifier,
+        _provider(editTransactionId: 'tx-1').notifier,
       );
 
       viewModel
-        ..setAmountText('30')
         ..setExpenseCategory(rootId: 'travel', categoryId: 'hotel')
         ..setFromAccountId('cash')
         ..setReimbursementAccountId('company');
 
-      final outcome = await viewModel.submit(
-        _options(
-          editTransactionId: 'tx-1',
-          settlementAccounts: [_account('cash')],
-          reimbursementAccounts: [_account('company')],
-        ),
-      );
+      final outcome = await viewModel.submit(amountText: '30', noteText: '');
 
       expect(outcome, isA<SubmitSuccess>());
       final command = editService.reimbursementAdvanceCommands.single;
@@ -292,28 +349,65 @@ void main() {
       expect(command.expenseCategoryId, 'hotel');
     });
 
+    test('saves a loaded daily expense without changing its fields', () async {
+      final editService = _FakeTransactionEditAppService();
+      final container = _container(
+        editService: editService,
+        editTransactionId: 'tx-1',
+        editDetail: _transactionDetail(),
+        accountsById: {
+          'cash': _account('cash'),
+          'food': _account('food', type: AccountType.expense),
+        },
+        settlementAccounts: [_account('cash')],
+      );
+      final viewModel = container.read(
+        _provider(editTransactionId: 'tx-1').notifier,
+      );
+
+      final outcome = await viewModel.submit(
+        amountText: '12.34',
+        noteText: 'note',
+      );
+
+      expect(outcome, isA<SubmitSuccess>());
+      final command = editService.expenseCommands.single;
+      expect(command.transactionId, 'tx-1');
+      expect(command.amount, const Money(minorUnits: 1234));
+      expect(command.paidFromAccountId, 'cash');
+      expect(command.expenseAccountId, 'food');
+      expect(command.note, isA<PatchSet<String?>>());
+      expect((command.note as PatchSet<String?>).value, 'note');
+    });
+
     test('deletes transaction through action outcome', () async {
       final editService = _FakeTransactionEditAppService();
       final container = _container(editService: editService);
-      final viewModel = container.read(
-        transactionFormViewModelProvider.notifier,
-      );
+      final viewModel = container.read(_provider().notifier);
 
       final outcome = await viewModel.deleteTransaction('tx-1');
 
       expect(outcome, isA<UiActionSuccess<void>>());
       expect(editService.deletedTransactionIds, ['tx-1']);
-      expect(
-        container.read(transactionFormViewModelProvider).submitting,
-        false,
-      );
+      expect(container.read(_provider()).requireValue!.submitting, false);
     });
   });
+}
+
+TransactionFormViewModelProvider _provider({String? editTransactionId}) {
+  return transactionFormViewModelProvider(editTransactionId: editTransactionId);
 }
 
 ProviderContainer _container({
   TransactionPostingAppService? postingService,
   TransactionEditAppService? editService,
+  String? editTransactionId,
+  TransactionDetail? editDetail,
+  Map<String, Account> accountsById = const {},
+  List<Account> settlementAccounts = const [],
+  List<Account> fundAccounts = const [],
+  List<Account> liabilityAccounts = const [],
+  List<Account> reimbursementAccounts = const [],
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -323,31 +417,37 @@ ProviderContainer _container({
       transactionEditAppServiceProvider.overrideWith(
         (ref) => editService ?? _FakeTransactionEditAppService(),
       ),
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.settlement,
+      ).overrideWithValue(AsyncData(settlementAccounts)),
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.fund,
+      ).overrideWithValue(AsyncData(fundAccounts)),
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.borrowingLiability,
+      ).overrideWithValue(AsyncData(liabilityAccounts)),
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.reimbursementReceivable,
+      ).overrideWithValue(AsyncData(reimbursementAccounts)),
+      categoryTreeProvider(
+        AccountType.expense,
+      ).overrideWithValue(const AsyncData(<CategoryNode>[])),
+      categoryTreeProvider(
+        AccountType.income,
+      ).overrideWithValue(const AsyncData(<CategoryNode>[])),
+      accountsByIdProvider.overrideWithValue(AsyncData(accountsById)),
+      if (editTransactionId != null)
+        transactionDetailProvider(
+          editTransactionId,
+        ).overrideWithValue(AsyncValue.data(editDetail)),
     ],
   );
   addTearDown(container.dispose);
   return container;
 }
 
-TransactionFormSubmitOptions _options({
-  String? editTransactionId,
-  List<Account> settlementAccounts = const [],
-  List<Account> fundAccounts = const [],
-  List<Account> liabilityAccounts = const [],
-  List<Account> reimbursementAccounts = const [],
-}) {
-  return TransactionFormSubmitOptions(
-    editTransactionId: editTransactionId,
-    settlementAccounts: settlementAccounts,
-    fundAccounts: fundAccounts,
-    liabilityAccounts: liabilityAccounts,
-    reimbursementAccounts: reimbursementAccounts,
-  );
-}
-
 void _fillValidDailyExpense(TransactionFormViewModel viewModel) {
   viewModel
-    ..setAmountText('12.00')
     ..setExpenseCategory(rootId: 'food', categoryId: 'lunch')
     ..setFromAccountId('cash');
 }
@@ -358,6 +458,39 @@ Account _account(String id, {AccountType type = AccountType.asset}) {
     name: id,
     type: type,
     balance: const Money(minorUnits: 0),
+  );
+}
+
+TransactionDetail _transactionDetail() {
+  final entries = [
+    _entry('food', EntryDirection.debit),
+    _entry('cash', EntryDirection.credit),
+  ];
+  return TransactionDetail(
+    transaction: Transaction(
+      id: 'tx-1',
+      businessPurpose: BusinessPurpose.dailyExpense,
+      occurredAt: DateTime(2026, 1, 2, 8, 30),
+      primaryAmount: const Money(minorUnits: 1234),
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+      sourceKind: SourceKind.manual,
+      note: 'note',
+      entries: entries,
+    ),
+    createdAt: DateTime(2026, 1, 2, 8, 30),
+    details: const [],
+    entries: entries,
+  );
+}
+
+Entry _entry(String accountId, EntryDirection direction) {
+  return Entry(
+    id: 'entry-$accountId',
+    transactionId: 'tx-1',
+    accountId: accountId,
+    direction: direction,
+    amount: const Money(minorUnits: 1234),
   );
 }
 
@@ -458,12 +591,16 @@ class _FakeTransactionPostingAppService
 }
 
 class _FakeTransactionEditAppService implements TransactionEditAppService {
+  final expenseCommands = <EditExpenseCommand>[];
   final reimbursementAdvanceCommands = <EditReimbursementAdvanceCommand>[];
   final deletedTransactionIds = <String>[];
 
   @override
-  Future<PostedTransactionResult> editExpense(EditExpenseCommand command) {
-    throw UnimplementedError();
+  Future<PostedTransactionResult> editExpense(
+    EditExpenseCommand command,
+  ) async {
+    expenseCommands.add(command);
+    return const PostedTransactionResult(transactionId: 'transaction-1');
   }
 
   @override

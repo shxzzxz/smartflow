@@ -13,6 +13,76 @@ void syncTextControllerText(TextEditingController controller, String text) {
   );
 }
 
+typedef AppControlledFormFieldBuilder<T> =
+    Widget Function(
+      BuildContext context,
+      T? value,
+      String? errorText,
+      ValueChanged<T?> onChanged,
+    );
+
+class AppControlledFormField<T> extends FormField<T> {
+  AppControlledFormField({
+    required this.value,
+    required AppControlledFormFieldBuilder<T> builder,
+    super.key,
+    this.onChanged,
+    super.validator,
+    super.enabled = true,
+    super.autovalidateMode = AutovalidateMode.disabled,
+  }) : super(
+         initialValue: value,
+         builder: (field) {
+           final state = field as _AppControlledFormFieldState<T>;
+           return builder(
+             field.context,
+             field.value,
+             field.errorText,
+             state._handleChanged,
+           );
+         },
+       );
+
+  final T? value;
+  final ValueChanged<T?>? onChanged;
+
+  @override
+  FormFieldState<T> createState() => _AppControlledFormFieldState<T>();
+}
+
+class _AppControlledFormFieldState<T> extends FormFieldState<T> {
+  late final T? _resetValue;
+
+  @override
+  AppControlledFormField<T> get widget =>
+      super.widget as AppControlledFormField<T>;
+
+  @override
+  void initState() {
+    super.initState();
+    _resetValue = widget.value;
+  }
+
+  @override
+  void didUpdateWidget(covariant AppControlledFormField<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != value) setValue(widget.value);
+  }
+
+  void _handleChanged(T? nextValue) {
+    if (nextValue == value) return;
+    didChange(nextValue);
+    widget.onChanged?.call(nextValue);
+  }
+
+  @override
+  void reset() {
+    super.reset();
+    if (value != _resetValue) setValue(_resetValue);
+    widget.onChanged?.call(_resetValue);
+  }
+}
+
 class AppTextFormField extends StatelessWidget {
   const AppTextFormField({
     required this.controller,
@@ -80,10 +150,10 @@ class AppTextFormField extends StatelessWidget {
 
 class AppDropdownFormField<T> extends StatelessWidget {
   const AppDropdownFormField({
+    required this.value,
     required this.items,
     required this.onChanged,
     super.key,
-    this.initialValue,
     this.labelText,
     this.hintText,
     this.prefixIcon,
@@ -91,7 +161,7 @@ class AppDropdownFormField<T> extends StatelessWidget {
     this.enabled = true,
   });
 
-  final T? initialValue;
+  final T? value;
   final String? labelText;
   final String? hintText;
   final Widget? prefixIcon;
@@ -102,19 +172,41 @@ class AppDropdownFormField<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<T>(
-      initialValue: initialValue,
-      decoration: appFormInputDecoration(
-        context,
-        labelText: labelText,
-        hintText: hintText,
-        prefixIcon: prefixIcon,
-      ),
-      items: items,
-      onChanged: enabled ? onChanged : null,
+    final interactive = enabled && onChanged != null;
+    return AppControlledFormField<T>(
+      value: value,
+      onChanged: onChanged,
       validator: validator,
-      isExpanded: true,
-      style: context.appTextStyles.inputText,
+      enabled: interactive,
+      builder: (context, fieldValue, errorText, fieldChanged) {
+        return Focus(
+          canRequestFocus: interactive,
+          child: Builder(
+            builder: (context) {
+              return InputDecorator(
+                isEmpty: fieldValue == null,
+                isFocused: Focus.of(context).hasFocus,
+                decoration: appFormInputDecoration(
+                  context,
+                  labelText: labelText,
+                  hintText: hintText,
+                  prefixIcon: prefixIcon,
+                ).copyWith(errorText: errorText, enabled: interactive),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<T>(
+                    value: fieldValue,
+                    items: items,
+                    onChanged: interactive ? fieldChanged : null,
+                    isDense: true,
+                    isExpanded: true,
+                    style: context.appTextStyles.inputText,
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
@@ -167,6 +259,7 @@ class AppPlainTextFormField extends StatelessWidget {
     this.minLines,
     this.onChanged,
     this.onFieldSubmitted,
+    this.onSaved,
     this.textAlign = TextAlign.left,
     this.readOnly = false,
     this.onTap,
@@ -187,6 +280,7 @@ class AppPlainTextFormField extends StatelessWidget {
   final int? minLines;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onFieldSubmitted;
+  final FormFieldSetter<String>? onSaved;
   final TextAlign textAlign;
   final bool readOnly;
   final VoidCallback? onTap;
@@ -209,6 +303,7 @@ class AppPlainTextFormField extends StatelessWidget {
       minLines: minLines,
       onChanged: onChanged,
       onFieldSubmitted: onFieldSubmitted,
+      onSaved: onSaved,
       textAlign: textAlign,
       readOnly: readOnly,
       onTap: onTap,

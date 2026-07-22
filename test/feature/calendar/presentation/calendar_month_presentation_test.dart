@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/calendar/presentation/calendar_month_presentation.dart';
@@ -34,17 +35,17 @@ void main() {
 
       final selected = presentation.days.singleWhere((day) => day.isSelected);
       expect(selected.date, DateTime(2026, 2, 14));
-      expect(selected.incomeText, '+50.00');
-      expect(selected.expenseText, '-12.00');
+      expect(selected.incomeText, '50');
+      expect(selected.expenseText, '12');
       expect(selected.lunarLabel, 'L14');
       expect(selected.markerLabel, '班');
 
       expect(presentation.selectedGroup.date, DateTime(2026, 2, 14));
       expect(presentation.selectedGroup.rows.single.transactionId, 'tx-1');
       expect(presentation.summary.metrics.map((metric) => metric.amountText), [
-        '50.00',
-        '12.00',
-        '38.00',
+        '50',
+        '12',
+        '38',
       ]);
     });
 
@@ -54,7 +55,68 @@ void main() {
         DateTime(2026, 2, 28),
       );
     });
+
+    test(
+      'preserves signed compact daily totals and hides only all-zero totals',
+      () {
+        final mixed = _day(incomeMinor: 12400 * 100, expenseMinor: -3000);
+        final refundOnly = _day(incomeMinor: 0, expenseMinor: -3000);
+        final empty = _day(incomeMinor: 0, expenseMinor: 0);
+
+        expect(mixed.hasCashflow, true);
+        expect(mixed.incomeText, '1.24万');
+        expect(mixed.expenseText, '-30');
+        expect(refundOnly.hasCashflow, true);
+        expect(empty.hasCashflow, false);
+      },
+    );
+
+    test('formats every monthly summary metric compactly', () {
+      final presentation = buildCalendarMonthlySummaryPresentation(
+        const CashflowSummary(
+          income: Money(minorUnits: 12400 * 100),
+          expense: Money(minorUnits: 20000 * 100),
+        ),
+        monthlyBillSummaries: [
+          MonthlyBillSummaryReadModel(
+            accountId: 'credit',
+            billId: 'bill',
+            period: BillPeriod(year: 2026, month: 7),
+            status: BillStatus.open,
+            expectedPrincipal: const Money(minorUnits: 25000 * 100),
+            expectedInterest: const Money(minorUnits: 0),
+            expectedFee: const Money(minorUnits: 0),
+            pendingPrincipal: const Money(minorUnits: 25000 * 100),
+            itemCount: 1,
+          ),
+        ],
+      );
+
+      expect(presentation.metrics.map((metric) => metric.amountText), [
+        '1.24万',
+        '2万',
+        '-7600',
+        '2.5万',
+      ]);
+    });
   });
+}
+
+CalendarDayPresentation _day({
+  required int incomeMinor,
+  required int expenseMinor,
+}) {
+  return CalendarDayPresentation(
+    date: DateTime(2026, 7, 22),
+    isInVisibleMonth: true,
+    isSelected: false,
+    isToday: false,
+    incomeMinor: incomeMinor,
+    expenseMinor: expenseMinor,
+    dueItemCount: 0,
+    lunarLabel: '',
+    markerLabel: null,
+  );
 }
 
 class _FakeLunarResolver implements CalendarLunarLabelResolver {

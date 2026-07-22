@@ -33,22 +33,7 @@ class _ReimbursementCloseFormPageState
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
-  bool _syncing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _amountController.addListener(
-      () => _setText(
-        (vm, value) => vm.setAmountText(value),
-        _amountController.text,
-      ),
-    );
-    _noteController.addListener(
-      () =>
-          _setText((vm, value) => vm.setNoteText(value), _noteController.text),
-    );
-  }
+  String? _hydratedAdvanceTransactionId;
 
   @override
   void dispose() {
@@ -85,12 +70,17 @@ class _ReimbursementCloseFormPageState
     if (state.status == ReimbursementFormStatus.notEditable) {
       return const Center(child: Text('该报销记录不可结束'));
     }
-    _syncControllers(state);
+    if (_hydratedAdvanceTransactionId != widget.advanceTransactionId) {
+      syncTextControllerText(
+        _amountController,
+        state.outstanding?.format() ?? '',
+      );
+      _hydratedAdvanceTransactionId = widget.advanceTransactionId;
+    }
     final receiveAccount = findAccountById(
       state.receiveAccountId,
       state.accounts,
     );
-    final gap = state.gap;
 
     return Form(
       key: _formKey,
@@ -113,15 +103,26 @@ class _ReimbursementCloseFormPageState
               padding: const EdgeInsets.only(bottom: AppSpacing.space8),
               child: Text('剩余应收：${state.outstanding!.format()}'),
             ),
-          if (gap != null && gap.minorUnits != 0)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.space12),
-              child: Text(
-                gap.minorUnits > 0
-                    ? '多收 ${gap.format()}（计入报销差额收入）'
-                    : '少收 ${gap.abs().format()}（计入原报销支出分类）',
-              ),
-            ),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _amountController,
+            builder: (context, value, _) {
+              final actual = Money.tryParse(value.text);
+              final outstanding = state.outstanding;
+              if (actual == null || outstanding == null) {
+                return const SizedBox.shrink();
+              }
+              final gap = actual - outstanding;
+              if (gap.minorUnits == 0) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.space12),
+                child: Text(
+                  gap.minorUnits > 0
+                      ? '多收 ${gap.format()}（计入报销差额收入）'
+                      : '少收 ${gap.abs().format()}（计入原报销支出分类）',
+                ),
+              );
+            },
+          ),
           AppFormSection(
             title: '到账信息',
             children: [
@@ -137,11 +138,12 @@ class _ReimbursementCloseFormPageState
                 selectedId: state.receiveAccountId,
                 placeholder: '请选择到账账户',
                 onTap:
-                    () => _pickReceiveAccount(
-                      provider,
+                    (onSelected) => _pickReceiveAccount(
                       state.accounts,
                       selectedId: state.receiveAccountId,
+                      onSelected: onSelected,
                     ),
+                onChanged: ref.read(provider.notifier).setReceiveAccountId,
                 validator: (value) {
                   final amount = Money.tryParse(_amountController.text);
                   if (amount != null &&
@@ -154,8 +156,16 @@ class _ReimbursementCloseFormPageState
               ),
               DateTimePlainFormRow(
                 label: '结束时间',
+                dateTime: state.occurredAt,
                 value: _formatDateTime(state.occurredAt),
-                onTap: () => _pickOccurredAt(provider, state.occurredAt),
+                onTap:
+                    (onSelected) =>
+                        _pickOccurredAt(state.occurredAt, onSelected),
+                onChanged: (value) {
+                  if (value != null) {
+                    ref.read(provider.notifier).setOccurredAt(value);
+                  }
+                },
               ),
               NotePlainFormRow(controller: _noteController),
             ],
@@ -172,9 +182,9 @@ class _ReimbursementCloseFormPageState
   }
 
   Future<void> _pickReceiveAccount(
-    ReimbursementCloseFormViewModelProvider provider,
     List<Account> accounts, {
     required String? selectedId,
+    required ValueChanged<String?> onSelected,
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,
@@ -183,12 +193,12 @@ class _ReimbursementCloseFormPageState
       selectedId: selectedId,
     );
     if (!mounted || selected == null) return;
-    ref.read(provider.notifier).setReceiveAccountId(selected);
+    onSelected(selected);
   }
 
   Future<void> _pickOccurredAt(
-    ReimbursementCloseFormViewModelProvider provider,
     DateTime occurredAt,
+    ValueChanged<DateTime?> onSelected,
   ) async {
     final picked = await showAppDateTimePicker(
       context: context,
@@ -196,12 +206,17 @@ class _ReimbursementCloseFormPageState
       title: '选择结束时间',
     );
     if (!mounted || picked == null) return;
-    ref.read(provider.notifier).setOccurredAt(picked);
+    onSelected(picked);
   }
 
   Future<void> _submit(ReimbursementCloseFormViewModelProvider provider) async {
     if (!_formKey.currentState!.validate()) return;
-    final outcome = await ref.read(provider.notifier).submit();
+    final outcome = await ref
+        .read(provider.notifier)
+        .submit(
+          amountText: _amountController.text,
+          noteText: _noteController.text,
+        );
     if (!mounted) return;
     switch (outcome) {
       case SubmitSuccess():
@@ -211,28 +226,6 @@ class _ReimbursementCloseFormPageState
           context,
         ).showSnackBar(SnackBar(content: Text(error.message)));
     }
-  }
-
-  void _syncControllers(ReimbursementCloseFormState state) {
-    _syncing = true;
-    syncTextControllerText(_amountController, state.amountText);
-    syncTextControllerText(_noteController, state.noteText);
-    _syncing = false;
-  }
-
-  void _setText(
-    void Function(ReimbursementCloseFormViewModel, String) setter,
-    String value,
-  ) {
-    if (_syncing) return;
-    setter(
-      ref.read(
-        reimbursementCloseFormViewModelProvider(
-          widget.advanceTransactionId,
-        ).notifier,
-      ),
-      value,
-    );
   }
 }
 

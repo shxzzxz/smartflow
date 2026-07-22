@@ -15,7 +15,8 @@ import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
-import '../view_model/bill_repayment_allocation_view_model.dart';
+import '../presentation/bill_repayment_allocation.dart';
+import '../presentation/bill_repayment_presentation.dart';
 import '../view_model/bill_repayment_form_view_model.dart';
 import '../widget/repayment_form_fields.dart';
 
@@ -46,36 +47,18 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
   final _feeController = TextEditingController();
   final _discountController = TextEditingController();
   final _noteController = TextEditingController();
-  bool _syncing = false;
+  late final Listenable _amountControllers;
+  bool _controllersHydrated = false;
 
   @override
   void initState() {
     super.initState();
-    _principalController.addListener(
-      () => _setText(
-        (vm, value) => vm.setPrincipalText(value),
-        _principalController.text,
-      ),
-    );
-    _interestController.addListener(
-      () => _setText(
-        (vm, value) => vm.setInterestText(value),
-        _interestController.text,
-      ),
-    );
-    _feeController.addListener(
-      () => _setText((vm, value) => vm.setFeeText(value), _feeController.text),
-    );
-    _discountController.addListener(
-      () => _setText(
-        (vm, value) => vm.setDiscountText(value),
-        _discountController.text,
-      ),
-    );
-    _noteController.addListener(
-      () =>
-          _setText((vm, value) => vm.setNoteText(value), _noteController.text),
-    );
+    _amountControllers = Listenable.merge([
+      _principalController,
+      _interestController,
+      _feeController,
+      _discountController,
+    ]);
   }
 
   @override
@@ -123,12 +106,29 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
     BillRepaymentFormViewModelProvider provider,
     BillRepaymentFormState state,
   ) {
-    _syncControllers(state);
+    _hydrateControllers(state);
+    return ListenableBuilder(
+      listenable: _amountControllers,
+      builder: (context, _) => _buildForm(provider, state),
+    );
+  }
+
+  Widget _buildForm(
+    BillRepaymentFormViewModelProvider provider,
+    BillRepaymentFormState state,
+  ) {
     final paidFromAccount = _findAccount(
       state.repaymentAccounts,
       state.paidFromAccountId,
     );
-    final review = state.allocationReview;
+    final review = billRepaymentManualAllocationReviewFromText(
+      lines: state.lines,
+      manualAllocations: state.manualAllocations,
+      principalText: _principalController.text,
+      interestText: _interestController.text,
+      feeText: _feeController.text,
+      discountText: _discountController.text,
+    );
     final warning = review?.warningMessage;
 
     return Form(
@@ -167,19 +167,25 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
                             .read(provider.notifier)
                             .setCreateTransaction(value)
                         : null,
+                occurredAt: state.occurredAt,
                 occurredAtText: _formatDateTime(state.occurredAt),
-                onPickDate: () => _pickDate(provider, state.occurredAt),
+                onPickDate:
+                    (onSelected) => _pickDate(state.occurredAt, onSelected),
+                onOccurredAtChanged: (value) {
+                  if (value != null) {
+                    ref.read(provider.notifier).setOccurredAt(value);
+                  }
+                },
                 repaymentAccount: paidFromAccount,
                 selectedRepaymentAccountId: state.paidFromAccountId,
                 repaymentAccounts: state.repaymentAccounts,
+                onRepaymentAccountChanged:
+                    ref.read(provider.notifier).setPaidFromAccountId,
                 onPickAccount:
-                    () => _pickAccount(
+                    (onSelected) => _pickAccount(
                       accounts: state.repaymentAccounts,
                       selectedId: state.paidFromAccountId,
-                      onSelected:
-                          (id) => ref
-                              .read(provider.notifier)
-                              .setPaidFromAccountId(id),
+                      onSelected: onSelected,
                     ),
               ),
               NotePlainFormRow(controller: _noteController),
@@ -201,24 +207,32 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
             onCalculate:
                 state.allocationMode == BillRepaymentAllocationMode.manual
                     ? null
-                    : () => ref.read(provider.notifier).calculateAllocation(),
+                    : () => ref
+                        .read(provider.notifier)
+                        .calculateAllocation(
+                          principalText: _principalController.text,
+                          interestText: _interestController.text,
+                          feeText: _feeController.text,
+                          discountText: _discountController.text,
+                        ),
             onChanged: ({
               required String billItemId,
               required _AllocationAmountField field,
               required Money value,
             }) {
-              final text = value.format();
               ref
                   .read(provider.notifier)
-                  .setManualAllocationText(
+                  .setManualAllocationAmount(
                     billItemId: billItemId,
-                    principalText:
-                        field == _AllocationAmountField.principal ? text : null,
-                    interestText:
-                        field == _AllocationAmountField.interest ? text : null,
-                    feeText: field == _AllocationAmountField.fee ? text : null,
-                    discountText:
-                        field == _AllocationAmountField.discount ? text : null,
+                    principal:
+                        field == _AllocationAmountField.principal
+                            ? value
+                            : null,
+                    interest:
+                        field == _AllocationAmountField.interest ? value : null,
+                    fee: field == _AllocationAmountField.fee ? value : null,
+                    discount:
+                        field == _AllocationAmountField.discount ? value : null,
                   );
             },
           ),
@@ -234,8 +248,8 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
   }
 
   Future<void> _pickDate(
-    BillRepaymentFormViewModelProvider provider,
     DateTime occurredAt,
+    ValueChanged<DateTime?> onSelected,
   ) async {
     final picked = await showAppDateTimePicker(
       context: context,
@@ -243,13 +257,13 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
       title: '选择还款日期',
     );
     if (picked == null || !mounted) return;
-    ref.read(provider.notifier).setOccurredAt(picked);
+    onSelected(picked);
   }
 
   Future<void> _pickAccount({
     required List<Account> accounts,
     required String? selectedId,
-    required ValueChanged<String> onSelected,
+    required ValueChanged<String?> onSelected,
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,
@@ -262,8 +276,18 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
   }
 
   Future<void> _submit(BillRepaymentFormViewModelProvider provider) async {
-    if (!_formKey.currentState!.validate()) return;
-    final outcome = await ref.read(provider.notifier).submit();
+    final form = _formKey.currentState!;
+    if (!form.validate()) return;
+    form.save();
+    final outcome = await ref
+        .read(provider.notifier)
+        .submit(
+          principalText: _principalController.text,
+          interestText: _interestController.text,
+          feeText: _feeController.text,
+          discountText: _discountController.text,
+          noteText: _noteController.text,
+        );
     if (!mounted) return;
     switch (outcome) {
       case SubmitSuccess():
@@ -273,22 +297,14 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
     }
   }
 
-  void _syncControllers(BillRepaymentFormState state) {
-    _syncing = true;
+  void _hydrateControllers(BillRepaymentFormState state) {
+    if (_controllersHydrated) return;
     syncTextControllerText(_principalController, state.principalText);
     syncTextControllerText(_interestController, state.interestText);
     syncTextControllerText(_feeController, state.feeText);
     syncTextControllerText(_discountController, state.discountText);
     syncTextControllerText(_noteController, state.noteText);
-    _syncing = false;
-  }
-
-  void _setText(
-    void Function(BillRepaymentFormViewModel, String) setter,
-    String value,
-  ) {
-    if (_syncing) return;
-    setter(ref.read(billRepaymentFormViewModelProvider(_args).notifier), value);
+    _controllersHydrated = true;
   }
 
   void _showError(String message) {
@@ -391,8 +407,8 @@ class _AllocationResultSection extends StatelessWidget {
                 for (var i = 0; i < state.lines.length; i++) ...[
                   _AllocationResultRow(
                     line: state.lines[i],
-                    breakdown: _allocationBreakdown(
-                      state.manualAllocationText(state.lines[i].billItemId),
+                    breakdown: state.manualAllocation(
+                      state.lines[i].billItemId,
                     ),
                     onChanged: onChanged,
                   ),
@@ -733,7 +749,9 @@ class _EditableAllocationMoneyCellState
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           textInputAction: TextInputAction.done,
           inputFormatters: [moneyInputFormatter],
+          validator: validateOptionalNonNegativeMoneyText,
           onFieldSubmitted: (_) => _commit(),
+          onSaved: (_) => _commit(),
         ),
       );
     }
@@ -782,23 +800,6 @@ Account? _findAccount(List<Account> accounts, String? id) {
 String _lineTitle(BillRepaymentAllocationLine line) {
   if (line.label.isNotEmpty) return line.label;
   return line.billItemId;
-}
-
-credit.RepaymentAmountBreakdown _allocationBreakdown(
-  BillRepaymentManualAllocationText text,
-) {
-  return credit.RepaymentAmountBreakdown(
-    principal: _moneyFromAllocationText(text.principalText),
-    interest: _moneyFromAllocationText(text.interestText),
-    fee: _moneyFromAllocationText(text.feeText),
-    discount: _moneyFromAllocationText(text.discountText),
-  );
-}
-
-Money _moneyFromAllocationText(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return Money.zero();
-  return Money.tryParse(trimmed) ?? Money.zero();
 }
 
 Money _allocationCashTotal(credit.RepaymentAmountBreakdown value) {

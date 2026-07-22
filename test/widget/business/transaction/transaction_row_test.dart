@@ -3,9 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/category/category_avatar.dart';
+import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 import 'package:smartflow/widget/business/transaction/transaction_progress_badges.dart';
@@ -185,6 +187,81 @@ void main() {
     expect(find.text('+2'), findsOneWidget);
   });
 
+  testWidgets(
+    'keeps a partial aggregate candidate when full labels do not fit',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: const Scaffold(
+            body: SizedBox(
+              width: 140,
+              child: TransactionProgressBadges(
+                badges: [
+                  TransactionBadgePresentation(
+                    label: '退 2',
+                    tone: FinanceTone.income,
+                  ),
+                  TransactionBadgePresentation(
+                    label: '不计统计',
+                    tone: FinanceTone.equity,
+                  ),
+                  TransactionBadgePresentation(
+                    label: '不计预算',
+                    tone: FinanceTone.equity,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('退 2'), findsOneWidget);
+      expect(find.text('不计统计'), findsOneWidget);
+      expect(find.text('+1'), findsOneWidget);
+      expect(find.text('不计预算'), findsNothing);
+    },
+  );
+
+  testWidgets('does not leave title flex space unused before the amount', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: SizedBox(
+            width: 345,
+            child: TransactionRow(
+              presentation: _presentationWithBadgeLabels(
+                const ['退 2', '不计统计', '不计预算'],
+                title: '人情社交',
+                amountText: '-37',
+                originalAmountText: '-39',
+                originalCompactAmountText: '-39',
+              ),
+              onTap: () {},
+              enableQuickEdit: false,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final badgesRect = tester.getRect(find.byType(TransactionProgressBadges));
+    final amountColumnRect = tester.getRect(find.byType(ComparedMoneyText));
+
+    expect(find.text('退 2'), findsOneWidget);
+    expect(find.text('不计统计'), findsOneWidget);
+    expect(find.text('+1'), findsOneWidget);
+    expect(find.text('不计预算'), findsNothing);
+    expect(
+      amountColumnRect.left - badgesRect.right,
+      closeTo(AppSpacing.space8, 0.1),
+    );
+  });
+
   testWidgets('prefers the precise amount while it fits the amount column', (
     tester,
   ) async {
@@ -335,12 +412,23 @@ TransactionRowPresentation _presentationWithBadges(
   );
 }
 
-TransactionRowPresentation _presentationWithBadgeLabels(List<String> labels) {
-  final presentation = _presentationWithBadges(0);
+TransactionRowPresentation _presentationWithBadgeLabels(
+  List<String> labels, {
+  String title = '超长分类名称',
+  String? amountText,
+  String? originalAmountText,
+  String? originalCompactAmountText,
+}) {
+  final presentation = _presentationWithBadges(
+    0,
+    amountText: amountText ?? '-1.24万',
+    originalAmountText: originalAmountText,
+    originalCompactAmountText: originalCompactAmountText,
+  );
   return TransactionRowPresentation(
     transactionId: presentation.transactionId,
     iconKey: presentation.iconKey,
-    title: presentation.title,
+    title: title,
     subtitle: presentation.subtitle,
     amountText: presentation.amountText,
     compactAmountText: presentation.compactAmountText,

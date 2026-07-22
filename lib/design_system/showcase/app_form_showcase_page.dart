@@ -80,7 +80,7 @@ class _AppFormShowcasePageState extends State<AppFormShowcasePage> {
                 value: 'cash',
                 valueText: '现金账户',
                 placeholder: '请选择账户',
-                onTap: () {},
+                onTap: (_) {},
               ),
               const AppPlainSelectFormRow<String>(
                 label: '禁用字段',

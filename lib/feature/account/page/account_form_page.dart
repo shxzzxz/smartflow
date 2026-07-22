@@ -16,31 +16,94 @@ import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/icon_choice_grid.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
-import '../view_model/account_view.dart';
 import '../view_model/account_form_view_model.dart';
-import '../view_model/account_views_provider.dart';
 
-class AccountFormPage extends ConsumerStatefulWidget {
+class AccountFormPage extends ConsumerWidget {
   const AccountFormPage({this.accountId, super.key});
 
   final String? accountId;
 
   @override
-  ConsumerState<AccountFormPage> createState() => _AccountFormPageState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncState = ref.watch(accountFormViewModelProvider(accountId));
+    return switch (asyncState) {
+      AsyncData(value: final formState) when formState != null =>
+        _AccountFormContent(
+          key: ValueKey<String?>(accountId),
+          accountId: accountId,
+          initialState: formState,
+        ),
+      AsyncData(value: null) => const _AccountFormStatusPage(
+        title: '编辑账户',
+        message: '账户不存在',
+      ),
+      AsyncError() => _AccountFormStatusPage(
+        title: accountId == null ? '新建账户' : '编辑账户',
+        message: '账户加载失败，请稍后重试',
+      ),
+      _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
+    };
+  }
 }
 
-class _AccountFormPageState extends ConsumerState<AccountFormPage> {
+class _AccountFormStatusPage extends StatelessWidget {
+  const _AccountFormStatusPage({required this.title, required this.message});
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(child: Text(message)),
+    );
+  }
+}
+
+class _AccountFormContent extends ConsumerStatefulWidget {
+  const _AccountFormContent({
+    required this.accountId,
+    required this.initialState,
+    super.key,
+  });
+
+  final String? accountId;
+  final AccountFormState initialState;
+
+  @override
+  ConsumerState<_AccountFormContent> createState() =>
+      _AccountFormContentState();
+}
+
+class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _openingBalanceController = TextEditingController(text: '0');
-  final _creditLimitController = TextEditingController();
-  final _noteController = TextEditingController();
-  String? _scheduledEditAccountId;
+  late final TextEditingController _nameController;
+  late final TextEditingController _openingBalanceController;
+  late final TextEditingController _creditLimitController;
+  late final TextEditingController _noteController;
+  late final FocusNode _nameFocusNode;
 
   bool get _isEditMode => widget.accountId != null;
 
   @override
+  void initState() {
+    super.initState();
+    final initialValues = widget.initialState.initialValues;
+    _nameController = TextEditingController(text: initialValues.name);
+    _openingBalanceController = TextEditingController(
+      text: initialValues.openingBalance,
+    );
+    _creditLimitController = TextEditingController(
+      text: initialValues.creditLimit,
+    );
+    _noteController = TextEditingController(text: initialValues.note);
+    _nameFocusNode = FocusNode();
+  }
+
+  @override
   void dispose() {
+    _nameFocusNode.dispose();
     _nameController.dispose();
     _openingBalanceController.dispose();
     _creditLimitController.dispose();
@@ -50,68 +113,14 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final formState = ref.watch(accountFormViewModelProvider);
-
-    final accountId = widget.accountId;
-    if (accountId != null) {
-      final accountAsync = ref.watch(accountViewProvider(accountId));
-      return switch (accountAsync) {
-        AsyncData(value: final account) => _buildForEdit(context, account),
-        AsyncError(:final error) => Scaffold(
-          appBar: AppBar(title: const Text('编辑账户')),
-          body: Center(child: Text('账户加载失败：$error')),
-        ),
-        _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      };
-    }
-
-    return _buildFormScaffold(context, formState);
-  }
-
-  Widget _buildForEdit(BuildContext context, AccountView? account) {
-    if (account == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('编辑账户')),
-        body: const Center(child: Text('账户不存在')),
-      );
-    }
-    _scheduleEditInitialization(account);
-    final formState = ref.watch(accountFormViewModelProvider);
-    if (formState.initializedAccountId != account.id) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-    return _buildFormScaffold(context, formState);
-  }
-
-  void _scheduleEditInitialization(AccountView account) {
-    final initializedId =
-        ref.read(accountFormViewModelProvider).initializedAccountId;
-    if (initializedId == account.id || _scheduledEditAccountId == account.id) {
-      return;
-    }
-    _scheduledEditAccountId = account.id;
-
-    // Populate text controllers before the FormField widgets are built so
-    // their initial value and the visible text start from the same snapshot.
-    syncTextControllerText(_nameController, account.name);
-    syncTextControllerText(_openingBalanceController, account.balance.format());
-    syncTextControllerText(
-      _creditLimitController,
-      account.creditLimit?.format() ?? '',
-    );
-    syncTextControllerText(_noteController, account.note ?? '');
-
-    Future.microtask(() {
-      if (!mounted) return;
-      ref
-          .read(accountFormViewModelProvider.notifier)
-          .initializeForEdit(account);
-    });
+    return _buildFormScaffold(context, widget.initialState);
   }
 
   Widget _buildFormScaffold(BuildContext context, AccountFormState formState) {
     final colors = Theme.of(context).colorScheme;
-    final notifier = ref.read(accountFormViewModelProvider.notifier);
+    final notifier = ref.read(
+      accountFormViewModelProvider(widget.accountId).notifier,
+    );
 
     return Scaffold(
       backgroundColor: colors.surface,
@@ -156,6 +165,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                           label: '账户名称',
                           requiredIndicator: true,
                           controller: _nameController,
+                          focusNode: _nameFocusNode,
                           hintText: '请输入账户名称',
                           textInputAction: TextInputAction.next,
                           validator:
@@ -259,7 +269,9 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
   }
 
   void _setKind(AccountProfileKind kind) {
-    ref.read(accountFormViewModelProvider.notifier).setKind(kind);
+    ref
+        .read(accountFormViewModelProvider(widget.accountId).notifier)
+        .setKind(kind);
     if (!isLiabilityAccountKind(kind)) {
       syncTextControllerText(_creditLimitController, '');
     }
@@ -269,13 +281,12 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
     if (!_formKey.currentState!.validate()) return;
 
     final outcome = await ref
-        .read(accountFormViewModelProvider.notifier)
+        .read(accountFormViewModelProvider(widget.accountId).notifier)
         .submit(
           nameText: _nameController.text,
           openingBalanceText: _openingBalanceController.text,
           creditLimitText: _creditLimitController.text,
           noteText: _noteController.text,
-          editAccountId: widget.accountId,
         );
     if (!mounted) return;
 

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/token/form.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
+import 'package:smartflow/design_system/widget/app_form_field.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_row.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
@@ -64,27 +65,32 @@ class NotePlainFormRow extends StatelessWidget {
 class DateTimePlainFormRow extends StatelessWidget {
   const DateTimePlainFormRow({
     required this.label,
+    required this.dateTime,
     required this.value,
     required this.onTap,
+    required this.onChanged,
     super.key,
     this.valueAlignment = AppPlainRowValueAlignment.start,
     this.minHeight = AppFormTokens.rowMinHeight,
   });
 
   final String label;
+  final DateTime? dateTime;
   final String value;
-  final VoidCallback? onTap;
+  final AppPlainSelectTap<DateTime>? onTap;
+  final ValueChanged<DateTime?> onChanged;
   final AppPlainRowValueAlignment valueAlignment;
   final double minHeight;
 
   @override
   Widget build(BuildContext context) {
-    return AppPlainSelectFormRow<String>(
+    return AppPlainSelectFormRow<DateTime>(
       label: label,
-      value: value,
+      value: dateTime,
       valueText: value,
       placeholder: value,
       onTap: onTap,
+      onChanged: onChanged,
       valueAlignment: valueAlignment,
       minHeight: minHeight,
     );
@@ -115,25 +121,37 @@ class DropdownPlainFormRow<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final cb = onChanged;
-    return AppPlainFormRow(
-      label: label,
-      minHeight: minHeight,
-      child: DropdownButton<T>(
-        value: value,
-        isExpanded: isExpanded,
-        isDense: true,
-        style: context.appTextStyles.formPlainValue.copyWith(
-          color: colors.onSurface,
-        ),
-        underline: const SizedBox.shrink(),
-        items: items,
-        onChanged:
-            cb == null
-                ? null
-                : (v) {
-                  if (v != null) cb(v);
-                },
-      ),
+    return AppControlledFormField<T>(
+      value: value,
+      enabled: cb != null,
+      onChanged:
+          cb == null
+              ? null
+              : (nextValue) {
+                if (nextValue != null) cb(nextValue);
+              },
+      builder: (context, fieldValue, _, fieldChanged) {
+        return AppPlainFormRow(
+          label: label,
+          minHeight: minHeight,
+          child: DropdownButton<T>(
+            value: fieldValue,
+            isExpanded: isExpanded,
+            isDense: true,
+            style: context.appTextStyles.formPlainValue.copyWith(
+              color: colors.onSurface,
+            ),
+            underline: const SizedBox.shrink(),
+            items: items,
+            onChanged:
+                cb == null
+                    ? null
+                    : (nextValue) {
+                      if (nextValue != null) fieldChanged(nextValue);
+                    },
+          ),
+        );
+      },
     );
   }
 }
@@ -170,39 +188,47 @@ class ValueWithUnitPlainFormRow<T> extends StatelessWidget {
     final valueStyle = context.appTextStyles.formPlainValue.copyWith(
       color: colors.onSurface,
     );
-    return AppPlainFormRow(
-      label: label,
-      minHeight: minHeight,
-      child: Row(
-        children: [
-          Expanded(
-            child: TextFormField(
-              controller: controller,
-              keyboardType: keyboardType,
-              inputFormatters: inputFormatters,
-              style: valueStyle,
-              validator: validator,
-              decoration: InputDecoration(
-                hintText: hintText,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-                border: InputBorder.none,
+    return AppControlledFormField<T>(
+      value: unit,
+      onChanged: (nextUnit) {
+        if (nextUnit != null) onUnitChanged(nextUnit);
+      },
+      builder: (context, fieldUnit, _, fieldChanged) {
+        return AppPlainFormRow(
+          label: label,
+          minHeight: minHeight,
+          child: Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: controller,
+                  keyboardType: keyboardType,
+                  inputFormatters: inputFormatters,
+                  style: valueStyle,
+                  validator: validator,
+                  decoration: InputDecoration(
+                    hintText: hintText,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                    border: InputBorder.none,
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: AppSpacing.space8),
+              DropdownButton<T>(
+                value: fieldUnit,
+                isDense: true,
+                style: valueStyle,
+                underline: const SizedBox.shrink(),
+                items: unitItems,
+                onChanged: (nextUnit) {
+                  if (nextUnit != null) fieldChanged(nextUnit);
+                },
+              ),
+            ],
           ),
-          const SizedBox(width: AppSpacing.space8),
-          DropdownButton<T>(
-            value: unit,
-            isDense: true,
-            style: valueStyle,
-            underline: const SizedBox.shrink(),
-            items: unitItems,
-            onChanged: (v) {
-              if (v != null) onUnitChanged(v);
-            },
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -215,6 +241,7 @@ class AccountPlainFormRow extends StatelessWidget {
     super.key,
     this.selectedId,
     this.onTap,
+    this.onChanged,
     this.validator,
     this.valueAlignment = AppPlainRowValueAlignment.start,
   });
@@ -223,21 +250,23 @@ class AccountPlainFormRow extends StatelessWidget {
   final Account? account;
   final String placeholder;
   final String? selectedId;
-  final VoidCallback? onTap;
+  final AppPlainSelectTap<String>? onTap;
+  final ValueChanged<String?>? onChanged;
   final FormFieldValidator<String>? validator;
   final AppPlainRowValueAlignment valueAlignment;
 
   @override
   Widget build(BuildContext context) {
-    return FormField<String>(
-      key: ValueKey(selectedId),
-      initialValue: selectedId,
+    return AppControlledFormField<String>(
+      value: selectedId,
+      onChanged: onChanged,
       validator: validator,
-      builder: (field) {
+      builder: (context, _, errorText, fieldChanged) {
+        final handleTap = onTap;
         return AppPlainFormRow(
           label: label,
-          onTap: onTap,
-          errorText: field.errorText,
+          onTap: handleTap == null ? null : () => handleTap(fieldChanged),
+          errorText: errorText,
           child: Align(
             alignment:
                 valueAlignment == AppPlainRowValueAlignment.end

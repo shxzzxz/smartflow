@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_form_section.dart';
+import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../widget/business/finance/money_input.dart';
 import '../../../widget/business/form/plain_transaction_fields.dart';
@@ -83,23 +84,29 @@ class CreditRepaymentTransactionFields extends StatelessWidget {
   const CreditRepaymentTransactionFields({
     required this.createTransaction,
     required this.onCreateTransactionChanged,
+    required this.occurredAt,
     required this.occurredAtText,
     required this.onPickDate,
+    required this.onOccurredAtChanged,
     required this.repaymentAccount,
     required this.selectedRepaymentAccountId,
     required this.repaymentAccounts,
+    required this.onRepaymentAccountChanged,
     required this.onPickAccount,
     super.key,
   });
 
   final bool createTransaction;
   final ValueChanged<bool>? onCreateTransactionChanged;
+  final DateTime occurredAt;
   final String occurredAtText;
-  final VoidCallback onPickDate;
+  final AppPlainSelectTap<DateTime> onPickDate;
+  final ValueChanged<DateTime?> onOccurredAtChanged;
   final Account? repaymentAccount;
   final String? selectedRepaymentAccountId;
   final List<Account> repaymentAccounts;
-  final VoidCallback onPickAccount;
+  final ValueChanged<String?> onRepaymentAccountChanged;
+  final AppPlainSelectTap<String> onPickAccount;
 
   @override
   Widget build(BuildContext context) {
@@ -114,8 +121,10 @@ class CreditRepaymentTransactionFields extends StatelessWidget {
         if (createTransaction) ...[
           DateTimePlainFormRow(
             label: '还款日期',
+            dateTime: occurredAt,
             value: occurredAtText,
             onTap: onPickDate,
+            onChanged: onOccurredAtChanged,
           ),
           AccountPlainFormRow(
             label: '还款账户',
@@ -123,6 +132,7 @@ class CreditRepaymentTransactionFields extends StatelessWidget {
             selectedId: selectedRepaymentAccountId,
             placeholder: '请选择还款账户',
             onTap: repaymentAccounts.isEmpty ? null : onPickAccount,
+            onChanged: onRepaymentAccountChanged,
             validator: (value) => value == null ? '请选择还款账户' : null,
           ),
         ],

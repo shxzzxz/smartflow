@@ -6,6 +6,8 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_datetime_picker.dart';
+import 'package:smartflow/design_system/widget/app_form_field.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_detail_page.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
@@ -81,11 +83,118 @@ void main() {
     expect(command.paidFromAccountId, 'bank');
     expect(find.text('收支账户已更新'), findsOneWidget);
   });
+
+  testWidgets('reimbursement date and close switch reset with the form', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          transactionDetailProvider(
+            'tx-reimbursement',
+          ).overrideWith((ref) => Stream.value(_reimbursementDetail())),
+          accountLookupProvider.overrideWith(
+            (ref) => Stream.value(AccountLookup(_accounts)),
+          ),
+          accountsForSelectionPurposeProvider.overrideWith(
+            (ref, purpose) => Stream.value(switch (purpose) {
+              AccountSelectionPurpose.settlement => [
+                _accounts['cash']!,
+                _accounts['bank']!,
+              ],
+              AccountSelectionPurpose.reimbursementReceivable => [
+                _accounts['receivable']!,
+              ],
+              _ => const <Account>[],
+            }),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const TransactionDetailPage(transactionId: 'tx-reimbursement'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('报销'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is AppControlledFormField<DateTime>,
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is AppControlledFormField<bool>,
+      ),
+      findsOneWidget,
+    );
+    final accountField = find.byWidgetPredicate(
+      (widget) => widget is AppControlledFormField<String>,
+    );
+    final initialAccountValue =
+        tester.state<FormFieldState<String>>(accountField).value;
+    expect(initialAccountValue, 'cash');
+
+    final dialog = find.byType(AlertDialog);
+    final dialogSwitch = find.descendant(
+      of: dialog,
+      matching: find.byType(Switch),
+    );
+    final dateText = find.descendant(
+      of: dialog,
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Text &&
+            RegExp(
+              r'^\d{4}年\d{2}月\d{2}日 \d{2}:\d{2}$',
+            ).hasMatch(widget.data ?? ''),
+      ),
+    );
+    final initialDateText = tester.widget<Text>(dateText).data;
+
+    await tester.tap(dialogSwitch);
+    await tester.tap(find.text('报销时间'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('下个月'));
+    await tester.pump();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AppDateTimePickerDialog),
+        matching: find.text('1'),
+      ),
+    );
+    await tester.tap(find.widgetWithText(FilledButton, '确定'));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Switch>(dialogSwitch).value, isFalse);
+    expect(tester.widget<Text>(dateText).data, isNot(initialDateText));
+
+    tester
+        .state<FormState>(
+          find.descendant(of: dialog, matching: find.byType(Form)),
+        )
+        .reset();
+    expect(
+      tester.state<FormFieldState<String>>(accountField).value,
+      initialAccountValue,
+    );
+    await tester.pump();
+
+    expect(tester.widget<Switch>(dialogSwitch).value, isTrue);
+    expect(tester.widget<Text>(dateText).data, initialDateText);
+  });
 }
 
 final _accounts = <String, Account>{
   'cash': _account('cash', '现金', iconKey: 'cash'),
   'bank': _account('bank', '银行卡', iconKey: 'account'),
+  'receivable': _account('receivable', '报销应收', iconKey: 'wallet'),
   'food': _account('food', '午餐', type: AccountType.expense, iconKey: 'meal'),
 };
 
@@ -118,6 +227,45 @@ TransactionDetail _detail() {
         amount: Money(minorUnits: 10000),
       ),
     ],
+  );
+}
+
+TransactionDetail _reimbursementDetail() {
+  return TransactionDetail(
+    transaction: Transaction(
+      id: 'tx-reimbursement',
+      businessPurpose: BusinessPurpose.reimbursementAdvance,
+      occurredAt: DateTime(2026, 1, 1, 8),
+      primaryAmount: const Money(minorUnits: 10000),
+      reimbursementExpenseAccountId: 'food',
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+      sourceKind: SourceKind.manual,
+    ),
+    createdAt: DateTime(2026, 1, 1, 8, 1),
+    details: const [],
+    entries: const [
+      Entry(
+        id: 'entry-cash-reimbursement',
+        transactionId: 'tx-reimbursement',
+        accountId: 'cash',
+        direction: EntryDirection.credit,
+        amount: Money(minorUnits: 10000),
+      ),
+      Entry(
+        id: 'entry-receivable',
+        transactionId: 'tx-reimbursement',
+        accountId: 'receivable',
+        direction: EntryDirection.debit,
+        amount: Money(minorUnits: 10000),
+      ),
+    ],
+    reimbursementSummary: const ReimbursementSummary(
+      advanceAmount: Money(minorUnits: 10000),
+      receivedAmount: Money(minorUnits: 0),
+      outstanding: Money(minorUnits: 10000),
+      isClosed: false,
+    ),
   );
 }
 

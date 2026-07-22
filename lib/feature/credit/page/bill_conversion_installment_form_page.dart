@@ -14,7 +14,7 @@ import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/bill_conversion_installment_form_view_model.dart';
-import '../view_model/bill_repayment_allocation_view_model.dart';
+import '../presentation/bill_repayment_allocation.dart';
 import '../widget/installment_field_options.dart';
 
 class BillConversionInstallmentFormPage extends ConsumerStatefulWidget {
@@ -36,44 +36,7 @@ class _BillConversionInstallmentFormPageState
   final _totalFeeController = TextEditingController();
   final _overrideInstallmentController = TextEditingController();
   final _noteController = TextEditingController();
-  bool _syncing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _principalController.addListener(
-      () => _setText(
-        (vm, value) => vm.setPrincipalText(value),
-        _principalController.text,
-      ),
-    );
-    _totalPeriodsController.addListener(
-      () => _setText(
-        (vm, value) => vm.setTotalPeriodsText(value),
-        _totalPeriodsController.text,
-      ),
-    );
-    _rateController.addListener(
-      () =>
-          _setText((vm, value) => vm.setRateText(value), _rateController.text),
-    );
-    _totalFeeController.addListener(
-      () => _setText(
-        (vm, value) => vm.setTotalFeeText(value),
-        _totalFeeController.text,
-      ),
-    );
-    _overrideInstallmentController.addListener(
-      () => _setText(
-        (vm, value) => vm.setOverrideInstallmentText(value),
-        _overrideInstallmentController.text,
-      ),
-    );
-    _noteController.addListener(
-      () =>
-          _setText((vm, value) => vm.setNoteText(value), _noteController.text),
-    );
-  }
+  bool _controllersHydrated = false;
 
   @override
   void dispose() {
@@ -123,7 +86,7 @@ class _BillConversionInstallmentFormPageState
     BillConversionInstallmentFormViewModelProvider provider,
     BillConversionInstallmentLoaded state,
   ) {
-    _syncControllers(state);
+    _hydrateControllers(state);
     final notifier = ref.read(provider.notifier);
     return Form(
       key: _formKey,
@@ -166,17 +129,31 @@ class _BillConversionInstallmentFormPageState
               ),
               DateTimePlainFormRow(
                 label: '借款日期',
+                dateTime: state.borrowingDate,
                 value: _formatDate(state.borrowingDate),
-                onTap: () => _pickBorrowingDate(provider, state.borrowingDate),
+                onTap:
+                    (onSelected) =>
+                        _pickBorrowingDate(state.borrowingDate, onSelected),
+                onChanged: (value) {
+                  if (value != null) {
+                    ref.read(provider.notifier).setBorrowingDate(value);
+                  }
+                },
               ),
               DateTimePlainFormRow(
                 label: '首期还款日',
+                dateTime: state.firstRepaymentDate,
                 value: _formatDate(state.firstRepaymentDate),
                 onTap:
-                    () => _pickFirstRepaymentDate(
-                      provider,
+                    (onSelected) => _pickFirstRepaymentDate(
                       state.firstRepaymentDate,
+                      onSelected,
                     ),
+                onChanged: (value) {
+                  if (value != null) {
+                    ref.read(provider.notifier).setFirstRepaymentDate(value);
+                  }
+                },
               ),
               DropdownPlainFormRow<InstallmentRepaymentMethod>(
                 label: '分期方式',
@@ -234,8 +211,8 @@ class _BillConversionInstallmentFormPageState
   }
 
   Future<void> _pickBorrowingDate(
-    BillConversionInstallmentFormViewModelProvider provider,
     DateTime initialDate,
+    ValueChanged<DateTime?> onSelected,
   ) async {
     final picked = await showAppDatePicker(
       context: context,
@@ -243,12 +220,12 @@ class _BillConversionInstallmentFormPageState
       title: '选择借款日期',
     );
     if (picked == null || !mounted) return;
-    ref.read(provider.notifier).setBorrowingDate(picked);
+    onSelected(picked);
   }
 
   Future<void> _pickFirstRepaymentDate(
-    BillConversionInstallmentFormViewModelProvider provider,
     DateTime initialDate,
+    ValueChanged<DateTime?> onSelected,
   ) async {
     final picked = await showAppDatePicker(
       context: context,
@@ -256,14 +233,23 @@ class _BillConversionInstallmentFormPageState
       title: '选择首期还款日',
     );
     if (picked == null || !mounted) return;
-    ref.read(provider.notifier).setFirstRepaymentDate(picked);
+    onSelected(picked);
   }
 
   Future<void> _submit(
     BillConversionInstallmentFormViewModelProvider provider,
   ) async {
     if (!_formKey.currentState!.validate()) return;
-    final outcome = await ref.read(provider.notifier).submit();
+    final outcome = await ref
+        .read(provider.notifier)
+        .submit(
+          principalText: _principalController.text,
+          totalPeriodsText: _totalPeriodsController.text,
+          rateText: _rateController.text,
+          totalFeeText: _totalFeeController.text,
+          overrideInstallmentText: _overrideInstallmentController.text,
+          noteText: _noteController.text,
+        );
     if (!mounted) return;
     switch (outcome) {
       case UiActionSuccess<String>(:final value):
@@ -273,8 +259,8 @@ class _BillConversionInstallmentFormPageState
     }
   }
 
-  void _syncControllers(BillConversionInstallmentLoaded state) {
-    _syncing = true;
+  void _hydrateControllers(BillConversionInstallmentLoaded state) {
+    if (_controllersHydrated) return;
     syncTextControllerText(_principalController, state.principalText);
     syncTextControllerText(_totalPeriodsController, state.totalPeriodsText);
     syncTextControllerText(_rateController, state.rateText);
@@ -284,20 +270,7 @@ class _BillConversionInstallmentFormPageState
       state.overrideInstallmentText,
     );
     syncTextControllerText(_noteController, state.noteText);
-    _syncing = false;
-  }
-
-  void _setText(
-    void Function(BillConversionInstallmentFormViewModel, String) setter,
-    String value,
-  ) {
-    if (_syncing) return;
-    setter(
-      ref.read(
-        billConversionInstallmentFormViewModelProvider(widget.billId).notifier,
-      ),
-      value,
-    );
+    _controllersHydrated = true;
   }
 
   void _showError(String message) {

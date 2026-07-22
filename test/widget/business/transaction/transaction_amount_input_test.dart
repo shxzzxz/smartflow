@@ -33,6 +33,12 @@ void main() {
     await tester.pump();
     expect(find.text('请输入有效金额'), findsOneWidget);
 
+    amountController.text = '12.34';
+    expect(formKey.currentState!.validate(), true);
+
+    amountController.clear();
+    expect(formKey.currentState!.validate(), false);
+
     await tester.enterText(
       find.descendant(
         of: find.byKey(const ValueKey('transaction-note-input')),
@@ -41,6 +47,40 @@ void main() {
       '午餐',
     );
     expect(noteController.text, '午餐');
+  });
+
+  testWidgets('form reset restores amount and note controllers', (
+    tester,
+  ) async {
+    final formKey = GlobalKey<FormState>();
+    final amountController = TextEditingController(text: '8.00');
+    final noteController = TextEditingController(text: '初始备注');
+    addTearDown(amountController.dispose);
+    addTearDown(noteController.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Form(
+            key: formKey,
+            child: TransactionAmountInput(
+              amountController: amountController,
+              noteController: noteController,
+              semantic: MoneySemantic.expense,
+              amountValidator: validatePositiveMoneyText,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    amountController.text = '12.00';
+    noteController.text = '修改后';
+
+    formKey.currentState!.reset();
+
+    expect(amountController.text, '8.00');
+    expect(noteController.text, '初始备注');
   });
 
   testWidgets('fits all twelve amount digits without horizontal scrolling', (

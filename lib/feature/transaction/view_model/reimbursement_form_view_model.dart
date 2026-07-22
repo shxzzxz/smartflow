@@ -36,24 +36,21 @@ class ReimbursementReceiptFormViewModel
     );
   }
 
-  void setAmountText(String value) =>
-      _update((state) => state.copyWith(amountText: value));
-
-  void setNoteText(String value) =>
-      _update((state) => state.copyWith(noteText: value));
-
   void setOccurredAt(DateTime value) =>
       _update((state) => state.copyWith(occurredAt: value));
 
   void setReceiveAccountId(String? value) =>
       _update((state) => state.copyWith(receiveAccountId: value));
 
-  Future<SubmitOutcome> submit() async {
+  Future<SubmitOutcome> submit({
+    required String amountText,
+    required String noteText,
+  }) async {
     final current = state.asData?.value;
     if (current == null || !current.isLoaded) {
       return _invalidCommand('报销到账表单尚未加载');
     }
-    final amount = _parsePositiveMoney(current.amountText);
+    final amount = _parsePositiveMoney(amountText);
     if (amount == null) return _invalidCommand('请输入有效到账金额');
     final receiveAccountId = _selectedId(
       current.receiveAccountId,
@@ -72,7 +69,7 @@ class ReimbursementReceiptFormViewModel
               receivableAccountId: current.receivableAccountId!,
               receiveAccountId: receiveAccountId,
               occurredAt: current.occurredAt,
-              note: trimToNull(current.noteText),
+              note: trimToNull(noteText),
             ),
           );
       _invalidateAfterSubmit(ref, advanceTransactionId);
@@ -112,17 +109,10 @@ class ReimbursementCloseFormViewModel
       accounts: base.accounts,
       outstanding: base.outstanding!,
       receivableAccountId: base.receivableAccountId!,
-      amountText: base.outstanding!.format(),
       receiveAccountId: base.accounts.isEmpty ? null : base.accounts.first.id,
       occurredAt: DateTime.now(),
     );
   }
-
-  void setAmountText(String value) =>
-      _update((state) => state.copyWith(amountText: value));
-
-  void setNoteText(String value) =>
-      _update((state) => state.copyWith(noteText: value));
 
   void setOccurredAt(DateTime value) =>
       _update((state) => state.copyWith(occurredAt: value));
@@ -130,12 +120,15 @@ class ReimbursementCloseFormViewModel
   void setReceiveAccountId(String? value) =>
       _update((state) => state.copyWith(receiveAccountId: value));
 
-  Future<SubmitOutcome> submit() async {
+  Future<SubmitOutcome> submit({
+    required String amountText,
+    required String noteText,
+  }) async {
     final current = state.asData?.value;
     if (current == null || !current.isLoaded) {
       return _invalidCommand('结束报销表单尚未加载');
     }
-    final amount = Money.tryParse(current.amountText);
+    final amount = Money.tryParse(amountText);
     if (amount == null || amount.minorUnits < 0) {
       return _invalidCommand('请输入有效实收金额');
     }
@@ -156,7 +149,7 @@ class ReimbursementCloseFormViewModel
               receivableAccountId: current.receivableAccountId!,
               receiveAccountId: receiveAccountId,
               occurredAt: current.occurredAt,
-              note: trimToNull(current.noteText),
+              note: trimToNull(noteText),
             ),
           );
       _invalidateAfterSubmit(ref, advanceTransactionId);
@@ -185,8 +178,6 @@ class ReimbursementReceiptFormState extends _ReimbursementFormState {
   const ReimbursementReceiptFormState({
     required super.status,
     required super.accounts,
-    required super.amountText,
-    required super.noteText,
     required super.occurredAt,
     required super.submitting,
     super.outstanding,
@@ -207,8 +198,6 @@ class ReimbursementReceiptFormState extends _ReimbursementFormState {
       outstanding: outstanding,
       receivableAccountId: receivableAccountId,
       receiveAccountId: receiveAccountId,
-      amountText: '',
-      noteText: '',
       occurredAt: occurredAt,
       submitting: false,
     );
@@ -239,16 +228,12 @@ class ReimbursementReceiptFormState extends _ReimbursementFormState {
     return ReimbursementReceiptFormState(
       status: status,
       accounts: accounts,
-      amountText: '',
-      noteText: '',
       occurredAt: DateTime.now(),
       submitting: false,
     );
   }
 
   ReimbursementReceiptFormState copyWith({
-    String? amountText,
-    String? noteText,
     DateTime? occurredAt,
     Object? receiveAccountId = _sentinel,
     bool? submitting,
@@ -262,8 +247,6 @@ class ReimbursementReceiptFormState extends _ReimbursementFormState {
           receiveAccountId == _sentinel
               ? this.receiveAccountId
               : receiveAccountId as String?,
-      amountText: amountText ?? this.amountText,
-      noteText: noteText ?? this.noteText,
       occurredAt: occurredAt ?? this.occurredAt,
       submitting: submitting ?? this.submitting,
     );
@@ -274,8 +257,6 @@ class ReimbursementCloseFormState extends _ReimbursementFormState {
   const ReimbursementCloseFormState({
     required super.status,
     required super.accounts,
-    required super.amountText,
-    required super.noteText,
     required super.occurredAt,
     required super.submitting,
     super.outstanding,
@@ -287,7 +268,6 @@ class ReimbursementCloseFormState extends _ReimbursementFormState {
     required List<Account> accounts,
     required Money outstanding,
     required String receivableAccountId,
-    required String amountText,
     required DateTime occurredAt,
     String? receiveAccountId,
   }) {
@@ -297,8 +277,6 @@ class ReimbursementCloseFormState extends _ReimbursementFormState {
       outstanding: outstanding,
       receivableAccountId: receivableAccountId,
       receiveAccountId: receiveAccountId,
-      amountText: amountText,
-      noteText: '',
       occurredAt: occurredAt,
       submitting: false,
     );
@@ -329,23 +307,12 @@ class ReimbursementCloseFormState extends _ReimbursementFormState {
     return ReimbursementCloseFormState(
       status: status,
       accounts: accounts,
-      amountText: '',
-      noteText: '',
       occurredAt: DateTime.now(),
       submitting: false,
     );
   }
 
-  Money? get gap {
-    final outstanding = this.outstanding;
-    final actual = Money.tryParse(amountText);
-    if (outstanding == null || actual == null) return null;
-    return actual - outstanding;
-  }
-
   ReimbursementCloseFormState copyWith({
-    String? amountText,
-    String? noteText,
     DateTime? occurredAt,
     Object? receiveAccountId = _sentinel,
     bool? submitting,
@@ -359,8 +326,6 @@ class ReimbursementCloseFormState extends _ReimbursementFormState {
           receiveAccountId == _sentinel
               ? this.receiveAccountId
               : receiveAccountId as String?,
-      amountText: amountText ?? this.amountText,
-      noteText: noteText ?? this.noteText,
       occurredAt: occurredAt ?? this.occurredAt,
       submitting: submitting ?? this.submitting,
     );
@@ -371,8 +336,6 @@ abstract class _ReimbursementFormState {
   const _ReimbursementFormState({
     required this.status,
     required this.accounts,
-    required this.amountText,
-    required this.noteText,
     required this.occurredAt,
     required this.submitting,
     this.outstanding,
@@ -385,8 +348,6 @@ abstract class _ReimbursementFormState {
   final Money? outstanding;
   final String? receivableAccountId;
   final String? receiveAccountId;
-  final String amountText;
-  final String noteText;
   final DateTime occurredAt;
   final bool submitting;
 

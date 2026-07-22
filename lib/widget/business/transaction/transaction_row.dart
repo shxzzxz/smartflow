@@ -132,6 +132,8 @@ class TransactionRow extends StatelessWidget {
 }
 
 class _PrimaryLine extends StatelessWidget {
+  static const _titleBadgeColumnCount = 2;
+
   const _PrimaryLine({
     required this.title,
     required this.titleStyle,
@@ -159,26 +161,38 @@ class _PrimaryLine extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Row(
-            children: [
-              Flexible(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: AppTransactionTokens.categoryMaxWidth,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Keep long titles from consuming the badge area, while letting
+              // any unused part of the title allowance flow to the badges.
+              final titleMaxWidth =
+                  badges.isEmpty
+                      ? AppTransactionTokens.categoryMaxWidth
+                      : ((constraints.maxWidth - AppSpacing.space8) /
+                              _titleBadgeColumnCount)
+                          .clamp(
+                            AppSpacing.space0,
+                            AppTransactionTokens.categoryMaxWidth,
+                          );
+
+              return Row(
+                children: [
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: titleMaxWidth),
+                    child: Text(
+                      title,
+                      style: titleStyle,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
-                  child: Text(
-                    title,
-                    style: titleStyle,
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ),
-              ),
-              if (badges.isNotEmpty) ...[
-                const SizedBox(width: AppSpacing.space8),
-                Expanded(child: TransactionProgressBadges(badges: badges)),
-              ],
-            ],
+                  if (badges.isNotEmpty) ...[
+                    const SizedBox(width: AppSpacing.space8),
+                    Expanded(child: TransactionProgressBadges(badges: badges)),
+                  ],
+                ],
+              );
+            },
           ),
         ),
         const SizedBox(width: AppSpacing.space8),

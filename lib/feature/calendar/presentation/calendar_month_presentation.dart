@@ -1,5 +1,7 @@
 import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../core/money/money.dart';
+import '../../../core/money/money_formatter.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
@@ -59,11 +61,18 @@ class CalendarDayPresentation {
   final String lunarLabel;
   final String? markerLabel;
 
-  bool get hasCashflow => incomeMinor > 0 || expenseMinor > 0;
+  bool get hasCashflow => incomeMinor != 0 || expenseMinor != 0;
 
-  String get incomeText => '+${formatMinorAmount(incomeMinor)}';
+  String get incomeText => _formatCompactMinorAmount(incomeMinor);
 
-  String get expenseText => '-${formatMinorAmount(expenseMinor)}';
+  String get expenseText => _formatCompactMinorAmount(expenseMinor);
+}
+
+String _formatCompactMinorAmount(int minorUnits) {
+  return formatMoney(
+    Money(minorUnits: minorUnits),
+    style: MoneyFormatStyle.compact,
+  );
 }
 
 CalendarMonthPresentation buildCalendarMonthPresentation({
@@ -112,17 +121,17 @@ CalendarMonthlySummaryPresentation buildCalendarMonthlySummaryPresentation(
   final metrics = [
     CalendarMonthlySummaryMetricPresentation(
       label: '收入',
-      amountText: formatMinorAmount(summary.income.minorUnits),
+      amountText: formatMoney(summary.income, style: MoneyFormatStyle.compact),
       tone: FinanceTone.income,
     ),
     CalendarMonthlySummaryMetricPresentation(
       label: '支出',
-      amountText: formatMinorAmount(summary.expense.minorUnits),
+      amountText: formatMoney(summary.expense, style: MoneyFormatStyle.compact),
       tone: FinanceTone.expense,
     ),
     CalendarMonthlySummaryMetricPresentation(
       label: '净收入',
-      amountText: formatMonthlyAmount(summary.net.minorUnits, showSign: true),
+      amountText: formatMoney(summary.net, style: MoneyFormatStyle.compact),
       tone: FinanceTone.neutral,
     ),
   ];
@@ -130,7 +139,7 @@ CalendarMonthlySummaryPresentation buildCalendarMonthlySummaryPresentation(
     metrics.add(
       CalendarMonthlySummaryMetricPresentation(
         label: '应还',
-        amountText: formatMinorAmount(billDueMinor),
+        amountText: _formatCompactMinorAmount(billDueMinor),
         tone: FinanceTone.expense,
       ),
     );

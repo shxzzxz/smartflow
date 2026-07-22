@@ -10,21 +10,19 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_surface.dart';
-import '../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
-import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_form_presentation.dart';
 import '../view_model/transaction_form_view_model.dart';
 
 enum TransactionFormInitialMode { expense, income, transfer, borrowing }
 
-class TransactionFormPage extends ConsumerStatefulWidget {
+class TransactionFormPage extends ConsumerWidget {
   const TransactionFormPage({
     this.editTransactionId,
     this.initialMode = TransactionFormInitialMode.expense,
@@ -39,36 +37,93 @@ class TransactionFormPage extends ConsumerStatefulWidget {
   final String? initialToAccountId;
 
   @override
-  ConsumerState<TransactionFormPage> createState() =>
-      _TransactionFormPageState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncState = ref.watch(
+      transactionFormViewModelProvider(
+        editTransactionId: editTransactionId,
+        initialMode: _toFormMode(initialMode),
+        initialFromAccountId: initialFromAccountId,
+        initialToAccountId: initialToAccountId,
+      ),
+    );
+    return switch (asyncState) {
+      AsyncData(value: final formState) when formState != null =>
+        _TransactionFormContent(
+          key: ValueKey<String?>(editTransactionId),
+          editTransactionId: editTransactionId,
+          initialMode: initialMode,
+          initialFromAccountId: initialFromAccountId,
+          initialToAccountId: initialToAccountId,
+          formState: formState,
+        ),
+      AsyncData(value: null) => const _TransactionFormStatusPage(
+        title: '编辑交易',
+        message: '交易不存在',
+      ),
+      AsyncError() => _TransactionFormStatusPage(
+        title: editTransactionId == null ? '新增交易' : '编辑交易',
+        message: '交易加载失败，请稍后重试',
+      ),
+      _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
+    };
+  }
 }
 
-class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
+class _TransactionFormStatusPage extends StatelessWidget {
+  const _TransactionFormStatusPage({
+    required this.title,
+    required this.message,
+  });
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(child: Text(message)),
+    );
+  }
+}
+
+class _TransactionFormContent extends ConsumerStatefulWidget {
+  const _TransactionFormContent({
+    required this.editTransactionId,
+    required this.initialMode,
+    required this.initialFromAccountId,
+    required this.initialToAccountId,
+    required this.formState,
+    super.key,
+  });
+
+  final String? editTransactionId;
+  final TransactionFormInitialMode initialMode;
+  final String? initialFromAccountId;
+  final String? initialToAccountId;
+  final TransactionFormState formState;
+
+  @override
+  ConsumerState<_TransactionFormContent> createState() =>
+      _TransactionFormContentState();
+}
+
+class _TransactionFormContentState
+    extends ConsumerState<_TransactionFormContent> {
   final _formKey = GlobalKey<FormState>();
-  final _amountController = TextEditingController();
-  final _noteController = TextEditingController();
+  late final TextEditingController _amountController;
+  late final TextEditingController _noteController;
 
   @override
   void initState() {
     super.initState();
-    _amountController.addListener(_syncAmountTextToViewModel);
-    _noteController.addListener(_syncNoteTextToViewModel);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      ref
-          .read(transactionFormViewModelProvider.notifier)
-          .initializeNew(
-            initialMode: _toFormMode(widget.initialMode),
-            initialFromAccountId: widget.initialFromAccountId,
-            initialToAccountId: widget.initialToAccountId,
-          );
-    });
+    final initialValues = widget.formState.initialValues;
+    _amountController = TextEditingController(text: initialValues.amount);
+    _noteController = TextEditingController(text: initialValues.note);
   }
 
   @override
   void dispose() {
-    _amountController.removeListener(_syncAmountTextToViewModel);
-    _noteController.removeListener(_syncNoteTextToViewModel);
     _amountController.dispose();
     _noteController.dispose();
     super.dispose();
@@ -76,89 +131,14 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final formState = ref.watch(transactionFormViewModelProvider);
-    ref.listen<TransactionFormState>(transactionFormViewModelProvider, (
-      _,
-      next,
-    ) {
-      syncTextControllerText(_amountController, next.amountText);
-      syncTextControllerText(_noteController, next.noteText);
-    });
-
-    final settlementAccountsAsync = ref.watch(
-      accountsForSelectionPurposeProvider(AccountSelectionPurpose.settlement),
-    );
-    final fundAccountsAsync = ref.watch(
-      accountsForSelectionPurposeProvider(AccountSelectionPurpose.fund),
-    );
-    final liabilityAccountsAsync = ref.watch(
-      accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.borrowingLiability,
-      ),
-    );
-    final reimbursementAccountsAsync = ref.watch(
-      accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.reimbursementReceivable,
-      ),
-    );
-    final expenseTreeAsync = ref.watch(
-      categoryTreeProvider(AccountType.expense),
-    );
-    final incomeTreeAsync = ref.watch(categoryTreeProvider(AccountType.income));
+    final formState = widget.formState;
+    final settlementAccounts = formState.settlementAccounts;
+    final fundAccounts = formState.fundAccounts;
+    final liabilityAccounts = formState.liabilityAccounts;
+    final reimbursementAccounts = formState.reimbursementAccounts;
+    final expenseTree = formState.expenseTree;
+    final incomeTree = formState.incomeTree;
     final editTransactionId = widget.editTransactionId;
-    final editDetailAsync =
-        editTransactionId == null
-            ? null
-            : ref.watch(transactionDetailProvider(editTransactionId));
-    final accountsByIdAsync =
-        editTransactionId == null ? null : ref.watch(accountsByIdProvider);
-
-    if (editTransactionId != null &&
-        (!settlementAccountsAsync.hasValue ||
-            !fundAccountsAsync.hasValue ||
-            !liabilityAccountsAsync.hasValue ||
-            !reimbursementAccountsAsync.hasValue ||
-            !expenseTreeAsync.hasValue ||
-            !incomeTreeAsync.hasValue ||
-            !(editDetailAsync?.hasValue ?? false) ||
-            !(accountsByIdAsync?.hasValue ?? false))) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    final settlementAccounts =
-        settlementAccountsAsync.value ?? const <Account>[];
-    final fundAccounts = fundAccountsAsync.value ?? const <Account>[];
-    final liabilityAccounts = liabilityAccountsAsync.value ?? const <Account>[];
-    final reimbursementAccounts =
-        reimbursementAccountsAsync.value ?? const <Account>[];
-    final expenseTree = expenseTreeAsync.value ?? const <CategoryNode>[];
-    final incomeTree = incomeTreeAsync.value ?? const <CategoryNode>[];
-    final editDetail = editDetailAsync?.value;
-
-    if (editTransactionId != null && editDetail == null) {
-      return const Scaffold(body: Center(child: Text('交易不存在')));
-    }
-
-    if (editTransactionId != null &&
-        editDetail != null &&
-        formState.initializedEditTransactionId != editTransactionId) {
-      final snapshot = transactionFormEditSnapshot(
-        detail: editDetail,
-        expenseTree: expenseTree,
-        incomeTree: incomeTree,
-        accountsById: accountsByIdAsync?.value ?? const <String, Account>{},
-      );
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ref
-            .read(transactionFormViewModelProvider.notifier)
-            .initializeForEdit(
-              transactionId: editTransactionId,
-              snapshot: snapshot,
-            );
-      });
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
 
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final keyboardVisible = keyboardInset > 0;
@@ -180,9 +160,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                         ? _confirmDelete
                         : null,
                 onModeChanged:
-                    (mode) => ref
-                        .read(transactionFormViewModelProvider.notifier)
-                        .setMode(mode),
+                    (mode) => ref.read(_formProvider.notifier).setMode(mode),
               ),
               Expanded(
                 child: ListView(
@@ -194,19 +172,16 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                   ),
                   children: [
                     if (formState.mode == TransactionFormMode.expense)
-                      FormField<String>(
-                        key: ValueKey(
-                          'expense-category-${formState.expenseCategoryId}',
-                        ),
-                        initialValue: formState.expenseCategoryId,
+                      AppControlledFormField<String>(
+                        value: formState.expenseCategoryId,
                         validator:
-                            (_) =>
+                            (value) =>
                                 formState.mode == TransactionFormMode.expense &&
-                                        formState.expenseCategoryId == null
+                                        value == null
                                     ? '请选择支出分类'
                                     : null,
                         builder:
-                            (field) => Column(
+                            (context, _, errorText, onChanged) => Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 CategoryGridPicker(
@@ -220,14 +195,14 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                                       rootId: account.id,
                                       categoryId: account.id,
                                     );
-                                    field.didChange(account.id);
+                                    onChanged(account.id);
                                   },
                                   onChildSelected: (root, child) {
                                     _selectExpenseCategory(
                                       rootId: root.id,
                                       categoryId: child.id,
                                     );
-                                    field.didChange(child.id);
+                                    onChanged(child.id);
                                   },
                                   onAddRoot:
                                       () => _openCategoryForm(
@@ -239,25 +214,22 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                                         parentId: rootId,
                                       ),
                                 ),
-                                if (field.errorText != null)
-                                  _FormFieldErrorText(field.errorText!),
+                                if (errorText != null)
+                                  _FormFieldErrorText(errorText),
                               ],
                             ),
                       ),
                     if (formState.mode == TransactionFormMode.income)
-                      FormField<String>(
-                        key: ValueKey(
-                          'income-category-${formState.incomeCategoryId}',
-                        ),
-                        initialValue: formState.incomeCategoryId,
+                      AppControlledFormField<String>(
+                        value: formState.incomeCategoryId,
                         validator:
-                            (_) =>
+                            (value) =>
                                 formState.mode == TransactionFormMode.income &&
-                                        formState.incomeCategoryId == null
+                                        value == null
                                     ? '请选择收入分类'
                                     : null,
                         builder:
-                            (field) => Column(
+                            (context, _, errorText, onChanged) => Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 CategoryGridPicker(
@@ -271,14 +243,14 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                                       rootId: account.id,
                                       categoryId: account.id,
                                     );
-                                    field.didChange(account.id);
+                                    onChanged(account.id);
                                   },
                                   onChildSelected: (root, child) {
                                     _selectIncomeCategory(
                                       rootId: root.id,
                                       categoryId: child.id,
                                     );
-                                    field.didChange(child.id);
+                                    onChanged(child.id);
                                   },
                                   onAddRoot:
                                       () =>
@@ -289,8 +261,8 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                                         parentId: rootId,
                                       ),
                                 ),
-                                if (field.errorText != null)
-                                  _FormFieldErrorText(field.errorText!),
+                                if (errorText != null)
+                                  _FormFieldErrorText(errorText),
                               ],
                             ),
                       ),
@@ -301,11 +273,11 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                             label: '转出账户',
                             accounts: settlementAccounts,
                             selectedId: formState.fromAccountId,
+                            validator:
+                                (value) => value == null ? '请选择转出账户' : null,
                             onChanged:
                                 (value) => ref
-                                    .read(
-                                      transactionFormViewModelProvider.notifier,
-                                    )
+                                    .read(_formProvider.notifier)
                                     .setFromAccountId(value),
                           ),
                           const SizedBox(height: AppSpacing.space8),
@@ -313,11 +285,11 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                             label: '转入账户',
                             accounts: settlementAccounts,
                             selectedId: formState.toAccountId,
+                            validator:
+                                (value) => value == null ? '请选择转入账户' : null,
                             onChanged:
                                 (value) => ref
-                                    .read(
-                                      transactionFormViewModelProvider.notifier,
-                                    )
+                                    .read(_formProvider.notifier)
                                     .setToAccountId(value),
                           ),
                         ],
@@ -329,11 +301,11 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                             label: '借出账户',
                             accounts: liabilityAccounts,
                             selectedId: formState.liabilityAccountId,
+                            validator:
+                                (value) => value == null ? '请选择借出账户' : null,
                             onChanged:
                                 (value) => ref
-                                    .read(
-                                      transactionFormViewModelProvider.notifier,
-                                    )
+                                    .read(_formProvider.notifier)
                                     .setLiabilityAccountId(value),
                           ),
                           const SizedBox(height: AppSpacing.space8),
@@ -341,11 +313,11 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                             label: '借入账户',
                             accounts: fundAccounts,
                             selectedId: formState.toAccountId,
+                            validator:
+                                (value) => value == null ? '请选择借入账户' : null,
                             onChanged:
                                 (value) => ref
-                                    .read(
-                                      transactionFormViewModelProvider.notifier,
-                                    )
+                                    .read(_formProvider.notifier)
                                     .setToAccountId(value),
                           ),
                         ],
@@ -386,30 +358,24 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                       onPickDate: _pickDate,
                       onFromAccountChanged:
                           (value) => ref
-                              .read(transactionFormViewModelProvider.notifier)
+                              .read(_formProvider.notifier)
                               .setFromAccountId(value),
                       onToAccountChanged:
                           (value) => ref
-                              .read(transactionFormViewModelProvider.notifier)
+                              .read(_formProvider.notifier)
                               .setToAccountId(value),
                       onReimbursementAccountChanged:
                           (value) => ref
-                              .read(transactionFormViewModelProvider.notifier)
+                              .read(_formProvider.notifier)
                               .setReimbursementAccountId(value),
                       onExcludeStatsChanged:
                           (value) => ref
-                              .read(transactionFormViewModelProvider.notifier)
+                              .read(_formProvider.notifier)
                               .setExcludeStats(value),
                       onExcludeBudgetChanged:
                           (value) => ref
-                              .read(transactionFormViewModelProvider.notifier)
+                              .read(_formProvider.notifier)
                               .setExcludeBudget(value),
-                    ),
-                    _AccountValidationFields(
-                      state: formState,
-                      settlementAccounts: settlementAccounts,
-                      fundAccounts: fundAccounts,
-                      liabilityAccounts: liabilityAccounts,
                     ),
                     if (keyboardVisible)
                       SizedBox(height: keyboardInset)
@@ -434,14 +400,22 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     );
   }
 
+  TransactionFormViewModelProvider get _formProvider =>
+      transactionFormViewModelProvider(
+        editTransactionId: widget.editTransactionId,
+        initialMode: _toFormMode(widget.initialMode),
+        initialFromAccountId: widget.initialFromAccountId,
+        initialToAccountId: widget.initialToAccountId,
+      );
+
   Future<void> _pickDate() async {
     final picked = await showAppDateTimePicker(
       context: context,
-      initialDateTime: ref.read(transactionFormViewModelProvider).occurredAt,
+      initialDateTime: ref.read(_formProvider).requireValue!.occurredAt,
       title: '选择交易时间',
     );
     if (picked == null || !mounted) return;
-    ref.read(transactionFormViewModelProvider.notifier).setOccurredAt(picked);
+    ref.read(_formProvider.notifier).setOccurredAt(picked);
   }
 
   void _openCategoryForm(AccountType type, {String? parentId}) {
@@ -471,7 +445,9 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   }
 
   void _clearForNext() {
-    ref.read(transactionFormViewModelProvider.notifier).clearForNext();
+    _amountController.clear();
+    _noteController.clear();
+    ref.read(_formProvider.notifier).clearForNext();
   }
 
   Future<void> _submit() async {
@@ -479,8 +455,11 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     if (!isValid) return;
 
     final outcome = await ref
-        .read(transactionFormViewModelProvider.notifier)
-        .submit(_submitOptions());
+        .read(_formProvider.notifier)
+        .submit(
+          amountText: _amountController.text,
+          noteText: _noteController.text,
+        );
     if (!mounted) return;
 
     switch (outcome) {
@@ -493,48 +472,6 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
       case SubmitFailure(:final error):
         _showError(error.message);
     }
-  }
-
-  TransactionFormSubmitOptions _submitOptions() {
-    return TransactionFormSubmitOptions(
-      editTransactionId: widget.editTransactionId,
-      settlementAccounts:
-          ref
-              .read(
-                accountsForSelectionPurposeProvider(
-                  AccountSelectionPurpose.settlement,
-                ),
-              )
-              .value ??
-          const <Account>[],
-      fundAccounts:
-          ref
-              .read(
-                accountsForSelectionPurposeProvider(
-                  AccountSelectionPurpose.fund,
-                ),
-              )
-              .value ??
-          const <Account>[],
-      liabilityAccounts:
-          ref
-              .read(
-                accountsForSelectionPurposeProvider(
-                  AccountSelectionPurpose.borrowingLiability,
-                ),
-              )
-              .value ??
-          const <Account>[],
-      reimbursementAccounts:
-          ref
-              .read(
-                accountsForSelectionPurposeProvider(
-                  AccountSelectionPurpose.reimbursementReceivable,
-                ),
-              )
-              .value ??
-          const <Account>[],
-    );
   }
 
   MoneySemantic _amountSemantic(TransactionFormMode mode) {
@@ -552,24 +489,12 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _syncAmountTextToViewModel() {
-    ref
-        .read(transactionFormViewModelProvider.notifier)
-        .setAmountText(_amountController.text);
-  }
-
-  void _syncNoteTextToViewModel() {
-    ref
-        .read(transactionFormViewModelProvider.notifier)
-        .setNoteText(_noteController.text);
-  }
-
   void _selectExpenseCategory({
     required String? rootId,
     required String? categoryId,
   }) {
     ref
-        .read(transactionFormViewModelProvider.notifier)
+        .read(_formProvider.notifier)
         .setExpenseCategory(rootId: rootId, categoryId: categoryId);
   }
 
@@ -578,14 +503,16 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     required String? categoryId,
   }) {
     ref
-        .read(transactionFormViewModelProvider.notifier)
+        .read(_formProvider.notifier)
         .setIncomeCategory(rootId: rootId, categoryId: categoryId);
   }
 
   Future<void> _confirmDelete() async {
     final transactionId = widget.editTransactionId;
-    final formState = ref.read(transactionFormViewModelProvider);
-    if (transactionId == null || formState.submitting) return;
+    final formState = ref.read(_formProvider).requireValue;
+    if (transactionId == null || formState == null || formState.submitting) {
+      return;
+    }
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -608,7 +535,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     if (confirmed != true || !mounted) return;
 
     final outcome = await ref
-        .read(transactionFormViewModelProvider.notifier)
+        .read(_formProvider.notifier)
         .deleteTransaction(transactionId);
     if (!mounted) return;
 
@@ -618,108 +545,6 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
       case UiActionFailure<void>(:final error):
         _showError('删除失败：${error.message}');
     }
-  }
-}
-
-class _AccountValidationFields extends StatelessWidget {
-  const _AccountValidationFields({
-    required this.state,
-    required this.settlementAccounts,
-    required this.fundAccounts,
-    required this.liabilityAccounts,
-  });
-
-  final TransactionFormState state;
-  final List<Account> settlementAccounts;
-  final List<Account> fundAccounts;
-  final List<Account> liabilityAccounts;
-
-  @override
-  Widget build(BuildContext context) {
-    final fields = <Widget>[
-      if (state.mode == TransactionFormMode.expense)
-        _HiddenValidationField(
-          keyValue:
-              'expense-account-${effectiveAccountId(state.fromAccountId, settlementAccounts)}',
-          validator:
-              () =>
-                  effectiveAccountId(state.fromAccountId, settlementAccounts) ==
-                          null
-                      ? '请选择支出账户'
-                      : null,
-        ),
-      if (state.mode == TransactionFormMode.income)
-        _HiddenValidationField(
-          keyValue:
-              'income-account-${effectiveAccountId(state.toAccountId, settlementAccounts)}',
-          validator:
-              () =>
-                  effectiveAccountId(state.toAccountId, settlementAccounts) ==
-                          null
-                      ? '请选择收入账户'
-                      : null,
-        ),
-      if (state.mode == TransactionFormMode.transfer)
-        _HiddenValidationField(
-          keyValue:
-              'transfer-accounts-${effectiveAccountId(state.fromAccountId, settlementAccounts)}-${effectiveAccountId(state.toAccountId, settlementAccounts)}',
-          validator:
-              () =>
-                  effectiveAccountId(state.fromAccountId, settlementAccounts) ==
-                              null ||
-                          effectiveAccountId(
-                                state.toAccountId,
-                                settlementAccounts,
-                              ) ==
-                              null
-                      ? '请选择转出和转入账户'
-                      : null,
-        ),
-      if (state.mode == TransactionFormMode.borrowing)
-        _HiddenValidationField(
-          keyValue:
-              'borrowing-accounts-${effectiveAccountId(state.liabilityAccountId, liabilityAccounts)}-${effectiveAccountId(state.toAccountId, fundAccounts)}',
-          validator:
-              () =>
-                  effectiveAccountId(
-                                state.liabilityAccountId,
-                                liabilityAccounts,
-                              ) ==
-                              null ||
-                          effectiveAccountId(state.toAccountId, fundAccounts) ==
-                              null
-                      ? '请选择借出和借入账户'
-                      : null,
-        ),
-    ];
-
-    return Column(children: fields);
-  }
-}
-
-class _HiddenValidationField extends StatelessWidget {
-  const _HiddenValidationField({
-    required this.keyValue,
-    required this.validator,
-  });
-
-  final String keyValue;
-  final String? Function() validator;
-
-  @override
-  Widget build(BuildContext context) {
-    return FormField<String>(
-      key: ValueKey(keyValue),
-      validator: (_) => validator(),
-      builder:
-          (field) =>
-              field.errorText == null
-                  ? const SizedBox.shrink()
-                  : Align(
-                    alignment: Alignment.centerLeft,
-                    child: _FormFieldErrorText(field.errorText!),
-                  ),
-    );
   }
 }
 
@@ -876,12 +701,14 @@ class _MainAccountPickerTile extends StatelessWidget {
     required this.accounts,
     required this.selectedId,
     required this.onChanged,
+    required this.validator,
   });
 
   final String label;
   final List<Account> accounts;
   final String? selectedId;
   final ValueChanged<String?> onChanged;
+  final FormFieldValidator<String> validator;
 
   @override
   Widget build(BuildContext context) {
@@ -890,49 +717,68 @@ class _MainAccountPickerTile extends StatelessWidget {
     final effective = effectiveAccount(selectedId, accounts);
     final title = effective?.name ?? '$label为空';
 
-    return Material(
-      color: colors.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-      child: InkWell(
-        onTap: () => _showAccountSheet(context),
-        borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.space12,
-            vertical: AppSpacing.space12,
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: AppSpacing.space32,
-                child: Center(
-                  child: BusinessIcon(iconKey: effective?.iconKey, size: 28),
+    return AppControlledFormField<String>(
+      value: effective?.id,
+      onChanged: onChanged,
+      validator: validator,
+      builder: (context, _, errorText, changeValue) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Material(
+              color: colors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+              child: InkWell(
+                onTap: () => _showAccountSheet(context, changeValue),
+                borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space12,
+                    vertical: AppSpacing.space12,
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: AppSpacing.space32,
+                        child: Center(
+                          child: BusinessIcon(
+                            iconKey: effective?.iconKey,
+                            size: 28,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.space12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(label, style: textStyles.formLabel),
+                            const SizedBox(height: AppSpacing.space2),
+                            Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: textStyles.formValue,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(width: AppSpacing.space12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label, style: textStyles.formLabel),
-                    const SizedBox(height: AppSpacing.space2),
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textStyles.formValue,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+            ),
+            if (errorText != null) _FormFieldErrorText(errorText),
+          ],
+        );
+      },
     );
   }
 
-  Future<void> _showAccountSheet(BuildContext context) async {
+  Future<void> _showAccountSheet(
+    BuildContext context,
+    ValueChanged<String?> changeValue,
+  ) async {
     final selected = await showAccountPickerSheet(
       context: context,
       title: '选择$label',
@@ -940,7 +786,7 @@ class _MainAccountPickerTile extends StatelessWidget {
       selectedId: effectiveAccount(selectedId, accounts)?.id,
     );
     if (selected == null) return;
-    onChanged(selected);
+    changeValue(selected);
   }
 }
 
@@ -1016,51 +862,70 @@ class _TransactionOptionsPanel extends StatelessWidget {
             ? onToAccountChanged
             : onFromAccountChanged;
 
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            _QuickActionChip(
-              label: _formatDateTime(occurredAt),
-              selected: false,
-              onTap: onPickDate,
+    Widget buildPanel(ValueChanged<String?> accountChanged, String? errorText) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  _QuickActionChip(
+                    label: _formatDateTime(occurredAt),
+                    selected: false,
+                    onTap: onPickDate,
+                  ),
+                  if (showPrimaryAccount)
+                    _AccountSelectorChip(
+                      label: accountLabel,
+                      accounts: moneyAccounts,
+                      selectedId: primaryAccountId,
+                      onChanged: accountChanged,
+                    ),
+                  if (mode == TransactionFormMode.expense)
+                    _AccountSelectorChip(
+                      label: '报销账户',
+                      accounts: reimbursementAccounts,
+                      selectedId: reimbursementAccountId,
+                      allowNone: true,
+                      noneLabel: '不报销',
+                      onChanged: onReimbursementAccountChanged,
+                    ),
+                  if (showExcludeStats)
+                    _ToggleChip(
+                      icon: Icons.remove_circle_outline,
+                      label: '不计收支',
+                      selected: excludeStats,
+                      onChanged: onExcludeStatsChanged,
+                    ),
+                  if (mode == TransactionFormMode.expense)
+                    _ToggleChip(
+                      icon: Icons.pie_chart_outline,
+                      label: '不计预算',
+                      selected: excludeBudget,
+                      onChanged: onExcludeBudgetChanged,
+                    ),
+                ],
+              ),
             ),
-            if (showPrimaryAccount)
-              _AccountSelectorChip(
-                label: accountLabel,
-                accounts: moneyAccounts,
-                selectedId: primaryAccountId,
-                onChanged: primaryChanged,
-              ),
-            if (mode == TransactionFormMode.expense)
-              _AccountSelectorChip(
-                label: '报销账户',
-                accounts: reimbursementAccounts,
-                selectedId: reimbursementAccountId,
-                allowNone: true,
-                noneLabel: '不报销',
-                onChanged: onReimbursementAccountChanged,
-              ),
-            if (showExcludeStats)
-              _ToggleChip(
-                icon: Icons.remove_circle_outline,
-                label: '不计收支',
-                selected: excludeStats,
-                onChanged: onExcludeStatsChanged,
-              ),
-            if (mode == TransactionFormMode.expense)
-              _ToggleChip(
-                icon: Icons.pie_chart_outline,
-                label: '不计预算',
-                selected: excludeBudget,
-                onChanged: onExcludeBudgetChanged,
-              ),
-          ],
-        ),
-      ),
+          ),
+          if (errorText != null) _FormFieldErrorText(errorText),
+        ],
+      );
+    }
+
+    if (!showPrimaryAccount) return buildPanel(primaryChanged, null);
+
+    return AppControlledFormField<String>(
+      value: effectiveAccountId(primaryAccountId, moneyAccounts),
+      onChanged: primaryChanged,
+      validator: (value) => value == null ? '请选择$accountLabel' : null,
+      builder:
+          (context, _, errorText, changeValue) =>
+              buildPanel(changeValue, errorText),
     );
   }
 }
