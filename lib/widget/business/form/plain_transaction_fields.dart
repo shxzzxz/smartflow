@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/token/form.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
+import 'package:smartflow/design_system/widget/app_form_field.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_row.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
@@ -215,6 +216,7 @@ class AccountPlainFormRow extends StatelessWidget {
     super.key,
     this.selectedId,
     this.onTap,
+    this.onChanged,
     this.validator,
     this.valueAlignment = AppPlainRowValueAlignment.start,
   });
@@ -224,20 +226,21 @@ class AccountPlainFormRow extends StatelessWidget {
   final String placeholder;
   final String? selectedId;
   final VoidCallback? onTap;
+  final ValueChanged<String?>? onChanged;
   final FormFieldValidator<String>? validator;
   final AppPlainRowValueAlignment valueAlignment;
 
   @override
   Widget build(BuildContext context) {
-    return FormField<String>(
-      key: ValueKey(selectedId),
-      initialValue: selectedId,
+    return AppControlledFormField<String>(
+      value: selectedId,
+      onChanged: onChanged,
       validator: validator,
-      builder: (field) {
+      builder: (context, _, errorText, __) {
         return AppPlainFormRow(
           label: label,
           onTap: onTap,
-          errorText: field.errorText,
+          errorText: errorText,
           child: Align(
             alignment:
                 valueAlignment == AppPlainRowValueAlignment.end

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -81,6 +82,53 @@ void main() {
       expect(effectiveAccount('missing', accounts)?.id, 'cash');
       expect(effectiveAccountId(null, const []), isNull);
     });
+  });
+
+  testWidgets('account row keeps selection and Form state in sync', (
+    tester,
+  ) async {
+    final formKey = GlobalKey<FormState>();
+    final accounts = [_account('cash'), _account('bank')];
+    late StateSetter rebuild;
+    String? selectedId = 'cash';
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              rebuild = setState;
+              return Form(
+                key: formKey,
+                child: AccountPlainFormRow(
+                  label: '账户',
+                  account: findAccountById(selectedId, accounts),
+                  selectedId: selectedId,
+                  placeholder: '请选择账户',
+                  onTap: () => rebuild(() => selectedId = 'bank'),
+                  onChanged: (value) => rebuild(() => selectedId = value),
+                  validator: (value) => value == 'bank' ? null : '请选择银行卡',
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    expect(formKey.currentState!.validate(), false);
+
+    await tester.tap(find.text('cash'));
+    await tester.pump();
+
+    expect(selectedId, 'bank');
+    expect(formKey.currentState!.validate(), true);
+
+    formKey.currentState!.reset();
+    await tester.pump();
+
+    expect(selectedId, 'cash');
+    expect(find.text('cash'), findsOneWidget);
   });
 }
 

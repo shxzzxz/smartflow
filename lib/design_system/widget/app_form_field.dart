@@ -13,6 +13,76 @@ void syncTextControllerText(TextEditingController controller, String text) {
   );
 }
 
+typedef AppControlledFormFieldBuilder<T> =
+    Widget Function(
+      BuildContext context,
+      T? value,
+      String? errorText,
+      ValueChanged<T?> onChanged,
+    );
+
+class AppControlledFormField<T> extends FormField<T> {
+  AppControlledFormField({
+    required this.value,
+    required AppControlledFormFieldBuilder<T> builder,
+    super.key,
+    this.onChanged,
+    super.validator,
+    super.enabled = true,
+    super.autovalidateMode = AutovalidateMode.disabled,
+  }) : super(
+         initialValue: value,
+         builder: (field) {
+           final state = field as _AppControlledFormFieldState<T>;
+           return builder(
+             field.context,
+             field.value,
+             field.errorText,
+             state._handleChanged,
+           );
+         },
+       );
+
+  final T? value;
+  final ValueChanged<T?>? onChanged;
+
+  @override
+  FormFieldState<T> createState() => _AppControlledFormFieldState<T>();
+}
+
+class _AppControlledFormFieldState<T> extends FormFieldState<T> {
+  late final T? _resetValue;
+
+  @override
+  AppControlledFormField<T> get widget =>
+      super.widget as AppControlledFormField<T>;
+
+  @override
+  void initState() {
+    super.initState();
+    _resetValue = widget.value;
+  }
+
+  @override
+  void didUpdateWidget(covariant AppControlledFormField<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != value) setValue(widget.value);
+  }
+
+  void _handleChanged(T? nextValue) {
+    if (nextValue == value) return;
+    didChange(nextValue);
+    widget.onChanged?.call(nextValue);
+  }
+
+  @override
+  void reset() {
+    super.reset();
+    if (value != _resetValue) setValue(_resetValue);
+    widget.onChanged?.call(_resetValue);
+  }
+}
+
 class AppTextFormField extends StatelessWidget {
   const AppTextFormField({
     required this.controller,

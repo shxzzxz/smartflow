@@ -181,6 +181,7 @@ class AppPlainSelectFormRow<T> extends StatelessWidget {
     super.key,
     this.valueText,
     this.onTap,
+    this.onChanged,
     this.validator,
     this.supportingText,
     this.requiredIndicator = false,
@@ -197,6 +198,7 @@ class AppPlainSelectFormRow<T> extends StatelessWidget {
   final String placeholder;
   final String? valueText;
   final VoidCallback? onTap;
+  final ValueChanged<T?>? onChanged;
   final FormFieldValidator<T>? validator;
   final String? supportingText;
   final bool requiredIndicator;
@@ -210,19 +212,19 @@ class AppPlainSelectFormRow<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return FormField<T>(
-      key: ValueKey(value),
-      initialValue: value,
+    return AppControlledFormField<T>(
+      value: value,
+      onChanged: onChanged,
       enabled: enabled,
       validator: validator,
       autovalidateMode: autovalidateMode,
-      builder: (field) {
-        final hasValue = value != null;
+      builder: (context, fieldValue, errorText, _) {
+        final hasValue = fieldValue != null;
         return AppPlainFormRow(
           label: label,
           requiredIndicator: requiredIndicator,
           supportingText: supportingText,
-          errorText: field.errorText,
+          errorText: errorText,
           onTap: onTap,
           enabled: enabled,
           labelWidth: labelWidth,
@@ -235,7 +237,7 @@ class AppPlainSelectFormRow<T> extends StatelessWidget {
             children: [
               Expanded(
                 child: AppPlainValueText(
-                  text: hasValue ? (valueText ?? '$value') : placeholder,
+                  text: hasValue ? (valueText ?? '$fieldValue') : placeholder,
                   textAlign:
                       valueAlignment == AppPlainRowValueAlignment.end
                           ? TextAlign.right
