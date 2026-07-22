@@ -116,6 +116,9 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 
     final detail = editDetailAsync!.requireValue;
     if (detail == null) return const AsyncValue.data(null);
+    if (!supportsTransactionFormEdit(detail.transaction.businessPurpose)) {
+      return const AsyncValue.data(null);
+    }
     final snapshot = transactionFormEditSnapshot(
       detail: detail,
       expenseTree: expenseTree,

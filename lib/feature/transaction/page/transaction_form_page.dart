@@ -58,7 +58,7 @@ class TransactionFormPage extends ConsumerWidget {
         ),
       AsyncData(value: null) => const _TransactionFormStatusPage(
         title: '编辑交易',
-        message: '交易不存在',
+        message: '交易不存在或当前类型不支持在此编辑',
       ),
       AsyncError() => _TransactionFormStatusPage(
         title: editTransactionId == null ? '新增交易' : '编辑交易',

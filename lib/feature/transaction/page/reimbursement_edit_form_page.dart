@@ -3,44 +3,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../application/ledger/ledger_command_api.dart';
-import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
-import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
-import 'package:smartflow/widget/business/finance/money_text.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
-import '../view_model/refund_form_view_model.dart';
+import '../presentation/reimbursement_edit_form_presentation.dart';
+import '../view_model/reimbursement_edit_form_view_model.dart';
 
-class RefundFormPage extends ConsumerWidget {
-  const RefundFormPage({required String parentTransactionId, Key? key})
-    : this._(parentTransactionId: parentTransactionId, key: key);
+class ReimbursementEditFormPage extends ConsumerWidget {
+  const ReimbursementEditFormPage({required this.transactionId, super.key});
 
-  const RefundFormPage.edit({required String editTransactionId, Key? key})
-    : this._(editTransactionId: editTransactionId, key: key);
-
-  const RefundFormPage._({
-    this.parentTransactionId,
-    this.editTransactionId,
-    super.key,
-  });
-
-  final String? parentTransactionId;
-  final String? editTransactionId;
-
-  bool get editing => editTransactionId != null;
+  final String transactionId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final transactionId = editTransactionId ?? parentTransactionId!;
-    final provider = refundFormViewModelProvider(
-      transactionId,
-      editing: editing,
-    );
+    final provider = reimbursementEditFormViewModelProvider(transactionId);
     final asyncState = ref.watch(provider);
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -55,38 +36,47 @@ class RefundFormPage extends ConsumerWidget {
   }
 
   Widget _buildLoaded(
-    RefundFormViewModelProvider provider,
-    RefundFormState state,
+    ReimbursementEditFormViewModelProvider provider,
+    ReimbursementEditFormState state,
   ) {
-    if (state.status == RefundFormStatus.notFound) {
-      return const Center(child: Text('原交易不存在'));
+    if (state.status == ReimbursementEditFormStatus.notFound) {
+      return const Center(child: Text('原报销交易不存在'));
     }
-    if (state.status == RefundFormStatus.notEditable) {
-      return const Center(child: Text('报销已结束，请先删除结束报销'));
+    if (state.status == ReimbursementEditFormStatus.notEditable) {
+      return Center(child: Text(state.unavailableReason ?? '当前报销交易不可编辑'));
     }
-    return _RefundFormContent(
-      key: ValueKey('${state.transactionId}:${state.editing}'),
+    final kind = state.kind;
+    if (kind == null) {
+      return const Center(child: Text('原报销交易类型不受支持'));
+    }
+    return _ReimbursementEditFormContent(
+      key: ValueKey('${state.transactionId}:${kind.name}'),
       provider: provider,
       state: state,
+      kind: kind,
     );
   }
 }
 
-class _RefundFormContent extends ConsumerStatefulWidget {
-  const _RefundFormContent({
+class _ReimbursementEditFormContent extends ConsumerStatefulWidget {
+  const _ReimbursementEditFormContent({
     required this.provider,
     required this.state,
+    required this.kind,
     super.key,
   });
 
-  final RefundFormViewModelProvider provider;
-  final RefundFormState state;
+  final ReimbursementEditFormViewModelProvider provider;
+  final ReimbursementEditFormState state;
+  final ReimbursementEditKind kind;
 
   @override
-  ConsumerState<_RefundFormContent> createState() => _RefundFormContentState();
+  ConsumerState<_ReimbursementEditFormContent> createState() =>
+      _ReimbursementEditFormContentState();
 }
 
-class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
+class _ReimbursementEditFormContentState
+    extends ConsumerState<_ReimbursementEditFormContent> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _amountController;
   late final TextEditingController _noteController;
@@ -109,8 +99,10 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
   Widget build(BuildContext context) {
     final provider = widget.provider;
     final state = widget.state;
-    final refundToAccount = findAccountById(
-      state.refundToAccountId,
+    final kind = widget.kind;
+    final isClose = kind == ReimbursementEditKind.close;
+    final receiveAccount = findAccountById(
+      state.receiveAccountId,
       state.accounts,
     );
 
@@ -125,48 +117,74 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
         ),
         children: [
           AppPageHeader(
-            title: state.editing ? '编辑退款' : '退款',
+            title: isClose ? '编辑结束报销' : '编辑报销到账',
+            subtitle: isClose ? '修改最后一笔到账并对账差额' : '修改报销到账记录',
             showBackButton: true,
           ),
           const SizedBox(height: AppSpacing.space14),
+          if (state.outstandingBeforeTransaction != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.space12),
+              child: Text(
+                isClose
+                    ? '结束前应收：${state.outstandingBeforeTransaction!.format()}'
+                    : '本笔到账前应收：${state.outstandingBeforeTransaction!.format()}',
+              ),
+            ),
+          if (isClose)
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _amountController,
+              builder: (context, value, _) {
+                final message = reimbursementCloseGapMessage(
+                  amountText: value.text,
+                  outstandingBeforeTransaction:
+                      state.outstandingBeforeTransaction,
+                );
+                if (message == null) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.space12),
+                  child: Text(message),
+                );
+              },
+            ),
           AppFormSection(
-            title: '退款信息',
+            title: '到账信息',
             children: [
-              if (state.remaining != null)
-                AppPlainValueRow(
-                  label: '可退余额',
-                  child: MoneyText(
-                    money: state.remaining!,
-                    style: context.appTextStyles.formPlainValue,
-                  ),
-                ),
               MoneyPlainFormRow(
-                label: '退款金额',
+                label: isClose ? '实收金额' : '到账金额',
                 controller: _amountController,
-                hintText: '请输入退款金额',
-                validator: validatePositiveMoneyText,
+                hintText: isClose ? '请输入实收金额' : '请输入到账金额',
+                validator:
+                    isClose
+                        ? validateNonNegativeMoneyText
+                        : validatePositiveMoneyText,
               ),
               AccountPlainFormRow(
-                label: '退款账户',
-                account: refundToAccount,
-                selectedId: state.refundToAccountId,
-                placeholder: '请选择退款账户',
+                label: '到账账户',
+                account: receiveAccount,
+                selectedId: state.receiveAccountId,
+                placeholder: '请选择到账账户',
                 onTap:
-                    (onSelected) => _pickRefundAccount(
+                    (onSelected) => _pickReceiveAccount(
                       state.accounts,
-                      selectedId: state.refundToAccountId,
+                      selectedId: state.receiveAccountId,
                       onSelected: onSelected,
                     ),
-                onChanged: ref.read(provider.notifier).setRefundToAccountId,
-                validator: (value) => value == null ? '请选择账户' : null,
+                onChanged: ref.read(provider.notifier).setReceiveAccountId,
+                validator:
+                    (value) => validateReimbursementReceiveAccount(
+                      isClose: isClose,
+                      amountText: _amountController.text,
+                      accountId: value,
+                    ),
               ),
               DateTimePlainFormRow(
-                label: '退款时间',
+                label: isClose ? '结束时间' : '到账时间',
                 dateTime: state.occurredAt,
                 value: _formatDateTime(state.occurredAt),
                 onTap:
                     (onSelected) =>
-                        _pickOccurredAt(state.occurredAt, onSelected),
+                        _pickOccurredAt(state.occurredAt, onSelected, isClose),
                 onChanged: (value) {
                   if (value != null) {
                     ref.read(provider.notifier).setOccurredAt(value);
@@ -187,14 +205,14 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
     );
   }
 
-  Future<void> _pickRefundAccount(
+  Future<void> _pickReceiveAccount(
     List<Account> accounts, {
     required String? selectedId,
     required ValueChanged<String?> onSelected,
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,
-      title: '选择退款账户',
+      title: '选择到账账户',
       accounts: accounts,
       selectedId: selectedId,
     );
@@ -205,17 +223,18 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
   Future<void> _pickOccurredAt(
     DateTime occurredAt,
     ValueChanged<DateTime?> onSelected,
+    bool isClose,
   ) async {
     final picked = await showAppDateTimePicker(
       context: context,
       initialDateTime: occurredAt,
-      title: '选择退款时间',
+      title: isClose ? '选择结束时间' : '选择到账时间',
     );
     if (!mounted || picked == null) return;
     onSelected(picked);
   }
 
-  Future<void> _submit(RefundFormViewModelProvider provider) async {
+  Future<void> _submit(ReimbursementEditFormViewModelProvider provider) async {
     if (!_formKey.currentState!.validate()) return;
     final outcome = await ref
         .read(provider.notifier)

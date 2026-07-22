@@ -2,8 +2,11 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_command_api.dart';
+import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
+import '../../../core/money/money_formatter.dart';
+import '../../../core/patch/patch.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
@@ -16,7 +19,10 @@ part 'refund_form_view_model.g.dart';
 @riverpod
 class RefundFormViewModel extends _$RefundFormViewModel {
   @override
-  Future<RefundFormState> build(String parentTransactionId) async {
+  Future<RefundFormState> build(
+    String transactionId, {
+    bool editing = false,
+  }) async {
     final accounts = await ref.watch(
       accountsForSelectionPurposeProvider(
         AccountSelectionPurpose.settlement,
@@ -24,10 +30,22 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     );
     final accountsById = await ref.watch(accountsByIdProvider.future);
     final detail = await ref.watch(
-      transactionDetailProvider(parentTransactionId).future,
+      transactionDetailProvider(transactionId).future,
     );
     if (detail == null) {
-      return RefundFormState.notFound(accounts: accounts);
+      return RefundFormState.notFound(
+        accounts: accounts,
+        transactionId: transactionId,
+        editing: editing,
+      );
+    }
+    if (editing) {
+      return _buildEditState(
+        transactionId: transactionId,
+        detail: detail,
+        accounts: accounts,
+        accountsById: accountsById,
+      );
     }
     final defaultAccountId = effectiveRefundToAccountId(
       selectedId: null,
@@ -37,12 +55,83 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       ),
       accounts: accounts,
     );
-    final refunded = detail.refundedTotal ?? Money.zero();
+    final refunded = _refundedTotal(detail);
     return RefundFormState.loaded(
+      transactionId: transactionId,
+      parentTransactionId: transactionId,
+      editing: false,
       accounts: accounts,
       remaining: detail.transaction.primaryAmount - refunded,
       refundToAccountId: defaultAccountId,
       occurredAt: DateTime.now(),
+      amountText: '',
+      noteText: '',
+    );
+  }
+
+  Future<RefundFormState> _buildEditState({
+    required String transactionId,
+    required TransactionDetail detail,
+    required List<Account> accounts,
+    required Map<String, Account> accountsById,
+  }) async {
+    final transaction = detail.transaction;
+    final parentTransactionId = transaction.parentTransactionId;
+    if (transaction.businessPurpose != BusinessPurpose.refund ||
+        parentTransactionId == null) {
+      return RefundFormState.notFound(
+        accounts: accounts,
+        transactionId: transactionId,
+        editing: true,
+      );
+    }
+    final parentDetail = await ref.watch(
+      transactionDetailProvider(parentTransactionId).future,
+    );
+    if (parentDetail == null) {
+      return RefundFormState.notFound(
+        accounts: accounts,
+        transactionId: transactionId,
+        editing: true,
+      );
+    }
+    if (parentDetail.reimbursementSummary?.isClosed ?? false) {
+      return RefundFormState.notEditable(
+        accounts: accounts,
+        transactionId: transactionId,
+        parentTransactionId: parentTransactionId,
+      );
+    }
+    final selectedAccountId = settlementAccountId(
+      detail,
+      accountsById,
+      EntryDirection.debit,
+    );
+    final refundToAccountId = effectiveRefundToAccountId(
+      selectedId: selectedAccountId,
+      parentSettlementAccountId: parentSettlementAccountIdForRefund(
+        parentDetail,
+        accountsById,
+      ),
+      accounts: accounts,
+    );
+    final remaining =
+        parentDetail.transaction.primaryAmount -
+        _refundedTotal(parentDetail) +
+        transaction.primaryAmount;
+    return RefundFormState.loaded(
+      transactionId: transactionId,
+      parentTransactionId: parentTransactionId,
+      editing: true,
+      accounts: accounts,
+      remaining: remaining,
+      refundToAccountId: refundToAccountId,
+      occurredAt: transaction.occurredAt,
+      amountText: formatMoney(
+        transaction.primaryAmount,
+        style: MoneyFormatStyle.plain,
+      ),
+      noteText: transaction.note ?? '',
     );
   }
 
@@ -70,18 +159,33 @@ class RefundFormViewModel extends _$RefundFormViewModel {
 
     _update((state) => state.copyWith(submitting: true));
     try {
-      await ref
-          .read(transactionPostingAppServiceProvider)
-          .createRefund(
-            CreateRefundCommand(
-              amount: amount,
-              parentTransactionId: parentTransactionId,
-              refundToAccountId: refundToAccountId,
-              occurredAt: current.occurredAt,
-              note: trimToNull(noteText),
-            ),
-          );
-      ref.invalidate(transactionDetailProvider(parentTransactionId));
+      if (current.editing) {
+        await ref
+            .read(transactionEditAppServiceProvider)
+            .editRefund(
+              EditRefundCommand(
+                transactionId: current.transactionId,
+                amount: amount,
+                refundToAccountId: refundToAccountId,
+                occurredAt: current.occurredAt,
+                note: _stringPatch(trimToNull(noteText)),
+              ),
+            );
+      } else {
+        await ref
+            .read(transactionPostingAppServiceProvider)
+            .createRefund(
+              CreateRefundCommand(
+                amount: amount,
+                parentTransactionId: current.parentTransactionId,
+                refundToAccountId: refundToAccountId,
+                occurredAt: current.occurredAt,
+                note: trimToNull(noteText),
+              ),
+            );
+      }
+      ref.invalidate(transactionDetailProvider(current.transactionId));
+      ref.invalidate(transactionDetailProvider(current.parentTransactionId));
       ref.invalidate(accountsByIdProvider);
       ref.invalidate(
         accountsForSelectionPurposeProvider(AccountSelectionPurpose.settlement),
@@ -112,49 +216,96 @@ class RefundFormViewModel extends _$RefundFormViewModel {
   }
 }
 
-enum RefundFormStatus { loaded, notFound }
+enum RefundFormStatus { loaded, notFound, notEditable }
 
 class RefundFormState {
-  const RefundFormState({
+  RefundFormState({
     required this.status,
-    required this.accounts,
+    required this.transactionId,
+    required this.parentTransactionId,
+    required this.editing,
+    required List<Account> accounts,
     required this.occurredAt,
     required this.submitting,
+    required this.amountText,
+    required this.noteText,
     this.remaining,
     this.refundToAccountId,
-  });
+  }) : accounts = List.unmodifiable(accounts);
 
   factory RefundFormState.loaded({
+    required String transactionId,
+    required String parentTransactionId,
+    required bool editing,
     required List<Account> accounts,
     required Money remaining,
     required DateTime occurredAt,
+    required String amountText,
+    required String noteText,
     String? refundToAccountId,
   }) {
     return RefundFormState(
       status: RefundFormStatus.loaded,
+      transactionId: transactionId,
+      parentTransactionId: parentTransactionId,
+      editing: editing,
       accounts: accounts,
       remaining: remaining,
       occurredAt: occurredAt,
       refundToAccountId: refundToAccountId,
       submitting: false,
+      amountText: amountText,
+      noteText: noteText,
     );
   }
 
-  factory RefundFormState.notFound({required List<Account> accounts}) {
+  factory RefundFormState.notFound({
+    required List<Account> accounts,
+    required String transactionId,
+    required bool editing,
+  }) {
     return RefundFormState(
       status: RefundFormStatus.notFound,
+      transactionId: transactionId,
+      parentTransactionId: transactionId,
+      editing: editing,
       accounts: accounts,
       occurredAt: DateTime.now(),
       submitting: false,
+      amountText: '',
+      noteText: '',
+    );
+  }
+
+  factory RefundFormState.notEditable({
+    required List<Account> accounts,
+    required String transactionId,
+    required String parentTransactionId,
+  }) {
+    return RefundFormState(
+      status: RefundFormStatus.notEditable,
+      transactionId: transactionId,
+      parentTransactionId: parentTransactionId,
+      editing: true,
+      accounts: accounts,
+      occurredAt: DateTime.now(),
+      submitting: false,
+      amountText: '',
+      noteText: '',
     );
   }
 
   final RefundFormStatus status;
+  final String transactionId;
+  final String parentTransactionId;
+  final bool editing;
   final List<Account> accounts;
   final Money? remaining;
   final DateTime occurredAt;
   final String? refundToAccountId;
   final bool submitting;
+  final String amountText;
+  final String noteText;
 
   bool get isLoaded => status == RefundFormStatus.loaded;
 
@@ -165,6 +316,9 @@ class RefundFormState {
   }) {
     return RefundFormState(
       status: status,
+      transactionId: transactionId,
+      parentTransactionId: parentTransactionId,
+      editing: editing,
       accounts: accounts,
       remaining: remaining,
       occurredAt: occurredAt ?? this.occurredAt,
@@ -173,8 +327,29 @@ class RefundFormState {
               ? this.refundToAccountId
               : refundToAccountId as String?,
       submitting: submitting ?? this.submitting,
+      amountText: amountText,
+      noteText: noteText,
     );
   }
+}
+
+Money _refundedTotal(TransactionDetail detail) {
+  final refundChildren = detail.children.where(
+    (child) => child.businessPurpose == BusinessPurpose.refund,
+  );
+  if (refundChildren.isNotEmpty) {
+    return refundChildren.fold(
+      Money.zero(),
+      (sum, child) => sum + child.primaryAmount,
+    );
+  }
+  return detail.refundedTotal ?? Money.zero();
+}
+
+Patch<String?> _stringPatch(String? value) {
+  return value == null
+      ? const Patch<String?>.clear()
+      : Patch<String?>.set(value);
 }
 
 String? _selectedId(String? id, List<Account> accounts) {

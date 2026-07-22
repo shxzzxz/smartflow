@@ -37,6 +37,22 @@ class TransactionFormEditSnapshot {
   final String? liabilityAccountId;
 }
 
+bool supportsTransactionFormEdit(BusinessPurpose purpose) {
+  return switch (purpose) {
+    BusinessPurpose.dailyExpense ||
+    BusinessPurpose.dailyIncome ||
+    BusinessPurpose.transfer ||
+    BusinessPurpose.reimbursementAdvance ||
+    BusinessPurpose.borrowing => true,
+    BusinessPurpose.refund ||
+    BusinessPurpose.reimbursementReceipt ||
+    BusinessPurpose.reimbursementClose ||
+    BusinessPurpose.debtRepayment ||
+    BusinessPurpose.openingBalance ||
+    BusinessPurpose.balanceAdjustment => false,
+  };
+}
+
 TransactionFormEditSnapshot transactionFormEditSnapshot({
   required TransactionDetail detail,
   required List<CategoryNode> expenseTree,
@@ -67,7 +83,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         excludeBudget: transaction.isExcludedFromBudget,
         expenseCategoryId: categoryId,
         expenseRootId: rootCategoryId(expenseTree, categoryId),
-        fromAccountId: _firstSettlementId(
+        fromAccountId: settlementAccountId(
           detail,
           accountsById,
           EntryDirection.credit,
@@ -84,12 +100,12 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         excludeBudget: transaction.isExcludedFromBudget,
         expenseCategoryId: categoryId,
         expenseRootId: rootCategoryId(expenseTree, categoryId),
-        fromAccountId: _firstSettlementId(
+        fromAccountId: settlementAccountId(
           detail,
           accountsById,
           EntryDirection.credit,
         ),
-        reimbursementAccountId: _firstSettlementId(
+        reimbursementAccountId: settlementAccountId(
           detail,
           accountsById,
           EntryDirection.debit,
@@ -111,7 +127,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         excludeBudget: false,
         incomeCategoryId: categoryId,
         incomeRootId: rootCategoryId(incomeTree, categoryId),
-        toAccountId: _firstSettlementId(
+        toAccountId: settlementAccountId(
           detail,
           accountsById,
           EntryDirection.debit,
@@ -125,12 +141,12 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         occurredAt: transaction.occurredAt,
         excludeStats: false,
         excludeBudget: false,
-        fromAccountId: _firstSettlementId(
+        fromAccountId: settlementAccountId(
           detail,
           accountsById,
           EntryDirection.credit,
         ),
-        toAccountId: _firstSettlementId(
+        toAccountId: settlementAccountId(
           detail,
           accountsById,
           EntryDirection.debit,
@@ -150,20 +166,22 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
           AccountType.liability,
           EntryDirection.credit,
         ),
-        toAccountId: _firstSettlementId(
+        toAccountId: settlementAccountId(
           detail,
           accountsById,
           EntryDirection.debit,
         ),
       );
-    default:
-      return TransactionFormEditSnapshot(
-        mode: TransactionFormMode.expense,
-        amountText: amountText,
-        noteText: noteText,
-        occurredAt: transaction.occurredAt,
-        excludeStats: transaction.isExcludedFromStats,
-        excludeBudget: transaction.isExcludedFromBudget,
+    case BusinessPurpose.refund:
+    case BusinessPurpose.reimbursementReceipt:
+    case BusinessPurpose.reimbursementClose:
+    case BusinessPurpose.debtRepayment:
+    case BusinessPurpose.openingBalance:
+    case BusinessPurpose.balanceAdjustment:
+      throw ArgumentError.value(
+        transaction.businessPurpose,
+        'detail.transaction.businessPurpose',
+        '该交易类型不支持通用交易编辑表单',
       );
   }
 }
@@ -198,7 +216,7 @@ String? parentSettlementAccountIdForRefund(
   Map<String, Account> accountsById,
 ) {
   if (detail == null) return null;
-  return _firstSettlementId(detail, accountsById, EntryDirection.credit);
+  return settlementAccountId(detail, accountsById, EntryDirection.credit);
 }
 
 String? reimbursementReceivableAccountId(
@@ -235,7 +253,7 @@ String? _firstAccountId(
   return null;
 }
 
-String? _firstSettlementId(
+String? settlementAccountId(
   TransactionDetail detail,
   Map<String, Account> accountsById,
   EntryDirection direction,

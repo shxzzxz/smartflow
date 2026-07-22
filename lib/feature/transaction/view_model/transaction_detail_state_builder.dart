@@ -12,7 +12,7 @@ TransactionDetailUiState buildTransactionDetailLoadedState({
   required TransactionDetail detail,
   required AccountLookup accountLookup,
 }) {
-  final behavior = _behaviorConfigFor(detail.transaction);
+  final behavior = _behaviorConfigFor(detail);
   return TransactionDetailUiState.loaded(
     transactionId: transactionId,
     detail: detail,
@@ -218,6 +218,7 @@ List<DetailActionButton> _actionButtons(
   DetailBehaviorConfig behavior,
 ) {
   final transaction = detail.transaction;
+  final editLocked = _isEarlierReimbursementChildLocked(detail);
   final result = <DetailActionButton>[];
   switch (transaction.businessPurpose) {
     case BusinessPurpose.dailyExpense:
@@ -261,8 +262,9 @@ List<DetailActionButton> _actionButtons(
       kind: DetailActionKind.edit,
       label: '编辑',
       primary: true,
-      enabled: behavior.editRoute != null,
+      enabled: behavior.editRoute != null && !editLocked,
       route: behavior.editRoute,
+      deniedReason: editLocked ? _reimbursementClosedEditReason : null,
     ),
   );
   return result;
@@ -286,15 +288,51 @@ DetailEditPermission _accountEditPermission(
   };
 }
 
-DetailBehaviorConfig _behaviorConfigFor(Transaction transaction) {
+DetailBehaviorConfig _behaviorConfigFor(TransactionDetail detail) {
+  final transaction = detail.transaction;
   const postedAtPermission = DetailEditPermission.allowed();
+  final editLocked = _isEarlierReimbursementChildLocked(detail);
+  if (transaction.businessPurpose == BusinessPurpose.refund ||
+      transaction.businessPurpose == BusinessPurpose.reimbursementReceipt ||
+      transaction.businessPurpose == BusinessPurpose.reimbursementClose) {
+    final editPermission =
+        editLocked
+            ? const DetailEditPermission.denied(
+              reason: _reimbursementClosedEditReason,
+            )
+            : const DetailEditPermission.allowed();
+    return DetailBehaviorConfig(
+      editRoute: switch (transaction.businessPurpose) {
+        BusinessPurpose.refund => '/transaction/${transaction.id}/refund/edit',
+        BusinessPurpose.reimbursementReceipt ||
+        BusinessPurpose.reimbursementClose =>
+          '/transaction/${transaction.id}/reimbursement/edit',
+        _ => null,
+      },
+      canEditOccurredAt: editPermission,
+      canEditPostedAt: editPermission,
+      canEditNote: editPermission,
+      canEditSettlementAccount: editPermission,
+    );
+  }
+
   final ownership = transaction.ownership;
   if (ownership == null) {
     return DetailBehaviorConfig(
-      editRoute:
-          transaction.businessPurpose == BusinessPurpose.debtRepayment
-              ? '/transaction/${transaction.id}/repayment/edit'
-              : '/transaction/${transaction.id}/edit',
+      editRoute: switch (transaction.businessPurpose) {
+        BusinessPurpose.dailyExpense ||
+        BusinessPurpose.dailyIncome ||
+        BusinessPurpose.transfer ||
+        BusinessPurpose.reimbursementAdvance ||
+        BusinessPurpose.borrowing => '/transaction/${transaction.id}/edit',
+        BusinessPurpose.debtRepayment =>
+          '/transaction/${transaction.id}/repayment/edit',
+        BusinessPurpose.openingBalance ||
+        BusinessPurpose.balanceAdjustment => null,
+        BusinessPurpose.refund ||
+        BusinessPurpose.reimbursementReceipt ||
+        BusinessPurpose.reimbursementClose => null,
+      },
       canEditOccurredAt: const DetailEditPermission.allowed(),
       canEditPostedAt: postedAtPermission,
       canEditNote: const DetailEditPermission.allowed(),
@@ -350,6 +388,17 @@ DetailBehaviorConfig _behaviorConfigFor(Transaction transaction) {
     ),
   );
 }
+
+bool _isEarlierReimbursementChildLocked(TransactionDetail detail) {
+  final purpose = detail.transaction.businessPurpose;
+  if (purpose != BusinessPurpose.refund &&
+      purpose != BusinessPurpose.reimbursementReceipt) {
+    return false;
+  }
+  return detail.reimbursementSummary?.isClosed ?? false;
+}
+
+const String _reimbursementClosedEditReason = '报销已结束，请先删除结束报销';
 
 RepaymentType? _repaymentTypeFromOwnerRole(String? ownerRole) {
   if (ownerRole == null) return null;

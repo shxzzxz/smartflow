@@ -16,7 +16,7 @@ final class RefundFormViewModelProvider
     extends $AsyncNotifierProvider<RefundFormViewModel, RefundFormState> {
   RefundFormViewModelProvider._({
     required RefundFormViewModelFamily super.from,
-    required String super.argument,
+    required (String, {bool editing}) super.argument,
   }) : super(
          retry: null,
          name: r'refundFormViewModelProvider',
@@ -32,7 +32,7 @@ final class RefundFormViewModelProvider
   String toString() {
     return r'refundFormViewModelProvider'
         ''
-        '($argument)';
+        '$argument';
   }
 
   @$internal
@@ -51,7 +51,7 @@ final class RefundFormViewModelProvider
 }
 
 String _$refundFormViewModelHash() =>
-    r'02f2aaa0c39db507d441c28c4092ae27673312b4';
+    r'4bab27fd023276800df1992d21c24c383ac9d508';
 
 final class RefundFormViewModelFamily extends $Family
     with
@@ -60,7 +60,7 @@ final class RefundFormViewModelFamily extends $Family
           AsyncValue<RefundFormState>,
           RefundFormState,
           FutureOr<RefundFormState>,
-          String
+          (String, {bool editing})
         > {
   RefundFormViewModelFamily._()
     : super(
@@ -71,18 +71,24 @@ final class RefundFormViewModelFamily extends $Family
         isAutoDispose: true,
       );
 
-  RefundFormViewModelProvider call(String parentTransactionId) =>
-      RefundFormViewModelProvider._(argument: parentTransactionId, from: this);
+  RefundFormViewModelProvider call(
+    String transactionId, {
+    bool editing = false,
+  }) => RefundFormViewModelProvider._(
+    argument: (transactionId, editing: editing),
+    from: this,
+  );
 
   @override
   String toString() => r'refundFormViewModelProvider';
 }
 
 abstract class _$RefundFormViewModel extends $AsyncNotifier<RefundFormState> {
-  late final _$args = ref.$arg as String;
-  String get parentTransactionId => _$args;
+  late final _$args = ref.$arg as (String, {bool editing});
+  String get transactionId => _$args.$1;
+  bool get editing => _$args.editing;
 
-  FutureOr<RefundFormState> build(String parentTransactionId);
+  FutureOr<RefundFormState> build(String transactionId, {bool editing = false});
   @$mustCallSuper
   @override
   void runBuild() {
@@ -95,6 +101,6 @@ abstract class _$RefundFormViewModel extends $AsyncNotifier<RefundFormState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    element.handleCreate(ref, () => build(_$args.$1, editing: _$args.editing));
   }
 }

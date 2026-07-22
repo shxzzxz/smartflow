@@ -1,5 +1,6 @@
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
@@ -83,6 +84,69 @@ void main() {
             )
             .amount,
         Money.parse('100.00'),
+      );
+    },
+  );
+
+  test(
+    'closed reimbursement only allows deleting the close transaction',
+    () async {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final parent = engine.createReimbursementAdvance(
+        ReimbursementAdvanceInstruction(
+          amount: Money.parse('100.00'),
+          receivableAccountId: 'receivable',
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'expense',
+          occurredAt: DateTime(2026, 7, 1),
+        ),
+      );
+      final receipt = engine.createReimbursementReceipt(
+        instruction: ReimbursementReceiptInstruction(
+          advanceTransactionId: parent.id,
+          amount: Money.parse('40.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'bank',
+          occurredAt: DateTime(2026, 7, 2),
+        ),
+        advance: parent,
+      );
+      final close = engine.createReimbursementClose(
+        instruction: ReimbursementCloseInstruction(
+          advanceTransactionId: parent.id,
+          actualReceivedAmount: Money.parse('60.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'bank',
+          occurredAt: DateTime(2026, 7, 3),
+        ),
+        advance: parent,
+        outstanding: Money.parse('60.00'),
+        gapIncomeAccountId: null,
+      );
+      final service = TransactionGroupRewriteService(
+        transactionGroupRepository: _TransactionGroupRepository(
+          TransactionGroup(
+            parentTransaction: parent,
+            childTransactions: [receipt, close],
+          ),
+        ),
+        accountRepository: _AccountRepository(),
+        postingInstructionResolver: const DefaultPostingInstructionResolver(),
+        postingEngine: engine,
+        accountPostingService: _AccountPostingService(),
+        accountRolePolicy: _AccountRolePolicy(),
+        systemAccountResolver: _SystemAccountResolver(),
+      );
+
+      final deletion = await service.deleteCurrentTransaction(close.id);
+
+      expect(deletion.targetTransactionId, close.id);
+      expect(deletion.deletedTransactions, [close]);
+      await expectLater(
+        service.deleteCurrentTransaction(receipt.id),
+        throwsA(isA<BusinessException>()),
       );
     },
   );

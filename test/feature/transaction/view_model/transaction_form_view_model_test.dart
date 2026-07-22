@@ -101,6 +101,35 @@ void main() {
       );
     });
 
+    test('rejects child transaction types in the generic edit form', () {
+      final detail = TransactionDetail(
+        transaction: Transaction(
+          id: 'refund',
+          parentTransactionId: 'parent',
+          businessPurpose: BusinessPurpose.refund,
+          occurredAt: DateTime(2026, 7, 23),
+          primaryAmount: const Money(minorUnits: 1000),
+          isExcludedFromStats: false,
+          isExcludedFromBudget: false,
+          sourceKind: SourceKind.manual,
+        ),
+        createdAt: DateTime(2026, 7, 23),
+        details: const [],
+        entries: const [],
+      );
+      final container = _container(
+        editTransactionId: 'refund',
+        editDetail: detail,
+      );
+
+      expect(
+        container
+            .read(transactionFormViewModelProvider(editTransactionId: 'refund'))
+            .requireValue,
+        isNull,
+      );
+    });
+
     test('creates daily expense command and returns success', () async {
       final posting = _FakeTransactionPostingAppService();
       final container = _container(

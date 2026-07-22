@@ -289,6 +289,11 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     final reimbursementSummary =
         transaction.businessPurpose == BusinessPurpose.reimbursementAdvance
             ? await getReimbursementSummary(transaction.id)
+            : _shouldLoadParentReimbursementSummary(
+                  transaction.businessPurpose,
+                ) &&
+                transaction.parentTransactionId != null
+            ? await getReimbursementSummary(transaction.parentTransactionId!)
             : null;
     return TransactionDetail(
       transaction: transaction,
@@ -303,6 +308,12 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
       refundedTotal: refundedTotal,
       reimbursementSummary: reimbursementSummary,
     );
+  }
+
+  bool _shouldLoadParentReimbursementSummary(BusinessPurpose purpose) {
+    return purpose == BusinessPurpose.refund ||
+        purpose == BusinessPurpose.reimbursementReceipt ||
+        purpose == BusinessPurpose.reimbursementClose;
   }
 
   @override
