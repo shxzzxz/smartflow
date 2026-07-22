@@ -10,6 +10,8 @@ demo/
 plan/
 temp/
 tmp/
+/.tmp/
+/lesson/
 
 # ===== Flutter / Dart =====
 .dart_tool/
@@ -110,5 +112,3 @@ $RECYCLE.BIN/
 *.pem
 *.key
 secrets/
-/.tmp/
-/lesson/
