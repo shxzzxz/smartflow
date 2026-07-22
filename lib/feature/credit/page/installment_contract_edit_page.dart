@@ -113,6 +113,28 @@ class _InstallmentContractEditPageState
             onPickFirstDate:
                 loaded.paidCount > 0 ? null : () => _pickFirstDate(loaded),
             onPickLastDate: () => _pickLastDate(loaded),
+            onFirstDateChanged: (value) {
+              if (value != null) {
+                ref
+                    .read(
+                      installmentContractEditViewModelProvider(
+                        widget.contractId,
+                      ).notifier,
+                    )
+                    .setFirstRepaymentDate(value);
+              }
+            },
+            onLastDateChanged: (value) {
+              if (value != null) {
+                ref
+                    .read(
+                      installmentContractEditViewModelProvider(
+                        widget.contractId,
+                      ).notifier,
+                    )
+                    .setLastRepaymentDate(value);
+              }
+            },
             onMethodChanged:
                 (v) => ref
                     .read(
@@ -285,6 +307,8 @@ class _ConfigSection extends StatelessWidget {
     required this.overrideInstallmentController,
     required this.onPickFirstDate,
     required this.onPickLastDate,
+    required this.onFirstDateChanged,
+    required this.onLastDateChanged,
     required this.onMethodChanged,
     required this.onRatePeriodChanged,
     required this.onAccrualMethodChanged,
@@ -304,6 +328,8 @@ class _ConfigSection extends StatelessWidget {
   final TextEditingController overrideInstallmentController;
   final VoidCallback? onPickFirstDate;
   final VoidCallback onPickLastDate;
+  final ValueChanged<DateTime?> onFirstDateChanged;
+  final ValueChanged<DateTime?> onLastDateChanged;
   final ValueChanged<InstallmentRepaymentMethod> onMethodChanged;
   final ValueChanged<InterestRatePeriod> onRatePeriodChanged;
   final ValueChanged<InterestAccrualMethod>? onAccrualMethodChanged;
@@ -353,14 +379,18 @@ class _ConfigSection extends StatelessWidget {
         ),
         DateTimePlainFormRow(
           label: '首期还款日',
+          dateTime: firstRepaymentDate,
           value: _formatDate(firstRepaymentDate),
           onTap: onPickFirstDate,
+          onChanged: onFirstDateChanged,
           minHeight: _rowMinHeight,
         ),
         DateTimePlainFormRow(
           label: '末期还款日',
+          dateTime: lastRepaymentDate,
           value: _formatDate(lastRepaymentDate),
           onTap: onPickLastDate,
+          onChanged: onLastDateChanged,
           minHeight: _rowMinHeight,
         ),
         DropdownPlainFormRow<InstallmentRepaymentMethod>(

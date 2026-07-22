@@ -36,37 +36,7 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
   final _feeController = TextEditingController();
   final _discountController = TextEditingController();
   final _noteController = TextEditingController();
-  bool _syncing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _principalController.addListener(
-      () => _setText(
-        (vm, value) => vm.setPrincipalText(value),
-        _principalController.text,
-      ),
-    );
-    _interestController.addListener(
-      () => _setText(
-        (vm, value) => vm.setInterestText(value),
-        _interestController.text,
-      ),
-    );
-    _feeController.addListener(
-      () => _setText((vm, value) => vm.setFeeText(value), _feeController.text),
-    );
-    _discountController.addListener(
-      () => _setText(
-        (vm, value) => vm.setDiscountText(value),
-        _discountController.text,
-      ),
-    );
-    _noteController.addListener(
-      () =>
-          _setText((vm, value) => vm.setNoteText(value), _noteController.text),
-    );
-  }
+  bool _controllersHydrated = false;
 
   @override
   void dispose() {
@@ -105,7 +75,7 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
       case RepaymentFormLoadStatus.loaded:
         break;
     }
-    _syncControllers(state);
+    _hydrateControllers(state);
     final liabilityAccount = _findAccount(
       state.liabilityAccounts,
       state.liabilityAccountId,
@@ -146,6 +116,7 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
                                   .read(provider.notifier)
                                   .setLiabilityAccountId(value),
                         ),
+                onChanged: ref.read(provider.notifier).setLiabilityAccountId,
                 validator: (value) => value == null ? '请选择债务账户' : null,
               ),
               MoneyPlainFormRow(
@@ -174,8 +145,14 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
               ),
               DateTimePlainFormRow(
                 label: '还款日期',
+                dateTime: state.occurredAt,
                 value: _formatDateTime(state.occurredAt),
                 onTap: () => _pickDate(provider, state.occurredAt),
+                onChanged: (value) {
+                  if (value != null) {
+                    ref.read(provider.notifier).setOccurredAt(value);
+                  }
+                },
               ),
               AccountPlainFormRow(
                 label: '还款账户',
@@ -194,6 +171,7 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
                                   .read(provider.notifier)
                                   .setPaidFromAccountId(value),
                         ),
+                onChanged: ref.read(provider.notifier).setPaidFromAccountId,
                 validator: (value) => value == null ? '请选择还款账户' : null,
               ),
               NotePlainFormRow(controller: _noteController),
@@ -241,7 +219,15 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
 
   Future<void> _submit(RepaymentFormViewModelProvider provider) async {
     if (!_formKey.currentState!.validate()) return;
-    final outcome = await ref.read(provider.notifier).submit();
+    final outcome = await ref
+        .read(provider.notifier)
+        .submit(
+          principalText: _principalController.text,
+          interestText: _interestController.text,
+          feeText: _feeController.text,
+          discountText: _discountController.text,
+          noteText: _noteController.text,
+        );
     if (!mounted) return;
     switch (outcome) {
       case SubmitSuccess():
@@ -251,22 +237,14 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
     }
   }
 
-  void _syncControllers(RepaymentFormState state) {
-    _syncing = true;
+  void _hydrateControllers(RepaymentFormState state) {
+    if (_controllersHydrated) return;
     syncTextControllerText(_principalController, state.principalText);
     syncTextControllerText(_interestController, state.interestText);
     syncTextControllerText(_feeController, state.feeText);
     syncTextControllerText(_discountController, state.discountText);
     syncTextControllerText(_noteController, state.noteText);
-    _syncing = false;
-  }
-
-  void _setText(
-    void Function(RepaymentFormViewModel, String) setter,
-    String value,
-  ) {
-    if (_syncing) return;
-    setter(ref.read(repaymentFormViewModelProvider(_args).notifier), value);
+    _controllersHydrated = true;
   }
 
   void _showError(String message) {

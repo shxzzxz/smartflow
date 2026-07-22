@@ -83,22 +83,28 @@ class CreditRepaymentTransactionFields extends StatelessWidget {
   const CreditRepaymentTransactionFields({
     required this.createTransaction,
     required this.onCreateTransactionChanged,
+    required this.occurredAt,
     required this.occurredAtText,
     required this.onPickDate,
+    required this.onOccurredAtChanged,
     required this.repaymentAccount,
     required this.selectedRepaymentAccountId,
     required this.repaymentAccounts,
+    required this.onRepaymentAccountChanged,
     required this.onPickAccount,
     super.key,
   });
 
   final bool createTransaction;
   final ValueChanged<bool>? onCreateTransactionChanged;
+  final DateTime occurredAt;
   final String occurredAtText;
   final VoidCallback onPickDate;
+  final ValueChanged<DateTime?> onOccurredAtChanged;
   final Account? repaymentAccount;
   final String? selectedRepaymentAccountId;
   final List<Account> repaymentAccounts;
+  final ValueChanged<String?> onRepaymentAccountChanged;
   final VoidCallback onPickAccount;
 
   @override
@@ -114,8 +120,10 @@ class CreditRepaymentTransactionFields extends StatelessWidget {
         if (createTransaction) ...[
           DateTimePlainFormRow(
             label: '还款日期',
+            dateTime: occurredAt,
             value: occurredAtText,
             onTap: onPickDate,
+            onChanged: onOccurredAtChanged,
           ),
           AccountPlainFormRow(
             label: '还款账户',
@@ -123,6 +131,7 @@ class CreditRepaymentTransactionFields extends StatelessWidget {
             selectedId: selectedRepaymentAccountId,
             placeholder: '请选择还款账户',
             onTap: repaymentAccounts.isEmpty ? null : onPickAccount,
+            onChanged: onRepaymentAccountChanged,
             validator: (value) => value == null ? '请选择还款账户' : null,
           ),
         ],

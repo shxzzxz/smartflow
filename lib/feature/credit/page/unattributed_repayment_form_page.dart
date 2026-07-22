@@ -8,6 +8,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_submit_button.dart';
+import '../../../widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/unattributed_repayment_form_view_model.dart';
@@ -31,37 +32,7 @@ class _UnattributedRepaymentFormPageState
   final _feeController = TextEditingController();
   final _discountController = TextEditingController();
   final _noteController = TextEditingController();
-  bool _syncing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _principalController.addListener(
-      () => _setText(
-        (vm, value) => vm.setPrincipalText(value),
-        _principalController.text,
-      ),
-    );
-    _interestController.addListener(
-      () => _setText(
-        (vm, value) => vm.setInterestText(value),
-        _interestController.text,
-      ),
-    );
-    _feeController.addListener(
-      () => _setText((vm, value) => vm.setFeeText(value), _feeController.text),
-    );
-    _discountController.addListener(
-      () => _setText(
-        (vm, value) => vm.setDiscountText(value),
-        _discountController.text,
-      ),
-    );
-    _noteController.addListener(
-      () =>
-          _setText((vm, value) => vm.setNoteText(value), _noteController.text),
-    );
-  }
+  bool _controllersHydrated = false;
 
   @override
   void dispose() {
@@ -108,7 +79,7 @@ class _UnattributedRepaymentFormPageState
     UnattributedRepaymentFormViewModelProvider provider,
     UnattributedRepaymentFormState state,
   ) {
-    _syncControllers(state);
+    _hydrateControllers(state);
     final paidFromAccount = _findAccount(
       state.repaymentAccounts,
       state.paidFromAccountId,
@@ -132,15 +103,28 @@ class _UnattributedRepaymentFormPageState
                 interestController: _interestController,
                 feeController: _feeController,
                 discountController: _discountController,
+                principalValidator:
+                    (value) => _validatePrincipal(
+                      value,
+                      state.overview!.buckets.unattributedDebt,
+                    ),
               ),
               CreditRepaymentTransactionFields(
                 createTransaction: true,
                 onCreateTransactionChanged: null,
+                occurredAt: state.occurredAt,
                 occurredAtText: _formatDateTime(state.occurredAt),
                 onPickDate: () => _pickDate(provider, state.occurredAt),
+                onOccurredAtChanged: (value) {
+                  if (value != null) {
+                    ref.read(provider.notifier).setOccurredAt(value);
+                  }
+                },
                 repaymentAccount: paidFromAccount,
                 selectedRepaymentAccountId: state.paidFromAccountId,
                 repaymentAccounts: state.repaymentAccounts,
+                onRepaymentAccountChanged:
+                    ref.read(provider.notifier).setPaidFromAccountId,
                 onPickAccount:
                     () => _pickAccount(
                       accounts: state.repaymentAccounts,
@@ -197,15 +181,15 @@ class _UnattributedRepaymentFormPageState
     UnattributedRepaymentFormViewModelProvider provider,
   ) async {
     if (!_formKey.currentState!.validate()) return;
-    final amount = Money.tryParse(_principalController.text);
-    final max =
-        ref.read(provider).asData?.value.overview?.buckets.unattributedDebt;
-    if (amount != null && max != null && amount.minorUnits > max.minorUnits) {
-      _showError('还款本金不能超过未归属欠款');
-      return;
-    }
-
-    final outcome = await ref.read(provider.notifier).submit();
+    final outcome = await ref
+        .read(provider.notifier)
+        .submit(
+          principalText: _principalController.text,
+          interestText: _interestController.text,
+          feeText: _feeController.text,
+          discountText: _discountController.text,
+          noteText: _noteController.text,
+        );
     if (!mounted) return;
     switch (outcome) {
       case SubmitSuccess():
@@ -215,27 +199,14 @@ class _UnattributedRepaymentFormPageState
     }
   }
 
-  void _syncControllers(UnattributedRepaymentFormState state) {
-    _syncing = true;
+  void _hydrateControllers(UnattributedRepaymentFormState state) {
+    if (_controllersHydrated) return;
     syncTextControllerText(_principalController, state.principalText);
     syncTextControllerText(_interestController, state.interestText);
     syncTextControllerText(_feeController, state.feeText);
     syncTextControllerText(_discountController, state.discountText);
     syncTextControllerText(_noteController, state.noteText);
-    _syncing = false;
-  }
-
-  void _setText(
-    void Function(UnattributedRepaymentFormViewModel, String) setter,
-    String value,
-  ) {
-    if (_syncing) return;
-    setter(
-      ref.read(
-        unattributedRepaymentFormViewModelProvider(widget.accountId).notifier,
-      ),
-      value,
-    );
+    _controllersHydrated = true;
   }
 
   void _showError(String message) {
@@ -243,6 +214,15 @@ class _UnattributedRepaymentFormPageState
       SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
+}
+
+String? _validatePrincipal(String? value, Money max) {
+  final error = validatePositiveMoneyText(value);
+  if (error != null) return error;
+  final amount = Money.tryParse(value!);
+  return amount != null && amount.minorUnits > max.minorUnits
+      ? '还款本金不能超过未归属欠款'
+      : null;
 }
 
 Account? _findAccount(List<Account> accounts, String? id) {

@@ -30,37 +30,7 @@ class _InstallmentRepaymentFormPageState
   final _feeController = TextEditingController();
   final _discountController = TextEditingController();
   final _noteController = TextEditingController();
-  bool _syncing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _principalController.addListener(
-      () => _setText(
-        (vm, value) => vm.setPrincipalText(value),
-        _principalController.text,
-      ),
-    );
-    _interestController.addListener(
-      () => _setText(
-        (vm, value) => vm.setInterestText(value),
-        _interestController.text,
-      ),
-    );
-    _feeController.addListener(
-      () => _setText((vm, value) => vm.setFeeText(value), _feeController.text),
-    );
-    _discountController.addListener(
-      () => _setText(
-        (vm, value) => vm.setDiscountText(value),
-        _discountController.text,
-      ),
-    );
-    _noteController.addListener(
-      () =>
-          _setText((vm, value) => vm.setNoteText(value), _noteController.text),
-    );
-  }
+  bool _controllersHydrated = false;
 
   @override
   void dispose() {
@@ -97,7 +67,7 @@ class _InstallmentRepaymentFormPageState
       case InstallmentRepaymentFormStatus.loaded:
         break;
     }
-    _syncControllers(state);
+    _hydrateControllers(state);
 
     return Form(
       key: _formKey,
@@ -123,14 +93,22 @@ class _InstallmentRepaymentFormPageState
                 onCreateTransactionChanged:
                     (value) =>
                         ref.read(provider.notifier).setCreateTransaction(value),
+                occurredAt: state.occurredAt,
                 occurredAtText: _formatDateTime(state.occurredAt),
                 onPickDate: () => _pickDate(provider, state.occurredAt),
+                onOccurredAtChanged: (value) {
+                  if (value != null) {
+                    ref.read(provider.notifier).setOccurredAt(value);
+                  }
+                },
                 repaymentAccount: _findAccount(
                   state.accounts,
                   state.paidFromAccountId,
                 ),
                 selectedRepaymentAccountId: state.paidFromAccountId,
                 repaymentAccounts: state.accounts,
+                onRepaymentAccountChanged:
+                    ref.read(provider.notifier).setPaidFromAccountId,
                 onPickAccount:
                     () => _pickAccount(
                       accounts: state.accounts,
@@ -188,7 +166,15 @@ class _InstallmentRepaymentFormPageState
     InstallmentRepaymentFormViewModelProvider provider,
   ) async {
     if (!_formKey.currentState!.validate()) return;
-    final outcome = await ref.read(provider.notifier).submit();
+    final outcome = await ref
+        .read(provider.notifier)
+        .submit(
+          principalText: _principalController.text,
+          interestText: _interestController.text,
+          feeText: _feeController.text,
+          discountText: _discountController.text,
+          noteText: _noteController.text,
+        );
     if (!mounted) return;
     switch (outcome) {
       case SubmitSuccess():
@@ -198,25 +184,14 @@ class _InstallmentRepaymentFormPageState
     }
   }
 
-  void _syncControllers(InstallmentRepaymentFormState state) {
-    _syncing = true;
+  void _hydrateControllers(InstallmentRepaymentFormState state) {
+    if (_controllersHydrated) return;
     syncTextControllerText(_principalController, state.principalText);
     syncTextControllerText(_interestController, state.interestText);
     syncTextControllerText(_feeController, state.feeText);
     syncTextControllerText(_discountController, state.discountText);
     syncTextControllerText(_noteController, state.noteText);
-    _syncing = false;
-  }
-
-  void _setText(
-    void Function(InstallmentRepaymentFormViewModel, String) setter,
-    String value,
-  ) {
-    if (_syncing) return;
-    setter(
-      ref.read(installmentRepaymentFormViewModelProvider(_args).notifier),
-      value,
-    );
+    _controllersHydrated = true;
   }
 
   void _showError(String message) {

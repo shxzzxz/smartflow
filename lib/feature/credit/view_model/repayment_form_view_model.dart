@@ -81,21 +81,6 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
     );
   }
 
-  void setPrincipalText(String value) =>
-      _update((state) => state.copyWith(principalText: value));
-
-  void setInterestText(String value) =>
-      _update((state) => state.copyWith(interestText: value));
-
-  void setFeeText(String value) =>
-      _update((state) => state.copyWith(feeText: value));
-
-  void setDiscountText(String value) =>
-      _update((state) => state.copyWith(discountText: value));
-
-  void setNoteText(String value) =>
-      _update((state) => state.copyWith(noteText: value));
-
   void setOccurredAt(DateTime value) =>
       _update((state) => state.copyWith(occurredAt: value));
 
@@ -116,18 +101,24 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
   void setPaidFromAccountId(String? value) =>
       _update((state) => state.copyWith(paidFromAccountId: value));
 
-  Future<SubmitOutcome> submit() async {
+  Future<SubmitOutcome> submit({
+    required String principalText,
+    required String interestText,
+    required String feeText,
+    required String discountText,
+    required String noteText,
+  }) async {
     final current = state.asData?.value;
     if (current == null || !current.isLoaded) {
       return _invalidCommand('还款表单尚未加载');
     }
-    final principal = _parseNonNegativeMoney(current.principalText);
+    final principal = _parseNonNegativeMoney(principalText);
     if (principal == null) return _invalidCommand('请输入有效本金');
-    final interest = _parseOptionalNonNegativeMoney(current.interestText);
+    final interest = _parseOptionalNonNegativeMoney(interestText);
     if (interest == null) return _invalidCommand('请输入有效利息');
-    final fee = _parseOptionalNonNegativeMoney(current.feeText);
+    final fee = _parseOptionalNonNegativeMoney(feeText);
     if (fee == null) return _invalidCommand('请输入有效手续费');
-    final discount = _parseOptionalNonNegativeMoney(current.discountText);
+    final discount = _parseOptionalNonNegativeMoney(discountText);
     if (discount == null) return _invalidCommand('请输入有效优惠');
     final cashPaid = principal + interest + fee - discount;
     if (cashPaid.minorUnits <= 0) {
@@ -152,7 +143,7 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
     try {
       final service = ref.read(repaymentAppServiceProvider);
       final editTransactionId = args.editTransactionId;
-      final note = trimToNull(current.noteText);
+      final note = trimToNull(noteText);
       final amount = credit.RepaymentAmountDto(
         principal: principal,
         interest: interest,

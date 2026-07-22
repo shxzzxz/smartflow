@@ -128,6 +128,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                             selectedId: state.disbursementAccountId,
                             onSelected: notifier.setDisbursementAccountId,
                           ),
+                  onChanged: notifier.setDisbursementAccountId,
                 ),
               MoneyPlainFormRow(
                 label: '本金',
@@ -143,16 +144,25 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
               ),
               DateTimePlainFormRow(
                 label: '借款日期',
+                dateTime: state.borrowingDate,
                 value: _formatDate(state.borrowingDate),
                 onTap: () => _pickBorrowingDate(state.borrowingDate),
+                onChanged: (value) {
+                  if (value != null) notifier.setBorrowingDate(value);
+                },
               ),
               DateTimePlainFormRow(
                 label: '首期还款日',
+                dateTime: state.firstRepaymentDate,
                 value: _formatDate(state.firstRepaymentDate),
                 onTap: () => _pickFirstRepaymentDate(state.firstRepaymentDate),
+                onChanged: (value) {
+                  if (value != null) notifier.setFirstRepaymentDate(value);
+                },
               ),
               DateTimePlainFormRow(
                 label: '末期还款日',
+                dateTime: state.lastRepaymentDate,
                 value:
                     state.lastRepaymentDate == null
                         ? '按期数自动计算'
@@ -161,6 +171,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                     () => _pickLastRepaymentDate(
                       state.lastRepaymentDate ?? state.firstRepaymentDate,
                     ),
+                onChanged: notifier.setLastRepaymentDate,
               ),
               DropdownPlainFormRow<InstallmentRepaymentMethod>(
                 label: '分期方式',

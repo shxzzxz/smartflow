@@ -4,6 +4,7 @@ import '../theme/app_text_styles.dart';
 import '../token/form.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
+import 'app_form_field.dart';
 
 enum AppPlainRowValueAlignment { start, end }
 
@@ -205,29 +206,42 @@ class AppPlainSwitchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final description = this.description?.trim();
-    final labelStyle = context.appTextStyles.formLabel;
-    final descriptionStyle = context.appTextStyles.formSwitchDescription;
-    TextStyle styleForState(TextStyle style) {
-      if (enabled) return style;
-      return style.copyWith(
-        color: style.color?.withValues(alpha: AppFormTokens.disabledOpacity),
-      );
-    }
+    return AppControlledFormField<bool>(
+      value: value,
+      enabled: enabled,
+      onChanged: (nextValue) {
+        if (nextValue != null) onChanged(nextValue);
+      },
+      builder: (context, fieldValue, _, fieldChanged) {
+        final description = this.description?.trim();
+        final labelStyle = context.appTextStyles.formLabel;
+        final descriptionStyle = context.appTextStyles.formSwitchDescription;
+        TextStyle styleForState(TextStyle style) {
+          if (enabled) return style;
+          return style.copyWith(
+            color: style.color?.withValues(
+              alpha: AppFormTokens.disabledOpacity,
+            ),
+          );
+        }
 
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: AppFormTokens.rowMinHeight),
-      child: SwitchListTile.adaptive(
-        contentPadding: EdgeInsets.zero,
-        minTileHeight: AppFormTokens.rowMinHeight,
-        title: Text(label, style: styleForState(labelStyle)),
-        subtitle:
-            description != null && description.isNotEmpty
-                ? Text(description, style: styleForState(descriptionStyle))
-                : null,
-        value: value,
-        onChanged: enabled ? onChanged : null,
-      ),
+        return ConstrainedBox(
+          constraints: const BoxConstraints(
+            minHeight: AppFormTokens.rowMinHeight,
+          ),
+          child: SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            minTileHeight: AppFormTokens.rowMinHeight,
+            title: Text(label, style: styleForState(labelStyle)),
+            subtitle:
+                description != null && description.isNotEmpty
+                    ? Text(description, style: styleForState(descriptionStyle))
+                    : null,
+            value: fieldValue ?? value,
+            onChanged: enabled ? fieldChanged : null,
+          ),
+        );
+      },
     );
   }
 }

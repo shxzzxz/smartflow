@@ -87,24 +87,9 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
       noteText: editView?.note ?? '',
       createTransaction: editView?.hasTransaction ?? true,
       editingRepaymentId: editView?.repaymentId,
-      manualAllocations: _manualTextsFromAllocations(defaultAllocations),
+      manualAllocations: _manualAmountsFromAllocations(defaultAllocations),
     );
   }
-
-  void setPrincipalText(String value) =>
-      _update((state) => state.copyWith(principalText: value));
-
-  void setInterestText(String value) =>
-      _update((state) => state.copyWith(interestText: value));
-
-  void setFeeText(String value) =>
-      _update((state) => state.copyWith(feeText: value));
-
-  void setDiscountText(String value) =>
-      _update((state) => state.copyWith(discountText: value));
-
-  void setNoteText(String value) =>
-      _update((state) => state.copyWith(noteText: value));
 
   void setOccurredAt(DateTime value) =>
       _update((state) => state.copyWith(occurredAt: value));
@@ -118,11 +103,21 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
   void setAllocationMode(BillRepaymentAllocationMode value) =>
       _update((state) => state.copyWith(allocationMode: value));
 
-  void calculateAllocation() => _update((state) {
+  void calculateAllocation({
+    required String principalText,
+    required String interestText,
+    required String feeText,
+    required String discountText,
+  }) => _update((state) {
     if (state.allocationMode == BillRepaymentAllocationMode.manual) {
       return state;
     }
-    final amount = _amountFromState(state);
+    final amount = _amountFromText(
+      principalText: principalText,
+      interestText: interestText,
+      feeText: feeText,
+      discountText: discountText,
+    );
     if (amount == null) return state;
     final review = _allocationReview(
       lines: state.lines,
@@ -130,47 +125,72 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
       amount: amount,
     );
     return state.copyWith(
-      manualAllocations: _manualTextsFromAllocations(review.allocations),
+      manualAllocations: _manualAmountsFromAllocations(review.allocations),
     );
   });
 
-  void setManualAllocationText({
+  void setManualAllocationAmount({
     required String billItemId,
-    String? principalText,
-    String? interestText,
-    String? feeText,
-    String? discountText,
+    Money? principal,
+    Money? interest,
+    Money? fee,
+    Money? discount,
   }) {
     _update((state) {
       final current =
           state.manualAllocations[billItemId] ??
-          const BillRepaymentManualAllocationText();
+          credit.RepaymentAmountBreakdown.zero;
       return state.copyWith(
         manualAllocations: {
           ...state.manualAllocations,
-          billItemId: current.copyWith(
-            principalText: principalText,
-            interestText: interestText,
-            feeText: feeText,
-            discountText: discountText,
+          billItemId: credit.RepaymentAmountBreakdown(
+            principal: principal ?? current.principal,
+            interest: interest ?? current.interest,
+            fee: fee ?? current.fee,
+            discount: discount ?? current.discount,
           ),
         },
       );
     });
   }
 
-  Future<SubmitOutcome> submit() async {
+  BillRepaymentAllocationReview? allocationReview({
+    required String principalText,
+    required String interestText,
+    required String feeText,
+    required String discountText,
+  }) {
+    final current = state.asData?.value;
+    if (current == null || !current.isLoaded) return null;
+    final amount = _amountFromText(
+      principalText: principalText,
+      interestText: interestText,
+      feeText: feeText,
+      discountText: discountText,
+    );
+    return amount == null
+        ? null
+        : _allocationReviewFromState(current, amount: amount);
+  }
+
+  Future<SubmitOutcome> submit({
+    required String principalText,
+    required String interestText,
+    required String feeText,
+    required String discountText,
+    required String noteText,
+  }) async {
     final current = state.asData?.value;
     if (current == null || !current.isLoaded) {
       return _invalidCommand('账单还款表单尚未加载');
     }
-    final principal = _parseOptionalNonNegativeMoney(current.principalText);
+    final principal = _parseOptionalNonNegativeMoney(principalText);
     if (principal == null) return _invalidCommand('请输入有效本金');
-    final interest = _parseOptionalNonNegativeMoney(current.interestText);
+    final interest = _parseOptionalNonNegativeMoney(interestText);
     if (interest == null) return _invalidCommand('请输入有效利息');
-    final fee = _parseOptionalNonNegativeMoney(current.feeText);
+    final fee = _parseOptionalNonNegativeMoney(feeText);
     if (fee == null) return _invalidCommand('请输入有效手续费');
-    final discount = _parseOptionalNonNegativeMoney(current.discountText);
+    final discount = _parseOptionalNonNegativeMoney(discountText);
     if (discount == null) return _invalidCommand('请输入有效优惠');
     final cashPaid = principal + interest + fee - discount;
     if (cashPaid.minorUnits <= 0) {
@@ -215,7 +235,7 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
                       paidFromAccountId: paidFromAccountId,
                       occurredAt: current.occurredAt,
                     ),
-            note: trimToNull(current.noteText),
+            note: trimToNull(noteText),
           ),
         );
       } else {
@@ -229,9 +249,9 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
                     : credit.RepaymentTransactionInfo(
                       paidFromAccountId: paidFromAccountId,
                       occurredAt: current.occurredAt,
-                      note: trimToNull(current.noteText),
+                      note: trimToNull(noteText),
                     ),
-            note: trimToNull(current.noteText),
+            note: trimToNull(noteText),
           ),
         );
       }
@@ -309,7 +329,7 @@ class BillRepaymentFormState {
     String discountText = '',
     String noteText = '',
     String? paidFromAccountId,
-    Map<String, BillRepaymentManualAllocationText> manualAllocations = const {},
+    Map<String, credit.RepaymentAmountBreakdown> manualAllocations = const {},
     bool createTransaction = true,
     String? editingRepaymentId,
   }) {
@@ -379,6 +399,8 @@ class BillRepaymentFormState {
   final credit_query.BillSummaryReadModel? summary;
   final List<Account> repaymentSourceAccounts;
   final List<BillRepaymentAllocationLine> lines;
+
+  /// Controller initialization snapshot. User edits remain in the View.
   final String principalText;
   final String interestText;
   final String feeText;
@@ -389,7 +411,7 @@ class BillRepaymentFormState {
   final String? editingRepaymentId;
   final bool createTransaction;
   final BillRepaymentAllocationMode allocationMode;
-  final Map<String, BillRepaymentManualAllocationText> manualAllocations;
+  final Map<String, credit.RepaymentAmountBreakdown> manualAllocations;
   final bool submitting;
 
   bool get isLoaded => status == BillRepaymentFormLoadStatus.loaded;
@@ -402,59 +424,17 @@ class BillRepaymentFormState {
   credit.RepaymentAmountBreakdown get pendingBreakdown =>
       _pendingBreakdown(lines);
 
-  Money? get cashPaid {
-    final principal = _parseOptionalNonNegativeMoney(principalText);
-    final interest = _parseOptionalNonNegativeMoney(interestText);
-    final fee = _parseOptionalNonNegativeMoney(feeText);
-    final discount = _parseOptionalNonNegativeMoney(discountText);
-    if (principal == null ||
-        interest == null ||
-        fee == null ||
-        discount == null) {
-      return null;
-    }
-    return principal + interest + fee - discount;
-  }
-
-  BillRepaymentAllocationReview? get allocationReview {
-    final principal = _parseOptionalNonNegativeMoney(principalText);
-    final interest = _parseOptionalNonNegativeMoney(interestText);
-    final fee = _parseOptionalNonNegativeMoney(feeText);
-    final discount = _parseOptionalNonNegativeMoney(discountText);
-    if (principal == null ||
-        interest == null ||
-        fee == null ||
-        discount == null ||
-        lines.isEmpty) {
-      return null;
-    }
-    return _allocationReviewFromState(
-      this,
-      amount: credit.RepaymentAmountBreakdown(
-        principal: principal,
-        interest: interest,
-        fee: fee,
-        discount: discount,
-      ),
-    );
-  }
-
-  BillRepaymentManualAllocationText manualAllocationText(String billItemId) {
+  credit.RepaymentAmountBreakdown manualAllocation(String billItemId) {
     return manualAllocations[billItemId] ??
-        const BillRepaymentManualAllocationText();
+        credit.RepaymentAmountBreakdown.zero;
   }
 
   BillRepaymentFormState copyWith({
-    String? principalText,
-    String? interestText,
-    String? feeText,
-    String? discountText,
-    String? noteText,
     DateTime? occurredAt,
     Object? paidFromAccountId = _sentinel,
     bool? createTransaction,
     BillRepaymentAllocationMode? allocationMode,
-    Map<String, BillRepaymentManualAllocationText>? manualAllocations,
+    Map<String, credit.RepaymentAmountBreakdown>? manualAllocations,
     bool? submitting,
   }) {
     return BillRepaymentFormState(
@@ -462,11 +442,11 @@ class BillRepaymentFormState {
       summary: summary,
       repaymentSourceAccounts: repaymentSourceAccounts,
       lines: lines,
-      principalText: principalText ?? this.principalText,
-      interestText: interestText ?? this.interestText,
-      feeText: feeText ?? this.feeText,
-      discountText: discountText ?? this.discountText,
-      noteText: noteText ?? this.noteText,
+      principalText: principalText,
+      interestText: interestText,
+      feeText: feeText,
+      discountText: discountText,
+      noteText: noteText,
       occurredAt: occurredAt ?? this.occurredAt,
       paidFromAccountId:
           paidFromAccountId == _sentinel
@@ -477,34 +457,6 @@ class BillRepaymentFormState {
       allocationMode: allocationMode ?? this.allocationMode,
       manualAllocations: manualAllocations ?? this.manualAllocations,
       submitting: submitting ?? this.submitting,
-    );
-  }
-}
-
-class BillRepaymentManualAllocationText {
-  const BillRepaymentManualAllocationText({
-    this.principalText = '',
-    this.interestText = '',
-    this.feeText = '',
-    this.discountText = '',
-  });
-
-  final String principalText;
-  final String interestText;
-  final String feeText;
-  final String discountText;
-
-  BillRepaymentManualAllocationText copyWith({
-    String? principalText,
-    String? interestText,
-    String? feeText,
-    String? discountText,
-  }) {
-    return BillRepaymentManualAllocationText(
-      principalText: principalText ?? this.principalText,
-      interestText: interestText ?? this.interestText,
-      feeText: feeText ?? this.feeText,
-      discountText: discountText ?? this.discountText,
     );
   }
 }
@@ -576,29 +528,16 @@ BillRepaymentAllocationReview _allocationReview({
 
 BillRepaymentAllocationReview? _allocationReviewFromState(
   BillRepaymentFormState state, {
-  credit.RepaymentAmountBreakdown? amount,
+  required credit.RepaymentAmountBreakdown amount,
 }) {
-  final effectiveAmount = amount ?? _amountFromState(state);
-  if (effectiveAmount == null) return null;
-
   final allocations = <credit.BillRepaymentAllocation>[];
   for (final line in state.lines) {
-    final text = state.manualAllocationText(line.billItemId);
-    final principal = _parseOptionalNonNegativeMoney(text.principalText);
-    final interest = _parseOptionalNonNegativeMoney(text.interestText);
-    final fee = _parseOptionalNonNegativeMoney(text.feeText);
-    final discount = _parseOptionalNonNegativeMoney(text.discountText);
-    if (principal == null ||
-        interest == null ||
-        fee == null ||
-        discount == null) {
-      return null;
-    }
+    final manual = state.manualAllocation(line.billItemId);
     final allocated = credit.RepaymentAmountDto(
-      principal: principal,
-      interest: interest,
-      fee: fee,
-      discount: discount,
+      principal: manual.principal,
+      interest: manual.interest,
+      fee: manual.fee,
+      discount: manual.discount,
     );
     if (!_hasPositiveAmount(allocated)) continue;
     allocations.add(
@@ -611,30 +550,33 @@ BillRepaymentAllocationReview? _allocationReviewFromState(
 
   return BillRepaymentAllocationViewModel(
     lines: state.lines,
-  ).reviewManual(amount: effectiveAmount, allocations: allocations);
+  ).reviewManual(amount: amount, allocations: allocations);
 }
 
-Map<String, BillRepaymentManualAllocationText> _manualTextsFromAllocations(
+Map<String, credit.RepaymentAmountBreakdown> _manualAmountsFromAllocations(
   List<credit.BillRepaymentAllocation> allocations,
 ) {
   return {
     for (final allocation in allocations)
-      allocation.billItemId: BillRepaymentManualAllocationText(
-        principalText: _optionalDefaultText(allocation.allocated.principal),
-        interestText: _optionalDefaultText(allocation.allocated.interest),
-        feeText: _optionalDefaultText(allocation.allocated.fee),
-        discountText: _optionalDefaultText(allocation.allocated.discount),
+      allocation.billItemId: credit.RepaymentAmountBreakdown(
+        principal: allocation.allocated.principal,
+        interest: allocation.allocated.interest,
+        fee: allocation.allocated.fee,
+        discount: allocation.allocated.discount,
       ),
   };
 }
 
-credit.RepaymentAmountBreakdown? _amountFromState(
-  BillRepaymentFormState state,
-) {
-  final principal = _parseOptionalNonNegativeMoney(state.principalText);
-  final interest = _parseOptionalNonNegativeMoney(state.interestText);
-  final fee = _parseOptionalNonNegativeMoney(state.feeText);
-  final discount = _parseOptionalNonNegativeMoney(state.discountText);
+credit.RepaymentAmountBreakdown? _amountFromText({
+  required String principalText,
+  required String interestText,
+  required String feeText,
+  required String discountText,
+}) {
+  final principal = _parseOptionalNonNegativeMoney(principalText);
+  final interest = _parseOptionalNonNegativeMoney(interestText);
+  final fee = _parseOptionalNonNegativeMoney(feeText);
+  final discount = _parseOptionalNonNegativeMoney(discountText);
   if (principal == null ||
       interest == null ||
       fee == null ||

@@ -118,8 +118,14 @@ class _ReimbursementReceiptFormPageState
               ),
               DateTimePlainFormRow(
                 label: '到账时间',
+                dateTime: state.occurredAt,
                 value: _formatDateTime(state.occurredAt),
                 onTap: () => _pickOccurredAt(provider, state.occurredAt),
+                onChanged: (value) {
+                  if (value != null) {
+                    ref.read(provider.notifier).setOccurredAt(value);
+                  }
+                },
               ),
               NotePlainFormRow(controller: _noteController),
             ],

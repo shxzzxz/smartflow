@@ -67,7 +67,7 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
     );
   }
 
-  void setLastRepaymentDate(DateTime value) {
+  void setLastRepaymentDate(DateTime? value) {
     _updateLoaded((state) => state.copyWith(lastRepaymentDate: value));
   }
 
@@ -329,7 +329,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
     Object? disbursementAccountId = _sentinel,
     DateTime? borrowingDate,
     DateTime? firstRepaymentDate,
-    DateTime? lastRepaymentDate,
+    Object? lastRepaymentDate = _sentinel,
     bool? firstDateTouched,
     InstallmentRepaymentMethod? method,
     InterestRatePeriod? ratePeriod,
@@ -348,7 +348,10 @@ class InstallmentFormLoaded extends InstallmentFormState {
               : disbursementAccountId as String?,
       borrowingDate: borrowingDate ?? this.borrowingDate,
       firstRepaymentDate: firstRepaymentDate ?? this.firstRepaymentDate,
-      lastRepaymentDate: lastRepaymentDate ?? this.lastRepaymentDate,
+      lastRepaymentDate:
+          lastRepaymentDate == _sentinel
+              ? this.lastRepaymentDate
+              : lastRepaymentDate as DateTime?,
       firstDateTouched: firstDateTouched ?? this.firstDateTouched,
       method: method ?? this.method,
       ratePeriod: ratePeriod ?? this.ratePeriod,

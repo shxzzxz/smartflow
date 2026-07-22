@@ -156,8 +156,14 @@ class _ReimbursementCloseFormPageState
               ),
               DateTimePlainFormRow(
                 label: '结束时间',
+                dateTime: state.occurredAt,
                 value: _formatDateTime(state.occurredAt),
                 onTap: () => _pickOccurredAt(provider, state.occurredAt),
+                onChanged: (value) {
+                  if (value != null) {
+                    ref.read(provider.notifier).setOccurredAt(value);
+                  }
+                },
               ),
               NotePlainFormRow(controller: _noteController),
             ],

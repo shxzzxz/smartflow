@@ -35,12 +35,16 @@ void main() {
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
     await container.read(provider.future);
-    final viewModel =
-        container.read(provider.notifier)
-          ..setPrincipalText('12.34')
-          ..setPaidFromAccountId('cash');
+    final viewModel = container.read(provider.notifier)
+      ..setPaidFromAccountId('cash');
 
-    final outcome = await viewModel.submit();
+    final outcome = await viewModel.submit(
+      principalText: '12.34',
+      interestText: '',
+      feeText: '',
+      discountText: '',
+      noteText: '',
+    );
 
     expect(outcome, isA<SubmitSuccess>());
     expect(
@@ -66,13 +70,16 @@ void main() {
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
     await container.read(provider.future);
-    final viewModel =
-        container.read(provider.notifier)
-          ..setPrincipalText('0')
-          ..setInterestText('1')
-          ..setPaidFromAccountId('cash');
+    final viewModel = container.read(provider.notifier)
+      ..setPaidFromAccountId('cash');
 
-    final outcome = await viewModel.submit();
+    final outcome = await viewModel.submit(
+      principalText: '0',
+      interestText: '1',
+      feeText: '',
+      discountText: '',
+      noteText: '',
+    );
 
     expect(outcome, isA<SubmitSuccess>());
     final amount = repayment.liabilityRepaymentCommands.single.amount;
@@ -89,12 +96,16 @@ void main() {
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
     await container.read(provider.future);
-    final viewModel =
-        container.read(provider.notifier)
-          ..setPrincipalText('0')
-          ..setPaidFromAccountId('cash');
+    final viewModel = container.read(provider.notifier)
+      ..setPaidFromAccountId('cash');
 
-    final outcome = await viewModel.submit();
+    final outcome = await viewModel.submit(
+      principalText: '0',
+      interestText: '',
+      feeText: '',
+      discountText: '',
+      noteText: '',
+    );
 
     expect(outcome, isA<SubmitFailure>());
     expect(repayment.liabilityRepaymentCommands, isEmpty);
@@ -114,12 +125,16 @@ void main() {
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
     await container.read(provider.future);
-    final viewModel =
-        container.read(provider.notifier)
-          ..setPrincipalText('99')
-          ..setPaidFromAccountId('cash');
+    final viewModel = container.read(provider.notifier)
+      ..setPaidFromAccountId('cash');
 
-    final outcome = await viewModel.submit();
+    final outcome = await viewModel.submit(
+      principalText: '99',
+      interestText: '',
+      feeText: '',
+      discountText: '',
+      noteText: '',
+    );
 
     expect(outcome, isA<SubmitFailure>());
     expect(
@@ -140,11 +155,14 @@ void main() {
       addTearDown(subscription.close);
 
       final state = await container.read(provider.future);
-      final notifier =
-          container.read(provider.notifier)
-            ..setPrincipalText('10')
-            ..setDiscountText('1');
-      final outcome = await notifier.submit();
+      final notifier = container.read(provider.notifier);
+      final outcome = await notifier.submit(
+        principalText: '10',
+        interestText: '',
+        feeText: '',
+        discountText: '1',
+        noteText: '',
+      );
 
       expect(state.principalText, '100.00');
       expect(outcome, isA<SubmitSuccess>());
@@ -173,12 +191,15 @@ void main() {
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
     await container.read(provider.future);
-    final notifier =
-        container.read(provider.notifier)
-          ..setPrincipalText('0')
-          ..setInterestText('1');
+    final notifier = container.read(provider.notifier);
 
-    final outcome = await notifier.submit();
+    final outcome = await notifier.submit(
+      principalText: '0',
+      interestText: '1',
+      feeText: '',
+      discountText: '',
+      noteText: '',
+    );
 
     expect(outcome, isA<SubmitSuccess>());
     final amount = repayment.prepaymentCommands.single.amount;
@@ -196,7 +217,15 @@ void main() {
     addTearDown(subscription.close);
 
     final state = await container.read(provider.future);
-    final outcome = await container.read(provider.notifier).submit();
+    final outcome = await container
+        .read(provider.notifier)
+        .submit(
+          principalText: state.principalText,
+          interestText: state.interestText,
+          feeText: state.feeText,
+          discountText: state.discountText,
+          noteText: state.noteText,
+        );
 
     expect(state.principalText, '60.00');
     expect(state.interestText, '2.00');
@@ -230,10 +259,15 @@ void main() {
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
 
-    await container.read(provider.future);
-    final outcome =
-        await (container.read(provider.notifier)
-          ..setCreateTransaction(false)).submit();
+    final state = await container.read(provider.future);
+    final outcome = await (container.read(provider.notifier)
+      ..setCreateTransaction(false)).submit(
+      principalText: state.principalText,
+      interestText: state.interestText,
+      feeText: state.feeText,
+      discountText: state.discountText,
+      noteText: state.noteText,
+    );
 
     expect(outcome, isA<SubmitSuccess>());
     expect(repayment.billRepaymentCommands.single.transactionInfo, isNull);
@@ -249,18 +283,20 @@ void main() {
     addTearDown(subscription.close);
 
     await container.read(provider.future);
-    final notifier =
-        container.read(provider.notifier)
-          ..setPrincipalText('0')
-          ..setInterestText('2')
-          ..setFeeText('0')
-          ..setManualAllocationText(
-            billItemId: 'bill-item',
-            principalText: '0',
-            interestText: '2',
-            feeText: '0',
-          );
-    final outcome = await notifier.submit();
+    final notifier = container.read(provider.notifier)
+      ..setManualAllocationAmount(
+        billItemId: 'bill-item',
+        principal: Money.zero(),
+        interest: const Money(minorUnits: 200),
+        fee: Money.zero(),
+      );
+    final outcome = await notifier.submit(
+      principalText: '0',
+      interestText: '2',
+      feeText: '0',
+      discountText: '',
+      noteText: '',
+    );
 
     expect(outcome, isA<SubmitSuccess>());
     final allocation =
@@ -296,9 +332,17 @@ void main() {
     addTearDown(subscription.close);
 
     final state = await container.read(provider.future);
+    final review = container
+        .read(provider.notifier)
+        .allocationReview(
+          principalText: state.principalText,
+          interestText: state.interestText,
+          feeText: state.feeText,
+          discountText: state.discountText,
+        );
 
     expect(state.discountText, '0.50');
-    expect(state.allocationReview?.unallocated.discount, Money.zero());
+    expect(review?.unallocated.discount, Money.zero());
   });
 
   test('bill repayment form supports equal allocation mode', () async {
@@ -314,12 +358,21 @@ void main() {
     addTearDown(subscription.close);
 
     await container.read(provider.future);
-    final notifier =
-        container.read(provider.notifier)
-          ..setPrincipalText('60')
-          ..setAllocationMode(BillRepaymentAllocationMode.equal)
-          ..calculateAllocation();
-    final outcome = await notifier.submit();
+    final notifier = container.read(provider.notifier)
+      ..setAllocationMode(BillRepaymentAllocationMode.equal);
+    notifier.calculateAllocation(
+      principalText: '60',
+      interestText: '',
+      feeText: '',
+      discountText: '',
+    );
+    final outcome = await notifier.submit(
+      principalText: '60',
+      interestText: '',
+      feeText: '',
+      discountText: '',
+      noteText: '',
+    );
 
     expect(outcome, isA<SubmitSuccess>());
     final allocations = repayment.billRepaymentCommands.single.allocations;
@@ -345,20 +398,30 @@ void main() {
       addTearDown(subscription.close);
 
       await container.read(provider.future);
-      final notifier =
-          container.read(provider.notifier)
-            ..setPrincipalText('60')
-            ..setAllocationMode(BillRepaymentAllocationMode.equal)
-            ..calculateAllocation()
-            ..setManualAllocationText(
-              billItemId: 'bill-item-1',
-              principalText: '20',
-            )
-            ..setManualAllocationText(
-              billItemId: 'bill-item-2',
-              principalText: '40',
-            );
-      final outcome = await notifier.submit();
+      final notifier = container.read(provider.notifier)
+        ..setAllocationMode(BillRepaymentAllocationMode.equal);
+      notifier.calculateAllocation(
+        principalText: '60',
+        interestText: '',
+        feeText: '',
+        discountText: '',
+      );
+      notifier
+        ..setManualAllocationAmount(
+          billItemId: 'bill-item-1',
+          principal: const Money(minorUnits: 2000),
+        )
+        ..setManualAllocationAmount(
+          billItemId: 'bill-item-2',
+          principal: const Money(minorUnits: 4000),
+        );
+      final outcome = await notifier.submit(
+        principalText: '60',
+        interestText: '',
+        feeText: '',
+        discountText: '',
+        noteText: '',
+      );
 
       expect(outcome, isA<SubmitSuccess>());
       final allocations = repayment.billRepaymentCommands.single.allocations;
@@ -385,17 +448,22 @@ void main() {
     await container.read(provider.future);
     final notifier =
         container.read(provider.notifier)
-          ..setPrincipalText('60')
           ..setAllocationMode(BillRepaymentAllocationMode.manual)
-          ..setManualAllocationText(
+          ..setManualAllocationAmount(
             billItemId: 'bill-item-1',
-            principalText: '20',
+            principal: const Money(minorUnits: 2000),
           )
-          ..setManualAllocationText(
+          ..setManualAllocationAmount(
             billItemId: 'bill-item-2',
-            principalText: '40',
+            principal: const Money(minorUnits: 4000),
           );
-    final outcome = await notifier.submit();
+    final outcome = await notifier.submit(
+      principalText: '60',
+      interestText: '',
+      feeText: '',
+      discountText: '',
+      noteText: '',
+    );
 
     expect(outcome, isA<SubmitSuccess>());
     final allocations = repayment.billRepaymentCommands.single.allocations;
@@ -419,7 +487,15 @@ void main() {
     addTearDown(subscription.close);
 
     final state = await container.read(provider.future);
-    final outcome = await container.read(provider.notifier).submit();
+    final outcome = await container
+        .read(provider.notifier)
+        .submit(
+          principalText: state.principalText,
+          interestText: state.interestText,
+          feeText: state.feeText,
+          discountText: state.discountText,
+          noteText: state.noteText,
+        );
 
     expect(state.principalText, '30.00');
     expect(outcome, isA<SubmitSuccess>());
@@ -440,7 +516,17 @@ void main() {
     addTearDown(subscription.close);
 
     final state = await container.read(provider.future);
-    final outcome = await container.read(provider.notifier).submit();
+    final loaded = state as BillConversionInstallmentLoaded;
+    final outcome = await container
+        .read(provider.notifier)
+        .submit(
+          principalText: loaded.principalText,
+          totalPeriodsText: loaded.totalPeriodsText,
+          rateText: '',
+          totalFeeText: '',
+          overrideInstallmentText: '',
+          noteText: '',
+        );
 
     expect(state, isA<BillConversionInstallmentLoaded>());
     expect(outcome, isA<UiActionSuccess<String>>());
@@ -467,12 +553,14 @@ void main() {
     addTearDown(subscription.close);
 
     final state = await container.read(provider.future);
-    final notifier =
-        container.read(provider.notifier)
-          ..setInterestText('1')
-          ..setFeeText('2')
-          ..setDiscountText('0.50');
-    final outcome = await notifier.submit();
+    final notifier = container.read(provider.notifier);
+    final outcome = await notifier.submit(
+      principalText: state.principalText,
+      interestText: '1',
+      feeText: '2',
+      discountText: '0.50',
+      noteText: '',
+    );
 
     expect(state.principalText, '25.00');
     expect(outcome, isA<SubmitSuccess>());
