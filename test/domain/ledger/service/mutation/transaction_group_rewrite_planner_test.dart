@@ -345,6 +345,68 @@ void main() {
   );
 
   test(
+    'advance amount cannot fall below combined refunds and receipts',
+    () async {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final parent = engine.createReimbursementAdvance(
+        ReimbursementAdvanceInstruction(
+          amount: Money.parse('100.00'),
+          receivableAccountId: 'receivable',
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'travel',
+          occurredAt: DateTime(2026, 7, 1),
+        ),
+      );
+      final receipt = engine.createReimbursementReceipt(
+        instruction: ReimbursementReceiptInstruction(
+          advanceTransactionId: parent.id,
+          amount: Money.parse('60.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'bank',
+          occurredAt: DateTime(2026, 7, 2),
+        ),
+        advance: parent,
+      );
+      final refund = engine.createRefund(
+        instruction: RefundInstruction(
+          parentTransactionId: parent.id,
+          amount: Money.parse('20.00'),
+          refundToAccountId: 'bank',
+          occurredAt: DateTime(2026, 7, 2),
+        ),
+        parent: parent,
+        refundOffsetAccountId: 'receivable',
+      );
+      final candidate = engine.createReimbursementAdvance(
+        ReimbursementAdvanceInstruction(
+          amount: Money.parse('70.00'),
+          receivableAccountId: 'receivable',
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'travel',
+          occurredAt: parent.occurredAt,
+        ),
+      );
+      final planner = TransactionGroupRewritePlanner(
+        postingEngine: engine,
+        postingInstructionResolver: const DefaultPostingInstructionResolver(),
+      );
+
+      await expectLater(
+        planner.planParentRewrite(
+          currentGroup: TransactionGroup(
+            parentTransaction: parent,
+            childTransactions: [receipt, refund],
+          ),
+          candidateParent: candidate,
+        ),
+        throwsA(isA<BusinessException>()),
+      );
+    },
+  );
+
+  test(
     'editing reimbursement receivable account rebases receipt entries without changing receipt facts',
     () async {
       final engine = PostingEngine(

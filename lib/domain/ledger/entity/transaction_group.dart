@@ -49,6 +49,13 @@ class TransactionGroup {
         );
   }
 
+  Money reimbursementOutstanding() {
+    if (reimbursementClosed) return Money.zero();
+    return parentTransaction.primaryAmount -
+        refundedTotal() -
+        reimbursementReceivedTotal();
+  }
+
   bool get reimbursementClosed => childTransactions.any(
     (transaction) =>
         transaction.businessPurpose == BusinessPurpose.reimbursementClose,

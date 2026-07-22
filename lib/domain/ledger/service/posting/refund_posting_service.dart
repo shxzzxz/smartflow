@@ -46,7 +46,10 @@ class RefundPostingService {
     final parentViolation = _validateRefundParent(parent, group, instruction);
     if (parentViolation != null) parentViolation.throwException();
 
-    final remaining = parent.primaryAmount - group.refundedTotal();
+    final remaining =
+        parent.businessPurpose == BusinessPurpose.reimbursementAdvance
+            ? group.reimbursementOutstanding()
+            : parent.primaryAmount - group.refundedTotal();
     if (instruction.amount.minorUnits > remaining.minorUnits) {
       LedgerViolationReason.refundExceedsRemaining.throwException();
     }

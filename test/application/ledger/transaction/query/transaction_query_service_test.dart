@@ -5,6 +5,52 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/time/month_key.dart';
 
 void main() {
+  test('reimbursement outstanding includes refunds', () async {
+    final parent = _transaction(
+      id: 'parent',
+      purpose: BusinessPurpose.reimbursementAdvance,
+      amount: 10000,
+    );
+    final refund = _transaction(
+      id: 'refund',
+      parentId: 'parent',
+      purpose: BusinessPurpose.refund,
+      amount: 2000,
+    );
+    final receipt = _transaction(
+      id: 'receipt',
+      parentId: 'parent',
+      purpose: BusinessPurpose.reimbursementReceipt,
+      amount: 6000,
+    );
+    final service = TransactionQueryServiceImpl(
+      transactionRead: _FakeTransactionReadRepository(
+        transactions: {'parent': parent, 'refund': refund, 'receipt': receipt},
+        reimbursementAggregate: const {
+          BusinessPurpose.refund: TransactionChildAggregate(
+            sumMinor: 2000,
+            count: 1,
+          ),
+          BusinessPurpose.reimbursementReceipt: TransactionChildAggregate(
+            sumMinor: 6000,
+            count: 1,
+          ),
+        },
+      ),
+      entryRead: const _FakeEntryReadRepository(),
+      detailRead: const _FakeTransactionDetailReadRepository(),
+      metricsSource: const _UnusedLedgerMetricsSource(),
+    );
+
+    final detail = await service.findTransactionDetail('parent');
+
+    expect(detail, isNotNull);
+    expect(
+      detail!.reimbursementSummary?.outstanding,
+      const Money(minorUnits: 2000),
+    );
+  });
+
   test('child detail includes parent reimbursement closed summary', () async {
     final parent = _transaction(
       id: 'parent',

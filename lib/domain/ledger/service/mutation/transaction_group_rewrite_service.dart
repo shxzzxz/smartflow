@@ -144,9 +144,12 @@ class TransactionGroupRewriteService {
     );
     final editedInstruction = instruction.editPatch.applyTo(currentInstruction);
     final remaining =
-        group.parentTransaction.primaryAmount -
-        group.refundedTotal() +
-        currentRefund.primaryAmount;
+        group.parentTransaction.businessPurpose ==
+                BusinessPurpose.reimbursementAdvance
+            ? group.reimbursementOutstanding() + currentRefund.primaryAmount
+            : group.parentTransaction.primaryAmount -
+                group.refundedTotal() +
+                currentRefund.primaryAmount;
     if (editedInstruction.amount.minorUnits > remaining.minorUnits) {
       LedgerViolationReason.refundExceedsRemaining.throwException();
     }
@@ -197,9 +200,7 @@ class TransactionGroupRewriteService {
     final group = target.group;
     final currentReceipt = target.child;
     final remaining =
-        group.parentTransaction.primaryAmount -
-        group.reimbursementReceivedTotal() +
-        currentReceipt.primaryAmount;
+        group.reimbursementOutstanding() + currentReceipt.primaryAmount;
     final amount = instruction.amount ?? currentReceipt.primaryAmount;
     if (amount.minorUnits > remaining.minorUnits) {
       LedgerViolationReason.reimbursementReceiptExceedsOutstanding

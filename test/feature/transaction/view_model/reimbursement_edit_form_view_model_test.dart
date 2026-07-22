@@ -50,6 +50,17 @@ void main() {
     },
   );
 
+  test('receipt edit remaining includes refunds', () async {
+    final container = _container(includeRefund: true);
+
+    final state = await container.read(
+      reimbursementEditFormViewModelProvider('receipt').future,
+    );
+
+    expect(state.status, ReimbursementEditFormStatus.loaded);
+    expect(state.outstandingBeforeTransaction, const Money(minorUnits: 8000));
+  });
+
   test('blocks receipt editing after reimbursement close', () async {
     final container = _container(closed: true);
 
@@ -166,6 +177,7 @@ void main() {
 
 ProviderContainer _container({
   bool closed = false,
+  bool includeRefund = false,
   bool includeClose = false,
   bool closeHasReceiveAccount = false,
   _FakeTransactionEditAppService? editService,
@@ -188,7 +200,9 @@ ProviderContainer _container({
       accountsByIdProvider.overrideWithValue(AsyncData(accounts)),
       transactionDetailProvider(
         'parent',
-      ).overrideWithValue(AsyncData(_parentDetail(closed: closed))),
+      ).overrideWithValue(
+        AsyncData(_parentDetail(closed: closed, includeRefund: includeRefund)),
+      ),
       transactionDetailProvider(
         'receipt',
       ).overrideWithValue(AsyncData(_receiptDetail())),
@@ -209,7 +223,10 @@ ProviderContainer _container({
   return container;
 }
 
-TransactionDetail _parentDetail({required bool closed}) {
+TransactionDetail _parentDetail({
+  required bool closed,
+  bool includeRefund = false,
+}) {
   final entries = [
     _entry('parent', 'receivable', EntryDirection.debit, 10000),
     _entry('parent', 'cash', EntryDirection.credit, 10000),
@@ -232,7 +249,9 @@ TransactionDetail _parentDetail({required bool closed}) {
     reimbursementSummary: ReimbursementSummary(
       advanceAmount: const Money(minorUnits: 10000),
       receivedAmount: Money(minorUnits: closed ? 10000 : 4000),
-      outstanding: Money(minorUnits: closed ? 0 : 6000),
+      outstanding: Money(
+        minorUnits: closed ? 0 : includeRefund ? 4000 : 6000,
+      ),
       isClosed: closed,
     ),
   );

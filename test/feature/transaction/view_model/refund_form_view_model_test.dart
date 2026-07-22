@@ -52,6 +52,17 @@ void main() {
     expect(state.status, RefundFormStatus.notEditable);
   });
 
+  test('refund edit remaining includes reimbursement receipts', () async {
+    final container = _container(includeReceipt: true);
+
+    final state = await container.read(
+      refundFormViewModelProvider('refund', editing: true).future,
+    );
+
+    expect(state.status, RefundFormStatus.loaded);
+    expect(state.remaining, const Money(minorUnits: 7000));
+  });
+
   test('maps AppException to submit failure', () async {
     final editService = _FakeTransactionEditAppService(
       exception: BusinessException(
@@ -94,6 +105,7 @@ void main() {
 
 ProviderContainer _container({
   bool closed = false,
+  bool includeReceipt = false,
   _FakeTransactionEditAppService? editService,
 }) {
   final cash = _account('cash');
@@ -109,9 +121,11 @@ ProviderContainer _container({
       transactionDetailProvider(
         'refund',
       ).overrideWithValue(AsyncData(_refundDetail())),
-      transactionDetailProvider(
-        'parent',
-      ).overrideWithValue(AsyncData(_parentDetail(closed: closed))),
+      transactionDetailProvider('parent').overrideWithValue(
+        AsyncData(
+          _parentDetail(closed: closed, includeReceipt: includeReceipt),
+        ),
+      ),
       transactionEditAppServiceProvider.overrideWithValue(
         editService ?? _FakeTransactionEditAppService(),
       ),
@@ -145,7 +159,10 @@ TransactionDetail _refundDetail() {
   );
 }
 
-TransactionDetail _parentDetail({required bool closed}) {
+TransactionDetail _parentDetail({
+  required bool closed,
+  bool includeReceipt = false,
+}) {
   final entries = [
     _entry('parent', 'cash', EntryDirection.credit, 10000),
     _entry('parent', 'expense', EntryDirection.debit, 10000),
@@ -168,12 +185,28 @@ TransactionDetail _parentDetail({required bool closed}) {
     children: [
       _child('refund', BusinessPurpose.refund, 3000),
       _child('other-refund', BusinessPurpose.refund, 1000),
+      if (includeReceipt)
+        _child('receipt', BusinessPurpose.reimbursementReceipt, 2000),
       if (closed) _child('close', BusinessPurpose.reimbursementClose, 6000),
     ],
     reimbursementSummary: ReimbursementSummary(
       advanceAmount: const Money(minorUnits: 10000),
-      receivedAmount: Money(minorUnits: closed ? 6000 : 0),
-      outstanding: Money(minorUnits: closed ? 0 : 10000),
+      receivedAmount: Money(
+        minorUnits:
+            closed
+                ? 6000
+                : includeReceipt
+                ? 2000
+                : 0,
+      ),
+      outstanding: Money(
+        minorUnits:
+            closed
+                ? 0
+                : includeReceipt
+                ? 4000
+                : 6000,
+      ),
       isClosed: closed,
     ),
   );

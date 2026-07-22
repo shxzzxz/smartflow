@@ -196,6 +196,10 @@ enum LedgerViolationReason {
     LedgerErrorCode.transactionInvalidCommand,
     'Receipt exceeds outstanding receivable.',
   ),
+  reimbursementRecoveryExceedsAdvance(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Refunds and reimbursement receipts exceed the advance amount.',
+  ),
   reimbursementReceiptTransactionRequired(
     LedgerErrorCode.transactionNotEditable,
     'A reimbursement receipt transaction is required.',

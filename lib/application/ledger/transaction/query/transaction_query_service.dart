@@ -342,11 +342,14 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     final byPurpose = await _txRead.aggregateChildrenByPurpose(
       parentIds: {parentTransactionId},
       purposes: const {
+        BusinessPurpose.refund,
         BusinessPurpose.reimbursementReceipt,
         BusinessPurpose.reimbursementClose,
       },
     );
     final bucket = byPurpose[parentTransactionId] ?? const {};
+    final refund =
+        bucket[BusinessPurpose.refund] ?? TransactionChildAggregate.empty;
     final receipt =
         bucket[BusinessPurpose.reimbursementReceipt] ??
         TransactionChildAggregate.empty;
@@ -358,7 +361,12 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     return ReimbursementSummary(
       advanceAmount: advance.primaryAmount,
       receivedAmount: received,
-      outstanding: isClosed ? Money.zero() : advance.primaryAmount - received,
+      outstanding:
+          isClosed
+              ? Money.zero()
+              : advance.primaryAmount -
+                  received -
+                  Money(minorUnits: refund.sumMinor),
       isClosed: isClosed,
     );
   }

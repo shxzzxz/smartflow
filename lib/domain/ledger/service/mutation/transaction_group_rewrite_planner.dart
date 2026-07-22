@@ -48,16 +48,19 @@ class TransactionGroupRewritePlanner {
       sourceKind: currentParent.sourceKind,
       ownership: currentParent.ownership,
     );
-    if (currentGroup.refundedTotal().minorUnits >
-        rewrittenParent.primaryAmount.minorUnits) {
-      LedgerViolationReason.refundExceedsRemaining.throwException();
-    }
-    if (rewrittenParent.businessPurpose ==
-            BusinessPurpose.reimbursementAdvance &&
-        currentGroup.reimbursementReceivedTotal().minorUnits >
-            rewrittenParent.primaryAmount.minorUnits) {
-      LedgerViolationReason.reimbursementReceiptExceedsOutstanding
-          .throwException();
+    if (!currentGroup.reimbursementClosed) {
+      final refunded = currentGroup.refundedTotal();
+      if (rewrittenParent.businessPurpose ==
+          BusinessPurpose.reimbursementAdvance) {
+        final recovered = refunded + currentGroup.reimbursementReceivedTotal();
+        if (recovered.minorUnits > rewrittenParent.primaryAmount.minorUnits) {
+          LedgerViolationReason.reimbursementRecoveryExceedsAdvance
+              .throwException();
+        }
+      } else if (refunded.minorUnits >
+          rewrittenParent.primaryAmount.minorUnits) {
+        LedgerViolationReason.refundExceedsRemaining.throwException();
+      }
     }
 
     final rewrittenChildren = <Transaction>[];

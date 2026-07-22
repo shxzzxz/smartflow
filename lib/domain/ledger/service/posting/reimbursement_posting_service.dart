@@ -56,8 +56,7 @@ class ReimbursementPostingService {
   ) async {
     final group = await _loadOpenAdvance(instruction.advanceTransactionId);
     final advance = group.parentTransaction;
-    final outstanding =
-        advance.primaryAmount - group.reimbursementReceivedTotal();
+    final outstanding = group.reimbursementOutstanding();
     if (instruction.amount.minorUnits > outstanding.minorUnits) {
       LedgerViolationReason.reimbursementReceiptExceedsOutstanding
           .throwException();
@@ -82,8 +81,7 @@ class ReimbursementPostingService {
   Future<PostingResult> close(ReimbursementCloseInstruction instruction) async {
     final group = await _loadOpenAdvance(instruction.advanceTransactionId);
     final advance = group.parentTransaction;
-    final outstanding =
-        advance.primaryAmount - group.reimbursementReceivedTotal();
+    final outstanding = group.reimbursementOutstanding();
     final actual = instruction.actualReceivedAmount;
     final gapIncomeAccountId =
         actual.minorUnits > outstanding.minorUnits

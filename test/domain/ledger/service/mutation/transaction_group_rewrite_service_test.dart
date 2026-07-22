@@ -21,6 +21,127 @@ import 'package:test/test.dart';
 import '../../../../helper/sequential_id_generator.dart';
 
 void main() {
+  test('editing a refund cannot exceed reimbursement outstanding', () async {
+    final engine = PostingEngine(
+      idGenerator: SequentialIdGenerator(prefix: 'tx'),
+    );
+    final parent = engine.createReimbursementAdvance(
+      ReimbursementAdvanceInstruction(
+        amount: Money.parse('100.00'),
+        receivableAccountId: 'receivable',
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'expense',
+        occurredAt: DateTime(2026, 7, 1),
+      ),
+    );
+    final receipt = engine.createReimbursementReceipt(
+      instruction: ReimbursementReceiptInstruction(
+        advanceTransactionId: parent.id,
+        amount: Money.parse('60.00'),
+        receivableAccountId: 'receivable',
+        receiveAccountId: 'cash',
+        occurredAt: DateTime(2026, 7, 2),
+      ),
+      advance: parent,
+    );
+    final refund = engine.createRefund(
+      instruction: RefundInstruction(
+        parentTransactionId: parent.id,
+        amount: Money.parse('20.00'),
+        refundToAccountId: 'cash',
+        occurredAt: DateTime(2026, 7, 2),
+      ),
+      parent: parent,
+      refundOffsetAccountId: 'receivable',
+    );
+    final service = TransactionGroupRewriteService(
+      transactionGroupRepository: _TransactionGroupRepository(
+        TransactionGroup(
+          parentTransaction: parent,
+          childTransactions: [receipt, refund],
+        ),
+      ),
+      accountRepository: _AccountRepository(),
+      postingInstructionResolver: const DefaultPostingInstructionResolver(),
+      postingEngine: engine,
+      accountPostingService: _AccountPostingService(),
+      accountRolePolicy: _AccountRolePolicy(),
+      systemAccountResolver: _SystemAccountResolver(),
+    );
+
+    await expectLater(
+      () => service.rewriteRefundTransaction(
+        EditRefundTransactionInstruction(
+          transactionId: refund.id,
+          editPatch: RefundEditPatch(amount: Money.parse('40.01')),
+        ),
+      ),
+      throwsA(isA<BusinessException>()),
+    );
+  });
+
+  test(
+    'editing a receipt cannot exceed reimbursement outstanding after refunds',
+    () async {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final parent = engine.createReimbursementAdvance(
+        ReimbursementAdvanceInstruction(
+          amount: Money.parse('100.00'),
+          receivableAccountId: 'receivable',
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'expense',
+          occurredAt: DateTime(2026, 7, 1),
+        ),
+      );
+      final refund = engine.createRefund(
+        instruction: RefundInstruction(
+          parentTransactionId: parent.id,
+          amount: Money.parse('60.00'),
+          refundToAccountId: 'cash',
+          occurredAt: DateTime(2026, 7, 2),
+        ),
+        parent: parent,
+        refundOffsetAccountId: 'receivable',
+      );
+      final receipt = engine.createReimbursementReceipt(
+        instruction: ReimbursementReceiptInstruction(
+          advanceTransactionId: parent.id,
+          amount: Money.parse('20.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'cash',
+          occurredAt: DateTime(2026, 7, 3),
+        ),
+        advance: parent,
+      );
+      final service = TransactionGroupRewriteService(
+        transactionGroupRepository: _TransactionGroupRepository(
+          TransactionGroup(
+            parentTransaction: parent,
+            childTransactions: [refund, receipt],
+          ),
+        ),
+        accountRepository: _AccountRepository(),
+        postingInstructionResolver: const DefaultPostingInstructionResolver(),
+        postingEngine: engine,
+        accountPostingService: _AccountPostingService(),
+        accountRolePolicy: _AccountRolePolicy(),
+        systemAccountResolver: _SystemAccountResolver(),
+      );
+
+      await expectLater(
+        () => service.rewriteReimbursementReceipt(
+          EditReimbursementReceiptTransactionInstruction(
+            transactionId: receipt.id,
+            amount: Money.parse('40.01'),
+          ),
+        ),
+        throwsA(isA<BusinessException>()),
+      );
+    },
+  );
+
   test(
     'editing zero-cash reimbursement close preserves its actual amount',
     () async {

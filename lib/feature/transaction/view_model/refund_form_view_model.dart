@@ -61,7 +61,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       parentTransactionId: transactionId,
       editing: false,
       accounts: accounts,
-      remaining: detail.transaction.primaryAmount - refunded,
+      remaining: _remainingForNewRefund(detail, refunded),
       refundToAccountId: defaultAccountId,
       occurredAt: DateTime.now(),
       amountText: '',
@@ -115,10 +115,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       ),
       accounts: accounts,
     );
-    final remaining =
-        parentDetail.transaction.primaryAmount -
-        _refundedTotal(parentDetail) +
-        transaction.primaryAmount;
+    final remaining = _remainingForEditedRefund(parentDetail, transaction);
     return RefundFormState.loaded(
       transactionId: transactionId,
       parentTransactionId: parentTransactionId,
@@ -344,6 +341,31 @@ Money _refundedTotal(TransactionDetail detail) {
     );
   }
   return detail.refundedTotal ?? Money.zero();
+}
+
+Money _remainingForNewRefund(TransactionDetail detail, Money refunded) {
+  final summary = detail.reimbursementSummary;
+  if (detail.transaction.businessPurpose ==
+          BusinessPurpose.reimbursementAdvance &&
+      summary is ReimbursementSummary) {
+    return summary.outstanding;
+  }
+  return detail.transaction.primaryAmount - refunded;
+}
+
+Money _remainingForEditedRefund(
+  TransactionDetail parentDetail,
+  Transaction refund,
+) {
+  final summary = parentDetail.reimbursementSummary;
+  if (parentDetail.transaction.businessPurpose ==
+          BusinessPurpose.reimbursementAdvance &&
+      summary is ReimbursementSummary) {
+    return summary.outstanding + refund.primaryAmount;
+  }
+  return parentDetail.transaction.primaryAmount -
+      _refundedTotal(parentDetail) +
+      refund.primaryAmount;
 }
 
 Patch<String?> _stringPatch(String? value) {

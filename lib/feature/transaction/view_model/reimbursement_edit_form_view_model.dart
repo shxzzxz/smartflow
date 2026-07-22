@@ -87,9 +87,7 @@ class ReimbursementEditFormViewModel extends _$ReimbursementEditFormViewModel {
 
     final outstandingBeforeTransaction = switch (kind) {
       ReimbursementEditKind.receipt =>
-        summary.advanceAmount -
-            summary.receivedAmount +
-            transaction.primaryAmount,
+        summary.outstanding + transaction.primaryAmount,
       ReimbursementEditKind.close => _closeOutstanding(detail),
     };
     final amount = switch (kind) {
