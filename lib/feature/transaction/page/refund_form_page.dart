@@ -100,10 +100,10 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
                 selectedId: state.refundToAccountId,
                 placeholder: '请选择退款账户',
                 onTap:
-                    () => _pickRefundAccount(
-                      provider,
+                    (onSelected) => _pickRefundAccount(
                       state.accounts,
                       selectedId: state.refundToAccountId,
+                      onSelected: onSelected,
                     ),
                 onChanged: ref.read(provider.notifier).setRefundToAccountId,
                 validator: (value) => value == null ? '请选择账户' : null,
@@ -112,7 +112,9 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
                 label: '退款时间',
                 dateTime: state.occurredAt,
                 value: _formatDateTime(state.occurredAt),
-                onTap: () => _pickOccurredAt(provider, state.occurredAt),
+                onTap:
+                    (onSelected) =>
+                        _pickOccurredAt(state.occurredAt, onSelected),
                 onChanged: (value) {
                   if (value != null) {
                     ref.read(provider.notifier).setOccurredAt(value);
@@ -134,9 +136,9 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
   }
 
   Future<void> _pickRefundAccount(
-    RefundFormViewModelProvider provider,
     List<Account> accounts, {
     required String? selectedId,
+    required ValueChanged<String?> onSelected,
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,
@@ -145,12 +147,12 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
       selectedId: selectedId,
     );
     if (!mounted || selected == null) return;
-    ref.read(provider.notifier).setRefundToAccountId(selected);
+    onSelected(selected);
   }
 
   Future<void> _pickOccurredAt(
-    RefundFormViewModelProvider provider,
     DateTime occurredAt,
+    ValueChanged<DateTime?> onSelected,
   ) async {
     final picked = await showAppDateTimePicker(
       context: context,
@@ -158,7 +160,7 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
       title: '选择退款时间',
     );
     if (!mounted || picked == null) return;
-    ref.read(provider.notifier).setOccurredAt(picked);
+    onSelected(picked);
   }
 
   Future<void> _submit(RefundFormViewModelProvider provider) async {

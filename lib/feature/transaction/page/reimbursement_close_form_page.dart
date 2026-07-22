@@ -138,10 +138,10 @@ class _ReimbursementCloseFormPageState
                 selectedId: state.receiveAccountId,
                 placeholder: '请选择到账账户',
                 onTap:
-                    () => _pickReceiveAccount(
-                      provider,
+                    (onSelected) => _pickReceiveAccount(
                       state.accounts,
                       selectedId: state.receiveAccountId,
+                      onSelected: onSelected,
                     ),
                 onChanged: ref.read(provider.notifier).setReceiveAccountId,
                 validator: (value) {
@@ -158,7 +158,9 @@ class _ReimbursementCloseFormPageState
                 label: '结束时间',
                 dateTime: state.occurredAt,
                 value: _formatDateTime(state.occurredAt),
-                onTap: () => _pickOccurredAt(provider, state.occurredAt),
+                onTap:
+                    (onSelected) =>
+                        _pickOccurredAt(state.occurredAt, onSelected),
                 onChanged: (value) {
                   if (value != null) {
                     ref.read(provider.notifier).setOccurredAt(value);
@@ -180,9 +182,9 @@ class _ReimbursementCloseFormPageState
   }
 
   Future<void> _pickReceiveAccount(
-    ReimbursementCloseFormViewModelProvider provider,
     List<Account> accounts, {
     required String? selectedId,
+    required ValueChanged<String?> onSelected,
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,
@@ -191,12 +193,12 @@ class _ReimbursementCloseFormPageState
       selectedId: selectedId,
     );
     if (!mounted || selected == null) return;
-    ref.read(provider.notifier).setReceiveAccountId(selected);
+    onSelected(selected);
   }
 
   Future<void> _pickOccurredAt(
-    ReimbursementCloseFormViewModelProvider provider,
     DateTime occurredAt,
+    ValueChanged<DateTime?> onSelected,
   ) async {
     final picked = await showAppDateTimePicker(
       context: context,
@@ -204,7 +206,7 @@ class _ReimbursementCloseFormPageState
       title: '选择结束时间',
     );
     if (!mounted || picked == null) return;
-    ref.read(provider.notifier).setOccurredAt(picked);
+    onSelected(picked);
   }
 
   Future<void> _submit(ReimbursementCloseFormViewModelProvider provider) async {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_form_section.dart';
+import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../widget/business/finance/money_input.dart';
 import '../../../widget/business/form/plain_transaction_fields.dart';
@@ -99,13 +100,13 @@ class CreditRepaymentTransactionFields extends StatelessWidget {
   final ValueChanged<bool>? onCreateTransactionChanged;
   final DateTime occurredAt;
   final String occurredAtText;
-  final VoidCallback onPickDate;
+  final AppPlainSelectTap<DateTime> onPickDate;
   final ValueChanged<DateTime?> onOccurredAtChanged;
   final Account? repaymentAccount;
   final String? selectedRepaymentAccountId;
   final List<Account> repaymentAccounts;
   final ValueChanged<String?> onRepaymentAccountChanged;
-  final VoidCallback onPickAccount;
+  final AppPlainSelectTap<String> onPickAccount;
 
   @override
   Widget build(BuildContext context) {

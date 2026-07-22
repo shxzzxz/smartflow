@@ -95,7 +95,8 @@ class _InstallmentRepaymentFormPageState
                         ref.read(provider.notifier).setCreateTransaction(value),
                 occurredAt: state.occurredAt,
                 occurredAtText: _formatDateTime(state.occurredAt),
-                onPickDate: () => _pickDate(provider, state.occurredAt),
+                onPickDate:
+                    (onSelected) => _pickDate(state.occurredAt, onSelected),
                 onOccurredAtChanged: (value) {
                   if (value != null) {
                     ref.read(provider.notifier).setOccurredAt(value);
@@ -110,13 +111,10 @@ class _InstallmentRepaymentFormPageState
                 onRepaymentAccountChanged:
                     ref.read(provider.notifier).setPaidFromAccountId,
                 onPickAccount:
-                    () => _pickAccount(
+                    (onSelected) => _pickAccount(
                       accounts: state.accounts,
                       selectedId: state.paidFromAccountId,
-                      onSelected:
-                          (id) => ref
-                              .read(provider.notifier)
-                              .setPaidFromAccountId(id),
+                      onSelected: onSelected,
                     ),
               ),
               NotePlainFormRow(controller: _noteController),
@@ -135,8 +133,8 @@ class _InstallmentRepaymentFormPageState
   }
 
   Future<void> _pickDate(
-    InstallmentRepaymentFormViewModelProvider provider,
     DateTime occurredAt,
+    ValueChanged<DateTime?> onSelected,
   ) async {
     final picked = await showAppDateTimePicker(
       context: context,
@@ -144,13 +142,13 @@ class _InstallmentRepaymentFormPageState
       title: '选择还款日期',
     );
     if (picked == null || !mounted) return;
-    ref.read(provider.notifier).setOccurredAt(picked);
+    onSelected(picked);
   }
 
   Future<void> _pickAccount({
     required List<Account> accounts,
     required String? selectedId,
-    required ValueChanged<String> onSelected,
+    required ValueChanged<String?> onSelected,
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,

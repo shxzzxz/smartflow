@@ -199,7 +199,7 @@ void main() {
               label: '账户',
               value: null,
               placeholder: '请选择账户',
-              onTap: () => taps++,
+              onTap: (_) => taps++,
               validator: (value) => value == null ? '请选择账户' : null,
             ),
           ),
@@ -246,14 +246,14 @@ void main() {
                 value: 'cash',
                 valueText: '现金',
                 placeholder: '请选择账户',
-                onTap: () {},
+                onTap: (_) {},
               ),
               AppPlainSelectFormRow<String>(
                 label: '转入账户',
                 value: 'cash',
                 valueText: '现金',
                 placeholder: '请选择账户',
-                onTap: () {},
+                onTap: (_) {},
               ),
             ],
           ),
@@ -284,9 +284,10 @@ void main() {
                   value: selectedId,
                   valueText: selectedId,
                   placeholder: '请选择账户',
-                  onTap: () => rebuild(() => selectedId = 'bank'),
+                  onTap: (onSelected) => onSelected('bank'),
                   onChanged: (value) => rebuild(() => selectedId = value),
                   validator: (value) => value == 'bank' ? null : '请选择银行卡',
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                 ),
               );
             },
@@ -301,6 +302,7 @@ void main() {
     await tester.pump();
 
     expect(selectedId, 'bank');
+    expect(find.text('请选择银行卡'), findsNothing);
     expect(formKey.currentState!.validate(), true);
 
     formKey.currentState!.reset();

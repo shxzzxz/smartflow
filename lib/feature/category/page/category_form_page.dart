@@ -201,7 +201,9 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
                           value: formState.parentId,
                           valueText: effectiveParent?.name ?? '无',
                           placeholder: '无',
-                          onTap: () => _showParentSheet(parentOptions),
+                          onTap:
+                              (onSelected) =>
+                                  _showParentSheet(parentOptions, onSelected),
                           onChanged: notifier.setParentId,
                         ),
                       ],
@@ -227,7 +229,10 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
     );
   }
 
-  Future<void> _showParentSheet(List<Account> parents) async {
+  Future<void> _showParentSheet(
+    List<Account> parents,
+    ValueChanged<String?> onSelected,
+  ) async {
     final parentId = ref.read(categoryFormViewModelProvider).parentId;
     final selected = await showModalBottomSheet<String>(
       context: context,
@@ -262,9 +267,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
       },
     );
     if (!mounted || selected == null) return;
-    ref
-        .read(categoryFormViewModelProvider.notifier)
-        .setParentId(selected.isEmpty ? null : selected);
+    onSelected(selected.isEmpty ? null : selected);
   }
 
   Future<void> _submit() async {

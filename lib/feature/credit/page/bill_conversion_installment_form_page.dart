@@ -131,7 +131,9 @@ class _BillConversionInstallmentFormPageState
                 label: '借款日期',
                 dateTime: state.borrowingDate,
                 value: _formatDate(state.borrowingDate),
-                onTap: () => _pickBorrowingDate(provider, state.borrowingDate),
+                onTap:
+                    (onSelected) =>
+                        _pickBorrowingDate(state.borrowingDate, onSelected),
                 onChanged: (value) {
                   if (value != null) {
                     ref.read(provider.notifier).setBorrowingDate(value);
@@ -143,9 +145,9 @@ class _BillConversionInstallmentFormPageState
                 dateTime: state.firstRepaymentDate,
                 value: _formatDate(state.firstRepaymentDate),
                 onTap:
-                    () => _pickFirstRepaymentDate(
-                      provider,
+                    (onSelected) => _pickFirstRepaymentDate(
                       state.firstRepaymentDate,
+                      onSelected,
                     ),
                 onChanged: (value) {
                   if (value != null) {
@@ -209,8 +211,8 @@ class _BillConversionInstallmentFormPageState
   }
 
   Future<void> _pickBorrowingDate(
-    BillConversionInstallmentFormViewModelProvider provider,
     DateTime initialDate,
+    ValueChanged<DateTime?> onSelected,
   ) async {
     final picked = await showAppDatePicker(
       context: context,
@@ -218,12 +220,12 @@ class _BillConversionInstallmentFormPageState
       title: '选择借款日期',
     );
     if (picked == null || !mounted) return;
-    ref.read(provider.notifier).setBorrowingDate(picked);
+    onSelected(picked);
   }
 
   Future<void> _pickFirstRepaymentDate(
-    BillConversionInstallmentFormViewModelProvider provider,
     DateTime initialDate,
+    ValueChanged<DateTime?> onSelected,
   ) async {
     final picked = await showAppDatePicker(
       context: context,
@@ -231,7 +233,7 @@ class _BillConversionInstallmentFormPageState
       title: '选择首期还款日',
     );
     if (picked == null || !mounted) return;
-    ref.read(provider.notifier).setFirstRepaymentDate(picked);
+    onSelected(picked);
   }
 
   Future<void> _submit(

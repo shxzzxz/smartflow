@@ -107,14 +107,11 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
                 onTap:
                     (isEdit || state.liabilityAccounts.isEmpty)
                         ? null
-                        : () => _pickAccount(
+                        : (onSelected) => _pickAccount(
                           title: '选择债务账户',
                           accounts: state.liabilityAccounts,
                           selectedId: state.liabilityAccountId,
-                          onSelected:
-                              (value) => ref
-                                  .read(provider.notifier)
-                                  .setLiabilityAccountId(value),
+                          onSelected: onSelected,
                         ),
                 onChanged: ref.read(provider.notifier).setLiabilityAccountId,
                 validator: (value) => value == null ? '请选择债务账户' : null,
@@ -147,7 +144,7 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
                 label: '还款日期',
                 dateTime: state.occurredAt,
                 value: _formatDateTime(state.occurredAt),
-                onTap: () => _pickDate(provider, state.occurredAt),
+                onTap: (onSelected) => _pickDate(state.occurredAt, onSelected),
                 onChanged: (value) {
                   if (value != null) {
                     ref.read(provider.notifier).setOccurredAt(value);
@@ -162,14 +159,11 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
                 onTap:
                     state.repaymentAccounts.isEmpty
                         ? null
-                        : () => _pickAccount(
+                        : (onSelected) => _pickAccount(
                           title: '选择还款账户',
                           accounts: state.repaymentAccounts,
                           selectedId: state.paidFromAccountId,
-                          onSelected:
-                              (value) => ref
-                                  .read(provider.notifier)
-                                  .setPaidFromAccountId(value),
+                          onSelected: onSelected,
                         ),
                 onChanged: ref.read(provider.notifier).setPaidFromAccountId,
                 validator: (value) => value == null ? '请选择还款账户' : null,
@@ -189,8 +183,8 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
   }
 
   Future<void> _pickDate(
-    RepaymentFormViewModelProvider provider,
     DateTime occurredAt,
+    ValueChanged<DateTime?> onSelected,
   ) async {
     final picked = await showAppDateTimePicker(
       context: context,
@@ -198,14 +192,14 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
       title: '选择还款日期',
     );
     if (picked == null || !mounted) return;
-    ref.read(provider.notifier).setOccurredAt(picked);
+    onSelected(picked);
   }
 
   Future<void> _pickAccount({
     required String title,
     required List<Account> accounts,
     required String? selectedId,
-    required ValueChanged<String> onSelected,
+    required ValueChanged<String?> onSelected,
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,

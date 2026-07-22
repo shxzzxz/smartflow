@@ -100,12 +100,13 @@ void main() {
               rebuild = setState;
               return Form(
                 key: formKey,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
                 child: AccountPlainFormRow(
                   label: '账户',
                   account: findAccountById(selectedId, accounts),
                   selectedId: selectedId,
                   placeholder: '请选择账户',
-                  onTap: () => rebuild(() => selectedId = 'bank'),
+                  onTap: (onSelected) => onSelected('bank'),
                   onChanged: (value) => rebuild(() => selectedId = value),
                   validator: (value) => value == 'bank' ? null : '请选择银行卡',
                 ),
@@ -117,11 +118,14 @@ void main() {
     );
 
     expect(formKey.currentState!.validate(), false);
+    await tester.pump();
+    expect(find.text('请选择银行卡'), findsOneWidget);
 
     await tester.tap(find.text('cash'));
     await tester.pump();
 
     expect(selectedId, 'bank');
+    expect(find.text('请选择银行卡'), findsNothing);
     expect(formKey.currentState!.validate(), true);
 
     formKey.currentState!.reset();
@@ -180,11 +184,11 @@ void main() {
     expect(find.text('第一项'), findsOneWidget);
   });
 
-  testWidgets('date row restores its controlled value on Form reset', (
+  testWidgets('date row restores its nullable value on Form reset', (
     tester,
   ) async {
     final formKey = GlobalKey<FormState>();
-    var date = DateTime(2026, 1, 1);
+    DateTime? date;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -196,11 +200,9 @@ void main() {
                 child: DateTimePlainFormRow(
                   label: '日期',
                   dateTime: date,
-                  value: _dateText(date),
-                  onTap: () => setState(() => date = DateTime(2026, 2, 2)),
-                  onChanged: (value) {
-                    if (value != null) setState(() => date = value);
-                  },
+                  value: date == null ? '自动计算' : _dateText(date!),
+                  onTap: (onSelected) => onSelected(DateTime(2026, 2, 2)),
+                  onChanged: (value) => setState(() => date = value),
                 ),
               );
             },
@@ -209,15 +211,15 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('2026-01-01'));
+    await tester.tap(find.text('自动计算'));
     await tester.pump();
     expect(date, DateTime(2026, 2, 2));
 
     formKey.currentState!.reset();
     await tester.pump();
 
-    expect(date, DateTime(2026, 1, 1));
-    expect(find.text('2026-01-01'), findsOneWidget);
+    expect(date, isNull);
+    expect(find.text('自动计算'), findsOneWidget);
   });
 
   testWidgets('value-with-unit row restores its unit on Form reset', (

@@ -173,6 +173,8 @@ class AppPlainIntegerFormRow extends StatelessWidget {
   }
 }
 
+typedef AppPlainSelectTap<T> = void Function(ValueChanged<T?> onSelected);
+
 class AppPlainSelectFormRow<T> extends StatelessWidget {
   const AppPlainSelectFormRow({
     required this.label,
@@ -197,7 +199,7 @@ class AppPlainSelectFormRow<T> extends StatelessWidget {
   final T? value;
   final String placeholder;
   final String? valueText;
-  final VoidCallback? onTap;
+  final AppPlainSelectTap<T>? onTap;
   final ValueChanged<T?>? onChanged;
   final FormFieldValidator<T>? validator;
   final String? supportingText;
@@ -218,14 +220,15 @@ class AppPlainSelectFormRow<T> extends StatelessWidget {
       enabled: enabled,
       validator: validator,
       autovalidateMode: autovalidateMode,
-      builder: (context, fieldValue, errorText, _) {
+      builder: (context, fieldValue, errorText, fieldChanged) {
         final hasValue = fieldValue != null;
+        final handleTap = onTap;
         return AppPlainFormRow(
           label: label,
           requiredIndicator: requiredIndicator,
           supportingText: supportingText,
           errorText: errorText,
-          onTap: onTap,
+          onTap: handleTap == null ? null : () => handleTap(fieldChanged),
           enabled: enabled,
           labelWidth: labelWidth,
           minHeight: minHeight,

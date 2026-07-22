@@ -111,8 +111,10 @@ class _InstallmentContractEditPageState
             feeController: _feeController,
             overrideInstallmentController: _overrideInstallmentController,
             onPickFirstDate:
-                loaded.paidCount > 0 ? null : () => _pickFirstDate(loaded),
-            onPickLastDate: () => _pickLastDate(loaded),
+                loaded.paidCount > 0
+                    ? null
+                    : (onSelected) => _pickFirstDate(loaded, onSelected),
+            onPickLastDate: (onSelected) => _pickLastDate(loaded, onSelected),
             onFirstDateChanged: (value) {
               if (value != null) {
                 ref
@@ -190,32 +192,30 @@ class _InstallmentContractEditPageState
     _overrideInstallmentController.text = '';
   }
 
-  Future<void> _pickFirstDate(InstallmentContractEditLoaded loaded) async {
+  Future<void> _pickFirstDate(
+    InstallmentContractEditLoaded loaded,
+    ValueChanged<DateTime?> onSelected,
+  ) async {
     final picked = await showAppDatePicker(
       context: context,
       initialDate: loaded.firstRepaymentDate,
       title: '选择首期还款日',
     );
     if (picked == null || !mounted) return;
-    ref
-        .read(
-          installmentContractEditViewModelProvider(widget.contractId).notifier,
-        )
-        .setFirstRepaymentDate(picked);
+    onSelected(picked);
   }
 
-  Future<void> _pickLastDate(InstallmentContractEditLoaded loaded) async {
+  Future<void> _pickLastDate(
+    InstallmentContractEditLoaded loaded,
+    ValueChanged<DateTime?> onSelected,
+  ) async {
     final picked = await showAppDatePicker(
       context: context,
       initialDate: loaded.lastRepaymentDate,
       title: '选择末期还款日',
     );
     if (picked == null || !mounted) return;
-    ref
-        .read(
-          installmentContractEditViewModelProvider(widget.contractId).notifier,
-        )
-        .setLastRepaymentDate(picked);
+    onSelected(picked);
   }
 
   Future<void> _recalculate() async {
@@ -326,8 +326,8 @@ class _ConfigSection extends StatelessWidget {
   final TextEditingController rateController;
   final TextEditingController feeController;
   final TextEditingController overrideInstallmentController;
-  final VoidCallback? onPickFirstDate;
-  final VoidCallback onPickLastDate;
+  final AppPlainSelectTap<DateTime>? onPickFirstDate;
+  final AppPlainSelectTap<DateTime> onPickLastDate;
   final ValueChanged<DateTime?> onFirstDateChanged;
   final ValueChanged<DateTime?> onLastDateChanged;
   final ValueChanged<InstallmentRepaymentMethod> onMethodChanged;

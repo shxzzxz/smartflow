@@ -77,7 +77,7 @@ class DateTimePlainFormRow extends StatelessWidget {
   final String label;
   final DateTime? dateTime;
   final String value;
-  final VoidCallback? onTap;
+  final AppPlainSelectTap<DateTime>? onTap;
   final ValueChanged<DateTime?> onChanged;
   final AppPlainRowValueAlignment valueAlignment;
   final double minHeight;
@@ -250,7 +250,7 @@ class AccountPlainFormRow extends StatelessWidget {
   final Account? account;
   final String placeholder;
   final String? selectedId;
-  final VoidCallback? onTap;
+  final AppPlainSelectTap<String>? onTap;
   final ValueChanged<String?>? onChanged;
   final FormFieldValidator<String>? validator;
   final AppPlainRowValueAlignment valueAlignment;
@@ -261,10 +261,11 @@ class AccountPlainFormRow extends StatelessWidget {
       value: selectedId,
       onChanged: onChanged,
       validator: validator,
-      builder: (context, _, errorText, __) {
+      builder: (context, _, errorText, fieldChanged) {
+        final handleTap = onTap;
         return AppPlainFormRow(
           label: label,
-          onTap: onTap,
+          onTap: handleTap == null ? null : () => handleTap(fieldChanged),
           errorText: errorText,
           child: Align(
             alignment:
