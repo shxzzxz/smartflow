@@ -11,89 +11,91 @@ import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import 'account_view.dart';
+import 'account_views_provider.dart';
 
 part 'account_form_view_model.g.dart';
 
 @riverpod
 class AccountFormViewModel extends _$AccountFormViewModel {
-  @override
-  AccountFormState build() {
-    return AccountFormState.initial();
-  }
+  AccountFormState? _initializedState;
 
-  void initializeForEdit(AccountView account) {
-    if (state.initializedAccountId == account.id) return;
-    state = state.copyWith(
-      kind: account.kind,
-      iconKey: account.iconKey ?? account.kind.iconKey,
-      billingDay: account.billingDay,
-      repaymentDay: account.repaymentDay,
-      billingDayToNext: account.billingDayToNext ?? true,
-      initializedAccountId: account.id,
-    );
+  @override
+  AsyncValue<AccountFormState?> build(String? accountId) {
+    if (accountId == null) {
+      return AsyncValue.data(_initializedState ??= AccountFormState.initial());
+    }
+
+    return ref.watch(accountViewProvider(accountId)).whenData((account) {
+      if (account == null) return null;
+      return _initializedState ??= AccountFormState.fromAccount(account);
+    });
   }
 
   void setKind(AccountProfileKind value) {
-    if (state.kind == value) return;
-    state = state.copyWith(
-      kind: value,
-      iconKey: value.iconKey,
-      billingDay: value == AccountProfileKind.credit ? state.billingDay : null,
-      repaymentDay:
-          value == AccountProfileKind.credit ? state.repaymentDay : null,
-      billingDayToNext: true,
-    );
+    _update((current) {
+      if (current.kind == value) return current;
+      return current.copyWith(
+        kind: value,
+        iconKey: value.iconKey,
+        billingDay:
+            value == AccountProfileKind.credit ? current.billingDay : null,
+        repaymentDay:
+            value == AccountProfileKind.credit ? current.repaymentDay : null,
+        billingDayToNext: true,
+      );
+    });
   }
 
   void setIconKey(String value) {
-    if (state.iconKey == value) return;
-    state = state.copyWith(iconKey: value);
+    _update(
+      (current) =>
+          current.iconKey == value ? current : current.copyWith(iconKey: value),
+    );
   }
 
-  void setBillingDay(int? value) {
-    state = state.copyWith(billingDay: value);
-  }
+  void setBillingDay(int? value) =>
+      _update((current) => current.copyWith(billingDay: value));
 
-  void setRepaymentDay(int? value) {
-    state = state.copyWith(repaymentDay: value);
-  }
+  void setRepaymentDay(int? value) =>
+      _update((current) => current.copyWith(repaymentDay: value));
 
-  void setBillingDayToNext(bool value) {
-    state = state.copyWith(billingDayToNext: value);
-  }
+  void setBillingDayToNext(bool value) =>
+      _update((current) => current.copyWith(billingDayToNext: value));
 
   Future<SubmitOutcome> submit({
     required String nameText,
     required String openingBalanceText,
     required String creditLimitText,
     required String noteText,
-    String? editAccountId,
   }) async {
+    final current = state.asData?.value;
+    if (current == null) return _invalidCommand('账户表单尚未加载');
+
     final name = trimToNull(nameText);
     if (name == null) return _invalidCommand('请输入账户名称');
-    final openingBalance = _openingBalanceForText(openingBalanceText);
+    final openingBalance = _openingBalanceForText(openingBalanceText, current);
     if (openingBalance == null) return _invalidCommand('请输入有效金额');
-    final creditLimit = _creditLimitForText(creditLimitText);
+    final creditLimit = _creditLimitForText(creditLimitText, current);
     if (creditLimit == _invalidMoney) return _invalidCommand('请输入有效金额');
     final note = trimToNull(noteText);
-    final cycleError = _validateCreditCycle();
+    final cycleError = _validateCreditCycle(current);
     if (cycleError != null) return _invalidCommand(cycleError);
 
-    state = state.copyWith(submitting: true);
+    _update((current) => current.copyWith(submitting: true));
     try {
-      if (editAccountId == null) {
+      final targetAccountId = accountId;
+      if (targetAccountId == null) {
         await _createAccount(
+          formState: current,
           name: name,
           openingBalance: openingBalance,
           creditLimit: creditLimit,
           note: note,
         );
       } else {
-        if (state.initializedAccountId != editAccountId) {
-          return _invalidCommand('账户尚未加载。');
-        }
         await _editAccount(
-          id: editAccountId,
+          formState: current,
+          id: targetAccountId,
           name: name,
           openingBalance: openingBalance,
           creditLimit: creditLimit,
@@ -106,19 +108,33 @@ class AccountFormViewModel extends _$AccountFormViewModel {
     } on Exception {
       return const SubmitOutcome.failure(UiError.unknown());
     } finally {
-      state = state.copyWith(submitting: false);
+      _update((current) => current.copyWith(submitting: false));
     }
   }
 
-  Money? _openingBalanceForText(String openingBalanceText) {
-    if (!showsManualBalanceField(state.kind)) return Money.zero();
+  void _update(AccountFormState Function(AccountFormState) update) {
+    final current = state.asData?.value;
+    if (current == null) return;
+    final next = update(current);
+    _initializedState = next;
+    state = AsyncValue.data(next);
+  }
+
+  Money? _openingBalanceForText(
+    String openingBalanceText,
+    AccountFormState formState,
+  ) {
+    if (!showsManualBalanceField(formState.kind)) return Money.zero();
     final money = Money.tryParse(openingBalanceText);
     if (money == null || money.minorUnits < 0) return null;
     return money;
   }
 
-  Money? _creditLimitForText(String creditLimitText) {
-    if (!isLiabilityAccountKind(state.kind)) return null;
+  Money? _creditLimitForText(
+    String creditLimitText,
+    AccountFormState formState,
+  ) {
+    if (!isLiabilityAccountKind(formState.kind)) return null;
     final text = creditLimitText.trim();
     if (text.isEmpty) return null;
     final money = Money.tryParse(text);
@@ -127,21 +143,22 @@ class AccountFormViewModel extends _$AccountFormViewModel {
   }
 
   Future<void> _createAccount({
+    required AccountFormState formState,
     required String name,
     required Money openingBalance,
     required Money? creditLimit,
     required String? note,
   }) {
-    if (!isLiabilityAccountKind(state.kind)) {
+    if (!isLiabilityAccountKind(formState.kind)) {
       return ref
           .read(accountAppServiceProvider)
           .createAccount(
             CreateAccountCommand(
               name: name,
-              type: state.kind.accountType,
-              subtype: state.kind.accountSubtype,
-              profileKey: state.kind.key,
-              iconKey: state.iconKey,
+              type: formState.kind.accountType,
+              subtype: formState.kind.accountSubtype,
+              profileKey: formState.kind.key,
+              iconKey: formState.iconKey,
               openingBalance: openingBalance,
               note: note,
             ),
@@ -153,33 +170,34 @@ class AccountFormViewModel extends _$AccountFormViewModel {
         .createAccount(
           CreateCreditLiabilityAccountCommand(
             name: name,
-            kind: creditLiabilityKindForProfile(state.kind),
-            iconKey: state.iconKey,
+            kind: creditLiabilityKindForProfile(formState.kind),
+            iconKey: formState.iconKey,
             openingBalance: openingBalance,
             note: note,
             creditLimit: creditLimit,
             billingDay:
-                state.kind == AccountProfileKind.credit
-                    ? state.billingDay
+                formState.kind == AccountProfileKind.credit
+                    ? formState.billingDay
                     : null,
             repaymentDay:
-                state.kind == AccountProfileKind.credit
-                    ? state.repaymentDay
+                formState.kind == AccountProfileKind.credit
+                    ? formState.repaymentDay
                     : null,
-            billingDayToNext: state.billingDayToNext,
+            billingDayToNext: formState.billingDayToNext,
           ),
         )
         .then((_) {});
   }
 
   Future<void> _editAccount({
+    required AccountFormState formState,
     required String id,
     required String name,
     required Money openingBalance,
     required Money? creditLimit,
     required String? note,
   }) {
-    if (!isLiabilityAccountKind(state.kind)) {
+    if (!isLiabilityAccountKind(formState.kind)) {
       return ref
           .read(accountAppServiceProvider)
           .editAccount(
@@ -187,15 +205,17 @@ class AccountFormViewModel extends _$AccountFormViewModel {
               id: id,
               name: name,
               subtype:
-                  state.kind.accountSubtype == null
+                  formState.kind.accountSubtype == null
                       ? const Patch<AccountSubtype>.clear()
-                      : Patch.set(state.kind.accountSubtype!),
-              profileKey: Patch.set(state.kind.key),
-              iconKey: Patch.set(state.iconKey),
+                      : Patch.set(formState.kind.accountSubtype!),
+              profileKey: Patch.set(formState.kind.key),
+              iconKey: Patch.set(formState.iconKey),
               note:
                   note == null ? const Patch<String>.clear() : Patch.set(note),
               targetBalance:
-                  showsManualBalanceField(state.kind) ? openingBalance : null,
+                  showsManualBalanceField(formState.kind)
+                      ? openingBalance
+                      : null,
             ),
           );
     }
@@ -205,23 +225,23 @@ class AccountFormViewModel extends _$AccountFormViewModel {
           EditCreditLiabilityAccountCommand(
             accountId: id,
             name: name,
-            iconKey: Patch.set(state.iconKey),
+            iconKey: Patch.set(formState.iconKey),
             note: note == null ? const Patch<String>.clear() : Patch.set(note),
             creditLimit:
                 creditLimit == null
                     ? const Patch<Money>.clear()
                     : Patch.set(creditLimit),
             billingDay:
-                state.kind == AccountProfileKind.credit &&
-                        state.billingDay != null
-                    ? Patch.set(state.billingDay!)
+                formState.kind == AccountProfileKind.credit &&
+                        formState.billingDay != null
+                    ? Patch.set(formState.billingDay!)
                     : const Patch<int>.clear(),
             repaymentDay:
-                state.kind == AccountProfileKind.credit &&
-                        state.repaymentDay != null
-                    ? Patch.set(state.repaymentDay!)
+                formState.kind == AccountProfileKind.credit &&
+                        formState.repaymentDay != null
+                    ? Patch.set(formState.repaymentDay!)
                     : const Patch<int>.clear(),
-            billingDayToNext: state.billingDayToNext,
+            billingDayToNext: formState.billingDayToNext,
             targetBalance: openingBalance,
           ),
         );
@@ -236,10 +256,10 @@ class AccountFormViewModel extends _$AccountFormViewModel {
     );
   }
 
-  String? _validateCreditCycle() {
-    if (state.kind != AccountProfileKind.credit) return null;
-    final billingDay = state.billingDay;
-    final repaymentDay = state.repaymentDay;
+  String? _validateCreditCycle(AccountFormState formState) {
+    if (formState.kind != AccountProfileKind.credit) return null;
+    final billingDay = formState.billingDay;
+    final repaymentDay = formState.repaymentDay;
     if (billingDay == null || repaymentDay == null) {
       return '请选择出账日和还款日';
     }
@@ -255,41 +275,55 @@ class AccountFormViewModel extends _$AccountFormViewModel {
 
 class AccountFormState {
   const AccountFormState({
+    required this.initialValues,
     required this.kind,
     required this.iconKey,
     required this.submitting,
     this.billingDay,
     this.repaymentDay,
     this.billingDayToNext = true,
-    this.initializedAccountId,
   });
 
   factory AccountFormState.initial() {
     return AccountFormState(
+      initialValues: const AccountFormInitialValues(),
       kind: AccountProfileKind.fund,
       iconKey: AccountProfileKind.fund.iconKey,
       submitting: false,
     );
   }
 
+  factory AccountFormState.fromAccount(AccountView account) {
+    return AccountFormState(
+      initialValues: AccountFormInitialValues.fromAccount(account),
+      kind: account.kind,
+      iconKey: account.iconKey ?? account.kind.iconKey,
+      billingDay: account.billingDay,
+      repaymentDay: account.repaymentDay,
+      billingDayToNext: account.billingDayToNext ?? true,
+      submitting: false,
+    );
+  }
+
+  final AccountFormInitialValues initialValues;
   final AccountProfileKind kind;
   final String iconKey;
   final int? billingDay;
   final int? repaymentDay;
   final bool billingDayToNext;
   final bool submitting;
-  final String? initializedAccountId;
 
   AccountFormState copyWith({
+    AccountFormInitialValues? initialValues,
     AccountProfileKind? kind,
     String? iconKey,
     Object? billingDay = _sentinel,
     Object? repaymentDay = _sentinel,
     bool? billingDayToNext,
     bool? submitting,
-    Object? initializedAccountId = _sentinel,
   }) {
     return AccountFormState(
+      initialValues: initialValues ?? this.initialValues,
       kind: kind ?? this.kind,
       iconKey: iconKey ?? this.iconKey,
       billingDay:
@@ -298,12 +332,33 @@ class AccountFormState {
           repaymentDay == _sentinel ? this.repaymentDay : repaymentDay as int?,
       billingDayToNext: billingDayToNext ?? this.billingDayToNext,
       submitting: submitting ?? this.submitting,
-      initializedAccountId:
-          initializedAccountId == _sentinel
-              ? this.initializedAccountId
-              : initializedAccountId as String?,
     );
   }
+}
+
+/// Text values captured once from the loaded account snapshot for controller
+/// construction. These are not the live text state of the form.
+class AccountFormInitialValues {
+  const AccountFormInitialValues({
+    this.name = '',
+    this.openingBalance = '0',
+    this.creditLimit = '',
+    this.note = '',
+  });
+
+  factory AccountFormInitialValues.fromAccount(AccountView account) {
+    return AccountFormInitialValues(
+      name: account.name,
+      openingBalance: account.balance.format(),
+      creditLimit: account.creditLimit?.format() ?? '',
+      note: account.note ?? '',
+    );
+  }
+
+  final String name;
+  final String openingBalance;
+  final String creditLimit;
+  final String note;
 }
 
 bool isLiabilityAccountKind(AccountProfileKind kind) {

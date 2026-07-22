@@ -10,21 +10,19 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_surface.dart';
-import '../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
-import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_form_presentation.dart';
 import '../view_model/transaction_form_view_model.dart';
 
 enum TransactionFormInitialMode { expense, income, transfer, borrowing }
 
-class TransactionFormPage extends ConsumerStatefulWidget {
+class TransactionFormPage extends ConsumerWidget {
   const TransactionFormPage({
     this.editTransactionId,
     this.initialMode = TransactionFormInitialMode.expense,
@@ -39,28 +37,89 @@ class TransactionFormPage extends ConsumerStatefulWidget {
   final String? initialToAccountId;
 
   @override
-  ConsumerState<TransactionFormPage> createState() =>
-      _TransactionFormPageState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncState = ref.watch(
+      transactionFormViewModelProvider(
+        editTransactionId: editTransactionId,
+        initialMode: _toFormMode(initialMode),
+        initialFromAccountId: initialFromAccountId,
+        initialToAccountId: initialToAccountId,
+      ),
+    );
+    return switch (asyncState) {
+      AsyncData(value: final formState) when formState != null =>
+        _TransactionFormContent(
+          key: ValueKey<String?>(editTransactionId),
+          editTransactionId: editTransactionId,
+          initialMode: initialMode,
+          initialFromAccountId: initialFromAccountId,
+          initialToAccountId: initialToAccountId,
+          formState: formState,
+        ),
+      AsyncData(value: null) => const _TransactionFormStatusPage(
+        title: '编辑交易',
+        message: '交易不存在',
+      ),
+      AsyncError() => _TransactionFormStatusPage(
+        title: editTransactionId == null ? '新增交易' : '编辑交易',
+        message: '交易加载失败，请稍后重试',
+      ),
+      _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
+    };
+  }
 }
 
-class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
+class _TransactionFormStatusPage extends StatelessWidget {
+  const _TransactionFormStatusPage({
+    required this.title,
+    required this.message,
+  });
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(child: Text(message)),
+    );
+  }
+}
+
+class _TransactionFormContent extends ConsumerStatefulWidget {
+  const _TransactionFormContent({
+    required this.editTransactionId,
+    required this.initialMode,
+    required this.initialFromAccountId,
+    required this.initialToAccountId,
+    required this.formState,
+    super.key,
+  });
+
+  final String? editTransactionId;
+  final TransactionFormInitialMode initialMode;
+  final String? initialFromAccountId;
+  final String? initialToAccountId;
+  final TransactionFormState formState;
+
+  @override
+  ConsumerState<_TransactionFormContent> createState() =>
+      _TransactionFormContentState();
+}
+
+class _TransactionFormContentState
+    extends ConsumerState<_TransactionFormContent> {
   final _formKey = GlobalKey<FormState>();
-  final _amountController = TextEditingController();
-  final _noteController = TextEditingController();
+  late final TextEditingController _amountController;
+  late final TextEditingController _noteController;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      ref
-          .read(transactionFormViewModelProvider.notifier)
-          .initializeNew(
-            initialMode: _toFormMode(widget.initialMode),
-            initialFromAccountId: widget.initialFromAccountId,
-            initialToAccountId: widget.initialToAccountId,
-          );
-    });
+    final initialValues = widget.formState.initialValues;
+    _amountController = TextEditingController(text: initialValues.amount);
+    _noteController = TextEditingController(text: initialValues.note);
   }
 
   @override
@@ -72,88 +131,14 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final formState = ref.watch(transactionFormViewModelProvider);
-
-    final settlementAccountsAsync = ref.watch(
-      accountsForSelectionPurposeProvider(AccountSelectionPurpose.settlement),
-    );
-    final fundAccountsAsync = ref.watch(
-      accountsForSelectionPurposeProvider(AccountSelectionPurpose.fund),
-    );
-    final liabilityAccountsAsync = ref.watch(
-      accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.borrowingLiability,
-      ),
-    );
-    final reimbursementAccountsAsync = ref.watch(
-      accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.reimbursementReceivable,
-      ),
-    );
-    final expenseTreeAsync = ref.watch(
-      categoryTreeProvider(AccountType.expense),
-    );
-    final incomeTreeAsync = ref.watch(categoryTreeProvider(AccountType.income));
+    final formState = widget.formState;
+    final settlementAccounts = formState.settlementAccounts;
+    final fundAccounts = formState.fundAccounts;
+    final liabilityAccounts = formState.liabilityAccounts;
+    final reimbursementAccounts = formState.reimbursementAccounts;
+    final expenseTree = formState.expenseTree;
+    final incomeTree = formState.incomeTree;
     final editTransactionId = widget.editTransactionId;
-    final editDetailAsync =
-        editTransactionId == null
-            ? null
-            : ref.watch(transactionDetailProvider(editTransactionId));
-    final accountsByIdAsync =
-        editTransactionId == null ? null : ref.watch(accountsByIdProvider);
-
-    if (editTransactionId != null &&
-        (!settlementAccountsAsync.hasValue ||
-            !fundAccountsAsync.hasValue ||
-            !liabilityAccountsAsync.hasValue ||
-            !reimbursementAccountsAsync.hasValue ||
-            !expenseTreeAsync.hasValue ||
-            !incomeTreeAsync.hasValue ||
-            !(editDetailAsync?.hasValue ?? false) ||
-            !(accountsByIdAsync?.hasValue ?? false))) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    final settlementAccounts =
-        settlementAccountsAsync.value ?? const <Account>[];
-    final fundAccounts = fundAccountsAsync.value ?? const <Account>[];
-    final liabilityAccounts = liabilityAccountsAsync.value ?? const <Account>[];
-    final reimbursementAccounts =
-        reimbursementAccountsAsync.value ?? const <Account>[];
-    final expenseTree = expenseTreeAsync.value ?? const <CategoryNode>[];
-    final incomeTree = incomeTreeAsync.value ?? const <CategoryNode>[];
-    final editDetail = editDetailAsync?.value;
-
-    if (editTransactionId == null && !formState.initializedNew) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    if (editTransactionId != null && editDetail == null) {
-      return const Scaffold(body: Center(child: Text('交易不存在')));
-    }
-
-    if (editTransactionId != null &&
-        editDetail != null &&
-        formState.initializedEditTransactionId != editTransactionId) {
-      final snapshot = transactionFormEditSnapshot(
-        detail: editDetail,
-        expenseTree: expenseTree,
-        incomeTree: incomeTree,
-        accountsById: accountsByIdAsync?.value ?? const <String, Account>{},
-      );
-      syncTextControllerText(_amountController, snapshot.amountText);
-      syncTextControllerText(_noteController, snapshot.noteText);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ref
-            .read(transactionFormViewModelProvider.notifier)
-            .initializeForEdit(
-              transactionId: editTransactionId,
-              snapshot: snapshot,
-            );
-      });
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
 
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final keyboardVisible = keyboardInset > 0;
@@ -175,9 +160,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                         ? _confirmDelete
                         : null,
                 onModeChanged:
-                    (mode) => ref
-                        .read(transactionFormViewModelProvider.notifier)
-                        .setMode(mode),
+                    (mode) => ref.read(_formProvider.notifier).setMode(mode),
               ),
               Expanded(
                 child: ListView(
@@ -294,9 +277,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                                 (value) => value == null ? '请选择转出账户' : null,
                             onChanged:
                                 (value) => ref
-                                    .read(
-                                      transactionFormViewModelProvider.notifier,
-                                    )
+                                    .read(_formProvider.notifier)
                                     .setFromAccountId(value),
                           ),
                           const SizedBox(height: AppSpacing.space8),
@@ -308,9 +289,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                                 (value) => value == null ? '请选择转入账户' : null,
                             onChanged:
                                 (value) => ref
-                                    .read(
-                                      transactionFormViewModelProvider.notifier,
-                                    )
+                                    .read(_formProvider.notifier)
                                     .setToAccountId(value),
                           ),
                         ],
@@ -326,9 +305,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                                 (value) => value == null ? '请选择借出账户' : null,
                             onChanged:
                                 (value) => ref
-                                    .read(
-                                      transactionFormViewModelProvider.notifier,
-                                    )
+                                    .read(_formProvider.notifier)
                                     .setLiabilityAccountId(value),
                           ),
                           const SizedBox(height: AppSpacing.space8),
@@ -340,9 +317,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                                 (value) => value == null ? '请选择借入账户' : null,
                             onChanged:
                                 (value) => ref
-                                    .read(
-                                      transactionFormViewModelProvider.notifier,
-                                    )
+                                    .read(_formProvider.notifier)
                                     .setToAccountId(value),
                           ),
                         ],
@@ -383,23 +358,23 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                       onPickDate: _pickDate,
                       onFromAccountChanged:
                           (value) => ref
-                              .read(transactionFormViewModelProvider.notifier)
+                              .read(_formProvider.notifier)
                               .setFromAccountId(value),
                       onToAccountChanged:
                           (value) => ref
-                              .read(transactionFormViewModelProvider.notifier)
+                              .read(_formProvider.notifier)
                               .setToAccountId(value),
                       onReimbursementAccountChanged:
                           (value) => ref
-                              .read(transactionFormViewModelProvider.notifier)
+                              .read(_formProvider.notifier)
                               .setReimbursementAccountId(value),
                       onExcludeStatsChanged:
                           (value) => ref
-                              .read(transactionFormViewModelProvider.notifier)
+                              .read(_formProvider.notifier)
                               .setExcludeStats(value),
                       onExcludeBudgetChanged:
                           (value) => ref
-                              .read(transactionFormViewModelProvider.notifier)
+                              .read(_formProvider.notifier)
                               .setExcludeBudget(value),
                     ),
                     if (keyboardVisible)
@@ -425,14 +400,22 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     );
   }
 
+  TransactionFormViewModelProvider get _formProvider =>
+      transactionFormViewModelProvider(
+        editTransactionId: widget.editTransactionId,
+        initialMode: _toFormMode(widget.initialMode),
+        initialFromAccountId: widget.initialFromAccountId,
+        initialToAccountId: widget.initialToAccountId,
+      );
+
   Future<void> _pickDate() async {
     final picked = await showAppDateTimePicker(
       context: context,
-      initialDateTime: ref.read(transactionFormViewModelProvider).occurredAt,
+      initialDateTime: ref.read(_formProvider).requireValue!.occurredAt,
       title: '选择交易时间',
     );
     if (picked == null || !mounted) return;
-    ref.read(transactionFormViewModelProvider.notifier).setOccurredAt(picked);
+    ref.read(_formProvider.notifier).setOccurredAt(picked);
   }
 
   void _openCategoryForm(AccountType type, {String? parentId}) {
@@ -464,7 +447,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   void _clearForNext() {
     _amountController.clear();
     _noteController.clear();
-    ref.read(transactionFormViewModelProvider.notifier).clearForNext();
+    ref.read(_formProvider.notifier).clearForNext();
   }
 
   Future<void> _submit() async {
@@ -472,8 +455,11 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     if (!isValid) return;
 
     final outcome = await ref
-        .read(transactionFormViewModelProvider.notifier)
-        .submit(_submitOptions());
+        .read(_formProvider.notifier)
+        .submit(
+          amountText: _amountController.text,
+          noteText: _noteController.text,
+        );
     if (!mounted) return;
 
     switch (outcome) {
@@ -486,50 +472,6 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
       case SubmitFailure(:final error):
         _showError(error.message);
     }
-  }
-
-  TransactionFormSubmitOptions _submitOptions() {
-    return TransactionFormSubmitOptions(
-      amountText: _amountController.text,
-      noteText: _noteController.text,
-      editTransactionId: widget.editTransactionId,
-      settlementAccounts:
-          ref
-              .read(
-                accountsForSelectionPurposeProvider(
-                  AccountSelectionPurpose.settlement,
-                ),
-              )
-              .value ??
-          const <Account>[],
-      fundAccounts:
-          ref
-              .read(
-                accountsForSelectionPurposeProvider(
-                  AccountSelectionPurpose.fund,
-                ),
-              )
-              .value ??
-          const <Account>[],
-      liabilityAccounts:
-          ref
-              .read(
-                accountsForSelectionPurposeProvider(
-                  AccountSelectionPurpose.borrowingLiability,
-                ),
-              )
-              .value ??
-          const <Account>[],
-      reimbursementAccounts:
-          ref
-              .read(
-                accountsForSelectionPurposeProvider(
-                  AccountSelectionPurpose.reimbursementReceivable,
-                ),
-              )
-              .value ??
-          const <Account>[],
-    );
   }
 
   MoneySemantic _amountSemantic(TransactionFormMode mode) {
@@ -552,7 +494,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     required String? categoryId,
   }) {
     ref
-        .read(transactionFormViewModelProvider.notifier)
+        .read(_formProvider.notifier)
         .setExpenseCategory(rootId: rootId, categoryId: categoryId);
   }
 
@@ -561,14 +503,16 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     required String? categoryId,
   }) {
     ref
-        .read(transactionFormViewModelProvider.notifier)
+        .read(_formProvider.notifier)
         .setIncomeCategory(rootId: rootId, categoryId: categoryId);
   }
 
   Future<void> _confirmDelete() async {
     final transactionId = widget.editTransactionId;
-    final formState = ref.read(transactionFormViewModelProvider);
-    if (transactionId == null || formState.submitting) return;
+    final formState = ref.read(_formProvider).requireValue;
+    if (transactionId == null || formState == null || formState.submitting) {
+      return;
+    }
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -591,7 +535,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     if (confirmed != true || !mounted) return;
 
     final outcome = await ref
-        .read(transactionFormViewModelProvider.notifier)
+        .read(_formProvider.notifier)
         .deleteTransaction(transactionId);
     if (!mounted) return;
 
