@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
-import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_submit_button.dart';
@@ -32,22 +31,6 @@ class _ReimbursementReceiptFormPageState
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
-  bool _syncing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _amountController.addListener(
-      () => _setText(
-        (vm, value) => vm.setAmountText(value),
-        _amountController.text,
-      ),
-    );
-    _noteController.addListener(
-      () =>
-          _setText((vm, value) => vm.setNoteText(value), _noteController.text),
-    );
-  }
 
   @override
   void dispose() {
@@ -84,7 +67,6 @@ class _ReimbursementReceiptFormPageState
     if (state.status == ReimbursementFormStatus.notEditable) {
       return const Center(child: Text('该报销记录不可继续到账'));
     }
-    _syncControllers(state);
     final receiveAccount = findAccountById(
       state.receiveAccountId,
       state.accounts,
@@ -131,6 +113,7 @@ class _ReimbursementReceiptFormPageState
                       state.accounts,
                       selectedId: state.receiveAccountId,
                     ),
+                onChanged: ref.read(provider.notifier).setReceiveAccountId,
                 validator: (value) => value == null ? '请选择账户' : null,
               ),
               DateTimePlainFormRow(
@@ -184,7 +167,12 @@ class _ReimbursementReceiptFormPageState
     ReimbursementReceiptFormViewModelProvider provider,
   ) async {
     if (!_formKey.currentState!.validate()) return;
-    final outcome = await ref.read(provider.notifier).submit();
+    final outcome = await ref
+        .read(provider.notifier)
+        .submit(
+          amountText: _amountController.text,
+          noteText: _noteController.text,
+        );
     if (!mounted) return;
     switch (outcome) {
       case SubmitSuccess():
@@ -194,28 +182,6 @@ class _ReimbursementReceiptFormPageState
           context,
         ).showSnackBar(SnackBar(content: Text(error.message)));
     }
-  }
-
-  void _syncControllers(ReimbursementReceiptFormState state) {
-    _syncing = true;
-    syncTextControllerText(_amountController, state.amountText);
-    syncTextControllerText(_noteController, state.noteText);
-    _syncing = false;
-  }
-
-  void _setText(
-    void Function(ReimbursementReceiptFormViewModel, String) setter,
-    String value,
-  ) {
-    if (_syncing) return;
-    setter(
-      ref.read(
-        reimbursementReceiptFormViewModelProvider(
-          widget.advanceTransactionId,
-        ).notifier,
-      ),
-      value,
-    );
   }
 }
 

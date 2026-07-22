@@ -59,10 +59,11 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
   @override
   Widget build(BuildContext context) {
     if (!_isEditMode) {
-      return _buildFormScaffold(
-        context,
-        ref.watch(categoryFormViewModelProvider),
-      );
+      final formState = ref.watch(categoryFormViewModelProvider);
+      if (!formState.initializedNew) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+      return _buildFormScaffold(context, formState);
     }
 
     final categoriesAsync = ref.watch(accountsByIdProvider);
@@ -85,10 +86,11 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
       );
     }
     _scheduleEditInitialization(category);
-    return _buildFormScaffold(
-      context,
-      ref.watch(categoryFormViewModelProvider),
-    );
+    final formState = ref.watch(categoryFormViewModelProvider);
+    if (formState.initializedCategoryId != category.id) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    return _buildFormScaffold(context, formState);
   }
 
   void _scheduleNewInitialization() {
@@ -113,10 +115,10 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
       return;
     }
     _scheduledEditCategoryId = category.id;
+    syncTextControllerText(_nameController, category.name);
+    syncTextControllerText(_noteController, category.note ?? '');
     Future.microtask(() {
       if (!mounted) return;
-      syncTextControllerText(_nameController, category.name);
-      syncTextControllerText(_noteController, category.note ?? '');
       ref
           .read(categoryFormViewModelProvider.notifier)
           .initializeForEdit(category);
@@ -196,10 +198,11 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
                         ),
                         AppPlainSelectFormRow<String>(
                           label: '父分类',
-                          value: formState.parentId ?? '',
+                          value: formState.parentId,
                           valueText: effectiveParent?.name ?? '无',
                           placeholder: '无',
                           onTap: () => _showParentSheet(parentOptions),
+                          onChanged: notifier.setParentId,
                         ),
                       ],
                     ),

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_form_page.dart';
-import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
 
@@ -25,23 +25,25 @@ void main() {
     expect(fakeService.commands, isEmpty);
   });
 
-  testWidgets('number pad and note controller sync to view model', (
+  testWidgets('submits the latest view-owned amount and note text', (
     tester,
   ) async {
     final fakeService = _FakeTransactionPostingAppService();
     await _pumpTransactionForm(tester, fakeService);
 
+    await tester.tap(find.text('food'));
     await tester.tap(find.text('1'));
     await tester.pump();
     final noteField = find.byWidgetPredicate(
       (widget) => widget is TextField && !widget.readOnly,
     );
     await tester.enterText(noteField, '午餐');
-    await tester.pump();
+    await tester.tap(find.text('完成'));
+    await tester.pumpAndSettle();
 
-    final state = tester.container().read(transactionFormViewModelProvider);
-    expect(state.amountText, '1');
-    expect(state.noteText, '午餐');
+    final command = fakeService.commands.single;
+    expect(command.amount, const Money(minorUnits: 100));
+    expect(command.note, '午餐');
   });
 
   testWidgets('uses the shared transaction amount input', (tester) async {
@@ -55,6 +57,26 @@ Future<void> _pumpTransactionForm(
   WidgetTester tester,
   _FakeTransactionPostingAppService fakeService,
 ) async {
+  final router = GoRouter(
+    routes: [
+      GoRoute(
+        path: '/',
+        builder:
+            (context, state) => Scaffold(
+              body: TextButton(
+                key: const ValueKey('open-transaction-form'),
+                onPressed: () => context.push('/form'),
+                child: const Text('打开表单'),
+              ),
+            ),
+      ),
+      GoRoute(
+        path: '/form',
+        builder: (context, state) => const TransactionFormPage(),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -78,10 +100,12 @@ Future<void> _pumpTransactionForm(
           AccountType.income,
         ).overrideWith((ref) => Stream.value(const <CategoryNode>[])),
       ],
-      child: const MaterialApp(home: TransactionFormPage()),
+      child: MaterialApp.router(routerConfig: router),
     ),
   );
-  await tester.pump();
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const ValueKey('open-transaction-form')));
+  await tester.pumpAndSettle();
 }
 
 Account _account(String id) {

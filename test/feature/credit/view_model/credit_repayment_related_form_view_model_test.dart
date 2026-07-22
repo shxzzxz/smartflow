@@ -492,12 +492,10 @@ void main() {
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
     await container.read(provider.future);
-    final viewModel =
-        container.read(provider.notifier)
-          ..setAmountText('5')
-          ..setRefundToAccountId('cash');
+    final viewModel = container.read(provider.notifier)
+      ..setRefundToAccountId('cash');
 
-    final outcome = await viewModel.submit();
+    final outcome = await viewModel.submit(amountText: '5', noteText: '');
 
     expect(outcome, isA<SubmitSuccess>());
     expect(posting.refundCommands.single.parentTransactionId, 'parent');
@@ -511,12 +509,10 @@ void main() {
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
     await container.read(provider.future);
-    final viewModel =
-        container.read(provider.notifier)
-          ..setAmountText('8')
-          ..setReceiveAccountId('cash');
+    final viewModel = container.read(provider.notifier)
+      ..setReceiveAccountId('cash');
 
-    final outcome = await viewModel.submit();
+    final outcome = await viewModel.submit(amountText: '8', noteText: '');
 
     expect(outcome, isA<SubmitSuccess>());
     expect(posting.closeCommands.single.advanceTransactionId, 'parent');

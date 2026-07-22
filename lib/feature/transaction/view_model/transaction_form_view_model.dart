@@ -43,8 +43,6 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     if (state.initializedEditTransactionId == transactionId) return;
     state = state.copyWith(
       mode: snapshot.mode,
-      amountText: snapshot.amountText,
-      noteText: snapshot.noteText,
       occurredAt: snapshot.occurredAt,
       expenseCategoryId: snapshot.expenseCategoryId,
       expenseRootId: snapshot.expenseRootId,
@@ -73,16 +71,6 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       excludeBudget:
           value == TransactionFormMode.expense ? state.excludeBudget : false,
     );
-  }
-
-  void setAmountText(String value) {
-    if (state.amountText == value) return;
-    state = state.copyWith(amountText: value);
-  }
-
-  void setNoteText(String value) {
-    if (state.noteText == value) return;
-    state = state.copyWith(noteText: value);
   }
 
   void setOccurredAt(DateTime value) {
@@ -132,8 +120,6 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 
   void clearForNext({DateTime? occurredAt}) {
     state = state.copyWith(
-      amountText: '',
-      noteText: '',
       reimbursementAccountId: null,
       excludeStats: false,
       excludeBudget: false,
@@ -142,7 +128,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   }
 
   Future<SubmitOutcome> submit(TransactionFormSubmitOptions options) async {
-    final amount = _parsePositiveAmount(state.amountText);
+    final amount = _parsePositiveAmount(options.amountText);
     if (amount == null) {
       return _invalidCommand('请输入有效金额');
     }
@@ -188,7 +174,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     TransactionFormSubmitOptions options,
   ) async {
     final postingService = ref.read(transactionPostingAppServiceProvider);
-    final note = trimToNull(state.noteText);
+    final note = trimToNull(options.noteText);
 
     switch (state.mode) {
       case TransactionFormMode.expense:
@@ -303,7 +289,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     TransactionFormSubmitOptions options,
   ) async {
     final editService = ref.read(transactionEditAppServiceProvider);
-    final note = _stringPatch(trimToNull(state.noteText));
+    final note = _stringPatch(trimToNull(options.noteText));
 
     switch (state.mode) {
       case TransactionFormMode.expense:
@@ -471,6 +457,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 
 class TransactionFormSubmitOptions {
   const TransactionFormSubmitOptions({
+    required this.amountText,
+    required this.noteText,
     required this.settlementAccounts,
     required this.fundAccounts,
     required this.liabilityAccounts,
@@ -478,6 +466,8 @@ class TransactionFormSubmitOptions {
     this.editTransactionId,
   });
 
+  final String amountText;
+  final String noteText;
   final String? editTransactionId;
   final List<Account> settlementAccounts;
   final List<Account> fundAccounts;
@@ -488,8 +478,6 @@ class TransactionFormSubmitOptions {
 class TransactionFormState {
   const TransactionFormState({
     required this.mode,
-    required this.amountText,
-    required this.noteText,
     required this.occurredAt,
     required this.excludeStats,
     required this.excludeBudget,
@@ -509,8 +497,6 @@ class TransactionFormState {
   factory TransactionFormState.initial() {
     return TransactionFormState(
       mode: TransactionFormMode.expense,
-      amountText: '',
-      noteText: '',
       occurredAt: DateTime.now(),
       excludeStats: false,
       excludeBudget: false,
@@ -520,8 +506,6 @@ class TransactionFormState {
   }
 
   final TransactionFormMode mode;
-  final String amountText;
-  final String noteText;
   final DateTime occurredAt;
   final String? expenseCategoryId;
   final String? expenseRootId;
@@ -539,8 +523,6 @@ class TransactionFormState {
 
   TransactionFormState copyWith({
     TransactionFormMode? mode,
-    String? amountText,
-    String? noteText,
     DateTime? occurredAt,
     Object? expenseCategoryId = _sentinel,
     Object? expenseRootId = _sentinel,
@@ -558,8 +540,6 @@ class TransactionFormState {
   }) {
     return TransactionFormState(
       mode: mode ?? this.mode,
-      amountText: amountText ?? this.amountText,
-      noteText: noteText ?? this.noteText,
       occurredAt: occurredAt ?? this.occurredAt,
       expenseCategoryId:
           expenseCategoryId == _sentinel

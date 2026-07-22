@@ -19,8 +19,6 @@ void main() {
       );
 
       viewModel
-        ..setAmountText('12.34')
-        ..setNoteText(' lunch ')
         ..setOccurredAt(DateTime(2026, 1, 2, 8, 30))
         ..setExpenseCategory(rootId: 'food', categoryId: 'lunch')
         ..setFromAccountId('cash')
@@ -28,7 +26,11 @@ void main() {
         ..setExcludeBudget(true);
 
       final outcome = await viewModel.submit(
-        _options(settlementAccounts: [_account('cash')]),
+        _options(
+          amountText: '12.34',
+          noteText: ' lunch ',
+          settlementAccounts: [_account('cash')],
+        ),
       );
 
       expect(outcome, isA<SubmitSuccess>());
@@ -56,13 +58,13 @@ void main() {
         );
 
         viewModel
-          ..setAmountText('20')
           ..setExpenseCategory(rootId: 'travel', categoryId: 'taxi')
           ..setFromAccountId('cash')
           ..setReimbursementAccountId('company');
 
         final outcome = await viewModel.submit(
           _options(
+            amountText: '20',
             settlementAccounts: [_account('cash')],
             reimbursementAccounts: [_account('company')],
           ),
@@ -86,13 +88,12 @@ void main() {
 
       viewModel
         ..setMode(TransactionFormMode.income)
-        ..setAmountText('88')
         ..setIncomeCategory(rootId: 'salary', categoryId: 'salary')
         ..setToAccountId('bank')
         ..setExcludeStats(true);
 
       final outcome = await viewModel.submit(
-        _options(settlementAccounts: [_account('bank')]),
+        _options(amountText: '88', settlementAccounts: [_account('bank')]),
       );
 
       expect(outcome, isA<SubmitSuccess>());
@@ -112,12 +113,14 @@ void main() {
 
       viewModel
         ..setMode(TransactionFormMode.transfer)
-        ..setAmountText('50')
         ..setFromAccountId('cash')
         ..setToAccountId('bank');
 
       final outcome = await viewModel.submit(
-        _options(settlementAccounts: [_account('cash'), _account('bank')]),
+        _options(
+          amountText: '50',
+          settlementAccounts: [_account('cash'), _account('bank')],
+        ),
       );
 
       expect(outcome, isA<SubmitSuccess>());
@@ -135,12 +138,12 @@ void main() {
 
       viewModel
         ..setMode(TransactionFormMode.borrowing)
-        ..setAmountText('100')
         ..setLiabilityAccountId('loan')
         ..setToAccountId('bank');
 
       final outcome = await viewModel.submit(
         _options(
+          amountText: '100',
           fundAccounts: [_account('bank')],
           liabilityAccounts: [_account('loan', type: AccountType.liability)],
         ),
@@ -160,8 +163,6 @@ void main() {
         final viewModel = container.read(
           transactionFormViewModelProvider.notifier,
         );
-
-        viewModel.setAmountText('12.00');
 
         final outcome = await viewModel.submit(
           _options(settlementAccounts: [_account('cash')]),
@@ -245,7 +246,7 @@ void main() {
           toAccountId: 'bank',
         ),
       );
-      viewModel.setAmountText('11.00');
+      viewModel.setToAccountId('cash');
       viewModel.initializeForEdit(
         transactionId: 'tx-1',
         snapshot: TransactionFormEditSnapshot(
@@ -260,8 +261,8 @@ void main() {
 
       final state = container.read(transactionFormViewModelProvider);
       expect(state.mode, TransactionFormMode.income);
-      expect(state.amountText, '11.00');
       expect(state.incomeCategoryId, 'salary');
+      expect(state.toAccountId, 'cash');
     });
 
     test('submits reimbursement advance edit for edited advance', () async {
@@ -272,13 +273,13 @@ void main() {
       );
 
       viewModel
-        ..setAmountText('30')
         ..setExpenseCategory(rootId: 'travel', categoryId: 'hotel')
         ..setFromAccountId('cash')
         ..setReimbursementAccountId('company');
 
       final outcome = await viewModel.submit(
         _options(
+          amountText: '30',
           editTransactionId: 'tx-1',
           settlementAccounts: [_account('cash')],
           reimbursementAccounts: [_account('company')],
@@ -330,6 +331,8 @@ ProviderContainer _container({
 }
 
 TransactionFormSubmitOptions _options({
+  String amountText = '12.00',
+  String noteText = '',
   String? editTransactionId,
   List<Account> settlementAccounts = const [],
   List<Account> fundAccounts = const [],
@@ -337,6 +340,8 @@ TransactionFormSubmitOptions _options({
   List<Account> reimbursementAccounts = const [],
 }) {
   return TransactionFormSubmitOptions(
+    amountText: amountText,
+    noteText: noteText,
     editTransactionId: editTransactionId,
     settlementAccounts: settlementAccounts,
     fundAccounts: fundAccounts,
@@ -347,7 +352,6 @@ TransactionFormSubmitOptions _options({
 
 void _fillValidDailyExpense(TransactionFormViewModel viewModel) {
   viewModel
-    ..setAmountText('12.00')
     ..setExpenseCategory(rootId: 'food', categoryId: 'lunch')
     ..setFromAccountId('cash');
 }

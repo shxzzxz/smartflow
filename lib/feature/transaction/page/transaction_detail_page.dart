@@ -10,6 +10,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
+import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
@@ -640,10 +641,6 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
               _receiveAccountId,
               receiveAccounts,
             );
-            final selectedAccount = _findAccount(
-              selectedAccountId,
-              receiveAccounts,
-            );
             return Form(
               key: _formKey,
               child: SingleChildScrollView(
@@ -662,24 +659,35 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
                               style: context.appTextStyles.detailValue,
                             ),
                           ),
-                        FormField<String>(
-                          initialValue: selectedAccountId,
-                          validator: (_) {
+                        AppControlledFormField<String>(
+                          value: selectedAccountId,
+                          onChanged:
+                              (value) =>
+                                  setState(() => _receiveAccountId = value),
+                          validator: (value) {
                             final amount = _parseAmountOrNull();
                             if (amount != null &&
                                 amount.minorUnits > 0 &&
-                                selectedAccountId == null) {
+                                value == null) {
                               return '请选择到账账户';
                             }
                             return null;
                           },
-                          builder: (field) {
+                          builder: (context, value, errorText, changeValue) {
+                            final fieldAccount = _findAccount(
+                              value,
+                              receiveAccounts,
+                            );
                             return _DialogValueRow(
                               label: '到账账户',
-                              onTap: () => _pickReceiveAccount(receiveAccounts),
-                              errorText: field.errorText,
+                              onTap:
+                                  () => _pickReceiveAccount(
+                                    receiveAccounts,
+                                    changeValue,
+                                  ),
+                              errorText: errorText,
                               child:
-                                  selectedAccount == null
+                                  fieldAccount == null
                                       ? Text(
                                         '请选择账户',
                                         textAlign: TextAlign.right,
@@ -697,7 +705,7 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
                                             MainAxisAlignment.end,
                                         children: [
                                           BusinessIcon(
-                                            iconKey: selectedAccount.iconKey,
+                                            iconKey: fieldAccount.iconKey,
                                             size: 20,
                                           ),
                                           const SizedBox(
@@ -705,7 +713,7 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
                                           ),
                                           Flexible(
                                             child: Text(
-                                              selectedAccount.name,
+                                              fieldAccount.name,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                               style:
@@ -810,7 +818,10 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
     }
   }
 
-  Future<void> _pickReceiveAccount(List<Account> accounts) async {
+  Future<void> _pickReceiveAccount(
+    List<Account> accounts,
+    ValueChanged<String?> changeValue,
+  ) async {
     final picked = await showAccountPickerSheet(
       context: context,
       title: '报销到账账户',
@@ -818,7 +829,7 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
       selectedId: _effectiveAccountId(_receiveAccountId, accounts),
     );
     if (picked == null || !mounted) return;
-    setState(() => _receiveAccountId = picked);
+    changeValue(picked);
   }
 
   String? _validateAmount(String? value) {
