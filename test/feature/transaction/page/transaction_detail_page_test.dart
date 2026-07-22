@@ -86,6 +86,32 @@ void main() {
     expect(find.text('收支账户已更新'), findsOneWidget);
   });
 
+  testWidgets('shows refund and reimbursement information together', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          transactionDetailProvider(
+            'tx-reimbursement',
+          ).overrideWith((ref) => Stream.value(_combinedReimbursementDetail())),
+          accountLookupProvider.overrideWith(
+            (ref) => Stream.value(AccountLookup(_accounts)),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const TransactionDetailPage(transactionId: 'tx-reimbursement'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('退款金额'), findsOneWidget);
+    expect(find.text('报销详情'), findsOneWidget);
+    expect(find.text('已收 40.00 / 应收 100.00'), findsOneWidget);
+  });
+
   testWidgets('reimbursement date and close switch reset with the form', (
     tester,
   ) async {
@@ -289,6 +315,47 @@ TransactionDetail _reimbursementDetail() {
       advanceAmount: Money(minorUnits: 10000),
       receivedAmount: Money(minorUnits: 0),
       outstanding: Money(minorUnits: 10000),
+      isClosed: false,
+    ),
+  );
+}
+
+TransactionDetail _combinedReimbursementDetail() {
+  final detail = _reimbursementDetail();
+  return TransactionDetail(
+    transaction: detail.transaction,
+    createdAt: detail.createdAt,
+    details: detail.details,
+    entries: detail.entries,
+    children: [
+      TransactionListReadModel(
+        id: 'refund',
+        parentTransactionId: 'tx-reimbursement',
+        businessPurpose: BusinessPurpose.refund,
+        occurredAt: DateTime(2026, 1, 2, 8),
+        primaryAmount: const Money(minorUnits: 2000),
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+        entries: const [],
+        details: const [],
+      ),
+      TransactionListReadModel(
+        id: 'receipt',
+        parentTransactionId: 'tx-reimbursement',
+        businessPurpose: BusinessPurpose.reimbursementReceipt,
+        occurredAt: DateTime(2026, 1, 3, 8),
+        primaryAmount: const Money(minorUnits: 4000),
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+        entries: const [],
+        details: const [],
+      ),
+    ],
+    refundedTotal: const Money(minorUnits: 2000),
+    reimbursementSummary: const ReimbursementSummary(
+      advanceAmount: Money(minorUnits: 10000),
+      receivedAmount: Money(minorUnits: 4000),
+      outstanding: Money(minorUnits: 4000),
       isClosed: false,
     ),
   );

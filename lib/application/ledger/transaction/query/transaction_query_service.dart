@@ -78,7 +78,10 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
             .where(
               (transaction) =>
                   transaction.parentTransactionId == null &&
-                  transaction.businessPurpose == BusinessPurpose.dailyExpense,
+                  (transaction.businessPurpose ==
+                          BusinessPurpose.dailyExpense ||
+                      transaction.businessPurpose ==
+                          BusinessPurpose.reimbursementAdvance),
             )
             .map((transaction) => transaction.id)
             .toSet();
@@ -283,7 +286,9 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
         await _txRead.findCreatedAt(transactionId) ?? transaction.occurredAt;
     final childModels = await _projectListItems(children);
     final refundedTotal =
-        transaction.businessPurpose == BusinessPurpose.dailyExpense
+        (transaction.businessPurpose == BusinessPurpose.dailyExpense ||
+                transaction.businessPurpose ==
+                    BusinessPurpose.reimbursementAdvance)
             ? await getRefundedTotal(transaction.id)
             : null;
     final reimbursementSummary =

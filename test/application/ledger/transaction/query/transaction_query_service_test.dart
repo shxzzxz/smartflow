@@ -49,7 +49,62 @@ void main() {
       detail!.reimbursementSummary?.outstanding,
       const Money(minorUnits: 2000),
     );
+    expect(detail.refundedTotal, const Money(minorUnits: 2000));
   });
+
+  test(
+    'reimbursement advance list item aggregates refunds and receipts separately',
+    () async {
+      final parent = _transaction(
+        id: 'parent',
+        purpose: BusinessPurpose.reimbursementAdvance,
+        amount: 10000,
+      );
+      final refund = _transaction(
+        id: 'refund',
+        parentId: 'parent',
+        purpose: BusinessPurpose.refund,
+        amount: 2000,
+      );
+      final receipt = _transaction(
+        id: 'receipt',
+        parentId: 'parent',
+        purpose: BusinessPurpose.reimbursementReceipt,
+        amount: 4000,
+      );
+      final service = TransactionQueryServiceImpl(
+        transactionRead: _FakeTransactionReadRepository(
+          transactions: {
+            'parent': parent,
+            'refund': refund,
+            'receipt': receipt,
+          },
+          reimbursementAggregate: const {
+            BusinessPurpose.refund: TransactionChildAggregate(
+              sumMinor: 2000,
+              count: 1,
+            ),
+            BusinessPurpose.reimbursementReceipt: TransactionChildAggregate(
+              sumMinor: 4000,
+              count: 1,
+            ),
+          },
+        ),
+        entryRead: const _FakeEntryReadRepository(),
+        detailRead: const _FakeTransactionDetailReadRepository(),
+        metricsSource: const _UnusedLedgerMetricsSource(),
+      );
+
+      final item =
+          (await service.watchTransactions(const TransactionListQuery()).first)
+              .single;
+
+      expect(item.refundedTotal, const Money(minorUnits: 2000));
+      expect(item.refundChildCount, 1);
+      expect(item.reimbursementReceivedTotal, const Money(minorUnits: 4000));
+      expect(item.reimbursementChildCount, 1);
+    },
+  );
 
   test('child detail includes parent reimbursement closed summary', () async {
     final parent = _transaction(
@@ -135,7 +190,11 @@ class _FakeTransactionReadRepository implements TransactionReadRepository {
 
   @override
   Stream<List<Transaction>> watchPage(TransactionListQuery query) =>
-      const Stream.empty();
+      Stream.value([
+        for (final transaction in transactions.values)
+          if (!query.topLevelOnly || transaction.parentTransactionId == null)
+            transaction,
+      ]);
 
   @override
   Future<List<Transaction>> findChildren({required String parentId}) async =>
@@ -147,7 +206,27 @@ class _FakeTransactionReadRepository implements TransactionReadRepository {
   Future<Map<String, TransactionChildAggregate>> aggregateChildren({
     required Set<String> parentIds,
     required Set<BusinessPurpose> purposes,
-  }) async => const {};
+  }) async {
+    final result = <String, TransactionChildAggregate>{};
+    for (final parentId in parentIds) {
+      var sumMinor = 0;
+      var count = 0;
+      for (final transaction in transactions.values) {
+        if (transaction.parentTransactionId == parentId &&
+            purposes.contains(transaction.businessPurpose)) {
+          sumMinor += transaction.primaryAmount.minorUnits;
+          count += 1;
+        }
+      }
+      if (count > 0) {
+        result[parentId] = TransactionChildAggregate(
+          sumMinor: sumMinor,
+          count: count,
+        );
+      }
+    }
+    return result;
+  }
 
   @override
   Future<Map<String, Map<TransactionDetailType, int>>>

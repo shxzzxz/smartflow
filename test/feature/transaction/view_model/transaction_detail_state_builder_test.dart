@@ -68,6 +68,37 @@ void main() {
     expect(action.enabled, isTrue);
   });
 
+  test('shows refund and reimbursement information for the same advance', () {
+    final state = _build(
+      purpose: BusinessPurpose.reimbursementAdvance,
+      parentTransactionId: null,
+      refundedTotal: const Money(minorUnits: 2000),
+      reimbursementSummary: const ReimbursementSummary(
+        advanceAmount: Money(minorUnits: 10000),
+        receivedAmount: Money(minorUnits: 4000),
+        outstanding: Money(minorUnits: 4000),
+        isClosed: false,
+      ),
+      children: [
+        _child(
+          id: 'refund',
+          purpose: BusinessPurpose.refund,
+          amountMinor: 2000,
+        ),
+        _child(
+          id: 'receipt',
+          purpose: BusinessPurpose.reimbursementReceipt,
+          amountMinor: 4000,
+        ),
+      ],
+    );
+
+    expect(state.refund?.refundedTotal, const Money(minorUnits: 2000));
+    expect(state.refund?.items.map((item) => item.id), ['refund']);
+    expect(state.reimbursement?.summaryText, '已收 40.00 / 应收 100.00');
+    expect(state.reimbursement?.items.map((item) => item.id), ['receipt']);
+  });
+
   test('keeps reimbursement close editable while group is closed', () {
     final state = _build(
       purpose: BusinessPurpose.reimbursementClose,
@@ -102,7 +133,10 @@ void main() {
 
 TransactionDetailLoaded _build({
   required BusinessPurpose purpose,
+  String? parentTransactionId = 'parent',
+  Money? refundedTotal,
   ReimbursementSummary? reimbursementSummary,
+  List<TransactionListReadModel> children = const [],
 }) {
   final entries = [
     Entry(
@@ -123,7 +157,7 @@ TransactionDetailLoaded _build({
   final detail = TransactionDetail(
     transaction: Transaction(
       id: 'child',
-      parentTransactionId: 'parent',
+      parentTransactionId: parentTransactionId,
       businessPurpose: purpose,
       occurredAt: DateTime(2026, 7, 23),
       primaryAmount: const Money(minorUnits: 1000),
@@ -135,6 +169,8 @@ TransactionDetailLoaded _build({
     createdAt: DateTime(2026, 7, 23),
     details: const [],
     entries: entries,
+    children: children,
+    refundedTotal: refundedTotal,
     reimbursementSummary: reimbursementSummary,
   );
   final accounts = <String, Account>{
@@ -157,4 +193,22 @@ TransactionDetailLoaded _build({
         accountLookup: AccountLookup(accounts),
       )
       as TransactionDetailLoaded;
+}
+
+TransactionListReadModel _child({
+  required String id,
+  required BusinessPurpose purpose,
+  required int amountMinor,
+}) {
+  return TransactionListReadModel(
+    id: id,
+    parentTransactionId: 'child',
+    businessPurpose: purpose,
+    occurredAt: DateTime(2026, 7, 23),
+    primaryAmount: Money(minorUnits: amountMinor),
+    isExcludedFromStats: false,
+    isExcludedFromBudget: false,
+    entries: const [],
+    details: const [],
+  );
 }

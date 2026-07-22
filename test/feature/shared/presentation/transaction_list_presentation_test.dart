@@ -107,6 +107,26 @@ void main() {
       expect(row.canQuickEdit, true);
     });
 
+    test(
+      'shows refund and reimbursement badges while refund adjusts advance amount',
+      () {
+        final row = buildTransactionRowPresentation(
+          item: _item(
+            businessPurpose: BusinessPurpose.reimbursementAdvance,
+            primaryAmount: const Money(minorUnits: 10000),
+            refundedTotal: const Money(minorUnits: 2000),
+            reimbursementReceivedTotal: const Money(minorUnits: 4000),
+          ),
+          accountLookup: AccountLookup(_accounts),
+        );
+
+        expect(row.badges.map((badge) => badge.label), ['退 20', '报 40']);
+        expect(row.originalAmountText, '100');
+        expect(row.amountText, '80');
+        expect(row.amountTone, FinanceTone.neutral);
+      },
+    );
+
     test('uses account balance delta in account ledger mode', () {
       final row = buildTransactionRowPresentation(
         item: _item(),
@@ -162,35 +182,41 @@ final _accounts = <String, Account>{
 TransactionListReadModel _item({
   String id = 'tx-1',
   DateTime? occurredAt,
+  BusinessPurpose businessPurpose = BusinessPurpose.dailyExpense,
+  Money primaryAmount = const Money(minorUnits: 1234),
   bool isExcludedFromStats = false,
   Money? refundedTotal,
+  Money? reimbursementReceivedTotal,
 }) {
   return TransactionListReadModel(
     id: id,
-    businessPurpose: BusinessPurpose.dailyExpense,
+    businessPurpose: businessPurpose,
     occurredAt: occurredAt ?? DateTime(2026, 1, 1, 8, 30),
-    primaryAmount: const Money(minorUnits: 1234),
+    primaryAmount: primaryAmount,
     note: ' 午餐 ',
     isExcludedFromStats: isExcludedFromStats,
     isExcludedFromBudget: false,
-    entries: const [
+    reimbursementExpenseAccountId:
+        businessPurpose == BusinessPurpose.reimbursementAdvance ? 'food' : null,
+    entries: [
       Entry(
         id: 'entry-cash',
-        transactionId: 'tx-1',
+        transactionId: id,
         accountId: 'cash',
         direction: EntryDirection.credit,
-        amount: Money(minorUnits: 1234),
+        amount: primaryAmount,
       ),
       Entry(
         id: 'entry-food',
-        transactionId: 'tx-1',
+        transactionId: id,
         accountId: 'food',
         direction: EntryDirection.debit,
-        amount: Money(minorUnits: 1234),
+        amount: primaryAmount,
       ),
     ],
     details: const [],
     refundedTotal: refundedTotal,
+    reimbursementReceivedTotal: reimbursementReceivedTotal,
   );
 }
 

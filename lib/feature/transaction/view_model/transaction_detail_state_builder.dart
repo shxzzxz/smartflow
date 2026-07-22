@@ -177,11 +177,16 @@ List<DetailAccountRow> _accountRows(
 }
 
 DetailRefund? _refundState(TransactionDetail detail) {
-  if (detail.transaction.businessPurpose != BusinessPurpose.dailyExpense) {
+  final purpose = detail.transaction.businessPurpose;
+  if (purpose != BusinessPurpose.dailyExpense &&
+      purpose != BusinessPurpose.reimbursementAdvance) {
     return null;
   }
   final refunded = detail.refundedTotal;
   final hasRefund = refunded != null && refunded.minorUnits > 0;
+  if (purpose == BusinessPurpose.reimbursementAdvance && !hasRefund) {
+    return null;
+  }
   return DetailRefund(
     hasRefund: hasRefund,
     refundedTotal: refunded,
