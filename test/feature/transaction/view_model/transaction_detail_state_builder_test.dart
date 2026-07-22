@@ -50,6 +50,24 @@ void main() {
     },
   );
 
+  test('routes reimbursement action to the standalone reimbursement form', () {
+    final state = _build(
+      purpose: BusinessPurpose.reimbursementAdvance,
+      reimbursementSummary: const ReimbursementSummary(
+        advanceAmount: Money(minorUnits: 10000),
+        receivedAmount: Money(minorUnits: 0),
+        outstanding: Money(minorUnits: 10000),
+        isClosed: false,
+      ),
+    );
+
+    final action = state.actionButtons.singleWhere(
+      (button) => button.kind == DetailActionKind.reimbursement,
+    );
+    expect(action.route, '/transaction/child/reimbursement');
+    expect(action.enabled, isTrue);
+  });
+
   test('keeps reimbursement close editable while group is closed', () {
     final state = _build(
       purpose: BusinessPurpose.reimbursementClose,

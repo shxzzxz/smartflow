@@ -250,6 +250,7 @@ List<DetailActionButton> _actionButtons(
           label: '报销',
           primary: false,
           enabled: !closed,
+          route: '/transaction/${transaction.id}/reimbursement',
           deniedReason: closed ? '报销已结束' : null,
         ),
       );

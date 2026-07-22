@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
@@ -10,6 +11,7 @@ import 'package:smartflow/design_system/widget/app_datetime_picker.dart';
 import 'package:smartflow/design_system/widget/app_form_field.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_detail_page.dart';
+import 'package:smartflow/feature/transaction/page/reimbursement_form_page.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
@@ -89,6 +91,26 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(480, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
+    final router = GoRouter(
+      initialLocation: '/transaction/tx-reimbursement',
+      routes: [
+        GoRoute(
+          path: '/transaction/:id',
+          builder:
+              (context, state) => TransactionDetailPage(
+                transactionId: state.pathParameters['id']!,
+              ),
+        ),
+        GoRoute(
+          path: '/transaction/:id/reimbursement',
+          builder:
+              (context, state) => ReimbursementFormPage(
+                advanceTransactionId: state.pathParameters['id']!,
+              ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -111,9 +133,9 @@ void main() {
             }),
           ),
         ],
-        child: MaterialApp(
+        child: MaterialApp.router(
           theme: AppTheme.light(),
-          home: const TransactionDetailPage(transactionId: 'tx-reimbursement'),
+          routerConfig: router,
         ),
       ),
     );
@@ -122,6 +144,8 @@ void main() {
     await tester.tap(find.text('报销'));
     await tester.pumpAndSettle();
 
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('应收：100'), findsOneWidget);
     expect(
       find.byWidgetPredicate(
         (widget) => widget is AppControlledFormField<DateTime>,
@@ -141,25 +165,26 @@ void main() {
         tester.state<FormFieldState<String>>(accountField).value;
     expect(initialAccountValue, 'cash');
 
-    final dialog = find.byType(AlertDialog);
-    final dialogSwitch = find.descendant(
-      of: dialog,
+    final formPage = find.byType(ReimbursementFormPage);
+    final formSwitch = find.descendant(
+      of: formPage,
       matching: find.byType(Switch),
     );
     final dateText = find.descendant(
-      of: dialog,
+      of: formPage,
       matching: find.byWidgetPredicate(
         (widget) =>
             widget is Text &&
             RegExp(
-              r'^\d{4}年\d{2}月\d{2}日 \d{2}:\d{2}$',
+              r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$',
             ).hasMatch(widget.data ?? ''),
       ),
     );
     final initialDateText = tester.widget<Text>(dateText).data;
 
-    await tester.tap(dialogSwitch);
-    await tester.tap(find.text('报销时间'));
+    await tester.tap(formSwitch);
+    await tester.pump();
+    await tester.tap(find.text('到账时间'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('下个月'));
     await tester.pump();
@@ -172,12 +197,12 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, '确定'));
     await tester.pumpAndSettle();
 
-    expect(tester.widget<Switch>(dialogSwitch).value, isFalse);
+    expect(tester.widget<Switch>(formSwitch).value, isFalse);
     expect(tester.widget<Text>(dateText).data, isNot(initialDateText));
 
     tester
         .state<FormState>(
-          find.descendant(of: dialog, matching: find.byType(Form)),
+          find.descendant(of: formPage, matching: find.byType(Form)),
         )
         .reset();
     expect(
@@ -186,7 +211,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(tester.widget<Switch>(dialogSwitch).value, isTrue);
+    expect(tester.widget<Switch>(formSwitch).value, isTrue);
     expect(tester.widget<Text>(dateText).data, initialDateText);
   });
 }

@@ -70,6 +70,7 @@ class DateTimePlainFormRow extends StatelessWidget {
     required this.onTap,
     required this.onChanged,
     super.key,
+    this.showChevron = false,
     this.valueAlignment = AppPlainRowValueAlignment.start,
     this.minHeight = AppFormTokens.rowMinHeight,
   });
@@ -79,6 +80,7 @@ class DateTimePlainFormRow extends StatelessWidget {
   final String value;
   final AppPlainSelectTap<DateTime>? onTap;
   final ValueChanged<DateTime?> onChanged;
+  final bool showChevron;
   final AppPlainRowValueAlignment valueAlignment;
   final double minHeight;
 
@@ -91,6 +93,7 @@ class DateTimePlainFormRow extends StatelessWidget {
       placeholder: value,
       onTap: onTap,
       onChanged: onChanged,
+      showChevron: showChevron,
       valueAlignment: valueAlignment,
       minHeight: minHeight,
     );

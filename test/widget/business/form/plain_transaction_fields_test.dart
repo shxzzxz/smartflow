@@ -222,6 +222,25 @@ void main() {
     expect(find.text('自动计算'), findsOneWidget);
   });
 
+  testWidgets('date row hides its chevron by default', (tester) async {
+    final date = DateTime(2026, 2, 2, 9, 30);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: DateTimePlainFormRow(
+            label: '日期',
+            dateTime: date,
+            value: _dateText(date),
+            onTap: (_) {},
+            onChanged: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+  });
+
   testWidgets('value-with-unit row restores its unit on Form reset', (
     tester,
   ) async {

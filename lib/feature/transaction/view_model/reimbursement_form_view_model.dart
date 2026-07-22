@@ -172,7 +172,262 @@ class ReimbursementCloseFormViewModel
   }
 }
 
+@riverpod
+class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
+  @override
+  Future<ReimbursementFormState> build(String advanceTransactionId) async {
+    final base = await _loadUnifiedBase(ref, advanceTransactionId);
+    if (base == null) {
+      return ReimbursementFormState.notFound(accounts: const []);
+    }
+    if (base.receivableAccountId == null || base.outstanding == null) {
+      return ReimbursementFormState.notEditable(accounts: base.accounts);
+    }
+    return ReimbursementFormState.loaded(
+      accounts: base.accounts,
+      outstanding: base.outstanding!,
+      receivableAccountId: base.receivableAccountId!,
+      receiveAccountId: base.accounts.isEmpty ? null : base.accounts.first.id,
+      occurredAt: DateTime.now(),
+      mode: ReimbursementFormMode.close,
+    );
+  }
+
+  void setMode(ReimbursementFormMode mode) =>
+      _update((state) => state.copyWith(mode: mode));
+
+  void setCloseReimbursement(bool value) => setMode(
+    value ? ReimbursementFormMode.close : ReimbursementFormMode.receipt,
+  );
+
+  void setOccurredAt(DateTime value) =>
+      _update((state) => state.copyWith(occurredAt: value));
+
+  void setReceiveAccountId(String? value) =>
+      _update((state) => state.copyWith(receiveAccountId: value));
+
+  Future<SubmitOutcome> submit({
+    required String amountText,
+    required String noteText,
+  }) async {
+    final current = state.asData?.value;
+    if (current == null || !current.isLoaded) {
+      return _invalidCommand('报销表单尚未加载');
+    }
+    final amount = Money.tryParse(amountText);
+    if (amount == null) {
+      return _invalidCommand(current.isClose ? '请输入有效实收金额' : '请输入有效到账金额');
+    }
+
+    final receiveAccountId = _selectedId(
+      current.receiveAccountId,
+      current.accounts,
+    );
+    if (current.isClose) {
+      if (amount.minorUnits < 0) {
+        return _invalidCommand('请输入有效实收金额');
+      }
+      final resolvedAccountId =
+          amount.minorUnits > 0
+              ? receiveAccountId
+              : current.receivableAccountId;
+      if (resolvedAccountId == null) {
+        return _invalidCommand('请选择到账账户');
+      }
+      return _submitClose(
+        current,
+        amount: amount,
+        receiveAccountId: resolvedAccountId,
+        noteText: noteText,
+      );
+    }
+
+    if (amount.minorUnits <= 0) {
+      return _invalidCommand('请输入有效到账金额');
+    }
+    final outstanding = current.outstanding;
+    if (outstanding != null && amount.minorUnits > outstanding.minorUnits) {
+      return _invalidCommand('到账金额不能超过剩余应收');
+    }
+    if (receiveAccountId == null) {
+      return _invalidCommand('请选择到账账户');
+    }
+    return _submitReceipt(
+      current,
+      amount: amount,
+      receiveAccountId: receiveAccountId,
+      noteText: noteText,
+    );
+  }
+
+  Future<SubmitOutcome> _submitReceipt(
+    ReimbursementFormState current, {
+    required Money amount,
+    required String receiveAccountId,
+    required String noteText,
+  }) async {
+    _update((state) => state.copyWith(submitting: true));
+    try {
+      await ref
+          .read(transactionPostingAppServiceProvider)
+          .createReimbursementReceipt(
+            CreateReimbursementReceiptCommand(
+              amount: amount,
+              advanceTransactionId: advanceTransactionId,
+              receivableAccountId: current.receivableAccountId!,
+              receiveAccountId: receiveAccountId,
+              occurredAt: current.occurredAt,
+              note: trimToNull(noteText),
+            ),
+          );
+      _invalidateAfterSubmit(ref, advanceTransactionId);
+      return const SubmitOutcome.success();
+    } on AppException catch (exception) {
+      return SubmitOutcome.failure(UiError.fromException(exception));
+    } on Exception {
+      return const SubmitOutcome.failure(UiError.unknown());
+    } finally {
+      _update((state) => state.copyWith(submitting: false));
+    }
+  }
+
+  Future<SubmitOutcome> _submitClose(
+    ReimbursementFormState current, {
+    required Money amount,
+    required String receiveAccountId,
+    required String noteText,
+  }) async {
+    _update((state) => state.copyWith(submitting: true));
+    try {
+      await ref
+          .read(transactionPostingAppServiceProvider)
+          .closeReimbursement(
+            CloseReimbursementCommand(
+              actualReceivedAmount: amount,
+              advanceTransactionId: advanceTransactionId,
+              receivableAccountId: current.receivableAccountId!,
+              receiveAccountId: receiveAccountId,
+              occurredAt: current.occurredAt,
+              note: trimToNull(noteText),
+            ),
+          );
+      _invalidateAfterSubmit(ref, advanceTransactionId);
+      return const SubmitOutcome.success();
+    } on AppException catch (exception) {
+      return SubmitOutcome.failure(UiError.fromException(exception));
+    } on Exception {
+      return const SubmitOutcome.failure(UiError.unknown());
+    } finally {
+      _update((state) => state.copyWith(submitting: false));
+    }
+  }
+
+  void _update(ReimbursementFormState Function(ReimbursementFormState) update) {
+    final current = state.asData?.value;
+    if (current == null) return;
+    state = AsyncData(update(current));
+  }
+
+  SubmitOutcome _invalidCommand(String message) {
+    return SubmitOutcome.failure(
+      UiError(
+        code: LedgerErrorCode.transactionInvalidCommand.code,
+        message: message,
+      ),
+    );
+  }
+}
+
 enum ReimbursementFormStatus { loaded, notFound, notEditable }
+
+enum ReimbursementFormMode { receipt, close }
+
+class ReimbursementFormState extends _ReimbursementFormState {
+  const ReimbursementFormState({
+    required super.status,
+    required super.accounts,
+    required super.occurredAt,
+    required super.submitting,
+    required this.mode,
+    super.outstanding,
+    super.receivableAccountId,
+    super.receiveAccountId,
+  });
+
+  factory ReimbursementFormState.loaded({
+    required List<Account> accounts,
+    required Money outstanding,
+    required String receivableAccountId,
+    required DateTime occurredAt,
+    required ReimbursementFormMode mode,
+    String? receiveAccountId,
+  }) {
+    return ReimbursementFormState(
+      status: ReimbursementFormStatus.loaded,
+      accounts: accounts,
+      outstanding: outstanding,
+      receivableAccountId: receivableAccountId,
+      receiveAccountId: receiveAccountId,
+      occurredAt: occurredAt,
+      submitting: false,
+      mode: mode,
+    );
+  }
+
+  factory ReimbursementFormState.notFound({required List<Account> accounts}) {
+    return ReimbursementFormState._empty(
+      status: ReimbursementFormStatus.notFound,
+      accounts: accounts,
+    );
+  }
+
+  factory ReimbursementFormState.notEditable({
+    required List<Account> accounts,
+  }) {
+    return ReimbursementFormState._empty(
+      status: ReimbursementFormStatus.notEditable,
+      accounts: accounts,
+    );
+  }
+
+  factory ReimbursementFormState._empty({
+    required ReimbursementFormStatus status,
+    required List<Account> accounts,
+  }) {
+    return ReimbursementFormState(
+      status: status,
+      accounts: accounts,
+      occurredAt: DateTime.now(),
+      submitting: false,
+      mode: ReimbursementFormMode.close,
+    );
+  }
+
+  final ReimbursementFormMode mode;
+
+  bool get isClose => mode == ReimbursementFormMode.close;
+
+  ReimbursementFormState copyWith({
+    ReimbursementFormMode? mode,
+    DateTime? occurredAt,
+    Object? receiveAccountId = _sentinel,
+    bool? submitting,
+  }) {
+    return ReimbursementFormState(
+      status: status,
+      accounts: accounts,
+      outstanding: outstanding,
+      receivableAccountId: receivableAccountId,
+      receiveAccountId:
+          receiveAccountId == _sentinel
+              ? this.receiveAccountId
+              : receiveAccountId as String?,
+      occurredAt: occurredAt ?? this.occurredAt,
+      submitting: submitting ?? this.submitting,
+      mode: mode ?? this.mode,
+    );
+  }
+}
 
 class ReimbursementReceiptFormState extends _ReimbursementFormState {
   const ReimbursementReceiptFormState({
@@ -384,6 +639,30 @@ Future<_ReimbursementBase?> _loadBase(
     accounts: accounts,
     outstanding: detail.reimbursementSummary?.outstanding,
     receivableAccountId: reimbursementReceivableAccountId(detail, accountsById),
+  );
+}
+
+Future<_ReimbursementBase?> _loadUnifiedBase(
+  Ref ref,
+  String advanceTransactionId,
+) async {
+  final accounts = await ref.watch(
+    accountsForSelectionPurposeProvider(
+      AccountSelectionPurpose.settlement,
+    ).future,
+  );
+  final accountLookup = await ref.watch(accountLookupProvider.future);
+  final detail = await ref.watch(
+    transactionDetailProvider(advanceTransactionId).future,
+  );
+  if (detail == null) return null;
+  return _ReimbursementBase(
+    accounts: accounts,
+    outstanding: detail.reimbursementSummary?.outstanding,
+    receivableAccountId: reimbursementReceivableAccountId(
+      detail,
+      accountLookup.byId,
+    ),
   );
 }
 

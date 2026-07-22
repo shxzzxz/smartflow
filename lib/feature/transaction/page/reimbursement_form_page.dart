@@ -2,28 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../application/ledger/ledger_command_api.dart';
+import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money_formatter.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
+import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/reimbursement_edit_form_presentation.dart';
-import '../view_model/reimbursement_edit_form_view_model.dart';
+import '../view_model/reimbursement_form_view_model.dart';
 
-class ReimbursementEditFormPage extends ConsumerWidget {
-  const ReimbursementEditFormPage({required this.transactionId, super.key});
+class ReimbursementFormPage extends ConsumerWidget {
+  const ReimbursementFormPage({required this.advanceTransactionId, super.key});
 
-  final String transactionId;
+  final String advanceTransactionId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final provider = reimbursementEditFormViewModelProvider(transactionId);
+    final provider = reimbursementFormViewModelProvider(advanceTransactionId);
     final asyncState = ref.watch(provider);
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -38,47 +39,40 @@ class ReimbursementEditFormPage extends ConsumerWidget {
   }
 
   Widget _buildLoaded(
-    ReimbursementEditFormViewModelProvider provider,
-    ReimbursementEditFormState state,
+    ReimbursementFormViewModelProvider provider,
+    ReimbursementFormState state,
   ) {
-    if (state.status == ReimbursementEditFormStatus.notFound) {
-      return const Center(child: Text('原报销交易不存在'));
+    if (state.status == ReimbursementFormStatus.notFound) {
+      return const Center(child: Text('报销垫付不存在'));
     }
-    if (state.status == ReimbursementEditFormStatus.notEditable) {
-      return Center(child: Text(state.unavailableReason ?? '当前报销交易不可编辑'));
+    if (state.status == ReimbursementFormStatus.notEditable) {
+      return const Center(child: Text('该报销记录不可继续到账'));
     }
-    final kind = state.kind;
-    if (kind == null) {
-      return const Center(child: Text('原报销交易类型不受支持'));
-    }
-    return _ReimbursementEditFormContent(
-      key: ValueKey('${state.transactionId}:${kind.name}'),
+    return _ReimbursementFormContent(
+      key: ValueKey(advanceTransactionId),
       provider: provider,
       state: state,
-      kind: kind,
     );
   }
 }
 
-class _ReimbursementEditFormContent extends ConsumerStatefulWidget {
-  const _ReimbursementEditFormContent({
+class _ReimbursementFormContent extends ConsumerStatefulWidget {
+  const _ReimbursementFormContent({
     required this.provider,
     required this.state,
-    required this.kind,
     super.key,
   });
 
-  final ReimbursementEditFormViewModelProvider provider;
-  final ReimbursementEditFormState state;
-  final ReimbursementEditKind kind;
+  final ReimbursementFormViewModelProvider provider;
+  final ReimbursementFormState state;
 
   @override
-  ConsumerState<_ReimbursementEditFormContent> createState() =>
-      _ReimbursementEditFormContentState();
+  ConsumerState<_ReimbursementFormContent> createState() =>
+      _ReimbursementFormContentState();
 }
 
-class _ReimbursementEditFormContentState
-    extends ConsumerState<_ReimbursementEditFormContent> {
+class _ReimbursementFormContentState
+    extends ConsumerState<_ReimbursementFormContent> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _amountController;
   late final TextEditingController _noteController;
@@ -86,8 +80,10 @@ class _ReimbursementEditFormContentState
   @override
   void initState() {
     super.initState();
-    _amountController = TextEditingController(text: widget.state.amountText);
-    _noteController = TextEditingController(text: widget.state.noteText);
+    _amountController = TextEditingController(
+      text: widget.state.outstanding?.format() ?? '',
+    );
+    _noteController = TextEditingController();
   }
 
   @override
@@ -101,8 +97,7 @@ class _ReimbursementEditFormContentState
   Widget build(BuildContext context) {
     final provider = widget.provider;
     final state = widget.state;
-    final kind = widget.kind;
-    final isClose = kind == ReimbursementEditKind.close;
+    final isClose = state.isClose;
     final receiveAccount = findAccountById(
       state.receiveAccountId,
       state.accounts,
@@ -118,16 +113,13 @@ class _ReimbursementEditFormContentState
           AppSpacing.space24,
         ),
         children: [
-          AppPageHeader(
-            title: isClose ? '编辑结束报销' : '编辑报销到账',
-            showBackButton: true,
-          ),
+          const AppPageHeader(title: '报销', showBackButton: true),
           const SizedBox(height: AppSpacing.space14),
-          if (state.outstandingBeforeTransaction != null) ...[
+          if (state.outstanding != null) ...[
             AppFormSection(
               children: [
                 Text(
-                  '应收：${formatMoney(state.outstandingBeforeTransaction!, style: MoneyFormatStyle.plain)}',
+                  '应收：${formatMoney(state.outstanding!, style: MoneyFormatStyle.plain)}',
                   style: context.appTextStyles.formPlainValue,
                 ),
               ],
@@ -144,9 +136,13 @@ class _ReimbursementEditFormContentState
                 validator:
                     isClose
                         ? validateNonNegativeMoneyText
-                        : validatePositiveMoneyText,
+                        : (value) => validateReimbursementReceiptAmount(
+                          amountText: value ?? '',
+                          outstanding: state.outstanding,
+                        ),
               ),
               AccountPlainFormRow(
+                key: ValueKey('receive-account:${state.receiveAccountId}'),
                 label: '到账账户',
                 account: receiveAccount,
                 selectedId: state.receiveAccountId,
@@ -179,6 +175,11 @@ class _ReimbursementEditFormContentState
                 },
               ),
               NotePlainFormRow(controller: _noteController),
+              AppPlainSwitchRow(
+                label: '结束报销',
+                value: isClose,
+                onChanged: ref.read(provider.notifier).setCloseReimbursement,
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.space24),
@@ -221,7 +222,7 @@ class _ReimbursementEditFormContentState
     onSelected(picked);
   }
 
-  Future<void> _submit(ReimbursementEditFormViewModelProvider provider) async {
+  Future<void> _submit(ReimbursementFormViewModelProvider provider) async {
     if (!_formKey.currentState!.validate()) return;
     final outcome = await ref
         .read(provider.notifier)

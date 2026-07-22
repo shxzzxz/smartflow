@@ -30,6 +30,7 @@ import '../feature/profile/page/software_version_page.dart';
 import '../feature/transaction/page/refund_form_page.dart';
 import '../feature/transaction/page/reimbursement_close_form_page.dart';
 import '../feature/transaction/page/reimbursement_edit_form_page.dart';
+import '../feature/transaction/page/reimbursement_form_page.dart';
 import '../feature/transaction/page/reimbursement_receipt_form_page.dart';
 import '../feature/transaction/page/transaction_detail_page.dart';
 import '../feature/transaction/page/transaction_form_page.dart';
@@ -127,6 +128,13 @@ final appRouter = GoRouter(
       builder:
           (context, state) => RefundFormPage.edit(
             editTransactionId: state.pathParameters['id']!,
+          ),
+    ),
+    GoRoute(
+      path: '/transaction/:id/reimbursement',
+      builder:
+          (context, state) => ReimbursementFormPage(
+            advanceTransactionId: state.pathParameters['id']!,
           ),
     ),
     GoRoute(

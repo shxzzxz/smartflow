@@ -59,7 +59,7 @@ final class ReimbursementReceiptFormViewModelProvider
 }
 
 String _$reimbursementReceiptFormViewModelHash() =>
-    r'1022780ac2375bf850ad4247d3cbd5eb76d613fb';
+    r'fb7d3e6f90b15e7647a8a8a5e3750a56c583afbe';
 
 final class ReimbursementReceiptFormViewModelFamily extends $Family
     with
@@ -167,7 +167,7 @@ final class ReimbursementCloseFormViewModelProvider
 }
 
 String _$reimbursementCloseFormViewModelHash() =>
-    r'f6ebbe1452e3e9fc66bdeb914a19682d23a98ad0';
+    r'bb36210b2bb0f0fdf78122bf5b7672d3d1320c17';
 
 final class ReimbursementCloseFormViewModelFamily extends $Family
     with
@@ -220,6 +220,110 @@ abstract class _$ReimbursementCloseFormViewModel
                 ReimbursementCloseFormState
               >,
               AsyncValue<ReimbursementCloseFormState>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, () => build(_$args));
+  }
+}
+
+@ProviderFor(ReimbursementFormViewModel)
+final reimbursementFormViewModelProvider = ReimbursementFormViewModelFamily._();
+
+final class ReimbursementFormViewModelProvider
+    extends
+        $AsyncNotifierProvider<
+          ReimbursementFormViewModel,
+          ReimbursementFormState
+        > {
+  ReimbursementFormViewModelProvider._({
+    required ReimbursementFormViewModelFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'reimbursementFormViewModelProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$reimbursementFormViewModelHash();
+
+  @override
+  String toString() {
+    return r'reimbursementFormViewModelProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  ReimbursementFormViewModel create() => ReimbursementFormViewModel();
+
+  @override
+  bool operator ==(Object other) {
+    return other is ReimbursementFormViewModelProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$reimbursementFormViewModelHash() =>
+    r'5035c4735a61449a3ef55c2edf4027a21e34a333';
+
+final class ReimbursementFormViewModelFamily extends $Family
+    with
+        $ClassFamilyOverride<
+          ReimbursementFormViewModel,
+          AsyncValue<ReimbursementFormState>,
+          ReimbursementFormState,
+          FutureOr<ReimbursementFormState>,
+          String
+        > {
+  ReimbursementFormViewModelFamily._()
+    : super(
+        retry: null,
+        name: r'reimbursementFormViewModelProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  ReimbursementFormViewModelProvider call(String advanceTransactionId) =>
+      ReimbursementFormViewModelProvider._(
+        argument: advanceTransactionId,
+        from: this,
+      );
+
+  @override
+  String toString() => r'reimbursementFormViewModelProvider';
+}
+
+abstract class _$ReimbursementFormViewModel
+    extends $AsyncNotifier<ReimbursementFormState> {
+  late final _$args = ref.$arg as String;
+  String get advanceTransactionId => _$args;
+
+  FutureOr<ReimbursementFormState> build(String advanceTransactionId);
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref =
+        this.ref
+            as $Ref<AsyncValue<ReimbursementFormState>, ReimbursementFormState>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<
+                AsyncValue<ReimbursementFormState>,
+                ReimbursementFormState
+              >,
+              AsyncValue<ReimbursementFormState>,
               Object?,
               Object?
             >;
