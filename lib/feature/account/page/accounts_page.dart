@@ -289,7 +289,7 @@ class _NetAssetCard extends StatelessWidget {
                   _LegendRow(
                     key: const ValueKey('asset-balance-legend'),
                     label: '资产',
-                    money: assets.abs(),
+                    money: assets,
                     hideBalance: hideBalances,
                     color: colors.onPrimary.withValues(alpha: 0.72),
                   ),
@@ -297,7 +297,7 @@ class _NetAssetCard extends StatelessWidget {
                   _LegendRow(
                     key: const ValueKey('liability-balance-legend'),
                     label: '负债',
-                    money: liabilities.abs(),
+                    money: liabilities,
                     hideBalance: hideBalances,
                     color: colors.onPrimary.withValues(alpha: 0.42),
                   ),

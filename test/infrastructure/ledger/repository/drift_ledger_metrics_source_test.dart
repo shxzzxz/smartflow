@@ -104,6 +104,95 @@ void main() {
     expect(result.keys, [MonthKey.fromDate(occurredAt.toLocal())]);
     expect(result.values.single[AccountType.asset], 100);
   });
+
+  test('excludes archived accounts from every statistics aggregate', () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    await database.batch((batch) {
+      batch.insertAll(database.accounts, [
+        AccountsCompanion.insert(
+          id: 'active-cash',
+          name: '活跃资金',
+          accountType: AccountType.asset,
+        ),
+        AccountsCompanion.insert(
+          id: 'archived-cash',
+          name: '已归档资金',
+          accountType: AccountType.asset,
+          archivedAt: Value(DateTime(2026, 2)),
+        ),
+        AccountsCompanion.insert(
+          id: 'opening-equity',
+          name: '期初权益',
+          accountType: AccountType.equity,
+        ),
+      ]);
+    });
+    await _insertTransaction(
+      database,
+      id: 'active-balance',
+      purpose: BusinessPurpose.openingBalance,
+      occurredAt: DateTime(2026, 1, 1),
+      entries: const [
+        ('active-asset', 'active-cash', EntryDirection.debit, 1000),
+        ('active-equity', 'opening-equity', EntryDirection.credit, 1000),
+      ],
+    );
+    await _insertTransaction(
+      database,
+      id: 'archived-balance',
+      purpose: BusinessPurpose.openingBalance,
+      occurredAt: DateTime(2026, 1, 2),
+      entries: const [
+        ('archived-asset', 'archived-cash', EntryDirection.debit, 300),
+        ('archived-equity', 'opening-equity', EntryDirection.credit, 300),
+      ],
+    );
+
+    final repository = DriftLedgerMetricsSource(database);
+    const accountTypes = {AccountType.asset};
+    const scope = TransactionScopeFilter.assetLiability;
+    final window = DateTimeWindow(
+      from: DateTime(2026, 1),
+      until: DateTime(2026, 2),
+    );
+
+    final byAccount = await repository.aggregateByAccount(
+      accountTypes: accountTypes,
+      scope: scope,
+      window: window,
+    );
+    final byType = await repository.aggregateByAccountType(
+      accountTypes: accountTypes,
+      scope: scope,
+      window: window,
+    );
+    final byDay = await repository.aggregateByAccountTypeByDay(
+      accountTypes: accountTypes,
+      scope: scope,
+      window: window,
+    );
+    final byMonth = await repository.aggregateByAccountTypeByMonth(
+      accountTypes: accountTypes,
+      scope: scope,
+      window: window,
+    );
+
+    expect(byAccount, [
+      const AccountAggregate(
+        accountId: 'active-cash',
+        accountType: AccountType.asset,
+        amountMinor: 1000,
+      ),
+    ]);
+    expect(byType, {AccountType.asset: 1000});
+    expect(byDay, {
+      DateTime(2026, 1, 1): {AccountType.asset: 1000},
+    });
+    expect(byMonth, {
+      MonthKey(year: 2026, month: 1): {AccountType.asset: 1000},
+    });
+  });
 }
 
 Future<void> _insertAccounts(AppDatabase database) async {

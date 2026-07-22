@@ -33,11 +33,11 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.descendant(of: assetLegend, matching: find.text('1000.00')),
+      find.descendant(of: assetLegend, matching: find.text('-17.00')),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: liabilityLegend, matching: find.text('300.00')),
+      find.descendant(of: liabilityLegend, matching: find.text('327.72')),
       findsOneWidget,
     );
   });
@@ -74,12 +74,12 @@ Widget _buildAccountsPageApp() {
         (ref) => Stream.value(
           const BalanceSheetComparison(
             current: BalanceSheetSnapshot(
-              assets: Money(minorUnits: -100000),
-              liabilities: Money(minorUnits: 30000),
+              assets: Money(minorUnits: -1700),
+              liabilities: Money(minorUnits: 32772),
             ),
             previous: BalanceSheetSnapshot(
-              assets: Money(minorUnits: -90000),
-              liabilities: Money(minorUnits: 25000),
+              assets: Money(minorUnits: -2000),
+              liabilities: Money(minorUnits: 30000),
             ),
           ),
         ),

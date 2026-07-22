@@ -39,6 +39,7 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
           ..where(
             applyTransactionScope(transactions: _db.transactions, scope: scope),
           )
+          ..where(_db.accounts.archivedAt.isNull())
           ..where(_db.accounts.accountType.isInValues(accountTypes))
           ..groupBy([accountIdCol, parentIdCol, typeCol]);
 
@@ -96,6 +97,7 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
           ..where(
             applyTransactionScope(transactions: _db.transactions, scope: scope),
           )
+          ..where(_db.accounts.archivedAt.isNull())
           ..where(_db.accounts.accountType.isInValues(accountTypes))
           ..groupBy([typeCol]);
 
@@ -150,6 +152,7 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
           ..where(
             applyTransactionScope(transactions: _db.transactions, scope: scope),
           )
+          ..where(_db.accounts.archivedAt.isNull())
           ..where(_db.accounts.accountType.isInValues(accountTypes))
           ..groupBy([occurredAtCol, typeCol]);
 
@@ -219,6 +222,7 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
           ..where(
             applyTransactionScope(transactions: _db.transactions, scope: scope),
           )
+          ..where(_db.accounts.archivedAt.isNull())
           ..where(_db.accounts.accountType.isInValues(accountTypes))
           ..groupBy([monthExpr, typeCol]);
 
