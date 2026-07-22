@@ -7,7 +7,6 @@ import '../../../application/ledger/ledger_command_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
-import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
@@ -16,7 +15,7 @@ import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/category_form_view_model.dart';
 
-class CategoryFormPage extends ConsumerStatefulWidget {
+class CategoryFormPage extends ConsumerWidget {
   const CategoryFormPage({
     super.key,
     this.initialType = AccountType.expense,
@@ -29,24 +28,83 @@ class CategoryFormPage extends ConsumerStatefulWidget {
   final String? categoryId;
 
   @override
-  ConsumerState<CategoryFormPage> createState() => _CategoryFormPageState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncState = ref.watch(
+      categoryFormViewModelProvider(
+        categoryId: categoryId,
+        initialType: initialType,
+        initialParentId: initialParentId,
+      ),
+    );
+    return switch (asyncState) {
+      AsyncData(value: final formState) when formState != null =>
+        _CategoryFormContent(
+          key: ValueKey<String?>(categoryId),
+          categoryId: categoryId,
+          initialType: initialType,
+          initialParentId: initialParentId,
+          formState: formState,
+        ),
+      AsyncData(value: null) => const _CategoryFormStatusPage(
+        title: '编辑分类',
+        message: '分类不存在',
+      ),
+      AsyncError(:final error) => _CategoryFormStatusPage(
+        title: categoryId == null ? '新增分类' : '编辑分类',
+        message: '分类加载失败：$error',
+      ),
+      _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
+    };
+  }
 }
 
-class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
+class _CategoryFormStatusPage extends StatelessWidget {
+  const _CategoryFormStatusPage({required this.title, required this.message});
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(child: Text(message)),
+    );
+  }
+}
+
+class _CategoryFormContent extends ConsumerStatefulWidget {
+  const _CategoryFormContent({
+    required this.categoryId,
+    required this.initialType,
+    required this.initialParentId,
+    required this.formState,
+    super.key,
+  });
+
+  final String? categoryId;
+  final AccountType initialType;
+  final String? initialParentId;
+  final CategoryFormState formState;
+
+  @override
+  ConsumerState<_CategoryFormContent> createState() =>
+      _CategoryFormContentState();
+}
+
+class _CategoryFormContentState extends ConsumerState<_CategoryFormContent> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _noteController = TextEditingController();
-  String? _scheduledEditCategoryId;
-  bool _scheduledNewInitialization = false;
+  late final TextEditingController _nameController;
+  late final TextEditingController _noteController;
 
   bool get _isEditMode => widget.categoryId != null;
 
   @override
   void initState() {
     super.initState();
-    if (!_isEditMode) {
-      _scheduleNewInitialization();
-    }
+    final initialValues = widget.formState.initialValues;
+    _nameController = TextEditingController(text: initialValues.name);
+    _noteController = TextEditingController(text: initialValues.note);
   }
 
   @override
@@ -58,76 +116,12 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isEditMode) {
-      final formState = ref.watch(categoryFormViewModelProvider);
-      if (!formState.initializedNew) {
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
-      }
-      return _buildFormScaffold(context, formState);
-    }
-
-    final categoriesAsync = ref.watch(accountsByIdProvider);
-    return switch (categoriesAsync) {
-      AsyncData(value: final categories) => _buildForEdit(context, categories),
-      AsyncError(:final error) => Scaffold(
-        appBar: AppBar(title: const Text('编辑分类')),
-        body: Center(child: Text('分类加载失败：$error')),
-      ),
-      _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
-    };
-  }
-
-  Widget _buildForEdit(BuildContext context, Map<String, Account> categories) {
-    final category = categories[widget.categoryId!];
-    if (category == null || !category.type.isCategory) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('编辑分类')),
-        body: const Center(child: Text('分类不存在')),
-      );
-    }
-    _scheduleEditInitialization(category);
-    final formState = ref.watch(categoryFormViewModelProvider);
-    if (formState.initializedCategoryId != category.id) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-    return _buildFormScaffold(context, formState);
-  }
-
-  void _scheduleNewInitialization() {
-    if (_scheduledNewInitialization) return;
-    _scheduledNewInitialization = true;
-    Future.microtask(() {
-      if (!mounted) return;
-      ref
-          .read(categoryFormViewModelProvider.notifier)
-          .initializeNew(
-            type: widget.initialType,
-            parentId: widget.initialParentId,
-          );
-    });
-  }
-
-  void _scheduleEditInitialization(Account category) {
-    final initializedId =
-        ref.read(categoryFormViewModelProvider).initializedCategoryId;
-    if (initializedId == category.id ||
-        _scheduledEditCategoryId == category.id) {
-      return;
-    }
-    _scheduledEditCategoryId = category.id;
-    syncTextControllerText(_nameController, category.name);
-    syncTextControllerText(_noteController, category.note ?? '');
-    Future.microtask(() {
-      if (!mounted) return;
-      ref
-          .read(categoryFormViewModelProvider.notifier)
-          .initializeForEdit(category);
-    });
+    return _buildFormScaffold(context, widget.formState);
   }
 
   Widget _buildFormScaffold(BuildContext context, CategoryFormState formState) {
     final colors = Theme.of(context).colorScheme;
-    final notifier = ref.read(categoryFormViewModelProvider.notifier);
+    final notifier = ref.read(_formProvider.notifier);
     final parentOptions = ref
         .watch(categoryTreeProvider(formState.type))
         .maybeWhen(
@@ -227,8 +221,15 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
     );
   }
 
+  CategoryFormViewModelProvider get _formProvider =>
+      categoryFormViewModelProvider(
+        categoryId: widget.categoryId,
+        initialType: widget.initialType,
+        initialParentId: widget.initialParentId,
+      );
+
   Future<void> _showParentSheet(List<Account> parents) async {
-    final parentId = ref.read(categoryFormViewModelProvider).parentId;
+    final parentId = ref.read(_formProvider).requireValue!.parentId;
     final selected = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -263,7 +264,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
     );
     if (!mounted || selected == null) return;
     ref
-        .read(categoryFormViewModelProvider.notifier)
+        .read(_formProvider.notifier)
         .setParentId(selected.isEmpty ? null : selected);
   }
 
@@ -271,12 +272,8 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
     if (!_formKey.currentState!.validate()) return;
 
     final outcome = await ref
-        .read(categoryFormViewModelProvider.notifier)
-        .submit(
-          nameText: _nameController.text,
-          noteText: _noteController.text,
-          editCategoryId: widget.categoryId,
-        );
+        .read(_formProvider.notifier)
+        .submit(nameText: _nameController.text, noteText: _noteController.text);
     if (!mounted) return;
 
     switch (outcome) {

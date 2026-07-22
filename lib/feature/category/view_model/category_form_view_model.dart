@@ -7,93 +7,100 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
+import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 
 part 'category_form_view_model.g.dart';
 
 @riverpod
 class CategoryFormViewModel extends _$CategoryFormViewModel {
+  CategoryFormState? _initializedState;
+  String? _categoryId;
+
   @override
-  CategoryFormState build() {
-    return CategoryFormState.initial();
-  }
+  AsyncValue<CategoryFormState?> build({
+    String? categoryId,
+    AccountType initialType = AccountType.expense,
+    String? initialParentId,
+  }) {
+    _categoryId = categoryId;
+    if (_initializedState != null) {
+      return AsyncValue.data(_initializedState);
+    }
+    if (categoryId == null) {
+      return AsyncValue.data(
+        _initializedState ??= CategoryFormState.initial(
+          type: initialType,
+          parentId: initialParentId,
+        ),
+      );
+    }
 
-  void initializeNew({required AccountType type, String? parentId}) {
-    if (state.initializedNew) return;
-    state = state.copyWith(
-      type: type,
-      parentId: parentId,
-      iconKey: defaultCategoryIconKey(type),
-      initializedNew: true,
-    );
-  }
-
-  void initializeForEdit(Account category) {
-    if (state.initializedCategoryId == category.id) return;
-    state = state.copyWith(
-      type: category.type,
-      parentId: category.parentId,
-      iconKey: category.iconKey ?? defaultCategoryIconKey(category.type),
-      initializedCategoryId: category.id,
-    );
+    return ref.watch(accountsByIdProvider).whenData((categories) {
+      final category = categories[categoryId];
+      if (category == null || !category.type.isCategory) return null;
+      return _initializedState ??= CategoryFormState.fromCategory(category);
+    });
   }
 
   void setType(AccountType value) {
-    if (state.type == value) return;
-    state = state.copyWith(
-      type: value,
-      parentId: null,
-      iconKey: defaultCategoryIconKey(value),
-    );
+    _update((current) {
+      if (current.type == value) return current;
+      return current.copyWith(
+        type: value,
+        parentId: null,
+        iconKey: defaultCategoryIconKey(value),
+      );
+    });
   }
 
   void setParentId(String? value) {
-    state = state.copyWith(parentId: value);
+    _update((current) => current.copyWith(parentId: value));
   }
 
   void setIconKey(String value) {
-    if (state.iconKey == value) return;
-    state = state.copyWith(iconKey: value);
+    _update(
+      (current) =>
+          current.iconKey == value ? current : current.copyWith(iconKey: value),
+    );
   }
 
   Future<SubmitOutcome> submit({
     required String nameText,
     required String noteText,
-    String? editCategoryId,
   }) async {
+    final current = state.asData?.value;
+    if (current == null) return _invalidCommand('分类表单尚未加载');
     final name = trimToNull(nameText);
     if (name == null) {
       return _invalidCommand('请输入分类名称');
     }
     final note = trimToNull(noteText);
-    if (editCategoryId != null &&
-        state.initializedCategoryId != editCategoryId) {
-      return _invalidCommand('分类尚未加载。');
-    }
 
-    state = state.copyWith(submitting: true);
+    _update((current) => current.copyWith(submitting: true));
     try {
       final service = ref.read(categoryAppServiceProvider);
-      if (editCategoryId == null) {
+      final targetCategoryId = _categoryId;
+      if (targetCategoryId == null) {
         await service.createCategory(
           CreateCategoryCommand(
             name: name,
-            type: state.type,
-            parentId: state.parentId,
-            iconKey: state.iconKey,
+            type: current.type,
+            parentId: current.parentId,
+            iconKey: current.iconKey,
             note: note,
           ),
         );
       } else {
         await service.editCategory(
           EditCategoryCommand(
-            id: editCategoryId,
+            id: targetCategoryId,
             name: name,
             parentId:
-                state.parentId == null
+                current.parentId == null
                     ? const Patch<String>.clear()
-                    : Patch.set(state.parentId!),
-            iconKey: Patch.set(state.iconKey),
+                    : Patch.set(current.parentId!),
+            iconKey: Patch.set(current.iconKey),
             note: note == null ? const Patch<String>.clear() : Patch.set(note),
           ),
         );
@@ -104,8 +111,16 @@ class CategoryFormViewModel extends _$CategoryFormViewModel {
     } on Exception {
       return const SubmitOutcome.failure(UiError.unknown());
     } finally {
-      state = state.copyWith(submitting: false);
+      _update((current) => current.copyWith(submitting: false));
     }
+  }
+
+  void _update(CategoryFormState Function(CategoryFormState) update) {
+    final current = state.asData?.value;
+    if (current == null) return;
+    final next = update(current);
+    _initializedState = next;
+    state = AsyncValue.data(next);
   }
 
   SubmitOutcome _invalidCommand(String message) {
@@ -120,50 +135,73 @@ class CategoryFormViewModel extends _$CategoryFormViewModel {
 
 class CategoryFormState {
   const CategoryFormState({
+    required this.initialValues,
     required this.type,
     required this.iconKey,
     required this.submitting,
-    required this.initializedNew,
     this.parentId,
-    this.initializedCategoryId,
   });
 
-  factory CategoryFormState.initial() {
+  factory CategoryFormState.initial({
+    required AccountType type,
+    String? parentId,
+  }) {
     return CategoryFormState(
-      type: AccountType.expense,
-      iconKey: defaultCategoryIconKey(AccountType.expense),
+      initialValues: const CategoryFormInitialValues(),
+      type: type,
+      parentId: parentId,
+      iconKey: defaultCategoryIconKey(type),
       submitting: false,
-      initializedNew: false,
     );
   }
 
+  factory CategoryFormState.fromCategory(Account category) {
+    return CategoryFormState(
+      initialValues: CategoryFormInitialValues.fromCategory(category),
+      type: category.type,
+      parentId: category.parentId,
+      iconKey: category.iconKey ?? defaultCategoryIconKey(category.type),
+      submitting: false,
+    );
+  }
+
+  final CategoryFormInitialValues initialValues;
   final AccountType type;
   final String? parentId;
   final String iconKey;
   final bool submitting;
-  final bool initializedNew;
-  final String? initializedCategoryId;
 
   CategoryFormState copyWith({
+    CategoryFormInitialValues? initialValues,
     AccountType? type,
     Object? parentId = _sentinel,
     String? iconKey,
     bool? submitting,
-    bool? initializedNew,
-    Object? initializedCategoryId = _sentinel,
   }) {
     return CategoryFormState(
+      initialValues: initialValues ?? this.initialValues,
       type: type ?? this.type,
       parentId: parentId == _sentinel ? this.parentId : parentId as String?,
       iconKey: iconKey ?? this.iconKey,
       submitting: submitting ?? this.submitting,
-      initializedNew: initializedNew ?? this.initializedNew,
-      initializedCategoryId:
-          initializedCategoryId == _sentinel
-              ? this.initializedCategoryId
-              : initializedCategoryId as String?,
     );
   }
+}
+
+/// Text captured once from the category snapshot for controller construction.
+/// This is not the live text state of the form.
+class CategoryFormInitialValues {
+  const CategoryFormInitialValues({this.name = '', this.note = ''});
+
+  factory CategoryFormInitialValues.fromCategory(Account category) {
+    return CategoryFormInitialValues(
+      name: category.name,
+      note: category.note ?? '',
+    );
+  }
+
+  final String name;
+  final String note;
 }
 
 String defaultCategoryIconKey(AccountType type) {

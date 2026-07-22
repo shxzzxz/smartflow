@@ -2,11 +2,14 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_command_api.dart';
+import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
+import '../../../shared/account_profile/account_selection_purpose.dart';
+import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_form_presentation.dart';
 
@@ -14,76 +17,144 @@ part 'transaction_form_view_model.g.dart';
 
 @riverpod
 class TransactionFormViewModel extends _$TransactionFormViewModel {
-  @override
-  TransactionFormState build() {
-    return TransactionFormState.initial();
-  }
+  TransactionFormState? _initializedState;
+  String? _editTransactionId;
 
-  void initializeNew({
+  @override
+  AsyncValue<TransactionFormState?> build({
+    String? editTransactionId,
     TransactionFormMode initialMode = TransactionFormMode.expense,
     String? initialFromAccountId,
     String? initialToAccountId,
-    DateTime? occurredAt,
   }) {
-    if (state.initializedNew) return;
-    state = state.copyWith(
-      mode: initialMode,
-      fromAccountId: initialFromAccountId,
-      toAccountId: initialToAccountId,
-      occurredAt: occurredAt ?? state.occurredAt,
-      initializedNew: true,
+    _editTransactionId = editTransactionId;
+    final settlementAccountsAsync = ref.watch(
+      accountsForSelectionPurposeProvider(AccountSelectionPurpose.settlement),
     );
-    _normalizeModeFlags(initialMode);
-  }
+    final fundAccountsAsync = ref.watch(
+      accountsForSelectionPurposeProvider(AccountSelectionPurpose.fund),
+    );
+    final liabilityAccountsAsync = ref.watch(
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.borrowingLiability,
+      ),
+    );
+    final reimbursementAccountsAsync = ref.watch(
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.reimbursementReceivable,
+      ),
+    );
+    final expenseTreeAsync = ref.watch(
+      categoryTreeProvider(AccountType.expense),
+    );
+    final incomeTreeAsync = ref.watch(categoryTreeProvider(AccountType.income));
+    final editDetailAsync =
+        editTransactionId == null
+            ? null
+            : ref.watch(transactionDetailProvider(editTransactionId));
+    final accountsByIdAsync =
+        editTransactionId == null ? null : ref.watch(accountsByIdProvider);
 
-  void initializeForEdit({
-    required String transactionId,
-    required TransactionFormEditSnapshot snapshot,
-  }) {
-    if (state.initializedEditTransactionId == transactionId) return;
-    state = state.copyWith(
-      mode: snapshot.mode,
-      occurredAt: snapshot.occurredAt,
-      expenseCategoryId: snapshot.expenseCategoryId,
-      expenseRootId: snapshot.expenseRootId,
-      incomeCategoryId: snapshot.incomeCategoryId,
-      incomeRootId: snapshot.incomeRootId,
-      fromAccountId: snapshot.fromAccountId,
-      toAccountId: snapshot.toAccountId,
-      reimbursementAccountId: snapshot.reimbursementAccountId,
-      liabilityAccountId: snapshot.liabilityAccountId,
-      excludeStats: snapshot.excludeStats,
-      excludeBudget: snapshot.excludeBudget,
-      initializedEditTransactionId: transactionId,
+    final initializedState = _initializedState;
+    if (initializedState != null) {
+      return AsyncValue.data(initializedState);
+    }
+
+    final queries = <AsyncValue<dynamic>>[
+      settlementAccountsAsync,
+      fundAccountsAsync,
+      liabilityAccountsAsync,
+      reimbursementAccountsAsync,
+      expenseTreeAsync,
+      incomeTreeAsync,
+      if (editDetailAsync != null) editDetailAsync,
+      if (accountsByIdAsync != null) accountsByIdAsync,
+    ];
+    for (final query in queries) {
+      if (query case AsyncError(:final error, :final stackTrace)) {
+        return AsyncValue.error(error, stackTrace);
+      }
+    }
+    if (queries.any((query) => !query.hasValue)) {
+      return const AsyncValue.loading();
+    }
+
+    final settlementAccounts = settlementAccountsAsync.requireValue;
+    final fundAccounts = fundAccountsAsync.requireValue;
+    final liabilityAccounts = liabilityAccountsAsync.requireValue;
+    final reimbursementAccounts = reimbursementAccountsAsync.requireValue;
+    final expenseTree = expenseTreeAsync.requireValue;
+    final incomeTree = incomeTreeAsync.requireValue;
+
+    if (editTransactionId != null) {
+      final detail = editDetailAsync!.requireValue;
+      if (detail == null) return const AsyncValue.data(null);
+      final snapshot = transactionFormEditSnapshot(
+        detail: detail,
+        expenseTree: expenseTree,
+        incomeTree: incomeTree,
+        accountsById: accountsByIdAsync!.requireValue,
+      );
+      return AsyncValue.data(
+        _initializedState ??= TransactionFormState.fromEditSnapshot(
+          snapshot: snapshot,
+          settlementAccounts: settlementAccounts,
+          fundAccounts: fundAccounts,
+          liabilityAccounts: liabilityAccounts,
+          reimbursementAccounts: reimbursementAccounts,
+          expenseTree: expenseTree,
+          incomeTree: incomeTree,
+        ),
+      );
+    }
+
+    return AsyncValue.data(
+      _initializedState ??= TransactionFormState.initial(
+        mode: initialMode,
+        fromAccountId: initialFromAccountId,
+        toAccountId: initialToAccountId,
+        settlementAccounts: settlementAccounts,
+        fundAccounts: fundAccounts,
+        liabilityAccounts: liabilityAccounts,
+        reimbursementAccounts: reimbursementAccounts,
+        expenseTree: expenseTree,
+        incomeTree: incomeTree,
+      ),
     );
   }
 
   void setMode(TransactionFormMode value) {
-    if (state.mode == value) return;
-    state = state.copyWith(
-      mode: value,
-      reimbursementAccountId: null,
-      excludeStats:
-          value == TransactionFormMode.transfer ||
-                  value == TransactionFormMode.borrowing
-              ? false
-              : state.excludeStats,
-      excludeBudget:
-          value == TransactionFormMode.expense ? state.excludeBudget : false,
-    );
+    _update((current) {
+      if (current.mode == value) return current;
+      return current.copyWith(
+        mode: value,
+        reimbursementAccountId: null,
+        excludeStats:
+            value == TransactionFormMode.transfer ||
+                    value == TransactionFormMode.borrowing
+                ? false
+                : current.excludeStats,
+        excludeBudget:
+            value == TransactionFormMode.expense
+                ? current.excludeBudget
+                : false,
+      );
+    });
   }
 
   void setOccurredAt(DateTime value) {
-    state = state.copyWith(occurredAt: value);
+    _update((current) => current.copyWith(occurredAt: value));
   }
 
   void setExpenseCategory({
     required String? rootId,
     required String? categoryId,
   }) {
-    state = state.copyWith(
-      expenseRootId: rootId,
-      expenseCategoryId: categoryId,
+    _update(
+      (current) => current.copyWith(
+        expenseRootId: rootId,
+        expenseCategoryId: categoryId,
+      ),
     );
   }
 
@@ -91,55 +162,65 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     required String? rootId,
     required String? categoryId,
   }) {
-    state = state.copyWith(incomeRootId: rootId, incomeCategoryId: categoryId);
-  }
-
-  void setFromAccountId(String? value) {
-    state = state.copyWith(fromAccountId: value);
-  }
-
-  void setToAccountId(String? value) {
-    state = state.copyWith(toAccountId: value);
-  }
-
-  void setReimbursementAccountId(String? value) {
-    state = state.copyWith(reimbursementAccountId: value);
-  }
-
-  void setLiabilityAccountId(String? value) {
-    state = state.copyWith(liabilityAccountId: value);
-  }
-
-  void setExcludeStats(bool value) {
-    state = state.copyWith(excludeStats: value);
-  }
-
-  void setExcludeBudget(bool value) {
-    state = state.copyWith(excludeBudget: value);
-  }
-
-  void clearForNext({DateTime? occurredAt}) {
-    state = state.copyWith(
-      reimbursementAccountId: null,
-      excludeStats: false,
-      excludeBudget: false,
-      occurredAt: occurredAt ?? DateTime.now(),
+    _update(
+      (current) =>
+          current.copyWith(incomeRootId: rootId, incomeCategoryId: categoryId),
     );
   }
 
-  Future<SubmitOutcome> submit(TransactionFormSubmitOptions options) async {
-    final amount = _parsePositiveAmount(options.amountText);
+  void setFromAccountId(String? value) {
+    _update((current) => current.copyWith(fromAccountId: value));
+  }
+
+  void setToAccountId(String? value) {
+    _update((current) => current.copyWith(toAccountId: value));
+  }
+
+  void setReimbursementAccountId(String? value) {
+    _update((current) => current.copyWith(reimbursementAccountId: value));
+  }
+
+  void setLiabilityAccountId(String? value) {
+    _update((current) => current.copyWith(liabilityAccountId: value));
+  }
+
+  void setExcludeStats(bool value) {
+    _update((current) => current.copyWith(excludeStats: value));
+  }
+
+  void setExcludeBudget(bool value) {
+    _update((current) => current.copyWith(excludeBudget: value));
+  }
+
+  void clearForNext({DateTime? occurredAt}) {
+    _update(
+      (current) => current.copyWith(
+        reimbursementAccountId: null,
+        excludeStats: false,
+        excludeBudget: false,
+        occurredAt: occurredAt ?? DateTime.now(),
+      ),
+    );
+  }
+
+  Future<SubmitOutcome> submit({
+    required String amountText,
+    required String noteText,
+  }) async {
+    final current = state.asData?.value;
+    if (current == null) return _invalidCommand('交易表单尚未加载');
+    final amount = _parsePositiveAmount(amountText);
     if (amount == null) {
       return _invalidCommand('请输入有效金额');
     }
 
-    state = state.copyWith(submitting: true);
+    _update((current) => current.copyWith(submitting: true));
     try {
-      final editTransactionId = options.editTransactionId;
+      final editTransactionId = _editTransactionId;
       if (editTransactionId == null) {
-        await _submitCreate(amount, options);
+        await _submitCreate(current, amount, noteText);
       } else {
-        await _submitEdit(editTransactionId, amount, options);
+        await _submitEdit(current, editTransactionId, amount, noteText);
       }
       return const SubmitOutcome.success();
     } on AppException catch (exception) {
@@ -147,12 +228,12 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     } on Exception {
       return const SubmitOutcome.failure(UiError.unknown());
     } finally {
-      state = state.copyWith(submitting: false);
+      _update((current) => current.copyWith(submitting: false));
     }
   }
 
   Future<UiActionOutcome<void>> deleteTransaction(String transactionId) async {
-    state = state.copyWith(submitting: true);
+    _update((current) => current.copyWith(submitting: true));
     try {
       await ref
           .read(transactionEditAppServiceProvider)
@@ -165,33 +246,34 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     } on Exception {
       return const UiActionOutcome.failure(UiError.unknown());
     } finally {
-      state = state.copyWith(submitting: false);
+      _update((current) => current.copyWith(submitting: false));
     }
   }
 
   Future<void> _submitCreate(
+    TransactionFormState formState,
     Money amount,
-    TransactionFormSubmitOptions options,
+    String noteText,
   ) async {
     final postingService = ref.read(transactionPostingAppServiceProvider);
-    final note = trimToNull(options.noteText);
+    final note = trimToNull(noteText);
 
-    switch (state.mode) {
+    switch (formState.mode) {
       case TransactionFormMode.expense:
-        final expenseCategoryId = state.expenseCategoryId;
+        final expenseCategoryId = formState.expenseCategoryId;
         if (expenseCategoryId == null) {
           throw _invalidCommandException('请选择支出分类');
         }
         final paidFromAccountId = _effectiveId(
-          state.fromAccountId,
-          options.settlementAccounts,
+          formState.fromAccountId,
+          formState.settlementAccounts,
         );
         if (paidFromAccountId == null) {
           throw _invalidCommandException('请选择支出账户');
         }
         final reimbursementAccountId = _selectedId(
-          state.reimbursementAccountId,
-          options.reimbursementAccounts,
+          formState.reimbursementAccountId,
+          formState.reimbursementAccounts,
         );
         if (reimbursementAccountId == null) {
           await postingService.createExpense(
@@ -199,10 +281,10 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               amount: amount,
               paidFromAccountId: paidFromAccountId,
               expenseAccountId: expenseCategoryId,
-              occurredAt: state.occurredAt,
+              occurredAt: formState.occurredAt,
               note: note,
-              isExcludedFromStats: state.excludeStats,
-              isExcludedFromBudget: state.excludeBudget,
+              isExcludedFromStats: formState.excludeStats,
+              isExcludedFromBudget: formState.excludeBudget,
             ),
           );
         } else {
@@ -212,19 +294,19 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               receivableAccountId: reimbursementAccountId,
               paidFromAccountId: paidFromAccountId,
               expenseCategoryId: expenseCategoryId,
-              occurredAt: state.occurredAt,
+              occurredAt: formState.occurredAt,
               note: note,
-              isExcludedFromStats: state.excludeStats,
-              isExcludedFromBudget: state.excludeBudget,
+              isExcludedFromStats: formState.excludeStats,
+              isExcludedFromBudget: formState.excludeBudget,
             ),
           );
         }
       case TransactionFormMode.income:
-        final incomeCategoryId = state.incomeCategoryId;
+        final incomeCategoryId = formState.incomeCategoryId;
         if (incomeCategoryId == null) throw _invalidCommandException('请选择收入分类');
         final receiveAccountId = _effectiveId(
-          state.toAccountId,
-          options.settlementAccounts,
+          formState.toAccountId,
+          formState.settlementAccounts,
         );
         if (receiveAccountId == null) throw _invalidCommandException('请选择收入账户');
         await postingService.createIncome(
@@ -232,19 +314,19 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             amount: amount,
             receiveAccountId: receiveAccountId,
             incomeAccountId: incomeCategoryId,
-            occurredAt: state.occurredAt,
+            occurredAt: formState.occurredAt,
             note: note,
-            isExcludedFromStats: state.excludeStats,
+            isExcludedFromStats: formState.excludeStats,
           ),
         );
       case TransactionFormMode.transfer:
         final fromAccountId = _effectiveId(
-          state.fromAccountId,
-          options.settlementAccounts,
+          formState.fromAccountId,
+          formState.settlementAccounts,
         );
         final toAccountId = _effectiveId(
-          state.toAccountId,
-          options.settlementAccounts,
+          formState.toAccountId,
+          formState.settlementAccounts,
         );
         if (fromAccountId == null || toAccountId == null) {
           throw _invalidCommandException('请选择转出和转入账户');
@@ -254,21 +336,21 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             amount: amount,
             fromAccountId: fromAccountId,
             toAccountId: toAccountId,
-            occurredAt: state.occurredAt,
+            occurredAt: formState.occurredAt,
             note: note,
           ),
         );
       case TransactionFormMode.borrowing:
         final liabilityAccountId = _effectiveId(
-          state.liabilityAccountId,
-          options.liabilityAccounts,
+          formState.liabilityAccountId,
+          formState.liabilityAccounts,
         );
         if (liabilityAccountId == null) {
           throw _invalidCommandException('请选择借出账户');
         }
         final receiveAccountId = _effectiveId(
-          state.toAccountId,
-          options.fundAccounts,
+          formState.toAccountId,
+          formState.fundAccounts,
         );
         if (receiveAccountId == null) throw _invalidCommandException('请选择借入账户');
         await postingService.createBorrowing(
@@ -276,7 +358,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             amount: amount,
             liabilityAccountId: liabilityAccountId,
             receiveAccountId: receiveAccountId,
-            occurredAt: state.occurredAt,
+            occurredAt: formState.occurredAt,
             note: note,
           ),
         );
@@ -284,29 +366,30 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   }
 
   Future<void> _submitEdit(
+    TransactionFormState formState,
     String transactionId,
     Money amount,
-    TransactionFormSubmitOptions options,
+    String noteText,
   ) async {
     final editService = ref.read(transactionEditAppServiceProvider);
-    final note = _stringPatch(trimToNull(options.noteText));
+    final note = _stringPatch(trimToNull(noteText));
 
-    switch (state.mode) {
+    switch (formState.mode) {
       case TransactionFormMode.expense:
-        final expenseCategoryId = state.expenseCategoryId;
+        final expenseCategoryId = formState.expenseCategoryId;
         if (expenseCategoryId == null) {
           throw _invalidCommandException('请选择支出分类');
         }
         final paidFromAccountId = _effectiveId(
-          state.fromAccountId,
-          options.settlementAccounts,
+          formState.fromAccountId,
+          formState.settlementAccounts,
         );
         if (paidFromAccountId == null) {
           throw _invalidCommandException('请选择支出账户');
         }
         final reimbursementAccountId = _selectedId(
-          state.reimbursementAccountId,
-          options.reimbursementAccounts,
+          formState.reimbursementAccountId,
+          formState.reimbursementAccounts,
         );
         if (reimbursementAccountId == null) {
           await editService.editExpense(
@@ -315,10 +398,10 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               amount: amount,
               paidFromAccountId: paidFromAccountId,
               expenseAccountId: expenseCategoryId,
-              occurredAt: state.occurredAt,
+              occurredAt: formState.occurredAt,
               note: note,
-              isExcludedFromStats: state.excludeStats,
-              isExcludedFromBudget: state.excludeBudget,
+              isExcludedFromStats: formState.excludeStats,
+              isExcludedFromBudget: formState.excludeBudget,
             ),
           );
         } else {
@@ -329,19 +412,19 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               receivableAccountId: reimbursementAccountId,
               paidFromAccountId: paidFromAccountId,
               expenseCategoryId: expenseCategoryId,
-              occurredAt: state.occurredAt,
+              occurredAt: formState.occurredAt,
               note: note,
-              isExcludedFromStats: state.excludeStats,
-              isExcludedFromBudget: state.excludeBudget,
+              isExcludedFromStats: formState.excludeStats,
+              isExcludedFromBudget: formState.excludeBudget,
             ),
           );
         }
       case TransactionFormMode.income:
-        final incomeCategoryId = state.incomeCategoryId;
+        final incomeCategoryId = formState.incomeCategoryId;
         if (incomeCategoryId == null) throw _invalidCommandException('请选择收入分类');
         final receiveAccountId = _effectiveId(
-          state.toAccountId,
-          options.settlementAccounts,
+          formState.toAccountId,
+          formState.settlementAccounts,
         );
         if (receiveAccountId == null) throw _invalidCommandException('请选择收入账户');
         await editService.editIncome(
@@ -350,19 +433,19 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             amount: amount,
             receiveAccountId: receiveAccountId,
             incomeAccountId: incomeCategoryId,
-            occurredAt: state.occurredAt,
+            occurredAt: formState.occurredAt,
             note: note,
-            isExcludedFromStats: state.excludeStats,
+            isExcludedFromStats: formState.excludeStats,
           ),
         );
       case TransactionFormMode.transfer:
         final fromAccountId = _effectiveId(
-          state.fromAccountId,
-          options.settlementAccounts,
+          formState.fromAccountId,
+          formState.settlementAccounts,
         );
         final toAccountId = _effectiveId(
-          state.toAccountId,
-          options.settlementAccounts,
+          formState.toAccountId,
+          formState.settlementAccounts,
         );
         if (fromAccountId == null || toAccountId == null) {
           throw _invalidCommandException('请选择转出和转入账户');
@@ -373,18 +456,18 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             amount: amount,
             fromAccountId: fromAccountId,
             toAccountId: toAccountId,
-            occurredAt: state.occurredAt,
+            occurredAt: formState.occurredAt,
             note: note,
           ),
         );
       case TransactionFormMode.borrowing:
         final liabilityAccountId = _effectiveId(
-          state.liabilityAccountId,
-          options.liabilityAccounts,
+          formState.liabilityAccountId,
+          formState.liabilityAccounts,
         );
         final receiveAccountId = _effectiveId(
-          state.toAccountId,
-          options.fundAccounts,
+          formState.toAccountId,
+          formState.fundAccounts,
         );
         if (liabilityAccountId == null || receiveAccountId == null) {
           throw _invalidCommandException('请选择借出和借入账户');
@@ -395,22 +478,19 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             amount: amount,
             liabilityAccountId: liabilityAccountId,
             receiveAccountId: receiveAccountId,
-            occurredAt: state.occurredAt,
+            occurredAt: formState.occurredAt,
             note: note,
           ),
         );
     }
   }
 
-  void _normalizeModeFlags(TransactionFormMode mode) {
-    if (mode == TransactionFormMode.transfer ||
-        mode == TransactionFormMode.borrowing) {
-      state = state.copyWith(excludeStats: false, excludeBudget: false);
-      return;
-    }
-    if (mode != TransactionFormMode.expense) {
-      state = state.copyWith(excludeBudget: false);
-    }
+  void _update(TransactionFormState Function(TransactionFormState) update) {
+    final current = state.asData?.value;
+    if (current == null) return;
+    final next = update(current);
+    _initializedState = next;
+    state = AsyncValue.data(next);
   }
 
   SubmitOutcome _invalidCommand(String message) {
@@ -455,35 +535,20 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   }
 }
 
-class TransactionFormSubmitOptions {
-  const TransactionFormSubmitOptions({
-    required this.amountText,
-    required this.noteText,
-    required this.settlementAccounts,
-    required this.fundAccounts,
-    required this.liabilityAccounts,
-    required this.reimbursementAccounts,
-    this.editTransactionId,
-  });
-
-  final String amountText;
-  final String noteText;
-  final String? editTransactionId;
-  final List<Account> settlementAccounts;
-  final List<Account> fundAccounts;
-  final List<Account> liabilityAccounts;
-  final List<Account> reimbursementAccounts;
-}
-
 class TransactionFormState {
   const TransactionFormState({
+    required this.initialValues,
     required this.mode,
     required this.occurredAt,
     required this.excludeStats,
     required this.excludeBudget,
     required this.submitting,
-    required this.initializedNew,
-    this.initializedEditTransactionId,
+    required this.settlementAccounts,
+    required this.fundAccounts,
+    required this.liabilityAccounts,
+    required this.reimbursementAccounts,
+    required this.expenseTree,
+    required this.incomeTree,
     this.expenseCategoryId,
     this.expenseRootId,
     this.incomeCategoryId,
@@ -494,17 +559,69 @@ class TransactionFormState {
     this.liabilityAccountId,
   });
 
-  factory TransactionFormState.initial() {
+  factory TransactionFormState.initial({
+    required TransactionFormMode mode,
+    String? fromAccountId,
+    String? toAccountId,
+    required List<Account> settlementAccounts,
+    required List<Account> fundAccounts,
+    required List<Account> liabilityAccounts,
+    required List<Account> reimbursementAccounts,
+    required List<CategoryNode> expenseTree,
+    required List<CategoryNode> incomeTree,
+  }) {
     return TransactionFormState(
-      mode: TransactionFormMode.expense,
+      initialValues: const TransactionFormInitialValues(),
+      mode: mode,
       occurredAt: DateTime.now(),
       excludeStats: false,
       excludeBudget: false,
       submitting: false,
-      initializedNew: false,
+      fromAccountId: fromAccountId,
+      toAccountId: toAccountId,
+      settlementAccounts: settlementAccounts,
+      fundAccounts: fundAccounts,
+      liabilityAccounts: liabilityAccounts,
+      reimbursementAccounts: reimbursementAccounts,
+      expenseTree: expenseTree,
+      incomeTree: incomeTree,
     );
   }
 
+  factory TransactionFormState.fromEditSnapshot({
+    required TransactionFormEditSnapshot snapshot,
+    required List<Account> settlementAccounts,
+    required List<Account> fundAccounts,
+    required List<Account> liabilityAccounts,
+    required List<Account> reimbursementAccounts,
+    required List<CategoryNode> expenseTree,
+    required List<CategoryNode> incomeTree,
+  }) {
+    return TransactionFormState(
+      initialValues: TransactionFormInitialValues.fromSnapshot(snapshot),
+      mode: snapshot.mode,
+      occurredAt: snapshot.occurredAt,
+      expenseCategoryId: snapshot.expenseCategoryId,
+      expenseRootId: snapshot.expenseRootId,
+      incomeCategoryId: snapshot.incomeCategoryId,
+      incomeRootId: snapshot.incomeRootId,
+      fromAccountId: snapshot.fromAccountId,
+      toAccountId: snapshot.toAccountId,
+      reimbursementAccountId: snapshot.reimbursementAccountId,
+      liabilityAccountId: snapshot.liabilityAccountId,
+      excludeStats: snapshot.excludeStats,
+      excludeBudget: snapshot.excludeBudget,
+      submitting: false,
+      settlementAccounts: settlementAccounts,
+      fundAccounts: fundAccounts,
+      liabilityAccounts: liabilityAccounts,
+      reimbursementAccounts: reimbursementAccounts,
+      expenseTree: expenseTree,
+      incomeTree: incomeTree,
+    );
+  }
+
+  final TransactionFormInitialValues initialValues;
   final TransactionFormMode mode;
   final DateTime occurredAt;
   final String? expenseCategoryId;
@@ -518,10 +635,15 @@ class TransactionFormState {
   final bool excludeStats;
   final bool excludeBudget;
   final bool submitting;
-  final bool initializedNew;
-  final String? initializedEditTransactionId;
+  final List<Account> settlementAccounts;
+  final List<Account> fundAccounts;
+  final List<Account> liabilityAccounts;
+  final List<Account> reimbursementAccounts;
+  final List<CategoryNode> expenseTree;
+  final List<CategoryNode> incomeTree;
 
   TransactionFormState copyWith({
+    TransactionFormInitialValues? initialValues,
     TransactionFormMode? mode,
     DateTime? occurredAt,
     Object? expenseCategoryId = _sentinel,
@@ -535,10 +657,9 @@ class TransactionFormState {
     bool? excludeStats,
     bool? excludeBudget,
     bool? submitting,
-    bool? initializedNew,
-    Object? initializedEditTransactionId = _sentinel,
   }) {
     return TransactionFormState(
+      initialValues: initialValues ?? this.initialValues,
       mode: mode ?? this.mode,
       occurredAt: occurredAt ?? this.occurredAt,
       expenseCategoryId:
@@ -574,13 +695,32 @@ class TransactionFormState {
       excludeStats: excludeStats ?? this.excludeStats,
       excludeBudget: excludeBudget ?? this.excludeBudget,
       submitting: submitting ?? this.submitting,
-      initializedNew: initializedNew ?? this.initializedNew,
-      initializedEditTransactionId:
-          initializedEditTransactionId == _sentinel
-              ? this.initializedEditTransactionId
-              : initializedEditTransactionId as String?,
+      settlementAccounts: settlementAccounts,
+      fundAccounts: fundAccounts,
+      liabilityAccounts: liabilityAccounts,
+      reimbursementAccounts: reimbursementAccounts,
+      expenseTree: expenseTree,
+      incomeTree: incomeTree,
     );
   }
+}
+
+/// Text captured once from the transaction snapshot for controller creation.
+/// This is not the live text state of the form.
+class TransactionFormInitialValues {
+  const TransactionFormInitialValues({this.amount = '', this.note = ''});
+
+  factory TransactionFormInitialValues.fromSnapshot(
+    TransactionFormEditSnapshot snapshot,
+  ) {
+    return TransactionFormInitialValues(
+      amount: snapshot.amountText,
+      note: snapshot.noteText,
+    );
+  }
+
+  final String amount;
+  final String note;
 }
 
 const Object _sentinel = Object();
