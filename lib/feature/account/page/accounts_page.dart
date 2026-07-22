@@ -4,12 +4,14 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../core/money/money.dart';
+import '../../../core/money/money_formatter.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
+import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/business_icon_bubble.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
@@ -199,8 +201,10 @@ class _NetAssetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textStyles = context.appTextStyles;
-    final assetMinor = comparison.current.assets.minorUnits;
-    final liabilityMinor = comparison.current.liabilities.minorUnits;
+    final assets = comparison.current.assets;
+    final liabilities = comparison.current.liabilities;
+    final assetMinor = assets.minorUnits;
+    final liabilityMinor = liabilities.minorUnits;
     final netMinor = assetMinor - liabilityMinor;
     final totalForRatio = (assetMinor.abs() + liabilityMinor.abs()).clamp(
       1,
@@ -283,14 +287,18 @@ class _NetAssetCard extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.space10),
                   _LegendRow(
-                    label: '资产占比',
-                    value: '${(assetRatio * 100).round()}%',
+                    key: const ValueKey('asset-balance-legend'),
+                    label: '资产',
+                    money: assets.abs(),
+                    hideBalance: hideBalances,
                     color: colors.onPrimary.withValues(alpha: 0.72),
                   ),
                   const SizedBox(height: AppSpacing.space6),
                   _LegendRow(
-                    label: '负债占比',
-                    value: '${(liabilityRatio * 100).round()}%',
+                    key: const ValueKey('liability-balance-legend'),
+                    label: '负债',
+                    money: liabilities.abs(),
+                    hideBalance: hideBalances,
                     color: colors.onPrimary.withValues(alpha: 0.42),
                   ),
                 ],
@@ -354,12 +362,15 @@ class _AssetDonutPainter extends CustomPainter {
 class _LegendRow extends StatelessWidget {
   const _LegendRow({
     required this.label,
-    required this.value,
+    required this.money,
+    required this.hideBalance,
     required this.color,
+    super.key,
   });
 
   final String label;
-  final String value;
+  final Money money;
+  final bool hideBalance;
   final Color color;
 
   @override
@@ -373,8 +384,25 @@ class _LegendRow extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: AppSpacing.space6),
-        Expanded(child: Text(label, style: textStyles.onPrimaryTiny)),
-        Text(value, style: textStyles.onPrimaryTinyStrong),
+        Expanded(flex: 1, child: Text(label, style: textStyles.onPrimaryTiny)),
+        const SizedBox(width: AppSpacing.space4),
+        Expanded(
+          flex: 3,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final hiddenText = '¥ ****';
+              return AdaptiveMoneyText(
+                preciseText: hideBalance ? hiddenText : money.format(),
+                compactText:
+                    hideBalance
+                        ? hiddenText
+                        : formatMoney(money, style: MoneyFormatStyle.compact),
+                style: textStyles.onPrimaryTinyStrong,
+                maxWidth: constraints.maxWidth,
+              );
+            },
+          ),
+        ),
       ],
     );
   }
