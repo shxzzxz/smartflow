@@ -34,6 +34,55 @@ void main() {
     expect(formKey.currentState!.validate(), true);
   });
 
+  testWidgets('programmatic controller changes participate in validation', (
+    tester,
+  ) async {
+    final formKey = GlobalKey<FormState>();
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Form(
+            key: formKey,
+            child: AppPlainTextFormRow(
+              label: '账户名称',
+              controller: controller,
+              validator:
+                  (value) => value == null || value.isEmpty ? '请输入账户名称' : null,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    controller.text = '工资卡';
+    expect(formKey.currentState!.validate(), true);
+  });
+
+  testWidgets('form reset restores controller text', (tester) async {
+    final formKey = GlobalKey<FormState>();
+    final controller = TextEditingController(text: '初始值');
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Form(
+            key: formKey,
+            child: AppPlainTextFormRow(label: '账户名称', controller: controller),
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), '修改后');
+    formKey.currentState!.reset();
+
+    expect(controller.text, '初始值');
+  });
+
   testWidgets('select row validates and invokes whole-row tap', (tester) async {
     final formKey = GlobalKey<FormState>();
     var taps = 0;

@@ -76,7 +76,11 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
       );
     }
     _scheduleEditInitialization(account);
-    return _buildFormScaffold(context, ref.watch(accountFormViewModelProvider));
+    final formState = ref.watch(accountFormViewModelProvider);
+    if (formState.initializedAccountId != account.id) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    return _buildFormScaffold(context, formState);
   }
 
   void _scheduleEditInitialization(AccountView account) {
@@ -86,18 +90,19 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
       return;
     }
     _scheduledEditAccountId = account.id;
+
+    // Populate text controllers before the FormField widgets are built so
+    // their initial value and the visible text start from the same snapshot.
+    syncTextControllerText(_nameController, account.name);
+    syncTextControllerText(_openingBalanceController, account.balance.format());
+    syncTextControllerText(
+      _creditLimitController,
+      account.creditLimit?.format() ?? '',
+    );
+    syncTextControllerText(_noteController, account.note ?? '');
+
     Future.microtask(() {
       if (!mounted) return;
-      syncTextControllerText(_nameController, account.name);
-      syncTextControllerText(
-        _openingBalanceController,
-        account.balance.format(),
-      );
-      syncTextControllerText(
-        _creditLimitController,
-        account.creditLimit?.format() ?? '',
-      );
-      syncTextControllerText(_noteController, account.note ?? '');
       ref
           .read(accountFormViewModelProvider.notifier)
           .initializeForEdit(account);

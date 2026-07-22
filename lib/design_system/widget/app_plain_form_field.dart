@@ -7,8 +7,8 @@ import '../token/spacing.dart';
 import 'app_form_field.dart';
 import 'app_plain_form_row.dart';
 
-class AppPlainTextFormRow extends StatefulWidget {
-  const AppPlainTextFormRow({
+class AppPlainTextFormRow extends FormField<String> {
+  AppPlainTextFormRow({
     required this.label,
     required this.controller,
     super.key,
@@ -17,7 +17,7 @@ class AppPlainTextFormRow extends StatefulWidget {
     this.requiredIndicator = false,
     this.keyboardType,
     this.inputFormatters,
-    this.validator,
+    super.validator,
     this.textInputAction,
     this.maxLines = 1,
     this.minLines,
@@ -25,13 +25,13 @@ class AppPlainTextFormRow extends StatefulWidget {
     this.textAlign = TextAlign.left,
     this.readOnly = false,
     this.onTap,
-    this.enabled = true,
+    super.enabled = true,
     this.autofocus = false,
     this.focusNode,
     this.labelWidth = AppFormTokens.labelWidth,
     this.minHeight = AppFormTokens.rowMinHeight,
-    this.autovalidateMode = AutovalidateMode.disabled,
-  });
+    super.autovalidateMode = AutovalidateMode.disabled,
+  }) : super(initialValue: controller.text, builder: _buildField);
 
   final String label;
   final TextEditingController controller;
@@ -40,7 +40,6 @@ class AppPlainTextFormRow extends StatefulWidget {
   final bool requiredIndicator;
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
-  final FormFieldValidator<String>? validator;
   final TextInputAction? textInputAction;
   final int? maxLines;
   final int? minLines;
@@ -48,72 +47,96 @@ class AppPlainTextFormRow extends StatefulWidget {
   final TextAlign textAlign;
   final bool readOnly;
   final VoidCallback? onTap;
-  final bool enabled;
   final bool autofocus;
   final FocusNode? focusNode;
   final double labelWidth;
   final double minHeight;
-  final AutovalidateMode autovalidateMode;
+
+  static Widget _buildField(FormFieldState<String> field) {
+    final state = field as _AppPlainTextFormRowState;
+    final widget = state.widget;
+
+    return AppPlainFormRow(
+      label: widget.label,
+      requiredIndicator: widget.requiredIndicator,
+      supportingText: widget.supportingText,
+      errorText: field.errorText,
+      enabled: widget.enabled,
+      labelWidth: widget.labelWidth,
+      minHeight: widget.minHeight,
+      child: TextField(
+        controller: widget.controller,
+        focusNode: widget.focusNode,
+        decoration: appPlainInputDecoration(
+          field.context,
+          hintText: widget.hintText,
+        ),
+        keyboardType: widget.keyboardType,
+        inputFormatters: widget.inputFormatters,
+        textInputAction: widget.textInputAction,
+        maxLines: widget.maxLines,
+        minLines: widget.minLines,
+        onChanged: state.handleUserChanged,
+        textAlign: widget.textAlign,
+        readOnly: widget.readOnly,
+        onTap: widget.onTap,
+        enabled: widget.enabled,
+        autofocus: widget.autofocus,
+        style: field.context.appTextStyles.formPlainValue,
+      ),
+    );
+  }
 
   @override
-  State<AppPlainTextFormRow> createState() => _AppPlainTextFormRowState();
+  FormFieldState<String> createState() => _AppPlainTextFormRowState();
 }
 
-class _AppPlainTextFormRowState extends State<AppPlainTextFormRow> {
-  final _fieldKey = GlobalKey<FormFieldState<String>>();
+class _AppPlainTextFormRowState extends FormFieldState<String> {
+  @override
+  AppPlainTextFormRow get widget => super.widget as AppPlainTextFormRow;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_handleControllerChanged);
+  }
 
   @override
   void didUpdateWidget(covariant AppPlainTextFormRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final field = _fieldKey.currentState;
-    if (field != null && field.value != widget.controller.text) {
-      field.didChange(widget.controller.text);
-    }
+    if (oldWidget.controller == widget.controller) return;
+
+    oldWidget.controller.removeListener(_handleControllerChanged);
+    widget.controller.addListener(_handleControllerChanged);
+    setValue(widget.controller.text);
+  }
+
+  void _handleControllerChanged() {
+    final text = widget.controller.text;
+    if (value != text) setValue(text);
+  }
+
+  void handleUserChanged(String value) {
+    didChange(value);
+    widget.onChanged?.call(value);
   }
 
   @override
-  Widget build(BuildContext context) {
-    return FormField<String>(
-      key: _fieldKey,
-      initialValue: widget.controller.text,
-      enabled: widget.enabled,
-      validator: widget.validator,
-      autovalidateMode: widget.autovalidateMode,
-      builder: (field) {
-        return AppPlainFormRow(
-          label: widget.label,
-          requiredIndicator: widget.requiredIndicator,
-          supportingText: widget.supportingText,
-          errorText: field.errorText,
-          enabled: widget.enabled,
-          labelWidth: widget.labelWidth,
-          minHeight: widget.minHeight,
-          child: TextField(
-            controller: widget.controller,
-            focusNode: widget.focusNode,
-            decoration: appPlainInputDecoration(
-              context,
-              hintText: widget.hintText,
-            ),
-            keyboardType: widget.keyboardType,
-            inputFormatters: widget.inputFormatters,
-            textInputAction: widget.textInputAction,
-            maxLines: widget.maxLines,
-            minLines: widget.minLines,
-            onChanged: (value) {
-              field.didChange(value);
-              widget.onChanged?.call(value);
-            },
-            textAlign: widget.textAlign,
-            readOnly: widget.readOnly,
-            onTap: widget.onTap,
-            enabled: widget.enabled,
-            autofocus: widget.autofocus,
-            style: context.appTextStyles.formPlainValue,
-          ),
-        );
-      },
+  void reset() {
+    super.reset();
+    final initialText = widget.initialValue ?? '';
+    if (widget.controller.text == initialText) return;
+
+    widget.controller.value = TextEditingValue(
+      text: initialText,
+      selection: TextSelection.collapsed(offset: initialText.length),
     );
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_handleControllerChanged);
+    super.dispose();
   }
 }
 
