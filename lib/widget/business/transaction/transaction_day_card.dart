@@ -157,7 +157,7 @@ class _DayTotal extends StatelessWidget {
       children: [
         Text('$label ', style: textStyles.listSupporting),
         SectionMoneyText(
-          money: Money(minorUnits: amountMinor.abs()),
+          money: Money(minorUnits: amountMinor),
           style: textStyles.amountCompact.copyWith(color: color),
         ),
       ],
