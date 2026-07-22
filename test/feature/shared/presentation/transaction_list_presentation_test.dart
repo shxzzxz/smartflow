@@ -129,6 +129,28 @@ void main() {
         expect(row.accountFlow.singleEndpoint.label, '无账户');
       },
     );
+
+    test('formats home comparison captions with compact signed deltas', () {
+      final presentation = buildMonthlySummaryPresentation(
+        const CashflowComparison(
+          current: CashflowSummary(
+            income: Money(minorUnits: 12400 * 100),
+            expense: Money(minorUnits: 0),
+          ),
+          previousSamePeriod: CashflowSummary(
+            income: Money(minorUnits: 0),
+            expense: Money(minorUnits: 0),
+          ),
+          previousFullPeriod: CashflowSummary(
+            income: Money(minorUnits: 6200 * 100),
+            expense: Money(minorUnits: 0),
+          ),
+        ),
+      );
+
+      expect(presentation.metrics[0].caption, '+1.24万/--%/200%');
+      expect(presentation.metrics[1].caption, '0/--%/--%');
+    });
   });
 }
 

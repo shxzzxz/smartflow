@@ -585,16 +585,6 @@ Money? detailAmount(TransactionListReadModel item, TransactionDetailType type) {
   return null;
 }
 
-String formatMinorAmount(int minorUnits) {
-  return Money(minorUnits: minorUnits.abs()).format();
-}
-
-String formatMonthlyAmount(int minorUnits, {required bool showSign}) {
-  final formatted = Money(minorUnits: minorUnits.abs()).format();
-  if (!showSign) return formatted;
-  return minorUnits >= 0 ? formatted : '-$formatted';
-}
-
 String formatCompactMoney(Money money) {
   return formatMoney(money.abs(), style: MoneyFormatStyle.compact);
 }
@@ -608,8 +598,11 @@ String formatPeriodChangeMetrics(PeriodChange change) {
 }
 
 String formatSignedCompactAmount(int minorUnits) {
-  final sign = minorUnits >= 0 ? '+' : '-';
-  return '$sign${formatRoundedMajor(minorUnits)}';
+  final formatted = formatMoney(
+    Money(minorUnits: minorUnits),
+    style: MoneyFormatStyle.compact,
+  );
+  return minorUnits > 0 ? '+$formatted' : formatted;
 }
 
 String formatOptionalPercent(double? ratio) {
