@@ -9,6 +9,384 @@ part of 'provider.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
+@ProviderFor(importFilePicker)
+final importFilePickerProvider = ImportFilePickerProvider._();
+
+final class ImportFilePickerProvider
+    extends
+        $FunctionalProvider<
+          ImportFilePicker,
+          ImportFilePicker,
+          ImportFilePicker
+        >
+    with $Provider<ImportFilePicker> {
+  ImportFilePickerProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'importFilePickerProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$importFilePickerHash();
+
+  @$internal
+  @override
+  $ProviderElement<ImportFilePicker> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  ImportFilePicker create(Ref ref) {
+    return importFilePicker(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ImportFilePicker value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ImportFilePicker>(value),
+    );
+  }
+}
+
+String _$importFilePickerHash() => r'95569b885181e28944e6b8019baa8e883a1f2529';
+
+@ProviderFor(yimuWorkbookReader)
+final yimuWorkbookReaderProvider = YimuWorkbookReaderProvider._();
+
+final class YimuWorkbookReaderProvider
+    extends
+        $FunctionalProvider<
+          YimuWorkbookReader,
+          YimuWorkbookReader,
+          YimuWorkbookReader
+        >
+    with $Provider<YimuWorkbookReader> {
+  YimuWorkbookReaderProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'yimuWorkbookReaderProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$yimuWorkbookReaderHash();
+
+  @$internal
+  @override
+  $ProviderElement<YimuWorkbookReader> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  YimuWorkbookReader create(Ref ref) {
+    return yimuWorkbookReader(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(YimuWorkbookReader value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<YimuWorkbookReader>(value),
+    );
+  }
+}
+
+String _$yimuWorkbookReaderHash() =>
+    r'8ab437a3740fd314edf80a685db30d4b08d5654e';
+
+@ProviderFor(yimuImportParser)
+final yimuImportParserProvider = YimuImportParserProvider._();
+
+final class YimuImportParserProvider
+    extends
+        $FunctionalProvider<
+          YimuImportParser,
+          YimuImportParser,
+          YimuImportParser
+        >
+    with $Provider<YimuImportParser> {
+  YimuImportParserProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'yimuImportParserProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$yimuImportParserHash();
+
+  @$internal
+  @override
+  $ProviderElement<YimuImportParser> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  YimuImportParser create(Ref ref) {
+    return yimuImportParser(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(YimuImportParser value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<YimuImportParser>(value),
+    );
+  }
+}
+
+String _$yimuImportParserHash() => r'40fb47c3740462f76e6f3b32a156403722f668e0';
+
+@ProviderFor(importPlanAppService)
+final importPlanAppServiceProvider = ImportPlanAppServiceProvider._();
+
+final class ImportPlanAppServiceProvider
+    extends
+        $FunctionalProvider<
+          ImportPlanAppService,
+          ImportPlanAppService,
+          ImportPlanAppService
+        >
+    with $Provider<ImportPlanAppService> {
+  ImportPlanAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'importPlanAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$importPlanAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<ImportPlanAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ImportPlanAppService create(Ref ref) {
+    return importPlanAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ImportPlanAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ImportPlanAppService>(value),
+    );
+  }
+}
+
+String _$importPlanAppServiceHash() =>
+    r'6c4484948e918f50e100f4dcad0f9631b7c882ef';
+
+@ProviderFor(importMappingRepository)
+final importMappingRepositoryProvider = ImportMappingRepositoryProvider._();
+
+final class ImportMappingRepositoryProvider
+    extends
+        $FunctionalProvider<
+          ImportMappingRepository,
+          ImportMappingRepository,
+          ImportMappingRepository
+        >
+    with $Provider<ImportMappingRepository> {
+  ImportMappingRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'importMappingRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$importMappingRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<ImportMappingRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ImportMappingRepository create(Ref ref) {
+    return importMappingRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ImportMappingRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ImportMappingRepository>(value),
+    );
+  }
+}
+
+String _$importMappingRepositoryHash() =>
+    r'966f7dad2b682c469b9b7502bb4338498b809299';
+
+@ProviderFor(importBatchRepository)
+final importBatchRepositoryProvider = ImportBatchRepositoryProvider._();
+
+final class ImportBatchRepositoryProvider
+    extends
+        $FunctionalProvider<
+          ImportBatchRepository,
+          ImportBatchRepository,
+          ImportBatchRepository
+        >
+    with $Provider<ImportBatchRepository> {
+  ImportBatchRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'importBatchRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$importBatchRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<ImportBatchRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ImportBatchRepository create(Ref ref) {
+    return importBatchRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ImportBatchRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ImportBatchRepository>(value),
+    );
+  }
+}
+
+String _$importBatchRepositoryHash() =>
+    r'1782411eb13eece880d04b8b925f0b84ce74f61b';
+
+@ProviderFor(importLedgerPort)
+final importLedgerPortProvider = ImportLedgerPortProvider._();
+
+final class ImportLedgerPortProvider
+    extends
+        $FunctionalProvider<
+          ImportLedgerPort,
+          ImportLedgerPort,
+          ImportLedgerPort
+        >
+    with $Provider<ImportLedgerPort> {
+  ImportLedgerPortProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'importLedgerPortProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$importLedgerPortHash();
+
+  @$internal
+  @override
+  $ProviderElement<ImportLedgerPort> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  ImportLedgerPort create(Ref ref) {
+    return importLedgerPort(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ImportLedgerPort value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ImportLedgerPort>(value),
+    );
+  }
+}
+
+String _$importLedgerPortHash() => r'6d845197238de6827b682df11f511578a04fb028';
+
+@ProviderFor(importWorkflowAppService)
+final importWorkflowAppServiceProvider = ImportWorkflowAppServiceProvider._();
+
+final class ImportWorkflowAppServiceProvider
+    extends
+        $FunctionalProvider<
+          ImportWorkflowAppService,
+          ImportWorkflowAppService,
+          ImportWorkflowAppService
+        >
+    with $Provider<ImportWorkflowAppService> {
+  ImportWorkflowAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'importWorkflowAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$importWorkflowAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<ImportWorkflowAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ImportWorkflowAppService create(Ref ref) {
+    return importWorkflowAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ImportWorkflowAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ImportWorkflowAppService>(value),
+    );
+  }
+}
+
+String _$importWorkflowAppServiceHash() =>
+    r'4f0deb86475e8a748ef312e8c230be6f36ef4ce0';
+
 @ProviderFor(idGenerator)
 final idGeneratorProvider = IdGeneratorProvider._();
 

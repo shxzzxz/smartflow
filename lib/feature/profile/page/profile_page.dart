@@ -106,6 +106,18 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: Divider(height: 1),
                   ),
                   _ProfileActionRow(
+                    icon: RemixIcons.file_excel_2_line,
+                    label: '一木记账导入',
+                    description: '导入 .xls 文件并管理导入批次',
+                    onTap: () => context.push('/profile/import'),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space16,
+                    ),
+                    child: Divider(height: 1),
+                  ),
+                  _ProfileActionRow(
                     icon: RemixIcons.download_cloud_2_line,
                     label: '软件版本',
                     description:

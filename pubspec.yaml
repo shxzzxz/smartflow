@@ -50,6 +50,8 @@ dependencies:
   lunar: 1.7.8
   uuid: ^4.5.3
   fl_chart: ^1.2.0
+  excel2003: 1.0.0
+  file_picker: ^11.0.2
 
 dev_dependencies:
   flutter_test:

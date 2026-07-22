@@ -34,6 +34,10 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
       if (from < 21) {
         await _migrateCurrentStateTransactions(database);
       }
+      if (from < 22) {
+        await _createImportTables(database, migrator);
+        await _createImportIndexes(database);
+      }
     },
   );
 }
@@ -77,7 +81,17 @@ Future<void> _createCurrentSchema(
   await _createInstallmentSourceRepaymentIndex(database);
   await _createBillIndexes(database);
   await _createRepaymentIndexes(database);
+  await _createImportIndexes(database);
   await ensureBuiltinData(database);
+}
+
+Future<void> _createImportTables(
+  AppDatabase database,
+  Migrator migrator,
+) async {
+  await migrator.createTable(database.importEntityMappings);
+  await migrator.createTable(database.importBatches);
+  await migrator.createTable(database.importBatchItems);
 }
 
 Future<void> _createInstallmentSourceRepaymentIndex(
@@ -332,6 +346,25 @@ WHERE disbursement_transaction_id IS NOT NULL
 
   await _createTransactionRowIndexes(database);
   await _createRepaymentIndexes(database);
+}
+
+Future<void> _createImportIndexes(AppDatabase database) async {
+  await database.customStatement(
+    'CREATE UNIQUE INDEX IF NOT EXISTS import_entity_mapping_unique '
+    'ON import_entity_mappings (source, entity_kind, source_entity_key)',
+  );
+  await database.customStatement(
+    'CREATE INDEX IF NOT EXISTS import_batch_items_batch_idx '
+    'ON import_batch_items (batch_id)',
+  );
+  await database.customStatement(
+    'CREATE INDEX IF NOT EXISTS import_batch_items_operation_idx '
+    'ON import_batch_items (source_operation_key)',
+  );
+  await database.customStatement(
+    'CREATE INDEX IF NOT EXISTS import_batch_items_fingerprint_idx '
+    'ON import_batch_items (source_operation_fingerprint, fingerprint_version)',
+  );
 }
 
 Future<void> _validateExternalTransactionReferences(

@@ -1,6 +1,11 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../infrastructure/database/database_provider.dart';
+import '../infrastructure/import/ledger_import_port.dart';
+import '../infrastructure/import/platform_import_file_picker.dart';
+import '../infrastructure/import/repository/drift_import_batch_repository.dart';
+import '../infrastructure/import/repository/drift_import_mapping_repository.dart';
+import '../infrastructure/import/yimu_excel2003_workbook_reader.dart';
 import '../infrastructure/ledger/repository/drift_account_query_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_repository.dart';
 import '../infrastructure/ledger/repository/drift_ledger_metrics_source.dart';
@@ -22,10 +27,18 @@ import '../infrastructure/shared/uuid_id_generator.dart';
 import '../application/ledger/ledger_command_api.dart';
 import '../application/ledger/ledger_query_api.dart';
 import '../application/ledger/ledger_query_port_api.dart';
+import '../application/import/import_plan_app_service.dart';
+import '../application/import/import_file_picker.dart';
+import '../application/import/import_workflow_app_service.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../application/shared/app_task.dart';
 import '../domain/ledger/port/account_repository.dart';
+import '../domain/import/port/import_batch_repository.dart';
+import '../domain/import/port/import_ledger_port.dart';
+import '../domain/import/port/import_mapping_repository.dart';
+import '../domain/import/port/yimu_workbook_reader.dart';
+import '../domain/import/service/yimu_import_parser.dart';
 import '../domain/credit/port/bill_repository.dart';
 import '../domain/credit/port/credit_account_repository.dart';
 import '../domain/credit/port/credit_bill_source_repository.dart';
@@ -42,6 +55,60 @@ import '../application/shared/update_channel_store.dart';
 import '../core/id/id_generator.dart';
 
 part 'provider.g.dart';
+
+@Riverpod(keepAlive: true)
+ImportFilePicker importFilePicker(Ref ref) {
+  return const PlatformImportFilePicker();
+}
+
+@Riverpod(keepAlive: true)
+YimuWorkbookReader yimuWorkbookReader(Ref ref) {
+  return const YimuExcel2003WorkbookReader();
+}
+
+@Riverpod(keepAlive: true)
+YimuImportParser yimuImportParser(Ref ref) {
+  return YimuImportParser(reader: ref.watch(yimuWorkbookReaderProvider));
+}
+
+@Riverpod(keepAlive: true)
+ImportPlanAppService importPlanAppService(Ref ref) {
+  return ImportPlanAppServiceImpl(
+    yimuParser: ref.watch(yimuImportParserProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+ImportMappingRepository importMappingRepository(Ref ref) {
+  return DriftImportMappingRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+ImportBatchRepository importBatchRepository(Ref ref) {
+  return DriftImportBatchRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+ImportLedgerPort importLedgerPort(Ref ref) {
+  return LedgerImportPort(
+    posting: ref.watch(transactionPostingAppServiceProvider),
+    editing: ref.watch(transactionEditAppServiceProvider),
+    transactions: ref.watch(transactionQueryServiceProvider),
+    accounts: ref.watch(accountQueryServiceProvider),
+    systemAccounts: ref.watch(systemAccountResolverProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+ImportWorkflowAppService importWorkflowAppService(Ref ref) {
+  return ImportWorkflowAppServiceImpl(
+    mappings: ref.watch(importMappingRepositoryProvider),
+    batches: ref.watch(importBatchRepositoryProvider),
+    ledger: ref.watch(importLedgerPortProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
 
 @Riverpod(keepAlive: true)
 IdGenerator idGenerator(Ref ref) {

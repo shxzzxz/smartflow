@@ -90,6 +90,9 @@ class AppShell extends StatelessWidget {
     if (path.startsWith('/profile')) {
       return 4;
     }
+    if (path.startsWith('/import')) {
+      return 4;
+    }
     return 0;
   }
 }

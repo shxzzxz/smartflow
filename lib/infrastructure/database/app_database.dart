@@ -3,6 +3,8 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/ledger/valobj/ledger_enum.dart';
+import '../../domain/import/import_models.dart';
+import '../../domain/import/import_persistence_models.dart';
 import '../../domain/credit/valobj/bill_enums.dart';
 import '../../domain/credit/valobj/credit_account_enums.dart';
 import '../../domain/credit/valobj/installment_enums.dart';
@@ -20,6 +22,9 @@ import 'table/credit/repayment_items.dart';
 import 'table/credit/repayments.dart';
 import 'table/ledger/transaction_details.dart';
 import 'table/ledger/transactions.dart';
+import 'table/import_entity_mappings.dart';
+import 'table/import_batches.dart';
+import 'table/import_batch_items.dart';
 
 part 'app_database.g.dart';
 
@@ -38,13 +43,16 @@ part 'app_database.g.dart';
     InstallmentSchedules,
     Repayments,
     RepaymentItems,
+    ImportEntityMappings,
+    ImportBatches,
+    ImportBatchItems,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);
