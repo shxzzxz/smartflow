@@ -219,6 +219,9 @@ class _InstallmentContractEditPageState
   }
 
   Future<void> _recalculate() async {
+    final form = _formKey.currentState!;
+    if (!form.validate()) return;
+    form.save();
     final outcome = await ref
         .read(
           installmentContractEditViewModelProvider(widget.contractId).notifier,
@@ -265,7 +268,9 @@ class _InstallmentContractEditPageState
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final form = _formKey.currentState!;
+    if (!form.validate()) return;
+    form.save();
     final outcome = await ref
         .read(
           installmentContractEditViewModelProvider(widget.contractId).notifier,
@@ -794,7 +799,13 @@ class _EditableMoneyCellState extends State<_EditableMoneyCell> {
           style: widget.style,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           textInputAction: TextInputAction.done,
+          inputFormatters: [moneyInputFormatter],
+          validator:
+              widget.allowZero
+                  ? validateOptionalNonNegativeMoneyText
+                  : validatePositiveMoneyText,
           onFieldSubmitted: (_) => _commit(),
+          onSaved: (_) => _commit(),
         ),
       );
     }

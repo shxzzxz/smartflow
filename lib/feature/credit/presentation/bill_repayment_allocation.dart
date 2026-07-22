@@ -1,7 +1,8 @@
 import 'dart:math' as math;
 
-import '../../../application/credit/credit_command_api.dart' as credit;
 import '../../../core/money/money.dart';
+import '../../../domain/credit/valobj/bill_enums.dart';
+import '../../../domain/credit/valobj/repayment_amount_breakdown.dart';
 
 enum BillRepaymentAllocationMode { fifo, equal, manual }
 
@@ -10,14 +11,14 @@ class BillRepaymentAllocationLine {
     required this.billItemId,
     required this.itemType,
     required this.expected,
-    this.alreadyAllocated = credit.RepaymentAmountDto.zero,
+    this.alreadyAllocated = RepaymentAmountBreakdown.zero,
     this.label = '',
   });
 
   final String billItemId;
-  final credit.BillItemType itemType;
-  final credit.RepaymentAmountBreakdown expected;
-  final credit.RepaymentAmountDto alreadyAllocated;
+  final BillItemType itemType;
+  final RepaymentAmountBreakdown expected;
+  final RepaymentAmountBreakdown alreadyAllocated;
   final String label;
 
   int get remainingPrincipal => _remaining(
@@ -38,15 +39,25 @@ class BillRepaymentAllocationLine {
   }
 }
 
-class BillRepaymentAllocationViewModel {
-  const BillRepaymentAllocationViewModel({required this.lines});
+class BillRepaymentAllocationDraft {
+  const BillRepaymentAllocationDraft({
+    required this.billItemId,
+    required this.allocated,
+  });
+
+  final String billItemId;
+  final RepaymentAmountBreakdown allocated;
+}
+
+class BillRepaymentAllocator {
+  const BillRepaymentAllocator({required this.lines});
 
   final List<BillRepaymentAllocationLine> lines;
 
   BillRepaymentAllocationReview suggest({
     required BillRepaymentAllocationMode mode,
-    required credit.RepaymentAmountBreakdown amount,
-    List<credit.BillRepaymentAllocation> manualAllocations = const [],
+    required RepaymentAmountBreakdown amount,
+    List<BillRepaymentAllocationDraft> manualAllocations = const [],
   }) {
     return switch (mode) {
       BillRepaymentAllocationMode.fifo => _fifo(amount),
@@ -59,13 +70,13 @@ class BillRepaymentAllocationViewModel {
   }
 
   BillRepaymentAllocationReview reviewManual({
-    required credit.RepaymentAmountBreakdown amount,
-    required List<credit.BillRepaymentAllocation> allocations,
+    required RepaymentAmountBreakdown amount,
+    required List<BillRepaymentAllocationDraft> allocations,
   }) {
     return _review(requested: amount, allocations: allocations);
   }
 
-  BillRepaymentAllocationReview _fifo(credit.RepaymentAmountBreakdown amount) {
+  BillRepaymentAllocationReview _fifo(RepaymentAmountBreakdown amount) {
     final draft = _MutableAllocationDraft(lines);
     final ordered = _orderedLines();
     _allocateCapped(
@@ -94,7 +105,7 @@ class BillRepaymentAllocationViewModel {
     return _review(requested: amount, allocations: draft.toAllocations());
   }
 
-  BillRepaymentAllocationReview _equal(credit.RepaymentAmountBreakdown amount) {
+  BillRepaymentAllocationReview _equal(RepaymentAmountBreakdown amount) {
     final draft = _MutableAllocationDraft(lines);
     final ordered = _orderedLines();
     _allocateEqualCapped(
@@ -137,16 +148,16 @@ class BillRepaymentAllocationViewModel {
     return [for (final item in indexed) item.line];
   }
 
-  int _itemTypeOrder(credit.BillItemType type) {
+  int _itemTypeOrder(BillItemType type) {
     return switch (type) {
-      credit.BillItemType.installment => 0,
-      credit.BillItemType.consumption => 1,
+      BillItemType.installment => 0,
+      BillItemType.consumption => 1,
     };
   }
 
   BillRepaymentAllocationReview _review({
-    required credit.RepaymentAmountBreakdown requested,
-    required List<credit.BillRepaymentAllocation> allocations,
+    required RepaymentAmountBreakdown requested,
+    required List<BillRepaymentAllocationDraft> allocations,
   }) {
     final byId = {for (final line in lines) line.billItemId: line};
     var hasOverAllocation = false;
@@ -186,10 +197,10 @@ class BillRepaymentAllocationReview {
     this.warningMessage,
   });
 
-  final List<credit.BillRepaymentAllocation> allocations;
-  final credit.RepaymentAmountBreakdown requested;
-  final credit.RepaymentAmountBreakdown totalAllocated;
-  final credit.RepaymentAmountBreakdown unallocated;
+  final List<BillRepaymentAllocationDraft> allocations;
+  final RepaymentAmountBreakdown requested;
+  final RepaymentAmountBreakdown totalAllocated;
+  final RepaymentAmountBreakdown unallocated;
   final bool hasOverAllocation;
   final String? warningMessage;
 }
@@ -218,13 +229,13 @@ class _MutableAllocationDraft {
     _items[billItemId]!.discount += minor;
   }
 
-  List<credit.BillRepaymentAllocation> toAllocations() {
+  List<BillRepaymentAllocationDraft> toAllocations() {
     return [
       for (final id in _order)
         if (!_items[id]!.isZero)
-          credit.BillRepaymentAllocation(
+          BillRepaymentAllocationDraft(
             billItemId: id,
-            allocated: _items[id]!.toDto(),
+            allocated: _items[id]!.toBreakdown(),
           ),
     ];
   }
@@ -239,8 +250,8 @@ class _MutableBreakdown {
   bool get isZero =>
       principal == 0 && interest == 0 && fee == 0 && discount == 0;
 
-  credit.RepaymentAmountDto toDto() {
-    return credit.RepaymentAmountDto(
+  RepaymentAmountBreakdown toBreakdown() {
+    return RepaymentAmountBreakdown(
       principal: Money(minorUnits: principal),
       interest: Money(minorUnits: interest),
       fee: Money(minorUnits: fee),
@@ -320,14 +331,14 @@ void _allocateEqualUncapped({
   }
 }
 
-credit.RepaymentAmountBreakdown _total(
-  List<credit.BillRepaymentAllocation> allocations,
+RepaymentAmountBreakdown _total(
+  List<BillRepaymentAllocationDraft> allocations,
 ) {
   return allocations.fold(
-    credit.RepaymentAmountBreakdown.zero,
+    RepaymentAmountBreakdown.zero,
     (sum, allocation) =>
         sum +
-        credit.RepaymentAmountBreakdown(
+        RepaymentAmountBreakdown(
           principal: allocation.allocated.principal,
           interest: allocation.allocated.interest,
           fee: allocation.allocated.fee,
@@ -336,11 +347,11 @@ credit.RepaymentAmountBreakdown _total(
   );
 }
 
-credit.RepaymentAmountBreakdown _subtract(
-  credit.RepaymentAmountBreakdown left,
-  credit.RepaymentAmountBreakdown right,
+RepaymentAmountBreakdown _subtract(
+  RepaymentAmountBreakdown left,
+  RepaymentAmountBreakdown right,
 ) {
-  return credit.RepaymentAmountBreakdown(
+  return RepaymentAmountBreakdown(
     principal: left.principal - right.principal,
     interest: left.interest - right.interest,
     fee: left.fee - right.fee,
@@ -348,7 +359,7 @@ credit.RepaymentAmountBreakdown _subtract(
   );
 }
 
-bool _hasNegativeAmount(credit.RepaymentAmountDto amount) {
+bool _hasNegativeAmount(RepaymentAmountBreakdown amount) {
   return amount.principal.minorUnits < 0 ||
       amount.interest.minorUnits < 0 ||
       amount.fee.minorUnits < 0 ||

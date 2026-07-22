@@ -14,7 +14,8 @@ import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
 import 'package:smartflow/feature/credit/provider/credit_account_query_providers.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/feature/credit/view_model/bill_conversion_installment_form_view_model.dart';
-import 'package:smartflow/feature/credit/view_model/bill_repayment_allocation_view_model.dart';
+import 'package:smartflow/feature/credit/presentation/bill_repayment_allocation.dart';
+import 'package:smartflow/feature/credit/presentation/bill_repayment_presentation.dart';
 import 'package:smartflow/feature/credit/view_model/bill_repayment_form_view_model.dart';
 import 'package:smartflow/feature/credit/view_model/installment_repayment_form_view_model.dart';
 import 'package:smartflow/feature/credit/view_model/repayment_form_view_model.dart';
@@ -332,14 +333,14 @@ void main() {
     addTearDown(subscription.close);
 
     final state = await container.read(provider.future);
-    final review = container
-        .read(provider.notifier)
-        .allocationReview(
-          principalText: state.principalText,
-          interestText: state.interestText,
-          feeText: state.feeText,
-          discountText: state.discountText,
-        );
+    final review = billRepaymentManualAllocationReviewFromText(
+      lines: state.lines,
+      manualAllocations: state.manualAllocations,
+      principalText: state.principalText,
+      interestText: state.interestText,
+      feeText: state.feeText,
+      discountText: state.discountText,
+    );
 
     expect(state.discountText, '0.50');
     expect(review?.unallocated.discount, Money.zero());

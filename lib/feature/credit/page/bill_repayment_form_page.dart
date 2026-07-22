@@ -15,7 +15,8 @@ import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
-import '../view_model/bill_repayment_allocation_view_model.dart';
+import '../presentation/bill_repayment_allocation.dart';
+import '../presentation/bill_repayment_presentation.dart';
 import '../view_model/bill_repayment_form_view_model.dart';
 import '../widget/repayment_form_fields.dart';
 
@@ -120,14 +121,14 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
       state.repaymentAccounts,
       state.paidFromAccountId,
     );
-    final review = ref
-        .read(provider.notifier)
-        .allocationReview(
-          principalText: _principalController.text,
-          interestText: _interestController.text,
-          feeText: _feeController.text,
-          discountText: _discountController.text,
-        );
+    final review = billRepaymentManualAllocationReviewFromText(
+      lines: state.lines,
+      manualAllocations: state.manualAllocations,
+      principalText: _principalController.text,
+      interestText: _interestController.text,
+      feeText: _feeController.text,
+      discountText: _discountController.text,
+    );
     final warning = review?.warningMessage;
 
     return Form(
@@ -275,7 +276,9 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
   }
 
   Future<void> _submit(BillRepaymentFormViewModelProvider provider) async {
-    if (!_formKey.currentState!.validate()) return;
+    final form = _formKey.currentState!;
+    if (!form.validate()) return;
+    form.save();
     final outcome = await ref
         .read(provider.notifier)
         .submit(
@@ -746,7 +749,9 @@ class _EditableAllocationMoneyCellState
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           textInputAction: TextInputAction.done,
           inputFormatters: [moneyInputFormatter],
+          validator: validateOptionalNonNegativeMoneyText,
           onFieldSubmitted: (_) => _commit(),
+          onSaved: (_) => _commit(),
         ),
       );
     }

@@ -15,7 +15,9 @@ import '../provider/bill_query_providers.dart';
 import '../provider/installment_query_providers.dart';
 import '../provider/credit_account_query_providers.dart';
 import '../presentation/bill_item_presentation.dart';
-import 'bill_repayment_allocation_view_model.dart';
+import '../presentation/bill_repayment_allocation.dart';
+import '../presentation/bill_repayment_presentation.dart';
+import 'bill_repayment_command_mapping.dart';
 
 part 'bill_repayment_form_view_model.g.dart';
 
@@ -64,13 +66,16 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
       repaymentSourceAccounts,
       detail.summary.accountId,
     );
-    final defaultAllocations =
-        editView?.allocations ??
-        _allocationReview(
-          lines: lines,
-          mode: BillRepaymentAllocationMode.fifo,
-          amount: pending,
-        ).allocations;
+    final defaultManualAllocations =
+        editView == null
+            ? _manualAmountsFromDrafts(
+              _allocationReview(
+                lines: lines,
+                mode: BillRepaymentAllocationMode.fifo,
+                amount: pending,
+              ).allocations,
+            )
+            : _manualAmountsFromCommandAllocations(editView.allocations);
     return BillRepaymentFormState.loaded(
       summary: detail.summary,
       lines: lines,
@@ -87,7 +92,7 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
       noteText: editView?.note ?? '',
       createTransaction: editView?.hasTransaction ?? true,
       editingRepaymentId: editView?.repaymentId,
-      manualAllocations: _manualAmountsFromAllocations(defaultAllocations),
+      manualAllocations: defaultManualAllocations,
     );
   }
 
@@ -125,7 +130,7 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
       amount: amount,
     );
     return state.copyWith(
-      manualAllocations: _manualAmountsFromAllocations(review.allocations),
+      manualAllocations: _manualAmountsFromDrafts(review.allocations),
     );
   });
 
@@ -152,25 +157,6 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
         },
       );
     });
-  }
-
-  BillRepaymentAllocationReview? allocationReview({
-    required String principalText,
-    required String interestText,
-    required String feeText,
-    required String discountText,
-  }) {
-    final current = state.asData?.value;
-    if (current == null || !current.isLoaded) return null;
-    final amount = _amountFromText(
-      principalText: principalText,
-      interestText: interestText,
-      feeText: feeText,
-      discountText: discountText,
-    );
-    return amount == null
-        ? null
-        : _allocationReviewFromState(current, amount: amount);
   }
 
   Future<SubmitOutcome> submit({
@@ -210,8 +196,11 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
       fee: fee,
       discount: discount,
     );
-    final review = _allocationReviewFromState(current, amount: amount);
-    if (review == null) return _invalidCommand('请输入有效分摊金额');
+    final review = billRepaymentManualAllocationReview(
+      lines: current.lines,
+      manualAllocations: current.manualAllocations,
+      amount: amount,
+    );
     if (review.allocations.isEmpty ||
         review.totalAllocated.cashPaid.minorUnits <= 0) {
       return _invalidCommand('账单没有可还明细');
@@ -219,6 +208,9 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
     if (_hasNonZeroPart(review.unallocated)) {
       return _invalidCommand('分摊合计必须等于还款金额');
     }
+    final commandAllocations = billRepaymentCommandAllocations(
+      review.allocations,
+    );
 
     _update((state) => state.copyWith(submitting: true));
     try {
@@ -227,7 +219,7 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
         await service.createBillRepayment(
           credit.CreateBillRepaymentCommand(
             billId: current.summary!.id,
-            allocations: review.allocations,
+            allocations: commandAllocations,
             transactionInfo:
                 paidFromAccountId == null
                     ? null
@@ -242,7 +234,7 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
         await service.editBillRepayment(
           credit.EditBillRepaymentCommand(
             repaymentId: current.editingRepaymentId!,
-            allocations: review.allocations,
+            allocations: commandAllocations,
             transactionInfo:
                 paidFromAccountId == null
                     ? null
@@ -487,7 +479,7 @@ List<BillRepaymentAllocationLine> _allocationLines(
               fee: item.expectedFee,
               discount: Money.zero(),
             ),
-            alreadyAllocated: _subtractDto(
+            alreadyAllocated: _remainingAllocatedAmount(
               item.allocated,
               editingByItem[item.id] ?? credit.RepaymentAmountDto.zero,
             ),
@@ -500,7 +492,7 @@ BillRepaymentAllocationReview _allocationReview({
   required BillRepaymentAllocationMode mode,
   required credit.RepaymentAmountBreakdown amount,
 }) {
-  final allocator = BillRepaymentAllocationViewModel(lines: lines);
+  final allocator = BillRepaymentAllocator(lines: lines);
   final review = allocator.suggest(mode: mode, amount: amount);
   if (!_hasPositivePart(review.unallocated) || lines.isEmpty) {
     return review;
@@ -518,7 +510,7 @@ BillRepaymentAllocationReview _allocationReview({
     allocations: [
       for (final line in lines)
         if (allocations[line.billItemId] != null)
-          credit.BillRepaymentAllocation(
+          BillRepaymentAllocationDraft(
             billItemId: line.billItemId,
             allocated: allocations[line.billItemId]!,
           ),
@@ -526,34 +518,8 @@ BillRepaymentAllocationReview _allocationReview({
   );
 }
 
-BillRepaymentAllocationReview? _allocationReviewFromState(
-  BillRepaymentFormState state, {
-  required credit.RepaymentAmountBreakdown amount,
-}) {
-  final allocations = <credit.BillRepaymentAllocation>[];
-  for (final line in state.lines) {
-    final manual = state.manualAllocation(line.billItemId);
-    final allocated = credit.RepaymentAmountDto(
-      principal: manual.principal,
-      interest: manual.interest,
-      fee: manual.fee,
-      discount: manual.discount,
-    );
-    if (!_hasPositiveAmount(allocated)) continue;
-    allocations.add(
-      credit.BillRepaymentAllocation(
-        billItemId: line.billItemId,
-        allocated: allocated,
-      ),
-    );
-  }
-
-  return BillRepaymentAllocationViewModel(
-    lines: state.lines,
-  ).reviewManual(amount: amount, allocations: allocations);
-}
-
-Map<String, credit.RepaymentAmountBreakdown> _manualAmountsFromAllocations(
+Map<String, credit.RepaymentAmountBreakdown>
+_manualAmountsFromCommandAllocations(
   List<credit.BillRepaymentAllocation> allocations,
 ) {
   return {
@@ -567,28 +533,13 @@ Map<String, credit.RepaymentAmountBreakdown> _manualAmountsFromAllocations(
   };
 }
 
-credit.RepaymentAmountBreakdown? _amountFromText({
-  required String principalText,
-  required String interestText,
-  required String feeText,
-  required String discountText,
-}) {
-  final principal = _parseOptionalNonNegativeMoney(principalText);
-  final interest = _parseOptionalNonNegativeMoney(interestText);
-  final fee = _parseOptionalNonNegativeMoney(feeText);
-  final discount = _parseOptionalNonNegativeMoney(discountText);
-  if (principal == null ||
-      interest == null ||
-      fee == null ||
-      discount == null) {
-    return null;
-  }
-  return credit.RepaymentAmountBreakdown(
-    principal: principal,
-    interest: interest,
-    fee: fee,
-    discount: discount,
-  );
+Map<String, credit.RepaymentAmountBreakdown> _manualAmountsFromDrafts(
+  List<BillRepaymentAllocationDraft> allocations,
+) {
+  return {
+    for (final allocation in allocations)
+      allocation.billItemId: allocation.allocated,
+  };
 }
 
 credit.RepaymentAmountBreakdown _pendingBreakdown(
@@ -607,12 +558,12 @@ credit.RepaymentAmountBreakdown _pendingBreakdown(
   );
 }
 
-credit.RepaymentAmountDto _add(
-  credit.RepaymentAmountDto? current,
+credit.RepaymentAmountBreakdown _add(
+  credit.RepaymentAmountBreakdown? current,
   credit.RepaymentAmountBreakdown addition,
 ) {
-  final value = current ?? credit.RepaymentAmountDto.zero;
-  return credit.RepaymentAmountDto(
+  final value = current ?? credit.RepaymentAmountBreakdown.zero;
+  return credit.RepaymentAmountBreakdown(
     principal: value.principal + addition.principal,
     interest: value.interest + addition.interest,
     fee: value.fee + addition.fee,
@@ -621,13 +572,6 @@ credit.RepaymentAmountDto _add(
 }
 
 bool _hasPositivePart(credit.RepaymentAmountBreakdown value) {
-  return value.principal.minorUnits > 0 ||
-      value.interest.minorUnits > 0 ||
-      value.fee.minorUnits > 0 ||
-      value.discount.minorUnits > 0;
-}
-
-bool _hasPositiveAmount(credit.RepaymentAmountDto value) {
   return value.principal.minorUnits > 0 ||
       value.interest.minorUnits > 0 ||
       value.fee.minorUnits > 0 ||
@@ -648,13 +592,6 @@ List<Account> _repaymentAccounts(List<Account> accounts, String? liabilityId) {
 String? _selectedId(String? id, List<Account> accounts) {
   if (id != null && accounts.any((account) => account.id == id)) return id;
   return accounts.isEmpty ? null : accounts.first.id;
-}
-
-Money? _parseOptionalNonNegativeMoney(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return Money.zero();
-  final money = Money.tryParse(trimmed);
-  return money != null && money.minorUnits >= 0 ? money : null;
 }
 
 credit.RepaymentAmountBreakdown _totalAllocations(
@@ -691,16 +628,47 @@ class BillRepaymentFormArgs {
   int get hashCode => Object.hash(billId, repaymentId);
 }
 
-credit.RepaymentAmountDto _subtractDto(
+credit.RepaymentAmountBreakdown _remainingAllocatedAmount(
   credit.RepaymentAmountDto left,
   credit.RepaymentAmountDto right,
 ) {
-  return credit.RepaymentAmountDto(
+  return credit.RepaymentAmountBreakdown(
     principal: left.principal - right.principal,
     interest: left.interest - right.interest,
     fee: left.fee - right.fee,
     discount: left.discount - right.discount,
   );
+}
+
+credit.RepaymentAmountBreakdown? _amountFromText({
+  required String principalText,
+  required String interestText,
+  required String feeText,
+  required String discountText,
+}) {
+  final principal = _parseOptionalNonNegativeMoney(principalText);
+  final interest = _parseOptionalNonNegativeMoney(interestText);
+  final fee = _parseOptionalNonNegativeMoney(feeText);
+  final discount = _parseOptionalNonNegativeMoney(discountText);
+  if (principal == null ||
+      interest == null ||
+      fee == null ||
+      discount == null) {
+    return null;
+  }
+  return credit.RepaymentAmountBreakdown(
+    principal: principal,
+    interest: interest,
+    fee: fee,
+    discount: discount,
+  );
+}
+
+Money? _parseOptionalNonNegativeMoney(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return Money.zero();
+  final money = Money.tryParse(trimmed);
+  return money != null && money.minorUnits >= 0 ? money : null;
 }
 
 String _optionalDefaultText(Money money) {

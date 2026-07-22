@@ -10,7 +10,8 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/bill_query_providers.dart';
 import '../provider/credit_account_query_providers.dart';
 import '../provider/installment_query_providers.dart';
-import 'bill_repayment_allocation_view_model.dart';
+import '../presentation/bill_repayment_allocation.dart';
+import 'bill_repayment_command_mapping.dart';
 
 part 'bill_conversion_installment_form_view_model.g.dart';
 
@@ -131,7 +132,7 @@ class BillConversionInstallmentFormViewModel
           .createBillConversionInstallmentRepayment(
             credit.CreateBillConversionInstallmentRepaymentCommand(
               billId: billId,
-              allocations: review.allocations,
+              allocations: billRepaymentCommandAllocations(review.allocations),
               totalPeriods: totalPeriods,
               borrowingDate: current.borrowingDate,
               firstRepaymentDate: current.firstRepaymentDate,
@@ -331,7 +332,12 @@ List<BillRepaymentAllocationLine> _conversionLines(
             fee: Money.zero(),
             discount: Money.zero(),
           ),
-          alreadyAllocated: item.allocated,
+          alreadyAllocated: credit.RepaymentAmountBreakdown(
+            principal: item.allocated.principal,
+            interest: item.allocated.interest,
+            fee: item.allocated.fee,
+            discount: item.allocated.discount,
+          ),
         ),
   ];
 }
@@ -350,7 +356,7 @@ BillRepaymentAllocationReview _allocationReview({
   required BillRepaymentAllocationMode mode,
   required credit.RepaymentAmountBreakdown amount,
 }) {
-  return BillRepaymentAllocationViewModel(
+  return BillRepaymentAllocator(
     lines: lines,
   ).suggest(mode: mode, amount: amount);
 }

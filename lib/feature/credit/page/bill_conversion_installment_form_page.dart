@@ -14,7 +14,7 @@ import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/bill_conversion_installment_form_view_model.dart';
-import '../view_model/bill_repayment_allocation_view_model.dart';
+import '../presentation/bill_repayment_allocation.dart';
 import '../widget/installment_field_options.dart';
 
 class BillConversionInstallmentFormPage extends ConsumerStatefulWidget {

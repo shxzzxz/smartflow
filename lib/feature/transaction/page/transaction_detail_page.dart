@@ -659,74 +659,85 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
                               style: context.appTextStyles.detailValue,
                             ),
                           ),
-                        AppControlledFormField<String>(
-                          value: selectedAccountId,
-                          onChanged:
-                              (value) =>
-                                  setState(() => _receiveAccountId = value),
-                          validator: (value) {
-                            final amount = _parseAmountOrNull();
-                            if (amount != null &&
-                                amount.minorUnits > 0 &&
-                                value == null) {
-                              return '请选择到账账户';
-                            }
-                            return null;
-                          },
-                          builder: (context, value, errorText, changeValue) {
-                            final fieldAccount = _findAccount(
-                              value,
-                              receiveAccounts,
-                            );
-                            return _DialogValueRow(
-                              label: '到账账户',
-                              onTap:
-                                  () => _pickReceiveAccount(
-                                    receiveAccounts,
-                                    changeValue,
-                                  ),
-                              errorText: errorText,
-                              child:
-                                  fieldAccount == null
-                                      ? Text(
-                                        '请选择账户',
-                                        textAlign: TextAlign.right,
-                                        style: context.appTextStyles.detailValue
-                                            .copyWith(
-                                              color:
-                                                  Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurfaceVariant,
+                        if (snapshot.connectionState == ConnectionState.done)
+                          AppControlledFormField<String>(
+                            value: selectedAccountId,
+                            onChanged:
+                                (value) =>
+                                    setState(() => _receiveAccountId = value),
+                            validator: (value) {
+                              final amount = _parseAmountOrNull();
+                              if (amount != null &&
+                                  amount.minorUnits > 0 &&
+                                  value == null) {
+                                return '请选择到账账户';
+                              }
+                              return null;
+                            },
+                            builder: (context, value, errorText, changeValue) {
+                              final fieldAccount = _findAccount(
+                                value,
+                                receiveAccounts,
+                              );
+                              return _DialogValueRow(
+                                label: '到账账户',
+                                onTap:
+                                    () => _pickReceiveAccount(
+                                      receiveAccounts,
+                                      changeValue,
+                                    ),
+                                errorText: errorText,
+                                child:
+                                    fieldAccount == null
+                                        ? Text(
+                                          '请选择账户',
+                                          textAlign: TextAlign.right,
+                                          style: context
+                                              .appTextStyles
+                                              .detailValue
+                                              .copyWith(
+                                                color:
+                                                    Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
+                                              ),
+                                        )
+                                        : Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          children: [
+                                            BusinessIcon(
+                                              iconKey: fieldAccount.iconKey,
+                                              size: 20,
                                             ),
-                                      )
-                                      : Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.end,
-                                        children: [
-                                          BusinessIcon(
-                                            iconKey: fieldAccount.iconKey,
-                                            size: 20,
-                                          ),
-                                          const SizedBox(
-                                            width: AppSpacing.space8,
-                                          ),
-                                          Flexible(
-                                            child: Text(
-                                              fieldAccount.name,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style:
-                                                  context
-                                                      .appTextStyles
-                                                      .detailValue,
+                                            const SizedBox(
+                                              width: AppSpacing.space8,
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                            );
-                          },
-                        ),
+                                            Flexible(
+                                              child: Text(
+                                                fieldAccount.name,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style:
+                                                    context
+                                                        .appTextStyles
+                                                        .detailValue,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                              );
+                            },
+                          )
+                        else
+                          const _DialogValueRow(
+                            label: '到账账户',
+                            child: SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
                         _DialogValueRow(
                           label: '报销金额',
                           child: TextFormField(
@@ -759,27 +770,48 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
                             style: context.appTextStyles.detailValue,
                           ),
                         ),
-                        _DialogValueRow(
-                          label: '报销时间',
-                          onTap: _pickOccurredAt,
-                          child: Text(
-                            formatTransactionDetailDateTime(_occurredAt),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.right,
-                            style: context.appTextStyles.detailValue,
-                          ),
+                        AppControlledFormField<DateTime>(
+                          value: _occurredAt,
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _occurredAt = value);
+                            }
+                          },
+                          builder: (context, value, _, changeValue) {
+                            final occurredAt = value ?? _occurredAt;
+                            return _DialogValueRow(
+                              label: '报销时间',
+                              onTap:
+                                  () =>
+                                      _pickOccurredAt(occurredAt, changeValue),
+                              child: Text(
+                                formatTransactionDetailDateTime(occurredAt),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.right,
+                                style: context.appTextStyles.detailValue,
+                              ),
+                            );
+                          },
                         ),
-                        _DialogValueRow(
-                          label: '结束报销',
-                          child: Switch(
-                            value: _closeReimbursement,
-                            onChanged:
-                                (value) =>
-                                    setState(() => _closeReimbursement = value),
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                          ),
+                        AppControlledFormField<bool>(
+                          value: _closeReimbursement,
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _closeReimbursement = value);
+                            }
+                          },
+                          builder: (context, value, _, changeValue) {
+                            return _DialogValueRow(
+                              label: '结束报销',
+                              child: Switch(
+                                value: value ?? true,
+                                onChanged: changeValue,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -850,16 +882,17 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
     return null;
   }
 
-  Future<void> _pickOccurredAt() async {
+  Future<void> _pickOccurredAt(
+    DateTime initialDateTime,
+    ValueChanged<DateTime?> changeValue,
+  ) async {
     final picked = await showAppDateTimePicker(
       context: context,
-      initialDateTime: _occurredAt,
+      initialDateTime: initialDateTime,
       title: '选择报销时间',
     );
     if (picked == null || !mounted) return;
-    setState(() {
-      _occurredAt = picked;
-    });
+    changeValue(picked);
   }
 
   Future<void> _submit() async {
