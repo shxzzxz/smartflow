@@ -55,32 +55,29 @@ class TransactionProgressBadges extends StatelessWidget {
   List<List<TransactionBadgePresentation>> _buildCandidates() {
     final candidates = <List<TransactionBadgePresentation>>[];
 
-    if (badges.length <= _maxSlotCount) {
-      candidates.add(badges);
-    }
+    // A full list can still fail by pixel width even when its item count fits
+    // the slot limit. Generate every suffix aggregation so a shorter
+    // aggregate can compete with the full list at the same slot count.
+    final maxRealCount =
+        badges.length <= _maxSlotCount ? badges.length : _maxSlotCount - 1;
+    final minRealCount = badges.length == 1 ? 1 : 0;
 
-    final firstAggregateSlotCount = badges.length.clamp(2, _maxSlotCount);
-    for (var slotCount = firstAggregateSlotCount; slotCount >= 2; slotCount--) {
-      if (badges.length <= slotCount) continue;
+    for (var realCount = maxRealCount; realCount >= minRealCount; realCount--) {
+      final hiddenCount = badges.length - realCount;
+      if (hiddenCount == 0) {
+        candidates.add(badges);
+        continue;
+      }
+
       candidates.add([
-        ...badges.take(slotCount - 1),
+        ...badges.take(realCount),
         TransactionBadgePresentation(
-          label: '+${badges.length - slotCount + 1}',
+          label: '+$hiddenCount',
           tone: FinanceTone.neutral,
         ),
       ]);
     }
 
-    candidates.add(
-      badges.length == 1
-          ? [badges.first]
-          : [
-            TransactionBadgePresentation(
-              label: '+${badges.length}',
-              tone: FinanceTone.neutral,
-            ),
-          ],
-    );
     return candidates;
   }
 
