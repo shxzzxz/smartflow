@@ -37,9 +37,9 @@ class AccountFormPage extends ConsumerWidget {
         title: '编辑账户',
         message: '账户不存在',
       ),
-      AsyncError(:final error) => _AccountFormStatusPage(
+      AsyncError() => _AccountFormStatusPage(
         title: accountId == null ? '新建账户' : '编辑账户',
-        message: '账户加载失败：$error',
+        message: '账户加载失败，请稍后重试',
       ),
       _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
     };

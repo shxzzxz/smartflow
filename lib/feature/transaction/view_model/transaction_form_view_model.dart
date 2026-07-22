@@ -57,7 +57,35 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 
     final initializedState = _initializedState;
     if (initializedState != null) {
-      return AsyncValue.data(initializedState);
+      final next = _refreshReferenceData(
+        initializedState,
+        settlementAccounts: settlementAccountsAsync.value,
+        fundAccounts: fundAccountsAsync.value,
+        liabilityAccounts: liabilityAccountsAsync.value,
+        reimbursementAccounts: reimbursementAccountsAsync.value,
+        expenseTree: expenseTreeAsync.value,
+        incomeTree: incomeTreeAsync.value,
+      );
+      _initializedState = next;
+      return AsyncValue.data(next);
+    }
+
+    if (editTransactionId == null) {
+      return AsyncValue.data(
+        _initializedState ??= TransactionFormState.initial(
+          mode: initialMode,
+          fromAccountId: initialFromAccountId,
+          toAccountId: initialToAccountId,
+          settlementAccounts:
+              settlementAccountsAsync.value ?? const <Account>[],
+          fundAccounts: fundAccountsAsync.value ?? const <Account>[],
+          liabilityAccounts: liabilityAccountsAsync.value ?? const <Account>[],
+          reimbursementAccounts:
+              reimbursementAccountsAsync.value ?? const <Account>[],
+          expenseTree: expenseTreeAsync.value ?? const <CategoryNode>[],
+          incomeTree: incomeTreeAsync.value ?? const <CategoryNode>[],
+        ),
+      );
     }
 
     final queries = <AsyncValue<dynamic>>[
@@ -86,33 +114,17 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     final expenseTree = expenseTreeAsync.requireValue;
     final incomeTree = incomeTreeAsync.requireValue;
 
-    if (editTransactionId != null) {
-      final detail = editDetailAsync!.requireValue;
-      if (detail == null) return const AsyncValue.data(null);
-      final snapshot = transactionFormEditSnapshot(
-        detail: detail,
-        expenseTree: expenseTree,
-        incomeTree: incomeTree,
-        accountsById: accountsByIdAsync!.requireValue,
-      );
-      return AsyncValue.data(
-        _initializedState ??= TransactionFormState.fromEditSnapshot(
-          snapshot: snapshot,
-          settlementAccounts: settlementAccounts,
-          fundAccounts: fundAccounts,
-          liabilityAccounts: liabilityAccounts,
-          reimbursementAccounts: reimbursementAccounts,
-          expenseTree: expenseTree,
-          incomeTree: incomeTree,
-        ),
-      );
-    }
-
+    final detail = editDetailAsync!.requireValue;
+    if (detail == null) return const AsyncValue.data(null);
+    final snapshot = transactionFormEditSnapshot(
+      detail: detail,
+      expenseTree: expenseTree,
+      incomeTree: incomeTree,
+      accountsById: accountsByIdAsync!.requireValue,
+    );
     return AsyncValue.data(
-      _initializedState ??= TransactionFormState.initial(
-        mode: initialMode,
-        fromAccountId: initialFromAccountId,
-        toAccountId: initialToAccountId,
+      _initializedState ??= TransactionFormState.fromEditSnapshot(
+        snapshot: snapshot,
         settlementAccounts: settlementAccounts,
         fundAccounts: fundAccounts,
         liabilityAccounts: liabilityAccounts,
@@ -493,6 +505,25 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     state = AsyncValue.data(next);
   }
 
+  TransactionFormState _refreshReferenceData(
+    TransactionFormState current, {
+    required List<Account>? settlementAccounts,
+    required List<Account>? fundAccounts,
+    required List<Account>? liabilityAccounts,
+    required List<Account>? reimbursementAccounts,
+    required List<CategoryNode>? expenseTree,
+    required List<CategoryNode>? incomeTree,
+  }) {
+    return current.copyWith(
+      settlementAccounts: settlementAccounts,
+      fundAccounts: fundAccounts,
+      liabilityAccounts: liabilityAccounts,
+      reimbursementAccounts: reimbursementAccounts,
+      expenseTree: expenseTree,
+      incomeTree: incomeTree,
+    );
+  }
+
   SubmitOutcome _invalidCommand(String message) {
     return SubmitOutcome.failure(
       UiError(
@@ -536,19 +567,19 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 }
 
 class TransactionFormState {
-  const TransactionFormState({
+  TransactionFormState({
     required this.initialValues,
     required this.mode,
     required this.occurredAt,
     required this.excludeStats,
     required this.excludeBudget,
     required this.submitting,
-    required this.settlementAccounts,
-    required this.fundAccounts,
-    required this.liabilityAccounts,
-    required this.reimbursementAccounts,
-    required this.expenseTree,
-    required this.incomeTree,
+    required List<Account> settlementAccounts,
+    required List<Account> fundAccounts,
+    required List<Account> liabilityAccounts,
+    required List<Account> reimbursementAccounts,
+    required List<CategoryNode> expenseTree,
+    required List<CategoryNode> incomeTree,
     this.expenseCategoryId,
     this.expenseRootId,
     this.incomeCategoryId,
@@ -557,7 +588,12 @@ class TransactionFormState {
     this.toAccountId,
     this.reimbursementAccountId,
     this.liabilityAccountId,
-  });
+  }) : settlementAccounts = List.unmodifiable(settlementAccounts),
+       fundAccounts = List.unmodifiable(fundAccounts),
+       liabilityAccounts = List.unmodifiable(liabilityAccounts),
+       reimbursementAccounts = List.unmodifiable(reimbursementAccounts),
+       expenseTree = List.unmodifiable(expenseTree),
+       incomeTree = List.unmodifiable(incomeTree);
 
   factory TransactionFormState.initial({
     required TransactionFormMode mode,
@@ -657,6 +693,12 @@ class TransactionFormState {
     bool? excludeStats,
     bool? excludeBudget,
     bool? submitting,
+    List<Account>? settlementAccounts,
+    List<Account>? fundAccounts,
+    List<Account>? liabilityAccounts,
+    List<Account>? reimbursementAccounts,
+    List<CategoryNode>? expenseTree,
+    List<CategoryNode>? incomeTree,
   }) {
     return TransactionFormState(
       initialValues: initialValues ?? this.initialValues,
@@ -695,12 +737,13 @@ class TransactionFormState {
       excludeStats: excludeStats ?? this.excludeStats,
       excludeBudget: excludeBudget ?? this.excludeBudget,
       submitting: submitting ?? this.submitting,
-      settlementAccounts: settlementAccounts,
-      fundAccounts: fundAccounts,
-      liabilityAccounts: liabilityAccounts,
-      reimbursementAccounts: reimbursementAccounts,
-      expenseTree: expenseTree,
-      incomeTree: incomeTree,
+      settlementAccounts: settlementAccounts ?? this.settlementAccounts,
+      fundAccounts: fundAccounts ?? this.fundAccounts,
+      liabilityAccounts: liabilityAccounts ?? this.liabilityAccounts,
+      reimbursementAccounts:
+          reimbursementAccounts ?? this.reimbursementAccounts,
+      expenseTree: expenseTree ?? this.expenseTree,
+      incomeTree: incomeTree ?? this.incomeTree,
     );
   }
 }

@@ -124,6 +124,30 @@ void main() {
       expect(command.note, isA<PatchClear<String>>());
     });
 
+    test('saves a loaded category without changing its fields', () async {
+      final service = _FakeCategoryAppService();
+      final category = _category(
+        'category-1',
+        name: 'Food',
+        parentId: 'old-parent',
+      );
+      final container = _container(service, editCategory: category);
+      final provider = categoryFormViewModelProvider(categoryId: category.id);
+      final viewModel = container.read(provider.notifier);
+
+      final outcome = await viewModel.submit(
+        nameText: category.name,
+        noteText: category.note ?? '',
+      );
+
+      expect(outcome, isA<SubmitSuccess>());
+      final command = service.editCommands.single;
+      expect(command.id, category.id);
+      expect(command.name, category.name);
+      expect((command.parentId as PatchSet<String>).value, category.parentId);
+      expect(command.note, isA<PatchClear<String>>());
+    });
+
     test('maps business exception to submit failure', () async {
       final service = _FakeCategoryAppService(
         exception: BusinessException(

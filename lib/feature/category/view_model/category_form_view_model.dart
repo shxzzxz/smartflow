@@ -24,22 +24,39 @@ class CategoryFormViewModel extends _$CategoryFormViewModel {
     String? initialParentId,
   }) {
     _categoryId = categoryId;
+    final expenseTreeAsync = ref.watch(
+      categoryTreeProvider(AccountType.expense),
+    );
+    final incomeTreeAsync = ref.watch(categoryTreeProvider(AccountType.income));
+    final accountAsync =
+        categoryId == null ? null : ref.watch(accountsByIdProvider);
     if (_initializedState != null) {
-      return AsyncValue.data(_initializedState);
+      final next = _initializedState!.copyWith(
+        expenseTree: expenseTreeAsync.value,
+        incomeTree: incomeTreeAsync.value,
+      );
+      _initializedState = next;
+      return AsyncValue.data(next);
     }
     if (categoryId == null) {
       return AsyncValue.data(
         _initializedState ??= CategoryFormState.initial(
           type: initialType,
           parentId: initialParentId,
+          expenseTree: expenseTreeAsync.value ?? const <CategoryNode>[],
+          incomeTree: incomeTreeAsync.value ?? const <CategoryNode>[],
         ),
       );
     }
 
-    return ref.watch(accountsByIdProvider).whenData((categories) {
+    return accountAsync!.whenData((categories) {
       final category = categories[categoryId];
       if (category == null || !category.type.isCategory) return null;
-      return _initializedState ??= CategoryFormState.fromCategory(category);
+      return _initializedState ??= CategoryFormState.fromCategory(
+        category,
+        expenseTree: expenseTreeAsync.value ?? const <CategoryNode>[],
+        incomeTree: incomeTreeAsync.value ?? const <CategoryNode>[],
+      );
     });
   }
 
@@ -134,17 +151,22 @@ class CategoryFormViewModel extends _$CategoryFormViewModel {
 }
 
 class CategoryFormState {
-  const CategoryFormState({
+  CategoryFormState({
     required this.initialValues,
     required this.type,
     required this.iconKey,
     required this.submitting,
+    required List<CategoryNode> expenseTree,
+    required List<CategoryNode> incomeTree,
     this.parentId,
-  });
+  }) : expenseTree = List.unmodifiable(expenseTree),
+       incomeTree = List.unmodifiable(incomeTree);
 
   factory CategoryFormState.initial({
     required AccountType type,
     String? parentId,
+    required List<CategoryNode> expenseTree,
+    required List<CategoryNode> incomeTree,
   }) {
     return CategoryFormState(
       initialValues: const CategoryFormInitialValues(),
@@ -152,16 +174,24 @@ class CategoryFormState {
       parentId: parentId,
       iconKey: defaultCategoryIconKey(type),
       submitting: false,
+      expenseTree: expenseTree,
+      incomeTree: incomeTree,
     );
   }
 
-  factory CategoryFormState.fromCategory(Account category) {
+  factory CategoryFormState.fromCategory(
+    Account category, {
+    required List<CategoryNode> expenseTree,
+    required List<CategoryNode> incomeTree,
+  }) {
     return CategoryFormState(
       initialValues: CategoryFormInitialValues.fromCategory(category),
       type: category.type,
       parentId: category.parentId,
       iconKey: category.iconKey ?? defaultCategoryIconKey(category.type),
       submitting: false,
+      expenseTree: expenseTree,
+      incomeTree: incomeTree,
     );
   }
 
@@ -170,6 +200,8 @@ class CategoryFormState {
   final String? parentId;
   final String iconKey;
   final bool submitting;
+  final List<CategoryNode> expenseTree;
+  final List<CategoryNode> incomeTree;
 
   CategoryFormState copyWith({
     CategoryFormInitialValues? initialValues,
@@ -177,6 +209,8 @@ class CategoryFormState {
     Object? parentId = _sentinel,
     String? iconKey,
     bool? submitting,
+    List<CategoryNode>? expenseTree,
+    List<CategoryNode>? incomeTree,
   }) {
     return CategoryFormState(
       initialValues: initialValues ?? this.initialValues,
@@ -184,6 +218,8 @@ class CategoryFormState {
       parentId: parentId == _sentinel ? this.parentId : parentId as String?,
       iconKey: iconKey ?? this.iconKey,
       submitting: submitting ?? this.submitting,
+      expenseTree: expenseTree ?? this.expenseTree,
+      incomeTree: incomeTree ?? this.incomeTree,
     );
   }
 }

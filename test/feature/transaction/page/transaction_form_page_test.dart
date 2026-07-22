@@ -55,6 +55,44 @@ void main() {
     expect(find.byType(TransactionAmountInput), findsOneWidget);
   });
 
+  testWidgets('new form renders while option queries are loading', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        accountsForSelectionPurposeProvider(
+          AccountSelectionPurpose.settlement,
+        ).overrideWithValue(const AsyncLoading<List<Account>>()),
+        accountsForSelectionPurposeProvider(
+          AccountSelectionPurpose.fund,
+        ).overrideWithValue(const AsyncLoading<List<Account>>()),
+        accountsForSelectionPurposeProvider(
+          AccountSelectionPurpose.borrowingLiability,
+        ).overrideWithValue(const AsyncLoading<List<Account>>()),
+        accountsForSelectionPurposeProvider(
+          AccountSelectionPurpose.reimbursementReceivable,
+        ).overrideWithValue(const AsyncLoading<List<Account>>()),
+        categoryTreeProvider(
+          AccountType.expense,
+        ).overrideWithValue(const AsyncLoading<List<CategoryNode>>()),
+        categoryTreeProvider(
+          AccountType.income,
+        ).overrideWithValue(const AsyncLoading<List<CategoryNode>>()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: TransactionFormPage()),
+      ),
+    );
+
+    expect(find.byType(TransactionAmountInput), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
   testWidgets(
     'shows edit loading, initializes controllers, and preserves edited text',
     (tester) async {

@@ -60,9 +60,9 @@ class TransactionFormPage extends ConsumerWidget {
         title: '编辑交易',
         message: '交易不存在',
       ),
-      AsyncError(:final error) => _TransactionFormStatusPage(
+      AsyncError() => _TransactionFormStatusPage(
         title: editTransactionId == null ? '新增交易' : '编辑交易',
-        message: '交易加载失败：$error',
+        message: '交易加载失败，请稍后重试',
       ),
       _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
     };

@@ -11,7 +11,6 @@ import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/icon_choice_grid.dart';
-import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/category_form_view_model.dart';
 
@@ -49,9 +48,9 @@ class CategoryFormPage extends ConsumerWidget {
         title: '编辑分类',
         message: '分类不存在',
       ),
-      AsyncError(:final error) => _CategoryFormStatusPage(
+      AsyncError() => _CategoryFormStatusPage(
         title: categoryId == null ? '新增分类' : '编辑分类',
-        message: '分类加载失败：$error',
+        message: '分类加载失败，请稍后重试',
       ),
       _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
     };
@@ -122,17 +121,15 @@ class _CategoryFormContentState extends ConsumerState<_CategoryFormContent> {
   Widget _buildFormScaffold(BuildContext context, CategoryFormState formState) {
     final colors = Theme.of(context).colorScheme;
     final notifier = ref.read(_formProvider.notifier);
-    final parentOptions = ref
-        .watch(categoryTreeProvider(formState.type))
-        .maybeWhen(
-          data:
-              (nodes) => categoryParentOptions(
-                nodes: nodes,
-                type: formState.type,
-                editingCategoryId: widget.categoryId,
-              ),
-          orElse: () => const <Account>[],
-        );
+    final parentTree =
+        formState.type == AccountType.income
+            ? formState.incomeTree
+            : formState.expenseTree;
+    final parentOptions = categoryParentOptions(
+      nodes: parentTree,
+      type: formState.type,
+      editingCategoryId: widget.categoryId,
+    );
     final effectiveParent =
         parentOptions
             .where((parent) => parent.id == formState.parentId)

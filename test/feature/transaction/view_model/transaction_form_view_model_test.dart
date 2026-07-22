@@ -5,6 +5,7 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
@@ -348,6 +349,37 @@ void main() {
       expect(command.expenseCategoryId, 'hotel');
     });
 
+    test('saves a loaded daily expense without changing its fields', () async {
+      final editService = _FakeTransactionEditAppService();
+      final container = _container(
+        editService: editService,
+        editTransactionId: 'tx-1',
+        editDetail: _transactionDetail(),
+        accountsById: {
+          'cash': _account('cash'),
+          'food': _account('food', type: AccountType.expense),
+        },
+        settlementAccounts: [_account('cash')],
+      );
+      final viewModel = container.read(
+        _provider(editTransactionId: 'tx-1').notifier,
+      );
+
+      final outcome = await viewModel.submit(
+        amountText: '12.34',
+        noteText: 'note',
+      );
+
+      expect(outcome, isA<SubmitSuccess>());
+      final command = editService.expenseCommands.single;
+      expect(command.transactionId, 'tx-1');
+      expect(command.amount, const Money(minorUnits: 1234));
+      expect(command.paidFromAccountId, 'cash');
+      expect(command.expenseAccountId, 'food');
+      expect(command.note, isA<PatchSet<String?>>());
+      expect((command.note as PatchSet<String?>).value, 'note');
+    });
+
     test('deletes transaction through action outcome', () async {
       final editService = _FakeTransactionEditAppService();
       final container = _container(editService: editService);
@@ -559,12 +591,16 @@ class _FakeTransactionPostingAppService
 }
 
 class _FakeTransactionEditAppService implements TransactionEditAppService {
+  final expenseCommands = <EditExpenseCommand>[];
   final reimbursementAdvanceCommands = <EditReimbursementAdvanceCommand>[];
   final deletedTransactionIds = <String>[];
 
   @override
-  Future<PostedTransactionResult> editExpense(EditExpenseCommand command) {
-    throw UnimplementedError();
+  Future<PostedTransactionResult> editExpense(
+    EditExpenseCommand command,
+  ) async {
+    expenseCommands.add(command);
+    return const PostedTransactionResult(transactionId: 'transaction-1');
   }
 
   @override
