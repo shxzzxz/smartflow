@@ -1492,15 +1492,16 @@ class _ImportDraftEditSheetState extends State<_ImportDraftEditSheet> {
                 value: _occurredAt,
                 placeholder: '选择交易时间',
                 valueText: formatImportDateTime(_occurredAt),
-                onTap: () async {
+                onTap: (onSelected) async {
                   final picked = await showAppDateTimePicker(
                     context: context,
                     initialDateTime: _occurredAt,
                     title: '选择交易时间',
                   );
-                  if (picked != null && mounted) {
-                    setState(() => _occurredAt = picked);
-                  }
+                  if (picked != null && mounted) onSelected(picked);
+                },
+                onChanged: (value) {
+                  if (value != null) setState(() => _occurredAt = value);
                 },
               ),
               const SizedBox(height: AppSpacing.space8),
@@ -1509,15 +1510,16 @@ class _ImportDraftEditSheetState extends State<_ImportDraftEditSheet> {
                 value: _postedAt,
                 placeholder: '选择入账时间',
                 valueText: formatImportDateTime(_postedAt),
-                onTap: () async {
+                onTap: (onSelected) async {
                   final picked = await showAppDateTimePicker(
                     context: context,
                     initialDateTime: _postedAt,
                     title: '选择入账时间',
                   );
-                  if (picked != null && mounted) {
-                    setState(() => _postedAt = picked);
-                  }
+                  if (picked != null && mounted) onSelected(picked);
+                },
+                onChanged: (value) {
+                  if (value != null) setState(() => _postedAt = value);
                 },
               ),
               const SizedBox(height: AppSpacing.space8),
