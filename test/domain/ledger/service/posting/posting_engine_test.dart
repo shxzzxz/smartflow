@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_rule.dart';
@@ -38,6 +39,89 @@ void main() {
           ('cash', EntryDirection.credit),
         ]),
       );
+    });
+
+    test('preserves import source and independent posted time', () {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final occurredAt = DateTime(2026, 5, 1, 9);
+      final postedAt = DateTime(2026, 5, 3, 18);
+
+      final transaction = engine.createExpense(
+        ExpenseInstruction(
+          amount: Money.parse('12.30'),
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'food',
+          occurredAt: occurredAt,
+          postedAt: postedAt,
+          sourceKind: SourceKind.import,
+        ),
+      );
+
+      expect(transaction.sourceKind, SourceKind.import);
+      expect(transaction.occurredAt, occurredAt);
+      expect(transaction.postedAt, postedAt);
+    });
+
+    test('propagates import metadata to reimbursement children', () {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final advance = engine.createReimbursementAdvance(
+        ReimbursementAdvanceInstruction(
+          amount: Money.parse('100.00'),
+          receivableAccountId: 'receivable',
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'travel',
+          occurredAt: DateTime(2026, 5, 1),
+          postedAt: DateTime(2026, 5, 2),
+          sourceKind: SourceKind.import,
+        ),
+      );
+      final receipt = engine.createReimbursementReceipt(
+        instruction: ReimbursementReceiptInstruction(
+          advanceTransactionId: advance.id,
+          amount: Money.parse('100.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'bank',
+          occurredAt: DateTime(2026, 5, 3),
+          postedAt: DateTime(2026, 5, 4),
+        ),
+        advance: advance,
+      );
+
+      expect(advance.sourceKind, SourceKind.import);
+      expect(advance.postedAt, DateTime(2026, 5, 2));
+      expect(receipt.sourceKind, SourceKind.import);
+      expect(receipt.postedAt, DateTime(2026, 5, 4));
+    });
+
+    test('allows import opening balance to carry its source kind', () {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final account = Account(
+        id: 'loan',
+        name: 'loan',
+        type: AccountType.liability,
+        balance: Money.zero(),
+      );
+
+      final transaction = engine.createOpeningBalance(
+        instruction: OpeningBalanceInstruction(
+          accountId: account.id,
+          amount: Money.parse('100.00'),
+          occurredAt: DateTime(2026, 5, 1),
+          postedAt: DateTime(2026, 5, 2),
+          sourceKind: SourceKind.import,
+        ),
+        account: account,
+        equityAccountId: 'opening',
+      );
+
+      expect(transaction.sourceKind, SourceKind.import);
+      expect(transaction.postedAt, DateTime(2026, 5, 2));
     });
 
     test('creates and resolves interest-only repayment', () {
@@ -132,6 +216,9 @@ void main() {
         paidFromAccountId: 'cash',
         expenseAccountId: 'food',
         occurredAt: DateTime(2026, 5, 1),
+        postedAt: DateTime(2026, 5, 2),
+        isExcludedFromStats: true,
+        isExcludedFromBudget: true,
       );
 
       final edited = const ExpenseEditPatch().applyTo(current);
@@ -139,6 +226,9 @@ void main() {
       expect(edited.amount, current.amount);
       expect(edited.paidFromAccountId, 'cash');
       expect(edited.expenseAccountId, 'food');
+      expect(edited.postedAt, current.postedAt);
+      expect(edited.isExcludedFromStats, isTrue);
+      expect(edited.isExcludedFromBudget, isTrue);
     });
 
     test('advance edit patch converts an expense to reimbursement advance', () {
@@ -147,6 +237,9 @@ void main() {
         paidFromAccountId: 'cash',
         expenseAccountId: 'food',
         occurredAt: DateTime(2026, 5, 1),
+        postedAt: DateTime(2026, 5, 2),
+        isExcludedFromStats: true,
+        isExcludedFromBudget: true,
       );
 
       final edited = const ReimbursementAdvanceEditPatch(
@@ -157,23 +250,77 @@ void main() {
       expect(edited.receivableAccountId, 'receivable');
       expect(edited.paidFromAccountId, 'cash');
       expect(edited.expenseAccountId, 'food');
+      expect(edited.postedAt, current.postedAt);
+      expect(edited.isExcludedFromStats, isTrue);
+      expect(edited.isExcludedFromBudget, isTrue);
+    });
+
+    test('transfer edit patch preserves posting time', () {
+      final current = TransferInstruction(
+        amount: Money.parse('12.30'),
+        fromAccountId: 'cash',
+        toAccountId: 'bank',
+        occurredAt: DateTime(2026, 5, 1),
+        postedAt: DateTime(2026, 5, 2),
+      );
+
+      final edited = TransferEditPatch(
+        amount: Money.parse('20.00'),
+      ).applyTo(current);
+
+      expect(edited.amount, Money.parse('20.00'));
+      expect(edited.postedAt, current.postedAt);
+    });
+
+    test('repayment edit patch preserves posting time', () {
+      final current = RepaymentInstruction(
+        principal: Money.parse('100.00'),
+        liabilityAccountId: 'loan',
+        paidFromAccountId: 'cash',
+        occurredAt: DateTime(2026, 5, 1),
+        postedAt: DateTime(2026, 5, 2),
+      );
+
+      final edited = RepaymentEditPatch(
+        principal: Money.parse('80.00'),
+      ).applyTo(current);
+
+      expect(edited.principal, Money.parse('80.00'));
+      expect(edited.postedAt, current.postedAt);
+    });
+
+    test('refund edit patch preserves posting time', () {
+      final current = RefundInstruction(
+        parentTransactionId: 'parent',
+        amount: Money.parse('12.30'),
+        refundToAccountId: 'cash',
+        occurredAt: DateTime(2026, 5, 1),
+        postedAt: DateTime(2026, 5, 2),
+      );
+
+      final edited = RefundEditPatch(
+        amount: Money.parse('10.00'),
+      ).applyTo(current);
+
+      expect(edited.amount, Money.parse('10.00'));
+      expect(edited.postedAt, current.postedAt);
     });
 
     test('reimbursement children inherit parent reporting flags', () {
       final engine = PostingEngine(
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
-      final advance = engine
-          .createReimbursementAdvance(
-            ReimbursementAdvanceInstruction(
-              amount: Money.parse('100.00'),
-              receivableAccountId: 'receivable',
-              paidFromAccountId: 'cash',
-              expenseAccountId: 'travel',
-              occurredAt: DateTime(2026, 5, 1),
-            ),
-          )
-          .copyWith(isExcludedFromStats: true, isExcludedFromBudget: true);
+      final advance = engine.createReimbursementAdvance(
+        ReimbursementAdvanceInstruction(
+          amount: Money.parse('100.00'),
+          receivableAccountId: 'receivable',
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'travel',
+          occurredAt: DateTime(2026, 5, 1),
+          isExcludedFromStats: true,
+          isExcludedFromBudget: true,
+        ),
+      );
 
       final receipt = engine.createReimbursementReceipt(
         instruction: ReimbursementReceiptInstruction(

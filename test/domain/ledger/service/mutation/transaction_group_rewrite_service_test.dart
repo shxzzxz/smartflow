@@ -142,6 +142,55 @@ void main() {
     },
   );
 
+  test('editing reimbursement receipt preserves its posting time', () async {
+    final engine = PostingEngine(
+      idGenerator: SequentialIdGenerator(prefix: 'tx'),
+    );
+    final parent = engine.createReimbursementAdvance(
+      ReimbursementAdvanceInstruction(
+        amount: Money.parse('100.00'),
+        receivableAccountId: 'receivable',
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'expense',
+        occurredAt: DateTime(2026, 7, 1),
+      ),
+    );
+    final receipt = engine.createReimbursementReceipt(
+      instruction: ReimbursementReceiptInstruction(
+        advanceTransactionId: parent.id,
+        amount: Money.parse('20.00'),
+        receivableAccountId: 'receivable',
+        receiveAccountId: 'bank',
+        occurredAt: DateTime(2026, 7, 2),
+        postedAt: DateTime(2026, 7, 3),
+      ),
+      advance: parent,
+    );
+    final service = TransactionGroupRewriteService(
+      transactionGroupRepository: _TransactionGroupRepository(
+        TransactionGroup(
+          parentTransaction: parent,
+          childTransactions: [receipt],
+        ),
+      ),
+      accountRepository: _AccountRepository(),
+      postingInstructionResolver: const DefaultPostingInstructionResolver(),
+      postingEngine: engine,
+      accountPostingService: _AccountPostingService(),
+      accountRolePolicy: _AccountRolePolicy(),
+      systemAccountResolver: _SystemAccountResolver(),
+    );
+
+    final result = await service.rewriteReimbursementReceipt(
+      EditReimbursementReceiptTransactionInstruction(
+        transactionId: receipt.id,
+        note: const Patch<String?>.set('metadata only'),
+      ),
+    );
+
+    expect(result.currentTransaction.postedAt, receipt.postedAt);
+  });
+
   test(
     'editing zero-cash reimbursement close preserves its actual amount',
     () async {
@@ -164,6 +213,7 @@ void main() {
           receivableAccountId: 'receivable',
           receiveAccountId: 'bank',
           occurredAt: DateTime(2026, 7, 2),
+          postedAt: DateTime(2026, 7, 3),
         ),
         advance: parent,
         outstanding: parent.primaryAmount,
@@ -193,6 +243,7 @@ void main() {
 
       final rewritten = result.currentTransaction;
       expect(rewritten.note, 'metadata only');
+      expect(rewritten.postedAt, close.postedAt);
       expect(
         rewritten.entries.where((entry) => entry.accountId == 'bank'),
         isEmpty,

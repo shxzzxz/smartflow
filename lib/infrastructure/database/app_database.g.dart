@@ -8937,6 +8937,1538 @@ class RepaymentItemsCompanion extends UpdateCompanion<RepaymentItemRow> {
   }
 }
 
+class $ImportEntityMappingsTable extends ImportEntityMappings
+    with TableInfo<$ImportEntityMappingsTable, ImportEntityMappingRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ImportEntityMappingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<ImportSource, String> source =
+      GeneratedColumn<String>(
+        'source',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<ImportSource>(
+        $ImportEntityMappingsTable.$convertersource,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<ImportEntityKind, String>
+  entityKind = GeneratedColumn<String>(
+    'entity_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<ImportEntityKind>(
+    $ImportEntityMappingsTable.$converterentityKind,
+  );
+  static const VerificationMeta _sourceEntityKeyMeta = const VerificationMeta(
+    'sourceEntityKey',
+  );
+  @override
+  late final GeneratedColumn<String> sourceEntityKey = GeneratedColumn<String>(
+    'source_entity_key',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 500,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetAccountIdMeta = const VerificationMeta(
+    'targetAccountId',
+  );
+  @override
+  late final GeneratedColumn<String> targetAccountId = GeneratedColumn<String>(
+    'target_account_id',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 120,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    source,
+    entityKind,
+    sourceEntityKey,
+    targetAccountId,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'import_entity_mappings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ImportEntityMappingRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('source_entity_key')) {
+      context.handle(
+        _sourceEntityKeyMeta,
+        sourceEntityKey.isAcceptableOrUnknown(
+          data['source_entity_key']!,
+          _sourceEntityKeyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceEntityKeyMeta);
+    }
+    if (data.containsKey('target_account_id')) {
+      context.handle(
+        _targetAccountIdMeta,
+        targetAccountId.isAcceptableOrUnknown(
+          data['target_account_id']!,
+          _targetAccountIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_targetAccountIdMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ImportEntityMappingRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ImportEntityMappingRow(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}id'],
+          )!,
+      source: $ImportEntityMappingsTable.$convertersource.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}source'],
+        )!,
+      ),
+      entityKind: $ImportEntityMappingsTable.$converterentityKind.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}entity_kind'],
+        )!,
+      ),
+      sourceEntityKey:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}source_entity_key'],
+          )!,
+      targetAccountId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}target_account_id'],
+          )!,
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+      updatedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}updated_at'],
+          )!,
+    );
+  }
+
+  @override
+  $ImportEntityMappingsTable createAlias(String alias) {
+    return $ImportEntityMappingsTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<ImportSource, String, String> $convertersource =
+      const EnumNameConverter<ImportSource>(ImportSource.values);
+  static JsonTypeConverter2<ImportEntityKind, String, String>
+  $converterentityKind = const EnumNameConverter<ImportEntityKind>(
+    ImportEntityKind.values,
+  );
+}
+
+class ImportEntityMappingRow extends DataClass
+    implements Insertable<ImportEntityMappingRow> {
+  final String id;
+  final ImportSource source;
+  final ImportEntityKind entityKind;
+  final String sourceEntityKey;
+  final String targetAccountId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const ImportEntityMappingRow({
+    required this.id,
+    required this.source,
+    required this.entityKind,
+    required this.sourceEntityKey,
+    required this.targetAccountId,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    {
+      map['source'] = Variable<String>(
+        $ImportEntityMappingsTable.$convertersource.toSql(source),
+      );
+    }
+    {
+      map['entity_kind'] = Variable<String>(
+        $ImportEntityMappingsTable.$converterentityKind.toSql(entityKind),
+      );
+    }
+    map['source_entity_key'] = Variable<String>(sourceEntityKey);
+    map['target_account_id'] = Variable<String>(targetAccountId);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ImportEntityMappingsCompanion toCompanion(bool nullToAbsent) {
+    return ImportEntityMappingsCompanion(
+      id: Value(id),
+      source: Value(source),
+      entityKind: Value(entityKind),
+      sourceEntityKey: Value(sourceEntityKey),
+      targetAccountId: Value(targetAccountId),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ImportEntityMappingRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ImportEntityMappingRow(
+      id: serializer.fromJson<String>(json['id']),
+      source: $ImportEntityMappingsTable.$convertersource.fromJson(
+        serializer.fromJson<String>(json['source']),
+      ),
+      entityKind: $ImportEntityMappingsTable.$converterentityKind.fromJson(
+        serializer.fromJson<String>(json['entityKind']),
+      ),
+      sourceEntityKey: serializer.fromJson<String>(json['sourceEntityKey']),
+      targetAccountId: serializer.fromJson<String>(json['targetAccountId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'source': serializer.toJson<String>(
+        $ImportEntityMappingsTable.$convertersource.toJson(source),
+      ),
+      'entityKind': serializer.toJson<String>(
+        $ImportEntityMappingsTable.$converterentityKind.toJson(entityKind),
+      ),
+      'sourceEntityKey': serializer.toJson<String>(sourceEntityKey),
+      'targetAccountId': serializer.toJson<String>(targetAccountId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  ImportEntityMappingRow copyWith({
+    String? id,
+    ImportSource? source,
+    ImportEntityKind? entityKind,
+    String? sourceEntityKey,
+    String? targetAccountId,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => ImportEntityMappingRow(
+    id: id ?? this.id,
+    source: source ?? this.source,
+    entityKind: entityKind ?? this.entityKind,
+    sourceEntityKey: sourceEntityKey ?? this.sourceEntityKey,
+    targetAccountId: targetAccountId ?? this.targetAccountId,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ImportEntityMappingRow copyWithCompanion(ImportEntityMappingsCompanion data) {
+    return ImportEntityMappingRow(
+      id: data.id.present ? data.id.value : this.id,
+      source: data.source.present ? data.source.value : this.source,
+      entityKind:
+          data.entityKind.present ? data.entityKind.value : this.entityKind,
+      sourceEntityKey:
+          data.sourceEntityKey.present
+              ? data.sourceEntityKey.value
+              : this.sourceEntityKey,
+      targetAccountId:
+          data.targetAccountId.present
+              ? data.targetAccountId.value
+              : this.targetAccountId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImportEntityMappingRow(')
+          ..write('id: $id, ')
+          ..write('source: $source, ')
+          ..write('entityKind: $entityKind, ')
+          ..write('sourceEntityKey: $sourceEntityKey, ')
+          ..write('targetAccountId: $targetAccountId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    source,
+    entityKind,
+    sourceEntityKey,
+    targetAccountId,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ImportEntityMappingRow &&
+          other.id == this.id &&
+          other.source == this.source &&
+          other.entityKind == this.entityKind &&
+          other.sourceEntityKey == this.sourceEntityKey &&
+          other.targetAccountId == this.targetAccountId &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ImportEntityMappingsCompanion
+    extends UpdateCompanion<ImportEntityMappingRow> {
+  final Value<String> id;
+  final Value<ImportSource> source;
+  final Value<ImportEntityKind> entityKind;
+  final Value<String> sourceEntityKey;
+  final Value<String> targetAccountId;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const ImportEntityMappingsCompanion({
+    this.id = const Value.absent(),
+    this.source = const Value.absent(),
+    this.entityKind = const Value.absent(),
+    this.sourceEntityKey = const Value.absent(),
+    this.targetAccountId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ImportEntityMappingsCompanion.insert({
+    required String id,
+    required ImportSource source,
+    required ImportEntityKind entityKind,
+    required String sourceEntityKey,
+    required String targetAccountId,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       source = Value(source),
+       entityKind = Value(entityKind),
+       sourceEntityKey = Value(sourceEntityKey),
+       targetAccountId = Value(targetAccountId);
+  static Insertable<ImportEntityMappingRow> custom({
+    Expression<String>? id,
+    Expression<String>? source,
+    Expression<String>? entityKind,
+    Expression<String>? sourceEntityKey,
+    Expression<String>? targetAccountId,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (source != null) 'source': source,
+      if (entityKind != null) 'entity_kind': entityKind,
+      if (sourceEntityKey != null) 'source_entity_key': sourceEntityKey,
+      if (targetAccountId != null) 'target_account_id': targetAccountId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ImportEntityMappingsCompanion copyWith({
+    Value<String>? id,
+    Value<ImportSource>? source,
+    Value<ImportEntityKind>? entityKind,
+    Value<String>? sourceEntityKey,
+    Value<String>? targetAccountId,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ImportEntityMappingsCompanion(
+      id: id ?? this.id,
+      source: source ?? this.source,
+      entityKind: entityKind ?? this.entityKind,
+      sourceEntityKey: sourceEntityKey ?? this.sourceEntityKey,
+      targetAccountId: targetAccountId ?? this.targetAccountId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(
+        $ImportEntityMappingsTable.$convertersource.toSql(source.value),
+      );
+    }
+    if (entityKind.present) {
+      map['entity_kind'] = Variable<String>(
+        $ImportEntityMappingsTable.$converterentityKind.toSql(entityKind.value),
+      );
+    }
+    if (sourceEntityKey.present) {
+      map['source_entity_key'] = Variable<String>(sourceEntityKey.value);
+    }
+    if (targetAccountId.present) {
+      map['target_account_id'] = Variable<String>(targetAccountId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImportEntityMappingsCompanion(')
+          ..write('id: $id, ')
+          ..write('source: $source, ')
+          ..write('entityKind: $entityKind, ')
+          ..write('sourceEntityKey: $sourceEntityKey, ')
+          ..write('targetAccountId: $targetAccountId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ImportBatchesTable extends ImportBatches
+    with TableInfo<$ImportBatchesTable, ImportBatchRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ImportBatchesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<ImportSource, String> source =
+      GeneratedColumn<String>(
+        'source',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<ImportSource>($ImportBatchesTable.$convertersource);
+  @override
+  late final GeneratedColumnWithTypeConverter<ImportBatchStatus, String>
+  status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<ImportBatchStatus>($ImportBatchesTable.$converterstatus);
+  static const VerificationMeta _importedGroupCountMeta =
+      const VerificationMeta('importedGroupCount');
+  @override
+  late final GeneratedColumn<int> importedGroupCount = GeneratedColumn<int>(
+    'imported_group_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdTransactionCountMeta =
+      const VerificationMeta('createdTransactionCount');
+  @override
+  late final GeneratedColumn<int> createdTransactionCount =
+      GeneratedColumn<int>(
+        'created_transaction_count',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _skippedGroupCountMeta = const VerificationMeta(
+    'skippedGroupCount',
+  );
+  @override
+  late final GeneratedColumn<int> skippedGroupCount = GeneratedColumn<int>(
+    'skipped_group_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _importedAtMeta = const VerificationMeta(
+    'importedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> importedAt = GeneratedColumn<DateTime>(
+    'imported_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _revertedAtMeta = const VerificationMeta(
+    'revertedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> revertedAt = GeneratedColumn<DateTime>(
+    'reverted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    source,
+    status,
+    importedGroupCount,
+    createdTransactionCount,
+    skippedGroupCount,
+    importedAt,
+    revertedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'import_batches';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ImportBatchRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('imported_group_count')) {
+      context.handle(
+        _importedGroupCountMeta,
+        importedGroupCount.isAcceptableOrUnknown(
+          data['imported_group_count']!,
+          _importedGroupCountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_importedGroupCountMeta);
+    }
+    if (data.containsKey('created_transaction_count')) {
+      context.handle(
+        _createdTransactionCountMeta,
+        createdTransactionCount.isAcceptableOrUnknown(
+          data['created_transaction_count']!,
+          _createdTransactionCountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_createdTransactionCountMeta);
+    }
+    if (data.containsKey('skipped_group_count')) {
+      context.handle(
+        _skippedGroupCountMeta,
+        skippedGroupCount.isAcceptableOrUnknown(
+          data['skipped_group_count']!,
+          _skippedGroupCountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_skippedGroupCountMeta);
+    }
+    if (data.containsKey('imported_at')) {
+      context.handle(
+        _importedAtMeta,
+        importedAt.isAcceptableOrUnknown(data['imported_at']!, _importedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_importedAtMeta);
+    }
+    if (data.containsKey('reverted_at')) {
+      context.handle(
+        _revertedAtMeta,
+        revertedAt.isAcceptableOrUnknown(data['reverted_at']!, _revertedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ImportBatchRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ImportBatchRow(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}id'],
+          )!,
+      source: $ImportBatchesTable.$convertersource.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}source'],
+        )!,
+      ),
+      status: $ImportBatchesTable.$converterstatus.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}status'],
+        )!,
+      ),
+      importedGroupCount:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}imported_group_count'],
+          )!,
+      createdTransactionCount:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}created_transaction_count'],
+          )!,
+      skippedGroupCount:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}skipped_group_count'],
+          )!,
+      importedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}imported_at'],
+          )!,
+      revertedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}reverted_at'],
+      ),
+    );
+  }
+
+  @override
+  $ImportBatchesTable createAlias(String alias) {
+    return $ImportBatchesTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<ImportSource, String, String> $convertersource =
+      const EnumNameConverter<ImportSource>(ImportSource.values);
+  static JsonTypeConverter2<ImportBatchStatus, String, String>
+  $converterstatus = const EnumNameConverter<ImportBatchStatus>(
+    ImportBatchStatus.values,
+  );
+}
+
+class ImportBatchRow extends DataClass implements Insertable<ImportBatchRow> {
+  final String id;
+  final ImportSource source;
+  final ImportBatchStatus status;
+  final int importedGroupCount;
+  final int createdTransactionCount;
+  final int skippedGroupCount;
+  final DateTime importedAt;
+  final DateTime? revertedAt;
+  const ImportBatchRow({
+    required this.id,
+    required this.source,
+    required this.status,
+    required this.importedGroupCount,
+    required this.createdTransactionCount,
+    required this.skippedGroupCount,
+    required this.importedAt,
+    this.revertedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    {
+      map['source'] = Variable<String>(
+        $ImportBatchesTable.$convertersource.toSql(source),
+      );
+    }
+    {
+      map['status'] = Variable<String>(
+        $ImportBatchesTable.$converterstatus.toSql(status),
+      );
+    }
+    map['imported_group_count'] = Variable<int>(importedGroupCount);
+    map['created_transaction_count'] = Variable<int>(createdTransactionCount);
+    map['skipped_group_count'] = Variable<int>(skippedGroupCount);
+    map['imported_at'] = Variable<DateTime>(importedAt);
+    if (!nullToAbsent || revertedAt != null) {
+      map['reverted_at'] = Variable<DateTime>(revertedAt);
+    }
+    return map;
+  }
+
+  ImportBatchesCompanion toCompanion(bool nullToAbsent) {
+    return ImportBatchesCompanion(
+      id: Value(id),
+      source: Value(source),
+      status: Value(status),
+      importedGroupCount: Value(importedGroupCount),
+      createdTransactionCount: Value(createdTransactionCount),
+      skippedGroupCount: Value(skippedGroupCount),
+      importedAt: Value(importedAt),
+      revertedAt:
+          revertedAt == null && nullToAbsent
+              ? const Value.absent()
+              : Value(revertedAt),
+    );
+  }
+
+  factory ImportBatchRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ImportBatchRow(
+      id: serializer.fromJson<String>(json['id']),
+      source: $ImportBatchesTable.$convertersource.fromJson(
+        serializer.fromJson<String>(json['source']),
+      ),
+      status: $ImportBatchesTable.$converterstatus.fromJson(
+        serializer.fromJson<String>(json['status']),
+      ),
+      importedGroupCount: serializer.fromJson<int>(json['importedGroupCount']),
+      createdTransactionCount: serializer.fromJson<int>(
+        json['createdTransactionCount'],
+      ),
+      skippedGroupCount: serializer.fromJson<int>(json['skippedGroupCount']),
+      importedAt: serializer.fromJson<DateTime>(json['importedAt']),
+      revertedAt: serializer.fromJson<DateTime?>(json['revertedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'source': serializer.toJson<String>(
+        $ImportBatchesTable.$convertersource.toJson(source),
+      ),
+      'status': serializer.toJson<String>(
+        $ImportBatchesTable.$converterstatus.toJson(status),
+      ),
+      'importedGroupCount': serializer.toJson<int>(importedGroupCount),
+      'createdTransactionCount': serializer.toJson<int>(
+        createdTransactionCount,
+      ),
+      'skippedGroupCount': serializer.toJson<int>(skippedGroupCount),
+      'importedAt': serializer.toJson<DateTime>(importedAt),
+      'revertedAt': serializer.toJson<DateTime?>(revertedAt),
+    };
+  }
+
+  ImportBatchRow copyWith({
+    String? id,
+    ImportSource? source,
+    ImportBatchStatus? status,
+    int? importedGroupCount,
+    int? createdTransactionCount,
+    int? skippedGroupCount,
+    DateTime? importedAt,
+    Value<DateTime?> revertedAt = const Value.absent(),
+  }) => ImportBatchRow(
+    id: id ?? this.id,
+    source: source ?? this.source,
+    status: status ?? this.status,
+    importedGroupCount: importedGroupCount ?? this.importedGroupCount,
+    createdTransactionCount:
+        createdTransactionCount ?? this.createdTransactionCount,
+    skippedGroupCount: skippedGroupCount ?? this.skippedGroupCount,
+    importedAt: importedAt ?? this.importedAt,
+    revertedAt: revertedAt.present ? revertedAt.value : this.revertedAt,
+  );
+  ImportBatchRow copyWithCompanion(ImportBatchesCompanion data) {
+    return ImportBatchRow(
+      id: data.id.present ? data.id.value : this.id,
+      source: data.source.present ? data.source.value : this.source,
+      status: data.status.present ? data.status.value : this.status,
+      importedGroupCount:
+          data.importedGroupCount.present
+              ? data.importedGroupCount.value
+              : this.importedGroupCount,
+      createdTransactionCount:
+          data.createdTransactionCount.present
+              ? data.createdTransactionCount.value
+              : this.createdTransactionCount,
+      skippedGroupCount:
+          data.skippedGroupCount.present
+              ? data.skippedGroupCount.value
+              : this.skippedGroupCount,
+      importedAt:
+          data.importedAt.present ? data.importedAt.value : this.importedAt,
+      revertedAt:
+          data.revertedAt.present ? data.revertedAt.value : this.revertedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImportBatchRow(')
+          ..write('id: $id, ')
+          ..write('source: $source, ')
+          ..write('status: $status, ')
+          ..write('importedGroupCount: $importedGroupCount, ')
+          ..write('createdTransactionCount: $createdTransactionCount, ')
+          ..write('skippedGroupCount: $skippedGroupCount, ')
+          ..write('importedAt: $importedAt, ')
+          ..write('revertedAt: $revertedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    source,
+    status,
+    importedGroupCount,
+    createdTransactionCount,
+    skippedGroupCount,
+    importedAt,
+    revertedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ImportBatchRow &&
+          other.id == this.id &&
+          other.source == this.source &&
+          other.status == this.status &&
+          other.importedGroupCount == this.importedGroupCount &&
+          other.createdTransactionCount == this.createdTransactionCount &&
+          other.skippedGroupCount == this.skippedGroupCount &&
+          other.importedAt == this.importedAt &&
+          other.revertedAt == this.revertedAt);
+}
+
+class ImportBatchesCompanion extends UpdateCompanion<ImportBatchRow> {
+  final Value<String> id;
+  final Value<ImportSource> source;
+  final Value<ImportBatchStatus> status;
+  final Value<int> importedGroupCount;
+  final Value<int> createdTransactionCount;
+  final Value<int> skippedGroupCount;
+  final Value<DateTime> importedAt;
+  final Value<DateTime?> revertedAt;
+  final Value<int> rowid;
+  const ImportBatchesCompanion({
+    this.id = const Value.absent(),
+    this.source = const Value.absent(),
+    this.status = const Value.absent(),
+    this.importedGroupCount = const Value.absent(),
+    this.createdTransactionCount = const Value.absent(),
+    this.skippedGroupCount = const Value.absent(),
+    this.importedAt = const Value.absent(),
+    this.revertedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ImportBatchesCompanion.insert({
+    required String id,
+    required ImportSource source,
+    required ImportBatchStatus status,
+    required int importedGroupCount,
+    required int createdTransactionCount,
+    required int skippedGroupCount,
+    required DateTime importedAt,
+    this.revertedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       source = Value(source),
+       status = Value(status),
+       importedGroupCount = Value(importedGroupCount),
+       createdTransactionCount = Value(createdTransactionCount),
+       skippedGroupCount = Value(skippedGroupCount),
+       importedAt = Value(importedAt);
+  static Insertable<ImportBatchRow> custom({
+    Expression<String>? id,
+    Expression<String>? source,
+    Expression<String>? status,
+    Expression<int>? importedGroupCount,
+    Expression<int>? createdTransactionCount,
+    Expression<int>? skippedGroupCount,
+    Expression<DateTime>? importedAt,
+    Expression<DateTime>? revertedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (source != null) 'source': source,
+      if (status != null) 'status': status,
+      if (importedGroupCount != null)
+        'imported_group_count': importedGroupCount,
+      if (createdTransactionCount != null)
+        'created_transaction_count': createdTransactionCount,
+      if (skippedGroupCount != null) 'skipped_group_count': skippedGroupCount,
+      if (importedAt != null) 'imported_at': importedAt,
+      if (revertedAt != null) 'reverted_at': revertedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ImportBatchesCompanion copyWith({
+    Value<String>? id,
+    Value<ImportSource>? source,
+    Value<ImportBatchStatus>? status,
+    Value<int>? importedGroupCount,
+    Value<int>? createdTransactionCount,
+    Value<int>? skippedGroupCount,
+    Value<DateTime>? importedAt,
+    Value<DateTime?>? revertedAt,
+    Value<int>? rowid,
+  }) {
+    return ImportBatchesCompanion(
+      id: id ?? this.id,
+      source: source ?? this.source,
+      status: status ?? this.status,
+      importedGroupCount: importedGroupCount ?? this.importedGroupCount,
+      createdTransactionCount:
+          createdTransactionCount ?? this.createdTransactionCount,
+      skippedGroupCount: skippedGroupCount ?? this.skippedGroupCount,
+      importedAt: importedAt ?? this.importedAt,
+      revertedAt: revertedAt ?? this.revertedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(
+        $ImportBatchesTable.$convertersource.toSql(source.value),
+      );
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(
+        $ImportBatchesTable.$converterstatus.toSql(status.value),
+      );
+    }
+    if (importedGroupCount.present) {
+      map['imported_group_count'] = Variable<int>(importedGroupCount.value);
+    }
+    if (createdTransactionCount.present) {
+      map['created_transaction_count'] = Variable<int>(
+        createdTransactionCount.value,
+      );
+    }
+    if (skippedGroupCount.present) {
+      map['skipped_group_count'] = Variable<int>(skippedGroupCount.value);
+    }
+    if (importedAt.present) {
+      map['imported_at'] = Variable<DateTime>(importedAt.value);
+    }
+    if (revertedAt.present) {
+      map['reverted_at'] = Variable<DateTime>(revertedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImportBatchesCompanion(')
+          ..write('id: $id, ')
+          ..write('source: $source, ')
+          ..write('status: $status, ')
+          ..write('importedGroupCount: $importedGroupCount, ')
+          ..write('createdTransactionCount: $createdTransactionCount, ')
+          ..write('skippedGroupCount: $skippedGroupCount, ')
+          ..write('importedAt: $importedAt, ')
+          ..write('revertedAt: $revertedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ImportBatchItemsTable extends ImportBatchItems
+    with TableInfo<$ImportBatchItemsTable, ImportBatchItemRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ImportBatchItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _batchIdMeta = const VerificationMeta(
+    'batchId',
+  );
+  @override
+  late final GeneratedColumn<String> batchId = GeneratedColumn<String>(
+    'batch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceOperationKeyMeta =
+      const VerificationMeta('sourceOperationKey');
+  @override
+  late final GeneratedColumn<String> sourceOperationKey =
+      GeneratedColumn<String>(
+        'source_operation_key',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _sourceOperationFingerprintMeta =
+      const VerificationMeta('sourceOperationFingerprint');
+  @override
+  late final GeneratedColumn<String> sourceOperationFingerprint =
+      GeneratedColumn<String>(
+        'source_operation_fingerprint',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _fingerprintVersionMeta =
+      const VerificationMeta('fingerprintVersion');
+  @override
+  late final GeneratedColumn<int> fingerprintVersion = GeneratedColumn<int>(
+    'fingerprint_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _topLevelTransactionIdMeta =
+      const VerificationMeta('topLevelTransactionId');
+  @override
+  late final GeneratedColumn<String> topLevelTransactionId =
+      GeneratedColumn<String>(
+        'top_level_transaction_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    batchId,
+    sourceOperationKey,
+    sourceOperationFingerprint,
+    fingerprintVersion,
+    topLevelTransactionId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'import_batch_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ImportBatchItemRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('batch_id')) {
+      context.handle(
+        _batchIdMeta,
+        batchId.isAcceptableOrUnknown(data['batch_id']!, _batchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_batchIdMeta);
+    }
+    if (data.containsKey('source_operation_key')) {
+      context.handle(
+        _sourceOperationKeyMeta,
+        sourceOperationKey.isAcceptableOrUnknown(
+          data['source_operation_key']!,
+          _sourceOperationKeyMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source_operation_fingerprint')) {
+      context.handle(
+        _sourceOperationFingerprintMeta,
+        sourceOperationFingerprint.isAcceptableOrUnknown(
+          data['source_operation_fingerprint']!,
+          _sourceOperationFingerprintMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceOperationFingerprintMeta);
+    }
+    if (data.containsKey('fingerprint_version')) {
+      context.handle(
+        _fingerprintVersionMeta,
+        fingerprintVersion.isAcceptableOrUnknown(
+          data['fingerprint_version']!,
+          _fingerprintVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_fingerprintVersionMeta);
+    }
+    if (data.containsKey('top_level_transaction_id')) {
+      context.handle(
+        _topLevelTransactionIdMeta,
+        topLevelTransactionId.isAcceptableOrUnknown(
+          data['top_level_transaction_id']!,
+          _topLevelTransactionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_topLevelTransactionIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ImportBatchItemRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ImportBatchItemRow(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}id'],
+          )!,
+      batchId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}batch_id'],
+          )!,
+      sourceOperationKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_operation_key'],
+      ),
+      sourceOperationFingerprint:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}source_operation_fingerprint'],
+          )!,
+      fingerprintVersion:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}fingerprint_version'],
+          )!,
+      topLevelTransactionId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}top_level_transaction_id'],
+          )!,
+    );
+  }
+
+  @override
+  $ImportBatchItemsTable createAlias(String alias) {
+    return $ImportBatchItemsTable(attachedDatabase, alias);
+  }
+}
+
+class ImportBatchItemRow extends DataClass
+    implements Insertable<ImportBatchItemRow> {
+  final String id;
+  final String batchId;
+  final String? sourceOperationKey;
+  final String sourceOperationFingerprint;
+  final int fingerprintVersion;
+  final String topLevelTransactionId;
+  const ImportBatchItemRow({
+    required this.id,
+    required this.batchId,
+    this.sourceOperationKey,
+    required this.sourceOperationFingerprint,
+    required this.fingerprintVersion,
+    required this.topLevelTransactionId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['batch_id'] = Variable<String>(batchId);
+    if (!nullToAbsent || sourceOperationKey != null) {
+      map['source_operation_key'] = Variable<String>(sourceOperationKey);
+    }
+    map['source_operation_fingerprint'] = Variable<String>(
+      sourceOperationFingerprint,
+    );
+    map['fingerprint_version'] = Variable<int>(fingerprintVersion);
+    map['top_level_transaction_id'] = Variable<String>(topLevelTransactionId);
+    return map;
+  }
+
+  ImportBatchItemsCompanion toCompanion(bool nullToAbsent) {
+    return ImportBatchItemsCompanion(
+      id: Value(id),
+      batchId: Value(batchId),
+      sourceOperationKey:
+          sourceOperationKey == null && nullToAbsent
+              ? const Value.absent()
+              : Value(sourceOperationKey),
+      sourceOperationFingerprint: Value(sourceOperationFingerprint),
+      fingerprintVersion: Value(fingerprintVersion),
+      topLevelTransactionId: Value(topLevelTransactionId),
+    );
+  }
+
+  factory ImportBatchItemRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ImportBatchItemRow(
+      id: serializer.fromJson<String>(json['id']),
+      batchId: serializer.fromJson<String>(json['batchId']),
+      sourceOperationKey: serializer.fromJson<String?>(
+        json['sourceOperationKey'],
+      ),
+      sourceOperationFingerprint: serializer.fromJson<String>(
+        json['sourceOperationFingerprint'],
+      ),
+      fingerprintVersion: serializer.fromJson<int>(json['fingerprintVersion']),
+      topLevelTransactionId: serializer.fromJson<String>(
+        json['topLevelTransactionId'],
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'batchId': serializer.toJson<String>(batchId),
+      'sourceOperationKey': serializer.toJson<String?>(sourceOperationKey),
+      'sourceOperationFingerprint': serializer.toJson<String>(
+        sourceOperationFingerprint,
+      ),
+      'fingerprintVersion': serializer.toJson<int>(fingerprintVersion),
+      'topLevelTransactionId': serializer.toJson<String>(topLevelTransactionId),
+    };
+  }
+
+  ImportBatchItemRow copyWith({
+    String? id,
+    String? batchId,
+    Value<String?> sourceOperationKey = const Value.absent(),
+    String? sourceOperationFingerprint,
+    int? fingerprintVersion,
+    String? topLevelTransactionId,
+  }) => ImportBatchItemRow(
+    id: id ?? this.id,
+    batchId: batchId ?? this.batchId,
+    sourceOperationKey:
+        sourceOperationKey.present
+            ? sourceOperationKey.value
+            : this.sourceOperationKey,
+    sourceOperationFingerprint:
+        sourceOperationFingerprint ?? this.sourceOperationFingerprint,
+    fingerprintVersion: fingerprintVersion ?? this.fingerprintVersion,
+    topLevelTransactionId: topLevelTransactionId ?? this.topLevelTransactionId,
+  );
+  ImportBatchItemRow copyWithCompanion(ImportBatchItemsCompanion data) {
+    return ImportBatchItemRow(
+      id: data.id.present ? data.id.value : this.id,
+      batchId: data.batchId.present ? data.batchId.value : this.batchId,
+      sourceOperationKey:
+          data.sourceOperationKey.present
+              ? data.sourceOperationKey.value
+              : this.sourceOperationKey,
+      sourceOperationFingerprint:
+          data.sourceOperationFingerprint.present
+              ? data.sourceOperationFingerprint.value
+              : this.sourceOperationFingerprint,
+      fingerprintVersion:
+          data.fingerprintVersion.present
+              ? data.fingerprintVersion.value
+              : this.fingerprintVersion,
+      topLevelTransactionId:
+          data.topLevelTransactionId.present
+              ? data.topLevelTransactionId.value
+              : this.topLevelTransactionId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImportBatchItemRow(')
+          ..write('id: $id, ')
+          ..write('batchId: $batchId, ')
+          ..write('sourceOperationKey: $sourceOperationKey, ')
+          ..write('sourceOperationFingerprint: $sourceOperationFingerprint, ')
+          ..write('fingerprintVersion: $fingerprintVersion, ')
+          ..write('topLevelTransactionId: $topLevelTransactionId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    batchId,
+    sourceOperationKey,
+    sourceOperationFingerprint,
+    fingerprintVersion,
+    topLevelTransactionId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ImportBatchItemRow &&
+          other.id == this.id &&
+          other.batchId == this.batchId &&
+          other.sourceOperationKey == this.sourceOperationKey &&
+          other.sourceOperationFingerprint == this.sourceOperationFingerprint &&
+          other.fingerprintVersion == this.fingerprintVersion &&
+          other.topLevelTransactionId == this.topLevelTransactionId);
+}
+
+class ImportBatchItemsCompanion extends UpdateCompanion<ImportBatchItemRow> {
+  final Value<String> id;
+  final Value<String> batchId;
+  final Value<String?> sourceOperationKey;
+  final Value<String> sourceOperationFingerprint;
+  final Value<int> fingerprintVersion;
+  final Value<String> topLevelTransactionId;
+  final Value<int> rowid;
+  const ImportBatchItemsCompanion({
+    this.id = const Value.absent(),
+    this.batchId = const Value.absent(),
+    this.sourceOperationKey = const Value.absent(),
+    this.sourceOperationFingerprint = const Value.absent(),
+    this.fingerprintVersion = const Value.absent(),
+    this.topLevelTransactionId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ImportBatchItemsCompanion.insert({
+    required String id,
+    required String batchId,
+    this.sourceOperationKey = const Value.absent(),
+    required String sourceOperationFingerprint,
+    required int fingerprintVersion,
+    required String topLevelTransactionId,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       batchId = Value(batchId),
+       sourceOperationFingerprint = Value(sourceOperationFingerprint),
+       fingerprintVersion = Value(fingerprintVersion),
+       topLevelTransactionId = Value(topLevelTransactionId);
+  static Insertable<ImportBatchItemRow> custom({
+    Expression<String>? id,
+    Expression<String>? batchId,
+    Expression<String>? sourceOperationKey,
+    Expression<String>? sourceOperationFingerprint,
+    Expression<int>? fingerprintVersion,
+    Expression<String>? topLevelTransactionId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (batchId != null) 'batch_id': batchId,
+      if (sourceOperationKey != null)
+        'source_operation_key': sourceOperationKey,
+      if (sourceOperationFingerprint != null)
+        'source_operation_fingerprint': sourceOperationFingerprint,
+      if (fingerprintVersion != null) 'fingerprint_version': fingerprintVersion,
+      if (topLevelTransactionId != null)
+        'top_level_transaction_id': topLevelTransactionId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ImportBatchItemsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? batchId,
+    Value<String?>? sourceOperationKey,
+    Value<String>? sourceOperationFingerprint,
+    Value<int>? fingerprintVersion,
+    Value<String>? topLevelTransactionId,
+    Value<int>? rowid,
+  }) {
+    return ImportBatchItemsCompanion(
+      id: id ?? this.id,
+      batchId: batchId ?? this.batchId,
+      sourceOperationKey: sourceOperationKey ?? this.sourceOperationKey,
+      sourceOperationFingerprint:
+          sourceOperationFingerprint ?? this.sourceOperationFingerprint,
+      fingerprintVersion: fingerprintVersion ?? this.fingerprintVersion,
+      topLevelTransactionId:
+          topLevelTransactionId ?? this.topLevelTransactionId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (batchId.present) {
+      map['batch_id'] = Variable<String>(batchId.value);
+    }
+    if (sourceOperationKey.present) {
+      map['source_operation_key'] = Variable<String>(sourceOperationKey.value);
+    }
+    if (sourceOperationFingerprint.present) {
+      map['source_operation_fingerprint'] = Variable<String>(
+        sourceOperationFingerprint.value,
+      );
+    }
+    if (fingerprintVersion.present) {
+      map['fingerprint_version'] = Variable<int>(fingerprintVersion.value);
+    }
+    if (topLevelTransactionId.present) {
+      map['top_level_transaction_id'] = Variable<String>(
+        topLevelTransactionId.value,
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImportBatchItemsCompanion(')
+          ..write('id: $id, ')
+          ..write('batchId: $batchId, ')
+          ..write('sourceOperationKey: $sourceOperationKey, ')
+          ..write('sourceOperationFingerprint: $sourceOperationFingerprint, ')
+          ..write('fingerprintVersion: $fingerprintVersion, ')
+          ..write('topLevelTransactionId: $topLevelTransactionId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8957,6 +10489,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $InstallmentSchedulesTable(this);
   late final $RepaymentsTable repayments = $RepaymentsTable(this);
   late final $RepaymentItemsTable repaymentItems = $RepaymentItemsTable(this);
+  late final $ImportEntityMappingsTable importEntityMappings =
+      $ImportEntityMappingsTable(this);
+  late final $ImportBatchesTable importBatches = $ImportBatchesTable(this);
+  late final $ImportBatchItemsTable importBatchItems = $ImportBatchItemsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8975,6 +10513,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     installmentSchedules,
     repayments,
     repaymentItems,
+    importEntityMappings,
+    importBatches,
+    importBatchItems,
   ];
 }
 
@@ -13302,6 +14843,810 @@ typedef $$RepaymentItemsTableProcessedTableManager =
       RepaymentItemRow,
       PrefetchHooks Function()
     >;
+typedef $$ImportEntityMappingsTableCreateCompanionBuilder =
+    ImportEntityMappingsCompanion Function({
+      required String id,
+      required ImportSource source,
+      required ImportEntityKind entityKind,
+      required String sourceEntityKey,
+      required String targetAccountId,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ImportEntityMappingsTableUpdateCompanionBuilder =
+    ImportEntityMappingsCompanion Function({
+      Value<String> id,
+      Value<ImportSource> source,
+      Value<ImportEntityKind> entityKind,
+      Value<String> sourceEntityKey,
+      Value<String> targetAccountId,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$ImportEntityMappingsTableFilterComposer
+    extends Composer<_$AppDatabase, $ImportEntityMappingsTable> {
+  $$ImportEntityMappingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<ImportSource, ImportSource, String>
+  get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<ImportEntityKind, ImportEntityKind, String>
+  get entityKind => $composableBuilder(
+    column: $table.entityKind,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get sourceEntityKey => $composableBuilder(
+    column: $table.sourceEntityKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetAccountId => $composableBuilder(
+    column: $table.targetAccountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ImportEntityMappingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ImportEntityMappingsTable> {
+  $$ImportEntityMappingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityKind => $composableBuilder(
+    column: $table.entityKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceEntityKey => $composableBuilder(
+    column: $table.sourceEntityKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetAccountId => $composableBuilder(
+    column: $table.targetAccountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ImportEntityMappingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ImportEntityMappingsTable> {
+  $$ImportEntityMappingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<ImportSource, String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<ImportEntityKind, String> get entityKind =>
+      $composableBuilder(
+        column: $table.entityKind,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<String> get sourceEntityKey => $composableBuilder(
+    column: $table.sourceEntityKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetAccountId => $composableBuilder(
+    column: $table.targetAccountId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ImportEntityMappingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ImportEntityMappingsTable,
+          ImportEntityMappingRow,
+          $$ImportEntityMappingsTableFilterComposer,
+          $$ImportEntityMappingsTableOrderingComposer,
+          $$ImportEntityMappingsTableAnnotationComposer,
+          $$ImportEntityMappingsTableCreateCompanionBuilder,
+          $$ImportEntityMappingsTableUpdateCompanionBuilder,
+          (
+            ImportEntityMappingRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ImportEntityMappingsTable,
+              ImportEntityMappingRow
+            >,
+          ),
+          ImportEntityMappingRow,
+          PrefetchHooks Function()
+        > {
+  $$ImportEntityMappingsTableTableManager(
+    _$AppDatabase db,
+    $ImportEntityMappingsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$ImportEntityMappingsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer:
+              () => $$ImportEntityMappingsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer:
+              () => $$ImportEntityMappingsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<ImportSource> source = const Value.absent(),
+                Value<ImportEntityKind> entityKind = const Value.absent(),
+                Value<String> sourceEntityKey = const Value.absent(),
+                Value<String> targetAccountId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ImportEntityMappingsCompanion(
+                id: id,
+                source: source,
+                entityKind: entityKind,
+                sourceEntityKey: sourceEntityKey,
+                targetAccountId: targetAccountId,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required ImportSource source,
+                required ImportEntityKind entityKind,
+                required String sourceEntityKey,
+                required String targetAccountId,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ImportEntityMappingsCompanion.insert(
+                id: id,
+                source: source,
+                entityKind: entityKind,
+                sourceEntityKey: sourceEntityKey,
+                targetAccountId: targetAccountId,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ImportEntityMappingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ImportEntityMappingsTable,
+      ImportEntityMappingRow,
+      $$ImportEntityMappingsTableFilterComposer,
+      $$ImportEntityMappingsTableOrderingComposer,
+      $$ImportEntityMappingsTableAnnotationComposer,
+      $$ImportEntityMappingsTableCreateCompanionBuilder,
+      $$ImportEntityMappingsTableUpdateCompanionBuilder,
+      (
+        ImportEntityMappingRow,
+        BaseReferences<
+          _$AppDatabase,
+          $ImportEntityMappingsTable,
+          ImportEntityMappingRow
+        >,
+      ),
+      ImportEntityMappingRow,
+      PrefetchHooks Function()
+    >;
+typedef $$ImportBatchesTableCreateCompanionBuilder =
+    ImportBatchesCompanion Function({
+      required String id,
+      required ImportSource source,
+      required ImportBatchStatus status,
+      required int importedGroupCount,
+      required int createdTransactionCount,
+      required int skippedGroupCount,
+      required DateTime importedAt,
+      Value<DateTime?> revertedAt,
+      Value<int> rowid,
+    });
+typedef $$ImportBatchesTableUpdateCompanionBuilder =
+    ImportBatchesCompanion Function({
+      Value<String> id,
+      Value<ImportSource> source,
+      Value<ImportBatchStatus> status,
+      Value<int> importedGroupCount,
+      Value<int> createdTransactionCount,
+      Value<int> skippedGroupCount,
+      Value<DateTime> importedAt,
+      Value<DateTime?> revertedAt,
+      Value<int> rowid,
+    });
+
+class $$ImportBatchesTableFilterComposer
+    extends Composer<_$AppDatabase, $ImportBatchesTable> {
+  $$ImportBatchesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<ImportSource, ImportSource, String>
+  get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<ImportBatchStatus, ImportBatchStatus, String>
+  get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get importedGroupCount => $composableBuilder(
+    column: $table.importedGroupCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdTransactionCount => $composableBuilder(
+    column: $table.createdTransactionCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get skippedGroupCount => $composableBuilder(
+    column: $table.skippedGroupCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get importedAt => $composableBuilder(
+    column: $table.importedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get revertedAt => $composableBuilder(
+    column: $table.revertedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ImportBatchesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ImportBatchesTable> {
+  $$ImportBatchesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get importedGroupCount => $composableBuilder(
+    column: $table.importedGroupCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdTransactionCount => $composableBuilder(
+    column: $table.createdTransactionCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get skippedGroupCount => $composableBuilder(
+    column: $table.skippedGroupCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get importedAt => $composableBuilder(
+    column: $table.importedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get revertedAt => $composableBuilder(
+    column: $table.revertedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ImportBatchesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ImportBatchesTable> {
+  $$ImportBatchesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<ImportSource, String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<ImportBatchStatus, String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get importedGroupCount => $composableBuilder(
+    column: $table.importedGroupCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdTransactionCount => $composableBuilder(
+    column: $table.createdTransactionCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get skippedGroupCount => $composableBuilder(
+    column: $table.skippedGroupCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get importedAt => $composableBuilder(
+    column: $table.importedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get revertedAt => $composableBuilder(
+    column: $table.revertedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$ImportBatchesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ImportBatchesTable,
+          ImportBatchRow,
+          $$ImportBatchesTableFilterComposer,
+          $$ImportBatchesTableOrderingComposer,
+          $$ImportBatchesTableAnnotationComposer,
+          $$ImportBatchesTableCreateCompanionBuilder,
+          $$ImportBatchesTableUpdateCompanionBuilder,
+          (
+            ImportBatchRow,
+            BaseReferences<_$AppDatabase, $ImportBatchesTable, ImportBatchRow>,
+          ),
+          ImportBatchRow,
+          PrefetchHooks Function()
+        > {
+  $$ImportBatchesTableTableManager(_$AppDatabase db, $ImportBatchesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$ImportBatchesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () =>
+                  $$ImportBatchesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$ImportBatchesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<ImportSource> source = const Value.absent(),
+                Value<ImportBatchStatus> status = const Value.absent(),
+                Value<int> importedGroupCount = const Value.absent(),
+                Value<int> createdTransactionCount = const Value.absent(),
+                Value<int> skippedGroupCount = const Value.absent(),
+                Value<DateTime> importedAt = const Value.absent(),
+                Value<DateTime?> revertedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ImportBatchesCompanion(
+                id: id,
+                source: source,
+                status: status,
+                importedGroupCount: importedGroupCount,
+                createdTransactionCount: createdTransactionCount,
+                skippedGroupCount: skippedGroupCount,
+                importedAt: importedAt,
+                revertedAt: revertedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required ImportSource source,
+                required ImportBatchStatus status,
+                required int importedGroupCount,
+                required int createdTransactionCount,
+                required int skippedGroupCount,
+                required DateTime importedAt,
+                Value<DateTime?> revertedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ImportBatchesCompanion.insert(
+                id: id,
+                source: source,
+                status: status,
+                importedGroupCount: importedGroupCount,
+                createdTransactionCount: createdTransactionCount,
+                skippedGroupCount: skippedGroupCount,
+                importedAt: importedAt,
+                revertedAt: revertedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ImportBatchesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ImportBatchesTable,
+      ImportBatchRow,
+      $$ImportBatchesTableFilterComposer,
+      $$ImportBatchesTableOrderingComposer,
+      $$ImportBatchesTableAnnotationComposer,
+      $$ImportBatchesTableCreateCompanionBuilder,
+      $$ImportBatchesTableUpdateCompanionBuilder,
+      (
+        ImportBatchRow,
+        BaseReferences<_$AppDatabase, $ImportBatchesTable, ImportBatchRow>,
+      ),
+      ImportBatchRow,
+      PrefetchHooks Function()
+    >;
+typedef $$ImportBatchItemsTableCreateCompanionBuilder =
+    ImportBatchItemsCompanion Function({
+      required String id,
+      required String batchId,
+      Value<String?> sourceOperationKey,
+      required String sourceOperationFingerprint,
+      required int fingerprintVersion,
+      required String topLevelTransactionId,
+      Value<int> rowid,
+    });
+typedef $$ImportBatchItemsTableUpdateCompanionBuilder =
+    ImportBatchItemsCompanion Function({
+      Value<String> id,
+      Value<String> batchId,
+      Value<String?> sourceOperationKey,
+      Value<String> sourceOperationFingerprint,
+      Value<int> fingerprintVersion,
+      Value<String> topLevelTransactionId,
+      Value<int> rowid,
+    });
+
+class $$ImportBatchItemsTableFilterComposer
+    extends Composer<_$AppDatabase, $ImportBatchItemsTable> {
+  $$ImportBatchItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get batchId => $composableBuilder(
+    column: $table.batchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceOperationKey => $composableBuilder(
+    column: $table.sourceOperationKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceOperationFingerprint => $composableBuilder(
+    column: $table.sourceOperationFingerprint,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fingerprintVersion => $composableBuilder(
+    column: $table.fingerprintVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get topLevelTransactionId => $composableBuilder(
+    column: $table.topLevelTransactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ImportBatchItemsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ImportBatchItemsTable> {
+  $$ImportBatchItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get batchId => $composableBuilder(
+    column: $table.batchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceOperationKey => $composableBuilder(
+    column: $table.sourceOperationKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceOperationFingerprint => $composableBuilder(
+    column: $table.sourceOperationFingerprint,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fingerprintVersion => $composableBuilder(
+    column: $table.fingerprintVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get topLevelTransactionId => $composableBuilder(
+    column: $table.topLevelTransactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ImportBatchItemsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ImportBatchItemsTable> {
+  $$ImportBatchItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get batchId =>
+      $composableBuilder(column: $table.batchId, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceOperationKey => $composableBuilder(
+    column: $table.sourceOperationKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceOperationFingerprint => $composableBuilder(
+    column: $table.sourceOperationFingerprint,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fingerprintVersion => $composableBuilder(
+    column: $table.fingerprintVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get topLevelTransactionId => $composableBuilder(
+    column: $table.topLevelTransactionId,
+    builder: (column) => column,
+  );
+}
+
+class $$ImportBatchItemsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ImportBatchItemsTable,
+          ImportBatchItemRow,
+          $$ImportBatchItemsTableFilterComposer,
+          $$ImportBatchItemsTableOrderingComposer,
+          $$ImportBatchItemsTableAnnotationComposer,
+          $$ImportBatchItemsTableCreateCompanionBuilder,
+          $$ImportBatchItemsTableUpdateCompanionBuilder,
+          (
+            ImportBatchItemRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ImportBatchItemsTable,
+              ImportBatchItemRow
+            >,
+          ),
+          ImportBatchItemRow,
+          PrefetchHooks Function()
+        > {
+  $$ImportBatchItemsTableTableManager(
+    _$AppDatabase db,
+    $ImportBatchItemsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () =>
+                  $$ImportBatchItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$ImportBatchItemsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer:
+              () => $$ImportBatchItemsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> batchId = const Value.absent(),
+                Value<String?> sourceOperationKey = const Value.absent(),
+                Value<String> sourceOperationFingerprint = const Value.absent(),
+                Value<int> fingerprintVersion = const Value.absent(),
+                Value<String> topLevelTransactionId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ImportBatchItemsCompanion(
+                id: id,
+                batchId: batchId,
+                sourceOperationKey: sourceOperationKey,
+                sourceOperationFingerprint: sourceOperationFingerprint,
+                fingerprintVersion: fingerprintVersion,
+                topLevelTransactionId: topLevelTransactionId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String batchId,
+                Value<String?> sourceOperationKey = const Value.absent(),
+                required String sourceOperationFingerprint,
+                required int fingerprintVersion,
+                required String topLevelTransactionId,
+                Value<int> rowid = const Value.absent(),
+              }) => ImportBatchItemsCompanion.insert(
+                id: id,
+                batchId: batchId,
+                sourceOperationKey: sourceOperationKey,
+                sourceOperationFingerprint: sourceOperationFingerprint,
+                fingerprintVersion: fingerprintVersion,
+                topLevelTransactionId: topLevelTransactionId,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ImportBatchItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ImportBatchItemsTable,
+      ImportBatchItemRow,
+      $$ImportBatchItemsTableFilterComposer,
+      $$ImportBatchItemsTableOrderingComposer,
+      $$ImportBatchItemsTableAnnotationComposer,
+      $$ImportBatchItemsTableCreateCompanionBuilder,
+      $$ImportBatchItemsTableUpdateCompanionBuilder,
+      (
+        ImportBatchItemRow,
+        BaseReferences<
+          _$AppDatabase,
+          $ImportBatchItemsTable,
+          ImportBatchItemRow
+        >,
+      ),
+      ImportBatchItemRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -13335,4 +15680,10 @@ class $AppDatabaseManager {
       $$RepaymentsTableTableManager(_db, _db.repayments);
   $$RepaymentItemsTableTableManager get repaymentItems =>
       $$RepaymentItemsTableTableManager(_db, _db.repaymentItems);
+  $$ImportEntityMappingsTableTableManager get importEntityMappings =>
+      $$ImportEntityMappingsTableTableManager(_db, _db.importEntityMappings);
+  $$ImportBatchesTableTableManager get importBatches =>
+      $$ImportBatchesTableTableManager(_db, _db.importBatches);
+  $$ImportBatchItemsTableTableManager get importBatchItems =>
+      $$ImportBatchItemsTableTableManager(_db, _db.importBatchItems);
 }

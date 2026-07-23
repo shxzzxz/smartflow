@@ -75,6 +75,7 @@ void main() {
           amount: Money.parse('20.00'),
           refundToAccountId: 'cash',
           occurredAt: DateTime(2026, 7, 2),
+          postedAt: DateTime(2026, 7, 3),
         ),
         parent: parent,
         refundOffsetAccountId: 'food',
@@ -107,6 +108,7 @@ void main() {
       expect(rewrittenRefund.parentTransactionId, parent.id);
       expect(rewrittenRefund.businessPurpose, BusinessPurpose.refund);
       expect(rewrittenRefund.primaryAmount, refund.primaryAmount);
+      expect(rewrittenRefund.postedAt, refund.postedAt);
       expect(
         rewrittenRefund.entries
             .singleWhere((entry) => entry.direction == EntryDirection.credit)

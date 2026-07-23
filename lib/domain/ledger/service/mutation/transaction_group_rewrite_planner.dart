@@ -130,6 +130,7 @@ class TransactionGroupRewritePlanner {
         amount: instruction.amount,
         refundToAccountId: instruction.refundToAccountId,
         occurredAt: instruction.occurredAt,
+        postedAt: instruction.postedAt,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
       ),

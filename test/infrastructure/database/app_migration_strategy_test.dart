@@ -33,7 +33,7 @@ void main() {
           await upgradedDatabase
               .customSelect('PRAGMA user_version')
               .getSingle();
-      expect(version.read<int>('user_version'), 21);
+      expect(version.read<int>('user_version'), 22);
       await _insertNoTransactionContract(upgradedDatabase);
     },
   );
@@ -71,7 +71,7 @@ void main() {
           await upgradedDatabase
               .customSelect('PRAGMA user_version')
               .getSingle();
-      expect(version.read<int>('user_version'), 21);
+      expect(version.read<int>('user_version'), 22);
 
       final row =
           await upgradedDatabase
@@ -179,7 +179,7 @@ void main() {
           await upgradedDatabase
               .customSelect('PRAGMA user_version')
               .getSingle();
-      expect(version.read<int>('user_version'), 21);
+      expect(version.read<int>('user_version'), 22);
 
       final transactions =
           await upgradedDatabase
@@ -309,6 +309,74 @@ void main() {
       await expectLater(
         upgradingDatabase.customSelect('SELECT 1').get(),
         throwsA(isA<StateError>()),
+      );
+    },
+  );
+
+  test(
+    'opening a v21 database creates import tables and indexes without foreign keys',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'smartflow-import-migration-test-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File(
+        '${directory.path}${Platform.pathSeparator}smartflow.sqlite',
+      );
+
+      final staleDatabase = _openDatabase(file);
+      await staleDatabase.customStatement(
+        'DROP INDEX IF EXISTS import_entity_mapping_unique',
+      );
+      await staleDatabase.customStatement(
+        'DROP INDEX IF EXISTS import_batch_items_batch_idx',
+      );
+      await staleDatabase.customStatement(
+        'DROP INDEX IF EXISTS import_batch_items_operation_idx',
+      );
+      await staleDatabase.customStatement(
+        'DROP INDEX IF EXISTS import_batch_items_fingerprint_idx',
+      );
+      await staleDatabase.customStatement('DROP TABLE import_batch_items');
+      await staleDatabase.customStatement('DROP TABLE import_batches');
+      await staleDatabase.customStatement('DROP TABLE import_entity_mappings');
+      await staleDatabase.customStatement('PRAGMA user_version = 21');
+      await staleDatabase.close();
+
+      final upgradedDatabase = _openDatabase(file);
+      addTearDown(upgradedDatabase.close);
+      final version =
+          await upgradedDatabase
+              .customSelect('PRAGMA user_version')
+              .getSingle();
+      expect(version.read<int>('user_version'), 22);
+
+      for (final table in [
+        'import_entity_mappings',
+        'import_batches',
+        'import_batch_items',
+      ]) {
+        final row =
+            await upgradedDatabase
+                .customSelect(
+                  "SELECT name FROM sqlite_master WHERE type = 'table' AND name = '$table'",
+                )
+                .getSingle();
+        expect(row.read<String>('name'), table);
+        final foreignKeys =
+            await upgradedDatabase
+                .customSelect('PRAGMA foreign_key_list($table)')
+                .get();
+        expect(foreignKeys, isEmpty);
+      }
+
+      final mappingIndexes =
+          await upgradedDatabase
+              .customSelect('PRAGMA index_list(import_entity_mappings)')
+              .get();
+      expect(
+        mappingIndexes.map((row) => row.read<String>('name')),
+        contains('import_entity_mapping_unique'),
       );
     },
   );

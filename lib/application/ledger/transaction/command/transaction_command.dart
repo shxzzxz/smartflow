@@ -1,5 +1,6 @@
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
 
 class CreateExpenseCommand {
@@ -8,20 +9,24 @@ class CreateExpenseCommand {
     required this.paidFromAccountId,
     required this.expenseAccountId,
     required this.occurredAt,
+    this.postedAt,
     this.counterpartyName,
     this.note,
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
+    this.sourceKind = SourceKind.manual,
   });
 
   final Money amount;
   final String paidFromAccountId;
   final String expenseAccountId;
   final DateTime occurredAt;
+  final DateTime? postedAt;
   final String? counterpartyName;
   final String? note;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
+  final SourceKind sourceKind;
 }
 
 class CreateIncomeCommand {
@@ -30,18 +35,24 @@ class CreateIncomeCommand {
     required this.receiveAccountId,
     required this.incomeAccountId,
     required this.occurredAt,
+    this.postedAt,
     this.counterpartyName,
     this.note,
     this.isExcludedFromStats = false,
+    this.isExcludedFromBudget = false,
+    this.sourceKind = SourceKind.manual,
   });
 
   final Money amount;
   final String receiveAccountId;
   final String incomeAccountId;
   final DateTime occurredAt;
+  final DateTime? postedAt;
   final String? counterpartyName;
   final String? note;
   final bool isExcludedFromStats;
+  final bool isExcludedFromBudget;
+  final SourceKind sourceKind;
 }
 
 class CreateTransferCommand {
@@ -50,18 +61,22 @@ class CreateTransferCommand {
     required this.fromAccountId,
     required this.toAccountId,
     required this.occurredAt,
+    this.postedAt,
     this.feeAmount,
     this.counterpartyName,
     this.note,
+    this.sourceKind = SourceKind.manual,
   });
 
   final Money amount;
   final String fromAccountId;
   final String toAccountId;
   final DateTime occurredAt;
+  final DateTime? postedAt;
   final Money? feeAmount;
   final String? counterpartyName;
   final String? note;
+  final SourceKind sourceKind;
 }
 
 class CreateRefundCommand {
@@ -70,6 +85,7 @@ class CreateRefundCommand {
     required this.parentTransactionId,
     required this.refundToAccountId,
     required this.occurredAt,
+    this.postedAt,
     this.counterpartyName,
     this.note,
   });
@@ -78,6 +94,7 @@ class CreateRefundCommand {
   final String parentTransactionId;
   final String refundToAccountId;
   final DateTime occurredAt;
+  final DateTime? postedAt;
   final String? counterpartyName;
   final String? note;
 }
@@ -89,10 +106,12 @@ class CreateReimbursementAdvanceCommand {
     required this.paidFromAccountId,
     required this.expenseCategoryId,
     required this.occurredAt,
+    this.postedAt,
     this.counterpartyName,
     this.note,
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
+    this.sourceKind = SourceKind.manual,
   });
 
   final Money amount;
@@ -100,10 +119,12 @@ class CreateReimbursementAdvanceCommand {
   final String paidFromAccountId;
   final String expenseCategoryId;
   final DateTime occurredAt;
+  final DateTime? postedAt;
   final String? counterpartyName;
   final String? note;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
+  final SourceKind sourceKind;
 }
 
 class CreateReimbursementReceiptCommand {
@@ -113,6 +134,7 @@ class CreateReimbursementReceiptCommand {
     required this.receivableAccountId,
     required this.receiveAccountId,
     required this.occurredAt,
+    this.postedAt,
     this.counterpartyName,
     this.note,
   });
@@ -122,6 +144,7 @@ class CreateReimbursementReceiptCommand {
   final String receivableAccountId;
   final String receiveAccountId;
   final DateTime occurredAt;
+  final DateTime? postedAt;
   final String? counterpartyName;
   final String? note;
 }
@@ -133,6 +156,7 @@ class CloseReimbursementCommand {
     required this.receivableAccountId,
     required this.receiveAccountId,
     required this.occurredAt,
+    this.postedAt,
     this.counterpartyName,
     this.note,
   });
@@ -142,6 +166,7 @@ class CloseReimbursementCommand {
   final String receivableAccountId;
   final String receiveAccountId;
   final DateTime occurredAt;
+  final DateTime? postedAt;
   final String? counterpartyName;
   final String? note;
 }
@@ -152,12 +177,14 @@ class CreateRepaymentCommand {
     required this.liabilityAccountId,
     required this.paidFromAccountId,
     required this.occurredAt,
+    this.postedAt,
     this.interest,
     this.fee,
     this.discount,
     this.counterpartyName,
     this.note,
     this.ownership,
+    this.sourceKind = SourceKind.manual,
   });
 
   final Money principal;
@@ -167,9 +194,11 @@ class CreateRepaymentCommand {
   final String liabilityAccountId;
   final String paidFromAccountId;
   final DateTime occurredAt;
+  final DateTime? postedAt;
   final String? counterpartyName;
   final String? note;
   final TransactionOwnership? ownership;
+  final SourceKind sourceKind;
 }
 
 class CreateBorrowingCommand {
@@ -178,18 +207,22 @@ class CreateBorrowingCommand {
     required this.liabilityAccountId,
     required this.receiveAccountId,
     required this.occurredAt,
+    this.postedAt,
     this.counterpartyName,
     this.note,
     this.ownership,
+    this.sourceKind = SourceKind.manual,
   });
 
   final Money amount;
   final String liabilityAccountId;
   final String receiveAccountId;
   final DateTime occurredAt;
+  final DateTime? postedAt;
   final String? counterpartyName;
   final String? note;
   final TransactionOwnership? ownership;
+  final SourceKind sourceKind;
 }
 
 class CreateOpeningBalanceCommand {
@@ -197,15 +230,19 @@ class CreateOpeningBalanceCommand {
     required this.accountId,
     required this.amount,
     required this.occurredAt,
+    this.postedAt,
     this.counterpartyName,
     this.note,
+    this.sourceKind = SourceKind.manual,
   });
 
   final String accountId;
   final Money amount;
   final DateTime occurredAt;
+  final DateTime? postedAt;
   final String? counterpartyName;
   final String? note;
+  final SourceKind sourceKind;
 }
 
 class AdjustBalanceCommand {

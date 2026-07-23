@@ -14,6 +14,14 @@ bool accountMatchesUsage(Account account, AccountUsage usage) {
   if (account.archivedAt != null) {
     return false;
   }
+  // The ghost account is a system equity placeholder for source facts that
+  // explicitly have no settlement account. It may only stand in for the
+  // settlement side (and therefore repayment source), never for funds,
+  // liabilities, or reimbursement receivables.
+  if (account.systemKey == SystemKey.ghostAccount) {
+    return usage == AccountUsage.settlement ||
+        usage == AccountUsage.repaymentSource;
+  }
   return switch (usage) {
     AccountUsage.settlement =>
       accountMatchesUsage(account, AccountUsage.fund) ||
