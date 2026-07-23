@@ -59,10 +59,26 @@ void main() {
           picker: _FakeImportFilePicker(_bundle()),
         );
 
-        final outcome =
+        final pickOutcome =
             await container.read(importViewModelProvider.notifier).pickFiles();
 
-        expect(outcome, isA<ImportActionSuccess<void>>());
+        expect(pickOutcome, isA<ImportActionSuccess<void>>());
+        expect(
+          container.read(importViewModelProvider).phase,
+          ImportPagePhase.idle,
+        );
+        expect(
+          container.read(importViewModelProvider).selectedBundle?.files,
+          hasLength(1),
+        );
+        expect(planService.parseCalls, 0);
+
+        final parseOutcome =
+            await container
+                .read(importViewModelProvider.notifier)
+                .parseSelectedFiles();
+
+        expect(parseOutcome, isA<ImportActionSuccess<void>>());
         final state = container.read(importViewModelProvider);
         expect(state.phase, ImportPagePhase.review);
         expect(state.review?.plan, same(plan));
@@ -119,6 +135,7 @@ void main() {
         );
         final viewModel = container.read(importViewModelProvider.notifier);
         await viewModel.pickFiles();
+        await viewModel.parseSelectedFiles();
 
         await viewModel.applySuggestedMappings();
         viewModel.setSuspectedDuplicateConfirmed(0, true);
@@ -164,6 +181,7 @@ void main() {
         );
         final viewModel = container.read(importViewModelProvider.notifier);
         await viewModel.pickFiles();
+        await viewModel.parseSelectedFiles();
 
         final outcome = await viewModel.setMapping(
           _mappingKey,
@@ -218,6 +236,7 @@ void main() {
       );
       final viewModel = container.read(importViewModelProvider.notifier);
       await viewModel.pickFiles();
+      await viewModel.parseSelectedFiles();
 
       await viewModel.editGroupDraft(
         groupIndex: 0,
@@ -289,6 +308,7 @@ void main() {
       );
       final viewModel = container.read(importViewModelProvider.notifier);
       await viewModel.pickFiles();
+      await viewModel.parseSelectedFiles();
 
       expect(
         container.read(importViewModelProvider).selectedGroupIndexes,

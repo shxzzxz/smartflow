@@ -19,6 +19,7 @@ class TransactionDayCard extends StatelessWidget {
     this.emptyMessage,
     this.onRowTap,
     this.onRowQuickEdit,
+    this.enableRowTap = true,
     this.showDailyTotals = true,
   });
 
@@ -26,6 +27,7 @@ class TransactionDayCard extends StatelessWidget {
   final String? emptyMessage;
   final ValueChanged<String>? onRowTap;
   final ValueChanged<String>? onRowQuickEdit;
+  final bool enableRowTap;
   final bool showDailyTotals;
 
   @override
@@ -54,7 +56,10 @@ class TransactionDayCard extends StatelessWidget {
                 for (var i = 0; i < group.rows.length; i++) ...[
                   TransactionRow(
                     presentation: group.rows[i],
-                    onTap: () => _openTransaction(context, group.rows[i]),
+                    onTap:
+                        enableRowTap
+                            ? () => _openTransaction(context, group.rows[i])
+                            : null,
                     onQuickEdit:
                         () => _openTransactionEditor(context, group.rows[i]),
                   ),

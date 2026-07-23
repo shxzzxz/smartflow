@@ -24,6 +24,7 @@ class ImportPageState {
     required Set<int> confirmedWarningIndexes,
     required List<ImportBatch> batches,
     required this.historyLoading,
+    this.selectedBundle,
     this.plan,
     this.review,
     this.error,
@@ -58,6 +59,7 @@ class ImportPageState {
   }
 
   final ImportPagePhase phase;
+  final ImportBundle? selectedBundle;
   final ImportParseResult? plan;
   final ImportPlanReview? review;
   final Map<ImportMappingKey, String> temporaryMappings;
@@ -113,6 +115,7 @@ class ImportPageState {
 
   ImportPageState copyWith({
     ImportPagePhase? phase,
+    Object? selectedBundle = _sentinel,
     Object? plan = _sentinel,
     Object? review = _sentinel,
     Map<ImportMappingKey, String>? temporaryMappings,
@@ -128,6 +131,10 @@ class ImportPageState {
   }) {
     return ImportPageState(
       phase: phase ?? this.phase,
+      selectedBundle:
+          selectedBundle == _sentinel
+              ? this.selectedBundle
+              : selectedBundle as ImportBundle?,
       plan: plan == _sentinel ? this.plan : plan as ImportParseResult?,
       review: review == _sentinel ? this.review : review as ImportPlanReview?,
       temporaryMappings: temporaryMappings ?? this.temporaryMappings,
@@ -162,7 +169,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
   @override
   ImportPageState build() => ImportPageState.initial();
 
-  Future<ImportActionOutcome<void>> pickFiles() async {
+  Future<ImportActionOutcome<void>> pickFiles({bool append = false}) async {
     state = state.copyWith(
       phase: ImportPagePhase.pickingFiles,
       error: null,
@@ -171,15 +178,25 @@ class ImportViewModel extends Notifier<ImportPageState> {
     try {
       final bundle = await ref.read(importFilePickerProvider).pickYimuBundle();
       if (bundle == null) {
-        state = state.copyWith(
-          phase:
-              state.review == null
-                  ? ImportPagePhase.idle
-                  : ImportPagePhase.review,
-        );
+        state = state.copyWith(phase: _settledPhase);
         return const ImportActionOutcome.success(null);
       }
-      return loadBundle(bundle);
+      final selectedBundle =
+          append ? _mergeBundles(state.selectedBundle, bundle) : bundle;
+      state = state.copyWith(
+        phase: ImportPagePhase.idle,
+        selectedBundle: selectedBundle,
+        plan: null,
+        review: null,
+        temporaryMappings: const {},
+        groupMappingOverrides: const {},
+        selectedGroupIndexes: const {},
+        confirmedSuspectedDuplicateIndexes: const {},
+        confirmedWarningIndexes: const {},
+        error: null,
+        lastCommit: null,
+      );
+      return const ImportActionOutcome.success(null);
     } on AppException catch (exception) {
       return _fail<void>(UiError.fromException(exception));
     } on Exception {
@@ -187,9 +204,37 @@ class ImportViewModel extends Notifier<ImportPageState> {
     }
   }
 
+  Future<ImportActionOutcome<void>> parseSelectedFiles() async {
+    final bundle = state.selectedBundle;
+    if (bundle == null || bundle.files.isEmpty) {
+      return _invalid<void>('请先选择要导入的文件。');
+    }
+    return loadBundle(bundle);
+  }
+
+  void removeSelectedFile(int index) {
+    final bundle = state.selectedBundle;
+    if (bundle == null || index < 0 || index >= bundle.files.length) return;
+    final files = [...bundle.files]..removeAt(index);
+    state = state.copyWith(
+      phase: ImportPagePhase.idle,
+      selectedBundle: files.isEmpty ? null : ImportBundle(files: files),
+      plan: null,
+      review: null,
+      temporaryMappings: const {},
+      groupMappingOverrides: const {},
+      selectedGroupIndexes: const {},
+      confirmedSuspectedDuplicateIndexes: const {},
+      confirmedWarningIndexes: const {},
+      error: null,
+      lastCommit: null,
+    );
+  }
+
   Future<ImportActionOutcome<void>> loadBundle(ImportBundle bundle) async {
     state = state.copyWith(
       phase: ImportPagePhase.parsing,
+      selectedBundle: bundle,
       plan: null,
       review: null,
       temporaryMappings: const {},
@@ -201,6 +246,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
       lastCommit: null,
     );
     try {
+      await Future<void>.delayed(Duration.zero);
       final plan = ref
           .read(importPlanAppServiceProvider)
           .parse(source: ImportSource.yimu, bundle: bundle);
@@ -363,6 +409,41 @@ class ImportViewModel extends Notifier<ImportPageState> {
       mappings,
       groupMappingOverrides: state.groupMappingOverrides,
     );
+  }
+
+  Future<ImportActionOutcome<void>> saveCurrentMappingsAsDefaults() async {
+    final review = state.review;
+    if (review == null) return _invalid<void>('请先选择并解析一木资料包。');
+
+    state = state.copyWith(phase: ImportPagePhase.reviewing, error: null);
+    try {
+      final service = ref.read(importWorkflowAppServiceProvider);
+      for (final entity in review.plan.sourceEntities) {
+        if (entity.isReviewPlaceholder) continue;
+        final targetAccountId =
+            review.effectiveMappings[ImportMappingKey.fromEntity(entity)];
+        if (targetAccountId == null) continue;
+        await service.saveDefaultMapping(
+          entity: entity,
+          targetAccountId: targetAccountId,
+        );
+      }
+      final nextReview = await service.review(
+        review.plan,
+        temporaryMappings: state.temporaryMappings,
+        groupMappingOverrides: state.groupMappingOverrides,
+      );
+      _replaceReview(
+        nextReview,
+        temporaryMappings: state.temporaryMappings,
+        groupMappingOverrides: state.groupMappingOverrides,
+      );
+      return const ImportActionOutcome.success(null);
+    } on AppException catch (exception) {
+      return _fail<void>(UiError.fromException(exception));
+    } on Exception {
+      return _fail<void>(const UiError.unknown());
+    }
   }
 
   void setGroupSelected(int index, bool selected) {
@@ -585,6 +666,11 @@ class ImportViewModel extends Notifier<ImportPageState> {
     state = state.copyWith(error: null);
   }
 
+  ImportPagePhase get _settledPhase =>
+      state.review == null && state.plan == null
+          ? ImportPagePhase.idle
+          : ImportPagePhase.review;
+
   Future<ImportActionOutcome<void>> _reviewWithMappings(
     Map<ImportMappingKey, String> mappings, {
     Map<int, Map<ImportMappingKey, String>>? groupMappingOverrides,
@@ -721,13 +807,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
   }
 
   ImportActionFailure<T> _fail<T>(UiError error) {
-    state = state.copyWith(
-      phase:
-          state.review == null && state.plan == null
-              ? ImportPagePhase.idle
-              : ImportPagePhase.review,
-      error: error,
-    );
+    state = state.copyWith(phase: _settledPhase, error: error);
     return ImportActionFailure<T>(error);
   }
 
@@ -740,6 +820,15 @@ class ImportViewModel extends Notifier<ImportPageState> {
     state = state.copyWith(revertingBatchId: null, error: error);
     return ImportActionFailure<T>(error);
   }
+}
+
+ImportBundle _mergeBundles(ImportBundle? current, ImportBundle added) {
+  final files = <String, ImportFilePayload>{
+    for (final file in current?.files ?? const <ImportFilePayload>[])
+      file.name: file,
+    for (final file in added.files) file.name: file,
+  };
+  return ImportBundle(files: files.values);
 }
 
 final importViewModelProvider =

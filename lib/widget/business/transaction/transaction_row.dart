@@ -18,14 +18,14 @@ import 'transaction_progress_badges.dart';
 class TransactionRow extends StatelessWidget {
   const TransactionRow({
     required this.presentation,
-    required this.onTap,
     super.key,
+    this.onTap,
     this.enableQuickEdit = true,
     this.onQuickEdit,
   });
 
   final TransactionRowPresentation presentation;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final bool enableQuickEdit;
   final VoidCallback? onQuickEdit;
 

@@ -10,17 +10,22 @@ import 'package:smartflow/application/import/import_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/import/page/import_page.dart';
+import 'package:smartflow/feature/import/presentation/import_presentation.dart';
 
 void main() {
-  testWidgets('explains the supported source before a file is selected', (
+  testWidgets('shows import sources and recent history entry points', (
     tester,
   ) async {
-    await tester.pumpWidget(_app());
+    await tester.pumpWidget(_app(page: const ImportPage()));
     await tester.pump();
 
-    expect(find.text('当前仅支持一木记账'), findsOneWidget);
-    expect(find.text('选择一木 .xls 文件'), findsOneWidget);
-    expect(find.text('批次历史'), findsOneWidget);
+    expect(find.text('数据导入'), findsOneWidget);
+    expect(find.text('一木记账'), findsOneWidget);
+    expect(find.text('微信账单'), findsOneWidget);
+    expect(find.text('支付宝账单'), findsOneWidget);
+    expect(find.text('云闪付账单'), findsOneWidget);
+    expect(find.text('其他格式'), findsOneWidget);
+    expect(find.text('查看全部'), findsOneWidget);
   });
 
   testWidgets('shows fatal package issues and keeps the workflow retryable', (
@@ -39,13 +44,43 @@ void main() {
     await tester.pumpWidget(
       _app(planService: _FakePlanService(plan), picker: _FakePicker(_bundle())),
     );
-    await tester.pump();
-    await tester.tap(find.text('选择一木 .xls 文件'));
-    await tester.pump();
+    await _selectAndParse(tester);
 
     expect(find.text('资料包无法继续解析'), findsOneWidget);
     expect(find.text('资料包缺少债务文件。'), findsOneWidget);
-    expect(find.text('重新选择一木资料包'), findsOneWidget);
+    expect(find.text('解析未通过'), findsOneWidget);
+  });
+
+  testWidgets('shows status for every file in a multi-file package', (
+    tester,
+  ) async {
+    final plan = ImportParseResult(
+      source: ImportSource.yimu,
+      fatalIssues: const [
+        ImportIssue(
+          code: 'file_decode_failed',
+          message: '无法读取一木文件 转账.xls，请重新导出。',
+          severity: ImportIssueSeverity.fatal,
+          fileRole: YimuFileRole.transfer,
+        ),
+      ],
+    );
+    final bundle = ImportBundle(
+      files: [
+        ImportFilePayload(name: '账单.xls', bytes: Uint8List.fromList([1, 2])),
+        ImportFilePayload(name: '转账.xls', bytes: Uint8List.fromList([3, 4])),
+      ],
+    );
+    await tester.pumpWidget(
+      _app(planService: _FakePlanService(plan), picker: _FakePicker(bundle)),
+    );
+
+    await _selectAndParse(tester);
+
+    expect(find.text('账单.xls'), findsOneWidget);
+    expect(find.text('转账.xls'), findsOneWidget);
+    expect(find.text('解析成功'), findsOneWidget);
+    expect(find.text('解析失败'), findsOneWidget);
   });
 
   testWidgets(
@@ -61,18 +96,18 @@ void main() {
           workflow: _FakeWorkflow(_review(plan)),
         ),
       );
-      await tester.pump();
-      await tester.tap(find.text('选择一木 .xls 文件'));
-      await tester.pumpAndSettle();
+      await _selectAndParse(tester);
 
-      expect(find.text('来源映射'), findsOneWidget);
+      expect(find.text('账户与分类映射'), findsOneWidget);
       expect(find.text('现金'), findsWidgets);
       expect(find.byType(ExpansionTile), findsAtLeastNWidgets(1));
-      expect(find.text('导入所选 1 组'), findsOneWidget);
+      expect(find.text('导入预览（前 5 条）'), findsOneWidget);
+      expect(find.text('解析成功'), findsOneWidget);
+      expect(find.text('导入'), findsOneWidget);
     },
   );
 
-  testWidgets('history tab shows persisted batch results and revert action', (
+  testWidgets('history page shows task records and revert action', (
     tester,
   ) async {
     final batch = ImportBatch(
@@ -86,13 +121,16 @@ void main() {
     );
     await tester.pumpWidget(
       _app(
-        initialTab: ImportPageInitialTab.history,
+        page: const ImportHistoryPage(),
         workflow: _FakeWorkflow(_review(_plan()), batches: [batch]),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('2 个交易组 · 3 条交易 · 跳过 1 组'), findsOneWidget);
+    expect(find.text('一木记账_20260722100000'), findsOneWidget);
+    expect(find.text('导入 3 条交易 · 2 个交易组'), findsOneWidget);
+    expect(find.text('部分导入'), findsOneWidget);
+    expect(find.text('跳过 1 个交易组'), findsOneWidget);
     expect(find.text('撤销批次'), findsOneWidget);
   });
 
@@ -140,11 +178,8 @@ void main() {
         workflow: _FakeWorkflow(review),
       ),
     );
-    await tester.pump();
-    await tester.tap(find.text('选择一木 .xls 文件'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(ExpansionTile).first);
-    await tester.pumpAndSettle();
+    await _selectAndParse(tester);
+    await _openFirstReviewGroup(tester);
 
     expect(find.text('确认警告后导入此交易组'), findsOneWidget);
     expect(find.text('编辑顶层交易'), findsOneWidget);
@@ -180,11 +215,8 @@ void main() {
         workflow: _FakeWorkflow(_review(plan)),
       ),
     );
-    await tester.pump();
-    await tester.tap(find.text('选择一木 .xls 文件'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(ExpansionTile).first);
-    await tester.pumpAndSettle();
+    await _selectAndParse(tester);
+    await _openFirstReviewGroup(tester);
     await tester.tap(find.text('编辑顶层交易'));
     await tester.pumpAndSettle();
 
@@ -219,11 +251,8 @@ void main() {
         workflow: _FakeWorkflow(_review(plan)),
       ),
     );
-    await tester.pump();
-    await tester.tap(find.text('选择一木 .xls 文件'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(ExpansionTile).first);
-    await tester.pumpAndSettle();
+    await _selectAndParse(tester);
+    await _openFirstReviewGroup(tester);
     await tester.tap(find.text('编辑顶层交易'));
     await tester.pumpAndSettle();
 
@@ -233,10 +262,10 @@ void main() {
 }
 
 Widget _app({
+  Widget page = const ImportProcessPage(source: ImportEntrySource.yimu),
   ImportPlanAppService? planService,
   ImportWorkflowAppService? workflow,
   ImportFilePicker? picker,
-  ImportPageInitialTab initialTab = ImportPageInitialTab.import,
 }) {
   return ProviderScope(
     overrides: [
@@ -248,11 +277,23 @@ Widget _app({
       ),
       importFilePickerProvider.overrideWithValue(picker ?? _FakePicker(null)),
     ],
-    child: MaterialApp(
-      theme: AppTheme.light(),
-      home: ImportPage(initialTab: initialTab),
-    ),
+    child: MaterialApp(theme: AppTheme.light(), home: page),
   );
+}
+
+Future<void> _selectAndParse(WidgetTester tester) async {
+  await tester.pump();
+  await tester.tap(find.text('选择文件'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('解析'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openFirstReviewGroup(WidgetTester tester) async {
+  await tester.tap(find.text('导入检查与选择'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byType(ExpansionTile).last);
+  await tester.pumpAndSettle();
 }
 
 ImportBundle _bundle() {

@@ -32,5 +32,64 @@ void main() {
     expect(importEntityKindLabel(entity), '来源账户');
     expect(importGroupEntities(group, const [entity]), const [entity]);
     expect(formatImportDateTime(group.topLevel.occurredAt), '2026-07-22 09:30');
+
+    final review = ImportPlanReview(
+      plan: ImportParseResult(
+        source: ImportSource.yimu,
+        sourceEntities: const [entity],
+        groups: [group],
+      ),
+      defaultMappings: const {},
+      effectiveMappings: {
+        const ImportMappingKey(
+              source: ImportSource.yimu,
+              entityKind: ImportEntityKind.account,
+              sourceEntityKey: 'account:cash',
+            ):
+            'cash',
+      },
+      suggestions: const [],
+      targets: const [
+        ImportMappingTarget(
+          id: 'cash',
+          name: '现金',
+          displayPath: '资产 / 现金',
+          kind: ImportMappingTargetKind.asset,
+          isArchived: false,
+        ),
+      ],
+      groups: [
+        ImportGroupReview(
+          index: 0,
+          group: group,
+          issues: const [],
+          isExactDuplicate: false,
+          isSuspectedDuplicate: false,
+        ),
+      ],
+    );
+    final preview = buildImportPreviewGroups(review);
+    expect(preview.single.rows.single.title, '转账');
+    expect(preview.single.rows.single.amountText, '10.00');
+    expect(preview.single.rows.single.accountFlow.out?.label, '资产 / 现金');
+  });
+
+  test('formats import entry routes and task names', () {
+    expect(importEntrySourceFromRoute('alipay'), ImportEntrySource.alipay);
+    expect(ImportEntrySource.generic.routeValue, 'generic');
+    expect(
+      formatImportTaskName(
+        ImportBatch(
+          id: 'batch-1',
+          source: ImportSource.yimu,
+          status: ImportBatchStatus.imported,
+          importedGroupCount: 1,
+          createdTransactionCount: 1,
+          skippedGroupCount: 0,
+          importedAt: DateTime(2026, 7, 22, 9, 30, 5),
+        ),
+      ),
+      '一木记账_20260722093005',
+    );
   });
 }

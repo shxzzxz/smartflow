@@ -52,7 +52,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.descendant(of: sections.at(1), matching: find.text('一木记账导入')),
+      find.descendant(of: sections.at(1), matching: find.text('数据导入')),
       findsOneWidget,
     );
     expect(

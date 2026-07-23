@@ -91,8 +91,8 @@ class _ProfilePageState extends State<ProfilePage> {
               actions: [
                 _ProfileActionRow(
                   icon: RemixIcons.file_excel_2_line,
-                  label: '一木记账导入',
-                  description: '导入 .xls 文件并管理导入批次',
+                  label: '数据导入',
+                  description: '从外部账单或记账应用导入交易',
                   onTap: () => context.push('/profile/import'),
                 ),
               ],

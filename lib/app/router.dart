@@ -28,6 +28,7 @@ import '../feature/statistics/page/statistics_transactions_page.dart';
 import '../feature/statistics/view_model/statistics_view_model.dart';
 import '../feature/profile/page/installment_guide_page.dart';
 import '../feature/import/page/import_page.dart';
+import '../feature/import/presentation/import_presentation.dart';
 import '../feature/profile/page/profile_page.dart';
 import '../feature/profile/page/software_version_page.dart';
 import '../feature/transaction/page/refund_form_page.dart';
@@ -88,9 +89,16 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/import/history',
+          builder: (context, state) => const ImportHistoryPage(),
+        ),
+        GoRoute(
+          path: '/import/process/:source',
           builder:
-              (context, state) =>
-                  const ImportPage(initialTab: ImportPageInitialTab.history),
+              (context, state) => ImportProcessPage(
+                source: importEntrySourceFromRoute(
+                  state.pathParameters['source'],
+                ),
+              ),
         ),
         GoRoute(
           path: '/profile/import',
@@ -98,9 +106,7 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/profile/import-history',
-          builder:
-              (context, state) =>
-                  const ImportPage(initialTab: ImportPageInitialTab.history),
+          builder: (context, state) => const ImportHistoryPage(),
         ),
       ],
     ),

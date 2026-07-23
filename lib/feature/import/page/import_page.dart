@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
@@ -17,28 +18,42 @@ import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/finance/money_input.dart';
 import '../../../widget/business/finance/money_text.dart';
+import '../../../widget/business/transaction/transaction_day_card.dart';
+import '../../shared/presentation/transaction_list_presentation.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/import_presentation.dart';
 import '../view_model/import_view_model.dart';
 
-enum ImportPageInitialTab { import, history }
-
 class ImportPage extends ConsumerStatefulWidget {
-  const ImportPage({super.key, this.initialTab = ImportPageInitialTab.import});
-
-  final ImportPageInitialTab initialTab;
+  const ImportPage({super.key});
 
   @override
-  ConsumerState<ImportPage> createState() => _ImportPageState();
+  ConsumerState<ImportPage> createState() => _ImportLandingPageState();
 }
 
-class _ImportPageState extends ConsumerState<ImportPage> {
+class ImportHistoryPage extends ConsumerStatefulWidget {
+  const ImportHistoryPage({super.key});
+
+  @override
+  ConsumerState<ImportHistoryPage> createState() => _ImportHistoryPageState();
+}
+
+class ImportProcessPage extends ConsumerStatefulWidget {
+  const ImportProcessPage({required this.source, super.key});
+
+  final ImportEntrySource source;
+
+  @override
+  ConsumerState<ImportProcessPage> createState() => _ImportProcessPageState();
+}
+
+class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(importViewModelProvider.notifier).loadHistory();
+      ref.read(importViewModelProvider.notifier).reset();
     });
   }
 
@@ -48,64 +63,63 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     final notifier = ref.read(importViewModelProvider.notifier);
     final colors = Theme.of(context).colorScheme;
 
-    return DefaultTabController(
-      length: 2,
-      initialIndex: widget.initialTab == ImportPageInitialTab.import ? 0 : 1,
-      child: Scaffold(
-        backgroundColor: colors.surface,
-        body: SafeArea(
-          child: Column(
-            children: [
-              const _ImportHeader(),
-              TabBar(
-                indicatorSize: TabBarIndicatorSize.label,
-                dividerColor: colors.outlineVariant,
-                labelStyle: context.appTextStyles.listTitle,
-                tabs: const [Tab(text: '导入'), Tab(text: '批次历史')],
-              ),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    _ImportReviewTab(
-                      state: state,
-                      onPickFiles: _pickFiles,
-                      onReset: notifier.reset,
-                      onClearError: notifier.clearError,
-                      onApplySuggestions: _applySuggestions,
-                      onSelectAll: notifier.selectAllImportable,
-                      onGroupSelected: notifier.setGroupSelection,
-                      onSuspectedConfirmed:
-                          notifier.setSuspectedDuplicateConfirmed,
-                      onWarningConfirmed: notifier.setWarningConfirmed,
-                      onSelectMapping: _selectMapping,
-                      onSelectGroupMapping: _selectGroupMapping,
-                      onEditDraft: _editDraft,
-                      onCreateAccount: () => _createTarget('/account/new'),
-                      onCreateCategory:
-                          (kind) => _createTarget(
-                            '/category/new?type=${kind == ImportCategoryKind.income ? 'income' : 'expense'}',
-                          ),
-                      onCommit: _commit,
-                    ),
-                    _ImportHistoryTab(
-                      state: state,
-                      onRefresh: _loadHistory,
-                      onRevert: _confirmRevert,
-                      onClearError: notifier.clearError,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+    return Scaffold(
+      backgroundColor: colors.surface,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _ImportHeader(
+              title: '导入中',
+              trailing: TextButton(onPressed: _cancel, child: const Text('取消')),
+            ),
+            Expanded(
+              child:
+                  widget.source.isAvailable
+                      ? _ImportReviewTab(
+                        source: widget.source,
+                        state: state,
+                        onPickFiles: () => _pickFiles(append: false),
+                        onAddFiles: () => _pickFiles(append: true),
+                        onParseFiles: _parseFiles,
+                        onRemoveFile: notifier.removeSelectedFile,
+                        onReset: notifier.reset,
+                        onClearError: notifier.clearError,
+                        onApplySuggestions: _applySuggestions,
+                        onSaveMappings: _saveMappings,
+                        onSelectAll: notifier.selectAllImportable,
+                        onGroupSelected: notifier.setGroupSelection,
+                        onSuspectedConfirmed:
+                            notifier.setSuspectedDuplicateConfirmed,
+                        onWarningConfirmed: notifier.setWarningConfirmed,
+                        onSelectMapping: _selectMapping,
+                        onSelectGroupMapping: _selectGroupMapping,
+                        onEditDraft: _editDraft,
+                        onCreateAccount: () => _createTarget('/account/new'),
+                        onCreateCategory:
+                            (kind) => _createTarget(
+                              '/category/new?type=${kind == ImportCategoryKind.income ? 'income' : 'expense'}',
+                            ),
+                        onCommit: _commit,
+                      )
+                      : _UnavailableImportSource(source: widget.source),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Future<void> _pickFiles() async {
+  Future<void> _pickFiles({required bool append}) async {
+    final outcome = await ref
+        .read(importViewModelProvider.notifier)
+        .pickFiles(append: append);
+    if (!mounted) return;
+    _showFailure(outcome);
+  }
+
+  Future<void> _parseFiles() async {
     final outcome =
-        await ref.read(importViewModelProvider.notifier).pickFiles();
+        await ref.read(importViewModelProvider.notifier).parseSelectedFiles();
     if (!mounted) return;
     _showFailure(outcome);
   }
@@ -117,6 +131,31 @@ class _ImportPageState extends ConsumerState<ImportPage> {
             .applySuggestedMappings();
     if (!mounted) return;
     _showFailure(outcome);
+  }
+
+  Future<void> _saveMappings() async {
+    final outcome =
+        await ref
+            .read(importViewModelProvider.notifier)
+            .saveCurrentMappingsAsDefaults();
+    if (!mounted) return;
+    switch (outcome) {
+      case ImportActionSuccess():
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('映射配置已保存。')));
+      case ImportActionFailure(:final error):
+        _showError(error);
+    }
+  }
+
+  void _cancel() {
+    ref.read(importViewModelProvider.notifier).reset();
+    if (Navigator.of(context).canPop()) {
+      context.pop();
+    } else {
+      context.go('/import');
+    }
   }
 
   Future<void> _selectMapping(ImportSourceEntity entity) async {
@@ -279,11 +318,167 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     }
   }
 
+  void _showFailure<T>(ImportActionOutcome<T> outcome) {
+    if (outcome case ImportActionFailure<T>(:final error)) {
+      _showError(error);
+    }
+  }
+
+  void _showError(UiError error) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(error.message)));
+  }
+}
+
+class _ImportLandingPageState extends ConsumerState<ImportPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(importViewModelProvider.notifier).loadHistory();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(importViewModelProvider);
+    final colors = Theme.of(context).colorScheme;
+    return Scaffold(
+      backgroundColor: colors.surface,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _ImportHeader(
+              title: '数据导入',
+              trailing: IconButton(
+                onPressed: () {},
+                icon: const Icon(RemixIcons.question_line),
+                tooltip: '导入帮助',
+              ),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _loadHistory,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.space20,
+                    AppSpacing.space16,
+                    AppSpacing.space20,
+                    AppSpacing.space32,
+                  ),
+                  children: [
+                    Text('导入来源', style: context.appTextStyles.groupTitle),
+                    const SizedBox(height: AppSpacing.space10),
+                    _ImportSourceList(
+                      onSelected:
+                          (source) => context.push(
+                            '/import/process/${source.routeValue}',
+                          ),
+                    ),
+                    const SizedBox(height: AppSpacing.space28),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '导入记录',
+                            style: context.appTextStyles.groupTitle,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => context.push('/import/history'),
+                          child: const Text('查看全部'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.space6),
+                    if (state.error case final error?) ...[
+                      _FeedbackBanner(
+                        icon: RemixIcons.error_warning_line,
+                        message: error.message,
+                        tone: _FeedbackTone.error,
+                        onClose:
+                            ref
+                                .read(importViewModelProvider.notifier)
+                                .clearError,
+                      ),
+                    ] else if (state.historyLoading && state.batches.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(AppSpacing.space24),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (state.batches.isEmpty)
+                      const _EmptyImportHistoryCard()
+                    else
+                      for (final batch in state.batches.take(5)) ...[
+                        _ImportBatchCard(batch: batch),
+                        const SizedBox(height: AppSpacing.space10),
+                      ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _loadHistory() async {
     final outcome =
         await ref.read(importViewModelProvider.notifier).loadHistory();
-    if (!mounted) return;
-    _showFailure(outcome);
+    if (!mounted || outcome is ImportActionSuccess<List<ImportBatch>>) return;
+    final error = (outcome as ImportActionFailure<List<ImportBatch>>).error;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(error.message)));
+  }
+}
+
+class _ImportHistoryPageState extends ConsumerState<ImportHistoryPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(importViewModelProvider.notifier).loadHistory();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(importViewModelProvider);
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const _ImportHeader(title: '导入记录'),
+            Expanded(
+              child: _ImportHistoryTab(
+                state: state,
+                onRefresh: _loadHistory,
+                onRevert: _confirmRevert,
+                onClearError:
+                    ref.read(importViewModelProvider.notifier).clearError,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _loadHistory() async {
+    final outcome =
+        await ref.read(importViewModelProvider.notifier).loadHistory();
+    if (!mounted || outcome is ImportActionSuccess<List<ImportBatch>>) return;
+    final error = (outcome as ImportActionFailure<List<ImportBatch>>).error;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(error.message)));
   }
 
   Future<void> _confirmRevert(ImportBatch batch) async {
@@ -317,25 +512,18 @@ class _ImportPageState extends ConsumerState<ImportPage> {
           context,
         ).showSnackBar(const SnackBar(content: Text('导入批次已撤销。')));
       case ImportActionFailure(:final error):
-        _showError(error);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
     }
-  }
-
-  void _showFailure<T>(ImportActionOutcome<T> outcome) {
-    if (outcome case ImportActionFailure<T>(:final error)) {
-      _showError(error);
-    }
-  }
-
-  void _showError(UiError error) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(error.message)));
   }
 }
 
 class _ImportHeader extends StatelessWidget {
-  const _ImportHeader();
+  const _ImportHeader({required this.title, this.trailing});
+
+  final String title;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -364,20 +552,217 @@ class _ImportHeader extends StatelessWidget {
               tooltip: '返回',
             ),
           ),
-          Text('一木记账导入', style: context.appTextStyles.dateNavigationTitle),
+          Text(title, style: context.appTextStyles.dateNavigationTitle),
+          if (trailing != null)
+            Align(alignment: Alignment.centerRight, child: trailing),
         ],
       ),
     );
   }
 }
 
+class _ImportSourceList extends StatelessWidget {
+  const _ImportSourceList({required this.onSelected});
+
+  final ValueChanged<ImportEntrySource> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return AppSurface(
+      child: Column(
+        children: [
+          for (
+            var index = 0;
+            index < ImportEntrySource.values.length;
+            index++
+          ) ...[
+            _ImportSourceRow(
+              source: ImportEntrySource.values[index],
+              onTap: () => onSelected(ImportEntrySource.values[index]),
+            ),
+            if (index < ImportEntrySource.values.length - 1)
+              Container(
+                height: AppListTokens.dividerThickness,
+                margin: const EdgeInsets.only(
+                  left: AppSpacing.space48 + AppSpacing.space16,
+                ),
+                color: colors.outlineVariant.withValues(
+                  alpha: AppListTokens.dividerOpacity,
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ImportSourceRow extends StatelessWidget {
+  const _ImportSourceRow({required this.source, required this.onTap});
+
+  final ImportEntrySource source;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space16,
+          vertical: AppSpacing.space14,
+        ),
+        child: Row(
+          children: [
+            _ImportSourceIcon(source: source),
+            const SizedBox(width: AppSpacing.space12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(source.label, style: context.appTextStyles.listTitle),
+                  const SizedBox(height: AppSpacing.space2),
+                  Text(
+                    source.description,
+                    style: context.appTextStyles.pageSubtitle,
+                  ),
+                ],
+              ),
+            ),
+            const Icon(RemixIcons.arrow_right_s_line),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ImportSourceIcon extends StatelessWidget {
+  const _ImportSourceIcon({
+    required this.source,
+    this.size = AppSpacing.space40,
+  });
+
+  final ImportEntrySource source;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    if (source == ImportEntrySource.wechat ||
+        source == ImportEntrySource.alipay) {
+      final asset =
+          source == ImportEntrySource.wechat
+              ? 'assets/icons/account/wechat_pay.svg'
+              : 'assets/icons/account/alipay.svg';
+      return SizedBox.square(
+        dimension: size,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space4),
+          child: SvgPicture.asset(asset),
+        ),
+      );
+    }
+
+    final extension = _themeExtension(context);
+    final color = switch (source) {
+      ImportEntrySource.yimu => extension.success,
+      ImportEntrySource.unionPay => extension.danger,
+      ImportEntrySource.generic => extension.equity,
+      ImportEntrySource.wechat || ImportEntrySource.alipay => extension.info,
+    };
+    final icon = switch (source) {
+      ImportEntrySource.yimu => Icons.energy_savings_leaf_rounded,
+      ImportEntrySource.unionPay => RemixIcons.bank_card_line,
+      ImportEntrySource.generic => RemixIcons.file_excel_2_line,
+      ImportEntrySource.wechat ||
+      ImportEntrySource.alipay => RemixIcons.file_list_3_line,
+    };
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      child: Icon(icon, color: Theme.of(context).colorScheme.onPrimary),
+    );
+  }
+}
+
+class _EmptyImportHistoryCard extends StatelessWidget {
+  const _EmptyImportHistoryCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSurface(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.space24),
+        child: Column(
+          children: [
+            Icon(
+              RemixIcons.history_line,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: AppSpacing.space10),
+            Text('暂无导入记录', style: context.appTextStyles.groupTitle),
+            const SizedBox(height: AppSpacing.space4),
+            Text(
+              '完成一次导入后，任务记录会显示在这里。',
+              textAlign: TextAlign.center,
+              style: context.appTextStyles.pageSubtitle,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UnavailableImportSource extends StatelessWidget {
+  const _UnavailableImportSource({required this.source});
+
+  final ImportEntrySource source;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.space20),
+      children: [
+        const _ImportStepIndicator(activeStep: 0),
+        const SizedBox(height: AppSpacing.space24),
+        AppSurface(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.space20),
+            child: Column(
+              children: [
+                _ImportSourceIcon(source: source, size: AppSpacing.space48),
+                const SizedBox(height: AppSpacing.space12),
+                Text(source.label, style: context.appTextStyles.groupTitle),
+                const SizedBox(height: AppSpacing.space6),
+                Text(
+                  '该导入来源尚未开放，文件选择与解析能力将在后续版本接入。',
+                  textAlign: TextAlign.center,
+                  style: context.appTextStyles.pageSubtitle,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _ImportReviewTab extends StatelessWidget {
   const _ImportReviewTab({
+    required this.source,
     required this.state,
     required this.onPickFiles,
+    required this.onAddFiles,
+    required this.onParseFiles,
+    required this.onRemoveFile,
     required this.onReset,
     required this.onClearError,
     required this.onApplySuggestions,
+    required this.onSaveMappings,
     required this.onSelectAll,
     required this.onGroupSelected,
     required this.onSuspectedConfirmed,
@@ -390,11 +775,16 @@ class _ImportReviewTab extends StatelessWidget {
     required this.onCommit,
   });
 
+  final ImportEntrySource source;
   final ImportPageState state;
   final VoidCallback onPickFiles;
+  final VoidCallback onAddFiles;
+  final VoidCallback onParseFiles;
+  final ValueChanged<int> onRemoveFile;
   final VoidCallback onReset;
   final VoidCallback onClearError;
   final VoidCallback onApplySuggestions;
+  final VoidCallback onSaveMappings;
   final ValueChanged<bool> onSelectAll;
   final void Function(int index, bool selected) onGroupSelected;
   final void Function(int index, bool confirmed) onSuspectedConfirmed;
@@ -411,6 +801,15 @@ class _ImportReviewTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final plan = state.plan;
     final review = state.review;
+    final files = state.selectedBundle?.files ?? const <ImportFilePayload>[];
+    final activeStep =
+        state.lastCommit != null
+            ? 3
+            : review != null
+            ? 2
+            : files.isNotEmpty
+            ? 1
+            : 0;
     return Stack(
       children: [
         ListView(
@@ -421,6 +820,8 @@ class _ImportReviewTab extends StatelessWidget {
             AppSpacing.space48 + AppSpacing.space40,
           ),
           children: [
+            _ImportStepIndicator(activeStep: activeStep),
+            const SizedBox(height: AppSpacing.space24),
             if (state.error case final error?) ...[
               _FeedbackBanner(
                 icon: RemixIcons.error_warning_line,
@@ -430,21 +831,20 @@ class _ImportReviewTab extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.space16),
             ],
-            const _SourceIntroductionCard(),
-            if (plan == null) ...[
-              const SizedBox(height: AppSpacing.space24),
-              _EmptyImportState(busy: state.isBusy, onPickFiles: onPickFiles),
-            ] else if (plan.hasFatalIssues) ...[
-              const SizedBox(height: AppSpacing.space24),
-              _FatalIssuesCard(plan: plan),
+            _ImportFilesSection(
+              source: source,
+              state: state,
+              onPickFiles: onPickFiles,
+              onAddFiles: onAddFiles,
+              onParseFiles: onParseFiles,
+              onRemoveFile: onRemoveFile,
+              onReset: onReset,
+            ),
+            if (plan?.hasFatalIssues ?? false) ...[
               const SizedBox(height: AppSpacing.space16),
-              FilledButton.icon(
-                onPressed: state.isBusy ? null : onPickFiles,
-                icon: const Icon(RemixIcons.folder_open_line),
-                label: const Text('重新选择一木资料包'),
-              ),
+              _FatalIssuesCard(plan: plan!),
             ] else if (review != null) ...[
-              const SizedBox(height: AppSpacing.space24),
+              const SizedBox(height: AppSpacing.space20),
               if (state.lastCommit case final result?) ...[
                 _CommitResultBanner(result: result),
                 const SizedBox(height: AppSpacing.space16),
@@ -455,11 +855,14 @@ class _ImportReviewTab extends StatelessWidget {
                 state: state,
                 onSelectMapping: onSelectMapping,
                 onApplySuggestions: onApplySuggestions,
+                onSaveMappings: onSaveMappings,
                 onCreateAccount: onCreateAccount,
                 onCreateCategory: onCreateCategory,
               ),
               const SizedBox(height: AppSpacing.space24),
-              _GroupReviewSection(
+              _ImportPreviewSection(review: review),
+              const SizedBox(height: AppSpacing.space16),
+              _ImportReviewOptions(
                 state: state,
                 onSelectAll: onSelectAll,
                 onGroupSelected: onGroupSelected,
@@ -468,22 +871,12 @@ class _ImportReviewTab extends StatelessWidget {
                 onSelectGroupMapping: onSelectGroupMapping,
                 onEditDraft: onEditDraft,
               ),
-              if (plan.filteredRecords.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.space24),
+              if (plan!.filteredRecords.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.space16),
                 _FilteredRecordsSection(records: plan.filteredRecords),
               ],
-              const SizedBox(height: AppSpacing.space16),
-              OutlinedButton.icon(
-                onPressed: state.isBusy ? null : onPickFiles,
-                icon: const Icon(RemixIcons.folder_open_line),
-                label: const Text('更换资料包'),
-              ),
-              TextButton(
-                onPressed: state.isBusy ? null : onReset,
-                child: const Text('清空审阅'),
-              ),
-            ] else ...[
-              const SizedBox(height: AppSpacing.space24),
+            ] else if (state.phase == ImportPagePhase.reviewing) ...[
+              const SizedBox(height: AppSpacing.space20),
               const Center(child: CircularProgressIndicator()),
             ],
           ],
@@ -497,8 +890,7 @@ class _ImportReviewTab extends StatelessWidget {
               top: false,
               child: FilledButton.icon(
                 onPressed:
-                    state.phase == ImportPagePhase.committing ||
-                            state.selectedGroupIndexes.isEmpty
+                    state.isBusy || state.selectedGroupIndexes.isEmpty
                         ? null
                         : onCommit,
                 icon:
@@ -512,9 +904,7 @@ class _ImportReviewTab extends StatelessWidget {
                         )
                         : const Icon(RemixIcons.import_line),
                 label: Text(
-                  state.phase == ImportPagePhase.committing
-                      ? '正在导入'
-                      : '导入所选 ${state.selectedGroupIndexes.length} 组',
+                  state.phase == ImportPagePhase.committing ? '正在导入' : '导入',
                 ),
               ),
             ),
@@ -524,87 +914,398 @@ class _ImportReviewTab extends StatelessWidget {
   }
 }
 
-class _SourceIntroductionCard extends StatelessWidget {
-  const _SourceIntroductionCard();
+class _ImportStepIndicator extends StatelessWidget {
+  const _ImportStepIndicator({required this.activeStep});
+
+  final int activeStep;
+
+  static const _labels = ['上传文件', '解析数据', '数据预览', '导入完成'];
+  static const _icons = [
+    RemixIcons.upload_2_line,
+    RemixIcons.file_search_line,
+    RemixIcons.list_check_3,
+    RemixIcons.checkbox_circle_line,
+  ];
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return AppSurface(
-      border: true,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(RemixIcons.file_excel_2_line, color: colors.primary),
-            const SizedBox(width: AppSpacing.space12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('当前仅支持一木记账', style: context.appTextStyles.listTitle),
-                  const SizedBox(height: AppSpacing.space4),
-                  Text(
-                    '请选择一木导出的账单、转账、债务三个传统 .xls 文件。文件角色会自动识别，原文件不会保存。',
-                    style: context.appTextStyles.pageSubtitle,
+    return Semantics(
+      label: '导入进度：${_labels[activeStep.clamp(0, 3)]}',
+      child: Column(
+        children: [
+          Row(
+            children: [
+              for (var index = 0; index < _labels.length; index++) ...[
+                if (index > 0)
+                  Expanded(
+                    child: Container(
+                      height: AppListTokens.dividerThickness * 2,
+                      color:
+                          index <= activeStep
+                              ? colors.primary
+                              : colors.outlineVariant,
+                    ),
                   ),
-                ],
-              ),
-            ),
-          ],
-        ),
+                _ImportStepDot(
+                  icon: _icons[index],
+                  active: index <= activeStep,
+                  completed: index < activeStep || activeStep == 3,
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.space8),
+          Row(
+            children: [
+              for (var index = 0; index < _labels.length; index++)
+                Expanded(
+                  child: Text(
+                    _labels[index],
+                    textAlign: TextAlign.center,
+                    style: context.appTextStyles.badgeLabel.copyWith(
+                      color:
+                          index <= activeStep
+                              ? colors.primary
+                              : colors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-class _EmptyImportState extends StatelessWidget {
-  const _EmptyImportState({required this.busy, required this.onPickFiles});
+class _ImportStepDot extends StatelessWidget {
+  const _ImportStepDot({
+    required this.icon,
+    required this.active,
+    required this.completed,
+  });
 
-  final bool busy;
-  final VoidCallback onPickFiles;
+  final IconData icon;
+  final bool active;
+  final bool completed;
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: AppSpacing.space28,
+      height: AppSpacing.space28,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: active ? colors.primary : colors.surfaceContainerHighest,
+      ),
+      child: Icon(
+        completed ? RemixIcons.check_line : icon,
+        size: AppSpacing.space16,
+        color: active ? colors.onPrimary : colors.onSurfaceVariant,
+      ),
+    );
+  }
+}
+
+class _ImportFilesSection extends StatelessWidget {
+  const _ImportFilesSection({
+    required this.source,
+    required this.state,
+    required this.onPickFiles,
+    required this.onAddFiles,
+    required this.onParseFiles,
+    required this.onRemoveFile,
+    required this.onReset,
+  });
+
+  final ImportEntrySource source;
+  final ImportPageState state;
+  final VoidCallback onPickFiles;
+  final VoidCallback onAddFiles;
+  final VoidCallback onParseFiles;
+  final ValueChanged<int> onRemoveFile;
+  final VoidCallback onReset;
+
+  @override
+  Widget build(BuildContext context) {
+    final files = state.selectedBundle?.files ?? const <ImportFilePayload>[];
+    final colors = Theme.of(context).colorScheme;
+    final isParsing = state.phase == ImportPagePhase.parsing;
+    final controlsDisabled = state.isBusy;
     return AppSurface(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space24),
+        padding: const EdgeInsets.all(AppSpacing.space16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(
-              RemixIcons.folder_upload_line,
-              size: AppSpacing.space40,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            Row(
+              children: [
+                _ImportSourceIcon(source: source),
+                const SizedBox(width: AppSpacing.space12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        source.label,
+                        style: context.appTextStyles.listTitle,
+                      ),
+                      const SizedBox(height: AppSpacing.space2),
+                      Text(
+                        _fileSummary(files),
+                        style: context.appTextStyles.pageSubtitle,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.space12),
-            Text('选择导出文件开始审阅', style: context.appTextStyles.groupTitle),
-            const SizedBox(height: AppSpacing.space6),
-            Text(
-              '导入前可以检查映射、阻塞问题、重复提示，并按交易组整体选择。',
-              textAlign: TextAlign.center,
-              style: context.appTextStyles.pageSubtitle,
-            ),
-            const SizedBox(height: AppSpacing.space20),
-            FilledButton.icon(
-              onPressed: busy ? null : onPickFiles,
-              icon:
-                  busy
-                      ? const SizedBox.square(
-                        dimension: AppSpacing.space18,
-                        child: CircularProgressIndicator(
-                          strokeWidth:
-                              AppProgressIndicatorTokens.compactStrokeWidth,
-                        ),
-                      )
-                      : const Icon(RemixIcons.folder_open_line),
-              label: Text(busy ? '正在解析' : '选择一木 .xls 文件'),
-            ),
+            const SizedBox(height: AppSpacing.space14),
+            if (files.isEmpty) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppSpacing.space24,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(AppRadius.radiusLg),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      RemixIcons.folder_upload_line,
+                      size: AppSpacing.space32,
+                      color: colors.onSurfaceVariant,
+                    ),
+                    const SizedBox(height: AppSpacing.space8),
+                    Text(
+                      '选择一木导出的账单、转账和债务 .xls 文件',
+                      textAlign: TextAlign.center,
+                      style: context.appTextStyles.pageSubtitle,
+                    ),
+                    const SizedBox(height: AppSpacing.space14),
+                    FilledButton.icon(
+                      onPressed: controlsDisabled ? null : onPickFiles,
+                      icon: const Icon(RemixIcons.folder_open_line),
+                      label: const Text('选择文件'),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: AppSpacing.space8,
+                runSpacing: AppSpacing.space8,
+                children: [
+                  TextButton(
+                    onPressed: controlsDisabled ? null : onReset,
+                    child: const Text('清空'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: controlsDisabled ? null : onAddFiles,
+                    icon: const Icon(RemixIcons.add_line),
+                    label: const Text('添加文件'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: controlsDisabled ? null : onParseFiles,
+                    icon:
+                        isParsing
+                            ? const SizedBox.square(
+                              dimension: AppSpacing.space16,
+                              child: CircularProgressIndicator(
+                                strokeWidth:
+                                    AppProgressIndicatorTokens
+                                        .compactStrokeWidth,
+                              ),
+                            )
+                            : const Icon(RemixIcons.file_search_line),
+                    label: Text(isParsing ? '解析中' : '解析'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space12),
+              if (isParsing) ...[
+                Text(
+                  '正在解析 ${files.length} 个文件…',
+                  style: context.appTextStyles.pageSubtitle,
+                ),
+                const SizedBox(height: AppSpacing.space6),
+                const LinearProgressIndicator(),
+                const SizedBox(height: AppSpacing.space10),
+              ],
+              for (var index = 0; index < files.length; index++) ...[
+                _ImportFileRow(
+                  file: files[index],
+                  status: _fileStatus(state, files[index]),
+                  canRemove: !controlsDisabled,
+                  onRemove: () => onRemoveFile(index),
+                ),
+                if (index < files.length - 1)
+                  Divider(color: colors.outlineVariant),
+              ],
+            ],
           ],
         ),
       ),
     );
   }
+
+  String _fileSummary(List<ImportFilePayload> files) {
+    if (files.isEmpty) return '尚未选择文件';
+    if (state.phase == ImportPagePhase.parsing) {
+      return '正在解析 ${files.length} 个文件';
+    }
+    if (state.plan?.hasFatalIssues ?? false) return '解析未通过';
+    if (state.review != null) return '共 ${files.length} 个文件 · 已完成';
+    return '共 ${files.length} 个文件 · 待解析';
+  }
+}
+
+enum _ImportFileStatusKind { waiting, parsing, success, warning, failed }
+
+class _ImportFileStatus {
+  const _ImportFileStatus(this.kind, this.label, [this.detail]);
+
+  final _ImportFileStatusKind kind;
+  final String label;
+  final String? detail;
+}
+
+class _ImportFileRow extends StatelessWidget {
+  const _ImportFileRow({
+    required this.file,
+    required this.status,
+    required this.canRemove,
+    required this.onRemove,
+  });
+
+  final ImportFilePayload file;
+  final _ImportFileStatus status;
+  final bool canRemove;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (status.kind) {
+      _ImportFileStatusKind.waiting =>
+        Theme.of(context).colorScheme.onSurfaceVariant,
+      _ImportFileStatusKind.parsing => Theme.of(context).colorScheme.primary,
+      _ImportFileStatusKind.success => _themeExtension(context).success,
+      _ImportFileStatusKind.warning => _themeExtension(context).warning,
+      _ImportFileStatusKind.failed => Theme.of(context).colorScheme.error,
+    };
+    final icon = switch (status.kind) {
+      _ImportFileStatusKind.waiting => RemixIcons.time_line,
+      _ImportFileStatusKind.parsing => RemixIcons.loader_4_line,
+      _ImportFileStatusKind.success => RemixIcons.checkbox_circle_line,
+      _ImportFileStatusKind.warning => RemixIcons.error_warning_line,
+      _ImportFileStatusKind.failed => RemixIcons.close_circle_line,
+    };
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  file.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.appTextStyles.detailValue,
+                ),
+                const SizedBox(height: AppSpacing.space2),
+                Text(
+                  _formatFileSize(file.bytes.length),
+                  style: context.appTextStyles.pageSubtitle,
+                ),
+                if (status.detail case final detail?) ...[
+                  const SizedBox(height: AppSpacing.space2),
+                  Text(
+                    detail,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.appTextStyles.pageSubtitle.copyWith(
+                      color: color,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.space8),
+          Icon(icon, color: color, size: AppSpacing.space20),
+          const SizedBox(width: AppSpacing.space4),
+          Text(
+            status.label,
+            style: context.appTextStyles.badgeLabel.copyWith(color: color),
+          ),
+          IconButton(
+            onPressed: canRemove ? onRemove : null,
+            icon: const Icon(RemixIcons.close_line),
+            tooltip: '移除文件',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+_ImportFileStatus _fileStatus(ImportPageState state, ImportFilePayload file) {
+  if (state.phase == ImportPagePhase.parsing) {
+    return const _ImportFileStatus(_ImportFileStatusKind.parsing, '解析中');
+  }
+  final plan = state.plan;
+  if (plan == null) {
+    return const _ImportFileStatus(_ImportFileStatusKind.waiting, '待解析');
+  }
+
+  final role = _roleFromFileName(file.name);
+  for (final issue in plan.fatalIssues) {
+    final mentionsFile = issue.message.toLowerCase().contains(
+      file.name.toLowerCase(),
+    );
+    if (mentionsFile || (role != null && issue.fileRole == role)) {
+      return _ImportFileStatus(
+        _ImportFileStatusKind.failed,
+        '解析失败',
+        issue.message,
+      );
+    }
+  }
+
+  final issues = <ImportIssue>[
+    for (final group in state.review?.groups ?? const <ImportGroupReview>[])
+      for (final issue in group.issues)
+        if (role != null && issue.fileRole == role) issue,
+  ];
+  if (issues.isNotEmpty) {
+    return _ImportFileStatus(
+      _ImportFileStatusKind.warning,
+      '存在异常',
+      '${issues.length} 条记录需要处理',
+    );
+  }
+  return const _ImportFileStatus(_ImportFileStatusKind.success, '解析成功');
+}
+
+YimuFileRole? _roleFromFileName(String fileName) {
+  final normalized = fileName.toLowerCase();
+  if (normalized.contains('账单')) return YimuFileRole.bill;
+  if (normalized.contains('转账')) return YimuFileRole.transfer;
+  if (normalized.contains('债务')) return YimuFileRole.debt;
+  return null;
+}
+
+String _formatFileSize(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  final kilobytes = bytes / 1024;
+  if (kilobytes < 1024) return '${kilobytes.toStringAsFixed(1)} KB';
+  return '${(kilobytes / 1024).toStringAsFixed(1)} MB';
 }
 
 class _FatalIssuesCard extends StatelessWidget {
@@ -737,6 +1438,7 @@ class _MappingSection extends StatelessWidget {
     required this.state,
     required this.onSelectMapping,
     required this.onApplySuggestions,
+    required this.onSaveMappings,
     required this.onCreateAccount,
     required this.onCreateCategory,
   });
@@ -744,6 +1446,7 @@ class _MappingSection extends StatelessWidget {
   final ImportPageState state;
   final ValueChanged<ImportSourceEntity> onSelectMapping;
   final VoidCallback onApplySuggestions;
+  final VoidCallback onSaveMappings;
   final VoidCallback onCreateAccount;
   final ValueChanged<ImportCategoryKind> onCreateCategory;
 
@@ -757,16 +1460,26 @@ class _MappingSection extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text('来源映射', style: context.appTextStyles.groupTitle),
+              child: Text('账户与分类映射', style: context.appTextStyles.groupTitle),
             ),
-            if (review.suggestions.isNotEmpty)
-              TextButton.icon(
-                onPressed: state.isBusy ? null : onApplySuggestions,
-                icon: const Icon(RemixIcons.magic_line),
-                label: Text('应用建议 ${review.suggestions.length}'),
-              ),
+            TextButton(
+              onPressed:
+                  state.isBusy || review.effectiveMappings.isEmpty
+                      ? null
+                      : onSaveMappings,
+              child: const Text('保存映射配置'),
+            ),
           ],
         ),
+        if (review.suggestions.isNotEmpty)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: state.isBusy ? null : onApplySuggestions,
+              icon: const Icon(RemixIcons.magic_line),
+              label: Text('应用建议 ${review.suggestions.length}'),
+            ),
+          ),
         const SizedBox(height: AppSpacing.space8),
         AppSurface(
           child:
@@ -1050,8 +1763,122 @@ class _MappingSelection {
   final bool saveAsDefault;
 }
 
-class _GroupReviewSection extends StatelessWidget {
-  const _GroupReviewSection({
+class _ImportPreviewSection extends StatelessWidget {
+  const _ImportPreviewSection({required this.review});
+
+  final ImportPlanReview review;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = buildImportPreviewGroups(review);
+    final previewGroups = _takePreviewRows(groups, 5);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '导入预览（前 5 条）',
+                style: context.appTextStyles.groupTitle,
+              ),
+            ),
+            TextButton(
+              onPressed:
+                  groups.isEmpty ? null : () => _showAll(context, groups),
+              child: const Text('查看全部'),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space8),
+        if (previewGroups.isEmpty)
+          const AppSurface(
+            child: Padding(
+              padding: EdgeInsets.all(AppSpacing.space20),
+              child: Text('资料包没有产生可预览的交易。'),
+            ),
+          )
+        else
+          for (var index = 0; index < previewGroups.length; index++) ...[
+            TransactionDayCard(
+              group: previewGroups[index],
+              enableRowTap: false,
+              showDailyTotals: false,
+            ),
+            if (index < previewGroups.length - 1)
+              const SizedBox(height: AppSpacing.space10),
+          ],
+      ],
+    );
+  }
+
+  Future<void> _showAll(
+    BuildContext context,
+    List<TransactionDayGroup> groups,
+  ) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder:
+          (context) => DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.82,
+            minChildSize: 0.5,
+            maxChildSize: 0.95,
+            builder:
+                (context, controller) => ListView(
+                  controller: controller,
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.space20,
+                    0,
+                    AppSpacing.space20,
+                    AppSpacing.space24,
+                  ),
+                  children: [
+                    Text('全部导入预览', style: context.appTextStyles.sectionTitle),
+                    const SizedBox(height: AppSpacing.space16),
+                    for (var index = 0; index < groups.length; index++) ...[
+                      TransactionDayCard(
+                        group: groups[index],
+                        enableRowTap: false,
+                        showDailyTotals: false,
+                      ),
+                      if (index < groups.length - 1)
+                        const SizedBox(height: AppSpacing.space10),
+                    ],
+                  ],
+                ),
+          ),
+    );
+  }
+}
+
+List<TransactionDayGroup> _takePreviewRows(
+  List<TransactionDayGroup> groups,
+  int limit,
+) {
+  var remaining = limit;
+  final result = <TransactionDayGroup>[];
+  for (final group in groups) {
+    if (remaining == 0) break;
+    final rows = group.rows.take(remaining).toList(growable: false);
+    if (rows.isEmpty) continue;
+    result.add(
+      TransactionDayGroup(
+        date: group.date,
+        rows: rows,
+        incomeMinor: group.incomeMinor,
+        expenseMinor: group.expenseMinor,
+      ),
+    );
+    remaining -= rows.length;
+  }
+  return result;
+}
+
+class _ImportReviewOptions extends StatelessWidget {
+  const _ImportReviewOptions({
     required this.state,
     required this.onSelectAll,
     required this.onGroupSelected,
@@ -1072,23 +1899,84 @@ class _GroupReviewSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final issueCount =
+        state.review!.groups
+            .where(
+              (group) =>
+                  group.isBlocked ||
+                  group.isSuspectedDuplicate ||
+                  group.hasWarnings,
+            )
+            .length;
+    return AppSurface(
+      child: ExpansionTile(
+        title: Text('导入检查与选择', style: context.appTextStyles.listTitle),
+        subtitle: Text(
+          '已选择 ${state.selectedGroupCount}/${state.groupCount} 组'
+          '${issueCount == 0 ? '' : ' · $issueCount 组需要处理或确认'}',
+          style: context.appTextStyles.pageSubtitle,
+        ),
+        childrenPadding: const EdgeInsets.fromLTRB(
+          AppSpacing.space16,
+          0,
+          AppSpacing.space16,
+          AppSpacing.space16,
+        ),
+        children: [
+          _GroupReviewSection(
+            state: state,
+            showHeader: false,
+            onSelectAll: onSelectAll,
+            onGroupSelected: onGroupSelected,
+            onSuspectedConfirmed: onSuspectedConfirmed,
+            onWarningConfirmed: onWarningConfirmed,
+            onSelectGroupMapping: onSelectGroupMapping,
+            onEditDraft: onEditDraft,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GroupReviewSection extends StatelessWidget {
+  const _GroupReviewSection({
+    required this.state,
+    required this.onSelectAll,
+    required this.onGroupSelected,
+    required this.onSuspectedConfirmed,
+    required this.onWarningConfirmed,
+    required this.onSelectGroupMapping,
+    required this.onEditDraft,
+    this.showHeader = true,
+  });
+
+  final ImportPageState state;
+  final ValueChanged<bool> onSelectAll;
+  final void Function(int index, bool selected) onGroupSelected;
+  final void Function(int index, bool confirmed) onSuspectedConfirmed;
+  final void Function(int index, bool confirmed) onWarningConfirmed;
+  final void Function(int groupIndex, ImportSourceEntity entity)
+  onSelectGroupMapping;
+  final void Function(int groupIndex, int? childIndex) onEditDraft;
+  final bool showHeader;
+
+  @override
+  Widget build(BuildContext context) {
     final groups = state.review!.groups;
     final allSelected = state.allDirectlyImportableSelected;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text('交易组审阅', style: context.appTextStyles.groupTitle),
-            ),
-            TextButton(
-              onPressed: state.isBusy ? null : () => onSelectAll(!allSelected),
-              child: Text(allSelected ? '取消全选' : '选择全部可直接导入'),
-            ),
-          ],
+        if (showHeader) Text('交易组审阅', style: context.appTextStyles.groupTitle),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: state.isBusy ? null : () => onSelectAll(!allSelected),
+            child: Text(allSelected ? '取消全选' : '选择全部可直接导入'),
+          ),
         ),
-        const SizedBox(height: AppSpacing.space8),
+        if (showHeader) const SizedBox(height: AppSpacing.space8),
         if (groups.isEmpty)
           const AppSurface(
             child: Padding(
@@ -1654,7 +2542,10 @@ class _ImportHistoryTab extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('一木导入批次', style: context.appTextStyles.groupTitle),
+                child: Text(
+                  '全部记录 ${state.batches.length}',
+                  style: context.appTextStyles.groupTitle,
+                ),
               ),
               IconButton(
                 onPressed: state.historyLoading ? null : onRefresh,
@@ -1674,27 +2565,7 @@ class _ImportHistoryTab extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.space8),
           if (state.batches.isEmpty && !state.historyLoading)
-            AppSurface(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.space24),
-                child: Column(
-                  children: [
-                    Icon(
-                      RemixIcons.history_line,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(height: AppSpacing.space10),
-                    Text('暂无导入批次', style: context.appTextStyles.groupTitle),
-                    const SizedBox(height: AppSpacing.space4),
-                    Text(
-                      '至少成功提交一个交易组后才会产生批次记录。',
-                      textAlign: TextAlign.center,
-                      style: context.appTextStyles.pageSubtitle,
-                    ),
-                  ],
-                ),
-              ),
-            )
+            const _EmptyImportHistoryCard()
           else
             for (final batch in state.batches) ...[
               _ImportBatchCard(
@@ -1713,17 +2584,30 @@ class _ImportHistoryTab extends StatelessWidget {
 class _ImportBatchCard extends StatelessWidget {
   const _ImportBatchCard({
     required this.batch,
-    required this.reverting,
-    required this.onRevert,
+    this.reverting = false,
+    this.onRevert,
   });
 
   final ImportBatch batch;
   final bool reverting;
-  final VoidCallback onRevert;
+  final VoidCallback? onRevert;
 
   @override
   Widget build(BuildContext context) {
     final reverted = batch.status == ImportBatchStatus.reverted;
+    final partial = !reverted && batch.skippedGroupCount > 0;
+    final statusLabel =
+        reverted
+            ? '已撤销'
+            : partial
+            ? '部分导入'
+            : '导入成功';
+    final statusTone =
+        reverted
+            ? _FeedbackTone.info
+            : partial
+            ? _FeedbackTone.warning
+            : _FeedbackTone.success;
     return AppSurface(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space16),
@@ -1731,34 +2615,60 @@ class _ImportBatchCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const _ImportSourceIcon(source: ImportEntrySource.yimu),
+                const SizedBox(width: AppSpacing.space12),
                 Expanded(
-                  child: Text(
-                    formatImportDateTime(batch.importedAt),
-                    style: context.appTextStyles.listTitle,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        formatImportTaskName(batch),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.appTextStyles.listTitle,
+                      ),
+                      const SizedBox(height: AppSpacing.space4),
+                      Text(
+                        '导入 ${batch.createdTransactionCount} 条交易 · '
+                        '${batch.importedGroupCount} 个交易组',
+                        style: context.appTextStyles.pageSubtitle,
+                      ),
+                    ],
                   ),
                 ),
-                _StatusBadge(
-                  label: reverted ? '已撤销' : '已导入',
-                  tone: reverted ? _FeedbackTone.info : _FeedbackTone.success,
-                ),
+                const SizedBox(width: AppSpacing.space8),
+                _StatusBadge(label: statusLabel, tone: statusTone),
               ],
             ),
-            const SizedBox(height: AppSpacing.space10),
-            Text(
-              '${batch.importedGroupCount} 个交易组 · '
-              '${batch.createdTransactionCount} 条交易 · '
-              '跳过 ${batch.skippedGroupCount} 组',
-              style: context.appTextStyles.detailValue,
-            ),
-            if (batch.revertedAt case final revertedAt?) ...[
-              const SizedBox(height: AppSpacing.space4),
-              Text(
-                '撤销于 ${formatImportDateTime(revertedAt)}',
-                style: context.appTextStyles.pageSubtitle,
+            if (batch.skippedGroupCount > 0) ...[
+              const SizedBox(height: AppSpacing.space8),
+              Padding(
+                padding: const EdgeInsets.only(
+                  left: AppSpacing.space48 + AppSpacing.space4,
+                ),
+                child: Text(
+                  '跳过 ${batch.skippedGroupCount} 个交易组',
+                  style: context.appTextStyles.pageSubtitle.copyWith(
+                    color: _themeExtension(context).warning,
+                  ),
+                ),
               ),
             ],
-            if (!reverted) ...[
+            if (batch.revertedAt case final revertedAt?) ...[
+              const SizedBox(height: AppSpacing.space4),
+              Padding(
+                padding: const EdgeInsets.only(
+                  left: AppSpacing.space48 + AppSpacing.space4,
+                ),
+                child: Text(
+                  '撤销于 ${formatImportDateTime(revertedAt)}',
+                  style: context.appTextStyles.pageSubtitle,
+                ),
+              ),
+            ],
+            if (!reverted && onRevert != null) ...[
               const SizedBox(height: AppSpacing.space12),
               Align(
                 alignment: Alignment.centerRight,
