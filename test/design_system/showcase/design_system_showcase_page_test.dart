@@ -7,7 +7,9 @@ import 'package:smartflow/design_system/widget/app_form_section.dart';
 import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/design_system/widget/app_segmented_control.dart';
+import 'package:smartflow/design_system/widget/app_status_banner.dart';
 import 'package:smartflow/design_system/widget/app_submit_button.dart';
+import 'package:smartflow/design_system/widget/app_surface.dart';
 import 'package:smartflow/design_system/widget/app_swipe_action.dart';
 import 'package:smartflow/widget/business/account/account_type_tag.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
@@ -61,17 +63,35 @@ void main() {
     await tester.tap(financeCategory);
     await tester.pumpAndSettle();
 
-    expect(find.text('金额语义'), findsOneWidget);
+    expect(find.text('金额文本'), findsOneWidget);
     expect(find.text('色彩语义'), findsNothing);
+  });
+
+  testWidgets('keeps spacing and radius tokens separate', (tester) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'AppSpacing');
+    await tester.pump();
+
+    expect(find.text('间距'), findsOneWidget);
+    expect(find.text('圆角'), findsNothing);
+
+    await tester.enterText(find.byType(SearchBar), 'AppRadius');
+    await tester.pump();
+
+    expect(find.text('圆角'), findsOneWidget);
+    expect(find.text('间距'), findsNothing);
   });
 
   testWidgets('searches examples across component categories', (tester) async {
     await pumpShowcase(tester);
 
-    await tester.enterText(find.byType(SearchBar), '日期');
+    await tester.enterText(find.byType(SearchBar), 'AppDatePicker');
     await tester.pumpAndSettle();
 
-    expect(find.text('日期与时间选择'), findsOneWidget);
+    expect(find.text('日期选择器'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, '选择日期'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, '选择时间'), findsNothing);
     expect(find.text('色彩语义'), findsNothing);
   });
 
@@ -90,85 +110,194 @@ void main() {
     expect(find.byType(AppDatePickerDialog), findsOneWidget);
   });
 
-  testWidgets('shows the financial semantic components together', (
+  testWidgets('keeps financial components in separate examples', (
     tester,
   ) async {
     await pumpShowcase(tester);
 
-    final financeCategory = find.text('财务表达');
-    await tester.ensureVisible(financeCategory);
-    await tester.tap(financeCategory);
-    await tester.pumpAndSettle();
-
-    expect(find.byType(MoneyText), findsWidgets);
-    expect(find.byType(AccountTypeTag), findsWidgets);
-    expect(find.byType(TransactionPurposeBadge), findsWidgets);
-  });
-
-  testWidgets('reuses transaction row and empty-state components', (
-    tester,
-  ) async {
-    await pumpShowcase(tester);
-
-    final transactionCategory = find.text('交易与列表');
-    await tester.ensureVisible(transactionCategory);
-    await tester.tap(transactionCategory);
-    await tester.pumpAndSettle();
-
-    expect(find.byType(TransactionRow), findsWidgets);
-    expect(find.byType(EmptyTransactionCard), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('reuses the row-form and submit components', (tester) async {
-    await pumpShowcase(tester);
-
-    final formCategory = find.text('表单组件');
-    await tester.ensureVisible(formCategory);
-    await tester.tap(formCategory);
+    await tester.enterText(find.byType(SearchBar), 'MoneyText');
     await tester.pump();
 
-    expect(find.byType(AppPlainTextFormRow), findsWidgets);
-    expect(find.byType(AppSubmitButton), findsWidgets);
-    expect(tester.takeException(), isNull);
+    expect(find.text('金额文本'), findsOneWidget);
+    expect(find.text('收入状态'), findsOneWidget);
+    expect(find.text('支出状态'), findsOneWidget);
+    expect(find.text('中性状态'), findsOneWidget);
+    expect(find.byType(MoneyText), findsWidgets);
+    expect(find.byType(AccountTypeTag), findsNothing);
+    expect(find.byType(TransactionPurposeBadge), findsNothing);
+
+    await tester.enterText(find.byType(SearchBar), 'AccountTypeTag');
+    await tester.pump();
+
+    expect(find.text('账户类型标签'), findsOneWidget);
+    expect(find.byType(AccountTypeTag), findsWidgets);
+    expect(find.byType(MoneyText), findsNothing);
+
+    await tester.enterText(find.byType(SearchBar), 'TransactionPurposeBadge');
+    await tester.pump();
+
+    expect(find.text('交易用途标签'), findsOneWidget);
+    expect(find.byType(TransactionPurposeBadge), findsWidgets);
+    expect(find.byType(MoneyText), findsNothing);
+    expect(find.byType(AccountTypeTag), findsNothing);
   });
 
-  testWidgets('shows the app segmented control with base buttons', (
+  testWidgets('keeps transaction rows and empty states separate', (
     tester,
   ) async {
     await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'TransactionRow');
+    await tester.pump();
+
+    expect(find.text('交易行'), findsOneWidget);
+    expect(find.byType(TransactionRow), findsWidgets);
+    expect(find.byType(EmptyTransactionCard), findsNothing);
+
+    await tester.enterText(find.byType(SearchBar), 'EmptyTransactionCard');
+    await tester.pump();
+
+    expect(find.text('空状态'), findsOneWidget);
+    expect(find.byType(EmptyTransactionCard), findsOneWidget);
+    expect(find.byType(TransactionRow), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('keeps row-form and submit components separate', (tester) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'AppPlainTextFormRow');
+    await tester.pump();
+
+    expect(find.text('文本输入行'), findsOneWidget);
+    expect(find.byType(AppPlainTextFormRow), findsWidgets);
+    expect(find.byType(AppSubmitButton), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('uses tabs and separates buttons from segmented controls', (
+    tester,
+  ) async {
+    await pumpShowcase(tester);
+
+    expect(find.byType(TabBar), findsOneWidget);
+    expect(find.byType(ChoiceChip), findsNothing);
 
     await tester.tap(find.text('基础组件'));
     await tester.pump();
 
+    expect(find.text('按钮'), findsOneWidget);
+    expect(find.text('分段控件'), findsOneWidget);
+    expect(find.text('按钮与分段控件'), findsNothing);
     expect(find.byType(AppSegmentedControl<int>), findsOneWidget);
     expect(find.widgetWithText(FilledButton, '主要按钮'), findsOneWidget);
   });
 
-  testWidgets('shows the app page header and form-section layout', (
+  testWidgets('uses generic content in the card component example', (
     tester,
   ) async {
     await pumpShowcase(tester);
 
-    final layoutCategory = find.text('布局组件');
-    await tester.ensureVisible(layoutCategory);
-    await tester.tap(layoutCategory);
+    await tester.enterText(find.byType(SearchBar), 'AppSurface');
+    await tester.pumpAndSettle();
+
+    expect(find.text('卡片'), findsOneWidget);
+    expect(find.text('卡片标题'), findsOneWidget);
+    expect(find.text('这是卡片的描述文案'), findsOneWidget);
+    expect(find.text('微信钱包'), findsNothing);
+    expect(find.byType(AppSurface), findsOneWidget);
+  });
+
+  testWidgets('shows submit button states with generic labels', (tester) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'AppSubmitButton');
     await tester.pump();
 
+    expect(find.text('提交按钮'), findsOneWidget);
+    expect(find.byType(AppSubmitButton), findsNWidgets(3));
+    expect(find.text('默认状态'), findsOneWidget);
+    expect(find.text('加载状态'), findsOneWidget);
+    expect(find.text('禁用状态'), findsOneWidget);
+    expect(find.text('主要按钮'), findsOneWidget);
+    expect(find.text('保存'), findsNothing);
+    expect(find.text('保存中'), findsNothing);
+
+    await tester.tap(find.widgetWithText(FilledButton, '主要按钮'));
+    await tester.pump();
+    expect(find.text('已触发主要按钮'), findsOneWidget);
+  });
+
+  testWidgets('keeps labels and progress indicators separate', (tester) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'Chip');
+    await tester.pump();
+
+    expect(find.text('标签'), findsOneWidget);
+    expect(find.text('默认标签'), findsOneWidget);
+    expect(find.text('成功标签'), findsOneWidget);
+    expect(find.text('警告标签'), findsOneWidget);
+    expect(find.byType(Chip), findsWidgets);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+
+    await tester.enterText(find.byType(SearchBar), 'LinearProgressIndicator');
+    await tester.pump();
+
+    expect(find.text('进度条'), findsOneWidget);
+    expect(find.text('默认 60%'), findsOneWidget);
+    expect(find.text('成功 30%'), findsOneWidget);
+    expect(find.text('警告 80%'), findsOneWidget);
+    expect(find.text('危险 50%'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsWidgets);
+    expect(find.byType(Chip), findsNothing);
+  });
+
+  testWidgets('keeps page headers and form sections separate', (tester) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'AppPageHeader');
+    await tester.pump();
+
+    expect(find.text('页面标题'), findsOneWidget);
     expect(find.byType(AppPageHeader), findsOneWidget);
+    expect(find.byType(AppFormSection), findsNothing);
+
+    await tester.enterText(find.byType(SearchBar), 'AppFormSection');
+    await tester.pump();
+
+    expect(find.text('表单分组'), findsOneWidget);
     expect(find.byType(AppFormSection), findsOneWidget);
+    expect(find.byType(AppPageHeader), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('shows swipe actions and interactive feedback', (tester) async {
+  testWidgets('keeps swipe actions and message feedback separate', (
+    tester,
+  ) async {
     await pumpShowcase(tester);
 
-    final feedbackCategory = find.text('操作与反馈');
-    await tester.ensureVisible(feedbackCategory);
-    await tester.tap(feedbackCategory);
+    await tester.enterText(find.byType(SearchBar), 'AppSwipeAction');
     await tester.pump();
 
+    expect(find.text('滑动操作'), findsOneWidget);
     expect(find.byType(AppSwipeAction), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, '显示成功提示'), findsNothing);
+
+    await tester.enterText(find.byType(SearchBar), 'AppStatusBanner');
+    await tester.pump();
+
+    expect(find.text('状态提示'), findsOneWidget);
+    expect(find.byType(AppStatusBanner), findsNWidgets(4));
+    expect(find.text('操作成功的提示文案'), findsOneWidget);
+    expect(find.text('操作失败的提示文案'), findsOneWidget);
+    expect(find.byType(AppSwipeAction), findsNothing);
+
+    await tester.enterText(find.byType(SearchBar), 'SnackBar');
+    await tester.pump();
+
+    expect(find.text('消息提示'), findsOneWidget);
+    expect(find.byType(AppSwipeAction), findsNothing);
     await tester.tap(find.widgetWithText(FilledButton, '显示成功提示'));
     await tester.pump();
     expect(find.text('操作成功'), findsOneWidget);
