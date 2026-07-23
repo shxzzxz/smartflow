@@ -5,6 +5,7 @@ import 'package:remixicon/remixicon.dart';
 import '../../../core/update/app_update_info.dart';
 import '../../../core/update/app_update_platform.dart';
 import '../../../design_system/theme/app_text_styles.dart';
+import '../../../design_system/token/list.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
@@ -66,72 +67,96 @@ class _ProfilePageState extends State<ProfilePage> {
           children: [
             Text('我的', style: context.appTextStyles.pageTitle),
             const SizedBox(height: AppSpacing.space20),
-            AppSurface(
-              child: Column(
-                children: [
-                  _ProfileActionRow(
-                    icon: RemixIcons.apps_2_line,
-                    label: '分类管理',
-                    description: '维护收入与支出分类',
-                    onTap: () => context.push('/category'),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.space16,
-                    ),
-                    child: Divider(height: 1),
-                  ),
-                  _ProfileActionRow(
-                    icon: RemixIcons.wallet_3_line,
-                    label: '账户管理',
-                    description: '管理资产与负债账户',
-                    onTap: () => context.go('/account'),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.space16,
-                    ),
-                    child: Divider(height: 1),
-                  ),
-                  _ProfileActionRow(
-                    icon: RemixIcons.book_open_line,
-                    label: '使用说明',
-                    description: '分期方式 / 计息方式 / 关键指标释义',
-                    onTap: () => context.push('/profile/installment-guide'),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.space16,
-                    ),
-                    child: Divider(height: 1),
-                  ),
-                  _ProfileActionRow(
-                    icon: RemixIcons.file_excel_2_line,
-                    label: '一木记账导入',
-                    description: '导入 .xls 文件并管理导入批次',
-                    onTap: () => context.push('/profile/import'),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.space16,
-                    ),
-                    child: Divider(height: 1),
-                  ),
-                  _ProfileActionRow(
-                    icon: RemixIcons.download_cloud_2_line,
-                    label: '软件版本',
-                    description:
-                        versionInfo == null
-                            ? '正在读取当前版本'
-                            : versionInfo.versionName,
-                    onTap: () => context.push('/profile/software-version'),
-                  ),
-                ],
-              ),
+            _ProfileActionSection(
+              title: '账务管理',
+              actions: [
+                _ProfileActionRow(
+                  icon: RemixIcons.apps_2_line,
+                  label: '分类管理',
+                  description: '维护收入与支出分类',
+                  onTap: () => context.push('/category'),
+                ),
+                _ProfileActionRow(
+                  icon: RemixIcons.wallet_3_line,
+                  label: '账户管理',
+                  description: '管理资产与负债账户',
+                  onTap: () => context.go('/account'),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.space16),
+            _ProfileActionSection(
+              title: '数据管理',
+              actions: [
+                _ProfileActionRow(
+                  icon: RemixIcons.file_excel_2_line,
+                  label: '一木记账导入',
+                  description: '导入 .xls 文件并管理导入批次',
+                  onTap: () => context.push('/profile/import'),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.space16),
+            _ProfileActionSection(
+              title: '帮助与关于',
+              actions: [
+                _ProfileActionRow(
+                  icon: RemixIcons.book_open_line,
+                  label: '使用说明',
+                  description: '分期方式 / 计息方式 / 关键指标释义',
+                  onTap: () => context.push('/profile/installment-guide'),
+                ),
+                _ProfileActionRow(
+                  icon: RemixIcons.download_cloud_2_line,
+                  label: '软件版本',
+                  description:
+                      versionInfo == null
+                          ? '正在读取当前版本'
+                          : versionInfo.versionName,
+                  onTap: () => context.push('/profile/software-version'),
+                ),
+              ],
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ProfileActionSection extends StatelessWidget {
+  const _ProfileActionSection({required this.title, required this.actions});
+
+  final String title;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
+          child: Text(title, style: context.appTextStyles.groupTitle),
+        ),
+        const SizedBox(height: AppSpacing.space8),
+        AppSurface(
+          child: Column(
+            children: [
+              for (var index = 0; index < actions.length; index++) ...[
+                actions[index],
+                if (index < actions.length - 1)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space16,
+                    ),
+                    child: Divider(height: AppListTokens.dividerThickness),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
