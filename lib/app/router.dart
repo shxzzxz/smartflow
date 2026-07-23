@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 
 import 'app_shell.dart';
 import '../application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
+import '../design_system/showcase/design_system_showcase_page.dart';
 import '../feature/account/page/account_detail_page.dart';
 import '../feature/account/page/account_bills_page.dart';
 import '../feature/account/page/account_form_page.dart';
@@ -102,6 +104,11 @@ final appRouter = GoRouter(
         ),
       ],
     ),
+    if (kDebugMode)
+      GoRoute(
+        path: '/dev/design-system',
+        builder: (context, state) => const DesignSystemShowcasePage(),
+      ),
     GoRoute(
       path: '/transaction/new',
       builder: (context, state) {

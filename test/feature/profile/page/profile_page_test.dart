@@ -28,7 +28,9 @@ void main() {
         .setMockMethodCallHandler(updateChannel, null);
   });
 
-  testWidgets('shows profile actions in three purpose groups', (tester) async {
+  testWidgets('shows profile actions and debug tools in purpose groups', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(theme: AppTheme.light(), home: const ProfilePage()),
     );
@@ -37,9 +39,10 @@ void main() {
     expect(find.text('账务管理'), findsOneWidget);
     expect(find.text('数据管理'), findsOneWidget);
     expect(find.text('帮助与关于'), findsOneWidget);
+    expect(find.text('开发工具'), findsOneWidget);
 
     final sections = find.byType(AppSurface);
-    expect(sections, findsNWidgets(3));
+    expect(sections, findsNWidgets(4));
     expect(
       find.descendant(of: sections.at(0), matching: find.text('分类管理')),
       findsOneWidget,
@@ -58,6 +61,10 @@ void main() {
     );
     expect(
       find.descendant(of: sections.at(2), matching: find.text('软件版本')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sections.at(3), matching: find.text('组件示例')),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
