@@ -25,6 +25,12 @@ void main() {
     ).parse(_bundle());
 
     expect(result.fatalIssues, isEmpty);
+    expect(result.fileResults.map((file) => file.fileRole), [
+      YimuFileRole.bill,
+      YimuFileRole.transfer,
+      YimuFileRole.debt,
+    ]);
+    expect(result.fileResults.every((file) => !file.hasFatalIssues), isTrue);
     final groups = _groups(result);
     expect(groups, hasLength(1));
     final group = groups.single;
@@ -233,6 +239,14 @@ void main() {
     expect(
       result.fatalIssues.map((issue) => issue.code),
       contains('missing_file_role'),
+    );
+    final failedFile = result.fileResults.singleWhere(
+      (file) => file.fileName == '转账.xls',
+    );
+    expect(failedFile.hasFatalIssues, isTrue);
+    expect(
+      failedFile.fatalIssues.map((issue) => issue.code),
+      contains('file_decode_failed'),
     );
     expect(result.groups, isEmpty);
   });

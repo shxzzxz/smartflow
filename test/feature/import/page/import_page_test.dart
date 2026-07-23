@@ -54,16 +54,28 @@ void main() {
   testWidgets('shows status for every file in a multi-file package', (
     tester,
   ) async {
+    const transferIssue = ImportIssue(
+      code: 'file_decode_failed',
+      message: '无法读取一木文件 转账.xls，请重新导出。',
+      severity: ImportIssueSeverity.fatal,
+      fileRole: YimuFileRole.transfer,
+    );
     final plan = ImportParseResult(
       source: ImportSource.yimu,
-      fatalIssues: const [
-        ImportIssue(
-          code: 'file_decode_failed',
-          message: '无法读取一木文件 转账.xls，请重新导出。',
-          severity: ImportIssueSeverity.fatal,
+      fileResults: [
+        ImportFileParseResult(
+          fileIndex: 0,
+          fileName: '账单.xls',
+          fileRole: YimuFileRole.bill,
+        ),
+        ImportFileParseResult(
+          fileIndex: 1,
+          fileName: '转账.xls',
           fileRole: YimuFileRole.transfer,
+          fatalIssues: const [transferIssue],
         ),
       ],
+      fatalIssues: const [transferIssue],
     );
     final bundle = ImportBundle(
       files: [
@@ -307,6 +319,13 @@ ImportBundle _bundle() {
 ImportParseResult _plan() {
   return ImportParseResult(
     source: ImportSource.yimu,
+    fileResults: [
+      ImportFileParseResult(
+        fileIndex: 0,
+        fileName: '账单.xls',
+        fileRole: YimuFileRole.bill,
+      ),
+    ],
     sourceEntities: const [
       ImportSourceEntity(
         source: ImportSource.yimu,

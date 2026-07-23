@@ -71,6 +71,10 @@ void main() {
           container.read(importViewModelProvider).selectedBundle?.files,
           hasLength(1),
         );
+        expect(
+          container.read(importViewModelProvider).fileProgress.single.status,
+          ImportFileProcessingStatus.waiting,
+        );
         expect(planService.parseCalls, 0);
 
         final parseOutcome =
@@ -83,9 +87,40 @@ void main() {
         expect(state.phase, ImportPagePhase.review);
         expect(state.review?.plan, same(plan));
         expect(state.selectedGroupIndexes, {0});
+        expect(
+          state.fileProgress.single.status,
+          ImportFileProcessingStatus.success,
+        );
         expect(planService.parseCalls, 1);
       },
     );
+
+    test('marks every selected file failed when parsing throws', () async {
+      final container = _container(
+        planService: _FakeImportPlanAppService(
+          _plan(groupCount: 1),
+          throwOnParse: true,
+        ),
+        workflow: _FakeImportWorkflowAppService(
+          reviewBuilder:
+              (_, _, _) => throw StateError('review should not be called'),
+        ),
+        picker: _FakeImportFilePicker(_bundle()),
+      );
+      final viewModel = container.read(importViewModelProvider.notifier);
+      await viewModel.pickFiles();
+
+      final outcome = await viewModel.parseSelectedFiles();
+
+      expect(outcome, isA<ImportActionFailure<void>>());
+      final state = container.read(importViewModelProvider);
+      expect(state.phase, ImportPagePhase.idle);
+      expect(
+        state.fileProgress.single.status,
+        ImportFileProcessingStatus.failed,
+      );
+      expect(state.fileProgress.single.detail, isNotEmpty);
+    });
 
     test(
       'applies suggestions temporarily and commits confirmed duplicate',
@@ -350,6 +385,13 @@ ImportBundle _bundle() {
 ImportParseResult _plan({int groupCount = 3}) {
   return ImportParseResult(
     source: ImportSource.yimu,
+    fileResults: [
+      ImportFileParseResult(
+        fileIndex: 0,
+        fileName: '账单.xls',
+        fileRole: YimuFileRole.bill,
+      ),
+    ],
     sourceEntities: const [
       ImportSourceEntity(
         source: ImportSource.yimu,
@@ -421,9 +463,10 @@ class _FakeImportFilePicker implements ImportFilePicker {
 }
 
 class _FakeImportPlanAppService implements ImportPlanAppService {
-  _FakeImportPlanAppService(this.plan);
+  _FakeImportPlanAppService(this.plan, {this.throwOnParse = false});
 
   final ImportParseResult plan;
+  final bool throwOnParse;
   int parseCalls = 0;
 
   @override
@@ -432,6 +475,7 @@ class _FakeImportPlanAppService implements ImportPlanAppService {
     required ImportBundle bundle,
   }) {
     parseCalls += 1;
+    if (throwOnParse) throw Exception('parse failed');
     return plan;
   }
 

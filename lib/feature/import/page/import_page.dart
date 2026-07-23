@@ -85,7 +85,6 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
                         onReset: notifier.reset,
                         onClearError: notifier.clearError,
                         onApplySuggestions: _applySuggestions,
-                        onSaveMappings: _saveMappings,
                         onSelectAll: notifier.selectAllImportable,
                         onGroupSelected: notifier.setGroupSelection,
                         onSuspectedConfirmed:
@@ -131,22 +130,6 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
             .applySuggestedMappings();
     if (!mounted) return;
     _showFailure(outcome);
-  }
-
-  Future<void> _saveMappings() async {
-    final outcome =
-        await ref
-            .read(importViewModelProvider.notifier)
-            .saveCurrentMappingsAsDefaults();
-    if (!mounted) return;
-    switch (outcome) {
-      case ImportActionSuccess():
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('映射配置已保存。')));
-      case ImportActionFailure(:final error):
-        _showError(error);
-    }
   }
 
   void _cancel() {
@@ -664,12 +647,24 @@ class _ImportSourceIcon extends StatelessWidget {
       );
     }
 
-    final extension = _themeExtension(context);
-    final color = switch (source) {
-      ImportEntrySource.yimu => extension.success,
-      ImportEntrySource.unionPay => extension.danger,
-      ImportEntrySource.generic => extension.equity,
-      ImportEntrySource.wechat || ImportEntrySource.alipay => extension.info,
+    final colors = Theme.of(context).colorScheme;
+    final palette = switch (source) {
+      ImportEntrySource.yimu => (
+        background: colors.primaryContainer,
+        foreground: colors.onPrimaryContainer,
+      ),
+      ImportEntrySource.unionPay => (
+        background: colors.secondaryContainer,
+        foreground: colors.onSecondaryContainer,
+      ),
+      ImportEntrySource.generic => (
+        background: colors.tertiaryContainer,
+        foreground: colors.onTertiaryContainer,
+      ),
+      ImportEntrySource.wechat || ImportEntrySource.alipay => (
+        background: colors.surfaceContainerHighest,
+        foreground: colors.onSurfaceVariant,
+      ),
     };
     final icon = switch (source) {
       ImportEntrySource.yimu => Icons.energy_savings_leaf_rounded,
@@ -681,8 +676,11 @@ class _ImportSourceIcon extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      child: Icon(icon, color: Theme.of(context).colorScheme.onPrimary),
+      decoration: BoxDecoration(
+        color: palette.background,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, color: palette.foreground),
     );
   }
 }
@@ -762,7 +760,6 @@ class _ImportReviewTab extends StatelessWidget {
     required this.onReset,
     required this.onClearError,
     required this.onApplySuggestions,
-    required this.onSaveMappings,
     required this.onSelectAll,
     required this.onGroupSelected,
     required this.onSuspectedConfirmed,
@@ -784,7 +781,6 @@ class _ImportReviewTab extends StatelessWidget {
   final VoidCallback onReset;
   final VoidCallback onClearError;
   final VoidCallback onApplySuggestions;
-  final VoidCallback onSaveMappings;
   final ValueChanged<bool> onSelectAll;
   final void Function(int index, bool selected) onGroupSelected;
   final void Function(int index, bool confirmed) onSuspectedConfirmed;
@@ -855,7 +851,6 @@ class _ImportReviewTab extends StatelessWidget {
                 state: state,
                 onSelectMapping: onSelectMapping,
                 onApplySuggestions: onApplySuggestions,
-                onSaveMappings: onSaveMappings,
                 onCreateAccount: onCreateAccount,
                 onCreateCategory: onCreateCategory,
               ),
@@ -1139,7 +1134,7 @@ class _ImportFilesSection extends StatelessWidget {
               for (var index = 0; index < files.length; index++) ...[
                 _ImportFileRow(
                   file: files[index],
-                  status: _fileStatus(state, files[index]),
+                  progress: state.fileProgressAt(index),
                   canRemove: !controlsDisabled,
                   onRemove: () => onRemoveFile(index),
                 ),
@@ -1164,45 +1159,43 @@ class _ImportFilesSection extends StatelessWidget {
   }
 }
 
-enum _ImportFileStatusKind { waiting, parsing, success, warning, failed }
-
-class _ImportFileStatus {
-  const _ImportFileStatus(this.kind, this.label, [this.detail]);
-
-  final _ImportFileStatusKind kind;
-  final String label;
-  final String? detail;
-}
-
 class _ImportFileRow extends StatelessWidget {
   const _ImportFileRow({
     required this.file,
-    required this.status,
+    required this.progress,
     required this.canRemove,
     required this.onRemove,
   });
 
   final ImportFilePayload file;
-  final _ImportFileStatus status;
+  final ImportFileProgress progress;
   final bool canRemove;
   final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (status.kind) {
-      _ImportFileStatusKind.waiting =>
+    final color = switch (progress.status) {
+      ImportFileProcessingStatus.waiting =>
         Theme.of(context).colorScheme.onSurfaceVariant,
-      _ImportFileStatusKind.parsing => Theme.of(context).colorScheme.primary,
-      _ImportFileStatusKind.success => _themeExtension(context).success,
-      _ImportFileStatusKind.warning => _themeExtension(context).warning,
-      _ImportFileStatusKind.failed => Theme.of(context).colorScheme.error,
+      ImportFileProcessingStatus.parsing =>
+        Theme.of(context).colorScheme.primary,
+      ImportFileProcessingStatus.success => _themeExtension(context).success,
+      ImportFileProcessingStatus.warning => _themeExtension(context).warning,
+      ImportFileProcessingStatus.failed => Theme.of(context).colorScheme.error,
     };
-    final icon = switch (status.kind) {
-      _ImportFileStatusKind.waiting => RemixIcons.time_line,
-      _ImportFileStatusKind.parsing => RemixIcons.loader_4_line,
-      _ImportFileStatusKind.success => RemixIcons.checkbox_circle_line,
-      _ImportFileStatusKind.warning => RemixIcons.error_warning_line,
-      _ImportFileStatusKind.failed => RemixIcons.close_circle_line,
+    final icon = switch (progress.status) {
+      ImportFileProcessingStatus.waiting => RemixIcons.time_line,
+      ImportFileProcessingStatus.parsing => RemixIcons.loader_4_line,
+      ImportFileProcessingStatus.success => RemixIcons.checkbox_circle_line,
+      ImportFileProcessingStatus.warning => RemixIcons.error_warning_line,
+      ImportFileProcessingStatus.failed => RemixIcons.close_circle_line,
+    };
+    final label = switch (progress.status) {
+      ImportFileProcessingStatus.waiting => '待解析',
+      ImportFileProcessingStatus.parsing => '解析中',
+      ImportFileProcessingStatus.success => '解析成功',
+      ImportFileProcessingStatus.warning => '存在异常',
+      ImportFileProcessingStatus.failed => '解析失败',
     };
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
@@ -1220,10 +1213,10 @@ class _ImportFileRow extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.space2),
                 Text(
-                  _formatFileSize(file.bytes.length),
+                  formatImportFileSize(file.bytes.length),
                   style: context.appTextStyles.pageSubtitle,
                 ),
-                if (status.detail case final detail?) ...[
+                if (progress.detail case final detail?) ...[
                   const SizedBox(height: AppSpacing.space2),
                   Text(
                     detail,
@@ -1241,7 +1234,7 @@ class _ImportFileRow extends StatelessWidget {
           Icon(icon, color: color, size: AppSpacing.space20),
           const SizedBox(width: AppSpacing.space4),
           Text(
-            status.label,
+            label,
             style: context.appTextStyles.badgeLabel.copyWith(color: color),
           ),
           IconButton(
@@ -1253,59 +1246,6 @@ class _ImportFileRow extends StatelessWidget {
       ),
     );
   }
-}
-
-_ImportFileStatus _fileStatus(ImportPageState state, ImportFilePayload file) {
-  if (state.phase == ImportPagePhase.parsing) {
-    return const _ImportFileStatus(_ImportFileStatusKind.parsing, '解析中');
-  }
-  final plan = state.plan;
-  if (plan == null) {
-    return const _ImportFileStatus(_ImportFileStatusKind.waiting, '待解析');
-  }
-
-  final role = _roleFromFileName(file.name);
-  for (final issue in plan.fatalIssues) {
-    final mentionsFile = issue.message.toLowerCase().contains(
-      file.name.toLowerCase(),
-    );
-    if (mentionsFile || (role != null && issue.fileRole == role)) {
-      return _ImportFileStatus(
-        _ImportFileStatusKind.failed,
-        '解析失败',
-        issue.message,
-      );
-    }
-  }
-
-  final issues = <ImportIssue>[
-    for (final group in state.review?.groups ?? const <ImportGroupReview>[])
-      for (final issue in group.issues)
-        if (role != null && issue.fileRole == role) issue,
-  ];
-  if (issues.isNotEmpty) {
-    return _ImportFileStatus(
-      _ImportFileStatusKind.warning,
-      '存在异常',
-      '${issues.length} 条记录需要处理',
-    );
-  }
-  return const _ImportFileStatus(_ImportFileStatusKind.success, '解析成功');
-}
-
-YimuFileRole? _roleFromFileName(String fileName) {
-  final normalized = fileName.toLowerCase();
-  if (normalized.contains('账单')) return YimuFileRole.bill;
-  if (normalized.contains('转账')) return YimuFileRole.transfer;
-  if (normalized.contains('债务')) return YimuFileRole.debt;
-  return null;
-}
-
-String _formatFileSize(int bytes) {
-  if (bytes < 1024) return '$bytes B';
-  final kilobytes = bytes / 1024;
-  if (kilobytes < 1024) return '${kilobytes.toStringAsFixed(1)} KB';
-  return '${(kilobytes / 1024).toStringAsFixed(1)} MB';
 }
 
 class _FatalIssuesCard extends StatelessWidget {
@@ -1438,7 +1378,6 @@ class _MappingSection extends StatelessWidget {
     required this.state,
     required this.onSelectMapping,
     required this.onApplySuggestions,
-    required this.onSaveMappings,
     required this.onCreateAccount,
     required this.onCreateCategory,
   });
@@ -1446,7 +1385,6 @@ class _MappingSection extends StatelessWidget {
   final ImportPageState state;
   final ValueChanged<ImportSourceEntity> onSelectMapping;
   final VoidCallback onApplySuggestions;
-  final VoidCallback onSaveMappings;
   final VoidCallback onCreateAccount;
   final ValueChanged<ImportCategoryKind> onCreateCategory;
 
@@ -1457,20 +1395,7 @@ class _MappingSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text('账户与分类映射', style: context.appTextStyles.groupTitle),
-            ),
-            TextButton(
-              onPressed:
-                  state.isBusy || review.effectiveMappings.isEmpty
-                      ? null
-                      : onSaveMappings,
-              child: const Text('保存映射配置'),
-            ),
-          ],
-        ),
+        Text('账户与分类映射', style: context.appTextStyles.groupTitle),
         if (review.suggestions.isNotEmpty)
           Align(
             alignment: Alignment.centerLeft,
@@ -1771,7 +1696,7 @@ class _ImportPreviewSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final groups = buildImportPreviewGroups(review);
-    final previewGroups = _takePreviewRows(groups, 5);
+    final previewGroups = takeImportPreviewRows(groups, 5);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1852,29 +1777,6 @@ class _ImportPreviewSection extends StatelessWidget {
           ),
     );
   }
-}
-
-List<TransactionDayGroup> _takePreviewRows(
-  List<TransactionDayGroup> groups,
-  int limit,
-) {
-  var remaining = limit;
-  final result = <TransactionDayGroup>[];
-  for (final group in groups) {
-    if (remaining == 0) break;
-    final rows = group.rows.take(remaining).toList(growable: false);
-    if (rows.isEmpty) continue;
-    result.add(
-      TransactionDayGroup(
-        date: group.date,
-        rows: rows,
-        incomeMinor: group.incomeMinor,
-        expenseMinor: group.expenseMinor,
-      ),
-    );
-    remaining -= rows.length;
-  }
-  return result;
 }
 
 class _ImportReviewOptions extends StatelessWidget {

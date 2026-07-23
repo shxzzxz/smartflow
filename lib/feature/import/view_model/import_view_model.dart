@@ -14,9 +14,24 @@ enum ImportPagePhase {
   committing,
 }
 
+enum ImportFileProcessingStatus { waiting, parsing, success, warning, failed }
+
+class ImportFileProgress {
+  const ImportFileProgress({
+    required this.fileIndex,
+    required this.status,
+    this.detail,
+  });
+
+  final int fileIndex;
+  final ImportFileProcessingStatus status;
+  final String? detail;
+}
+
 class ImportPageState {
   ImportPageState({
     required this.phase,
+    required List<ImportFileProgress> fileProgress,
     required Map<ImportMappingKey, String> temporaryMappings,
     required Map<int, Map<ImportMappingKey, String>> groupMappingOverrides,
     required Set<int> selectedGroupIndexes,
@@ -30,7 +45,8 @@ class ImportPageState {
     this.error,
     this.lastCommit,
     this.revertingBatchId,
-  }) : temporaryMappings = Map.unmodifiable(temporaryMappings),
+  }) : fileProgress = List.unmodifiable(fileProgress),
+       temporaryMappings = Map.unmodifiable(temporaryMappings),
        groupMappingOverrides =
            Map<int, Map<ImportMappingKey, String>>.unmodifiable({
              for (final entry in groupMappingOverrides.entries)
@@ -48,6 +64,7 @@ class ImportPageState {
   factory ImportPageState.initial() {
     return ImportPageState(
       phase: ImportPagePhase.idle,
+      fileProgress: const [],
       temporaryMappings: const {},
       groupMappingOverrides: const {},
       selectedGroupIndexes: const {},
@@ -60,6 +77,7 @@ class ImportPageState {
 
   final ImportPagePhase phase;
   final ImportBundle? selectedBundle;
+  final List<ImportFileProgress> fileProgress;
   final ImportParseResult? plan;
   final ImportPlanReview? review;
   final Map<ImportMappingKey, String> temporaryMappings;
@@ -82,6 +100,14 @@ class ImportPageState {
   };
 
   bool get hasFatalIssues => plan?.hasFatalIssues ?? false;
+
+  ImportFileProgress fileProgressAt(int index) {
+    if (index >= 0 && index < fileProgress.length) return fileProgress[index];
+    return ImportFileProgress(
+      fileIndex: index,
+      status: ImportFileProcessingStatus.waiting,
+    );
+  }
 
   int get groupCount => review?.groups.length ?? 0;
   int get selectedGroupCount => selectedGroupIndexes.length;
@@ -116,6 +142,7 @@ class ImportPageState {
   ImportPageState copyWith({
     ImportPagePhase? phase,
     Object? selectedBundle = _sentinel,
+    List<ImportFileProgress>? fileProgress,
     Object? plan = _sentinel,
     Object? review = _sentinel,
     Map<ImportMappingKey, String>? temporaryMappings,
@@ -135,6 +162,7 @@ class ImportPageState {
           selectedBundle == _sentinel
               ? this.selectedBundle
               : selectedBundle as ImportBundle?,
+      fileProgress: fileProgress ?? this.fileProgress,
       plan: plan == _sentinel ? this.plan : plan as ImportParseResult?,
       review: review == _sentinel ? this.review : review as ImportPlanReview?,
       temporaryMappings: temporaryMappings ?? this.temporaryMappings,
@@ -186,6 +214,10 @@ class ImportViewModel extends Notifier<ImportPageState> {
       state = state.copyWith(
         phase: ImportPagePhase.idle,
         selectedBundle: selectedBundle,
+        fileProgress: _fileProgressForBundle(
+          selectedBundle,
+          ImportFileProcessingStatus.waiting,
+        ),
         plan: null,
         review: null,
         temporaryMappings: const {},
@@ -216,9 +248,17 @@ class ImportViewModel extends Notifier<ImportPageState> {
     final bundle = state.selectedBundle;
     if (bundle == null || index < 0 || index >= bundle.files.length) return;
     final files = [...bundle.files]..removeAt(index);
+    final selectedBundle = files.isEmpty ? null : ImportBundle(files: files);
     state = state.copyWith(
       phase: ImportPagePhase.idle,
-      selectedBundle: files.isEmpty ? null : ImportBundle(files: files),
+      selectedBundle: selectedBundle,
+      fileProgress:
+          selectedBundle == null
+              ? const []
+              : _fileProgressForBundle(
+                selectedBundle,
+                ImportFileProcessingStatus.waiting,
+              ),
       plan: null,
       review: null,
       temporaryMappings: const {},
@@ -235,6 +275,10 @@ class ImportViewModel extends Notifier<ImportPageState> {
     state = state.copyWith(
       phase: ImportPagePhase.parsing,
       selectedBundle: bundle,
+      fileProgress: _fileProgressForBundle(
+        bundle,
+        ImportFileProcessingStatus.parsing,
+      ),
       plan: null,
       review: null,
       temporaryMappings: const {},
@@ -245,21 +289,32 @@ class ImportViewModel extends Notifier<ImportPageState> {
       error: null,
       lastCommit: null,
     );
+    late final ImportParseResult plan;
     try {
       await Future<void>.delayed(Duration.zero);
-      final plan = ref
+      plan = ref
           .read(importPlanAppServiceProvider)
           .parse(source: ImportSource.yimu, bundle: bundle);
-      if (plan.hasFatalIssues) {
-        state = state.copyWith(
-          phase: ImportPagePhase.review,
-          plan: plan,
-          review: null,
-        );
-        return const ImportActionOutcome.success(null);
-      }
+    } on AppException catch (exception) {
+      return _failParsing<void>(UiError.fromException(exception));
+    } on Exception {
+      return _failParsing<void>(const UiError.unknown());
+    }
 
-      state = state.copyWith(phase: ImportPagePhase.reviewing, plan: plan);
+    state = state.copyWith(
+      phase:
+          plan.hasFatalIssues
+              ? ImportPagePhase.review
+              : ImportPagePhase.reviewing,
+      plan: plan,
+      review: null,
+      fileProgress: _fileProgressForPlan(bundle, plan),
+    );
+    if (plan.hasFatalIssues) {
+      return const ImportActionOutcome.success(null);
+    }
+
+    try {
       final review = await ref
           .read(importWorkflowAppServiceProvider)
           .review(plan);
@@ -409,41 +464,6 @@ class ImportViewModel extends Notifier<ImportPageState> {
       mappings,
       groupMappingOverrides: state.groupMappingOverrides,
     );
-  }
-
-  Future<ImportActionOutcome<void>> saveCurrentMappingsAsDefaults() async {
-    final review = state.review;
-    if (review == null) return _invalid<void>('请先选择并解析一木资料包。');
-
-    state = state.copyWith(phase: ImportPagePhase.reviewing, error: null);
-    try {
-      final service = ref.read(importWorkflowAppServiceProvider);
-      for (final entity in review.plan.sourceEntities) {
-        if (entity.isReviewPlaceholder) continue;
-        final targetAccountId =
-            review.effectiveMappings[ImportMappingKey.fromEntity(entity)];
-        if (targetAccountId == null) continue;
-        await service.saveDefaultMapping(
-          entity: entity,
-          targetAccountId: targetAccountId,
-        );
-      }
-      final nextReview = await service.review(
-        review.plan,
-        temporaryMappings: state.temporaryMappings,
-        groupMappingOverrides: state.groupMappingOverrides,
-      );
-      _replaceReview(
-        nextReview,
-        temporaryMappings: state.temporaryMappings,
-        groupMappingOverrides: state.groupMappingOverrides,
-      );
-      return const ImportActionOutcome.success(null);
-    } on AppException catch (exception) {
-      return _fail<void>(UiError.fromException(exception));
-    } on Exception {
-      return _fail<void>(const UiError.unknown());
-    }
   }
 
   void setGroupSelected(int index, bool selected) {
@@ -811,6 +831,23 @@ class ImportViewModel extends Notifier<ImportPageState> {
     return ImportActionFailure<T>(error);
   }
 
+  ImportActionFailure<T> _failParsing<T>(UiError error) {
+    final bundle = state.selectedBundle;
+    state = state.copyWith(
+      phase: ImportPagePhase.idle,
+      fileProgress:
+          bundle == null
+              ? const []
+              : _fileProgressForBundle(
+                bundle,
+                ImportFileProcessingStatus.failed,
+                detail: error.message,
+              ),
+      error: error,
+    );
+    return ImportActionFailure<T>(error);
+  }
+
   ImportActionFailure<List<ImportBatch>> _failHistory(UiError error) {
     state = state.copyWith(historyLoading: false, error: error);
     return ImportActionFailure<List<ImportBatch>>(error);
@@ -820,6 +857,82 @@ class ImportViewModel extends Notifier<ImportPageState> {
     state = state.copyWith(revertingBatchId: null, error: error);
     return ImportActionFailure<T>(error);
   }
+}
+
+List<ImportFileProgress> _fileProgressForBundle(
+  ImportBundle bundle,
+  ImportFileProcessingStatus status, {
+  String? detail,
+}) {
+  return [
+    for (var index = 0; index < bundle.files.length; index++)
+      ImportFileProgress(fileIndex: index, status: status, detail: detail),
+  ];
+}
+
+List<ImportFileProgress> _fileProgressForPlan(
+  ImportBundle bundle,
+  ImportParseResult plan,
+) {
+  final resultByIndex = {
+    for (final result in plan.fileResults) result.fileIndex: result,
+  };
+  final issueCountByRole = <YimuFileRole, int>{};
+  for (final group in plan.groups) {
+    for (final issue in group.issues) {
+      final role = issue.fileRole;
+      if (role == null) continue;
+      issueCountByRole.update(role, (count) => count + 1, ifAbsent: () => 1);
+    }
+  }
+
+  return [
+    for (var index = 0; index < bundle.files.length; index++)
+      _fileProgressFromResult(
+        index,
+        resultByIndex[index],
+        issueCountByRole,
+        planHasFatalIssues: plan.hasFatalIssues,
+      ),
+  ];
+}
+
+ImportFileProgress _fileProgressFromResult(
+  int fileIndex,
+  ImportFileParseResult? result,
+  Map<YimuFileRole, int> issueCountByRole, {
+  required bool planHasFatalIssues,
+}) {
+  if (result == null) {
+    return ImportFileProgress(
+      fileIndex: fileIndex,
+      status:
+          planHasFatalIssues
+              ? ImportFileProcessingStatus.failed
+              : ImportFileProcessingStatus.success,
+      detail: planHasFatalIssues ? '无法确认该文件的解析结果。' : null,
+    );
+  }
+  if (result.hasFatalIssues) {
+    return ImportFileProgress(
+      fileIndex: fileIndex,
+      status: ImportFileProcessingStatus.failed,
+      detail: result.fatalIssues.first.message,
+    );
+  }
+  final issueCount =
+      result.fileRole == null ? 0 : issueCountByRole[result.fileRole] ?? 0;
+  if (issueCount > 0) {
+    return ImportFileProgress(
+      fileIndex: fileIndex,
+      status: ImportFileProcessingStatus.warning,
+      detail: '$issueCount 条记录需要处理',
+    );
+  }
+  return ImportFileProgress(
+    fileIndex: fileIndex,
+    status: ImportFileProcessingStatus.success,
+  );
 }
 
 ImportBundle _mergeBundles(ImportBundle? current, ImportBundle added) {

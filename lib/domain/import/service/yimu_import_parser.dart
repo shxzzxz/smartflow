@@ -20,11 +20,27 @@ class YimuImportParser {
   ImportParseResult parse(ImportBundle bundle) {
     final fatalIssues = <ImportIssue>[];
     final sheetsByRole = <YimuFileRole, YimuSheet>{};
+    final acceptedFileIndexByRole = <YimuFileRole, int>{};
+    final fileResults = [
+      for (var index = 0; index < bundle.files.length; index++)
+        _MutableImportFileParseResult(
+          fileIndex: index,
+          fileName: bundle.files[index].name,
+        ),
+    ];
 
-    for (final file in bundle.files) {
+    for (var fileIndex = 0; fileIndex < bundle.files.length; fileIndex++) {
+      final file = bundle.files[fileIndex];
+      final fileResult = fileResults[fileIndex];
+
+      void addFatalIssue(ImportIssue issue) {
+        fatalIssues.add(issue);
+        fileResult.fatalIssues.add(issue);
+      }
+
       final normalizedName = file.name.trim().toLowerCase();
       if (!normalizedName.endsWith('.xls')) {
-        fatalIssues.add(
+        addFatalIssue(
           ImportIssue(
             code: 'unsupported_file_format',
             message: '一木导入只支持传统 .xls 文件：${file.name}',
@@ -38,7 +54,7 @@ class YimuImportParser {
       try {
         workbook = _reader.read(file);
       } catch (_) {
-        fatalIssues.add(
+        addFatalIssue(
           ImportIssue(
             code: 'file_decode_failed',
             message: '无法读取一木文件 ${file.name}，请重新导出或选择有效的 .xls 文件。',
@@ -49,7 +65,7 @@ class YimuImportParser {
       }
 
       if (workbook.sheets.isEmpty) {
-        fatalIssues.add(
+        addFatalIssue(
           ImportIssue(
             code: 'empty_workbook',
             message: '文件 ${file.name} 不包含工作表。',
@@ -61,7 +77,7 @@ class YimuImportParser {
       final sheet = workbook.sheets.first;
       final role = _detectRole(file.name, sheet);
       if (role == null) {
-        fatalIssues.add(
+        addFatalIssue(
           ImportIssue(
             code: 'unsupported_headers',
             message: '无法识别文件 ${file.name} 的一木文件角色或表头。',
@@ -70,8 +86,9 @@ class YimuImportParser {
         );
         continue;
       }
+      fileResult.fileRole = role;
       if (_hasNoRowsOrHeaders(sheet)) {
-        fatalIssues.add(
+        addFatalIssue(
           ImportIssue(
             code: 'empty_sheet',
             message: '文件 ${file.name} 的工作表为空。',
@@ -82,18 +99,21 @@ class YimuImportParser {
         continue;
       }
       if (sheetsByRole.containsKey(role)) {
-        fatalIssues.add(
-          ImportIssue(
-            code: 'duplicate_file_role',
-            message: '一木资料包中重复选择了${_roleName(role)}文件。',
-            severity: ImportIssueSeverity.fatal,
-            fileRole: role,
-          ),
+        final issue = ImportIssue(
+          code: 'duplicate_file_role',
+          message: '一木资料包中重复选择了${_roleName(role)}文件。',
+          severity: ImportIssueSeverity.fatal,
+          fileRole: role,
         );
+        addFatalIssue(issue);
+        final acceptedIndex = acceptedFileIndexByRole[role];
+        if (acceptedIndex != null) {
+          fileResults[acceptedIndex].fatalIssues.add(issue);
+        }
         continue;
       }
       if (!_hasSupportedHeaders(role, sheet)) {
-        fatalIssues.add(
+        addFatalIssue(
           ImportIssue(
             code: 'unsupported_headers',
             message: '${_roleName(role)}文件表头不受支持。',
@@ -104,6 +124,7 @@ class YimuImportParser {
         continue;
       }
       sheetsByRole[role] = sheet;
+      acceptedFileIndexByRole[role] = fileIndex;
     }
 
     for (final role in YimuFileRole.values) {
@@ -122,6 +143,7 @@ class YimuImportParser {
     if (fatalIssues.isNotEmpty) {
       return ImportParseResult(
         source: ImportSource.yimu,
+        fileResults: fileResults.map((result) => result.freeze()),
         fatalIssues: fatalIssues,
       );
     }
@@ -152,6 +174,7 @@ class YimuImportParser {
 
     return ImportParseResult(
       source: ImportSource.yimu,
+      fileResults: fileResults.map((result) => result.freeze()),
       sourceEntities: entities.values,
       groups: groups,
       filteredRecords: filtered,
@@ -1252,6 +1275,27 @@ class YimuImportParser {
       YimuFileRole.transfer => '转账',
       YimuFileRole.debt => '债务',
     };
+  }
+}
+
+class _MutableImportFileParseResult {
+  _MutableImportFileParseResult({
+    required this.fileIndex,
+    required this.fileName,
+  });
+
+  final int fileIndex;
+  final String fileName;
+  YimuFileRole? fileRole;
+  final List<ImportIssue> fatalIssues = [];
+
+  ImportFileParseResult freeze() {
+    return ImportFileParseResult(
+      fileIndex: fileIndex,
+      fileName: fileName,
+      fileRole: fileRole,
+      fatalIssues: fatalIssues,
+    );
   }
 }
 

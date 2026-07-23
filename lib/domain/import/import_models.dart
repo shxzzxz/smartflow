@@ -67,6 +67,22 @@ class ImportBundle {
 
 enum YimuFileRole { bill, transfer, debt }
 
+class ImportFileParseResult {
+  ImportFileParseResult({
+    required this.fileIndex,
+    required this.fileName,
+    this.fileRole,
+    Iterable<ImportIssue> fatalIssues = const [],
+  }) : fatalIssues = List.unmodifiable(fatalIssues);
+
+  final int fileIndex;
+  final String fileName;
+  final YimuFileRole? fileRole;
+  final List<ImportIssue> fatalIssues;
+
+  bool get hasFatalIssues => fatalIssues.isNotEmpty;
+}
+
 class ImportSourceEntity {
   const ImportSourceEntity({
     required this.source,
@@ -500,16 +516,19 @@ class ImportFilteredRecord {
 class ImportParseResult {
   ImportParseResult({
     required this.source,
+    Iterable<ImportFileParseResult> fileResults = const [],
     Iterable<ImportSourceEntity> sourceEntities = const [],
     Iterable<ImportTransactionGroupDraft> groups = const [],
     Iterable<ImportFilteredRecord> filteredRecords = const [],
     Iterable<ImportIssue> fatalIssues = const [],
-  }) : sourceEntities = List.unmodifiable(sourceEntities),
+  }) : fileResults = List.unmodifiable(fileResults),
+       sourceEntities = List.unmodifiable(sourceEntities),
        groups = List.unmodifiable(groups),
        filteredRecords = List.unmodifiable(filteredRecords),
        fatalIssues = List.unmodifiable(fatalIssues);
 
   final ImportSource source;
+  final List<ImportFileParseResult> fileResults;
   final List<ImportSourceEntity> sourceEntities;
   final List<ImportTransactionGroupDraft> groups;
   final List<ImportFilteredRecord> filteredRecords;
@@ -527,6 +546,7 @@ class ImportParseResult {
 
   ImportParseResult copyWith({
     ImportSource? source,
+    Iterable<ImportFileParseResult>? fileResults,
     Iterable<ImportSourceEntity>? sourceEntities,
     Iterable<ImportTransactionGroupDraft>? groups,
     Iterable<ImportFilteredRecord>? filteredRecords,
@@ -534,6 +554,7 @@ class ImportParseResult {
   }) {
     return ImportParseResult(
       source: source ?? this.source,
+      fileResults: fileResults ?? this.fileResults,
       sourceEntities: sourceEntities ?? this.sourceEntities,
       groups: groups ?? this.groups,
       filteredRecords: filteredRecords ?? this.filteredRecords,

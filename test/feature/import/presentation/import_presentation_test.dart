@@ -72,6 +72,10 @@ void main() {
     expect(preview.single.rows.single.title, '转账');
     expect(preview.single.rows.single.amountText, '10.00');
     expect(preview.single.rows.single.accountFlow.out?.label, '资产 / 现金');
+    expect(takeImportPreviewRows(preview, 1).single.rows, hasLength(1));
+    expect(takeImportPreviewRows(preview, 0), isEmpty);
+    expect(formatImportFileSize(512), '512 B');
+    expect(formatImportFileSize(1536), '1.5 KB');
   });
 
   test('formats import entry routes and task names', () {

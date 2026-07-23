@@ -97,6 +97,36 @@ List<TransactionDayGroup> buildImportPreviewGroups(ImportPlanReview review) {
   ];
 }
 
+List<TransactionDayGroup> takeImportPreviewRows(
+  List<TransactionDayGroup> groups,
+  int limit,
+) {
+  var remaining = limit;
+  final result = <TransactionDayGroup>[];
+  for (final group in groups) {
+    if (remaining == 0) break;
+    final rows = group.rows.take(remaining).toList(growable: false);
+    if (rows.isEmpty) continue;
+    result.add(
+      TransactionDayGroup(
+        date: group.date,
+        rows: rows,
+        incomeMinor: group.incomeMinor,
+        expenseMinor: group.expenseMinor,
+      ),
+    );
+    remaining -= rows.length;
+  }
+  return result;
+}
+
+String formatImportFileSize(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  final kilobytes = bytes / 1024;
+  if (kilobytes < 1024) return '${kilobytes.toStringAsFixed(1)} KB';
+  return '${(kilobytes / 1024).toStringAsFixed(1)} MB';
+}
+
 String importEntityKindLabel(ImportSourceEntity entity) {
   if (entity.kind == ImportEntityKind.account) return '来源账户';
   return entity.categoryKind == ImportCategoryKind.income ? '来源收入分类' : '来源支出分类';
