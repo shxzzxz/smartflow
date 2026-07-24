@@ -7,7 +7,7 @@ abstract final class AppColors {
   static const neutral10 = Color(0xFF101827);
   static const neutral20 = Color(0xFF3F4A5F);
   static const neutral90 = Color(0xFFE6EAF0);
-  static const neutral95 = Color(0xFFFAFAFA);
+  static const neutral95 = Color(0xFFF6F8FC);
   static const neutral99 = Color(0xFFFFFFFF);
 
   static const success = Color(0xFF19B35C);

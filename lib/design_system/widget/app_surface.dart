@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../token/component.dart';
 import '../token/elevation.dart';
 import '../token/radius.dart';
 
@@ -8,7 +9,7 @@ class AppSurface extends StatelessWidget {
     required this.child,
     super.key,
     this.border = false,
-    this.borderRadius = AppRadius.radiusLg,
+    this.borderRadius = AppRadius.radiusXl,
   });
 
   final Widget child;
@@ -27,7 +28,9 @@ class AppSurface extends StatelessWidget {
         border:
             border
                 ? Border.all(
-                  color: colors.outlineVariant.withValues(alpha: 0.55),
+                  color: colors.outlineVariant.withValues(
+                    alpha: AppComponentTokens.mutedOutlineOpacity,
+                  ),
                 )
                 : null,
         boxShadow: [
@@ -43,6 +46,7 @@ class AppSurface extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
         child: child,
       ),
     );

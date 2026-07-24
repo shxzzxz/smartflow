@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/app_text_styles.dart';
-import '../token/radius.dart';
-import '../token/spacing.dart';
 
 void syncTextControllerText(TextEditingController controller, String text) {
   if (controller.text == text) return;
@@ -217,33 +215,11 @@ InputDecoration appFormInputDecoration(
   String? hintText,
   Widget? prefixIcon,
 }) {
-  final colors = Theme.of(context).colorScheme;
-  final radius = BorderRadius.circular(AppRadius.radiusMd);
-  final border = OutlineInputBorder(
-    borderRadius: radius,
-    borderSide: BorderSide(color: colors.outlineVariant),
-  );
-
   return InputDecoration(
     labelText: labelText,
     hintText: hintText,
     prefixIcon: prefixIcon,
-    filled: true,
-    fillColor: colors.surfaceContainerLowest,
-    contentPadding: const EdgeInsets.symmetric(
-      horizontal: AppSpacing.space14,
-      vertical: AppSpacing.space12,
-    ),
-    border: border,
-    enabledBorder: border,
-    focusedBorder: border.copyWith(
-      borderSide: BorderSide(color: colors.primary, width: 1.4),
-    ),
-    errorBorder: border.copyWith(borderSide: BorderSide(color: colors.error)),
-    focusedErrorBorder: border.copyWith(
-      borderSide: BorderSide(color: colors.error, width: 1.4),
-    ),
-  );
+  ).applyDefaults(Theme.of(context).inputDecorationTheme);
 }
 
 class AppPlainTextFormField extends StatelessWidget {

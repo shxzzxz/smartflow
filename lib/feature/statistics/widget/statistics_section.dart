@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/chart.dart';
+import '../../../design_system/token/component.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/token/typography.dart';
 import '../../../design_system/widget/app_surface.dart';
 
 enum StatisticsSectionEmphasis { primary, secondary }
@@ -33,6 +35,29 @@ class StatisticsSectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final titleContent = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTitle(context, colors),
+        if (subtitle != null) ...[
+          const SizedBox(height: AppSpacing.space4),
+          Text(
+            subtitle!,
+            style: context.appTextStyles.listSupporting.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ],
+    );
+    final referenceTextSize = AppTypography.fontSizeMd;
+    final scaledReferenceTextSize = MediaQuery.textScalerOf(
+      context,
+    ).scale(referenceTextSize);
+    final stackHeader =
+        scaledReferenceTextSize / referenceTextSize >
+        AppComponentTokens.adaptiveLayoutTextScaleThreshold;
+
     return AppSurface(
       border: emphasis == StatisticsSectionEmphasis.primary,
       child: Padding(
@@ -40,32 +65,28 @@ class StatisticsSectionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildTitle(context, colors),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: AppSpacing.space4),
-                        Text(
-                          subtitle!,
-                          style: context.appTextStyles.listSupporting.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                if (trailing != null) ...[
-                  const SizedBox(width: AppSpacing.space8),
-                  trailing!,
+            if (stackHeader)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  titleContent,
+                  if (trailing != null) ...[
+                    const SizedBox(height: AppSpacing.space8),
+                    trailing!,
+                  ],
                 ],
-              ],
-            ),
+              )
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(child: titleContent),
+                  if (trailing != null) ...[
+                    const SizedBox(width: AppSpacing.space8),
+                    trailing!,
+                  ],
+                ],
+              ),
             const SizedBox(height: AppSpacing.space16),
             child,
           ],

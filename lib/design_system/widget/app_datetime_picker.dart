@@ -725,9 +725,6 @@ class _PickerDialogShell extends StatelessWidget {
         horizontal: AppSpacing.space24,
         vertical: AppSpacing.space24,
       ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.radiusLg),
-      ),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: 336, maxHeight: maxDialogHeight),
         child: SingleChildScrollView(
@@ -1110,9 +1107,6 @@ class _AppDayOfMonthPickerDialogState extends State<AppDayOfMonthPickerDialog> {
       insetPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.space24,
         vertical: AppSpacing.space24,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.radiusLg),
       ),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: 336, maxHeight: maxDialogHeight),

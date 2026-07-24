@@ -348,8 +348,9 @@ class _CategoryAnalysis extends ConsumerWidget {
                 ? StatisticsCategoryKind.income
                 : StatisticsCategoryKind.expense,
           ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+      trailing: Wrap(
+        spacing: AppSpacing.space6,
+        runSpacing: AppSpacing.space6,
         children: [
           AppSegmentedControl<StatisticsCategoryLevel>(
             segments: const [
@@ -364,7 +365,6 @@ class _CategoryAnalysis extends ConsumerWidget {
             size: AppSegmentedControlSize.small,
             tone: AppSegmentedControlTone.neutral,
           ),
-          const SizedBox(width: AppSpacing.space6),
           AppSegmentedControl<StatisticsValueMode>(
             segments: const [
               AppSegment(value: StatisticsValueMode.amount, label: '金额'),

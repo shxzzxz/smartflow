@@ -9,6 +9,38 @@ import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 
 void main() {
+  testWidgets('renders long transaction text on a common Android phone', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: ThemeMode.dark,
+        builder:
+            (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(2)),
+              child: child!,
+            ),
+        home: Scaffold(
+          body: TransactionFeedScrollView(
+            groups: [_group(0, title: '周末家庭聚餐与日常生活用品采购')],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('周末家庭聚餐与日常生活用品采购'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('renders date-grouped transactions through the shared feed', (
     tester,
   ) async {
@@ -124,14 +156,18 @@ void main() {
   });
 }
 
-TransactionDayGroup _group(int index, {bool canQuickEdit = false}) {
+TransactionDayGroup _group(
+  int index, {
+  bool canQuickEdit = false,
+  String? title,
+}) {
   return TransactionDayGroup(
     date: DateTime(2026, 7, 14 - index),
     rows: [
       TransactionRowPresentation(
         transactionId: 'tx-$index',
         iconKey: null,
-        title: '测试交易 $index',
+        title: title ?? '测试交易 $index',
         subtitle: '08:00',
         amountText: '-10.00',
         amountTone: FinanceTone.expense,

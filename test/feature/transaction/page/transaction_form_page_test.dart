@@ -8,6 +8,7 @@ import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_form_page.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
@@ -15,6 +16,41 @@ import 'package:smartflow/shared/account_profile/account_selection_purpose.dart'
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
 
 void main() {
+  testWidgets('keeps transaction mode tabs at least 48dp tall', (tester) async {
+    await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
+
+    for (final label in const ['支出', '收入', '转账', '借入']) {
+      final tab = find.ancestor(
+        of: find.text(label),
+        matching: find.byType(InkWell),
+      );
+      expect(tester.getSize(tab).height, greaterThanOrEqualTo(48));
+    }
+  });
+
+  testWidgets('renders on a common Android phone with accessibility text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpTransactionForm(
+      tester,
+      _FakeTransactionPostingAppService(),
+      themeMode: ThemeMode.dark,
+      textScaler: const TextScaler.linear(2),
+    );
+
+    expect(find.byType(TransactionAmountInput), findsOneWidget);
+    expect(
+      Theme.of(tester.element(find.byType(TransactionFormPage))).brightness,
+      Brightness.dark,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('form validator blocks invalid daily expense submit', (
     tester,
   ) async {
@@ -229,8 +265,10 @@ List<dynamic> _editQueryOverrides(Map<String, Account> accounts) {
 
 Future<void> _pumpTransactionForm(
   WidgetTester tester,
-  _FakeTransactionPostingAppService fakeService,
-) async {
+  _FakeTransactionPostingAppService fakeService, {
+  ThemeMode themeMode = ThemeMode.light,
+  TextScaler textScaler = TextScaler.noScaling,
+}) async {
   final router = GoRouter(
     routes: [
       GoRoute(
@@ -274,7 +312,17 @@ Future<void> _pumpTransactionForm(
           AccountType.income,
         ).overrideWith((ref) => Stream.value(const <CategoryNode>[])),
       ],
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: themeMode,
+        builder:
+            (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+              child: child!,
+            ),
+        routerConfig: router,
+      ),
     ),
   );
   await tester.pumpAndSettle();

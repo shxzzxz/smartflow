@@ -24,9 +24,12 @@ class BusinessIconTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = SizedBox.square(
-      dimension: extent,
-      child: Center(child: child),
+    final content = SizedBox(
+      width: extent,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: extent),
+        child: Center(child: child),
+      ),
     );
 
     if (onTap == null && onLongPress == null) {

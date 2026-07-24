@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/colors.dart';
+import '../../../design_system/token/component.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
@@ -612,16 +613,25 @@ class _ModeTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        for (final value in TransactionFormMode.values)
-          _ModeTabItem(
-            label: _modeLabel(value),
-            selected: value == mode,
-            onTap: () => onChanged(value),
+    return LayoutBuilder(
+      builder:
+          (context, constraints) => SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  for (final value in TransactionFormMode.values)
+                    _ModeTabItem(
+                      label: _modeLabel(value),
+                      selected: value == mode,
+                      onTap: () => onChanged(value),
+                    ),
+                ],
+              ),
+            ),
           ),
-      ],
     );
   }
 }
@@ -645,33 +655,41 @@ class _ModeTabItem extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.radiusSm),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space6,
-          vertical: AppSpacing.space6,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minHeight: AppComponentTokens.controlMinHeight,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: textStyles
-                  .segmentedControlLabel(selected: selected)
-                  .copyWith(
-                    color: selected ? colors.primary : colors.onSurfaceVariant,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space6,
+              vertical: AppSpacing.space6,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: textStyles
+                      .segmentedControlLabel(selected: selected)
+                      .copyWith(
+                        color:
+                            selected ? colors.primary : colors.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.space6),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  width: selected ? 40 : AppSpacing.space0,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: selected ? colors.primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(AppRadius.radiusSm),
                   ),
+                ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.space6),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              width: selected ? 40 : AppSpacing.space0,
-              height: 3,
-              decoration: BoxDecoration(
-                color: selected ? colors.primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(AppRadius.radiusSm),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -37,6 +37,24 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('matches the compact Android phone visual baseline', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final boundaryKey = GlobalKey();
+
+    await _pumpStatisticsPage(tester, boundaryKey: boundaryKey);
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byKey(boundaryKey),
+      matchesGoldenFile('goldens/statistics_page_compact.png'),
+    );
+  });
+
   testWidgets('shows a cashflow empty state when the range has no activity', (
     tester,
   ) async {
@@ -141,6 +159,26 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await _pumpStatisticsPage(tester, textScaler: const TextScaler.linear(1.3));
+    await tester.scrollUntilVisible(
+      find.text('支出数据'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+
+    expect(find.text('主分类'), findsOneWidget);
+    expect(find.text('金额'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('keeps category controls usable at accessibility text sizes', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpStatisticsPage(tester, textScaler: const TextScaler.linear(2));
     await tester.scrollUntilVisible(
       find.text('支出数据'),
       200,
@@ -273,7 +311,14 @@ Future<void> _loadAppFonts() async {
   );
   final materialIcons = FontLoader('MaterialIcons')
     ..addFont(_loadMaterialIcons());
-  await Future.wait([primary.load(), fallback.load(), materialIcons.load()]);
+  final remixIcons = FontLoader('packages/remixicon/remix')
+    ..addFont(rootBundle.load('packages/remixicon/fonts/remix.ttf'));
+  await Future.wait([
+    primary.load(),
+    fallback.load(),
+    materialIcons.load(),
+    remixIcons.load(),
+  ]);
 }
 
 Future<ByteData> _loadMaterialIcons() async {

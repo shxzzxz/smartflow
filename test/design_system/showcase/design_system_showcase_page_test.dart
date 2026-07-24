@@ -17,18 +17,74 @@ import 'package:smartflow/widget/business/transaction/transaction_purpose_badge.
 import 'package:smartflow/widget/business/transaction/empty_transaction_card.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 
+const _showcaseCategoryLabels = [
+  '基础规范',
+  '基础组件',
+  '表单组件',
+  '数据展示',
+  '日期组件',
+  '操作与反馈',
+  '财务表达',
+  '交易与列表',
+  '布局组件',
+];
+
 void main() {
-  Future<void> pumpShowcase(WidgetTester tester) async {
-    await tester.binding.setSurfaceSize(const Size(360, 800));
+  Future<void> pumpShowcase(
+    WidgetTester tester, {
+    Size surfaceSize = const Size(360, 800),
+    TextScaler textScaler = TextScaler.noScaling,
+    ThemeMode themeMode = ThemeMode.light,
+  }) async {
+    await tester.binding.setSurfaceSize(surfaceSize);
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: themeMode,
+        builder:
+            (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+              child: child!,
+            ),
         home: const DesignSystemShowcasePage(),
       ),
     );
   }
+
+  testWidgets('supports dark mode and large text across component categories', (
+    tester,
+  ) async {
+    await pumpShowcase(
+      tester,
+      surfaceSize: const Size(360, 800),
+      textScaler: const TextScaler.linear(2),
+      themeMode: ThemeMode.dark,
+    );
+
+    for (final category in _showcaseCategoryLabels) {
+      final categoryTab = find.text(category);
+      await tester.ensureVisible(categoryTab);
+      await tester.tap(categoryTab);
+      await tester.pumpAndSettle();
+      if (category == '基础组件') {
+        expect(
+          find.text('FilledButton / OutlinedButton / TextButton'),
+          findsOneWidget,
+        );
+      }
+      expect(tester.takeException(), isNull, reason: category);
+    }
+
+    expect(
+      Theme.of(
+        tester.element(find.byType(DesignSystemShowcasePage)),
+      ).brightness,
+      Brightness.dark,
+    );
+  });
 
   testWidgets('shows the requested mobile component categories', (
     tester,
@@ -37,17 +93,7 @@ void main() {
 
     expect(find.text('组件示例'), findsOneWidget);
     expect(find.text('搜索组件'), findsOneWidget);
-    for (final category in const [
-      '基础规范',
-      '基础组件',
-      '表单组件',
-      '数据展示',
-      '日期组件',
-      '操作与反馈',
-      '财务表达',
-      '交易与列表',
-      '布局组件',
-    ]) {
+    for (final category in _showcaseCategoryLabels) {
       expect(find.text(category), findsOneWidget);
     }
     expect(tester.takeException(), isNull);
@@ -74,6 +120,13 @@ void main() {
     await tester.pump();
 
     expect(find.text('间距'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is Text && widget.data == 'AppSpacing',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(AppSurface), findsOneWidget);
     expect(find.text('圆角'), findsNothing);
 
     await tester.enterText(find.byType(SearchBar), 'AppRadius');
@@ -81,6 +134,25 @@ void main() {
 
     expect(find.text('圆角'), findsOneWidget);
     expect(find.text('间距'), findsNothing);
+  });
+
+  testWidgets('clears a global component search from the search bar', (
+    tester,
+  ) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'AppSpacing');
+    await tester.pump();
+
+    expect(find.byTooltip('清除搜索'), findsOneWidget);
+    expect(find.text('间距'), findsOneWidget);
+    expect(find.text('色彩语义'), findsNothing);
+
+    await tester.tap(find.byTooltip('清除搜索'));
+    await tester.pump();
+
+    expect(find.byTooltip('清除搜索'), findsNothing);
+    expect(find.text('色彩语义'), findsOneWidget);
   });
 
   testWidgets('searches examples across component categories', (tester) async {
@@ -205,7 +277,7 @@ void main() {
     expect(find.text('卡片标题'), findsOneWidget);
     expect(find.text('这是卡片的描述文案'), findsOneWidget);
     expect(find.text('微信钱包'), findsNothing);
-    expect(find.byType(AppSurface), findsOneWidget);
+    expect(find.byType(AppSurface), findsNWidgets(2));
   });
 
   testWidgets('shows submit button states with generic labels', (tester) async {

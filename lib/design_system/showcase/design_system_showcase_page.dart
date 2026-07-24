@@ -314,67 +314,73 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
 
     return Scaffold(
       backgroundColor: colors.surface,
-      appBar: AppBar(
-        title: const Text('组件示例'),
-        centerTitle: true,
-        backgroundColor: colors.surface,
-        scrolledUnderElevation: 0,
-      ),
+      appBar: AppBar(title: const Text('组件示例'), centerTitle: true),
       body: SafeArea(
         top: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.space16,
-                AppSpacing.space8,
-                AppSpacing.space16,
-                AppSpacing.space8,
-              ),
-              child: SearchBar(
-                controller: _searchController,
-                hintText: '搜索组件',
-                leading: const Icon(Icons.search_rounded),
-                elevation: const WidgetStatePropertyAll(0),
-                onChanged: (value) => setState(() => _query = value),
+            ColoredBox(
+              color: colors.surfaceContainerLowest,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.space16,
+                      AppSpacing.space8,
+                      AppSpacing.space16,
+                      AppSpacing.space8,
+                    ),
+                    child: SearchBar(
+                      controller: _searchController,
+                      hintText: '搜索组件',
+                      leading: const Icon(Icons.search_rounded),
+                      trailing: [
+                        if (_query.isNotEmpty)
+                          IconButton(
+                            tooltip: '清除搜索',
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _query = '');
+                            },
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                      ],
+                      onChanged: (value) => setState(() => _query = value),
+                    ),
+                  ),
+                  TabBar(
+                    controller: _categoryController,
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space16,
+                    ),
+                    labelPadding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space12,
+                    ),
+                    tabs: [
+                      for (final category in _showcaseCategories)
+                        Tab(text: category),
+                    ],
+                    onTap: (index) {
+                      setState(() {
+                        _selectedCategoryIndex = index;
+                        _query = '';
+                        _searchController.clear();
+                      });
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.space8),
+                ],
               ),
             ),
-            TabBar(
-              controller: _categoryController,
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space16,
-              ),
-              labelPadding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space12,
-              ),
-              indicatorSize: TabBarIndicatorSize.label,
-              dividerColor: Colors.transparent,
-              labelStyle: context.appTextStyles.segmentedControlLabel(
-                selected: true,
-              ),
-              unselectedLabelStyle: context.appTextStyles.segmentedControlLabel(
-                selected: false,
-              ),
-              tabs: [
-                for (final category in _showcaseCategories) Tab(text: category),
-              ],
-              onTap: (index) {
-                setState(() {
-                  _selectedCategoryIndex = index;
-                  _query = '';
-                  _searchController.clear();
-                });
-              },
-            ),
-            const SizedBox(height: AppSpacing.space12),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(
                   AppSpacing.space16,
-                  AppSpacing.space4,
+                  AppSpacing.space16,
                   AppSpacing.space16,
                   AppSpacing.space24,
                 ),
@@ -393,7 +399,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
                               preview: _buildPreview(visibleExamples[index]),
                             ),
                             if (index < visibleExamples.length - 1)
-                              const SizedBox(height: AppSpacing.space12),
+                              const SizedBox(height: AppSpacing.space16),
                           ],
                         ],
               ),
@@ -1098,19 +1104,32 @@ class _ShowcaseSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (showCategory) ...[
-            Text(example.category, style: context.appTextStyles.listSupporting),
-            const SizedBox(height: AppSpacing.space4),
+    final colors = Theme.of(context).colorScheme;
+    return AppSurface(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.space20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (showCategory) ...[
+              Text(
+                example.category,
+                style: context.appTextStyles.listSupporting.copyWith(
+                  color: colors.primary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.space4),
+            ],
+            Text(example.title, style: context.appTextStyles.subsectionTitle),
+            const SizedBox(height: AppSpacing.space2),
+            Text(
+              example.componentNames,
+              style: context.appTextStyles.listSupporting,
+            ),
+            const SizedBox(height: AppSpacing.space16),
+            preview,
           ],
-          Text(example.title, style: context.appTextStyles.subsectionTitle),
-          const SizedBox(height: AppSpacing.space16),
-          preview,
-        ],
+        ),
       ),
     );
   }

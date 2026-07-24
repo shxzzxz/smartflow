@@ -115,28 +115,40 @@ class _DayHeader extends StatelessWidget {
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
     final textStyles = context.appTextStyles;
 
-    return Row(
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: AppSpacing.space8,
+      runSpacing: AppSpacing.space4,
       children: [
-        Text(
-          '${group.date.month}月${group.date.day}日',
-          style: textStyles.dateSectionTitle,
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${group.date.month}月${group.date.day}日',
+              style: textStyles.dateSectionTitle,
+            ),
+            const SizedBox(width: AppSpacing.space8),
+            Text(weekdayLabel(group.date), style: textStyles.listSupporting),
+          ],
         ),
-        const SizedBox(width: AppSpacing.space8),
-        Text(weekdayLabel(group.date), style: textStyles.listSupporting),
-        if (showDailyTotals) ...[
-          const Spacer(),
-          _DayTotal(
-            label: '收入',
-            amountMinor: group.incomeMinor,
-            color: financeColors.income,
+        if (showDailyTotals)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _DayTotal(
+                label: '收入',
+                amountMinor: group.incomeMinor,
+                color: financeColors.income,
+              ),
+              const SizedBox(width: AppSpacing.space12),
+              _DayTotal(
+                label: '支出',
+                amountMinor: group.expenseMinor,
+                color: financeColors.expense,
+              ),
+            ],
           ),
-          const SizedBox(width: AppSpacing.space12),
-          _DayTotal(
-            label: '支出',
-            amountMinor: group.expenseMinor,
-            color: financeColors.expense,
-          ),
-        ],
       ],
     );
   }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_text_styles.dart';
-import '../token/radius.dart';
+import '../token/component.dart';
 import '../token/spacing.dart';
 
 class AppSegment<T> {
@@ -45,12 +45,10 @@ class AppSegmentedControl<T> extends StatelessWidget {
       showSelectedIcon: false,
       onSelectionChanged: (selection) => onChanged(selection.first),
       style: ButtonStyle(
-        visualDensity: VisualDensity.compact,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         minimumSize: WidgetStatePropertyAll(
           Size(
             compact ? AppSpacing.space32 : AppSpacing.space48,
-            compact ? AppSpacing.space28 : AppSpacing.space32,
+            AppComponentTokens.controlMinHeight,
           ),
         ),
         padding: WidgetStatePropertyAll(
@@ -58,12 +56,6 @@ class AppSegmentedControl<T> extends StatelessWidget {
             horizontal: compact ? AppSpacing.space2 : AppSpacing.space10,
           ),
         ),
-        shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-          ),
-        ),
-        side: WidgetStatePropertyAll(BorderSide(color: colors.outlineVariant)),
         backgroundColor: WidgetStateProperty.resolveWith(
           (states) =>
               states.contains(WidgetState.selected)
