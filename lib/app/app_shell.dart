@@ -12,6 +12,9 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final path = GoRouterState.of(context).uri.path;
+    if (_hidesBottomNavigation(path)) return child;
+
     final colors = Theme.of(context).colorScheme;
     final selectedIndex = _selectedIndex(context);
 
@@ -76,6 +79,12 @@ class AppShell extends StatelessWidget {
     );
   }
 
+  bool _hidesBottomNavigation(String path) {
+    return path == '/import' ||
+        path.startsWith('/import/') ||
+        path.startsWith('/profile/import');
+  }
+
   int _selectedIndex(BuildContext context) {
     final path = GoRouterState.of(context).uri.path;
     if (path.startsWith('/calendar')) {
@@ -88,9 +97,6 @@ class AppShell extends StatelessWidget {
       return 3;
     }
     if (path.startsWith('/profile')) {
-      return 4;
-    }
-    if (path.startsWith('/import')) {
       return 4;
     }
     return 0;

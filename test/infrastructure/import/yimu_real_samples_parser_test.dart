@@ -5,13 +5,20 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/import/import_workflow_app_service.dart';
 import 'package:smartflow/application/import/import_workflow_models.dart';
+import 'package:smartflow/application/ledger/account/command/account_app_service.dart';
 import 'package:smartflow/application/ledger/account/query/account_query_service.dart';
+import 'package:smartflow/application/ledger/category/command/category_app_service.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_edit_app_service.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_ledger_writer.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_posting_app_service.dart';
 import 'package:smartflow/application/ledger/transaction/query/transaction_query_service.dart';
 import 'package:smartflow/domain/import/import_models.dart';
+import 'package:smartflow/domain/import/import_persistence_models.dart';
 import 'package:smartflow/domain/import/service/yimu_import_parser.dart';
+import 'package:smartflow/domain/ledger/service/account/account_role_policy.dart';
+import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
+import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.dart';
+import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
@@ -290,6 +297,13 @@ class _GoldenFixture {
       ledgerWriter: writer,
       idGenerator: ids,
     );
+    final ledgerPosting = LedgerPostingService(
+      accountRepository: accounts,
+      systemAccountResolver: systemAccounts,
+      postingEngine: PostingEngine(idGenerator: ids),
+      accountPostingService: const DefaultAccountPostingService(),
+      accountRolePolicy: AccountRolePolicy(accountRepository: accounts),
+    );
     final ledger = LedgerImportPort(
       posting: posting,
       editing: editing,
@@ -301,6 +315,17 @@ class _GoldenFixture {
       ),
       accounts: AccountQueryServiceImpl(
         accounts: DriftAccountQueryRepository(database),
+      ),
+      accountCommands: AccountAppServiceImpl(
+        accounts,
+        transactionRunner: runner,
+        ledgerPostingService: ledgerPosting,
+        transactionRepository: postings,
+        idGenerator: ids,
+      ),
+      categoryCommands: CategoryAppServiceImpl(
+        repository: accounts,
+        idGenerator: ids,
       ),
       systemAccounts: systemAccounts,
     );
@@ -320,6 +345,7 @@ class _GoldenFixture {
   Future<_PreparedMappings> prepareMappings(ImportParseResult plan) async {
     final roles = _sourceRoles(plan);
     final targets = <(String, _TargetRole), String>{};
+    final mappings = DriftImportMappingRepository(database);
     var index = 0;
     for (final entity in plan.sourceEntities) {
       final entityRoles =
@@ -331,9 +357,16 @@ class _GoldenFixture {
       }
       if (entityRoles.isNotEmpty && !entity.isReviewPlaceholder) {
         final defaultRole = entityRoles.first;
-        await service.saveDefaultMapping(
-          entity: entity,
-          targetAccountId: targets[(entity.sourceEntityKey, defaultRole)]!,
+        await mappings.upsert(
+          ImportEntityMapping(
+            id: 'golden-mapping:${entity.kind.name}:${entity.sourceEntityKey}',
+            source: entity.source,
+            entityKind: entity.kind,
+            sourceEntityKey: entity.sourceEntityKey,
+            targetAccountId: targets[(entity.sourceEntityKey, defaultRole)]!,
+            createdAt: DateTime(2026, 7, 22),
+            updatedAt: DateTime(2026, 7, 22),
+          ),
         );
       }
     }

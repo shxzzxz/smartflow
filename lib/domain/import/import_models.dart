@@ -99,6 +99,9 @@ class ImportSourceEntity {
   final String displayName;
   final ImportCategoryKind? categoryKind;
   final bool isReviewPlaceholder;
+
+  bool get isMissingAccountPlaceholder =>
+      kind == ImportEntityKind.account && isReviewPlaceholder;
 }
 
 class ImportAccountReference {

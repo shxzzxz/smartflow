@@ -99,31 +99,34 @@ void main() {
       );
     });
 
-    test('allows the system ghost account as an import settlement account', () async {
-      final accountRepository = _FakeAccountRepository([
-        Account(
-          id: 'ghost',
-          name: '幽灵账户',
-          type: AccountType.equity,
-          systemKey: SystemKey.ghostAccount,
-          balance: Money.zero(),
-        ),
-        _account('food', AccountType.expense),
-      ]);
-      final service = _service(accountRepository);
+    test(
+      'allows the system ghost account as an import settlement account',
+      () async {
+        final accountRepository = _FakeAccountRepository([
+          Account(
+            id: 'ghost',
+            name: '幽灵账户',
+            type: AccountType.equity,
+            systemKey: SystemKey.ghostAccount,
+            balance: Money.zero(),
+          ),
+          _account('food', AccountType.expense),
+        ]);
+        final service = _service(accountRepository);
 
-      final result = await service.postExpense(
-        ExpenseInstruction(
-          amount: Money.parse('12.00'),
-          paidFromAccountId: 'ghost',
-          expenseAccountId: 'food',
-          occurredAt: DateTime(2026, 1, 2),
-          sourceKind: SourceKind.import,
-        ),
-      );
+        final result = await service.postExpense(
+          ExpenseInstruction(
+            amount: Money.parse('12.00'),
+            paidFromAccountId: 'ghost',
+            expenseAccountId: 'food',
+            occurredAt: DateTime(2026, 1, 2),
+            sourceKind: SourceKind.import,
+          ),
+        );
 
-      expect(result.transaction.sourceKind, SourceKind.import);
-    });
+        expect(result.transaction.sourceKind, SourceKind.import);
+      },
+    );
 
     test('does not allow a normal equity account as settlement', () async {
       final accountRepository = _FakeAccountRepository([

@@ -1,4 +1,8 @@
+import '../../application/ledger/account/command/account_app_service.dart';
+import '../../application/ledger/account/command/account_command.dart';
 import '../../application/ledger/account/query/account_query_service.dart';
+import '../../application/ledger/category/command/category_app_service.dart';
+import '../../application/ledger/category/command/category_command.dart';
 import '../../application/ledger/transaction/command/transaction_command.dart';
 import '../../application/ledger/transaction/command/transaction_edit_app_service.dart';
 import '../../application/ledger/transaction/command/transaction_posting_app_service.dart';
@@ -15,17 +19,23 @@ class LedgerImportPort implements ImportLedgerPort {
     required TransactionEditAppService editing,
     required TransactionQueryService transactions,
     required AccountQueryService accounts,
+    required AccountAppService accountCommands,
+    required CategoryAppService categoryCommands,
     required SystemAccountResolver systemAccounts,
   }) : _posting = posting,
        _editing = editing,
        _transactions = transactions,
        _accounts = accounts,
+       _accountCommands = accountCommands,
+       _categoryCommands = categoryCommands,
        _systemAccounts = systemAccounts;
 
   final TransactionPostingAppService _posting;
   final TransactionEditAppService _editing;
   final TransactionQueryService _transactions;
   final AccountQueryService _accounts;
+  final AccountAppService _accountCommands;
+  final CategoryAppService _categoryCommands;
   final SystemAccountResolver _systemAccounts;
 
   @override
@@ -52,6 +62,45 @@ class LedgerImportPort implements ImportLedgerPort {
             ? null
             : await _accounts.findAccountById(account.parentId!);
     return _target(account, parentName: parent?.name);
+  }
+
+  @override
+  Future<String> createTarget(ImportLedgerTargetCreation creation) async {
+    return switch (creation.kind) {
+      ImportLedgerTargetKind.asset =>
+        (await _accountCommands.createAccount(
+          CreateAccountCommand(name: creation.name, type: AccountType.asset),
+        )).id,
+      ImportLedgerTargetKind.liability =>
+        (await _accountCommands.createAccount(
+          CreateAccountCommand(
+            name: creation.name,
+            type: AccountType.liability,
+          ),
+        )).id,
+      ImportLedgerTargetKind.reimbursement =>
+        (await _accountCommands.createAccount(
+          CreateAccountCommand(
+            name: creation.name,
+            type: AccountType.asset,
+            subtype: AccountSubtype.reimbursement,
+          ),
+        )).id,
+      ImportLedgerTargetKind.incomeCategory =>
+        (await _categoryCommands.createCategory(
+          CreateCategoryCommand(name: creation.name, type: AccountType.income),
+        )).id,
+      ImportLedgerTargetKind.expenseCategory =>
+        (await _categoryCommands.createCategory(
+          CreateCategoryCommand(name: creation.name, type: AccountType.expense),
+        )).id,
+      ImportLedgerTargetKind.ghost || ImportLedgerTargetKind.unsupported =>
+        throw ArgumentError.value(
+          creation.kind,
+          'creation.kind',
+          'The requested mapping target kind cannot be created.',
+        ),
+    };
   }
 
   @override

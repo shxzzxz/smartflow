@@ -132,6 +132,193 @@ String importEntityKindLabel(ImportSourceEntity entity) {
   return entity.categoryKind == ImportCategoryKind.income ? '来源收入分类' : '来源支出分类';
 }
 
+List<ImportSourceEntity> importMappingDisplayEntities(ImportPlanReview review) {
+  final ghostTargetIds = {
+    for (final target in review.targets)
+      if (target.kind == ImportMappingTargetKind.ghost) target.id,
+  };
+  var includedMissingAccount = false;
+  final result = <ImportSourceEntity>[];
+  for (final entity in review.plan.sourceEntities) {
+    final targetId =
+        review.effectiveMappings[ImportMappingKey.fromEntity(entity)];
+    final usesGhostAccount =
+        entity.isMissingAccountPlaceholder && ghostTargetIds.contains(targetId);
+    if (usesGhostAccount) {
+      if (includedMissingAccount) continue;
+      includedMissingAccount = true;
+    }
+    result.add(entity);
+  }
+  return result;
+}
+
+class ImportMappingAnalysisSummary {
+  const ImportMappingAnalysisSummary({
+    required this.mapped,
+    required this.pending,
+    required this.unmapped,
+  });
+
+  final int mapped;
+  final int pending;
+  final int unmapped;
+
+  int get total => mapped + pending + unmapped;
+}
+
+String importMappingAnalysisDescription(ImportMappingAnalysisSummary summary) {
+  if (summary.unmapped > 0) {
+    return '有 ${summary.unmapped} 项来源账户或分类尚未完成映射，请查看全部处理。';
+  }
+  if (summary.pending > 0) {
+    return '有 ${summary.pending} 项将在导入时新建，请确认配置后继续。';
+  }
+  if (summary.total == 0) return '解析结果中没有需要配置的账户或分类。';
+  return '映射配置已准备就绪，可确认配置后继续。';
+}
+
+ImportMappingAnalysisSummary summarizeImportMappings(
+  ImportPlanReview review, {
+  Map<ImportMappingKey, ImportMappingCreation>? plannedCreations,
+}) {
+  final creations = plannedCreations ?? review.plannedCreations;
+  var mapped = 0;
+  var pending = 0;
+  var unmapped = 0;
+  for (final entity in importMappingDisplayEntities(review)) {
+    final key = ImportMappingKey.fromEntity(entity);
+    if (creations.containsKey(key)) {
+      pending++;
+      continue;
+    }
+    final targetId = review.effectiveMappings[key];
+    final target =
+        review.targets
+            .where((candidate) => candidate.id == targetId)
+            .firstOrNull;
+    if (target == null || target.isArchived) {
+      unmapped++;
+    } else {
+      mapped++;
+    }
+  }
+  return ImportMappingAnalysisSummary(
+    mapped: mapped,
+    pending: pending,
+    unmapped: unmapped,
+  );
+}
+
+class ImportPreviewAnalysisSummary {
+  const ImportPreviewAnalysisSummary({
+    required this.parsed,
+    required this.pending,
+    required this.unparsed,
+    required this.skipped,
+    this.filtered = 0,
+  });
+
+  final int parsed;
+  final int pending;
+  final int unparsed;
+  final int skipped;
+  final int filtered;
+
+  int get total => parsed + pending + unparsed + skipped;
+}
+
+String importPreviewAnalysisDescription(ImportPreviewAnalysisSummary summary) {
+  if (summary.unparsed > 0) {
+    return '有 ${summary.unparsed} 条交易无法解析，请查看全部检查详情。';
+  }
+  if (summary.pending > 0) {
+    return '有 ${summary.pending} 条交易需要确认后才能导入。';
+  }
+  if (summary.skipped > 0) {
+    if (summary.filtered == summary.skipped) {
+      return '有 ${summary.filtered} 条来源记录已按规则跳过，可查看全部导入预览。';
+    }
+    if (summary.filtered > 0) {
+      return '有 ${summary.skipped} 条记录已跳过，可查看全部导入预览。';
+    }
+    return '有 ${summary.skipped} 条重复交易已自动跳过，可查看全部交易预览。';
+  }
+  if (summary.total == 0) return '资料包没有产生可预览的交易。';
+  return '解析结果已准备，可查看全部交易预览。';
+}
+
+ImportPreviewAnalysisSummary summarizeImportPreview(
+  ImportPlanReview review, {
+  Set<int> confirmedSuspectedDuplicateIndexes = const {},
+  Set<int> confirmedWarningIndexes = const {},
+}) {
+  var parsed = 0;
+  var pending = 0;
+  var unparsed = 0;
+  final filtered = review.plan.filteredRecords.length;
+  var skipped = filtered;
+  for (final group in review.groups) {
+    if (group.isExactDuplicate) {
+      skipped++;
+    } else if (group.isBlocked) {
+      unparsed++;
+    } else if (group.isSuspectedDuplicate) {
+      if (confirmedSuspectedDuplicateIndexes.contains(group.index)) {
+        parsed++;
+      } else {
+        pending++;
+      }
+    } else if (group.hasWarnings) {
+      if (confirmedWarningIndexes.contains(group.index)) {
+        parsed++;
+      } else {
+        pending++;
+      }
+    } else {
+      parsed++;
+    }
+  }
+  return ImportPreviewAnalysisSummary(
+    parsed: parsed,
+    pending: pending,
+    unparsed: unparsed,
+    skipped: skipped,
+    filtered: filtered,
+  );
+}
+
+class ImportPreviewConfirmationPresentation {
+  const ImportPreviewConfirmationPresentation({
+    required this.groupIndex,
+    required this.title,
+    required this.reason,
+  });
+
+  final int groupIndex;
+  final String title;
+  final String reason;
+}
+
+List<ImportPreviewConfirmationPresentation> buildImportPreviewConfirmations(
+  ImportPlanReview review,
+) {
+  return [
+    for (final group in review.groups)
+      if (group.canSelect && group.hasWarnings)
+        ImportPreviewConfirmationPresentation(
+          groupIndex: group.index,
+          title:
+              '${importOperationLabel(group.group.topLevel.operationKind)} · '
+              '${formatImportDateTime(group.group.topLevel.occurredAt)}',
+          reason:
+              group.isSuspectedDuplicate
+                  ? '发现疑似重复交易'
+                  : group.issues.firstOrNull?.message ?? '解析结果包含警告',
+        ),
+  ];
+}
+
 List<ImportSourceEntity> importGroupEntities(
   ImportTransactionGroupDraft group,
   List<ImportSourceEntity> sourceEntities,
@@ -350,7 +537,11 @@ String _mappingLabel(
       groupReview.effectiveMappings[key] ?? review.effectiveMappings[key];
   if (targetId != null) {
     for (final target in review.targets) {
-      if (target.id == targetId) return target.displayPath;
+      if (target.id == targetId) {
+        return target.kind == ImportMappingTargetKind.ghost
+            ? '无账户'
+            : target.displayPath;
+      }
     }
   }
   return fallback ?? entity.displayName;

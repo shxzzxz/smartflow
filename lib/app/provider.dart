@@ -95,6 +95,8 @@ ImportLedgerPort importLedgerPort(Ref ref) {
     editing: ref.watch(transactionEditAppServiceProvider),
     transactions: ref.watch(transactionQueryServiceProvider),
     accounts: ref.watch(accountQueryServiceProvider),
+    accountCommands: ref.watch(accountAppServiceProvider),
+    categoryCommands: ref.watch(categoryAppServiceProvider),
     systemAccounts: ref.watch(systemAccountResolverProvider),
   );
 }

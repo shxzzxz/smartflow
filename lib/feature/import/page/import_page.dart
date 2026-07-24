@@ -5,24 +5,19 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../application/import/import_api.dart';
-import '../../../core/money/money.dart';
-import '../../../core/patch/patch.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/list.dart';
 import '../../../design_system/token/progress_indicator.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
-import '../../../design_system/widget/app_datetime_picker.dart';
-import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_surface.dart';
-import '../../../widget/business/finance/money_input.dart';
-import '../../../widget/business/finance/money_text.dart';
 import '../../../widget/business/transaction/transaction_day_card.dart';
-import '../../shared/presentation/transaction_list_presentation.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/import_presentation.dart';
 import '../view_model/import_view_model.dart';
+import '../widget/import_analysis_card.dart';
+import '../widget/import_mapping_item.dart';
 
 class ImportPage extends ConsumerStatefulWidget {
   const ImportPage({super.key});
@@ -45,6 +40,336 @@ class ImportProcessPage extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<ImportProcessPage> createState() => _ImportProcessPageState();
+}
+
+class ImportMappingPage extends ConsumerWidget {
+  const ImportMappingPage({required this.onSelectMapping, super.key});
+
+  final ValueChanged<ImportSourceEntity> onSelectMapping;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(importViewModelProvider);
+    final review = state.review;
+    final summary =
+        review == null
+            ? const ImportMappingAnalysisSummary(
+              mapped: 0,
+              pending: 0,
+              unmapped: 0,
+            )
+            : summarizeImportMappings(
+              review,
+              plannedCreations: state.plannedCreations,
+            );
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            const _ImportHeader(title: '全部账户与分类映射'),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(AppSpacing.space20),
+                children: [
+                  ImportAnalysisCard(
+                    title: '账户与分类映射',
+                    icon: RemixIcons.git_merge_line,
+                    metrics: [
+                      ImportAnalysisMetric(
+                        label: '映射成功',
+                        value: summary.mapped,
+                      ),
+                      ImportAnalysisMetric(
+                        label: '待确认',
+                        value: summary.pending,
+                      ),
+                      ImportAnalysisMetric(
+                        label: '无法映射',
+                        value: summary.unmapped,
+                      ),
+                    ],
+                    description: importMappingAnalysisDescription(summary),
+                    showViewAll: false,
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  _MappingList(
+                    state: state,
+                    entities:
+                        review == null
+                            ? const []
+                            : importMappingDisplayEntities(review),
+                    onSelectMapping: onSelectMapping,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ImportPreviewPage extends ConsumerWidget {
+  const ImportPreviewPage({required this.review, super.key});
+
+  final ImportPlanReview review;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(importViewModelProvider);
+    final currentReview = state.review ?? review;
+    final groups = buildImportPreviewGroups(currentReview);
+    final summary = summarizeImportPreview(
+      currentReview,
+      confirmedSuspectedDuplicateIndexes:
+          state.confirmedSuspectedDuplicateIndexes,
+      confirmedWarningIndexes: state.confirmedWarningIndexes,
+    );
+    final confirmations = buildImportPreviewConfirmations(currentReview);
+    final blockedGroups = currentReview.groups
+        .where((group) => group.isBlocked && !group.isExactDuplicate)
+        .toList(growable: false);
+    final filteredRecords = currentReview.plan.filteredRecords;
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            const _ImportHeader(title: '全部导入预览'),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.space20,
+                  AppSpacing.space12,
+                  AppSpacing.space20,
+                  AppSpacing.space24,
+                ),
+                children: [
+                  ImportAnalysisCard(
+                    title: '导入预览',
+                    icon: RemixIcons.list_check_3,
+                    metrics: [
+                      ImportAnalysisMetric(
+                        label: '解析成功',
+                        value: summary.parsed,
+                      ),
+                      ImportAnalysisMetric(
+                        label: '待确认',
+                        value: summary.pending,
+                      ),
+                      ImportAnalysisMetric(
+                        label: '已跳过',
+                        value: summary.skipped,
+                      ),
+                      ImportAnalysisMetric(
+                        label: '无法解析',
+                        value: summary.unparsed,
+                      ),
+                    ],
+                    description: importPreviewAnalysisDescription(summary),
+                    showViewAll: false,
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  if (confirmations.isNotEmpty) ...[
+                    _ImportPreviewConfirmationSection(
+                      items: confirmations,
+                      state: state,
+                      onChanged:
+                          ref
+                              .read(importViewModelProvider.notifier)
+                              .setGroupSelection,
+                    ),
+                    const SizedBox(height: AppSpacing.space16),
+                  ],
+                  if (blockedGroups.isNotEmpty ||
+                      filteredRecords.isNotEmpty) ...[
+                    _ImportPreviewDetailsSection(
+                      blockedGroups: blockedGroups,
+                      filteredRecords: filteredRecords,
+                    ),
+                    const SizedBox(height: AppSpacing.space16),
+                  ],
+                  for (var index = 0; index < groups.length; index++) ...[
+                    TransactionDayCard(
+                      group: groups[index],
+                      enableRowTap: false,
+                      showDailyTotals: false,
+                    ),
+                    if (index < groups.length - 1)
+                      const SizedBox(height: AppSpacing.space10),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ImportPreviewDetailsSection extends StatelessWidget {
+  const _ImportPreviewDetailsSection({
+    required this.blockedGroups,
+    required this.filteredRecords,
+  });
+
+  final List<ImportGroupReview> blockedGroups;
+  final List<ImportFilteredRecord> filteredRecords;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return AppSurface(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.space16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('解析详情', style: context.appTextStyles.groupTitle),
+            if (blockedGroups.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.space12),
+              Text('无法解析', style: context.appTextStyles.listTitle),
+              const SizedBox(height: AppSpacing.space8),
+              for (var index = 0; index < blockedGroups.length; index++) ...[
+                Text(
+                  '${importOperationLabel(blockedGroups[index].group.topLevel.operationKind)}'
+                  ' · ${formatImportDateTime(blockedGroups[index].group.topLevel.occurredAt)}',
+                  style: context.appTextStyles.listSupporting,
+                ),
+                const SizedBox(height: AppSpacing.space6),
+                for (final issue in blockedGroups[index].issues.where(
+                  (issue) => issue.isBlocking,
+                ))
+                  _IssueLine(issue: issue, color: colors.error),
+                if (index < blockedGroups.length - 1)
+                  const SizedBox(height: AppSpacing.space8),
+              ],
+            ],
+            if (filteredRecords.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.space12),
+              Text('已跳过记录', style: context.appTextStyles.listTitle),
+              const SizedBox(height: AppSpacing.space8),
+              for (final record in filteredRecords)
+                _FilteredRecordLine(record: record),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FilteredRecordLine extends StatelessWidget {
+  const _FilteredRecordLine({required this.record});
+
+  final ImportFilteredRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final location = [
+      importFileRoleLabel(record.fileRole),
+      if (record.rowNumber != null) '第 ${record.rowNumber} 行',
+    ].join(' · ');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.space6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            RemixIcons.information_line,
+            size: AppSpacing.space18,
+            color: colors.onSurfaceVariant,
+          ),
+          const SizedBox(width: AppSpacing.space8),
+          Expanded(
+            child: Text(
+              '$location：${record.reason}',
+              style: context.appTextStyles.detailValue.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ImportPreviewConfirmationSection extends StatelessWidget {
+  const _ImportPreviewConfirmationSection({
+    required this.items,
+    required this.state,
+    required this.onChanged,
+  });
+
+  final List<ImportPreviewConfirmationPresentation> items;
+  final ImportPageState state;
+  final void Function(int index, bool selected) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSurface(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.space16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('待确认交易', style: context.appTextStyles.groupTitle),
+            const SizedBox(height: AppSpacing.space4),
+            Text(
+              '疑似重复或带有警告的交易，确认后才会参与导入。',
+              style: context.appTextStyles.pageSubtitle,
+            ),
+            const SizedBox(height: AppSpacing.space8),
+            for (var index = 0; index < items.length; index++) ...[
+              _ImportPreviewConfirmationTile(
+                item: items[index],
+                selected: _isSelected(items[index]),
+                enabled: !state.isBusy,
+                onChanged:
+                    (selected) => onChanged(items[index].groupIndex, selected),
+              ),
+              if (index < items.length - 1)
+                const SizedBox(height: AppSpacing.space6),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _isSelected(ImportPreviewConfirmationPresentation item) {
+    return state.selectedGroupIndexes.contains(item.groupIndex);
+  }
+}
+
+class _ImportPreviewConfirmationTile extends StatelessWidget {
+  const _ImportPreviewConfirmationTile({
+    required this.item,
+    required this.selected,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final ImportPreviewConfirmationPresentation item;
+  final bool selected;
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return CheckboxListTile(
+      value: selected,
+      onChanged: enabled ? (value) => onChanged(value ?? false) : null,
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      controlAffinity: ListTileControlAffinity.leading,
+      title: Text(item.title),
+      subtitle: Text(item.reason),
+    );
+  }
 }
 
 class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
@@ -78,26 +403,15 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
                       ? _ImportReviewTab(
                         source: widget.source,
                         state: state,
-                        onPickFiles: () => _pickFiles(append: false),
                         onAddFiles: () => _pickFiles(append: true),
                         onParseFiles: _parseFiles,
-                        onRemoveFile: notifier.removeSelectedFile,
                         onReset: notifier.reset,
                         onClearError: notifier.clearError,
-                        onApplySuggestions: _applySuggestions,
-                        onSelectAll: notifier.selectAllImportable,
-                        onGroupSelected: notifier.setGroupSelection,
-                        onSuspectedConfirmed:
-                            notifier.setSuspectedDuplicateConfirmed,
-                        onWarningConfirmed: notifier.setWarningConfirmed,
-                        onSelectMapping: _selectMapping,
-                        onSelectGroupMapping: _selectGroupMapping,
-                        onEditDraft: _editDraft,
-                        onCreateAccount: () => _createTarget('/account/new'),
-                        onCreateCategory:
-                            (kind) => _createTarget(
-                              '/category/new?type=${kind == ImportCategoryKind.income ? 'income' : 'expense'}',
-                            ),
+                        onViewAllMappings: _viewAllMappings,
+                        onToggleSaveMappingConfiguration:
+                            _toggleSaveMappingConfiguration,
+                        onConfirmMappingConfiguration:
+                            _confirmMappingConfiguration,
                         onCommit: _commit,
                       )
                       : _UnavailableImportSource(source: widget.source),
@@ -119,15 +433,6 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
   Future<void> _parseFiles() async {
     final outcome =
         await ref.read(importViewModelProvider.notifier).parseSelectedFiles();
-    if (!mounted) return;
-    _showFailure(outcome);
-  }
-
-  Future<void> _applySuggestions() async {
-    final outcome =
-        await ref
-            .read(importViewModelProvider.notifier)
-            .applySuggestedMappings();
     if (!mounted) return;
     _showFailure(outcome);
   }
@@ -163,99 +468,40 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
             entity: entity,
             targets: targets,
             selectedTargetId: review.effectiveMappings[key],
-            hasTemporaryOverride: state.temporaryMappings.containsKey(key),
-            allowSaveAsDefault: !entity.isReviewPlaceholder,
+            hasTemporaryOverride:
+                state.temporaryMappings.containsKey(key) ||
+                state.plannedCreations.containsKey(key),
             restoreLabel: '恢复默认映射',
           ),
     );
     if (!mounted || selection == null) return;
-    final outcome = await ref
-        .read(importViewModelProvider.notifier)
-        .setMapping(
-          key,
-          selection.targetAccountId,
-          saveAsDefault: selection.saveAsDefault,
-        );
+    final notifier = ref.read(importViewModelProvider.notifier);
+    final outcome = await notifier.setMapping(key, selection.targetAccountId);
     if (!mounted) return;
     _showFailure(outcome);
   }
 
-  Future<void> _selectGroupMapping(
-    int groupIndex,
-    ImportSourceEntity entity,
-  ) async {
-    final state = ref.read(importViewModelProvider);
-    final review = state.review;
-    if (review == null) return;
-    final key = ImportMappingKey.fromEntity(entity);
-    final group = review.groups[groupIndex];
-    final allowedKinds = group.compatibleTargetKinds[key];
-    final targets = review.targets
-        .where(
-          (target) =>
-              allowedKinds == null || allowedKinds.contains(target.kind),
-        )
-        .where((target) => !target.isArchived)
-        .toList(growable: false);
-    final selection = await showModalBottomSheet<_MappingSelection>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder:
-          (context) => _MappingTargetSheet(
-            entity: entity,
-            targets: targets,
-            selectedTargetId: group.effectiveMappings[key],
-            hasTemporaryOverride:
-                state.groupMappingOverrides[groupIndex]?.containsKey(key) ??
-                false,
-            allowSaveAsDefault: false,
-            restoreLabel: '恢复本次导入映射',
-          ),
+  Future<void> _viewAllMappings() {
+    return Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => ImportMappingPage(onSelectMapping: _selectMapping),
+      ),
     );
-    if (!mounted || selection == null) return;
-    final outcome = await ref
-        .read(importViewModelProvider.notifier)
-        .setGroupMappingOverride(
-          groupIndex: groupIndex,
-          key: key,
-          targetAccountId: selection.targetAccountId,
-        );
-    if (!mounted) return;
-    _showFailure(outcome);
   }
 
-  Future<void> _editDraft(int groupIndex, int? childIndex) async {
-    final state = ref.read(importViewModelProvider);
-    final review = state.review;
-    if (review == null) return;
-    final group = review.groups[groupIndex].group;
-    final draft =
-        childIndex == null ? group.topLevel : group.children[childIndex];
-    final edit = await showModalBottomSheet<ImportDraftEdit>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (context) => _ImportDraftEditSheet(draft: draft),
-    );
-    if (!mounted || edit == null) return;
-    final outcome = await ref
-        .read(importViewModelProvider.notifier)
-        .editGroupDraft(
-          groupIndex: groupIndex,
-          childIndex: childIndex,
-          edit: edit,
-        );
-    if (!mounted) return;
-    _showFailure(outcome);
-  }
-
-  Future<void> _createTarget(String route) async {
-    await context.push(route);
-    if (!mounted) return;
+  void _toggleSaveMappingConfiguration() {
     final outcome =
-        await ref.read(importViewModelProvider.notifier).refreshReview();
-    if (!mounted) return;
+        ref
+            .read(importViewModelProvider.notifier)
+            .toggleSaveMappingConfiguration();
+    _showFailure(outcome);
+  }
+
+  void _confirmMappingConfiguration() {
+    final outcome =
+        ref
+            .read(importViewModelProvider.notifier)
+            .confirmMappingConfiguration();
     _showFailure(outcome);
   }
 
@@ -525,7 +771,7 @@ class _ImportHeader extends StatelessWidget {
             child: IconButton(
               onPressed: () {
                 if (Navigator.of(context).canPop()) {
-                  context.pop();
+                  Navigator.of(context).pop();
                 } else {
                   context.go('/profile');
                 }
@@ -753,44 +999,25 @@ class _ImportReviewTab extends StatelessWidget {
   const _ImportReviewTab({
     required this.source,
     required this.state,
-    required this.onPickFiles,
     required this.onAddFiles,
     required this.onParseFiles,
-    required this.onRemoveFile,
     required this.onReset,
     required this.onClearError,
-    required this.onApplySuggestions,
-    required this.onSelectAll,
-    required this.onGroupSelected,
-    required this.onSuspectedConfirmed,
-    required this.onWarningConfirmed,
-    required this.onSelectMapping,
-    required this.onSelectGroupMapping,
-    required this.onEditDraft,
-    required this.onCreateAccount,
-    required this.onCreateCategory,
+    required this.onViewAllMappings,
+    required this.onToggleSaveMappingConfiguration,
+    required this.onConfirmMappingConfiguration,
     required this.onCommit,
   });
 
   final ImportEntrySource source;
   final ImportPageState state;
-  final VoidCallback onPickFiles;
   final VoidCallback onAddFiles;
   final VoidCallback onParseFiles;
-  final ValueChanged<int> onRemoveFile;
   final VoidCallback onReset;
   final VoidCallback onClearError;
-  final VoidCallback onApplySuggestions;
-  final ValueChanged<bool> onSelectAll;
-  final void Function(int index, bool selected) onGroupSelected;
-  final void Function(int index, bool confirmed) onSuspectedConfirmed;
-  final void Function(int index, bool confirmed) onWarningConfirmed;
-  final ValueChanged<ImportSourceEntity> onSelectMapping;
-  final void Function(int groupIndex, ImportSourceEntity entity)
-  onSelectGroupMapping;
-  final void Function(int groupIndex, int? childIndex) onEditDraft;
-  final VoidCallback onCreateAccount;
-  final ValueChanged<ImportCategoryKind> onCreateCategory;
+  final VoidCallback onViewAllMappings;
+  final VoidCallback onToggleSaveMappingConfiguration;
+  final VoidCallback onConfirmMappingConfiguration;
   final VoidCallback onCommit;
 
   @override
@@ -800,9 +1027,11 @@ class _ImportReviewTab extends StatelessWidget {
     final files = state.selectedBundle?.files ?? const <ImportFilePayload>[];
     final activeStep =
         state.lastCommit != null
-            ? 3
+            ? 4
             : review != null
-            ? 2
+            ? state.mappingConfirmed
+                ? 3
+                : 2
             : files.isNotEmpty
             ? 1
             : 0;
@@ -830,10 +1059,8 @@ class _ImportReviewTab extends StatelessWidget {
             _ImportFilesSection(
               source: source,
               state: state,
-              onPickFiles: onPickFiles,
               onAddFiles: onAddFiles,
               onParseFiles: onParseFiles,
-              onRemoveFile: onRemoveFile,
               onReset: onReset,
             ),
             if (plan?.hasFatalIssues ?? false) ...[
@@ -845,31 +1072,15 @@ class _ImportReviewTab extends StatelessWidget {
                 _CommitResultBanner(result: result),
                 const SizedBox(height: AppSpacing.space16),
               ],
-              _ImportSummaryCard(state: state),
-              const SizedBox(height: AppSpacing.space24),
               _MappingSection(
                 state: state,
-                onSelectMapping: onSelectMapping,
-                onApplySuggestions: onApplySuggestions,
-                onCreateAccount: onCreateAccount,
-                onCreateCategory: onCreateCategory,
+                onViewAll: onViewAllMappings,
+                onToggleSaveMappingConfiguration:
+                    onToggleSaveMappingConfiguration,
+                onConfirmMappingConfiguration: onConfirmMappingConfiguration,
               ),
               const SizedBox(height: AppSpacing.space24),
-              _ImportPreviewSection(review: review),
-              const SizedBox(height: AppSpacing.space16),
-              _ImportReviewOptions(
-                state: state,
-                onSelectAll: onSelectAll,
-                onGroupSelected: onGroupSelected,
-                onSuspectedConfirmed: onSuspectedConfirmed,
-                onWarningConfirmed: onWarningConfirmed,
-                onSelectGroupMapping: onSelectGroupMapping,
-                onEditDraft: onEditDraft,
-              ),
-              if (plan!.filteredRecords.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.space16),
-                _FilteredRecordsSection(records: plan.filteredRecords),
-              ],
+              _ImportPreviewSection(state: state),
             ] else if (state.phase == ImportPagePhase.reviewing) ...[
               const SizedBox(height: AppSpacing.space20),
               const Center(child: CircularProgressIndicator()),
@@ -885,7 +1096,9 @@ class _ImportReviewTab extends StatelessWidget {
               top: false,
               child: FilledButton.icon(
                 onPressed:
-                    state.isBusy || state.selectedGroupIndexes.isEmpty
+                    state.isBusy ||
+                            state.selectedGroupIndexes.isEmpty ||
+                            !state.mappingConfirmed
                         ? null
                         : onCommit,
                 icon:
@@ -914,10 +1127,11 @@ class _ImportStepIndicator extends StatelessWidget {
 
   final int activeStep;
 
-  static const _labels = ['上传文件', '解析数据', '数据预览', '导入完成'];
+  static const _labels = ['上传文件', '解析数据', '配置映射', '数据预览', '导入完成'];
   static const _icons = [
     RemixIcons.upload_2_line,
     RemixIcons.file_search_line,
+    RemixIcons.git_merge_line,
     RemixIcons.list_check_3,
     RemixIcons.checkbox_circle_line,
   ];
@@ -926,61 +1140,62 @@ class _ImportStepIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Semantics(
-      label: '导入进度：${_labels[activeStep.clamp(0, 3)]}',
-      child: Column(
-        children: [
-          Row(
+      label: '导入进度：${_labels[activeStep.clamp(0, 4)]}',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final nodeWidth = constraints.maxWidth / _labels.length;
+          return Stack(
             children: [
-              for (var index = 0; index < _labels.length; index++) ...[
-                if (index > 0)
-                  Expanded(
-                    child: Container(
-                      height: AppListTokens.dividerThickness * 2,
-                      color:
-                          index <= activeStep
-                              ? colors.primary
-                              : colors.outlineVariant,
-                    ),
-                  ),
-                _ImportStepDot(
-                  icon: _icons[index],
-                  active: index <= activeStep,
-                  completed: index < activeStep || activeStep == 3,
+              Positioned(
+                top: AppSpacing.space14,
+                left: nodeWidth / 2,
+                right: nodeWidth / 2,
+                child: Row(
+                  children: [
+                    for (var index = 1; index < _labels.length; index++)
+                      Expanded(
+                        child: Container(
+                          height: AppListTokens.dividerThickness * 2,
+                          color:
+                              index <= activeStep
+                                  ? colors.primary
+                                  : colors.outlineVariant,
+                        ),
+                      ),
+                  ],
                 ),
-              ],
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space8),
-          Row(
-            children: [
-              for (var index = 0; index < _labels.length; index++)
-                Expanded(
-                  child: Text(
-                    _labels[index],
-                    textAlign: TextAlign.center,
-                    style: context.appTextStyles.badgeLabel.copyWith(
-                      color:
-                          index <= activeStep
-                              ? colors.primary
-                              : colors.onSurfaceVariant,
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var index = 0; index < _labels.length; index++)
+                    Expanded(
+                      child: _ImportStepNode(
+                        label: _labels[index],
+                        icon: _icons[index],
+                        active: index <= activeStep,
+                        completed: index < activeStep || activeStep == 4,
+                      ),
                     ),
-                  ),
-                ),
+                ],
+              ),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 }
 
-class _ImportStepDot extends StatelessWidget {
-  const _ImportStepDot({
+class _ImportStepNode extends StatelessWidget {
+  const _ImportStepNode({
+    required this.label,
     required this.icon,
     required this.active,
     required this.completed,
   });
 
+  final String label;
   final IconData icon;
   final bool active;
   final bool completed;
@@ -988,18 +1203,31 @@ class _ImportStepDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Container(
-      width: AppSpacing.space28,
-      height: AppSpacing.space28,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: active ? colors.primary : colors.surfaceContainerHighest,
-      ),
-      child: Icon(
-        completed ? RemixIcons.check_line : icon,
-        size: AppSpacing.space16,
-        color: active ? colors.onPrimary : colors.onSurfaceVariant,
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: AppSpacing.space28,
+          height: AppSpacing.space28,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: active ? colors.primary : colors.surfaceContainerHighest,
+          ),
+          child: Icon(
+            completed ? RemixIcons.check_line : icon,
+            size: AppSpacing.space16,
+            color: active ? colors.onPrimary : colors.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space8),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: context.appTextStyles.badgeLabel.copyWith(
+            color: active ? colors.primary : colors.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1008,19 +1236,15 @@ class _ImportFilesSection extends StatelessWidget {
   const _ImportFilesSection({
     required this.source,
     required this.state,
-    required this.onPickFiles,
     required this.onAddFiles,
     required this.onParseFiles,
-    required this.onRemoveFile,
     required this.onReset,
   });
 
   final ImportEntrySource source;
   final ImportPageState state;
-  final VoidCallback onPickFiles;
   final VoidCallback onAddFiles;
   final VoidCallback onParseFiles;
-  final ValueChanged<int> onRemoveFile;
   final VoidCallback onReset;
 
   @override
@@ -1029,148 +1253,124 @@ class _ImportFilesSection extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final isParsing = state.phase == ImportPagePhase.parsing;
     final controlsDisabled = state.isBusy;
-    return AppSurface(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppSurface(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.space16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _ImportSourceIcon(source: source),
-                const SizedBox(width: AppSpacing.space12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        source.label,
-                        style: context.appTextStyles.listTitle,
+                Row(
+                  children: [
+                    _ImportSourceIcon(source: source),
+                    const SizedBox(width: AppSpacing.space12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            source.label,
+                            style: context.appTextStyles.listTitle,
+                          ),
+                          const SizedBox(height: AppSpacing.space2),
+                          Text(
+                            _fileSummary(files),
+                            style: context.appTextStyles.pageSubtitle,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: AppSpacing.space2),
-                      Text(
-                        _fileSummary(files),
-                        style: context.appTextStyles.pageSubtitle,
+                    ),
+                    TextButton(
+                      onPressed:
+                          controlsDisabled || files.isEmpty
+                              ? null
+                              : onParseFiles,
+                      child: Text(isParsing ? '解析中' : '解析'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.space8),
+                if (files.isEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.space16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(AppRadius.radiusLg),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          RemixIcons.folder_upload_line,
+                          size: AppSpacing.space32,
+                          color: colors.onSurfaceVariant,
+                        ),
+                        const SizedBox(height: AppSpacing.space8),
+                        Text(
+                          '选择一木导出的账单、转账和债务 .xls 文件',
+                          textAlign: TextAlign.center,
+                          style: context.appTextStyles.pageSubtitle,
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  for (var index = 0; index < files.length; index++) ...[
+                    _ImportFileRow(
+                      file: files[index],
+                      progress: state.fileProgressAt(index),
+                    ),
+                  ],
+                ],
+                const SizedBox(height: AppSpacing.space6),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Wrap(
+                    spacing: AppSpacing.space4,
+                    children: [
+                      TextButton(
+                        onPressed:
+                            controlsDisabled || files.isEmpty ? null : onReset,
+                        child: const Text('清空'),
+                      ),
+                      TextButton(
+                        onPressed: controlsDisabled ? null : onAddFiles,
+                        child: const Text('添加文件'),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.space14),
-            if (files.isEmpty) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: AppSpacing.space24,
-                ),
-                decoration: BoxDecoration(
-                  color: colors.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(AppRadius.radiusLg),
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      RemixIcons.folder_upload_line,
-                      size: AppSpacing.space32,
-                      color: colors.onSurfaceVariant,
-                    ),
-                    const SizedBox(height: AppSpacing.space8),
-                    Text(
-                      '选择一木导出的账单、转账和债务 .xls 文件',
-                      textAlign: TextAlign.center,
-                      style: context.appTextStyles.pageSubtitle,
-                    ),
-                    const SizedBox(height: AppSpacing.space14),
-                    FilledButton.icon(
-                      onPressed: controlsDisabled ? null : onPickFiles,
-                      icon: const Icon(RemixIcons.folder_open_line),
-                      label: const Text('选择文件'),
-                    ),
-                  ],
-                ),
-              ),
-            ] else ...[
-              Wrap(
-                alignment: WrapAlignment.end,
-                spacing: AppSpacing.space8,
-                runSpacing: AppSpacing.space8,
-                children: [
-                  TextButton(
-                    onPressed: controlsDisabled ? null : onReset,
-                    child: const Text('清空'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: controlsDisabled ? null : onAddFiles,
-                    icon: const Icon(RemixIcons.add_line),
-                    label: const Text('添加文件'),
-                  ),
-                  FilledButton.icon(
-                    onPressed: controlsDisabled ? null : onParseFiles,
-                    icon:
-                        isParsing
-                            ? const SizedBox.square(
-                              dimension: AppSpacing.space16,
-                              child: CircularProgressIndicator(
-                                strokeWidth:
-                                    AppProgressIndicatorTokens
-                                        .compactStrokeWidth,
-                              ),
-                            )
-                            : const Icon(RemixIcons.file_search_line),
-                    label: Text(isParsing ? '解析中' : '解析'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              if (isParsing) ...[
-                Text(
-                  '正在解析 ${files.length} 个文件…',
-                  style: context.appTextStyles.pageSubtitle,
-                ),
-                const SizedBox(height: AppSpacing.space6),
-                const LinearProgressIndicator(),
-                const SizedBox(height: AppSpacing.space10),
-              ],
-              for (var index = 0; index < files.length; index++) ...[
-                _ImportFileRow(
-                  file: files[index],
-                  progress: state.fileProgressAt(index),
-                  canRemove: !controlsDisabled,
-                  onRemove: () => onRemoveFile(index),
-                ),
-                if (index < files.length - 1)
-                  Divider(color: colors.outlineVariant),
-              ],
-            ],
-          ],
+          ),
         ),
-      ),
+        if (isParsing) ...[
+          const SizedBox(height: AppSpacing.space10),
+          Text(
+            '正在解析 ${files.length} 个文件…',
+            style: context.appTextStyles.pageSubtitle,
+          ),
+          const SizedBox(height: AppSpacing.space6),
+          const LinearProgressIndicator(),
+        ],
+      ],
     );
   }
 
   String _fileSummary(List<ImportFilePayload> files) {
     if (files.isEmpty) return '尚未选择文件';
-    if (state.phase == ImportPagePhase.parsing) {
-      return '正在解析 ${files.length} 个文件';
-    }
-    if (state.plan?.hasFatalIssues ?? false) return '解析未通过';
-    if (state.review != null) return '共 ${files.length} 个文件 · 已完成';
-    return '共 ${files.length} 个文件 · 待解析';
+    return '共 ${files.length} 个文件';
   }
 }
 
 class _ImportFileRow extends StatelessWidget {
-  const _ImportFileRow({
-    required this.file,
-    required this.progress,
-    required this.canRemove,
-    required this.onRemove,
-  });
+  const _ImportFileRow({required this.file, required this.progress});
 
   final ImportFilePayload file;
   final ImportFileProgress progress;
-  final bool canRemove;
-  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -1198,7 +1398,7 @@ class _ImportFileRow extends StatelessWidget {
       ImportFileProcessingStatus.failed => '解析失败',
     };
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
       child: Row(
         children: [
           Expanded(
@@ -1236,11 +1436,6 @@ class _ImportFileRow extends StatelessWidget {
           Text(
             label,
             style: context.appTextStyles.badgeLabel.copyWith(color: color),
-          ),
-          IconButton(
-            onPressed: canRemove ? onRemove : null,
-            icon: const Icon(RemixIcons.close_line),
-            tooltip: '移除文件',
           ),
         ],
       ),
@@ -1300,168 +1495,66 @@ class _CommitResultBanner extends StatelessWidget {
   }
 }
 
-class _ImportSummaryCard extends StatelessWidget {
-  const _ImportSummaryCard({required this.state});
-
-  final ImportPageState state;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppSurface(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('审阅摘要', style: context.appTextStyles.groupTitle),
-            const SizedBox(height: AppSpacing.space12),
-            Wrap(
-              spacing: AppSpacing.space8,
-              runSpacing: AppSpacing.space8,
-              children: [
-                _SummaryChip(label: '交易组', value: '${state.groupCount}'),
-                _SummaryChip(
-                  label: '已选择',
-                  value: '${state.selectedGroupCount}',
-                ),
-                _SummaryChip(
-                  label: '未映射',
-                  value: '${state.missingMappingCount}',
-                ),
-                _SummaryChip(label: '阻塞', value: '${state.blockedGroupCount}'),
-                _SummaryChip(
-                  label: '精确重复',
-                  value: '${state.exactDuplicateGroupCount}',
-                ),
-                _SummaryChip(
-                  label: '疑似重复',
-                  value: '${state.suspectedDuplicateGroupCount}',
-                ),
-                _SummaryChip(
-                  label: '已过滤来源行',
-                  value: '${state.filteredRecordCount}',
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SummaryChip extends StatelessWidget {
-  const _SummaryChip({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space10,
-        vertical: AppSpacing.space6,
-      ),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(AppRadius.radiusFull),
-      ),
-      child: Text('$label $value', style: context.appTextStyles.listSupporting),
-    );
-  }
-}
-
 class _MappingSection extends StatelessWidget {
   const _MappingSection({
     required this.state,
-    required this.onSelectMapping,
-    required this.onApplySuggestions,
-    required this.onCreateAccount,
-    required this.onCreateCategory,
+    required this.onViewAll,
+    required this.onToggleSaveMappingConfiguration,
+    required this.onConfirmMappingConfiguration,
   });
 
   final ImportPageState state;
-  final ValueChanged<ImportSourceEntity> onSelectMapping;
-  final VoidCallback onApplySuggestions;
-  final VoidCallback onCreateAccount;
-  final ValueChanged<ImportCategoryKind> onCreateCategory;
+  final VoidCallback onViewAll;
+  final VoidCallback onToggleSaveMappingConfiguration;
+  final VoidCallback onConfirmMappingConfiguration;
 
   @override
   Widget build(BuildContext context) {
     final review = state.review!;
-    final entities = review.plan.sourceEntities;
+    final summary = summarizeImportMappings(
+      review,
+      plannedCreations: state.plannedCreations,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('账户与分类映射', style: context.appTextStyles.groupTitle),
-        if (review.suggestions.isNotEmpty)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: state.isBusy ? null : onApplySuggestions,
-              icon: const Icon(RemixIcons.magic_line),
-              label: Text('应用建议 ${review.suggestions.length}'),
-            ),
-          ),
-        const SizedBox(height: AppSpacing.space8),
-        AppSurface(
-          child:
-              entities.isEmpty
-                  ? const Padding(
-                    padding: EdgeInsets.all(AppSpacing.space16),
-                    child: Text('资料包未提取到需要映射的账户或类别。'),
-                  )
-                  : Column(
-                    children: [
-                      for (var index = 0; index < entities.length; index++) ...[
-                        _MappingRow(
-                          entity: entities[index],
-                          review: review,
-                          isTemporary: state.temporaryMappings.containsKey(
-                            ImportMappingKey.fromEntity(entities[index]),
-                          ),
-                          onTap: () => onSelectMapping(entities[index]),
-                        ),
-                        if (index < entities.length - 1)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: AppSpacing.space16,
-                            ),
-                            child: Divider(
-                              height: AppListTokens.dividerThickness,
-                            ),
-                          ),
-                      ],
-                    ],
-                  ),
+        ImportAnalysisCard(
+          title: '账户与分类映射',
+          icon: RemixIcons.git_merge_line,
+          metrics: [
+            ImportAnalysisMetric(label: '映射成功', value: summary.mapped),
+            ImportAnalysisMetric(label: '待确认', value: summary.pending),
+            ImportAnalysisMetric(label: '无法映射', value: summary.unmapped),
+          ],
+          description: importMappingAnalysisDescription(summary),
+          onViewAll: summary.total == 0 ? null : onViewAll,
         ),
-        const SizedBox(height: AppSpacing.space10),
-        Wrap(
-          spacing: AppSpacing.space8,
-          runSpacing: AppSpacing.space8,
+        const SizedBox(height: AppSpacing.space12),
+        Row(
           children: [
-            OutlinedButton.icon(
-              onPressed: state.isBusy ? null : onCreateAccount,
-              icon: const Icon(RemixIcons.wallet_3_line),
-              label: const Text('新建账户'),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed:
+                    state.isBusy || state.missingMappingCount > 0
+                        ? null
+                        : onToggleSaveMappingConfiguration,
+                icon: Icon(
+                  state.saveMappingConfiguration
+                      ? RemixIcons.checkbox_circle_fill
+                      : RemixIcons.save_line,
+                ),
+                label: const Text('保存映射配置'),
+              ),
             ),
-            OutlinedButton.icon(
-              onPressed:
-                  state.isBusy
-                      ? null
-                      : () => onCreateCategory(ImportCategoryKind.income),
-              icon: const Icon(RemixIcons.apps_2_line),
-              label: const Text('新建收入分类'),
-            ),
-            OutlinedButton.icon(
-              onPressed:
-                  state.isBusy
-                      ? null
-                      : () => onCreateCategory(ImportCategoryKind.expense),
-              icon: const Icon(RemixIcons.apps_2_line),
-              label: const Text('新建支出分类'),
+            const SizedBox(width: AppSpacing.space10),
+            Expanded(
+              child: FilledButton(
+                onPressed:
+                    state.isBusy || state.missingMappingCount > 0
+                        ? null
+                        : onConfirmMappingConfiguration,
+                child: const Text('确认配置'),
+              ),
             ),
           ],
         ),
@@ -1470,88 +1563,87 @@ class _MappingSection extends StatelessWidget {
   }
 }
 
-class _MappingRow extends StatelessWidget {
-  const _MappingRow({
-    required this.entity,
-    required this.review,
-    required this.isTemporary,
-    required this.onTap,
+class _MappingList extends StatelessWidget {
+  const _MappingList({
+    required this.state,
+    required this.entities,
+    required this.onSelectMapping,
   });
 
-  final ImportSourceEntity entity;
-  final ImportPlanReview review;
-  final bool isTemporary;
-  final VoidCallback onTap;
+  final ImportPageState state;
+  final List<ImportSourceEntity> entities;
+  final ValueChanged<ImportSourceEntity> onSelectMapping;
 
   @override
   Widget build(BuildContext context) {
+    if (entities.isEmpty) {
+      return const AppSurface(
+        child: Padding(
+          padding: EdgeInsets.all(AppSpacing.space16),
+          child: Text('资料包未提取到需要映射的账户或类别。'),
+        ),
+      );
+    }
+    return AppSurface(
+      child: Column(
+        children: [
+          for (final entity in entities)
+            _MappingItem(
+              state: state,
+              entity: entity,
+              onSelectMapping: onSelectMapping,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MappingItem extends StatelessWidget {
+  const _MappingItem({
+    required this.state,
+    required this.entity,
+    required this.onSelectMapping,
+  });
+
+  final ImportPageState state;
+  final ImportSourceEntity entity;
+  final ValueChanged<ImportSourceEntity> onSelectMapping;
+
+  @override
+  Widget build(BuildContext context) {
+    final review = state.review!;
     final key = ImportMappingKey.fromEntity(entity);
     final targetId = review.effectiveMappings[key];
     final target =
-        review.targets.where((item) => item.id == targetId).firstOrNull;
-    final targetAvailable = target != null && !target.isArchived;
-    final suggestion = review.suggestions.any((item) => item.key == key);
-    final colors = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space16,
-          vertical: AppSpacing.space12,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    entity.displayName,
-                    style: context.appTextStyles.listTitle,
-                  ),
-                  const SizedBox(height: AppSpacing.space4),
-                  Text(
-                    importEntityKindLabel(entity),
-                    style: context.appTextStyles.listSupporting,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.space12),
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    target == null
-                        ? '未映射'
-                        : target.isArchived
-                        ? '${target.displayPath}（已归档）'
-                        : target.displayPath,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
-                    style: context.appTextStyles.detailValue.copyWith(
-                      color: targetAvailable ? colors.onSurface : colors.error,
-                    ),
-                  ),
-                  if (isTemporary || suggestion) ...[
-                    const SizedBox(height: AppSpacing.space2),
-                    Text(
-                      isTemporary ? '仅本次覆盖' : '有唯一匹配建议',
-                      style: context.appTextStyles.listSupporting.copyWith(
-                        color: colors.primary,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.space6),
-            Icon(RemixIcons.arrow_right_s_line, color: colors.onSurfaceVariant),
-          ],
-        ),
-      ),
+        review.targets
+            .where((candidate) => candidate.id == targetId)
+            .firstOrNull;
+    final creation = state.plannedCreations[key];
+    final usesGhostAccount =
+        entity.isMissingAccountPlaceholder &&
+        target?.kind == ImportMappingTargetKind.ghost;
+    final createsTarget = creation != null;
+    final targetLabel =
+        usesGhostAccount || target?.kind == ImportMappingTargetKind.ghost
+            ? '无账户'
+            : creation?.name ??
+                (target?.isArchived ?? false
+                    ? '${target!.displayPath}（已归档）'
+                    : target?.displayPath ?? '待配置');
+    return ImportMappingItem(
+      sourceLabel: usesGhostAccount ? '缺失账户' : entity.displayName,
+      sourceKindLabel:
+          usesGhostAccount ? '来源账户' : importEntityKindLabel(entity),
+      targetLabel: targetLabel,
+      action:
+          createsTarget
+              ? ImportMappingItemAction.create
+              : ImportMappingItemAction.map,
+      onTap:
+          usesGhostAccount || state.isBusy
+              ? null
+              : () => onSelectMapping(entity),
     );
   }
 }
@@ -1562,7 +1654,6 @@ class _MappingTargetSheet extends StatefulWidget {
     required this.targets,
     required this.selectedTargetId,
     required this.hasTemporaryOverride,
-    this.allowSaveAsDefault = true,
     this.restoreLabel = '恢复默认映射',
   });
 
@@ -1570,7 +1661,6 @@ class _MappingTargetSheet extends StatefulWidget {
   final List<ImportMappingTarget> targets;
   final String? selectedTargetId;
   final bool hasTemporaryOverride;
-  final bool allowSaveAsDefault;
   final String restoreLabel;
 
   @override
@@ -1578,8 +1668,6 @@ class _MappingTargetSheet extends StatefulWidget {
 }
 
 class _MappingTargetSheetState extends State<_MappingTargetSheet> {
-  bool _saveAsDefault = false;
-
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -1613,15 +1701,6 @@ class _MappingTargetSheetState extends State<_MappingTargetSheet> {
                 ],
               ),
             ),
-            if (widget.allowSaveAsDefault)
-              CheckboxListTile(
-                value: _saveAsDefault,
-                onChanged:
-                    (value) => setState(() => _saveAsDefault = value ?? false),
-                title: const Text('以后也这样映射'),
-                subtitle: const Text('立即更新一木记账的默认映射；与本次导入是否提交无关。'),
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
             const Divider(height: AppListTokens.dividerThickness),
             Flexible(
               child: ListView(
@@ -1632,12 +1711,9 @@ class _MappingTargetSheetState extends State<_MappingTargetSheet> {
                       leading: const Icon(RemixIcons.restart_line),
                       title: Text(widget.restoreLabel),
                       onTap:
-                          () => Navigator.of(context).pop(
-                            const _MappingSelection(
-                              targetAccountId: null,
-                              saveAsDefault: false,
-                            ),
-                          ),
+                          () => Navigator.of(
+                            context,
+                          ).pop(const _MappingSelection(targetAccountId: null)),
                     ),
                   for (final target in widget.targets)
                     ListTile(
@@ -1652,18 +1728,15 @@ class _MappingTargetSheetState extends State<_MappingTargetSheet> {
                               ? null
                               : Text(target.name),
                       onTap:
-                          () => Navigator.of(context).pop(
-                            _MappingSelection(
-                              targetAccountId: target.id,
-                              saveAsDefault: _saveAsDefault,
-                            ),
-                          ),
+                          () => Navigator.of(
+                            context,
+                          ).pop(_MappingSelection(targetAccountId: target.id)),
                     ),
                   if (widget.targets.isEmpty)
                     Padding(
                       padding: const EdgeInsets.all(AppSpacing.space20),
                       child: Text(
-                        '暂无角色兼容的可用目标，请先新建账户或分类。',
+                        '暂无角色兼容的可用目标。',
                         textAlign: TextAlign.center,
                         style: context.appTextStyles.pageSubtitle,
                       ),
@@ -1679,445 +1752,50 @@ class _MappingTargetSheetState extends State<_MappingTargetSheet> {
 }
 
 class _MappingSelection {
-  const _MappingSelection({
-    required this.targetAccountId,
-    required this.saveAsDefault,
-  });
+  const _MappingSelection({required this.targetAccountId});
 
   final String? targetAccountId;
-  final bool saveAsDefault;
 }
 
 class _ImportPreviewSection extends StatelessWidget {
-  const _ImportPreviewSection({required this.review});
+  const _ImportPreviewSection({required this.state});
 
-  final ImportPlanReview review;
+  final ImportPageState state;
 
   @override
   Widget build(BuildContext context) {
+    final review = state.review!;
     final groups = buildImportPreviewGroups(review);
-    final previewGroups = takeImportPreviewRows(groups, 5);
+    final summary = summarizeImportPreview(
+      review,
+      confirmedSuspectedDuplicateIndexes:
+          state.confirmedSuspectedDuplicateIndexes,
+      confirmedWarningIndexes: state.confirmedWarningIndexes,
+    );
+    final hasPreviewDetails =
+        groups.isNotEmpty || review.plan.filteredRecords.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '导入预览（前 5 条）',
-                style: context.appTextStyles.groupTitle,
-              ),
-            ),
-            TextButton(
-              onPressed:
-                  groups.isEmpty ? null : () => _showAll(context, groups),
-              child: const Text('查看全部'),
-            ),
+        ImportAnalysisCard(
+          title: '导入预览',
+          icon: RemixIcons.list_check_3,
+          metrics: [
+            ImportAnalysisMetric(label: '解析成功', value: summary.parsed),
+            ImportAnalysisMetric(label: '待确认', value: summary.pending),
+            ImportAnalysisMetric(label: '已跳过', value: summary.skipped),
+            ImportAnalysisMetric(label: '无法解析', value: summary.unparsed),
           ],
+          description: importPreviewAnalysisDescription(summary),
+          onViewAll: hasPreviewDetails ? () => _showAll(context, review) : null,
         ),
-        const SizedBox(height: AppSpacing.space8),
-        if (previewGroups.isEmpty)
-          const AppSurface(
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacing.space20),
-              child: Text('资料包没有产生可预览的交易。'),
-            ),
-          )
-        else
-          for (var index = 0; index < previewGroups.length; index++) ...[
-            TransactionDayCard(
-              group: previewGroups[index],
-              enableRowTap: false,
-              showDailyTotals: false,
-            ),
-            if (index < previewGroups.length - 1)
-              const SizedBox(height: AppSpacing.space10),
-          ],
       ],
     );
   }
 
-  Future<void> _showAll(
-    BuildContext context,
-    List<TransactionDayGroup> groups,
-  ) {
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder:
-          (context) => DraggableScrollableSheet(
-            expand: false,
-            initialChildSize: 0.82,
-            minChildSize: 0.5,
-            maxChildSize: 0.95,
-            builder:
-                (context, controller) => ListView(
-                  controller: controller,
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.space20,
-                    0,
-                    AppSpacing.space20,
-                    AppSpacing.space24,
-                  ),
-                  children: [
-                    Text('全部导入预览', style: context.appTextStyles.sectionTitle),
-                    const SizedBox(height: AppSpacing.space16),
-                    for (var index = 0; index < groups.length; index++) ...[
-                      TransactionDayCard(
-                        group: groups[index],
-                        enableRowTap: false,
-                        showDailyTotals: false,
-                      ),
-                      if (index < groups.length - 1)
-                        const SizedBox(height: AppSpacing.space10),
-                    ],
-                  ],
-                ),
-          ),
-    );
-  }
-}
-
-class _ImportReviewOptions extends StatelessWidget {
-  const _ImportReviewOptions({
-    required this.state,
-    required this.onSelectAll,
-    required this.onGroupSelected,
-    required this.onSuspectedConfirmed,
-    required this.onWarningConfirmed,
-    required this.onSelectGroupMapping,
-    required this.onEditDraft,
-  });
-
-  final ImportPageState state;
-  final ValueChanged<bool> onSelectAll;
-  final void Function(int index, bool selected) onGroupSelected;
-  final void Function(int index, bool confirmed) onSuspectedConfirmed;
-  final void Function(int index, bool confirmed) onWarningConfirmed;
-  final void Function(int groupIndex, ImportSourceEntity entity)
-  onSelectGroupMapping;
-  final void Function(int groupIndex, int? childIndex) onEditDraft;
-
-  @override
-  Widget build(BuildContext context) {
-    final issueCount =
-        state.review!.groups
-            .where(
-              (group) =>
-                  group.isBlocked ||
-                  group.isSuspectedDuplicate ||
-                  group.hasWarnings,
-            )
-            .length;
-    return AppSurface(
-      child: ExpansionTile(
-        title: Text('导入检查与选择', style: context.appTextStyles.listTitle),
-        subtitle: Text(
-          '已选择 ${state.selectedGroupCount}/${state.groupCount} 组'
-          '${issueCount == 0 ? '' : ' · $issueCount 组需要处理或确认'}',
-          style: context.appTextStyles.pageSubtitle,
-        ),
-        childrenPadding: const EdgeInsets.fromLTRB(
-          AppSpacing.space16,
-          0,
-          AppSpacing.space16,
-          AppSpacing.space16,
-        ),
-        children: [
-          _GroupReviewSection(
-            state: state,
-            showHeader: false,
-            onSelectAll: onSelectAll,
-            onGroupSelected: onGroupSelected,
-            onSuspectedConfirmed: onSuspectedConfirmed,
-            onWarningConfirmed: onWarningConfirmed,
-            onSelectGroupMapping: onSelectGroupMapping,
-            onEditDraft: onEditDraft,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GroupReviewSection extends StatelessWidget {
-  const _GroupReviewSection({
-    required this.state,
-    required this.onSelectAll,
-    required this.onGroupSelected,
-    required this.onSuspectedConfirmed,
-    required this.onWarningConfirmed,
-    required this.onSelectGroupMapping,
-    required this.onEditDraft,
-    this.showHeader = true,
-  });
-
-  final ImportPageState state;
-  final ValueChanged<bool> onSelectAll;
-  final void Function(int index, bool selected) onGroupSelected;
-  final void Function(int index, bool confirmed) onSuspectedConfirmed;
-  final void Function(int index, bool confirmed) onWarningConfirmed;
-  final void Function(int groupIndex, ImportSourceEntity entity)
-  onSelectGroupMapping;
-  final void Function(int groupIndex, int? childIndex) onEditDraft;
-  final bool showHeader;
-
-  @override
-  Widget build(BuildContext context) {
-    final groups = state.review!.groups;
-    final allSelected = state.allDirectlyImportableSelected;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (showHeader) Text('交易组审阅', style: context.appTextStyles.groupTitle),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: state.isBusy ? null : () => onSelectAll(!allSelected),
-            child: Text(allSelected ? '取消全选' : '选择全部可直接导入'),
-          ),
-        ),
-        if (showHeader) const SizedBox(height: AppSpacing.space8),
-        if (groups.isEmpty)
-          const AppSurface(
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacing.space20),
-              child: Text('资料包没有产生候选交易组。'),
-            ),
-          )
-        else
-          for (final group in groups) ...[
-            _ImportGroupCard(
-              review: group,
-              sourceEntities: state.review!.plan.sourceEntities,
-              selected: state.selectedGroupIndexes.contains(group.index),
-              suspectedConfirmed: state.confirmedSuspectedDuplicateIndexes
-                  .contains(group.index),
-              warningConfirmed: state.confirmedWarningIndexes.contains(
-                group.index,
-              ),
-              onSelected: (value) => onGroupSelected(group.index, value),
-              onSuspectedConfirmed:
-                  (value) => onSuspectedConfirmed(group.index, value),
-              onWarningConfirmed:
-                  (value) => onWarningConfirmed(group.index, value),
-              onSelectGroupMapping:
-                  (entity) => onSelectGroupMapping(group.index, entity),
-              onEditDraft: (childIndex) => onEditDraft(group.index, childIndex),
-            ),
-            const SizedBox(height: AppSpacing.space10),
-          ],
-      ],
-    );
-  }
-}
-
-class _ImportGroupCard extends StatelessWidget {
-  const _ImportGroupCard({
-    required this.review,
-    required this.sourceEntities,
-    required this.selected,
-    required this.suspectedConfirmed,
-    required this.warningConfirmed,
-    required this.onSelected,
-    required this.onSuspectedConfirmed,
-    required this.onWarningConfirmed,
-    required this.onSelectGroupMapping,
-    required this.onEditDraft,
-  });
-
-  final ImportGroupReview review;
-  final List<ImportSourceEntity> sourceEntities;
-  final bool selected;
-  final bool suspectedConfirmed;
-  final bool warningConfirmed;
-  final ValueChanged<bool> onSelected;
-  final ValueChanged<bool> onSuspectedConfirmed;
-  final ValueChanged<bool> onWarningConfirmed;
-  final ValueChanged<ImportSourceEntity> onSelectGroupMapping;
-  final ValueChanged<int?> onEditDraft;
-
-  @override
-  Widget build(BuildContext context) {
-    final draft = review.group.topLevel;
-    final colors = Theme.of(context).colorScheme;
-    return AppSurface(
-      border: review.isBlocked || review.isExactDuplicate,
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space12,
-          vertical: AppSpacing.space4,
-        ),
-        childrenPadding: const EdgeInsets.fromLTRB(
-          AppSpacing.space16,
-          0,
-          AppSpacing.space16,
-          AppSpacing.space16,
-        ),
-        leading: Checkbox(
-          value: selected,
-          onChanged:
-              review.canSelect ? (value) => onSelected(value ?? false) : null,
-        ),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                '${review.index + 1}. ${importOperationLabel(draft.operationKind)}',
-                style: context.appTextStyles.listTitle,
-              ),
-            ),
-            MoneyText(
-              money: draft.amount,
-              style: context.appTextStyles.amountList,
-            ),
-          ],
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: AppSpacing.space4),
-            Text(
-              formatImportDateTime(draft.occurredAt),
-              style: context.appTextStyles.listSupporting,
-            ),
-            const SizedBox(height: AppSpacing.space6),
-            Wrap(
-              spacing: AppSpacing.space6,
-              runSpacing: AppSpacing.space4,
-              children: [
-                if (review.group.children.isNotEmpty)
-                  _StatusBadge(
-                    label: '${review.group.children.length} 条子交易',
-                    tone: _FeedbackTone.info,
-                  ),
-                if (review.isExactDuplicate)
-                  const _StatusBadge(label: '已导入', tone: _FeedbackTone.info),
-                if (review.isBlocked)
-                  const _StatusBadge(label: '阻塞', tone: _FeedbackTone.error),
-                if (review.isSuspectedDuplicate)
-                  const _StatusBadge(
-                    label: '疑似重复',
-                    tone: _FeedbackTone.warning,
-                  ),
-                if (review.hasWarnings && !review.isSuspectedDuplicate)
-                  const _StatusBadge(label: '有警告', tone: _FeedbackTone.warning),
-                if (draft.isExcludedFromStats)
-                  const _StatusBadge(label: '不计收支', tone: _FeedbackTone.info),
-                if (draft.isExcludedFromBudget)
-                  const _StatusBadge(label: '不计预算', tone: _FeedbackTone.info),
-              ],
-            ),
-          ],
-        ),
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (draft.note case final note?
-                    when note.trim().isNotEmpty) ...[
-                  Text('备注：$note', style: context.appTextStyles.detailValue),
-                  const SizedBox(height: AppSpacing.space8),
-                ],
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Wrap(
-                    spacing: AppSpacing.space8,
-                    runSpacing: AppSpacing.space8,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed:
-                            review.isExactDuplicate
-                                ? null
-                                : () => onEditDraft(null),
-                        icon: const Icon(RemixIcons.edit_line),
-                        label: const Text('编辑顶层交易'),
-                      ),
-                      for (final entity in importGroupEntities(
-                        review.group,
-                        sourceEntities,
-                      ))
-                        OutlinedButton(
-                          onPressed: () => onSelectGroupMapping(entity),
-                          child: Text('本组映射：${entity.displayName}'),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space10),
-                for (final child in review.group.children) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '子交易：${importOperationLabel(child.operationKind)} · '
-                          '${formatImportDateTime(child.occurredAt)}',
-                          style: context.appTextStyles.detailValue,
-                        ),
-                      ),
-                      MoneyText(
-                        money: child.amount,
-                        style: context.appTextStyles.detailValue,
-                      ),
-                      IconButton(
-                        onPressed:
-                            review.isExactDuplicate
-                                ? null
-                                : () => onEditDraft(
-                                  review.group.children.indexOf(child),
-                                ),
-                        icon: const Icon(RemixIcons.edit_line),
-                        tooltip: '编辑子交易',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.space6),
-                ],
-                for (final issue in review.issues)
-                  _IssueLine(
-                    issue: issue,
-                    color:
-                        issue.isWarning
-                            ? _themeExtension(context).warning
-                            : colors.error,
-                  ),
-                if (review.isExactDuplicate)
-                  Text(
-                    '来源操作键已命中仍存在的历史导入交易组，本组不能强制重复导入。',
-                    style: context.appTextStyles.pageSubtitle,
-                  ),
-                if (review.isSuspectedDuplicate)
-                  CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: suspectedConfirmed,
-                    onChanged:
-                        review.canSelect
-                            ? (value) => onSuspectedConfirmed(value ?? false)
-                            : null,
-                    title: const Text('确认仍要导入此交易组'),
-                    subtitle: const Text('仅来源操作指纹相同，系统不会把它当作精确重复。'),
-                    controlAffinity: ListTileControlAffinity.leading,
-                  ),
-                if (review.hasWarnings && !review.isSuspectedDuplicate)
-                  CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: warningConfirmed,
-                    onChanged:
-                        review.canSelect
-                            ? (value) => onWarningConfirmed(value ?? false)
-                            : null,
-                    title: const Text('确认警告后导入此交易组'),
-                    subtitle: const Text('请确认已理解该交易组的解析提示。'),
-                    controlAffinity: ListTileControlAffinity.leading,
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
+  Future<void> _showAll(BuildContext context, ImportPlanReview review) {
+    return Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => ImportPreviewPage(review: review)),
     );
   }
 }
@@ -2151,255 +1829,6 @@ class _IssueLine extends StatelessWidget {
               style: context.appTextStyles.detailValue.copyWith(color: color),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ImportDraftEditSheet extends StatefulWidget {
-  const _ImportDraftEditSheet({required this.draft});
-
-  final ImportTransactionDraft draft;
-
-  @override
-  State<_ImportDraftEditSheet> createState() => _ImportDraftEditSheetState();
-}
-
-class _ImportDraftEditSheetState extends State<_ImportDraftEditSheet> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _amountController;
-  late final TextEditingController _noteController;
-  late final TextEditingController? _interestController;
-  late final TextEditingController? _feeController;
-  late final TextEditingController? _transferFeeController;
-  late DateTime _occurredAt;
-  late DateTime _postedAt;
-
-  @override
-  void initState() {
-    super.initState();
-    final draft = widget.draft;
-    final amount = switch (draft) {
-      ImportRepaymentDraft draft => draft.principal,
-      ImportReimbursementCloseDraft draft => draft.actualReceivedAmount,
-      _ => draft.amount,
-    };
-    _amountController = TextEditingController(text: amount.format());
-    _noteController = TextEditingController(text: draft.note ?? '');
-    _interestController =
-        draft is ImportRepaymentDraft
-            ? TextEditingController(text: draft.interest?.format() ?? '')
-            : null;
-    _feeController =
-        draft is ImportRepaymentDraft
-            ? TextEditingController(text: draft.fee?.format() ?? '')
-            : null;
-    _transferFeeController =
-        draft is ImportTransferDraft
-            ? TextEditingController(text: draft.feeAmount?.format() ?? '')
-            : null;
-    _occurredAt = draft.occurredAt;
-    _postedAt = draft.postedAt;
-  }
-
-  @override
-  void dispose() {
-    _amountController.dispose();
-    _noteController.dispose();
-    _interestController?.dispose();
-    _feeController?.dispose();
-    _transferFeeController?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final draft = widget.draft;
-    final allowsZero = draft is ImportReimbursementCloseDraft;
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          AppSpacing.space20,
-          AppSpacing.space8,
-          AppSpacing.space20,
-          MediaQuery.viewInsetsOf(context).bottom + AppSpacing.space24,
-        ),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                '编辑${importOperationLabel(draft.operationKind)}',
-                style: context.appTextStyles.subsectionTitle,
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              MoneyPlainFormRow(
-                label: switch (draft) {
-                  ImportReimbursementCloseDraft() => '到账金额',
-                  ImportRepaymentDraft() => '本金',
-                  ImportInterestExpenseDraft() => '利息',
-                  _ => '金额',
-                },
-                controller: _amountController,
-                requiredIndicator: true,
-                validator:
-                    allowsZero
-                        ? (value) => validateNonNegativeMoneyText(value)
-                        : (value) => validatePositiveMoneyText(value),
-              ),
-              if (_transferFeeController case final controller?) ...[
-                const SizedBox(height: AppSpacing.space8),
-                MoneyPlainFormRow(
-                  label: '转账手续费',
-                  controller: controller,
-                  hintText: '可选',
-                  validator: validateOptionalNonNegativeMoneyText,
-                ),
-              ],
-              if (_interestController case final controller?) ...[
-                const SizedBox(height: AppSpacing.space8),
-                MoneyPlainFormRow(
-                  label: '利息',
-                  controller: controller,
-                  hintText: '可选',
-                  validator: validateOptionalNonNegativeMoneyText,
-                ),
-              ],
-              if (_feeController case final controller?) ...[
-                const SizedBox(height: AppSpacing.space8),
-                MoneyPlainFormRow(
-                  label: '手续费',
-                  controller: controller,
-                  hintText: '可选',
-                  validator: validateOptionalNonNegativeMoneyText,
-                ),
-              ],
-              const SizedBox(height: AppSpacing.space8),
-              AppPlainSelectFormRow<DateTime>(
-                label: '交易时间',
-                value: _occurredAt,
-                placeholder: '选择交易时间',
-                valueText: formatImportDateTime(_occurredAt),
-                onTap: (onSelected) async {
-                  final picked = await showAppDateTimePicker(
-                    context: context,
-                    initialDateTime: _occurredAt,
-                    title: '选择交易时间',
-                  );
-                  if (picked != null && mounted) onSelected(picked);
-                },
-                onChanged: (value) {
-                  if (value != null) setState(() => _occurredAt = value);
-                },
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              AppPlainSelectFormRow<DateTime>(
-                label: '入账时间',
-                value: _postedAt,
-                placeholder: '选择入账时间',
-                valueText: formatImportDateTime(_postedAt),
-                onTap: (onSelected) async {
-                  final picked = await showAppDateTimePicker(
-                    context: context,
-                    initialDateTime: _postedAt,
-                    title: '选择入账时间',
-                  );
-                  if (picked != null && mounted) onSelected(picked);
-                },
-                onChanged: (value) {
-                  if (value != null) setState(() => _postedAt = value);
-                },
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              AppPlainTextFormRow(
-                label: '备注',
-                controller: _noteController,
-                maxLines: 3,
-                minLines: 1,
-                hintText: '可选',
-              ),
-              const SizedBox(height: AppSpacing.space16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('取消'),
-                  ),
-                  const SizedBox(width: AppSpacing.space8),
-                  FilledButton(onPressed: _submit, child: const Text('保存本次修改')),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _submit() {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    final amount = Money.tryParse(_amountController.text.trim());
-    if (amount == null) return;
-    final note = _noteController.text.trim();
-    Navigator.of(context).pop(
-      ImportDraftEdit(
-        amount: amount,
-        occurredAt: _occurredAt,
-        postedAt: _postedAt,
-        note: note.isEmpty ? const Patch.clear() : Patch.set(note),
-        interest: _moneyPatch(_interestController),
-        fee: _moneyPatch(_feeController),
-        transferFee: _moneyPatch(_transferFeeController),
-      ),
-    );
-  }
-
-  Patch<Money?>? _moneyPatch(TextEditingController? controller) {
-    if (controller == null) return null;
-    final text = controller.text.trim();
-    return text.isEmpty
-        ? const Patch<Money?>.clear()
-        : Patch<Money?>.set(Money.parse(text));
-  }
-}
-
-class _FilteredRecordsSection extends StatelessWidget {
-  const _FilteredRecordsSection({required this.records});
-
-  final List<ImportFilteredRecord> records;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppSurface(
-      child: ExpansionTile(
-        title: Text(
-          '已过滤来源记录 ${records.length}',
-          style: context.appTextStyles.listTitle,
-        ),
-        subtitle: const Text('这些来源行已由其它交易组完整表达，不计入批次跳过数量。'),
-        childrenPadding: const EdgeInsets.fromLTRB(
-          AppSpacing.space16,
-          0,
-          AppSpacing.space16,
-          AppSpacing.space16,
-        ),
-        children: [
-          for (final record in records)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.space8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '${importFileRoleLabel(record.fileRole)}'
-                  '${record.rowNumber == null ? '' : ' · 第 ${record.rowNumber} 行'}：'
-                  '${record.reason}',
-                  style: context.appTextStyles.detailValue,
-                ),
-              ),
-            ),
         ],
       ),
     );

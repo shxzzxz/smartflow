@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/import/import_workflow_app_service.dart';
 import 'package:smartflow/application/import/import_workflow_models.dart';
+import 'package:smartflow/application/ledger/account/command/account_app_service.dart';
 import 'package:smartflow/application/ledger/account/query/account_query_service.dart';
+import 'package:smartflow/application/ledger/category/command/category_app_service.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_edit_app_service.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_ledger_writer.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_posting_app_service.dart';
@@ -11,6 +13,10 @@ import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/import/import_error_code.dart';
 import 'package:smartflow/domain/import/import_models.dart';
 import 'package:smartflow/domain/import/import_persistence_models.dart';
+import 'package:smartflow/domain/ledger/service/account/account_role_policy.dart';
+import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
+import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.dart';
+import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
@@ -30,6 +36,369 @@ import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
 
 void main() {
+  test(
+    'creates unmatched mapping targets only when the import is committed',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.database.close);
+      const accountEntity = ImportSourceEntity(
+        source: ImportSource.yimu,
+        kind: ImportEntityKind.account,
+        sourceEntityKey: 'account:new-wallet',
+        displayName: '新钱包',
+      );
+      const categoryEntity = ImportSourceEntity(
+        source: ImportSource.yimu,
+        kind: ImportEntityKind.category,
+        sourceEntityKey: 'category:expense:new-food',
+        displayName: '新餐饮',
+        categoryKind: ImportCategoryKind.expense,
+      );
+      final plan = ImportParseResult(
+        source: ImportSource.yimu,
+        sourceEntities: const [accountEntity, categoryEntity],
+        groups: [
+          ImportTransactionGroupDraft(
+            topLevel: ImportExpenseDraft(
+              amount: Money.parse('25.00'),
+              paidFrom: const ImportAccountReference.source(
+                sourceEntityKey: 'account:new-wallet',
+                displayName: '新钱包',
+              ),
+              category: const ImportCategoryReference(
+                sourceEntityKey: 'category:expense:new-food',
+                path: '新餐饮',
+                kind: ImportCategoryKind.expense,
+              ),
+              occurredAt: DateTime(2026, 4, 6),
+            ),
+            sourceOperationFingerprint: 'new-targets-fingerprint',
+            fingerprintVersion: 1,
+          ),
+        ],
+      );
+      const accountKey = ImportMappingKey(
+        source: ImportSource.yimu,
+        entityKind: ImportEntityKind.account,
+        sourceEntityKey: 'account:new-wallet',
+      );
+      const categoryKey = ImportMappingKey(
+        source: ImportSource.yimu,
+        entityKind: ImportEntityKind.category,
+        sourceEntityKey: 'category:expense:new-food',
+      );
+      final creations = {
+        accountKey: const ImportMappingCreation(
+          name: '新钱包',
+          kind: ImportMappingTargetKind.asset,
+        ),
+        categoryKey: const ImportMappingCreation(
+          name: '新餐饮',
+          kind: ImportMappingTargetKind.expenseCategory,
+        ),
+      };
+
+      final review = await fixture.service.review(
+        plan,
+        plannedCreations: creations,
+      );
+
+      expect(review.groups.single.canSelect, isTrue);
+      expect(
+        (await fixture.database.select(fixture.database.accounts).get()).where(
+          (row) => row.name == '新钱包' || row.name == '新餐饮',
+        ),
+        isEmpty,
+      );
+
+      final result = await fixture.service.commit(
+        ImportCommitCommand(
+          plan: plan,
+          mappings: review.effectiveMappings,
+          plannedCreations: creations,
+          selectedGroupIndexes: const {0},
+          saveMappingConfiguration: true,
+        ),
+      );
+
+      expect(result.batch?.importedGroupCount, 1);
+      expect(result.createdMappings.keys, containsAll(creations.keys));
+      final createdTargets =
+          (await fixture.database.select(fixture.database.accounts).get())
+              .where((row) => row.name == '新钱包' || row.name == '新餐饮')
+              .toList();
+      expect(createdTargets, hasLength(2));
+      final refreshed = await fixture.service.review(plan);
+      expect(refreshed.defaultMappings.keys, containsAll(creations.keys));
+      expect(refreshed.groups.single.canSelect, isTrue);
+    },
+  );
+
+  test(
+    'creates only the mapping kind used by selected transaction groups',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.database.close);
+      const sharedSourceKey = 'shared-source-key';
+      const accountKey = ImportMappingKey(
+        source: ImportSource.yimu,
+        entityKind: ImportEntityKind.account,
+        sourceEntityKey: sharedSourceKey,
+      );
+      const categoryKey = ImportMappingKey(
+        source: ImportSource.yimu,
+        entityKind: ImportEntityKind.category,
+        sourceEntityKey: sharedSourceKey,
+      );
+      final plan = ImportParseResult(
+        source: ImportSource.yimu,
+        sourceEntities: const [
+          ImportSourceEntity(
+            source: ImportSource.yimu,
+            kind: ImportEntityKind.account,
+            sourceEntityKey: sharedSourceKey,
+            displayName: '新结算账户',
+          ),
+          ImportSourceEntity(
+            source: ImportSource.yimu,
+            kind: ImportEntityKind.category,
+            sourceEntityKey: sharedSourceKey,
+            displayName: '未使用分类',
+            categoryKind: ImportCategoryKind.expense,
+          ),
+        ],
+        groups: [
+          ImportTransactionGroupDraft(
+            topLevel: ImportInterestExpenseDraft(
+              amount: Money.parse('2.00'),
+              paidFrom: const ImportAccountReference.source(
+                sourceEntityKey: sharedSourceKey,
+                displayName: '新结算账户',
+              ),
+              occurredAt: DateTime(2026, 4, 6),
+            ),
+            sourceOperationFingerprint: 'shared-source-key-fingerprint',
+            fingerprintVersion: 1,
+          ),
+        ],
+      );
+      final creations = {
+        accountKey: const ImportMappingCreation(
+          name: '新结算账户',
+          kind: ImportMappingTargetKind.asset,
+        ),
+        categoryKey: const ImportMappingCreation(
+          name: '未使用分类',
+          kind: ImportMappingTargetKind.expenseCategory,
+        ),
+      };
+      final review = await fixture.service.review(
+        plan,
+        plannedCreations: creations,
+      );
+
+      final result = await fixture.service.commit(
+        ImportCommitCommand(
+          plan: plan,
+          mappings: review.effectiveMappings,
+          plannedCreations: creations,
+          selectedGroupIndexes: const {0},
+        ),
+      );
+
+      expect(result.createdMappings, contains(accountKey));
+      expect(result.createdMappings, isNot(contains(categoryKey)));
+      final accounts =
+          await fixture.database.select(fixture.database.accounts).get();
+      expect(accounts.where((row) => row.name == '新结算账户'), hasLength(1));
+      expect(accounts.where((row) => row.name == '未使用分类'), isEmpty);
+    },
+  );
+
+  test('maps a missing settlement account to the ghost account', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.database.close);
+    const missingKey = 'review:missing:account:bill:2:account';
+    const category = ImportSourceEntity(
+      source: ImportSource.yimu,
+      kind: ImportEntityKind.category,
+      sourceEntityKey: 'category:expense:餐饮 / 生鲜',
+      displayName: '餐饮 / 生鲜',
+      categoryKind: ImportCategoryKind.expense,
+    );
+    const missing = ImportSourceEntity(
+      source: ImportSource.yimu,
+      kind: ImportEntityKind.account,
+      sourceEntityKey: missingKey,
+      displayName: '缺失账户（账单文件第 2 行）',
+      isReviewPlaceholder: true,
+    );
+    final plan = ImportParseResult(
+      source: ImportSource.yimu,
+      sourceEntities: const [missing, category],
+      groups: [
+        ImportTransactionGroupDraft(
+          topLevel: ImportExpenseDraft(
+            amount: Money.parse('12.00'),
+            paidFrom: const ImportAccountReference.unresolved(
+              sourceEntityKey: missingKey,
+              displayName: '缺失账户（账单文件第 2 行）',
+            ),
+            category: const ImportCategoryReference(
+              sourceEntityKey: 'category:expense:餐饮 / 生鲜',
+              path: '餐饮 / 生鲜',
+              kind: ImportCategoryKind.expense,
+            ),
+            occurredAt: DateTime(2026, 4, 6),
+          ),
+          sourceOperationFingerprint: 'missing-settlement-fingerprint',
+          fingerprintVersion: 1,
+          issues: const [
+            ImportIssue(
+              code: 'account_missing',
+              message: '账户为空或未提供。',
+              severity: ImportIssueSeverity.blocking,
+            ),
+          ],
+        ),
+      ],
+    );
+    await fixture.seedMapping(entity: category, targetAccountId: 'food');
+
+    final review = await fixture.service.review(plan);
+
+    const key = ImportMappingKey(
+      source: ImportSource.yimu,
+      entityKind: ImportEntityKind.account,
+      sourceEntityKey: missingKey,
+    );
+    final target = review.targets.singleWhere(
+      (candidate) => candidate.id == review.effectiveMappings[key],
+    );
+    expect(target.kind, ImportMappingTargetKind.ghost);
+    expect(review.groups.single.canSelect, isTrue);
+    expect(review.defaultMappings, isNot(contains(key)));
+  });
+
+  test(
+    'rejects a regular source account mapped to the ghost account',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.database.close);
+      const account = ImportSourceEntity(
+        source: ImportSource.yimu,
+        kind: ImportEntityKind.account,
+        sourceEntityKey: 'account:regular',
+        displayName: '普通账户',
+      );
+      const category = ImportSourceEntity(
+        source: ImportSource.yimu,
+        kind: ImportEntityKind.category,
+        sourceEntityKey: 'category:expense:餐饮 / 生鲜',
+        displayName: '餐饮 / 生鲜',
+        categoryKind: ImportCategoryKind.expense,
+      );
+      final plan = ImportParseResult(
+        source: ImportSource.yimu,
+        sourceEntities: const [account, category],
+        groups: [
+          ImportTransactionGroupDraft(
+            topLevel: ImportExpenseDraft(
+              amount: Money.parse('12.00'),
+              paidFrom: const ImportAccountReference.source(
+                sourceEntityKey: 'account:regular',
+                displayName: '普通账户',
+              ),
+              category: const ImportCategoryReference(
+                sourceEntityKey: 'category:expense:餐饮 / 生鲜',
+                path: '餐饮 / 生鲜',
+                kind: ImportCategoryKind.expense,
+              ),
+              occurredAt: DateTime(2026, 4, 6),
+            ),
+            sourceOperationFingerprint: 'regular-ghost-fingerprint',
+            fingerprintVersion: 1,
+          ),
+        ],
+      );
+      final ghost = (await fixture.database
+              .select(fixture.database.accounts)
+              .get())
+          .singleWhere((row) => row.systemKey == SystemKey.ghostAccount);
+      final mappings = {
+        ImportMappingKey.fromEntity(account): ghost.id,
+        ImportMappingKey.fromEntity(category): 'food',
+      };
+
+      await expectLater(
+        fixture.service.commit(
+          ImportCommitCommand(
+            plan: plan,
+            mappings: mappings,
+            selectedGroupIndexes: const {0},
+          ),
+        ),
+        throwsA(
+          isA<ImportWorkflowException>().having(
+            (error) => error.code,
+            'code',
+            ImportErrorCode.mappingTargetRoleInvalid.code,
+          ),
+        ),
+      );
+      expect(
+        await fixture.database.select(fixture.database.transactions).get(),
+        isEmpty,
+      );
+    },
+  );
+
+  test('keeps a non-settlement missing account blocked', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.database.close);
+    const missingKey = 'review:missing:account:debt:2:liability';
+    const missing = ImportSourceEntity(
+      source: ImportSource.yimu,
+      kind: ImportEntityKind.account,
+      sourceEntityKey: missingKey,
+      displayName: '缺失债务账户（债务文件第 2 行）',
+      isReviewPlaceholder: true,
+    );
+    final plan = ImportParseResult(
+      source: ImportSource.yimu,
+      sourceEntities: const [missing],
+      groups: [
+        ImportTransactionGroupDraft(
+          topLevel: ImportOpeningBalanceDraft(
+            amount: Money.parse('100.00'),
+            liabilityAccount: const ImportAccountReference.unresolved(
+              sourceEntityKey: missingKey,
+              displayName: '缺失债务账户（债务文件第 2 行）',
+            ),
+            occurredAt: DateTime(2026, 4, 6),
+          ),
+          sourceOperationFingerprint: 'missing-liability-fingerprint',
+          fingerprintVersion: 1,
+          issues: const [
+            ImportIssue(
+              code: 'account_missing',
+              message: '债务账户为空或未提供。',
+              severity: ImportIssueSeverity.blocking,
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final review = await fixture.service.review(plan);
+    final key = ImportMappingKey.fromEntity(missing);
+
+    expect(review.effectiveMappings, isNot(contains(key)));
+    expect(review.plannedCreations, isNot(contains(key)));
+    expect(review.groups.single.isBlocked, isTrue);
+    expect(review.groups.single.canSelect, isFalse);
+  });
+
   test(
     'commits groups atomically, records duplicates, and reverts idempotently',
     () async {
@@ -401,6 +770,22 @@ void main() {
     };
     expect(suggestions[receiveKey], 'asset-match');
     expect(suggestions[liabilityKey], 'debt-match');
+    expect(
+      review.effectiveMappings[const ImportMappingKey(
+        source: ImportSource.yimu,
+        entityKind: ImportEntityKind.account,
+        sourceEntityKey: receiveKey,
+      )],
+      'asset-match',
+    );
+    expect(
+      review.effectiveMappings[const ImportMappingKey(
+        source: ImportSource.yimu,
+        entityKind: ImportEntityKind.account,
+        sourceEntityKey: liabilityKey,
+      )],
+      'debt-match',
+    );
   });
 
   test('a group mapping repairs a parser missing-account blocker', () async {
@@ -477,7 +862,7 @@ void main() {
   });
 
   test(
-    'review exposes an archived default target for explicit remapping',
+    'review ignores an archived default and uses a unique compatible match',
     () async {
       final fixture = await _Fixture.create();
       addTearDown(fixture.database.close);
@@ -487,13 +872,16 @@ void main() {
         sourceEntityKey: 'account:cash',
         displayName: '现金',
       );
-      await fixture.service.saveDefaultMapping(
-        entity: entity,
-        targetAccountId: 'cash',
-      );
+      await fixture.seedMapping(entity: entity, targetAccountId: 'cash');
       final cash = await fixture.accounts.findById('cash');
       cash!.archive(DateTime(2026, 4, 7));
       await fixture.accounts.save(cash);
+      await _insertAccount(
+        fixture.database,
+        'replacement-cash',
+        '现金',
+        AccountType.asset,
+      );
       final plan = ImportParseResult(
         source: ImportSource.yimu,
         sourceEntities: const [entity],
@@ -523,7 +911,15 @@ void main() {
         review.targets.singleWhere((target) => target.id == 'cash').isArchived,
         isTrue,
       );
-      expect(review.groups.single.isBlocked, isTrue);
+      expect(review.groups.single.isBlocked, isFalse);
+      expect(
+        review.effectiveMappings[ImportMappingKey.fromEntity(entity)],
+        'replacement-cash',
+      );
+      expect(
+        review.plannedCreations,
+        isNot(contains(ImportMappingKey.fromEntity(entity))),
+      );
     },
   );
 }
@@ -532,11 +928,13 @@ class _Fixture {
   _Fixture._({
     required this.database,
     required this.accounts,
+    required this.mappings,
     required this.service,
   });
 
   final AppDatabase database;
   final DriftAccountRepository accounts;
+  final DriftImportMappingRepository mappings;
   final ImportWorkflowAppServiceImpl service;
 
   static Future<_Fixture> create() async {
@@ -579,18 +977,40 @@ class _Fixture {
       detailRead: DriftTransactionDetailReadRepository(database),
       metricsSource: DriftLedgerMetricsSource(database),
     );
+    final ledgerPosting = LedgerPostingService(
+      accountRepository: accounts,
+      systemAccountResolver: systemAccounts,
+      postingEngine: PostingEngine(idGenerator: ids),
+      accountPostingService: const DefaultAccountPostingService(),
+      accountRolePolicy: AccountRolePolicy(accountRepository: accounts),
+    );
+    final accountCommands = AccountAppServiceImpl(
+      accounts,
+      transactionRunner: runner,
+      ledgerPostingService: ledgerPosting,
+      transactionRepository: postings,
+      idGenerator: ids,
+    );
+    final categoryCommands = CategoryAppServiceImpl(
+      repository: accounts,
+      idGenerator: ids,
+    );
     final ledger = LedgerImportPort(
       posting: posting,
       editing: editing,
       transactions: transactionQuery,
       accounts: accountQuery,
+      accountCommands: accountCommands,
+      categoryCommands: categoryCommands,
       systemAccounts: systemAccounts,
     );
+    final mappings = DriftImportMappingRepository(database);
     return _Fixture._(
       database: database,
       accounts: accounts,
+      mappings: mappings,
       service: ImportWorkflowAppServiceImpl(
-        mappings: DriftImportMappingRepository(database),
+        mappings: mappings,
         batches: DriftImportBatchRepository(database),
         ledger: ledger,
         transactionRunner: runner,
@@ -608,11 +1028,26 @@ class _Fixture {
         'category:income:收入 / 工资' => 'salary',
         _ => throw StateError('Unknown test entity ${entity.sourceEntityKey}'),
       };
-      await service.saveDefaultMapping(
-        entity: entity,
-        targetAccountId: targetId,
-      );
+      await seedMapping(entity: entity, targetAccountId: targetId);
     }
+  }
+
+  Future<void> seedMapping({
+    required ImportSourceEntity entity,
+    required String targetAccountId,
+  }) async {
+    final now = DateTime(2026, 4, 6);
+    await mappings.upsert(
+      ImportEntityMapping(
+        id: 'seed:${entity.kind.name}:${entity.sourceEntityKey}',
+        source: entity.source,
+        entityKind: entity.kind,
+        sourceEntityKey: entity.sourceEntityKey,
+        targetAccountId: targetAccountId,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
   }
 }
 

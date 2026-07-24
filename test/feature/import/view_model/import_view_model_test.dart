@@ -13,15 +13,302 @@ import 'package:smartflow/feature/import/view_model/import_view_model.dart';
 void main() {
   group('ImportViewModel', () {
     test(
+      'automatically matches known targets and plans unmatched targets',
+      () async {
+        final base = _plan(groupCount: 1);
+        const categoryEntity = ImportSourceEntity(
+          source: ImportSource.yimu,
+          kind: ImportEntityKind.category,
+          sourceEntityKey: 'category:expense:new-food',
+          displayName: '新餐饮',
+          categoryKind: ImportCategoryKind.expense,
+        );
+        final plan = base.copyWith(
+          sourceEntities: [...base.sourceEntities, categoryEntity],
+        );
+        const categoryKey = ImportMappingKey(
+          source: ImportSource.yimu,
+          entityKind: ImportEntityKind.category,
+          sourceEntityKey: 'category:expense:new-food',
+        );
+        final workflow = _FakeImportWorkflowAppService(
+          reviewBuilder: (
+            reviewPlan,
+            temporaryMappings,
+            plannedCreations,
+            groupMappingOverrides,
+          ) {
+            final effectiveMappings = <ImportMappingKey, String>{
+              ...temporaryMappings,
+              if (!temporaryMappings.containsKey(_mappingKey))
+                _mappingKey: 'cash',
+            };
+            final resolvedCreations = <ImportMappingKey, ImportMappingCreation>{
+              ...plannedCreations,
+              if (!plannedCreations.containsKey(categoryKey))
+                categoryKey: const ImportMappingCreation(
+                  name: '新餐饮',
+                  kind: ImportMappingTargetKind.expenseCategory,
+                ),
+            };
+            return _review(
+              reviewPlan,
+              temporaryMappings: temporaryMappings,
+              effectiveMappings: effectiveMappings,
+              plannedCreations: resolvedCreations,
+              suggestions:
+                  temporaryMappings.containsKey(_mappingKey)
+                      ? const []
+                      : const [
+                        ImportMappingSuggestion(
+                          key: _mappingKey,
+                          targetAccountId: 'cash',
+                        ),
+                      ],
+              groups: [
+                ImportGroupReview(
+                  index: 0,
+                  group: reviewPlan.groups.single,
+                  issues: const [],
+                  isExactDuplicate: false,
+                  isSuspectedDuplicate: false,
+                ),
+              ],
+            );
+          },
+        );
+        final container = _container(
+          planService: _FakeImportPlanAppService(plan),
+          workflow: workflow,
+          picker: _FakeImportFilePicker(_bundle()),
+        );
+
+        final viewModel = container.read(importViewModelProvider.notifier);
+        await viewModel.pickFiles();
+        await viewModel.parseSelectedFiles();
+
+        final state = container.read(importViewModelProvider);
+        expect(state.review?.effectiveMappings[_mappingKey], 'cash');
+        expect(
+          state.plannedCreations[categoryKey]?.kind,
+          ImportMappingTargetKind.expenseCategory,
+        );
+        expect(workflow.reviewCalls, 1);
+      },
+    );
+
+    test(
+      'confirms mapping configuration and saves it with the import',
+      () async {
+        final plan = _plan(groupCount: 1);
+        final workflow = _FakeImportWorkflowAppService(
+          reviewBuilder:
+              (
+                reviewPlan,
+                temporaryMappings,
+                plannedCreations,
+                groupMappingOverrides,
+              ) => _review(
+                reviewPlan,
+                temporaryMappings: temporaryMappings,
+                plannedCreations:
+                    plannedCreations.isEmpty
+                        ? {
+                          _mappingKey: ImportMappingCreation(
+                            name: '现金',
+                            kind: ImportMappingTargetKind.asset,
+                          ),
+                        }
+                        : plannedCreations,
+                groups: [
+                  ImportGroupReview(
+                    index: 0,
+                    group: reviewPlan.groups.single,
+                    issues: const [],
+                    isExactDuplicate: false,
+                    isSuspectedDuplicate: false,
+                  ),
+                ],
+              ),
+        );
+        final container = _container(
+          planService: _FakeImportPlanAppService(plan),
+          workflow: workflow,
+          picker: _FakeImportFilePicker(_bundle()),
+        );
+        final viewModel = container.read(importViewModelProvider.notifier);
+        await viewModel.pickFiles();
+        await viewModel.parseSelectedFiles();
+
+        viewModel.toggleSaveMappingConfiguration();
+        expect(
+          container.read(importViewModelProvider).saveMappingConfiguration,
+          isTrue,
+        );
+        viewModel.toggleSaveMappingConfiguration();
+        expect(
+          container.read(importViewModelProvider).saveMappingConfiguration,
+          isFalse,
+        );
+        viewModel.toggleSaveMappingConfiguration();
+        final confirmation = viewModel.confirmMappingConfiguration();
+
+        expect(confirmation, isA<ImportActionSuccess<void>>());
+        expect(
+          container.read(importViewModelProvider).mappingConfirmed,
+          isTrue,
+        );
+        expect(
+          container.read(importViewModelProvider).saveMappingConfiguration,
+          isTrue,
+        );
+
+        await viewModel.commitSelectedGroups();
+
+        final command = workflow.commitCommands.single;
+        expect(command.saveMappingConfiguration, isTrue);
+        expect(command.plannedCreations, contains(_mappingKey));
+      },
+    );
+
+    test(
+      'requires mapping confirmation again after a mapping override',
+      () async {
+        final plan = _plan(groupCount: 1);
+        final workflow = _FakeImportWorkflowAppService(
+          reviewBuilder:
+              (
+                reviewPlan,
+                temporaryMappings,
+                plannedCreations,
+                groupMappingOverrides,
+              ) => _review(
+                reviewPlan,
+                temporaryMappings: {
+                  ...temporaryMappings,
+                  ...?groupMappingOverrides[0],
+                },
+                plannedCreations:
+                    plannedCreations.isEmpty && temporaryMappings.isEmpty
+                        ? {
+                          _mappingKey: ImportMappingCreation(
+                            name: '现金',
+                            kind: ImportMappingTargetKind.asset,
+                          ),
+                        }
+                        : plannedCreations,
+                groups: [
+                  ImportGroupReview(
+                    index: 0,
+                    group: reviewPlan.groups.single,
+                    issues: const [],
+                    isExactDuplicate: false,
+                    isSuspectedDuplicate: false,
+                  ),
+                ],
+              ),
+        );
+        final container = _container(
+          planService: _FakeImportPlanAppService(plan),
+          workflow: workflow,
+          picker: _FakeImportFilePicker(_bundle()),
+        );
+        final viewModel = container.read(importViewModelProvider.notifier);
+        await viewModel.pickFiles();
+        await viewModel.parseSelectedFiles();
+        expect(
+          viewModel.confirmMappingConfiguration(),
+          isA<ImportActionSuccess<void>>(),
+        );
+        expect(
+          container.read(importViewModelProvider).mappingConfirmed,
+          isTrue,
+        );
+
+        final outcome = await viewModel.setMapping(_mappingKey, 'cash');
+
+        expect(outcome, isA<ImportActionSuccess<void>>());
+        expect(
+          container.read(importViewModelProvider).mappingConfirmed,
+          isFalse,
+        );
+        expect(
+          container.read(importViewModelProvider).saveMappingConfiguration,
+          isFalse,
+        );
+
+        expect(
+          viewModel.confirmMappingConfiguration(),
+          isA<ImportActionSuccess<void>>(),
+        );
+        await viewModel.setGroupMappingOverride(
+          groupIndex: 0,
+          key: _mappingKey,
+          targetAccountId: 'cash',
+        );
+        expect(
+          container.read(importViewModelProvider).mappingConfirmed,
+          isFalse,
+        );
+      },
+    );
+
+    test('does not commit before mapping configuration is confirmed', () async {
+      final plan = _plan(groupCount: 1);
+      final workflow = _FakeImportWorkflowAppService(
+        reviewBuilder:
+            (reviewPlan, temporaryMappings, plannedCreations, groupOverrides) =>
+                _review(
+                  reviewPlan,
+                  temporaryMappings: temporaryMappings,
+                  effectiveMappings: {
+                    _mappingKey: 'cash',
+                    ...temporaryMappings,
+                  },
+                  plannedCreations: plannedCreations,
+                  groups: [
+                    ImportGroupReview(
+                      index: 0,
+                      group: reviewPlan.groups.single,
+                      issues: const [],
+                      isExactDuplicate: false,
+                      isSuspectedDuplicate: false,
+                    ),
+                  ],
+                ),
+      );
+      final container = _container(
+        planService: _FakeImportPlanAppService(plan),
+        workflow: workflow,
+        picker: _FakeImportFilePicker(_bundle()),
+      );
+      final viewModel = container.read(importViewModelProvider.notifier);
+      await viewModel.pickFiles();
+      await viewModel.parseSelectedFiles();
+
+      final outcome = await viewModel.commitSelectedGroups();
+
+      expect(outcome, isA<ImportActionFailure<ImportCommitResult>>());
+      expect(workflow.commitCommands, isEmpty);
+    });
+
+    test(
       'loads a bundle and selects only importable transaction groups',
       () async {
         final plan = _plan();
         final planService = _FakeImportPlanAppService(plan);
         final workflow = _FakeImportWorkflowAppService(
           reviewBuilder:
-              (reviewPlan, temporaryMappings, groupMappingOverrides) => _review(
+              (
+                reviewPlan,
+                temporaryMappings,
+                plannedCreations,
+                groupMappingOverrides,
+              ) => _review(
                 reviewPlan,
                 temporaryMappings: temporaryMappings,
+                effectiveMappings: {_mappingKey: 'cash', ...temporaryMappings},
+                plannedCreations: plannedCreations,
                 groups: [
                   ImportGroupReview(
                     index: 0,
@@ -103,7 +390,7 @@ void main() {
         ),
         workflow: _FakeImportWorkflowAppService(
           reviewBuilder:
-              (_, _, _) => throw StateError('review should not be called'),
+              (_, _, _, _) => throw StateError('review should not be called'),
         ),
         picker: _FakeImportFilePicker(_bundle()),
       );
@@ -123,14 +410,21 @@ void main() {
     });
 
     test(
-      'applies suggestions temporarily and commits confirmed duplicate',
+      'uses a unique match automatically and commits a confirmed duplicate',
       () async {
         final plan = _plan(groupCount: 1);
         final workflow = _FakeImportWorkflowAppService(
           reviewBuilder:
-              (reviewPlan, temporaryMappings, groupMappingOverrides) => _review(
+              (
+                reviewPlan,
+                temporaryMappings,
+                plannedCreations,
+                groupMappingOverrides,
+              ) => _review(
                 reviewPlan,
                 temporaryMappings: temporaryMappings,
+                effectiveMappings: {_mappingKey: 'cash', ...temporaryMappings},
+                plannedCreations: plannedCreations,
                 suggestions:
                     temporaryMappings.isEmpty
                         ? [
@@ -172,12 +466,14 @@ void main() {
         await viewModel.pickFiles();
         await viewModel.parseSelectedFiles();
 
-        await viewModel.applySuggestedMappings();
         viewModel.setSuspectedDuplicateConfirmed(0, true);
+        expect(
+          viewModel.confirmMappingConfiguration(),
+          isA<ImportActionSuccess<void>>(),
+        );
         final outcome = await viewModel.commitSelectedGroups();
 
         expect(outcome, isA<ImportActionSuccess<ImportCommitResult>>());
-        expect(workflow.savedMappings, isEmpty);
         final command = workflow.commitCommands.single;
         expect(command.mappings[_mappingKey], 'cash');
         expect(command.selectedGroupIndexes, {0});
@@ -189,58 +485,16 @@ void main() {
       },
     );
 
-    test(
-      'saving a default mapping persists it independently of commit',
-      () async {
-        final plan = _plan(groupCount: 1);
-        final workflow = _FakeImportWorkflowAppService(
-          reviewBuilder:
-              (reviewPlan, temporaryMappings, groupMappingOverrides) => _review(
-                reviewPlan,
-                temporaryMappings: temporaryMappings,
-                groups: [
-                  ImportGroupReview(
-                    index: 0,
-                    group: plan.groups.single,
-                    issues: const [],
-                    isExactDuplicate: false,
-                    isSuspectedDuplicate: false,
-                  ),
-                ],
-              ),
-        );
-        final container = _container(
-          planService: _FakeImportPlanAppService(plan),
-          workflow: workflow,
-          picker: _FakeImportFilePicker(_bundle()),
-        );
-        final viewModel = container.read(importViewModelProvider.notifier);
-        await viewModel.pickFiles();
-        await viewModel.parseSelectedFiles();
-
-        final outcome = await viewModel.setMapping(
-          _mappingKey,
-          'cash',
-          saveAsDefault: true,
-        );
-
-        expect(outcome, isA<ImportActionSuccess<void>>());
-        expect(workflow.savedMappings, [('account:cash', 'cash')]);
-        expect(
-          container
-              .read(importViewModelProvider)
-              .review
-              ?.effectiveMappings[_mappingKey],
-          'cash',
-        );
-      },
-    );
-
     test('edits review-safe draft fields and keeps source identity', () async {
       final plan = _plan(groupCount: 1);
       final originalGroup = plan.groups.single;
       final workflow = _FakeImportWorkflowAppService(
-        reviewBuilder: (reviewPlan, temporaryMappings, groupOverrides) {
+        reviewBuilder: (
+          reviewPlan,
+          temporaryMappings,
+          plannedCreations,
+          groupOverrides,
+        ) {
           final effective = <ImportMappingKey, String>{
             ...temporaryMappings,
             ...?groupOverrides[0],
@@ -248,8 +502,9 @@ void main() {
           return ImportPlanReview(
             plan: reviewPlan,
             defaultMappings: const {},
-            effectiveMappings: temporaryMappings,
+            effectiveMappings: effective,
             suggestions: const [],
+            plannedCreations: plannedCreations,
             groupMappingOverrides: groupOverrides,
             groups: [
               ImportGroupReview(
@@ -287,6 +542,10 @@ void main() {
         key: _mappingKey,
         targetAccountId: 'cash-override',
       );
+      expect(
+        viewModel.confirmMappingConfiguration(),
+        isA<ImportActionSuccess<void>>(),
+      );
       await viewModel.commitSelectedGroups();
 
       final edited =
@@ -320,21 +579,26 @@ void main() {
       final plan = base.copyWith(groups: [warningGroup]);
       final workflow = _FakeImportWorkflowAppService(
         reviewBuilder:
-            (reviewPlan, temporaryMappings, groupOverrides) => ImportPlanReview(
-              plan: reviewPlan,
-              defaultMappings: const {},
-              effectiveMappings: temporaryMappings,
-              suggestions: const [],
-              groups: [
-                ImportGroupReview(
-                  index: 0,
-                  group: reviewPlan.groups.single,
-                  issues: reviewPlan.groups.single.issues,
-                  isExactDuplicate: false,
-                  isSuspectedDuplicate: false,
+            (reviewPlan, temporaryMappings, plannedCreations, groupOverrides) =>
+                ImportPlanReview(
+                  plan: reviewPlan,
+                  defaultMappings: const {},
+                  effectiveMappings: {
+                    _mappingKey: 'cash',
+                    ...temporaryMappings,
+                  },
+                  suggestions: const [],
+                  plannedCreations: plannedCreations,
+                  groups: [
+                    ImportGroupReview(
+                      index: 0,
+                      group: reviewPlan.groups.single,
+                      issues: reviewPlan.groups.single.issues,
+                      isExactDuplicate: false,
+                      isSuspectedDuplicate: false,
+                    ),
+                  ],
                 ),
-              ],
-            ),
       );
       final container = _container(
         planService: _FakeImportPlanAppService(plan),
@@ -350,6 +614,10 @@ void main() {
         isEmpty,
       );
       viewModel.setWarningConfirmed(0, true);
+      expect(
+        viewModel.confirmMappingConfiguration(),
+        isA<ImportActionSuccess<void>>(),
+      );
       await viewModel.commitSelectedGroups();
 
       expect(workflow.commitCommands.single.confirmedWarningIndexes, {0});
@@ -426,14 +694,17 @@ ImportParseResult _plan({int groupCount = 3}) {
 ImportPlanReview _review(
   ImportParseResult plan, {
   required Map<ImportMappingKey, String> temporaryMappings,
+  Map<ImportMappingKey, String>? effectiveMappings,
+  Map<ImportMappingKey, ImportMappingCreation> plannedCreations = const {},
   required List<ImportGroupReview> groups,
   List<ImportMappingSuggestion> suggestions = const [],
 }) {
   return ImportPlanReview(
     plan: plan,
     defaultMappings: const {},
-    effectiveMappings: temporaryMappings,
+    effectiveMappings: effectiveMappings ?? temporaryMappings,
     suggestions: suggestions,
+    plannedCreations: plannedCreations,
     targets: const [
       ImportMappingTarget(
         id: 'cash',
@@ -504,37 +775,36 @@ class _FakeImportPlanAppService implements ImportPlanAppService {
 class _FakeImportWorkflowAppService implements ImportWorkflowAppService {
   _FakeImportWorkflowAppService({
     required this.reviewBuilder,
-    this.commitResult = const ImportCommitResult(
-      batch: null,
-      skippedGroupCount: 0,
-    ),
-  });
+    ImportCommitResult? commitResult,
+  }) : commitResult =
+           commitResult ??
+           ImportCommitResult(batch: null, skippedGroupCount: 0);
 
   final ImportPlanReview Function(
     ImportParseResult plan,
     Map<ImportMappingKey, String> temporaryMappings,
+    Map<ImportMappingKey, ImportMappingCreation> plannedCreations,
     Map<int, Map<ImportMappingKey, String>> groupMappingOverrides,
   )
   reviewBuilder;
   final ImportCommitResult commitResult;
   final List<ImportCommitCommand> commitCommands = [];
-  final List<(String, String)> savedMappings = [];
+  int reviewCalls = 0;
 
   @override
   Future<ImportPlanReview> review(
     ImportParseResult plan, {
     Map<ImportMappingKey, String> temporaryMappings = const {},
+    Map<ImportMappingKey, ImportMappingCreation> plannedCreations = const {},
     Map<int, Map<ImportMappingKey, String>> groupMappingOverrides = const {},
   }) async {
-    return reviewBuilder(plan, temporaryMappings, groupMappingOverrides);
-  }
-
-  @override
-  Future<void> saveDefaultMapping({
-    required ImportSourceEntity entity,
-    required String targetAccountId,
-  }) async {
-    savedMappings.add((entity.sourceEntityKey, targetAccountId));
+    reviewCalls += 1;
+    return reviewBuilder(
+      plan,
+      temporaryMappings,
+      plannedCreations,
+      groupMappingOverrides,
+    );
   }
 
   @override

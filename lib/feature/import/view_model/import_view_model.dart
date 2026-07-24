@@ -33,12 +33,15 @@ class ImportPageState {
     required this.phase,
     required List<ImportFileProgress> fileProgress,
     required Map<ImportMappingKey, String> temporaryMappings,
+    Map<ImportMappingKey, ImportMappingCreation> plannedCreations = const {},
     required Map<int, Map<ImportMappingKey, String>> groupMappingOverrides,
     required Set<int> selectedGroupIndexes,
     required Set<int> confirmedSuspectedDuplicateIndexes,
     required Set<int> confirmedWarningIndexes,
     required List<ImportBatch> batches,
     required this.historyLoading,
+    this.mappingConfirmed = false,
+    this.saveMappingConfiguration = false,
     this.selectedBundle,
     this.plan,
     this.review,
@@ -47,6 +50,7 @@ class ImportPageState {
     this.revertingBatchId,
   }) : fileProgress = List.unmodifiable(fileProgress),
        temporaryMappings = Map.unmodifiable(temporaryMappings),
+       plannedCreations = Map.unmodifiable(plannedCreations),
        groupMappingOverrides =
            Map<int, Map<ImportMappingKey, String>>.unmodifiable({
              for (final entry in groupMappingOverrides.entries)
@@ -66,12 +70,15 @@ class ImportPageState {
       phase: ImportPagePhase.idle,
       fileProgress: const [],
       temporaryMappings: const {},
+      plannedCreations: const {},
       groupMappingOverrides: const {},
       selectedGroupIndexes: const {},
       confirmedSuspectedDuplicateIndexes: const {},
       confirmedWarningIndexes: const {},
       batches: const [],
       historyLoading: false,
+      mappingConfirmed: false,
+      saveMappingConfiguration: false,
     );
   }
 
@@ -81,12 +88,15 @@ class ImportPageState {
   final ImportParseResult? plan;
   final ImportPlanReview? review;
   final Map<ImportMappingKey, String> temporaryMappings;
+  final Map<ImportMappingKey, ImportMappingCreation> plannedCreations;
   final Map<int, Map<ImportMappingKey, String>> groupMappingOverrides;
   final Set<int> selectedGroupIndexes;
   final Set<int> confirmedSuspectedDuplicateIndexes;
   final Set<int> confirmedWarningIndexes;
   final List<ImportBatch> batches;
   final bool historyLoading;
+  final bool mappingConfirmed;
+  final bool saveMappingConfiguration;
   final UiError? error;
   final ImportCommitResult? lastCommit;
   final String? revertingBatchId;
@@ -121,10 +131,24 @@ class ImportPageState {
   int get missingMappingCount {
     final currentReview = review;
     if (currentReview == null) return 0;
+    final requiredMappingKeys = <ImportMappingKey>{};
+    for (final group in currentReview.groups) {
+      if (!group.canSelect) continue;
+      final sourceKeys =
+          group.group.transactions
+              .expand((draft) => draft.sourceEntityKeys)
+              .toSet();
+      for (final entity in currentReview.plan.sourceEntities) {
+        if (sourceKeys.contains(entity.sourceEntityKey)) {
+          requiredMappingKeys.add(ImportMappingKey.fromEntity(entity));
+        }
+      }
+    }
     return currentReview.plan.sourceEntities.where((entity) {
-      return !currentReview.effectiveMappings.containsKey(
-        ImportMappingKey.fromEntity(entity),
-      );
+      final key = ImportMappingKey.fromEntity(entity);
+      if (!requiredMappingKeys.contains(key)) return false;
+      return !currentReview.effectiveMappings.containsKey(key) &&
+          !plannedCreations.containsKey(key);
     }).length;
   }
 
@@ -146,12 +170,15 @@ class ImportPageState {
     Object? plan = _sentinel,
     Object? review = _sentinel,
     Map<ImportMappingKey, String>? temporaryMappings,
+    Map<ImportMappingKey, ImportMappingCreation>? plannedCreations,
     Map<int, Map<ImportMappingKey, String>>? groupMappingOverrides,
     Set<int>? selectedGroupIndexes,
     Set<int>? confirmedSuspectedDuplicateIndexes,
     Set<int>? confirmedWarningIndexes,
     List<ImportBatch>? batches,
     bool? historyLoading,
+    bool? mappingConfirmed,
+    bool? saveMappingConfiguration,
     Object? error = _sentinel,
     Object? lastCommit = _sentinel,
     Object? revertingBatchId = _sentinel,
@@ -166,6 +193,7 @@ class ImportPageState {
       plan: plan == _sentinel ? this.plan : plan as ImportParseResult?,
       review: review == _sentinel ? this.review : review as ImportPlanReview?,
       temporaryMappings: temporaryMappings ?? this.temporaryMappings,
+      plannedCreations: plannedCreations ?? this.plannedCreations,
       groupMappingOverrides:
           groupMappingOverrides ?? this.groupMappingOverrides,
       selectedGroupIndexes: selectedGroupIndexes ?? this.selectedGroupIndexes,
@@ -176,6 +204,9 @@ class ImportPageState {
           confirmedWarningIndexes ?? this.confirmedWarningIndexes,
       batches: batches ?? this.batches,
       historyLoading: historyLoading ?? this.historyLoading,
+      mappingConfirmed: mappingConfirmed ?? this.mappingConfirmed,
+      saveMappingConfiguration:
+          saveMappingConfiguration ?? this.saveMappingConfiguration,
       error: error == _sentinel ? this.error : error as UiError?,
       lastCommit:
           lastCommit == _sentinel
@@ -221,12 +252,15 @@ class ImportViewModel extends Notifier<ImportPageState> {
         plan: null,
         review: null,
         temporaryMappings: const {},
+        plannedCreations: const {},
         groupMappingOverrides: const {},
         selectedGroupIndexes: const {},
         confirmedSuspectedDuplicateIndexes: const {},
         confirmedWarningIndexes: const {},
         error: null,
         lastCommit: null,
+        mappingConfirmed: false,
+        saveMappingConfiguration: false,
       );
       return const ImportActionOutcome.success(null);
     } on AppException catch (exception) {
@@ -244,33 +278,6 @@ class ImportViewModel extends Notifier<ImportPageState> {
     return loadBundle(bundle);
   }
 
-  void removeSelectedFile(int index) {
-    final bundle = state.selectedBundle;
-    if (bundle == null || index < 0 || index >= bundle.files.length) return;
-    final files = [...bundle.files]..removeAt(index);
-    final selectedBundle = files.isEmpty ? null : ImportBundle(files: files);
-    state = state.copyWith(
-      phase: ImportPagePhase.idle,
-      selectedBundle: selectedBundle,
-      fileProgress:
-          selectedBundle == null
-              ? const []
-              : _fileProgressForBundle(
-                selectedBundle,
-                ImportFileProcessingStatus.waiting,
-              ),
-      plan: null,
-      review: null,
-      temporaryMappings: const {},
-      groupMappingOverrides: const {},
-      selectedGroupIndexes: const {},
-      confirmedSuspectedDuplicateIndexes: const {},
-      confirmedWarningIndexes: const {},
-      error: null,
-      lastCommit: null,
-    );
-  }
-
   Future<ImportActionOutcome<void>> loadBundle(ImportBundle bundle) async {
     state = state.copyWith(
       phase: ImportPagePhase.parsing,
@@ -282,12 +289,15 @@ class ImportViewModel extends Notifier<ImportPageState> {
       plan: null,
       review: null,
       temporaryMappings: const {},
+      plannedCreations: const {},
       groupMappingOverrides: const {},
       selectedGroupIndexes: const {},
       confirmedSuspectedDuplicateIndexes: const {},
       confirmedWarningIndexes: const {},
       error: null,
       lastCommit: null,
+      mappingConfirmed: false,
+      saveMappingConfiguration: false,
     );
     late final ImportParseResult plan;
     try {
@@ -321,6 +331,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
       _replaceReview(
         review,
         temporaryMappings: const {},
+        plannedCreations: review.plannedCreations,
         groupMappingOverrides: const {},
         selectAllImportable: true,
       );
@@ -339,6 +350,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
     }
     return _reviewWithMappings(
       state.temporaryMappings,
+      plannedCreations: state.plannedCreations,
       groupMappingOverrides: state.groupMappingOverrides,
     );
   }
@@ -407,9 +419,8 @@ class ImportViewModel extends Notifier<ImportPageState> {
 
   Future<ImportActionOutcome<void>> setMapping(
     ImportMappingKey key,
-    String? targetAccountId, {
-    bool saveAsDefault = false,
-  }) async {
+    String? targetAccountId,
+  ) async {
     final review = state.review;
     if (review == null) return _invalid<void>('请先选择并解析一木资料包。');
 
@@ -419,30 +430,30 @@ class ImportViewModel extends Notifier<ImportPageState> {
     } else {
       mappings[key] = targetAccountId;
     }
+    final creations = Map<ImportMappingKey, ImportMappingCreation>.of(
+      state.plannedCreations,
+    )..remove(key);
 
-    state = state.copyWith(phase: ImportPagePhase.reviewing, error: null);
+    state = state.copyWith(
+      phase: ImportPagePhase.reviewing,
+      plannedCreations: creations,
+      mappingConfirmed: false,
+      saveMappingConfiguration: false,
+      error: null,
+    );
     try {
-      if (saveAsDefault && targetAccountId != null) {
-        final entity = review.plan.sourceEntities.firstWhere(
-          (candidate) => ImportMappingKey.fromEntity(candidate) == key,
-        );
-        await ref
-            .read(importWorkflowAppServiceProvider)
-            .saveDefaultMapping(
-              entity: entity,
-              targetAccountId: targetAccountId,
-            );
-      }
       final nextReview = await ref
           .read(importWorkflowAppServiceProvider)
           .review(
             review.plan,
             temporaryMappings: mappings,
+            plannedCreations: creations,
             groupMappingOverrides: state.groupMappingOverrides,
           );
       _replaceReview(
         nextReview,
         temporaryMappings: mappings,
+        plannedCreations: nextReview.plannedCreations,
         groupMappingOverrides: state.groupMappingOverrides,
       );
       return const ImportActionOutcome.success(null);
@@ -453,17 +464,29 @@ class ImportViewModel extends Notifier<ImportPageState> {
     }
   }
 
-  Future<ImportActionOutcome<void>> applySuggestedMappings() async {
-    final review = state.review;
-    if (review == null) return _invalid<void>('请先选择并解析一木资料包。');
-    final mappings = Map<ImportMappingKey, String>.of(state.temporaryMappings);
-    for (final suggestion in review.suggestions) {
-      mappings[suggestion.key] = suggestion.targetAccountId;
+  ImportActionOutcome<void> toggleSaveMappingConfiguration() {
+    if (state.review == null) {
+      return _invalid<void>('请先选择并解析一木资料包。');
     }
-    return _reviewWithMappings(
-      mappings,
-      groupMappingOverrides: state.groupMappingOverrides,
+    if (state.missingMappingCount > 0) {
+      return _invalid<void>('仍有来源账户或分类尚未配置。');
+    }
+    state = state.copyWith(
+      saveMappingConfiguration: !state.saveMappingConfiguration,
+      error: null,
     );
+    return const ImportActionOutcome.success(null);
+  }
+
+  ImportActionOutcome<void> confirmMappingConfiguration() {
+    if (state.review == null) {
+      return _invalid<void>('请先选择并解析一木资料包。');
+    }
+    if (state.missingMappingCount > 0) {
+      return _invalid<void>('仍有来源账户或分类尚未配置。');
+    }
+    state = state.copyWith(mappingConfirmed: true, error: null);
+    return const ImportActionOutcome.success(null);
   }
 
   void setGroupSelected(int index, bool selected) {
@@ -569,6 +592,9 @@ class ImportViewModel extends Notifier<ImportPageState> {
     if (review == null) {
       return _invalid<ImportCommitResult>('请先选择并解析一木资料包。');
     }
+    if (!state.mappingConfirmed) {
+      return _invalid<ImportCommitResult>('请先确认映射配置。');
+    }
     if (state.selectedGroupIndexes.isEmpty) {
       return _invalid<ImportCommitResult>('请至少选择一个可导入交易组。');
     }
@@ -580,21 +606,31 @@ class ImportViewModel extends Notifier<ImportPageState> {
         ImportCommitCommand(
           plan: review.plan,
           mappings: review.effectiveMappings,
+          plannedCreations: state.plannedCreations,
           selectedGroupIndexes: state.selectedGroupIndexes,
           confirmedSuspectedDuplicateIndexes:
               state.confirmedSuspectedDuplicateIndexes,
           confirmedWarningIndexes: state.confirmedWarningIndexes,
           groupMappingOverrides: state.groupMappingOverrides,
+          saveMappingConfiguration: state.saveMappingConfiguration,
         ),
       );
 
       ImportPlanReview? refreshedReview;
       List<ImportBatch>? batches;
       UiError? refreshError;
+      final refreshedMappings = Map<ImportMappingKey, String>.of(
+        state.temporaryMappings,
+      )..addAll(result.createdMappings);
+      final remainingCreations =
+          Map<ImportMappingKey, ImportMappingCreation>.of(
+            state.plannedCreations,
+          )..removeWhere((key, _) => result.createdMappings.containsKey(key));
       try {
         refreshedReview = await service.review(
           review.plan,
-          temporaryMappings: state.temporaryMappings,
+          temporaryMappings: refreshedMappings,
+          plannedCreations: remainingCreations,
           groupMappingOverrides: state.groupMappingOverrides,
         );
         batches = await service.listBatches(source: ImportSource.yimu);
@@ -607,7 +643,8 @@ class ImportViewModel extends Notifier<ImportPageState> {
       if (refreshedReview != null) {
         _replaceReview(
           refreshedReview,
-          temporaryMappings: state.temporaryMappings,
+          temporaryMappings: refreshedMappings,
+          plannedCreations: refreshedReview.plannedCreations,
           groupMappingOverrides: state.groupMappingOverrides,
           lastCommit: result,
           batches: batches,
@@ -616,6 +653,8 @@ class ImportViewModel extends Notifier<ImportPageState> {
       } else {
         state = state.copyWith(
           phase: ImportPagePhase.review,
+          temporaryMappings: refreshedMappings,
+          plannedCreations: remainingCreations,
           lastCommit: result,
           batches: batches,
           error: refreshError,
@@ -655,6 +694,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
         review = await service.review(
           review.plan,
           temporaryMappings: state.temporaryMappings,
+          plannedCreations: state.plannedCreations,
           groupMappingOverrides: state.groupMappingOverrides,
         );
       }
@@ -662,6 +702,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
         _replaceReview(
           review,
           temporaryMappings: state.temporaryMappings,
+          plannedCreations: review.plannedCreations,
           groupMappingOverrides: state.groupMappingOverrides,
           batches: batches,
         );
@@ -693,6 +734,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
 
   Future<ImportActionOutcome<void>> _reviewWithMappings(
     Map<ImportMappingKey, String> mappings, {
+    Map<ImportMappingKey, ImportMappingCreation>? plannedCreations,
     Map<int, Map<ImportMappingKey, String>>? groupMappingOverrides,
   }) async {
     final plan = state.plan;
@@ -704,12 +746,14 @@ class ImportViewModel extends Notifier<ImportPageState> {
           .review(
             plan,
             temporaryMappings: mappings,
+            plannedCreations: plannedCreations ?? state.plannedCreations,
             groupMappingOverrides:
                 groupMappingOverrides ?? state.groupMappingOverrides,
           );
       _replaceReview(
         review,
         temporaryMappings: mappings,
+        plannedCreations: review.plannedCreations,
         groupMappingOverrides:
             groupMappingOverrides ?? state.groupMappingOverrides,
       );
@@ -730,6 +774,8 @@ class ImportViewModel extends Notifier<ImportPageState> {
       phase: ImportPagePhase.reviewing,
       plan: plan,
       error: null,
+      mappingConfirmed: false,
+      saveMappingConfiguration: false,
       confirmedSuspectedDuplicateIndexes:
           state.confirmedSuspectedDuplicateIndexes
               .where((index) => index != editedGroupIndex)
@@ -745,11 +791,13 @@ class ImportViewModel extends Notifier<ImportPageState> {
           .review(
             plan,
             temporaryMappings: state.temporaryMappings,
+            plannedCreations: state.plannedCreations,
             groupMappingOverrides: groupMappingOverrides,
           );
       _replaceReview(
         review,
         temporaryMappings: state.temporaryMappings,
+        plannedCreations: review.plannedCreations,
         groupMappingOverrides: groupMappingOverrides,
       );
       return const ImportActionOutcome.success(null);
@@ -780,6 +828,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
   void _replaceReview(
     ImportPlanReview review, {
     required Map<ImportMappingKey, String> temporaryMappings,
+    required Map<ImportMappingKey, ImportMappingCreation> plannedCreations,
     required Map<int, Map<ImportMappingKey, String>> groupMappingOverrides,
     bool selectAllImportable = false,
     ImportCommitResult? lastCommit,
@@ -809,6 +858,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
       plan: review.plan,
       review: review,
       temporaryMappings: temporaryMappings,
+      plannedCreations: plannedCreations,
       groupMappingOverrides: groupMappingOverrides,
       selectedGroupIndexes: selected,
       confirmedSuspectedDuplicateIndexes: confirmed,

@@ -26,6 +26,13 @@ class ImportLedgerTarget {
   final bool isArchived;
 }
 
+class ImportLedgerTargetCreation {
+  const ImportLedgerTargetCreation({required this.name, required this.kind});
+
+  final String name;
+  final ImportLedgerTargetKind kind;
+}
+
 /// Import-owned port into the ledger application facade.
 ///
 /// It deliberately exposes import vocabulary and primitive posting operations
@@ -34,6 +41,8 @@ abstract interface class ImportLedgerPort {
   Future<List<ImportLedgerTarget>> listTargets();
 
   Future<ImportLedgerTarget?> findTarget(String targetId);
+
+  Future<String> createTarget(ImportLedgerTargetCreation creation);
 
   Future<String> resolveGhostAccountId();
 

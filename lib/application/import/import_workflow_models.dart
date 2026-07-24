@@ -73,6 +73,17 @@ class ImportMappingSuggestion {
   final String targetAccountId;
 }
 
+/// A mapping target that will be created inside the eventual import commit.
+///
+/// Keeping this as a plan rather than creating ledger data during review lets
+/// users cancel or revise an import without leaving unused accounts behind.
+class ImportMappingCreation {
+  const ImportMappingCreation({required this.name, required this.kind});
+
+  final String name;
+  final ImportMappingTargetKind kind;
+}
+
 class ImportGroupReview {
   ImportGroupReview({
     required this.index,
@@ -112,6 +123,7 @@ class ImportPlanReview {
     required Map<ImportMappingKey, String> defaultMappings,
     required Map<ImportMappingKey, String> effectiveMappings,
     required List<ImportMappingSuggestion> suggestions,
+    Map<ImportMappingKey, ImportMappingCreation> plannedCreations = const {},
     List<ImportMappingTarget> targets = const [],
     Map<ImportMappingKey, Set<ImportMappingTargetKind>> compatibleTargetKinds =
         const {},
@@ -120,6 +132,7 @@ class ImportPlanReview {
   }) : defaultMappings = Map.unmodifiable(defaultMappings),
        effectiveMappings = Map.unmodifiable(effectiveMappings),
        suggestions = List.unmodifiable(suggestions),
+       plannedCreations = Map.unmodifiable(plannedCreations),
        targets = List.unmodifiable(targets),
        compatibleTargetKinds = Map.unmodifiable({
          for (final entry in compatibleTargetKinds.entries)
@@ -138,6 +151,7 @@ class ImportPlanReview {
   final Map<ImportMappingKey, String> defaultMappings;
   final Map<ImportMappingKey, String> effectiveMappings;
   final List<ImportMappingSuggestion> suggestions;
+  final Map<ImportMappingKey, ImportMappingCreation> plannedCreations;
   final List<ImportMappingTarget> targets;
   final Map<ImportMappingKey, Set<ImportMappingTargetKind>>
   compatibleTargetKinds;
@@ -149,12 +163,15 @@ class ImportCommitCommand {
   ImportCommitCommand({
     required this.plan,
     required Map<ImportMappingKey, String> mappings,
+    Map<ImportMappingKey, ImportMappingCreation> plannedCreations = const {},
     required Set<int> selectedGroupIndexes,
     Set<int> confirmedSuspectedDuplicateIndexes = const {},
     Set<int> confirmedWarningIndexes = const {},
     Map<int, Map<ImportMappingKey, String>> groupMappingOverrides = const {},
+    this.saveMappingConfiguration = false,
     this.importedAt,
   }) : mappings = Map.unmodifiable(mappings),
+       plannedCreations = Map.unmodifiable(plannedCreations),
        selectedGroupIndexes = Set.unmodifiable(selectedGroupIndexes),
        confirmedSuspectedDuplicateIndexes = Set.unmodifiable(
          confirmedSuspectedDuplicateIndexes,
@@ -170,21 +187,25 @@ class ImportCommitCommand {
 
   final ImportParseResult plan;
   final Map<ImportMappingKey, String> mappings;
+  final Map<ImportMappingKey, ImportMappingCreation> plannedCreations;
   final Set<int> selectedGroupIndexes;
   final Set<int> confirmedSuspectedDuplicateIndexes;
   final Set<int> confirmedWarningIndexes;
   final Map<int, Map<ImportMappingKey, String>> groupMappingOverrides;
+  final bool saveMappingConfiguration;
   final DateTime? importedAt;
 }
 
 class ImportCommitResult {
-  const ImportCommitResult({
+  ImportCommitResult({
     required this.batch,
     required this.skippedGroupCount,
-  });
+    Map<ImportMappingKey, String> createdMappings = const {},
+  }) : createdMappings = Map.unmodifiable(createdMappings);
 
   final ImportBatch? batch;
   final int skippedGroupCount;
+  final Map<ImportMappingKey, String> createdMappings;
 
   bool get createdBatch => batch != null;
 }
