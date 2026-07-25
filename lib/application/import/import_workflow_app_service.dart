@@ -1286,6 +1286,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           draft.paidFrom,
           _TargetUsage.settlement,
           groupIndex: groupIndex,
+          allowExplicitNone: true,
         );
         await context.category(draft.category, groupIndex: groupIndex);
       case ImportRepaymentDraft draft:
@@ -1345,6 +1346,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           draft.refundTo,
           _TargetUsage.settlement,
           groupIndex: groupIndex,
+          allowExplicitNone: true,
         );
       case ImportReimbursementReceiptDraft draft:
         await context.account(
@@ -1494,6 +1496,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
               draft.paidFrom,
               _TargetUsage.settlement,
               groupIndex: groupIndex,
+              allowExplicitNone: true,
             ),
             expenseCategoryId: await context.category(
               draft.category,
@@ -1583,6 +1586,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           draft.refundTo,
           _TargetUsage.settlement,
           groupIndex: groupIndex,
+          allowExplicitNone: true,
         ),
         occurredAt: draft.occurredAt,
         postedAt: draft.postedAt,

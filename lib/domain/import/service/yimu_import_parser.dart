@@ -299,12 +299,10 @@ void _parseBillRows(
       if (refund != null && refund.minorUnits < 0) {
         issues.add(_blocking('refund_negative', '退款金额不能为负数。', rowNumber));
       }
-      if (actualAmount.minorUnits == 0 && (refund?.minorUnits ?? 0) > 0) {
-        issues.add(
-          _blocking('expense_amount_zero', '退款记录缺少原始支出金额。', rowNumber),
-        );
-      }
       final gross = actualAmount.abs() + (refund?.abs() ?? Money.zero());
+      if (gross.minorUnits == 0) {
+        issues.add(_blocking('expense_amount_invalid', '支出金额必须大于零。', rowNumber));
+      }
       final top = ImportExpenseDraft(
         amount: gross,
         paidFrom: account,
@@ -425,10 +423,8 @@ ImportTransactionGroupDraft _parseReimbursement(
     entities: entities,
     issues: issues,
     rowNumber: rowNumber,
-    required: true,
-    fileType: YimuFileType.bill,
-    fieldKey: 'account',
-    fieldName: '账户',
+    allowExplicitNone: true,
+    required: false,
   );
   final receivable = _accountReference(
     record.reimbursementAccountName,
