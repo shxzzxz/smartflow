@@ -13,6 +13,50 @@ import 'package:smartflow/feature/import/view_model/import_view_model.dart';
 void main() {
   group('ImportViewModel', () {
     test(
+      'keeps same-name files so the parser can report duplicate roles',
+      () async {
+        final plan = _plan(groupCount: 1);
+        final workflow = _FakeImportWorkflowAppService(
+          reviewBuilder:
+              (
+                reviewPlan,
+                temporaryMappings,
+                plannedCreations,
+                groupMappingOverrides,
+              ) => _review(
+                reviewPlan,
+                temporaryMappings: temporaryMappings,
+                plannedCreations: plannedCreations,
+                groups: [
+                  ImportGroupReview(
+                    index: 0,
+                    group: reviewPlan.groups.single,
+                    issues: const [],
+                    isExactDuplicate: false,
+                    isSuspectedDuplicate: false,
+                  ),
+                ],
+              ),
+        );
+        final bundle = _bundle();
+        final container = _container(
+          planService: _FakeImportPlanAppService(plan),
+          workflow: workflow,
+          picker: _SequenceImportFilePicker([bundle, bundle]),
+        );
+        final viewModel = container.read(importViewModelProvider.notifier);
+
+        await viewModel.pickFiles();
+        await viewModel.pickFiles(append: true);
+
+        expect(
+          container.read(importViewModelProvider).selectedBundle?.files,
+          hasLength(2),
+        );
+      },
+    );
+
+    test(
       'automatically matches known targets and plans unmatched targets',
       () async {
         final base = _plan(groupCount: 1);
@@ -250,6 +294,63 @@ void main() {
           container.read(importViewModelProvider).mappingConfirmed,
           isFalse,
         );
+      },
+    );
+
+    test(
+      'stores a selected target creation as the current mapping decision',
+      () async {
+        final plan = _plan(groupCount: 1);
+        final workflow = _FakeImportWorkflowAppService(
+          reviewBuilder:
+              (
+                reviewPlan,
+                temporaryMappings,
+                plannedCreations,
+                groupOverrides,
+              ) => _review(
+                reviewPlan,
+                temporaryMappings: temporaryMappings,
+                effectiveMappings: temporaryMappings,
+                plannedCreations: plannedCreations,
+                groups: [
+                  ImportGroupReview(
+                    index: 0,
+                    group: reviewPlan.groups.single,
+                    issues: const [],
+                    isExactDuplicate: false,
+                    isSuspectedDuplicate: false,
+                  ),
+                ],
+              ),
+        );
+        final container = _container(
+          planService: _FakeImportPlanAppService(plan),
+          workflow: workflow,
+          picker: _FakeImportFilePicker(_bundle()),
+        );
+        final viewModel = container.read(importViewModelProvider.notifier);
+        await viewModel.pickFiles();
+        await viewModel.parseSelectedFiles();
+        const creation = ImportMappingCreation(
+          name: '现金借款',
+          kind: ImportMappingTargetKind.liability,
+          descriptor: ImportTargetDescriptor.loanAccount,
+        );
+
+        final outcome = await viewModel.setMappingDecision(
+          _mappingKey,
+          const PlannedCreationDecision(creation),
+        );
+
+        expect(outcome, isA<ImportActionSuccess<void>>());
+        final state = container.read(importViewModelProvider);
+        expect(state.temporaryMappings, isNot(contains(_mappingKey)));
+        expect(
+          state.plannedCreations[_mappingKey]?.effectiveDescriptor,
+          ImportTargetDescriptor.loanAccount,
+        );
+        expect(state.mappingConfirmed, isFalse);
       },
     );
 
@@ -657,7 +758,11 @@ ImportParseResult _plan({int groupCount = 3}) {
       ImportFileParseResult(
         fileIndex: 0,
         fileName: '账单.xls',
-        fileRole: YimuFileRole.bill,
+        fileType: const ImportSourceFileType(
+          source: ImportSource.yimu,
+          key: 'bill',
+          label: '账单',
+        ),
       ),
     ],
     sourceEntities: const [
@@ -731,6 +836,18 @@ class _FakeImportFilePicker implements ImportFilePicker {
 
   @override
   Future<ImportBundle?> pickYimuBundle() async => bundle;
+}
+
+class _SequenceImportFilePicker implements ImportFilePicker {
+  _SequenceImportFilePicker(this._bundles);
+
+  final List<ImportBundle?> _bundles;
+
+  @override
+  Future<ImportBundle?> pickYimuBundle() async {
+    if (_bundles.isEmpty) return null;
+    return _bundles.removeAt(0);
+  }
 }
 
 class _FakeImportPlanAppService implements ImportPlanAppService {

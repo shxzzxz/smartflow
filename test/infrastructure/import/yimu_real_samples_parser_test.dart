@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/application/import/import_workflow_app_service.dart';
 import 'package:smartflow/application/import/import_workflow_models.dart';
 import 'package:smartflow/application/ledger/account/command/account_app_service.dart';
@@ -256,7 +257,7 @@ Directory? _sampleDirectoryOrNull() {
   return null;
 }
 
-enum _TargetRole { asset, liability, reimbursement, income, expense }
+enum _TargetRole { asset, liability, loan, reimbursement, income, expense }
 
 class _PreparedMappings {
   const _PreparedMappings({required this.groupOverrides});
@@ -350,10 +351,18 @@ class _GoldenFixture {
     for (final entity in plan.sourceEntities) {
       final entityRoles =
           roles[entity.sourceEntityKey] ?? const <_TargetRole>{};
+      final isLoanOnly =
+          entity.kind == ImportEntityKind.account &&
+          entity.allowedTargetDescriptors.length == 1 &&
+          entity.allowedTargetDescriptors.contains(
+            ImportTargetDescriptor.loanAccount,
+          );
       for (final role in entityRoles) {
         final id = 'source-target-${index++}';
+        final targetRole = isLoanOnly ? _TargetRole.loan : role;
         targets[(entity.sourceEntityKey, role)] = id;
-        await _insertTarget(database, id, entity.displayName, role);
+        targets[(entity.sourceEntityKey, targetRole)] = id;
+        await _insertTarget(database, id, entity.displayName, targetRole);
       }
       if (entityRoles.isNotEmpty && !entity.isReviewPlaceholder) {
         final defaultRole = entityRoles.first;
@@ -368,6 +377,18 @@ class _GoldenFixture {
             updatedAt: DateTime(2026, 7, 22),
           ),
         );
+      }
+    }
+
+    for (final entity in plan.sourceEntities) {
+      final liability =
+          targets[(entity.sourceEntityKey, _TargetRole.liability)];
+      if (liability != null &&
+          entity.allowedTargetDescriptors.isNotEmpty &&
+          !entity.allowedTargetDescriptors.contains(
+            ImportTargetDescriptor.fundAccount,
+          )) {
+        targets[(entity.sourceEntityKey, _TargetRole.asset)] = liability;
       }
     }
 
@@ -487,6 +508,7 @@ Future<void> _insertTarget(
   final (type, subtype) = switch (role) {
     _TargetRole.asset => (AccountType.asset, null),
     _TargetRole.liability => (AccountType.liability, null),
+    _TargetRole.loan => (AccountType.liability, null),
     _TargetRole.reimbursement => (
       AccountType.asset,
       AccountSubtype.reimbursement,
@@ -502,6 +524,23 @@ Future<void> _insertTarget(
           name: name,
           accountType: type,
           accountSubtype: Value(subtype),
+          accountProfileKey: Value(switch (role) {
+            _TargetRole.loan => 'credit.loan',
+            _TargetRole.liability => 'credit.credit',
+            _ => null,
+          }),
         ),
-      );
+      )
+      .then((_) async {
+        if (role != _TargetRole.loan) return;
+        await database
+            .into(database.creditLiabilityAccounts)
+            .insert(
+              CreditLiabilityAccountsCompanion.insert(
+                id: '$id-extension',
+                accountId: id,
+                kind: CreditLiabilityAccountKind.loan,
+              ),
+            );
+      });
 }

@@ -90,7 +90,11 @@ void main() {
       code: 'file_decode_failed',
       message: '无法读取一木文件 转账.xls，请重新导出。',
       severity: ImportIssueSeverity.fatal,
-      fileRole: YimuFileRole.transfer,
+      fileType: ImportSourceFileType(
+        source: ImportSource.yimu,
+        key: 'transfer',
+        label: '转账',
+      ),
     );
     final plan = ImportParseResult(
       source: ImportSource.yimu,
@@ -98,12 +102,20 @@ void main() {
         ImportFileParseResult(
           fileIndex: 0,
           fileName: '账单.xls',
-          fileRole: YimuFileRole.bill,
+          fileType: const ImportSourceFileType(
+            source: ImportSource.yimu,
+            key: 'bill',
+            label: '账单',
+          ),
         ),
         ImportFileParseResult(
           fileIndex: 1,
           fileName: '转账.xls',
-          fileRole: YimuFileRole.transfer,
+          fileType: const ImportSourceFileType(
+            source: ImportSource.yimu,
+            key: 'transfer',
+            label: '转账',
+          ),
           fatalIssues: const [transferIssue],
         ),
       ],
@@ -154,6 +166,32 @@ void main() {
     expect(find.text('导入检查与选择'), findsNothing);
     expect(find.text('已过滤来源记录'), findsNothing);
     expect(find.text('导入'), findsOneWidget);
+  });
+
+  testWidgets('shows non-fatal parse-unit issues alongside usable results', (
+    tester,
+  ) async {
+    final plan = _plan().copyWith(
+      issues: const [
+        ImportIssue(
+          code: 'parse_unit_companion_file_missing',
+          message: '联合解析缺少伴随文件：C。',
+          severity: ImportIssueSeverity.blocking,
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      _app(
+        planService: _FakePlanService(plan),
+        picker: _FakePicker(_bundle()),
+        workflow: _FakeWorkflow(_review(plan)),
+      ),
+    );
+
+    await _selectAndParse(tester);
+
+    expect(find.text('解析步骤需要注意'), findsOneWidget);
+    expect(find.text('联合解析缺少伴随文件：C。'), findsOneWidget);
   });
 
   testWidgets('shows mapping analysis and opens all mappings as a page', (
@@ -273,7 +311,11 @@ void main() {
           ImportFilteredRecord(
             reasonCode: 'empty_row',
             reason: '空白记录',
-            fileRole: YimuFileRole.bill,
+            fileType: ImportSourceFileType(
+              source: ImportSource.yimu,
+              key: 'bill',
+              label: '账单',
+            ),
             rowNumber: 8,
           ),
         ],
@@ -362,6 +404,48 @@ void main() {
           displayPath: '幽灵账户',
           kind: ImportMappingTargetKind.ghost,
           isArchived: false,
+        ),
+      ],
+      mappingItems: [
+        ImportMappingReviewItem(
+          key: ImportMappingKey.fromEntity(missing1),
+          sourceName: '缺失账户',
+          sourceDescription: '账户',
+          action: ImportMappingAction.map,
+          targetName: '无账户',
+          targetId: 'ghost',
+          targetPath: '无账户',
+          targetDescription: '无账户',
+          decision: const ExistingTargetDecision('ghost'),
+        ),
+        ImportMappingReviewItem(
+          key: ImportMappingKey.fromEntity(missingCategory),
+          sourceName: missingCategory.displayName,
+          sourceDescription: '收入分类',
+          action: ImportMappingAction.create,
+          targetName: missingCategory.displayName,
+          targetPath: missingCategory.displayName,
+          targetDescription: '收入分类',
+          creationOptions: [
+            const ImportMappingCreation(
+              name: '缺失收入分类（账单文件第 2 行）',
+              kind: ImportMappingTargetKind.incomeCategory,
+            ),
+          ],
+          decision: const PlannedCreationDecision(
+            ImportMappingCreation(
+              name: '缺失收入分类（账单文件第 2 行）',
+              kind: ImportMappingTargetKind.incomeCategory,
+            ),
+          ),
+        ),
+        ImportMappingReviewItem(
+          key: ImportMappingKey.fromEntity(missingReceivable),
+          sourceName: missingReceivable.displayName,
+          sourceDescription: '账户',
+          action: ImportMappingAction.unresolved,
+          targetName: '待配置',
+          decision: const UnresolvedDecision('当前映射尚未完成。'),
         ),
       ],
       groups: [
@@ -509,6 +593,45 @@ ImportPlanReview _mappingReview(ImportParseResult plan) {
         isArchived: false,
       ),
     ],
+    mappingItems: [
+      ImportMappingReviewItem(
+        key: firstKey,
+        sourceName: '来源账户1',
+        sourceDescription: '账户',
+        action: ImportMappingAction.map,
+        targetName: '现金',
+        targetId: 'cash',
+        targetPath: '现金',
+        targetDescription: '资金账户',
+        decision: const ExistingTargetDecision('cash'),
+      ),
+      for (var index = 2; index <= 6; index++)
+        ImportMappingReviewItem(
+          key: ImportMappingKey(
+            source: ImportSource.yimu,
+            entityKind: ImportEntityKind.account,
+            sourceEntityKey: 'account:source-$index',
+          ),
+          sourceName: '来源账户$index',
+          sourceDescription: '账户',
+          action: ImportMappingAction.create,
+          targetName: '来源账户$index',
+          targetPath: '来源账户$index',
+          targetDescription: '资金账户',
+          creationOptions: [
+            ImportMappingCreation(
+              name: '来源账户$index',
+              kind: ImportMappingTargetKind.asset,
+            ),
+          ],
+          decision: PlannedCreationDecision(
+            ImportMappingCreation(
+              name: '来源账户$index',
+              kind: ImportMappingTargetKind.asset,
+            ),
+          ),
+        ),
+    ],
     groups: [
       ImportGroupReview(
         index: 0,
@@ -536,7 +659,11 @@ ImportParseResult _plan() {
       ImportFileParseResult(
         fileIndex: 0,
         fileName: '账单.xls',
-        fileRole: YimuFileRole.bill,
+        fileType: const ImportSourceFileType(
+          source: ImportSource.yimu,
+          key: 'bill',
+          label: '账单',
+        ),
       ),
     ],
     sourceEntities: const [
@@ -612,6 +739,38 @@ ImportPlanReview _review(ImportParseResult plan) {
         isArchived: false,
       ),
     ],
+    mappingItems: [
+      ImportMappingReviewItem(
+        key: const ImportMappingKey(
+          source: ImportSource.yimu,
+          entityKind: ImportEntityKind.account,
+          sourceEntityKey: 'account:cash',
+        ),
+        sourceName: '现金',
+        sourceDescription: '账户',
+        action: ImportMappingAction.map,
+        targetName: '现金',
+        targetId: 'cash',
+        targetPath: '现金',
+        targetDescription: '资金账户',
+        decision: const ExistingTargetDecision('cash'),
+      ),
+      ImportMappingReviewItem(
+        key: const ImportMappingKey(
+          source: ImportSource.yimu,
+          entityKind: ImportEntityKind.category,
+          sourceEntityKey: 'category:expense:餐饮',
+        ),
+        sourceName: '餐饮',
+        sourceDescription: '支出分类',
+        action: ImportMappingAction.map,
+        targetName: '餐饮',
+        targetId: 'food',
+        targetPath: '餐饮',
+        targetDescription: '支出分类',
+        decision: const ExistingTargetDecision('food'),
+      ),
+    ],
     groups: [
       ImportGroupReview(
         index: 0,
@@ -632,6 +791,7 @@ ImportPlanReview _warningReview(ImportParseResult plan) {
     effectiveMappings: base.effectiveMappings,
     suggestions: base.suggestions,
     targets: base.targets,
+    mappingItems: base.mappingItems,
     groups: [
       ImportGroupReview(
         index: 0,
@@ -658,6 +818,7 @@ ImportPlanReview _blockedReview(ImportParseResult plan) {
     effectiveMappings: base.effectiveMappings,
     suggestions: base.suggestions,
     targets: base.targets,
+    mappingItems: base.mappingItems,
     groups: [
       ImportGroupReview(
         index: 0,
@@ -667,7 +828,11 @@ ImportPlanReview _blockedReview(ImportParseResult plan) {
             code: 'missing_account',
             message: '来源账户缺失，无法生成交易。',
             severity: ImportIssueSeverity.blocking,
-            fileRole: YimuFileRole.bill,
+            fileType: ImportSourceFileType(
+              source: ImportSource.yimu,
+              key: 'bill',
+              label: '账单',
+            ),
             rowNumber: 3,
           ),
         ],
@@ -737,6 +902,7 @@ class _FakeWorkflow implements ImportWorkflowAppService {
       targets: planReview.targets,
       compatibleTargetKinds: planReview.compatibleTargetKinds,
       groupMappingOverrides: groupMappingOverrides,
+      mappingItems: planReview.mappingItems,
       groups: [
         for (final group in planReview.groups)
           ImportGroupReview(

@@ -6,7 +6,9 @@ import '../../domain/import/import_persistence_models.dart';
 import '../../domain/import/port/import_batch_repository.dart';
 import '../../domain/import/port/import_ledger_port.dart';
 import '../../domain/import/port/import_mapping_repository.dart';
+import '../../domain/import/service/import_target_compatibility.dart';
 import 'import_workflow_models.dart';
+import 'import_account_creation_defaults.dart';
 
 abstract interface class ImportWorkflowAppService {
   Future<ImportPlanReview> review(
@@ -32,12 +34,15 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     required ImportLedgerPort ledger,
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
+    ImportAccountCreationDefaults accountCreationDefaults =
+        const ImportAccountCreationDefaults(),
     DateTime Function()? now,
   }) : _mappings = mappings,
        _batches = batches,
        _ledger = ledger,
        _transactionRunner = transactionRunner,
        _idGenerator = idGenerator,
+       _accountCreationDefaults = accountCreationDefaults,
        _now = now ?? DateTime.now;
 
   final ImportMappingRepository _mappings;
@@ -45,6 +50,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
   final ImportLedgerPort _ledger;
   final TransactionRunner _transactionRunner;
   final IdGenerator _idGenerator;
+  final ImportAccountCreationDefaults _accountCreationDefaults;
   final DateTime Function() _now;
 
   @override
@@ -65,6 +71,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
             ):
             mapping.targetAccountId,
     };
+    final compatibleTargetDescriptors = _compatibleTargetDescriptors(plan);
     final compatibleTargetKinds = _compatibleTargetKinds(plan);
     final ghostMappingKeys = _ghostMappingKeys(plan);
     final activeTargets = await _ledger.listTargets();
@@ -87,6 +94,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       effectiveMappings: effective,
       targets: targets,
       compatibleTargetKinds: compatibleTargetKinds,
+      compatibleTargetDescriptors: compatibleTargetDescriptors,
     );
     await _applyGhostPlaceholderMappings(
       plan: plan,
@@ -94,12 +102,14 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       targets: targets,
       loadedTargetIds: loadedTargetIds,
       compatibleTargetKinds: compatibleTargetKinds,
+      compatibleTargetDescriptors: compatibleTargetDescriptors,
     );
     final suggestions = _suggestMappings(
       plan: plan,
       effectiveMappings: effective,
       targets: targets,
       compatibleTargetKinds: compatibleTargetKinds,
+      compatibleTargetDescriptors: compatibleTargetDescriptors,
       excludedKeys: plannedCreations.keys.toSet(),
     );
     final resolvedCreations = _resolveCreationPlans(
@@ -107,6 +117,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       requestedCreations: plannedCreations,
       effectiveMappings: effective,
       compatibleTargetKinds: compatibleTargetKinds,
+      compatibleTargetDescriptors: compatibleTargetDescriptors,
     );
     effective.removeWhere((key, _) => resolvedCreations.containsKey(key));
     final currentFingerprints = _fingerprintCounts(plan.groups);
@@ -115,10 +126,31 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       for (final entity in plan.sourceEntities)
         if (entity.isReviewPlaceholder) entity.sourceEntityKey: entity,
     };
+    final sourceEntitiesBySourceKey = {
+      for (final entity in plan.sourceEntities) entity.sourceEntityKey: entity,
+    };
     final reviews = <ImportGroupReview>[];
     for (var index = 0; index < plan.groups.length; index++) {
       final group = plan.groups[index];
       final issues = [...group.issues];
+      final groupSourceEntityKeys =
+          group.transactions.expand((draft) => draft.sourceEntityKeys).toSet();
+      for (final sourceEntityKey in groupSourceEntityKeys) {
+        final entity = sourceEntitiesBySourceKey[sourceEntityKey];
+        if (entity?.hasTargetDescriptorConflict == true &&
+            !issues.any(
+              (issue) =>
+                  issue.code == 'source_entity_target_descriptor_conflict',
+            )) {
+          issues.add(
+            ImportIssue(
+              code: 'source_entity_target_descriptor_conflict',
+              message: '${entity!.displayName} 在不同来源记录中的目标账户画像要求互相冲突。',
+              severity: ImportIssueSeverity.blocking,
+            ),
+          );
+        }
+      }
       if (duplicateKeyIndexes.contains(index) &&
           !issues.any(
             (issue) => issue.code == 'duplicate_source_operation_key',
@@ -153,6 +185,10 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
             mappings: groupMappings,
             plannedCreations: resolvedCreations,
             ghostMappingKeys: ghostMappingKeys,
+            sourceEntities: {
+              for (final entity in plan.sourceEntities)
+                ImportMappingKey.fromEntity(entity): entity,
+            },
             ledger: _ledger,
           ),
         );
@@ -184,7 +220,14 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
               !exact &&
               (duplicates.hasFingerprintMatch || inPlanFingerprintDuplicate),
           effectiveMappings: groupMappings,
-          compatibleTargetKinds: _compatibleTargetKindsForGroup(group),
+          compatibleTargetKinds: _compatibleTargetKindsForGroup(
+            group,
+            source: plan.source,
+          ),
+          compatibleTargetDescriptors: _compatibleTargetDescriptorsForGroup(
+            group,
+            source: plan.source,
+          ),
         ),
       );
     }
@@ -196,8 +239,16 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       plannedCreations: resolvedCreations,
       targets: targets.map(_mapTarget).toList(growable: false),
       compatibleTargetKinds: compatibleTargetKinds,
+      compatibleTargetDescriptors: compatibleTargetDescriptors,
       groupMappingOverrides: groupMappingOverrides,
       groups: reviews,
+      mappingItems: _buildMappingItems(
+        plan: plan,
+        effectiveMappings: effective,
+        plannedCreations: resolvedCreations,
+        targets: targets,
+        compatibleTargetDescriptors: compatibleTargetDescriptors,
+      ),
     );
   }
 
@@ -220,6 +271,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           ImportMappingTargetKind.unsupported,
       },
       isArchived: target.isArchived,
+      descriptor: target.effectiveDescriptor,
     );
   }
 
@@ -295,6 +347,10 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
               mappings: groupMappings,
               plannedCreations: command.plannedCreations,
               ghostMappingKeys: ghostMappingKeys,
+              sourceEntities: {
+                for (final entity in plan.sourceEntities)
+                  ImportMappingKey.fromEntity(entity): entity,
+              },
               ledger: _ledger,
             ),
           );
@@ -312,6 +368,11 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           command.mappings,
         );
         final createdMappings = <ImportMappingKey, String>{};
+        final targetPathIndex = <String, String>{};
+        for (final target in await _ledger.listTargets()) {
+          if (target.isArchived) continue;
+          targetPathIndex[_targetPathKey(target)] = target.id;
+        }
         for (final entry in command.plannedCreations.entries) {
           if (!_creationIsUsed(
             key: entry.key,
@@ -322,8 +383,9 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           )) {
             continue;
           }
-          final targetId = await _ledger.createTarget(
-            _mapCreation(entry.value),
+          final targetId = await _createPlannedTarget(
+            entry.value,
+            targetPathIndex,
           );
           resolvedMappings[entry.key] = targetId;
           createdMappings[entry.key] = targetId;
@@ -346,6 +408,10 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
                   ...?command.groupMappingOverrides[index],
                 },
                 ghostMappingKeys: ghostMappingKeys,
+                sourceEntities: {
+                  for (final entity in plan.sourceEntities)
+                    ImportMappingKey.fromEntity(entity): entity,
+                },
                 ledger: _ledger,
               ),
             );
@@ -508,6 +574,8 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     required List<ImportLedgerTarget> targets,
     required Map<ImportMappingKey, Set<ImportMappingTargetKind>>
     compatibleTargetKinds,
+    required Map<ImportMappingKey, Set<ImportTargetDescriptor>>
+    compatibleTargetDescriptors,
     Set<ImportMappingKey> excludedKeys = const {},
   }) {
     final result = <ImportMappingSuggestion>[];
@@ -526,6 +594,11 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
             final allowedKinds = compatibleTargetKinds[key];
             if (allowedKinds != null &&
                 !allowedKinds.contains(_mapTarget(target).kind)) {
+              return false;
+            }
+            final allowedDescriptors = compatibleTargetDescriptors[key];
+            if (allowedDescriptors != null &&
+                !allowedDescriptors.contains(target.effectiveDescriptor)) {
               return false;
             }
             return _normalizeName(target.displayPath) == normalized ||
@@ -548,6 +621,8 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     required List<ImportLedgerTarget> targets,
     required Map<ImportMappingKey, Set<ImportMappingTargetKind>>
     compatibleTargetKinds,
+    required Map<ImportMappingKey, Set<ImportTargetDescriptor>>
+    compatibleTargetDescriptors,
   }) {
     final entities = {
       for (final entity in plan.sourceEntities)
@@ -558,10 +633,16 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       final entity = entities[key];
       final target = targetsById[targetId];
       if (entity == null || target == null || target.isArchived) return true;
+      if (entity.hasTargetDescriptorConflict) return true;
       if (!_targetSupportsEntity(target, entity)) return true;
       final allowedKinds = compatibleTargetKinds[key];
-      return allowedKinds != null &&
-          !allowedKinds.contains(_mapTarget(target).kind);
+      if (allowedKinds != null &&
+          !allowedKinds.contains(_mapTarget(target).kind)) {
+        return true;
+      }
+      final allowedDescriptors = compatibleTargetDescriptors[key];
+      return allowedDescriptors != null &&
+          !allowedDescriptors.contains(target.effectiveDescriptor);
     });
   }
 
@@ -571,50 +652,269 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     required Map<ImportMappingKey, String> effectiveMappings,
     required Map<ImportMappingKey, Set<ImportMappingTargetKind>>
     compatibleTargetKinds,
+    required Map<ImportMappingKey, Set<ImportTargetDescriptor>>
+    compatibleTargetDescriptors,
   }) {
     final result = Map<ImportMappingKey, ImportMappingCreation>.of(
       requestedCreations,
     );
+    final entitiesByKey = {
+      for (final entity in plan.sourceEntities)
+        ImportMappingKey.fromEntity(entity): entity,
+    };
+    result.removeWhere((key, creation) {
+      final entity = entitiesByKey[key];
+      if (entity == null || entity.hasTargetDescriptorConflict) return true;
+      final allowedDescriptors = compatibleTargetDescriptors[key];
+      if (allowedDescriptors != null &&
+          !allowedDescriptors.contains(creation.effectiveDescriptor)) {
+        return true;
+      }
+      return !_creationSupportsEntity(creation, entity);
+    });
     for (final entity in plan.sourceEntities) {
       if (entity.isMissingAccountPlaceholder) continue;
+      if (entity.hasTargetDescriptorConflict) continue;
       final key = ImportMappingKey.fromEntity(entity);
       if (effectiveMappings.containsKey(key) || result.containsKey(key)) {
         continue;
       }
       final allowedKinds = compatibleTargetKinds[key];
       if (allowedKinds != null && allowedKinds.isEmpty) continue;
-      final kind = _defaultCreationKind(entity, allowedKinds);
-      if (kind == null) continue;
-      result[key] = ImportMappingCreation(name: entity.displayName, kind: kind);
+      final descriptor = _defaultCreationDescriptor(
+        entity,
+        compatibleTargetDescriptors[key],
+      );
+      if (descriptor == null) continue;
+      result[key] = ImportMappingCreation(
+        name: entity.displayName,
+        kind: _legacyKindForDescriptor(descriptor),
+        descriptor: descriptor,
+        pathSegments:
+            entity.kind == ImportEntityKind.category
+                ? entity.displayName
+                    .split('/')
+                    .map((segment) => segment.trim())
+                    .where((segment) => segment.isNotEmpty)
+                    .toList(growable: false)
+                : const [],
+        defaultParametersHint:
+            descriptor == ImportTargetDescriptor.creditAccount
+                ? '账单日和还款日使用导入默认值，可在导入后编辑。'
+                : null,
+      );
     }
     return result;
   }
 
-  ImportMappingTargetKind? _defaultCreationKind(
+  bool _creationSupportsEntity(
+    ImportMappingCreation creation,
     ImportSourceEntity entity,
-    Set<ImportMappingTargetKind>? allowedKinds,
   ) {
-    final effectiveKinds =
-        allowedKinds ?? const {ImportMappingTargetKind.asset};
+    return ImportTargetCompatibilityPolicy.supportsEntity(
+      entity,
+      creation.effectiveDescriptor,
+    );
+  }
+
+  List<ImportMappingReviewItem> _buildMappingItems({
+    required ImportParseResult plan,
+    required Map<ImportMappingKey, String> effectiveMappings,
+    required Map<ImportMappingKey, ImportMappingCreation> plannedCreations,
+    required List<ImportLedgerTarget> targets,
+    required Map<ImportMappingKey, Set<ImportTargetDescriptor>>
+    compatibleTargetDescriptors,
+  }) {
+    final targetById = {for (final target in targets) target.id: target};
+    final result = <ImportMappingReviewItem>[];
+    var missingAccountItemAdded = false;
+    for (final entity in plan.sourceEntities) {
+      if (entity.isMissingAccountPlaceholder) {
+        final key = ImportMappingKey.fromEntity(entity);
+        final mappedId = effectiveMappings[key];
+        final target = mappedId == null ? null : targetById[mappedId];
+        if (target?.effectiveDescriptor ==
+            ImportTargetDescriptor.ghostAccount) {
+          if (missingAccountItemAdded) continue;
+          missingAccountItemAdded = true;
+          result.add(
+            ImportMappingReviewItem(
+              key: key,
+              sourceName: '缺失账户',
+              sourceDescription: '账户',
+              action: ImportMappingAction.map,
+              targetId: mappedId,
+              targetName: '无账户',
+              targetPath: '无账户',
+              targetDescription: importTargetDescription(
+                ImportTargetDescriptor.ghostAccount,
+              ),
+              existingTargetOptions: const [],
+              creationOptions: const [],
+              issues: const [],
+              decision: ExistingTargetDecision(mappedId!),
+            ),
+          );
+          continue;
+        }
+      }
+      final key = ImportMappingKey.fromEntity(entity);
+      final mappedId = effectiveMappings[key];
+      final creation = plannedCreations[key];
+      final target = mappedId == null ? null : targetById[mappedId];
+      final allowed = compatibleTargetDescriptors[key];
+      final hasCompatibilityConflict = allowed != null && allowed.isEmpty;
+      final options = targets
+          .where(
+            (candidate) =>
+                !candidate.isArchived &&
+                _targetSupportsEntity(candidate, entity) &&
+                (allowed == null ||
+                    allowed.contains(candidate.effectiveDescriptor)),
+          )
+          .map(_mapTarget)
+          .toList(growable: false);
+      final creationOptions = _creationOptions(entity, allowed);
+      result.add(
+        ImportMappingReviewItem(
+          key: key,
+          sourceName: entity.displayName,
+          sourceDescription: importSourceDescription(entity),
+          action:
+              target != null
+                  ? ImportMappingAction.map
+                  : creation != null
+                  ? ImportMappingAction.create
+                  : ImportMappingAction.unresolved,
+          targetName: target?.name ?? creation?.name,
+          targetId: mappedId,
+          targetPath:
+              target?.displayPath ??
+              (creation == null
+                  ? null
+                  : creation.pathSegments.isEmpty
+                  ? creation.name
+                  : creation.pathSegments.join(' / ')),
+          targetDescription:
+              target == null
+                  ? creation == null
+                      ? null
+                      : importTargetDescription(creation.effectiveDescriptor)
+                  : importTargetDescription(target.effectiveDescriptor),
+          existingTargetOptions: options,
+          creationOptions: creationOptions,
+          issues:
+              entity.hasTargetDescriptorConflict || hasCompatibilityConflict
+                  ? [
+                    ImportIssue(
+                      code:
+                          entity.hasTargetDescriptorConflict
+                              ? 'source_entity_target_descriptor_conflict'
+                              : 'mapping_target_descriptor_conflict',
+                      message:
+                          entity.hasTargetDescriptorConflict
+                              ? '${entity.displayName} 的目标账户画像要求互相冲突。'
+                              : '${entity.displayName} 在不同交易中的目标角色要求互相冲突。',
+                      severity: ImportIssueSeverity.blocking,
+                    ),
+                  ]
+                  : const [],
+          decision:
+              target != null
+                  ? ExistingTargetDecision(target.id)
+                  : creation != null
+                  ? PlannedCreationDecision(creation)
+                  : const UnresolvedDecision('当前映射尚未完成。'),
+        ),
+      );
+    }
+    return result;
+  }
+
+  List<ImportMappingCreation> _creationOptions(
+    ImportSourceEntity entity,
+    Set<ImportTargetDescriptor>? allowed,
+  ) {
+    if (entity.hasTargetDescriptorConflict) return const [];
+    final descriptors =
+        entity.kind == ImportEntityKind.category
+            ? [
+              switch (entity.categoryKind) {
+                ImportCategoryKind.income =>
+                  ImportTargetDescriptor.incomeCategory,
+                ImportCategoryKind.expense =>
+                  ImportTargetDescriptor.expenseCategory,
+                null => ImportTargetDescriptor.unsupported,
+              },
+            ]
+            : const [
+              ImportTargetDescriptor.fundAccount,
+              ImportTargetDescriptor.reimbursementAccount,
+              ImportTargetDescriptor.creditAccount,
+              ImportTargetDescriptor.loanAccount,
+            ];
+    return [
+      for (final descriptor in descriptors)
+        if (descriptor != ImportTargetDescriptor.unsupported &&
+            (allowed == null || allowed.contains(descriptor)))
+          ImportMappingCreation(
+            name: entity.displayName,
+            kind: _legacyKindForDescriptor(descriptor),
+            descriptor: descriptor,
+            pathSegments:
+                entity.kind == ImportEntityKind.category
+                    ? entity.displayName
+                        .split('/')
+                        .map((segment) => segment.trim())
+                        .where((segment) => segment.isNotEmpty)
+                        .toList(growable: false)
+                    : const [],
+            defaultParametersHint:
+                descriptor == ImportTargetDescriptor.creditAccount
+                    ? '账单日和还款日使用导入默认值，可在导入后编辑。'
+                    : null,
+          ),
+    ];
+  }
+
+  ImportTargetDescriptor? _defaultCreationDescriptor(
+    ImportSourceEntity entity,
+    Set<ImportTargetDescriptor>? allowedDescriptors,
+  ) {
+    if (entity.hasTargetDescriptorConflict) return null;
+    if (allowedDescriptors != null && allowedDescriptors.isEmpty) return null;
+    final allowed = allowedDescriptors;
     if (entity.kind == ImportEntityKind.category) {
-      final kind = switch (entity.categoryKind) {
-        ImportCategoryKind.income => ImportMappingTargetKind.incomeCategory,
-        ImportCategoryKind.expense => ImportMappingTargetKind.expenseCategory,
+      final descriptor = switch (entity.categoryKind) {
+        ImportCategoryKind.income => ImportTargetDescriptor.incomeCategory,
+        ImportCategoryKind.expense => ImportTargetDescriptor.expenseCategory,
         null => null,
       };
-      if (kind == null) return null;
-      return allowedKinds == null || allowedKinds.contains(kind) ? kind : null;
+      return descriptor == null ||
+              (allowed != null && !allowed.contains(descriptor))
+          ? null
+          : descriptor;
     }
-    if (effectiveKinds.contains(ImportMappingTargetKind.reimbursement)) {
-      return ImportMappingTargetKind.reimbursement;
+    final preferred = entity.preferredTargetDescriptor;
+    if (preferred != null && (allowed == null || allowed.contains(preferred))) {
+      return preferred;
     }
-    if (effectiveKinds.contains(ImportMappingTargetKind.asset)) {
-      return ImportMappingTargetKind.asset;
-    }
-    if (effectiveKinds.contains(ImportMappingTargetKind.liability)) {
-      return ImportMappingTargetKind.liability;
+    const order = [
+      ImportTargetDescriptor.reimbursementAccount,
+      ImportTargetDescriptor.fundAccount,
+      ImportTargetDescriptor.creditAccount,
+      ImportTargetDescriptor.loanAccount,
+    ];
+    for (final descriptor in order) {
+      if (allowed == null || allowed.contains(descriptor)) return descriptor;
     }
     return null;
+  }
+
+  ImportMappingTargetKind _legacyKindForDescriptor(
+    ImportTargetDescriptor descriptor,
+  ) {
+    return descriptor.legacyMappingKind;
   }
 
   Future<void> _applyGhostPlaceholderMappings({
@@ -624,12 +924,15 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     required Set<String> loadedTargetIds,
     required Map<ImportMappingKey, Set<ImportMappingTargetKind>>
     compatibleTargetKinds,
+    required Map<ImportMappingKey, Set<ImportTargetDescriptor>>
+    compatibleTargetDescriptors,
   }) async {
     String? ghostId;
     for (final entity in plan.sourceEntities) {
       if (!entity.isMissingAccountPlaceholder) {
         continue;
       }
+      if (entity.hasTargetDescriptorConflict) continue;
       final key = ImportMappingKey.fromEntity(entity);
       if (effectiveMappings.containsKey(key)) continue;
       final allowedKinds = compatibleTargetKinds[key];
@@ -707,11 +1010,14 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       }
       return _compatibleTargetKindsForGroup(
         plan.groups[index],
+        source: plan.source,
       ).containsKey(key);
     });
   }
 
   ImportLedgerTargetCreation _mapCreation(ImportMappingCreation creation) {
+    final descriptor = creation.effectiveDescriptor;
+    final isCredit = descriptor == ImportTargetDescriptor.creditAccount;
     return ImportLedgerTargetCreation(
       name: creation.name,
       kind: switch (creation.kind) {
@@ -727,16 +1033,100 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         ImportMappingTargetKind.unsupported =>
           ImportLedgerTargetKind.unsupported,
       },
+      descriptor: descriptor,
+      pathSegments: creation.pathSegments,
+      billingDay: isCredit ? _accountCreationDefaults.creditBillingDay : null,
+      repaymentDay:
+          isCredit ? _accountCreationDefaults.creditRepaymentDay : null,
+      billingDayToNext:
+          isCredit ? _accountCreationDefaults.creditBillingDayToNext : true,
     );
+  }
+
+  Future<String> _createPlannedTarget(
+    ImportMappingCreation creation,
+    Map<String, String> targetPathIndex,
+  ) async {
+    final descriptor = creation.effectiveDescriptor;
+    final isCategory =
+        descriptor == ImportTargetDescriptor.incomeCategory ||
+        descriptor == ImportTargetDescriptor.expenseCategory;
+    if (!isCategory) {
+      return _ledger.createTarget(_mapCreation(creation));
+    }
+    final segments = (creation.pathSegments.isEmpty
+            ? creation.name.split('/')
+            : creation.pathSegments)
+        .map((segment) => segment.trim())
+        .where((segment) => segment.isNotEmpty)
+        .toList(growable: false);
+    if (segments.isEmpty) {
+      return _ledger.createTarget(_mapCreation(creation));
+    }
+    String? parentId;
+    var path = <String>[];
+    for (final segment in segments) {
+      path = [...path, segment];
+      final key = _targetPathKeyFromParts(descriptor, path);
+      final existing = targetPathIndex[key];
+      if (existing != null) {
+        parentId = existing;
+        continue;
+      }
+      final id = await _ledger.createTarget(
+        ImportLedgerTargetCreation(
+          name: segment,
+          kind:
+              descriptor == ImportTargetDescriptor.incomeCategory
+                  ? ImportLedgerTargetKind.incomeCategory
+                  : ImportLedgerTargetKind.expenseCategory,
+          descriptor: descriptor,
+          pathSegments: path,
+          parentTargetId: parentId,
+        ),
+      );
+      targetPathIndex[key] = id;
+      parentId = id;
+    }
+    return parentId!;
+  }
+
+  String _targetPathKey(ImportLedgerTarget target) {
+    return _targetPathKeyFromParts(
+      target.effectiveDescriptor,
+      target.displayPath.split('/'),
+    );
+  }
+
+  String _targetPathKeyFromParts(
+    ImportTargetDescriptor descriptor,
+    Iterable<String> parts,
+  ) {
+    return '${descriptor.name}:${parts.map(_normalizeName).join('/')}';
   }
 
   Map<ImportMappingKey, Set<ImportMappingTargetKind>> _compatibleTargetKinds(
     ImportParseResult plan,
   ) {
-    final result = <ImportMappingKey, Set<ImportMappingTargetKind>>{};
+    return {
+      for (final entry in _compatibleTargetDescriptors(plan).entries)
+        entry.key: _legacyKinds(entry.value),
+    };
+  }
+
+  Map<ImportMappingKey, Set<ImportTargetDescriptor>>
+  _compatibleTargetDescriptors(ImportParseResult plan) {
+    final result = <ImportMappingKey, Set<ImportTargetDescriptor>>{};
+    final entities = {
+      for (final entity in plan.sourceEntities)
+        ImportMappingKey.fromEntity(entity): entity,
+    };
     for (final group in plan.groups) {
-      final groupKinds = _compatibleTargetKindsForGroup(group);
-      for (final entry in groupKinds.entries) {
+      final groupDescriptors = _compatibleTargetDescriptorsForGroup(
+        group,
+        source: plan.source,
+      );
+      for (final entry in groupDescriptors.entries) {
         final previous = result[entry.key];
         if (previous == null) {
           result[entry.key] = {...entry.value};
@@ -745,159 +1135,81 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         }
       }
     }
+    for (final entry in result.entries) {
+      final entity = entities[entry.key];
+      if (entity?.hasTargetDescriptorConflict == true) {
+        entry.value.clear();
+        continue;
+      }
+      final allowed = entity?.allowedTargetDescriptors ?? const {};
+      if (allowed.isNotEmpty) entry.value.retainAll(allowed);
+    }
+    for (final entity in plan.sourceEntities) {
+      final key = ImportMappingKey.fromEntity(entity);
+      if (entity.hasTargetDescriptorConflict) {
+        result[key] = <ImportTargetDescriptor>{};
+      } else if (entity.allowedTargetDescriptors.isNotEmpty &&
+          !result.containsKey(key)) {
+        result[key] = {...entity.allowedTargetDescriptors};
+      }
+    }
     return result;
   }
 
-  Map<ImportMappingKey, Set<ImportMappingTargetKind>>
-  _compatibleTargetKindsForGroup(ImportTransactionGroupDraft group) {
-    final result = <ImportMappingKey, Set<ImportMappingTargetKind>>{};
+  Map<ImportMappingKey, Set<ImportTargetDescriptor>>
+  _compatibleTargetDescriptorsForGroup(
+    ImportTransactionGroupDraft group, {
+    required ImportSource source,
+  }) {
+    final result = <ImportMappingKey, Set<ImportTargetDescriptor>>{};
     for (final draft in group.transactions) {
-      for (final usage in _draftUsages(draft)) {
-        final previous = result[usage.key];
+      for (final requirement
+          in ImportTargetCompatibilityPolicy.requirementsForDraft(draft)) {
+        final key = ImportMappingKey(
+          source: source,
+          entityKind: requirement.entityKind,
+          sourceEntityKey: requirement.sourceEntityKey,
+        );
+        final previous = result[key];
         if (previous == null) {
-          result[usage.key] = {...usage.kinds};
+          result[key] = {...requirement.descriptors};
         } else {
-          previous.retainAll(usage.kinds);
+          previous.retainAll(requirement.descriptors);
         }
       }
     }
     return result;
   }
 
-  Iterable<_DraftUsage> _draftUsages(ImportTransactionDraft draft) sync* {
-    switch (draft) {
-      case ImportExpenseDraft draft:
-        yield* _accountUsage(draft.paidFrom.sourceEntityKey, {
-          ImportMappingTargetKind.asset,
-          ImportMappingTargetKind.liability,
-        });
-        yield _categoryUsage(
-          draft.category.sourceEntityKey,
-          ImportMappingTargetKind.expenseCategory,
-        );
-      case ImportIncomeDraft draft:
-        yield* _accountUsage(draft.receiveAccount.sourceEntityKey, {
-          ImportMappingTargetKind.asset,
-          ImportMappingTargetKind.liability,
-        });
-        yield _categoryUsage(
-          draft.category.sourceEntityKey,
-          ImportMappingTargetKind.incomeCategory,
-        );
-      case ImportRefundDraft draft:
-        yield* _accountUsage(draft.refundTo.sourceEntityKey, {
-          ImportMappingTargetKind.asset,
-          ImportMappingTargetKind.liability,
-        });
-      case ImportReimbursementAdvanceDraft draft:
-        yield* _accountUsage(draft.receivableAccount.sourceEntityKey, {
-          ImportMappingTargetKind.reimbursement,
-        });
-        yield* _accountUsage(draft.paidFrom.sourceEntityKey, {
-          ImportMappingTargetKind.asset,
-          ImportMappingTargetKind.liability,
-        });
-        yield _categoryUsage(
-          draft.category.sourceEntityKey,
-          ImportMappingTargetKind.expenseCategory,
-        );
-      case ImportReimbursementReceiptDraft draft:
-        yield* _accountUsage(draft.receivableAccount.sourceEntityKey, {
-          ImportMappingTargetKind.reimbursement,
-        });
-        yield* _accountUsage(draft.receiveAccount.sourceEntityKey, {
-          ImportMappingTargetKind.asset,
-          ImportMappingTargetKind.liability,
-        });
-      case ImportReimbursementCloseDraft draft:
-        yield* _accountUsage(draft.receivableAccount.sourceEntityKey, {
-          ImportMappingTargetKind.reimbursement,
-        });
-        yield* _accountUsage(draft.receiveAccount.sourceEntityKey, {
-          ImportMappingTargetKind.asset,
-          ImportMappingTargetKind.liability,
-        });
-      case ImportTransferDraft draft:
-        yield* _accountUsage(draft.fromAccount.sourceEntityKey, {
-          ImportMappingTargetKind.asset,
-          ImportMappingTargetKind.liability,
-        });
-        yield* _accountUsage(draft.toAccount.sourceEntityKey, {
-          ImportMappingTargetKind.asset,
-          ImportMappingTargetKind.liability,
-        });
-      case ImportRepaymentDraft draft:
-        yield* _accountUsage(draft.liabilityAccount.sourceEntityKey, {
-          ImportMappingTargetKind.liability,
-        });
-        yield* _accountUsage(draft.paidFrom.sourceEntityKey, {
-          ImportMappingTargetKind.asset,
-          ImportMappingTargetKind.liability,
-        });
-      case ImportInterestExpenseDraft draft:
-        yield* _accountUsage(draft.paidFrom.sourceEntityKey, {
-          ImportMappingTargetKind.asset,
-          ImportMappingTargetKind.liability,
-        });
-      case ImportBorrowingDraft draft:
-        yield* _accountUsage(draft.liabilityAccount.sourceEntityKey, {
-          ImportMappingTargetKind.liability,
-        });
-        yield* _accountUsage(draft.receiveAccount.sourceEntityKey, {
-          ImportMappingTargetKind.asset,
-        });
-      case ImportOpeningBalanceDraft draft:
-        yield* _accountUsage(draft.liabilityAccount.sourceEntityKey, {
-          ImportMappingTargetKind.liability,
-        });
-    }
-  }
-
-  Iterable<_DraftUsage> _accountUsage(
-    String? sourceEntityKey,
-    Set<ImportMappingTargetKind> kinds,
-  ) sync* {
-    if (sourceEntityKey == null) return;
-    yield _DraftUsage(
-      ImportMappingKey(
-        source: ImportSource.yimu,
-        entityKind: ImportEntityKind.account,
-        sourceEntityKey: sourceEntityKey,
-      ),
-      kinds,
-    );
-  }
-
-  _DraftUsage _categoryUsage(
-    String sourceEntityKey,
-    ImportMappingTargetKind kind,
+  Set<ImportMappingTargetKind> _legacyKinds(
+    Set<ImportTargetDescriptor> descriptors,
   ) {
-    return _DraftUsage(
-      ImportMappingKey(
-        source: ImportSource.yimu,
-        entityKind: ImportEntityKind.category,
-        sourceEntityKey: sourceEntityKey,
-      ),
-      {kind},
-    );
+    return {for (final descriptor in descriptors) descriptor.legacyMappingKind};
+  }
+
+  Map<ImportMappingKey, Set<ImportMappingTargetKind>>
+  _compatibleTargetKindsForGroup(
+    ImportTransactionGroupDraft group, {
+    required ImportSource source,
+  }) {
+    return {
+      for (final entry
+          in _compatibleTargetDescriptorsForGroup(
+            group,
+            source: source,
+          ).entries)
+        entry.key: _legacyKinds(entry.value),
+    };
   }
 
   bool _targetSupportsEntity(
     ImportLedgerTarget target,
     ImportSourceEntity entity,
   ) {
-    if (entity.kind == ImportEntityKind.account) {
-      return target.kind == ImportLedgerTargetKind.asset ||
-          target.kind == ImportLedgerTargetKind.liability ||
-          target.kind == ImportLedgerTargetKind.reimbursement;
-    }
-    return switch (entity.categoryKind) {
-      ImportCategoryKind.income =>
-        target.kind == ImportLedgerTargetKind.incomeCategory,
-      ImportCategoryKind.expense =>
-        target.kind == ImportLedgerTargetKind.expenseCategory,
-      null => false,
-    };
+    return ImportTargetCompatibilityPolicy.supportsEntity(
+      entity,
+      target.effectiveDescriptor,
+    );
   }
 
   String _normalizeName(String value) {
@@ -956,12 +1268,12 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       case ImportTransferDraft draft:
         await context.account(
           draft.fromAccount,
-          _TargetUsage.settlement,
+          _TargetUsage.fund,
           groupIndex: groupIndex,
         );
         await context.account(
           draft.toAccount,
-          _TargetUsage.settlement,
+          _TargetUsage.fund,
           groupIndex: groupIndex,
         );
       case ImportReimbursementAdvanceDraft draft:
@@ -984,13 +1296,13 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         );
         await context.account(
           draft.paidFrom,
-          _TargetUsage.settlement,
+          _TargetUsage.fund,
           groupIndex: groupIndex,
         );
       case ImportInterestExpenseDraft draft:
         await context.account(
           draft.paidFrom,
-          _TargetUsage.settlement,
+          _TargetUsage.fund,
           groupIndex: groupIndex,
         );
       case ImportBorrowingDraft draft:
@@ -1157,12 +1469,12 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         amount: draft.amount,
         fromAccountId: await context.account(
           draft.fromAccount,
-          _TargetUsage.settlement,
+          _TargetUsage.fund,
           groupIndex: groupIndex,
         ),
         toAccountId: await context.account(
           draft.toAccount,
-          _TargetUsage.settlement,
+          _TargetUsage.fund,
           groupIndex: groupIndex,
         ),
         occurredAt: draft.occurredAt,
@@ -1202,7 +1514,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         ),
         paidFromAccountId: await context.account(
           draft.paidFrom,
-          _TargetUsage.settlement,
+          _TargetUsage.fund,
           groupIndex: groupIndex,
         ),
         occurredAt: draft.occurredAt,
@@ -1215,7 +1527,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         amount: draft.amount,
         paidFromAccountId: await context.account(
           draft.paidFrom,
-          _TargetUsage.settlement,
+          _TargetUsage.fund,
           groupIndex: groupIndex,
         ),
         occurredAt: draft.occurredAt,
@@ -1327,21 +1639,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
   }
 }
 
-class _DraftUsage {
-  const _DraftUsage(this.key, this.kinds);
-
-  final ImportMappingKey key;
-  final Set<ImportMappingTargetKind> kinds;
-}
-
-enum _TargetUsage {
-  settlement,
-  fund,
-  liability,
-  reimbursement,
-  incomeCategory,
-  expenseCategory,
-}
+typedef _TargetUsage = ImportTargetUsage;
 
 class _ResolutionContext {
   _ResolutionContext({
@@ -1349,6 +1647,7 @@ class _ResolutionContext {
     required this.mappings,
     this.plannedCreations = const {},
     this.ghostMappingKeys = const {},
+    this.sourceEntities = const {},
     required this.ledger,
   });
 
@@ -1356,6 +1655,7 @@ class _ResolutionContext {
   final Map<ImportMappingKey, String> mappings;
   final Map<ImportMappingKey, ImportMappingCreation> plannedCreations;
   final Set<ImportMappingKey> ghostMappingKeys;
+  final Map<ImportMappingKey, ImportSourceEntity> sourceEntities;
   final ImportLedgerPort ledger;
   final Map<String, ImportLedgerTarget?> _targets = {};
   String? _ghostAccountId;
@@ -1438,6 +1738,25 @@ class _ResolutionContext {
             groupIndex: groupIndex,
           );
         }
+        final entity = sourceEntities[key];
+        if (entity != null && entity.hasTargetDescriptorConflict) {
+          throw ImportWorkflowException(
+            ImportErrorCode.mappingTargetRoleInvalid,
+            message: '${entity.displayName} 的目标账户画像要求互相冲突。',
+            groupIndex: groupIndex,
+          );
+        }
+        if (entity != null &&
+            !ImportTargetCompatibilityPolicy.supportsEntity(
+              entity,
+              creation.effectiveDescriptor,
+            )) {
+          throw ImportWorkflowException(
+            ImportErrorCode.mappingTargetRoleInvalid,
+            message: '${creation.name} 与来源账户画像约束不兼容。',
+            groupIndex: groupIndex,
+          );
+        }
         return 'planned:${key.entityKind.name}:${key.sourceEntityKey}';
       }
       throw ImportWorkflowException(
@@ -1463,20 +1782,10 @@ class _ResolutionContext {
   }
 
   bool _creationSupports(ImportMappingCreation creation, _TargetUsage usage) {
-    return switch (usage) {
-      _TargetUsage.settlement =>
-        creation.kind == ImportMappingTargetKind.asset ||
-            creation.kind == ImportMappingTargetKind.liability,
-      _TargetUsage.fund => creation.kind == ImportMappingTargetKind.asset,
-      _TargetUsage.liability =>
-        creation.kind == ImportMappingTargetKind.liability,
-      _TargetUsage.reimbursement =>
-        creation.kind == ImportMappingTargetKind.reimbursement,
-      _TargetUsage.incomeCategory =>
-        creation.kind == ImportMappingTargetKind.incomeCategory,
-      _TargetUsage.expenseCategory =>
-        creation.kind == ImportMappingTargetKind.expenseCategory,
-    };
+    return ImportTargetCompatibilityPolicy.supportsUsage(
+      creation.effectiveDescriptor,
+      usage,
+    );
   }
 
   Future<ImportLedgerTarget?> _target(String id) async {
@@ -1491,20 +1800,15 @@ class _ResolutionContext {
     _TargetUsage usage,
     ImportMappingKey key,
   ) {
-    return switch (usage) {
-      _TargetUsage.settlement =>
-        target.kind == ImportLedgerTargetKind.asset ||
-            target.kind == ImportLedgerTargetKind.liability ||
-            (target.kind == ImportLedgerTargetKind.ghost &&
-                ghostMappingKeys.contains(key)),
-      _TargetUsage.fund => target.kind == ImportLedgerTargetKind.asset,
-      _TargetUsage.liability => target.kind == ImportLedgerTargetKind.liability,
-      _TargetUsage.reimbursement =>
-        target.kind == ImportLedgerTargetKind.reimbursement,
-      _TargetUsage.incomeCategory =>
-        target.kind == ImportLedgerTargetKind.incomeCategory,
-      _TargetUsage.expenseCategory =>
-        target.kind == ImportLedgerTargetKind.expenseCategory,
-    };
+    final entity = sourceEntities[key];
+    final descriptor = target.effectiveDescriptor;
+    if (descriptor == ImportTargetDescriptor.ghostAccount) {
+      return usage == _TargetUsage.settlement && ghostMappingKeys.contains(key);
+    }
+    if (!ImportTargetCompatibilityPolicy.supportsUsage(descriptor, usage)) {
+      return false;
+    }
+    return entity == null ||
+        ImportTargetCompatibilityPolicy.supportsEntity(entity, descriptor);
   }
 }

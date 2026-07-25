@@ -45,7 +45,7 @@ class ImportProcessPage extends ConsumerStatefulWidget {
 class ImportMappingPage extends ConsumerWidget {
   const ImportMappingPage({required this.onSelectMapping, super.key});
 
-  final ValueChanged<ImportSourceEntity> onSelectMapping;
+  final ValueChanged<ImportMappingReviewItem> onSelectMapping;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -58,10 +58,7 @@ class ImportMappingPage extends ConsumerWidget {
               pending: 0,
               unmapped: 0,
             )
-            : summarizeImportMappings(
-              review,
-              plannedCreations: state.plannedCreations,
-            );
+            : summarizeImportMappings(review);
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -94,10 +91,7 @@ class ImportMappingPage extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.space16),
                   _MappingList(
                     state: state,
-                    entities:
-                        review == null
-                            ? const []
-                            : importMappingDisplayEntities(review),
+                    items: review == null ? const [] : review.mappingItems,
                     onSelectMapping: onSelectMapping,
                   ),
                 ],
@@ -269,7 +263,7 @@ class _FilteredRecordLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final location = [
-      importFileRoleLabel(record.fileRole),
+      importFileTypeLabel(record.fileType),
       if (record.rowNumber != null) '第 ${record.rowNumber} 行',
     ].join(' · ');
     return Padding(
@@ -446,28 +440,19 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
     }
   }
 
-  Future<void> _selectMapping(ImportSourceEntity entity) async {
+  Future<void> _selectMapping(ImportMappingReviewItem item) async {
     final state = ref.read(importViewModelProvider);
     final review = state.review;
     if (review == null) return;
-    final key = ImportMappingKey.fromEntity(entity);
-    final allowedKinds = review.compatibleTargetKinds[key];
-    final targets = review.targets
-        .where(
-          (target) =>
-              allowedKinds == null || allowedKinds.contains(target.kind),
-        )
-        .where((target) => !target.isArchived)
-        .toList(growable: false);
+    final key = item.key;
     final selection = await showModalBottomSheet<_MappingSelection>(
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
       builder:
           (context) => _MappingTargetSheet(
-            entity: entity,
-            targets: targets,
-            selectedTargetId: review.effectiveMappings[key],
+            item: item,
+            selectedDecision: item.effectiveDecision,
             hasTemporaryOverride:
                 state.temporaryMappings.containsKey(key) ||
                 state.plannedCreations.containsKey(key),
@@ -476,7 +461,7 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
     );
     if (!mounted || selection == null) return;
     final notifier = ref.read(importViewModelProvider.notifier);
-    final outcome = await notifier.setMapping(key, selection.targetAccountId);
+    final outcome = await notifier.setMappingDecision(key, selection.decision);
     if (!mounted) return;
     _showFailure(outcome);
   }
@@ -1067,6 +1052,10 @@ class _ImportReviewTab extends StatelessWidget {
               const SizedBox(height: AppSpacing.space16),
               _FatalIssuesCard(plan: plan!),
             ] else if (review != null) ...[
+              if (plan!.issues.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.space16),
+                _PlanIssuesCard(issues: plan.issues),
+              ],
               const SizedBox(height: AppSpacing.space20),
               if (state.lastCommit case final result?) ...[
                 _CommitResultBanner(result: result),
@@ -1471,6 +1460,39 @@ class _FatalIssuesCard extends StatelessWidget {
   }
 }
 
+class _PlanIssuesCard extends StatelessWidget {
+  const _PlanIssuesCard({required this.issues});
+
+  final List<ImportIssue> issues;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final hasBlocking = issues.any((issue) => issue.isBlocking);
+    return AppSurface(
+      border: true,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.space16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              hasBlocking ? '解析步骤需要注意' : '解析提示',
+              style: context.appTextStyles.groupTitle,
+            ),
+            const SizedBox(height: AppSpacing.space8),
+            for (final issue in issues)
+              _IssueLine(
+                issue: issue,
+                color: issue.isBlocking ? colors.error : colors.primary,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CommitResultBanner extends StatelessWidget {
   const _CommitResultBanner({required this.result});
 
@@ -1511,10 +1533,7 @@ class _MappingSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final review = state.review!;
-    final summary = summarizeImportMappings(
-      review,
-      plannedCreations: state.plannedCreations,
-    );
+    final summary = summarizeImportMappings(review);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1566,17 +1585,17 @@ class _MappingSection extends StatelessWidget {
 class _MappingList extends StatelessWidget {
   const _MappingList({
     required this.state,
-    required this.entities,
+    required this.items,
     required this.onSelectMapping,
   });
 
   final ImportPageState state;
-  final List<ImportSourceEntity> entities;
-  final ValueChanged<ImportSourceEntity> onSelectMapping;
+  final List<ImportMappingReviewItem> items;
+  final ValueChanged<ImportMappingReviewItem> onSelectMapping;
 
   @override
   Widget build(BuildContext context) {
-    if (entities.isEmpty) {
+    if (items.isEmpty) {
       return const AppSurface(
         child: Padding(
           padding: EdgeInsets.all(AppSpacing.space16),
@@ -1587,10 +1606,10 @@ class _MappingList extends StatelessWidget {
     return AppSurface(
       child: Column(
         children: [
-          for (final entity in entities)
+          for (final item in items)
             _MappingItem(
               state: state,
-              entity: entity,
+              item: item,
               onSelectMapping: onSelectMapping,
             ),
         ],
@@ -1602,64 +1621,61 @@ class _MappingList extends StatelessWidget {
 class _MappingItem extends StatelessWidget {
   const _MappingItem({
     required this.state,
-    required this.entity,
+    required this.item,
     required this.onSelectMapping,
   });
 
   final ImportPageState state;
-  final ImportSourceEntity entity;
-  final ValueChanged<ImportSourceEntity> onSelectMapping;
+  final ImportMappingReviewItem item;
+  final ValueChanged<ImportMappingReviewItem> onSelectMapping;
 
   @override
   Widget build(BuildContext context) {
     final review = state.review!;
-    final key = ImportMappingKey.fromEntity(entity);
-    final targetId = review.effectiveMappings[key];
+    final decision = item.effectiveDecision;
     final target =
-        review.targets
-            .where((candidate) => candidate.id == targetId)
-            .firstOrNull;
-    final creation = state.plannedCreations[key];
-    final usesGhostAccount =
-        entity.isMissingAccountPlaceholder &&
-        target?.kind == ImportMappingTargetKind.ghost;
-    final createsTarget = creation != null;
+        decision is ExistingTargetDecision
+            ? review.targets
+                .where((candidate) => candidate.id == decision.targetId)
+                .firstOrNull
+            : null;
+    final creation =
+        decision is PlannedCreationDecision ? decision.creation : null;
     final targetLabel =
-        usesGhostAccount || target?.kind == ImportMappingTargetKind.ghost
-            ? '无账户'
-            : creation?.name ??
-                (target?.isArchived ?? false
-                    ? '${target!.displayPath}（已归档）'
-                    : target?.displayPath ?? '待配置');
+        target?.isArchived == true
+            ? '${target!.displayPath}（已归档）'
+            : item.targetPath ?? item.targetName ?? '待配置';
     return ImportMappingItem(
-      sourceLabel: usesGhostAccount ? '缺失账户' : entity.displayName,
-      sourceKindLabel:
-          usesGhostAccount ? '来源账户' : importEntityKindLabel(entity),
+      sourceLabel: item.sourceName,
+      sourceKindLabel: item.sourceDescription,
       targetLabel: targetLabel,
       action:
-          createsTarget
+          item.action == ImportMappingAction.create || creation != null
               ? ImportMappingItemAction.create
+              : item.action == ImportMappingAction.unresolved
+              ? ImportMappingItemAction.unresolved
               : ImportMappingItemAction.map,
+      targetKindLabel:
+          item.targetDescription == targetLabel ? null : item.targetDescription,
       onTap:
-          usesGhostAccount || state.isBusy
+          item.existingTargetOptions.isEmpty && item.creationOptions.isEmpty ||
+                  state.isBusy
               ? null
-              : () => onSelectMapping(entity),
+              : () => onSelectMapping(item),
     );
   }
 }
 
 class _MappingTargetSheet extends StatefulWidget {
   const _MappingTargetSheet({
-    required this.entity,
-    required this.targets,
-    required this.selectedTargetId,
+    required this.item,
+    required this.selectedDecision,
     required this.hasTemporaryOverride,
     this.restoreLabel = '恢复默认映射',
   });
 
-  final ImportSourceEntity entity;
-  final List<ImportMappingTarget> targets;
-  final String? selectedTargetId;
+  final ImportMappingReviewItem item;
+  final ImportMappingDecision selectedDecision;
   final bool hasTemporaryOverride;
   final String restoreLabel;
 
@@ -1690,12 +1706,12 @@ class _MappingTargetSheetState extends State<_MappingTargetSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '映射 ${widget.entity.displayName}',
+                    widget.item.sourceName,
                     style: context.appTextStyles.subsectionTitle,
                   ),
                   const SizedBox(height: AppSpacing.space4),
                   Text(
-                    importEntityKindLabel(widget.entity),
+                    widget.item.sourceDescription,
                     style: context.appTextStyles.pageSubtitle,
                   ),
                 ],
@@ -1711,28 +1727,93 @@ class _MappingTargetSheetState extends State<_MappingTargetSheet> {
                       leading: const Icon(RemixIcons.restart_line),
                       title: Text(widget.restoreLabel),
                       onTap:
-                          () => Navigator.of(
-                            context,
-                          ).pop(const _MappingSelection(targetAccountId: null)),
+                          () => Navigator.of(context).pop(
+                            const _MappingSelection(
+                              decision: UnresolvedDecision('恢复默认映射'),
+                            ),
+                          ),
                     ),
-                  for (final target in widget.targets)
+                  if (widget.item.existingTargetOptions.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.space16,
+                        AppSpacing.space10,
+                        AppSpacing.space16,
+                        AppSpacing.space4,
+                      ),
+                      child: Text(
+                        '映射到已有目标',
+                        style: context.appTextStyles.listSupporting,
+                      ),
+                    ),
+                  for (final target in widget.item.existingTargetOptions)
                     ListTile(
                       leading: Icon(
-                        target.id == widget.selectedTargetId
+                        _isExistingTargetSelected(target)
                             ? RemixIcons.checkbox_circle_fill
                             : RemixIcons.checkbox_blank_circle_line,
                       ),
                       title: Text(target.displayPath),
                       subtitle:
                           target.displayPath == target.name
-                              ? null
-                              : Text(target.name),
+                              ? Text(
+                                importTargetDescription(
+                                  target.effectiveDescriptor,
+                                ),
+                              )
+                              : Text(
+                                '${target.name} · '
+                                '${importTargetDescription(target.effectiveDescriptor)}',
+                              ),
                       onTap:
-                          () => Navigator.of(
-                            context,
-                          ).pop(_MappingSelection(targetAccountId: target.id)),
+                          () => Navigator.of(context).pop(
+                            _MappingSelection(
+                              decision: ExistingTargetDecision(target.id),
+                            ),
+                          ),
                     ),
-                  if (widget.targets.isEmpty)
+                  if (widget.item.creationOptions.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.space16,
+                        AppSpacing.space10,
+                        AppSpacing.space16,
+                        AppSpacing.space4,
+                      ),
+                      child: Text(
+                        '导入时新增',
+                        style: context.appTextStyles.listSupporting,
+                      ),
+                    ),
+                  for (final creation in widget.item.creationOptions)
+                    ListTile(
+                      leading: Icon(
+                        _isCreationSelected(creation)
+                            ? RemixIcons.checkbox_circle_fill
+                            : RemixIcons.checkbox_blank_circle_line,
+                      ),
+                      title: Text(
+                        '新增${importTargetDescription(creation.effectiveDescriptor)}',
+                      ),
+                      subtitle: Text(
+                        [
+                          if (creation.pathSegments.isNotEmpty)
+                            creation.pathSegments.join(' / ')
+                          else
+                            creation.name,
+                          if (creation.defaultParametersHint case final hint?)
+                            hint,
+                        ].join(' · '),
+                      ),
+                      onTap:
+                          () => Navigator.of(context).pop(
+                            _MappingSelection(
+                              decision: PlannedCreationDecision(creation),
+                            ),
+                          ),
+                    ),
+                  if (widget.item.existingTargetOptions.isEmpty &&
+                      widget.item.creationOptions.isEmpty)
                     Padding(
                       padding: const EdgeInsets.all(AppSpacing.space20),
                       child: Text(
@@ -1749,12 +1830,26 @@ class _MappingTargetSheetState extends State<_MappingTargetSheet> {
       ),
     );
   }
+
+  bool _isExistingTargetSelected(ImportMappingTarget target) {
+    final decision = widget.selectedDecision;
+    return decision is ExistingTargetDecision && decision.targetId == target.id;
+  }
+
+  bool _isCreationSelected(ImportMappingCreation creation) {
+    final decision = widget.selectedDecision;
+    return decision is PlannedCreationDecision &&
+        decision.creation.name == creation.name &&
+        decision.creation.effectiveDescriptor == creation.effectiveDescriptor &&
+        decision.creation.pathSegments.join('/') ==
+            creation.pathSegments.join('/');
+  }
 }
 
 class _MappingSelection {
-  const _MappingSelection({required this.targetAccountId});
+  const _MappingSelection({required this.decision});
 
-  final String? targetAccountId;
+  final ImportMappingDecision decision;
 }
 
 class _ImportPreviewSection extends StatelessWidget {
@@ -1809,7 +1904,7 @@ class _IssueLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final location = [
-      if (issue.fileRole != null) importFileRoleLabel(issue.fileRole!),
+      if (issue.fileType != null) importFileTypeLabel(issue.fileType!),
       if (issue.rowNumber != null) '第 ${issue.rowNumber} 行',
     ].join(' · ');
     return Padding(

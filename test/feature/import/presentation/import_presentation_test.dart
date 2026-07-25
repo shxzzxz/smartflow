@@ -58,6 +58,23 @@ void main() {
           isArchived: false,
         ),
       ],
+      mappingItems: [
+        ImportMappingReviewItem(
+          key: const ImportMappingKey(
+            source: ImportSource.yimu,
+            entityKind: ImportEntityKind.account,
+            sourceEntityKey: 'account:cash',
+          ),
+          sourceName: '现金',
+          sourceDescription: '账户',
+          action: ImportMappingAction.map,
+          targetName: '现金',
+          targetId: 'cash',
+          targetPath: '资产 / 现金',
+          targetDescription: '资金账户',
+          decision: const ExistingTargetDecision('cash'),
+        ),
+      ],
       groups: [
         ImportGroupReview(
           index: 0,
@@ -134,7 +151,11 @@ void main() {
         ImportFilteredRecord(
           reasonCode: 'empty_row',
           reason: '空白记录',
-          fileRole: YimuFileRole.bill,
+          fileType: ImportSourceFileType(
+            source: ImportSource.yimu,
+            key: 'bill',
+            label: '账单',
+          ),
           rowNumber: 8,
         ),
       ],
@@ -206,6 +227,30 @@ void main() {
           displayPath: '支出 / 餐饮',
           kind: ImportMappingTargetKind.expenseCategory,
           isArchived: false,
+        ),
+      ],
+      mappingItems: [
+        ImportMappingReviewItem(
+          key: ImportMappingKey.fromEntity(missingAccount),
+          sourceName: '缺失账户',
+          sourceDescription: '账户',
+          action: ImportMappingAction.map,
+          targetName: '无账户',
+          targetId: 'ghost',
+          targetPath: '无账户',
+          targetDescription: '无账户',
+          decision: const ExistingTargetDecision('ghost'),
+        ),
+        ImportMappingReviewItem(
+          key: ImportMappingKey.fromEntity(category),
+          sourceName: '餐饮',
+          sourceDescription: '支出分类',
+          action: ImportMappingAction.map,
+          targetName: '餐饮',
+          targetId: 'expense-category',
+          targetPath: '支出 / 餐饮',
+          targetDescription: '支出分类',
+          decision: const ExistingTargetDecision('expense-category'),
         ),
       ],
       groups: [

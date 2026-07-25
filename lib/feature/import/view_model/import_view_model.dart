@@ -420,19 +420,37 @@ class ImportViewModel extends Notifier<ImportPageState> {
   Future<ImportActionOutcome<void>> setMapping(
     ImportMappingKey key,
     String? targetAccountId,
+  ) {
+    return setMappingDecision(
+      key,
+      targetAccountId == null
+          ? const UnresolvedDecision('恢复默认映射')
+          : ExistingTargetDecision(targetAccountId),
+    );
+  }
+
+  Future<ImportActionOutcome<void>> setMappingDecision(
+    ImportMappingKey key,
+    ImportMappingDecision decision,
   ) async {
     final review = state.review;
     if (review == null) return _invalid<void>('请先选择并解析一木资料包。');
 
     final mappings = Map<ImportMappingKey, String>.of(state.temporaryMappings);
-    if (targetAccountId == null) {
-      mappings.remove(key);
-    } else {
-      mappings[key] = targetAccountId;
-    }
     final creations = Map<ImportMappingKey, ImportMappingCreation>.of(
       state.plannedCreations,
-    )..remove(key);
+    );
+    switch (decision) {
+      case ExistingTargetDecision decision:
+        mappings[key] = decision.targetId;
+        creations.remove(key);
+      case PlannedCreationDecision decision:
+        mappings.remove(key);
+        creations[key] = decision.creation;
+      case UnresolvedDecision _:
+        mappings.remove(key);
+        creations.remove(key);
+    }
 
     state = state.copyWith(
       phase: ImportPagePhase.reviewing,
@@ -927,12 +945,16 @@ List<ImportFileProgress> _fileProgressForPlan(
   final resultByIndex = {
     for (final result in plan.fileResults) result.fileIndex: result,
   };
-  final issueCountByRole = <YimuFileRole, int>{};
+  final issueCountByType = <ImportSourceFileType, int>{};
   for (final group in plan.groups) {
     for (final issue in group.issues) {
-      final role = issue.fileRole;
-      if (role == null) continue;
-      issueCountByRole.update(role, (count) => count + 1, ifAbsent: () => 1);
+      final fileType = issue.fileType;
+      if (fileType == null) continue;
+      issueCountByType.update(
+        fileType,
+        (count) => count + 1,
+        ifAbsent: () => 1,
+      );
     }
   }
 
@@ -941,7 +963,7 @@ List<ImportFileProgress> _fileProgressForPlan(
       _fileProgressFromResult(
         index,
         resultByIndex[index],
-        issueCountByRole,
+        issueCountByType,
         planHasFatalIssues: plan.hasFatalIssues,
       ),
   ];
@@ -950,7 +972,7 @@ List<ImportFileProgress> _fileProgressForPlan(
 ImportFileProgress _fileProgressFromResult(
   int fileIndex,
   ImportFileParseResult? result,
-  Map<YimuFileRole, int> issueCountByRole, {
+  Map<ImportSourceFileType, int> issueCountByType, {
   required bool planHasFatalIssues,
 }) {
   if (result == null) {
@@ -971,7 +993,7 @@ ImportFileProgress _fileProgressFromResult(
     );
   }
   final issueCount =
-      result.fileRole == null ? 0 : issueCountByRole[result.fileRole] ?? 0;
+      result.fileType == null ? 0 : issueCountByType[result.fileType] ?? 0;
   if (issueCount > 0) {
     return ImportFileProgress(
       fileIndex: fileIndex,
@@ -986,12 +1008,7 @@ ImportFileProgress _fileProgressFromResult(
 }
 
 ImportBundle _mergeBundles(ImportBundle? current, ImportBundle added) {
-  final files = <String, ImportFilePayload>{
-    for (final file in current?.files ?? const <ImportFilePayload>[])
-      file.name: file,
-    for (final file in added.files) file.name: file,
-  };
-  return ImportBundle(files: files.values);
+  return ImportBundle(files: [...?current?.files, ...added.files]);
 }
 
 final importViewModelProvider =

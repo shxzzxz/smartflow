@@ -1,16 +1,29 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/application/import/import_parser_registry.dart';
 import 'package:smartflow/application/import/import_plan_app_service.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/import/import_models.dart';
+import 'package:smartflow/domain/import/port/import_source_parser.dart';
 import 'package:smartflow/domain/import/port/yimu_workbook_reader.dart';
 import 'package:smartflow/domain/import/service/yimu_import_parser.dart';
 
 void main() {
-  test('draft edit clears only parser issues repaired by edited fields', () {
+  test('dispatches parsing through the source parser registry', () {
+    final parser = _RecordingParser();
     final service = ImportPlanAppServiceImpl(
-      yimuParser: YimuImportParser(reader: const _UnusedReader()),
+      parsers: ImportParserRegistry([parser]),
     );
+    final bundle = ImportBundle(files: const []);
+
+    final result = service.parse(source: ImportSource.yimu, bundle: bundle);
+
+    expect(parser.receivedBundle, same(bundle));
+    expect(result.source, ImportSource.yimu);
+  });
+
+  test('draft edit clears only parser issues repaired by edited fields', () {
+    final service = _service();
     final group = ImportTransactionGroupDraft(
       topLevel: ImportTransferDraft(
         amount: Money.zero(),
@@ -78,9 +91,7 @@ void main() {
   });
 
   test('editing a child date does not clear a top-level date blocker', () {
-    final service = ImportPlanAppServiceImpl(
-      yimuParser: YimuImportParser(reader: const _UnusedReader()),
-    );
+    final service = _service();
     final group = ImportTransactionGroupDraft(
       topLevel: ImportExpenseDraft(
         amount: Money.parse('70.00'),
@@ -130,9 +141,30 @@ void main() {
   });
 }
 
+ImportPlanAppServiceImpl _service() {
+  return ImportPlanAppServiceImpl(
+    parsers: ImportParserRegistry([
+      YimuImportParser(reader: const _UnusedReader()),
+    ]),
+  );
+}
+
 class _UnusedReader implements YimuWorkbookReader {
   const _UnusedReader();
 
   @override
   YimuWorkbook read(ImportFilePayload file) => throw UnimplementedError();
+}
+
+class _RecordingParser implements ImportSourceParser {
+  ImportBundle? receivedBundle;
+
+  @override
+  ImportSource get source => ImportSource.yimu;
+
+  @override
+  ImportParseResult parse(ImportBundle bundle) {
+    receivedBundle = bundle;
+    return ImportParseResult(source: source);
+  }
 }

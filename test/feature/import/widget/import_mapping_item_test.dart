@@ -5,6 +5,31 @@ import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/import/widget/import_mapping_item.dart';
 
 void main() {
+  testWidgets('renders source operation and target as three mapping columns', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: const Scaffold(
+          body: ImportMappingItem(
+            sourceLabel: '花呗',
+            sourceKindLabel: '账户',
+            targetLabel: '花呗账户',
+            targetKindLabel: '信用账户',
+            action: ImportMappingItemAction.map,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('花呗'), findsOneWidget);
+    expect(find.text('账户'), findsOneWidget);
+    expect(find.text('映射'), findsOneWidget);
+    expect(find.text('花呗账户'), findsOneWidget);
+    expect(find.text('信用账户'), findsOneWidget);
+  });
+
   testWidgets('places the create marker after the mapping target', (
     tester,
   ) async {

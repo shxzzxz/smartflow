@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/import/import_models.dart';
 import 'package:smartflow/domain/import/port/yimu_workbook_reader.dart';
+import 'package:smartflow/domain/import/service/source_parsing_models.dart';
+import 'package:smartflow/domain/import/service/yimu_file_type.dart';
 import 'package:smartflow/domain/import/service/yimu_import_parser.dart';
 
 void main() {
@@ -25,10 +27,10 @@ void main() {
     ).parse(_bundle());
 
     expect(result.fatalIssues, isEmpty);
-    expect(result.fileResults.map((file) => file.fileRole), [
-      YimuFileRole.bill,
-      YimuFileRole.transfer,
-      YimuFileRole.debt,
+    expect(result.fileResults.map((file) => file.fileType?.key), [
+      'bill',
+      'transfer',
+      'debt',
     ]);
     expect(result.fileResults.every((file) => !file.hasFatalIssues), isTrue);
     final groups = _groups(result);
@@ -221,7 +223,7 @@ void main() {
     expect(groups[1].topLevel.postedAt, groups[1].topLevel.occurredAt);
   });
 
-  test('rejects missing roles and malformed rows as distinct issues', () {
+  test('keeps valid files when another selected file cannot be decoded', () {
     final result = _parser(
       billRows: [
         {
@@ -236,10 +238,7 @@ void main() {
       includeTransfer: false,
     ).parse(_bundle());
 
-    expect(
-      result.fatalIssues.map((issue) => issue.code),
-      contains('missing_file_role'),
-    );
+    expect(result.fatalIssues, isEmpty);
     final failedFile = result.fileResults.singleWhere(
       (file) => file.fileName == '转账.xls',
     );
@@ -248,7 +247,82 @@ void main() {
       failedFile.fatalIssues.map((issue) => issue.code),
       contains('file_decode_failed'),
     );
-    expect(result.groups, isEmpty);
+    expect(result.groups, isNotEmpty);
+    expect(
+      result.groups.expand((group) => group.issues).map((issue) => issue.code),
+      contains('date_missing'),
+    );
+  });
+
+  test('allows bill, transfer, and debt files to parse independently', () {
+    final parser = _parser();
+
+    final bill = parser.parse(_bundle(names: const ['账单.xls']));
+    final transfer = parser.parse(_bundle(names: const ['转账.xls']));
+    final debt = parser.parse(_bundle(names: const ['债务.xls']));
+
+    expect(bill.fatalIssues, isEmpty);
+    expect(transfer.fatalIssues, isEmpty);
+    expect(debt.fatalIssues, isEmpty);
+    expect(bill.groups.single.topLevel, isA<ImportIncomeDraft>());
+    expect(transfer.groups.single.topLevel, isA<ImportTransferDraft>());
+    expect(debt.groups.single.topLevel, isA<ImportBorrowingDraft>());
+    expect(bill.sourceCategories, isNotEmpty);
+    expect(transfer.sourceCategories, isEmpty);
+    expect(debt.sourceCategories, isEmpty);
+  });
+
+  test(
+    'marks debt transfer-in accounts as loan-constrained source entities',
+    () {
+      final result = _parser(
+        debtRows: [
+          {
+            '日期': '2026-01-29 16:36',
+            '类型': '借入',
+            '转出账户': '到账资产',
+            '转入账户': '来源贷款',
+            '金额': 30000.0,
+            '手续费': 0.0,
+          },
+          {
+            '日期': '2026-02-01 09:00',
+            '类型': '还款',
+            '转出账户': '现金',
+            '转入账户': '来源贷款',
+            '金额': 1000.0,
+            '手续费': 10.0,
+          },
+        ],
+      ).parse(_bundle(names: const ['债务.xls']));
+
+      final entity = result.sourceAccounts.singleWhere(
+        (candidate) => candidate.displayName == '来源贷款',
+      );
+      expect(
+        entity.allowedTargetDescriptors,
+        contains(ImportTargetDescriptor.loanAccount),
+      );
+      expect(
+        entity.preferredTargetDescriptor,
+        ImportTargetDescriptor.loanAccount,
+      );
+      expect(
+        entity.allowedTargetDescriptors,
+        isNot(contains(ImportTargetDescriptor.creditAccount)),
+      );
+    },
+  );
+
+  test('runs additional source ParseUnits without changing the parser', () {
+    final parser = _parser(additionalParseUnits: const [_AdditionalBillUnit()]);
+
+    final result = parser.parse(_bundle(names: const ['账单.xls']));
+
+    expect(
+      result.issues.map((issue) => issue.code),
+      contains('additional_parse_unit_ran'),
+    );
   });
 
   test(
@@ -278,6 +352,64 @@ void main() {
       expect(firstGroup.fingerprintVersion, 1);
     },
   );
+
+  test('preserves version 1 fingerprints across typed row normalization', () {
+    final result = _parser(
+      billRows: [
+        {
+          '日期': '2026-07-01 08:00',
+          '收支类型': '支出',
+          '金额': -12.3,
+          '类别': '餐饮',
+          '二级分类': '早餐',
+          '账户': '现金',
+          '退款': '',
+          '备注': 'probe-normal',
+          '其他': '',
+        },
+        {
+          '日期': '2026-07-02 08:00',
+          '收支类型': '支出',
+          '金额': -12.3,
+          '类别': '餐饮',
+          '二级分类': '早餐',
+          '账户': '现金',
+          '退款': 2.0,
+          '备注': 'probe-refund',
+          '其他': '',
+        },
+        {
+          '日期': '2026-07-03 08:00',
+          '收支类型': '支出',
+          '金额': -100.0,
+          '类别': '居家生活',
+          '二级分类': '电费',
+          '账户': '现金',
+          '报销账户': '公司应收',
+          '报销金额': 80.0,
+          '报销明细': '2026/07/04银行卡到账30.0\n2026/07/05银行卡到账50.0',
+          '备注': 'probe-reimbursement',
+          '其他': '',
+        },
+      ],
+    ).parse(_bundle());
+    const expected = {
+      'probe-normal':
+          '86a5253ba8293a50850e985cee56a5eaa6c481a6aad0e0578c238fda2ea450b7',
+      'probe-refund':
+          '306632313c61bc0f08fea8e9307afef2722903aece76503280dc2000b20092a7',
+      'probe-reimbursement':
+          'd45ff9caf1d9db908e463640e7503ba1ce2e0bccfb0ba2e476e69ad8636e91a1',
+    };
+
+    for (final entry in expected.entries) {
+      final group = result.groups.singleWhere(
+        (group) => group.topLevel.note == entry.key,
+      );
+      expect(group.fingerprintVersion, 1);
+      expect(group.sourceOperationFingerprint, entry.value);
+    }
+  });
 
   test('keeps income flags and explicit no-account semantics separate', () {
     final result = _parser(
@@ -366,6 +498,31 @@ void main() {
     );
   });
 
+  test(
+    'attaches normalized row issues to the transaction group from that row',
+    () {
+      final result = _parser(
+        billRows: [
+          {
+            '日期': 'not-a-date',
+            '收支类型': '收入',
+            '金额': 'not-a-money',
+            '类别': '工资',
+            '二级分类': '',
+            '账户': '现金',
+          },
+        ],
+      ).parse(_bundle());
+
+      final group = _groups(result).single;
+      expect(group.hasBlockingIssues, isTrue);
+      expect(
+        group.issues.map((issue) => issue.code),
+        containsAll(<String>['date_invalid', '金额_invalid']),
+      );
+    },
+  );
+
   test('marks duplicate explicit operation keys as a plan conflict', () {
     final rows = [
       for (var index = 0; index < 2; index++)
@@ -445,7 +602,7 @@ void main() {
     expect(result.groups, isEmpty);
   });
 
-  test('treats a worksheet without headers as a bundle fatal error', () {
+  test('isolates an empty worksheet when other files remain usable', () {
     final reader = _FakeReader({
       '账单.xls': YimuWorkbook(
         sheets: [YimuSheet(name: '账单', rows: const [], headers: const [])],
@@ -472,13 +629,18 @@ void main() {
 
     final result = YimuImportParser(reader: reader).parse(_bundle());
 
+    expect(result.fatalIssues, isEmpty);
     expect(
-      result.fatalIssues.map((issue) => issue.code),
+      result.fileResults
+          .singleWhere((file) => file.fileName == '账单.xls')
+          .fatalIssues
+          .map((issue) => issue.code),
       contains('empty_sheet'),
     );
+    expect(result.groups, isNotEmpty);
   });
 
-  test('treats a header-only worksheet as a bundle fatal error', () {
+  test('reports no usable files when every worksheet is empty', () {
     final reader = _FakeReader({
       '账单.xls': YimuWorkbook(
         sheets: [YimuSheet(name: '账单', rows: const [], headers: _billHeaders)],
@@ -499,7 +661,13 @@ void main() {
 
     expect(
       result.fatalIssues.map((issue) => issue.code),
-      contains('empty_sheet'),
+      contains('no_usable_files'),
+    );
+    expect(
+      result.fileResults
+          .expand((file) => file.fatalIssues)
+          .map((issue) => issue.code),
+      everyElement('empty_sheet'),
     );
   });
 
@@ -546,10 +714,15 @@ void main() {
 
     final result = YimuImportParser(reader: reader).parse(_bundle());
 
+    expect(result.fatalIssues, isEmpty);
     expect(
-      result.fatalIssues.map((issue) => issue.code),
+      result.fileResults
+          .singleWhere((file) => file.fileName == '账单.xls')
+          .fatalIssues
+          .map((issue) => issue.code),
       contains('unsupported_headers'),
     );
+    expect(result.groups, isNotEmpty);
   });
 
   test('does not expose workbook decoder details in fatal messages', () {
@@ -559,7 +732,11 @@ void main() {
       ),
     );
 
-    final issue = result.fatalIssues.firstWhere(
+    expect(
+      result.fatalIssues.map((issue) => issue.code),
+      contains('no_usable_files'),
+    );
+    final issue = result.fileResults.single.fatalIssues.firstWhere(
       (candidate) => candidate.code == 'file_decode_failed',
     );
     expect(issue.message, isNot(contains('decoder-secret')));
@@ -571,6 +748,7 @@ YimuImportParser _parser({
   List<Map<String, Object?>> transferRows = const [],
   List<Map<String, Object?>> debtRows = const [],
   bool includeTransfer = true,
+  Iterable<ParseUnit> additionalParseUnits = const [],
 }) {
   return YimuImportParser(
     reader: _FakeReader({
@@ -606,15 +784,16 @@ YimuImportParser _parser({
         ],
       ),
     }),
+    additionalParseUnits: additionalParseUnits,
   );
 }
 
-ImportBundle _bundle() {
+ImportBundle _bundle({List<String>? names}) {
+  final selectedNames = names ?? const ['账单.xls', '转账.xls', '债务.xls'];
   return ImportBundle(
     files: [
-      ImportFilePayload(name: '账单.xls', bytes: Uint8List(0)),
-      ImportFilePayload(name: '转账.xls', bytes: Uint8List(0)),
-      ImportFilePayload(name: '债务.xls', bytes: Uint8List(0)),
+      for (final name in selectedNames)
+        ImportFilePayload(name: name, bytes: Uint8List(0)),
     ],
   );
 }
@@ -631,7 +810,13 @@ class _FakeReader implements YimuWorkbookReader {
   final Map<String, YimuWorkbook> workbooks;
 
   @override
-  YimuWorkbook read(ImportFilePayload file) => workbooks[file.name]!;
+  YimuWorkbook read(ImportFilePayload file) {
+    final workbook = workbooks[file.name];
+    if (workbook == null) {
+      throw FormatException('missing workbook: ${file.name}');
+    }
+    return workbook;
+  }
 }
 
 class _ThrowingReader implements YimuWorkbookReader {
@@ -639,7 +824,32 @@ class _ThrowingReader implements YimuWorkbookReader {
 
   @override
   YimuWorkbook read(ImportFilePayload file) {
-    throw StateError('decoder-secret');
+    throw Exception('decoder-secret');
+  }
+}
+
+class _AdditionalBillUnit implements ParseUnit {
+  const _AdditionalBillUnit();
+
+  @override
+  String get key => 'test.additional-bill';
+
+  @override
+  Set<ImportSourceFileType> get requiredFileTypes => {
+    YimuFileType.bill.descriptor,
+  };
+
+  @override
+  ParseUnitResult parse(Map<ImportSourceFileType, SourceFileFact> facts) {
+    return ParseUnitResult(
+      issues: const [
+        ImportIssue(
+          code: 'additional_parse_unit_ran',
+          message: 'additional unit ran',
+          severity: ImportIssueSeverity.warning,
+        ),
+      ],
+    );
   }
 }
 

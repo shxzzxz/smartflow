@@ -132,25 +132,9 @@ String importEntityKindLabel(ImportSourceEntity entity) {
   return entity.categoryKind == ImportCategoryKind.income ? '来源收入分类' : '来源支出分类';
 }
 
-List<ImportSourceEntity> importMappingDisplayEntities(ImportPlanReview review) {
-  final ghostTargetIds = {
-    for (final target in review.targets)
-      if (target.kind == ImportMappingTargetKind.ghost) target.id,
-  };
-  var includedMissingAccount = false;
-  final result = <ImportSourceEntity>[];
-  for (final entity in review.plan.sourceEntities) {
-    final targetId =
-        review.effectiveMappings[ImportMappingKey.fromEntity(entity)];
-    final usesGhostAccount =
-        entity.isMissingAccountPlaceholder && ghostTargetIds.contains(targetId);
-    if (usesGhostAccount) {
-      if (includedMissingAccount) continue;
-      includedMissingAccount = true;
-    }
-    result.add(entity);
-  }
-  return result;
+String importSourceKindLabel(ImportSourceEntity entity) {
+  if (entity.kind == ImportEntityKind.account) return '账户';
+  return entity.categoryKind == ImportCategoryKind.income ? '收入分类' : '支出分类';
 }
 
 class ImportMappingAnalysisSummary {
@@ -178,21 +162,20 @@ String importMappingAnalysisDescription(ImportMappingAnalysisSummary summary) {
   return '映射配置已准备就绪，可确认配置后继续。';
 }
 
-ImportMappingAnalysisSummary summarizeImportMappings(
-  ImportPlanReview review, {
-  Map<ImportMappingKey, ImportMappingCreation>? plannedCreations,
-}) {
-  final creations = plannedCreations ?? review.plannedCreations;
+ImportMappingAnalysisSummary summarizeImportMappings(ImportPlanReview review) {
   var mapped = 0;
   var pending = 0;
   var unmapped = 0;
-  for (final entity in importMappingDisplayEntities(review)) {
-    final key = ImportMappingKey.fromEntity(entity);
-    if (creations.containsKey(key)) {
+  for (final item in review.mappingItems) {
+    if (item.action == ImportMappingAction.create) {
       pending++;
       continue;
     }
-    final targetId = review.effectiveMappings[key];
+    if (item.action == ImportMappingAction.unresolved) {
+      unmapped++;
+      continue;
+    }
+    final targetId = item.targetId ?? review.effectiveMappings[item.key];
     final target =
         review.targets
             .where((candidate) => candidate.id == targetId)
@@ -346,13 +329,8 @@ String importOperationLabel(ImportOperationKind kind) {
   };
 }
 
-String importFileRoleLabel(YimuFileRole role) {
-  return switch (role) {
-    YimuFileRole.bill => '账单文件',
-    YimuFileRole.transfer => '转账文件',
-    YimuFileRole.debt => '债务文件',
-  };
-}
+String importFileTypeLabel(ImportSourceFileType fileType) =>
+    '${fileType.label}文件';
 
 String formatImportDateTime(DateTime value) => _dateTimeFormat.format(value);
 
@@ -538,7 +516,7 @@ String _mappingLabel(
   if (targetId != null) {
     for (final target in review.targets) {
       if (target.id == targetId) {
-        return target.kind == ImportMappingTargetKind.ghost
+        return target.effectiveDescriptor == ImportTargetDescriptor.ghostAccount
             ? '无账户'
             : target.displayPath;
       }

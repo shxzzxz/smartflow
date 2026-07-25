@@ -1,4 +1,5 @@
 import '../../../core/money/money.dart';
+import '../import_models.dart';
 
 enum ImportLedgerTargetKind {
   asset,
@@ -10,6 +11,23 @@ enum ImportLedgerTargetKind {
   unsupported,
 }
 
+extension ImportLedgerTargetKindDescriptor on ImportLedgerTargetKind {
+  ImportTargetDescriptor get defaultDescriptor => switch (this) {
+    ImportLedgerTargetKind.asset => ImportTargetDescriptor.fundAccount,
+    // The legacy kind only says "liability"; it carries no credit/loan
+    // profile fact. Keep such targets unsupported without a descriptor.
+    ImportLedgerTargetKind.liability => ImportTargetDescriptor.unsupported,
+    ImportLedgerTargetKind.reimbursement =>
+      ImportTargetDescriptor.reimbursementAccount,
+    ImportLedgerTargetKind.incomeCategory =>
+      ImportTargetDescriptor.incomeCategory,
+    ImportLedgerTargetKind.expenseCategory =>
+      ImportTargetDescriptor.expenseCategory,
+    ImportLedgerTargetKind.ghost => ImportTargetDescriptor.ghostAccount,
+    ImportLedgerTargetKind.unsupported => ImportTargetDescriptor.unsupported,
+  };
+}
+
 class ImportLedgerTarget {
   const ImportLedgerTarget({
     required this.id,
@@ -17,6 +35,7 @@ class ImportLedgerTarget {
     required this.displayPath,
     required this.kind,
     required this.isArchived,
+    this.descriptor,
   });
 
   final String id;
@@ -24,13 +43,38 @@ class ImportLedgerTarget {
   final String displayPath;
   final ImportLedgerTargetKind kind;
   final bool isArchived;
+
+  /// Source-neutral product descriptor. When absent, callers may use the
+  /// legacy [kind] projection for backward-compatible adapters.
+  final ImportTargetDescriptor? descriptor;
+
+  ImportTargetDescriptor get effectiveDescriptor =>
+      descriptor ?? kind.defaultDescriptor;
 }
 
 class ImportLedgerTargetCreation {
-  const ImportLedgerTargetCreation({required this.name, required this.kind});
+  const ImportLedgerTargetCreation({
+    required this.name,
+    required this.kind,
+    this.descriptor,
+    this.pathSegments = const [],
+    this.parentTargetId,
+    this.billingDay,
+    this.repaymentDay,
+    this.billingDayToNext = true,
+  });
 
   final String name;
   final ImportLedgerTargetKind kind;
+  final ImportTargetDescriptor? descriptor;
+  final List<String> pathSegments;
+  final String? parentTargetId;
+  final int? billingDay;
+  final int? repaymentDay;
+  final bool billingDayToNext;
+
+  ImportTargetDescriptor get effectiveDescriptor =>
+      descriptor ?? kind.defaultDescriptor;
 }
 
 /// Import-owned port into the ledger application facade.

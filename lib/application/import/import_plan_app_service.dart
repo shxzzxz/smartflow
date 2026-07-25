@@ -1,6 +1,6 @@
 import '../../domain/import/import_models.dart';
 import '../../domain/import/import_error_code.dart';
-import '../../domain/import/service/yimu_import_parser.dart';
+import 'import_parser_registry.dart';
 
 /// Parses an in-memory import bundle into a source-neutral import plan.
 ///
@@ -22,19 +22,17 @@ abstract interface class ImportPlanAppService {
 }
 
 class ImportPlanAppServiceImpl implements ImportPlanAppService {
-  const ImportPlanAppServiceImpl({required YimuImportParser yimuParser})
-    : _yimuParser = yimuParser;
+  const ImportPlanAppServiceImpl({required ImportParserRegistry parsers})
+    : _parsers = parsers;
 
-  final YimuImportParser _yimuParser;
+  final ImportParserRegistry _parsers;
 
   @override
   ImportParseResult parse({
     required ImportSource source,
     required ImportBundle bundle,
   }) {
-    return switch (source) {
-      ImportSource.yimu => _yimuParser.parse(bundle),
-    };
+    return _parsers.parserFor(source).parse(bundle);
   }
 
   @override

@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:smartflow/application/import/import_workflow_app_service.dart';
 import 'package:smartflow/application/import/import_workflow_models.dart';
+import 'package:smartflow/application/credit/account/command/credit_account_app_service.dart';
 import 'package:smartflow/application/ledger/account/command/account_app_service.dart';
 import 'package:smartflow/application/ledger/account/query/account_query_service.dart';
 import 'package:smartflow/application/ledger/category/command/category_app_service.dart';
@@ -13,6 +15,7 @@ import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/import/import_error_code.dart';
 import 'package:smartflow/domain/import/import_models.dart';
 import 'package:smartflow/domain/import/import_persistence_models.dart';
+import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/ledger/service/account/account_role_policy.dart';
 import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.dart';
@@ -21,6 +24,8 @@ import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import 'package:smartflow/infrastructure/import/ledger_import_port.dart';
+import 'package:smartflow/infrastructure/credit/adapter/ledger_credit_account_port.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_repository.dart';
 import 'package:smartflow/infrastructure/import/repository/drift_import_batch_repository.dart';
 import 'package:smartflow/infrastructure/import/repository/drift_import_mapping_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_account_query_repository.dart';
@@ -36,6 +41,206 @@ import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
 
 void main() {
+  test(
+    'creates a credit account with centralized import cycle defaults',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.database.close);
+      const creditEntity = ImportSourceEntity(
+        source: ImportSource.yimu,
+        kind: ImportEntityKind.account,
+        sourceEntityKey: 'account:来源信用卡',
+        displayName: '来源信用卡',
+        allowedTargetDescriptors: {ImportTargetDescriptor.creditAccount},
+        preferredTargetDescriptor: ImportTargetDescriptor.creditAccount,
+      );
+      final plan = ImportParseResult(
+        source: ImportSource.yimu,
+        sourceEntities: const [creditEntity],
+        groups: [
+          ImportTransactionGroupDraft(
+            topLevel: ImportOpeningBalanceDraft(
+              amount: Money.parse('500'),
+              liabilityAccount: const ImportAccountReference.source(
+                sourceEntityKey: 'account:来源信用卡',
+                displayName: '来源信用卡',
+              ),
+              occurredAt: DateTime(2026, 4, 6),
+            ),
+            sourceOperationFingerprint: 'credit-account-fingerprint',
+            fingerprintVersion: 1,
+          ),
+        ],
+      );
+      final review = await fixture.service.review(plan);
+
+      await fixture.service.commit(
+        ImportCommitCommand(
+          plan: plan,
+          mappings: review.effectiveMappings,
+          plannedCreations: review.plannedCreations,
+          selectedGroupIndexes: const {0},
+        ),
+      );
+
+      final account = (await fixture.database
+              .select(fixture.database.accounts)
+              .get())
+          .singleWhere((row) => row.name == '来源信用卡');
+      expect(account.accountProfileKey, 'credit.credit');
+      final extension = (await fixture.database
+              .select(fixture.database.creditLiabilityAccounts)
+              .get())
+          .singleWhere((row) => row.accountId == account.id);
+      expect(extension.kind, CreditLiabilityAccountKind.credit);
+      expect(extension.billingDay, 1);
+      expect(extension.repaymentDay, 15);
+      expect(extension.billingDayToNext, isTrue);
+    },
+  );
+
+  test(
+    'creates a debt-source liability as a loan account with credit extension',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.database.close);
+      const loanEntity = ImportSourceEntity(
+        source: ImportSource.yimu,
+        kind: ImportEntityKind.account,
+        sourceEntityKey: 'account:来源贷款',
+        displayName: '来源贷款',
+        allowedTargetDescriptors: {ImportTargetDescriptor.loanAccount},
+        preferredTargetDescriptor: ImportTargetDescriptor.loanAccount,
+      );
+      final plan = ImportParseResult(
+        source: ImportSource.yimu,
+        sourceEntities: const [loanEntity],
+        groups: [
+          ImportTransactionGroupDraft(
+            topLevel: ImportOpeningBalanceDraft(
+              amount: Money.parse('1000'),
+              liabilityAccount: const ImportAccountReference.source(
+                sourceEntityKey: 'account:来源贷款',
+                displayName: '来源贷款',
+              ),
+              occurredAt: DateTime(2026, 4, 6),
+            ),
+            sourceOperationFingerprint: 'loan-account-fingerprint',
+            fingerprintVersion: 1,
+          ),
+        ],
+      );
+      final review = await fixture.service.review(plan);
+      final creation = review.plannedCreations.values.single;
+      expect(creation.effectiveDescriptor, ImportTargetDescriptor.loanAccount);
+      final mappingItem = review.mappingItems.single;
+      expect(mappingItem.sourceDescription, '账户');
+      expect(mappingItem.action, ImportMappingAction.create);
+      expect(mappingItem.targetDescription, '贷款账户');
+      expect(
+        mappingItem.creationOptions.map((option) => option.effectiveDescriptor),
+        [ImportTargetDescriptor.loanAccount],
+      );
+      expect(
+        mappingItem.existingTargetOptions,
+        everyElement(
+          isA<ImportMappingTarget>().having(
+            (target) => target.effectiveDescriptor,
+            'descriptor',
+            ImportTargetDescriptor.loanAccount,
+          ),
+        ),
+      );
+
+      final result = await fixture.service.commit(
+        ImportCommitCommand(
+          plan: plan,
+          mappings: review.effectiveMappings,
+          plannedCreations: review.plannedCreations,
+          selectedGroupIndexes: const {0},
+        ),
+      );
+      expect(result.createdBatch, isTrue);
+      final account = (await fixture.database
+              .select(fixture.database.accounts)
+              .get())
+          .singleWhere((row) => row.name == '来源贷款');
+      expect(account.accountProfileKey, 'credit.loan');
+      final extensions =
+          await fixture.database
+              .select(fixture.database.creditLiabilityAccounts)
+              .get();
+      final extension = extensions.singleWhere(
+        (row) => row.accountId == account.id,
+      );
+      expect(extension.kind, CreditLiabilityAccountKind.loan);
+      expect(extension.billingDay, isNull);
+      expect(extension.repaymentDay, isNull);
+    },
+  );
+
+  test(
+    'creates missing category parents once and maps the leaf category',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.database.close);
+      const account = ImportSourceEntity(
+        source: ImportSource.yimu,
+        kind: ImportEntityKind.account,
+        sourceEntityKey: 'account:cash',
+        displayName: '现金',
+      );
+      const category = ImportSourceEntity(
+        source: ImportSource.yimu,
+        kind: ImportEntityKind.category,
+        sourceEntityKey: 'category:expense:临时食品 / 临时午餐',
+        displayName: '临时食品 / 临时午餐',
+        categoryKind: ImportCategoryKind.expense,
+      );
+      final plan = ImportParseResult(
+        source: ImportSource.yimu,
+        sourceEntities: const [account, category],
+        groups: [
+          ImportTransactionGroupDraft(
+            topLevel: ImportExpenseDraft(
+              amount: Money.parse('12'),
+              paidFrom: const ImportAccountReference.source(
+                sourceEntityKey: 'account:cash',
+                displayName: '现金',
+              ),
+              category: const ImportCategoryReference(
+                sourceEntityKey: 'category:expense:临时食品 / 临时午餐',
+                path: '临时食品 / 临时午餐',
+                kind: ImportCategoryKind.expense,
+              ),
+              occurredAt: DateTime(2026, 4, 6),
+            ),
+            sourceOperationFingerprint: 'category-path-fingerprint',
+            fingerprintVersion: 1,
+          ),
+        ],
+      );
+
+      final review = await fixture.service.review(plan);
+      final result = await fixture.service.commit(
+        ImportCommitCommand(
+          plan: plan,
+          mappings: review.effectiveMappings,
+          plannedCreations: review.plannedCreations,
+          selectedGroupIndexes: const {0},
+        ),
+      );
+
+      expect(result.createdBatch, isTrue);
+      final rows =
+          await fixture.database.select(fixture.database.accounts).get();
+      final parent = rows.singleWhere((row) => row.name == '临时食品');
+      final leaf = rows.singleWhere((row) => row.name == '临时午餐');
+      expect(leaf.parentId, parent.id);
+      expect(leaf.accountType, AccountType.expense);
+    },
+  );
+
   test(
     'creates unmatched mapping targets only when the import is committed',
     () async {
@@ -724,6 +929,7 @@ void main() {
       'debt-match',
       '债务账户',
       AccountType.liability,
+      profileKey: 'credit.loan',
     );
     const receiveKey = 'account:同名账户';
     const liabilityKey = 'account:债务账户';
@@ -922,6 +1128,54 @@ void main() {
       );
     },
   );
+
+  test(
+    'blocks a source entity whose target descriptor constraints conflict',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.database.close);
+      const entity = ImportSourceEntity(
+        source: ImportSource.yimu,
+        kind: ImportEntityKind.account,
+        sourceEntityKey: 'account:conflicted',
+        displayName: '冲突账户',
+        hasTargetDescriptorConflict: true,
+      );
+      final plan = ImportParseResult(
+        source: ImportSource.yimu,
+        sourceEntities: const [entity],
+        groups: [
+          ImportTransactionGroupDraft(
+            topLevel: ImportTransferDraft(
+              amount: Money.parse('10'),
+              fromAccount: const ImportAccountReference.source(
+                sourceEntityKey: 'account:conflicted',
+                displayName: '冲突账户',
+              ),
+              toAccount: const ImportAccountReference.source(
+                sourceEntityKey: 'account:conflicted',
+                displayName: '冲突账户',
+              ),
+              occurredAt: DateTime(2026, 4, 6),
+            ),
+            sourceOperationFingerprint: 'conflicted-descriptor-fingerprint',
+            fingerprintVersion: 1,
+          ),
+        ],
+      );
+
+      final review = await fixture.service.review(plan);
+
+      expect(review.groups.single.isBlocked, isTrue);
+      expect(review.mappingItems.single.action, ImportMappingAction.unresolved);
+      expect(
+        review.mappingItems.single.issues.map((issue) => issue.code),
+        contains('source_entity_target_descriptor_conflict'),
+      );
+      expect(review.mappingItems.single.creationOptions, isEmpty);
+      expect(review.mappingItems.single.existingTargetOptions, isEmpty);
+    },
+  );
 }
 
 class _Fixture {
@@ -1003,6 +1257,12 @@ class _Fixture {
       accountCommands: accountCommands,
       categoryCommands: categoryCommands,
       systemAccounts: systemAccounts,
+      creditAccounts: CreditAccountAppServiceImpl(
+        ledger: LedgerCreditAccountPort(accountCommands),
+        creditAccounts: DriftCreditAccountRepository(database),
+        transactionRunner: runner,
+        idGenerator: ids,
+      ),
     );
     final mappings = DriftImportMappingRepository(database);
     return _Fixture._(
@@ -1136,9 +1396,17 @@ Future<void> _insertAccount(
   AppDatabase database,
   String id,
   String name,
-  AccountType type,
-) {
+  AccountType type, {
+  String? profileKey,
+}) {
   return database
       .into(database.accounts)
-      .insert(AccountsCompanion.insert(id: id, name: name, accountType: type));
+      .insert(
+        AccountsCompanion.insert(
+          id: id,
+          name: name,
+          accountType: type,
+          accountProfileKey: Value(profileKey),
+        ),
+      );
 }

@@ -28,6 +28,7 @@ import '../application/ledger/ledger_command_api.dart';
 import '../application/ledger/ledger_query_api.dart';
 import '../application/ledger/ledger_query_port_api.dart';
 import '../application/import/import_plan_app_service.dart';
+import '../application/import/import_parser_registry.dart';
 import '../application/import/import_file_picker.dart';
 import '../application/import/import_workflow_app_service.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
@@ -74,7 +75,7 @@ YimuImportParser yimuImportParser(Ref ref) {
 @Riverpod(keepAlive: true)
 ImportPlanAppService importPlanAppService(Ref ref) {
   return ImportPlanAppServiceImpl(
-    yimuParser: ref.watch(yimuImportParserProvider),
+    parsers: ImportParserRegistry([ref.watch(yimuImportParserProvider)]),
   );
 }
 
@@ -98,6 +99,7 @@ ImportLedgerPort importLedgerPort(Ref ref) {
     accountCommands: ref.watch(accountAppServiceProvider),
     categoryCommands: ref.watch(categoryAppServiceProvider),
     systemAccounts: ref.watch(systemAccountResolverProvider),
+    creditAccounts: ref.watch(creditAccountAppServiceProvider),
   );
 }
 

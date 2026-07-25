@@ -11,6 +11,20 @@ enum ImportEntityKind { account, category }
 
 enum ImportCategoryKind { income, expense }
 
+/// SmartFlow target semantics used consistently by mapping, review, and
+/// target creation. Account descriptors express product profiles, not merely
+/// ledger asset/liability roles.
+enum ImportTargetDescriptor {
+  incomeCategory,
+  expenseCategory,
+  fundAccount,
+  reimbursementAccount,
+  creditAccount,
+  loanAccount,
+  ghostAccount,
+  unsupported,
+}
+
 enum ImportOperationKind {
   expense,
   income,
@@ -27,6 +41,29 @@ enum ImportOperationKind {
 
 enum ImportIssueSeverity { fatal, blocking, warning }
 
+/// Source-neutral description of one logical file type in an import bundle.
+class ImportSourceFileType {
+  const ImportSourceFileType({
+    required this.source,
+    required this.key,
+    required this.label,
+  });
+
+  final ImportSource source;
+  final String key;
+  final String label;
+
+  @override
+  bool operator ==(Object other) {
+    return other is ImportSourceFileType &&
+        other.source == source &&
+        other.key == key;
+  }
+
+  @override
+  int get hashCode => Object.hash(source, key);
+}
+
 /// Alias used by callers that describe parser problems as "problems".
 typedef ImportProblemSeverity = ImportIssueSeverity;
 
@@ -36,14 +73,14 @@ class ImportIssue {
     required this.message,
     required this.severity,
     this.rowNumber,
-    this.fileRole,
+    this.fileType,
   });
 
   final String code;
   final String message;
   final ImportIssueSeverity severity;
   final int? rowNumber;
-  final YimuFileRole? fileRole;
+  final ImportSourceFileType? fileType;
 
   bool get isFatal => severity == ImportIssueSeverity.fatal;
   bool get isBlocking => severity == ImportIssueSeverity.blocking;
@@ -65,19 +102,17 @@ class ImportBundle {
   final List<ImportFilePayload> files;
 }
 
-enum YimuFileRole { bill, transfer, debt }
-
 class ImportFileParseResult {
   ImportFileParseResult({
     required this.fileIndex,
     required this.fileName,
-    this.fileRole,
+    this.fileType,
     Iterable<ImportIssue> fatalIssues = const [],
   }) : fatalIssues = List.unmodifiable(fatalIssues);
 
   final int fileIndex;
   final String fileName;
-  final YimuFileRole? fileRole;
+  final ImportSourceFileType? fileType;
   final List<ImportIssue> fatalIssues;
 
   bool get hasFatalIssues => fatalIssues.isNotEmpty;
@@ -91,6 +126,9 @@ class ImportSourceEntity {
     required this.displayName,
     this.categoryKind,
     this.isReviewPlaceholder = false,
+    this.allowedTargetDescriptors = const {},
+    this.preferredTargetDescriptor,
+    this.hasTargetDescriptorConflict = false,
   });
 
   final ImportSource source;
@@ -99,10 +137,55 @@ class ImportSourceEntity {
   final String displayName;
   final ImportCategoryKind? categoryKind;
   final bool isReviewPlaceholder;
+  final Set<ImportTargetDescriptor> allowedTargetDescriptors;
+  final ImportTargetDescriptor? preferredTargetDescriptor;
+
+  /// True when independent source facts imposed incompatible target
+  /// descriptor constraints for the same stable source key.
+  ///
+  /// An empty [allowedTargetDescriptors] normally means "no extra source
+  /// constraint". This flag keeps that state distinct from an empty
+  /// intersection, which must block the affected mapping until the source
+  /// conflict is resolved.
+  final bool hasTargetDescriptorConflict;
 
   bool get isMissingAccountPlaceholder =>
       kind == ImportEntityKind.account && isReviewPlaceholder;
+
+  ImportSourceEntity copyWith({
+    ImportSource? source,
+    ImportEntityKind? kind,
+    String? sourceEntityKey,
+    String? displayName,
+    Object? categoryKind = _entitySentinel,
+    bool? isReviewPlaceholder,
+    Set<ImportTargetDescriptor>? allowedTargetDescriptors,
+    Object? preferredTargetDescriptor = _entitySentinel,
+    bool? hasTargetDescriptorConflict,
+  }) {
+    return ImportSourceEntity(
+      source: source ?? this.source,
+      kind: kind ?? this.kind,
+      sourceEntityKey: sourceEntityKey ?? this.sourceEntityKey,
+      displayName: displayName ?? this.displayName,
+      categoryKind:
+          categoryKind == _entitySentinel
+              ? this.categoryKind
+              : categoryKind as ImportCategoryKind?,
+      isReviewPlaceholder: isReviewPlaceholder ?? this.isReviewPlaceholder,
+      allowedTargetDescriptors:
+          allowedTargetDescriptors ?? this.allowedTargetDescriptors,
+      preferredTargetDescriptor:
+          preferredTargetDescriptor == _entitySentinel
+              ? this.preferredTargetDescriptor
+              : preferredTargetDescriptor as ImportTargetDescriptor?,
+      hasTargetDescriptorConflict:
+          hasTargetDescriptorConflict ?? this.hasTargetDescriptorConflict,
+    );
+  }
 }
+
+const Object _entitySentinel = Object();
 
 class ImportAccountReference {
   const ImportAccountReference._({
@@ -506,13 +589,13 @@ class ImportFilteredRecord {
   const ImportFilteredRecord({
     required this.reasonCode,
     required this.reason,
-    required this.fileRole,
+    required this.fileType,
     this.rowNumber,
   });
 
   final String reasonCode;
   final String reason;
-  final YimuFileRole fileRole;
+  final ImportSourceFileType fileType;
   final int? rowNumber;
 }
 
@@ -523,11 +606,13 @@ class ImportParseResult {
     Iterable<ImportSourceEntity> sourceEntities = const [],
     Iterable<ImportTransactionGroupDraft> groups = const [],
     Iterable<ImportFilteredRecord> filteredRecords = const [],
+    Iterable<ImportIssue> issues = const [],
     Iterable<ImportIssue> fatalIssues = const [],
   }) : fileResults = List.unmodifiable(fileResults),
        sourceEntities = List.unmodifiable(sourceEntities),
        groups = List.unmodifiable(groups),
        filteredRecords = List.unmodifiable(filteredRecords),
+       issues = List.unmodifiable(issues),
        fatalIssues = List.unmodifiable(fatalIssues);
 
   final ImportSource source;
@@ -535,6 +620,7 @@ class ImportParseResult {
   final List<ImportSourceEntity> sourceEntities;
   final List<ImportTransactionGroupDraft> groups;
   final List<ImportFilteredRecord> filteredRecords;
+  final List<ImportIssue> issues;
   final List<ImportIssue> fatalIssues;
 
   List<ImportSourceEntity> get sourceAccounts => sourceEntities
@@ -553,6 +639,7 @@ class ImportParseResult {
     Iterable<ImportSourceEntity>? sourceEntities,
     Iterable<ImportTransactionGroupDraft>? groups,
     Iterable<ImportFilteredRecord>? filteredRecords,
+    Iterable<ImportIssue>? issues,
     Iterable<ImportIssue>? fatalIssues,
   }) {
     return ImportParseResult(
@@ -561,6 +648,7 @@ class ImportParseResult {
       sourceEntities: sourceEntities ?? this.sourceEntities,
       groups: groups ?? this.groups,
       filteredRecords: filteredRecords ?? this.filteredRecords,
+      issues: issues ?? this.issues,
       fatalIssues: fatalIssues ?? this.fatalIssues,
     );
   }

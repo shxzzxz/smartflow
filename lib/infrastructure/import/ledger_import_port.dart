@@ -8,10 +8,15 @@ import '../../application/ledger/transaction/command/transaction_edit_app_servic
 import '../../application/ledger/transaction/command/transaction_posting_app_service.dart';
 import '../../application/ledger/transaction/query/transaction_query_service.dart';
 import '../../core/money/money.dart';
+import '../../application/credit/account/command/credit_account_app_service.dart';
+import '../../application/credit/account/command/credit_account_command.dart';
 import '../../domain/import/port/import_ledger_port.dart';
+import '../../domain/import/import_models.dart';
 import '../../domain/ledger/entity/account.dart';
 import '../../domain/ledger/port/system_account_resolver.dart';
 import '../../domain/ledger/valobj/ledger_enum.dart';
+import '../../domain/credit/valobj/credit_account_enums.dart';
+import '../../shared/account_profile/account_profile_kind.dart';
 
 class LedgerImportPort implements ImportLedgerPort {
   const LedgerImportPort({
@@ -22,13 +27,15 @@ class LedgerImportPort implements ImportLedgerPort {
     required AccountAppService accountCommands,
     required CategoryAppService categoryCommands,
     required SystemAccountResolver systemAccounts,
+    CreditAccountAppService? creditAccounts,
   }) : _posting = posting,
        _editing = editing,
        _transactions = transactions,
        _accounts = accounts,
        _accountCommands = accountCommands,
        _categoryCommands = categoryCommands,
-       _systemAccounts = systemAccounts;
+       _systemAccounts = systemAccounts,
+       _creditAccounts = creditAccounts;
 
   final TransactionPostingAppService _posting;
   final TransactionEditAppService _editing;
@@ -37,6 +44,7 @@ class LedgerImportPort implements ImportLedgerPort {
   final AccountAppService _accountCommands;
   final CategoryAppService _categoryCommands;
   final SystemAccountResolver _systemAccounts;
+  final CreditAccountAppService? _creditAccounts;
 
   @override
   Future<List<ImportLedgerTarget>> listTargets() async {
@@ -45,11 +53,7 @@ class LedgerImportPort implements ImportLedgerPort {
     final byId = {for (final account in accounts) account.id: account};
     return [
       for (final account in accounts)
-        _target(
-          account,
-          parentName:
-              account.parentId == null ? null : byId[account.parentId]?.name,
-        ),
+        _target(account, parentName: _parentPath(account, byId)),
     ];
   }
 
@@ -57,44 +61,57 @@ class LedgerImportPort implements ImportLedgerPort {
   Future<ImportLedgerTarget?> findTarget(String targetId) async {
     final account = await _accounts.findAccountById(targetId);
     if (account == null) return null;
-    final parent =
-        account.parentId == null
-            ? null
-            : await _accounts.findAccountById(account.parentId!);
-    return _target(account, parentName: parent?.name);
+    final all = await _accounts.watchAccounts(AccountType.values.toSet()).first;
+    final byId = {for (final item in all) item.id: item};
+    return _target(account, parentName: _parentPath(account, byId));
   }
 
   @override
   Future<String> createTarget(ImportLedgerTargetCreation creation) async {
-    return switch (creation.kind) {
-      ImportLedgerTargetKind.asset =>
-        (await _accountCommands.createAccount(
-          CreateAccountCommand(name: creation.name, type: AccountType.asset),
-        )).id,
-      ImportLedgerTargetKind.liability =>
+    return switch (creation.effectiveDescriptor) {
+      ImportTargetDescriptor.fundAccount =>
         (await _accountCommands.createAccount(
           CreateAccountCommand(
             name: creation.name,
-            type: AccountType.liability,
+            type: AccountType.asset,
+            profileKey: AccountProfileKind.fund.key,
           ),
         )).id,
-      ImportLedgerTargetKind.reimbursement =>
+      ImportTargetDescriptor.reimbursementAccount =>
         (await _accountCommands.createAccount(
           CreateAccountCommand(
             name: creation.name,
             type: AccountType.asset,
             subtype: AccountSubtype.reimbursement,
+            profileKey: AccountProfileKind.reimbursement.key,
           ),
         )).id,
-      ImportLedgerTargetKind.incomeCategory =>
+      ImportTargetDescriptor.creditAccount => _createCreditTarget(
+        creation,
+        CreditLiabilityAccountKind.credit,
+      ),
+      ImportTargetDescriptor.loanAccount => _createCreditTarget(
+        creation,
+        CreditLiabilityAccountKind.loan,
+      ),
+      ImportTargetDescriptor.incomeCategory =>
         (await _categoryCommands.createCategory(
-          CreateCategoryCommand(name: creation.name, type: AccountType.income),
+          CreateCategoryCommand(
+            name: creation.name,
+            type: AccountType.income,
+            parentId: creation.parentTargetId,
+          ),
         )).id,
-      ImportLedgerTargetKind.expenseCategory =>
+      ImportTargetDescriptor.expenseCategory =>
         (await _categoryCommands.createCategory(
-          CreateCategoryCommand(name: creation.name, type: AccountType.expense),
+          CreateCategoryCommand(
+            name: creation.name,
+            type: AccountType.expense,
+            parentId: creation.parentTargetId,
+          ),
         )).id,
-      ImportLedgerTargetKind.ghost || ImportLedgerTargetKind.unsupported =>
+      ImportTargetDescriptor.ghostAccount ||
+      ImportTargetDescriptor.unsupported =>
         throw ArgumentError.value(
           creation.kind,
           'creation.kind',
@@ -408,6 +425,72 @@ class LedgerImportPort implements ImportLedgerPort {
           parentName == null ? account.name : '$parentName / ${account.name}',
       kind: kind,
       isArchived: account.isArchived,
+      descriptor: _descriptorForAccount(account),
     );
+  }
+
+  Future<String> _createCreditTarget(
+    ImportLedgerTargetCreation creation,
+    CreditLiabilityAccountKind kind,
+  ) async {
+    final creditAccounts = _creditAccounts;
+    if (creditAccounts == null) {
+      throw StateError(
+        'Credit account application is not configured for import.',
+      );
+    }
+    final snapshot = await creditAccounts.createAccount(
+      CreateCreditLiabilityAccountCommand(
+        name: creation.name,
+        kind: kind,
+        billingDay:
+            kind == CreditLiabilityAccountKind.credit
+                ? creation.billingDay
+                : null,
+        repaymentDay:
+            kind == CreditLiabilityAccountKind.credit
+                ? creation.repaymentDay
+                : null,
+        billingDayToNext: creation.billingDayToNext,
+      ),
+    );
+    return snapshot.id;
+  }
+
+  String? _parentPath(Account account, Map<String, Account> byId) {
+    final parts = <String>[];
+    var parentId = account.parentId;
+    while (parentId != null) {
+      final parent = byId[parentId];
+      if (parent == null) break;
+      parts.insert(0, parent.name);
+      parentId = parent.parentId;
+    }
+    return parts.isEmpty ? null : parts.join(' / ');
+  }
+
+  ImportTargetDescriptor _descriptorForAccount(Account account) {
+    final profile = AccountProfileKind.fromKey(account.profileKey);
+    if (profile != null) {
+      return switch (profile) {
+        AccountProfileKind.fund => ImportTargetDescriptor.fundAccount,
+        AccountProfileKind.reimbursement =>
+          ImportTargetDescriptor.reimbursementAccount,
+        AccountProfileKind.credit => ImportTargetDescriptor.creditAccount,
+        AccountProfileKind.loan => ImportTargetDescriptor.loanAccount,
+      };
+    }
+    return switch ((account.type, account.subtype, account.systemKey)) {
+      (_, _, SystemKey.ghostAccount) => ImportTargetDescriptor.ghostAccount,
+      (AccountType.asset, AccountSubtype.reimbursement, _) =>
+        ImportTargetDescriptor.reimbursementAccount,
+      (AccountType.asset, _, _) => ImportTargetDescriptor.fundAccount,
+      // AccountType.liability alone does not identify a credit card versus a
+      // loan.  The import mapping must rely on an explicit account profile.
+      (AccountType.liability, _, _) => ImportTargetDescriptor.unsupported,
+      (AccountType.income, _, _) => ImportTargetDescriptor.incomeCategory,
+      (AccountType.expense, _, _) => ImportTargetDescriptor.expenseCategory,
+      _ => ImportTargetDescriptor.unsupported,
+    };
   }
 }

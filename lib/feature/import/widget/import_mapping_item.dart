@@ -4,7 +4,7 @@ import 'package:remixicon/remixicon.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 
-enum ImportMappingItemAction { map, create }
+enum ImportMappingItemAction { map, create, unresolved }
 
 class ImportMappingItem extends StatelessWidget {
   const ImportMappingItem({
@@ -12,6 +12,8 @@ class ImportMappingItem extends StatelessWidget {
     required this.sourceKindLabel,
     required this.targetLabel,
     required this.action,
+    this.targetKindLabel,
+    this.operationLabel,
     this.onTap,
     super.key,
   });
@@ -20,18 +22,32 @@ class ImportMappingItem extends StatelessWidget {
   final String sourceKindLabel;
   final String targetLabel;
   final ImportMappingItemAction action;
+  final String? targetKindLabel;
+  final String? operationLabel;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final createsTarget = action == ImportMappingItemAction.create;
+    final isUnresolved = action == ImportMappingItemAction.unresolved;
+    final resolvedOperationLabel =
+        operationLabel ??
+        switch (action) {
+          ImportMappingItemAction.map => '映射',
+          ImportMappingItemAction.create => '新增',
+          ImportMappingItemAction.unresolved => '待处理',
+        };
+    final resolvedTargetLabel =
+        targetLabel.trim().isEmpty ? '待配置' : targetLabel;
     return Semantics(
       button: onTap != null,
       label:
           createsTarget
-              ? '$sourceLabel，导入时新建 $targetLabel'
-              : '$sourceLabel，映射到 $targetLabel',
+              ? '$sourceLabel，导入时新建 $resolvedTargetLabel'
+              : isUnresolved
+              ? '$sourceLabel，映射到 $resolvedTargetLabel'
+              : '$sourceLabel，映射到 $resolvedTargetLabel',
       child: InkWell(
         onTap: onTap,
         child: Padding(
@@ -42,6 +58,7 @@ class ImportMappingItem extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
+                flex: 4,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -61,32 +78,73 @@ class ImportMappingItem extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: AppSpacing.space10),
-              Icon(
-                RemixIcons.arrow_right_line,
-                size: AppSpacing.space18,
-                color: colors.onSurfaceVariant,
-              ),
-              const SizedBox(width: AppSpacing.space10),
-              Flexible(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+              const SizedBox(width: AppSpacing.space8),
+              SizedBox(
+                width: AppSpacing.space48,
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Flexible(
-                      child: Text(
-                        targetLabel,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                        style: context.appTextStyles.detailValue.copyWith(
-                          color:
-                              createsTarget ? colors.primary : colors.onSurface,
-                        ),
+                    Text(
+                      resolvedOperationLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: context.appTextStyles.listSupporting.copyWith(
+                        color:
+                            isUnresolved
+                                ? colors.error
+                                : createsTarget
+                                ? colors.primary
+                                : colors.onSurfaceVariant,
                       ),
                     ),
+                    const SizedBox(height: AppSpacing.space2),
+                    Icon(
+                      isUnresolved
+                          ? RemixIcons.error_warning_line
+                          : RemixIcons.arrow_right_line,
+                      size: AppSpacing.space18,
+                      color:
+                          isUnresolved
+                              ? colors.error
+                              : createsTarget
+                              ? colors.primary
+                              : colors.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.space8),
+              Expanded(
+                flex: 5,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      resolvedTargetLabel,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: context.appTextStyles.detailValue.copyWith(
+                        color:
+                            isUnresolved || createsTarget
+                                ? colors.primary
+                                : colors.onSurface,
+                      ),
+                    ),
+                    if (targetKindLabel != null &&
+                        targetKindLabel!.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.space2),
+                      Text(
+                        targetKindLabel!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: context.appTextStyles.listSupporting,
+                      ),
+                    ],
                     if (createsTarget) ...[
-                      const SizedBox(width: AppSpacing.space4),
+                      const SizedBox(height: AppSpacing.space2),
                       Icon(
                         RemixIcons.add_circle_line,
                         size: AppSpacing.space18,
