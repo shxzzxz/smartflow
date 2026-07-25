@@ -1606,6 +1606,7 @@ class _MappingList extends StatelessWidget {
     return AppSurface(
       child: Column(
         children: [
+          const ImportMappingHeader(),
           for (final item in items)
             _MappingItem(
               state: state,

@@ -1,10 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart';
 
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 
 enum ImportMappingItemAction { map, create, unresolved }
+
+class ImportMappingHeader extends StatelessWidget {
+  const ImportMappingHeader({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final style = context.appTextStyles.listSupporting;
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space16,
+        vertical: AppSpacing.space8,
+      ),
+      child: Row(
+        children: [
+          Expanded(flex: 4, child: Text('来源', style: style)),
+          const SizedBox(width: AppSpacing.space8),
+          SizedBox(
+            width: AppSpacing.space48,
+            child: Text('操作', textAlign: TextAlign.center, style: style),
+          ),
+          const SizedBox(width: AppSpacing.space8),
+          Expanded(
+            flex: 5,
+            child: Text('映射到', textAlign: TextAlign.right, style: style),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class ImportMappingItem extends StatelessWidget {
   const ImportMappingItem({
@@ -81,37 +110,19 @@ class ImportMappingItem extends StatelessWidget {
               const SizedBox(width: AppSpacing.space8),
               SizedBox(
                 width: AppSpacing.space48,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      resolvedOperationLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: context.appTextStyles.listSupporting.copyWith(
-                        color:
-                            isUnresolved
-                                ? colors.error
-                                : createsTarget
-                                ? colors.primary
-                                : colors.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.space2),
-                    Icon(
-                      isUnresolved
-                          ? RemixIcons.error_warning_line
-                          : RemixIcons.arrow_right_line,
-                      size: AppSpacing.space18,
-                      color:
-                          isUnresolved
-                              ? colors.error
-                              : createsTarget
-                              ? colors.primary
-                              : colors.onSurfaceVariant,
-                    ),
-                  ],
+                child: Text(
+                  resolvedOperationLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: context.appTextStyles.listSupporting.copyWith(
+                    color:
+                        isUnresolved
+                            ? colors.error
+                            : createsTarget
+                            ? colors.primary
+                            : colors.onSurfaceVariant,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.space8),
@@ -141,14 +152,6 @@ class ImportMappingItem extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.right,
                         style: context.appTextStyles.listSupporting,
-                      ),
-                    ],
-                    if (createsTarget) ...[
-                      const SizedBox(height: AppSpacing.space2),
-                      Icon(
-                        RemixIcons.add_circle_line,
-                        size: AppSpacing.space18,
-                        color: colors.primary,
                       ),
                     ],
                   ],

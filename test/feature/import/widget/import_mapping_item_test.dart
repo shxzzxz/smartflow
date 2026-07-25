@@ -30,7 +30,7 @@ void main() {
     expect(find.text('信用账户'), findsOneWidget);
   });
 
-  testWidgets('places the create marker after the mapping target', (
+  testWidgets('shows create action as plain operation text without icons', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -47,10 +47,24 @@ void main() {
       ),
     );
 
-    final targetCenter = tester.getCenter(find.text('新账户'));
-    final markerCenter = tester.getCenter(
-      find.byIcon(RemixIcons.add_circle_line),
+    expect(find.text('新增'), findsOneWidget);
+    expect(find.text('新账户'), findsOneWidget);
+    expect(find.byIcon(RemixIcons.add_circle_line), findsNothing);
+    expect(find.byIcon(RemixIcons.arrow_right_line), findsNothing);
+  });
+
+  testWidgets('renders header with source, operation, and target columns', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: const Scaffold(body: ImportMappingHeader()),
+      ),
     );
-    expect(markerCenter.dx, greaterThan(targetCenter.dx));
+
+    expect(find.text('来源'), findsOneWidget);
+    expect(find.text('操作'), findsOneWidget);
+    expect(find.text('映射到'), findsOneWidget);
   });
 }
