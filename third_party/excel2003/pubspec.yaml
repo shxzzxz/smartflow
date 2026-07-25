@@ -1,0 +1,16 @@
+name: excel2003
+description: A simple Dart library/plugin for reading legacy .xls Excel files.
+version: 1.0.0
+repository: https://github.com/ubuntu2204/excel2003
+homepage: https://github.com/ubuntu2204/excel2003
+
+environment:
+  sdk: ^3.7.2
+
+# Add regular dependencies here.
+dependencies:
+  # path: ^1.8.0
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.24.0

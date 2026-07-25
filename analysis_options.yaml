@@ -15,6 +15,7 @@ analyzer:
   exclude:
     - '**/*.g.dart'
     - '**/*.freezed.dart'
+    - 'third_party/**'
 
 plugins:
   riverpod_lint: 3.1.0
