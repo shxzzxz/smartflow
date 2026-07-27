@@ -176,7 +176,7 @@ return notFound();case _:
 
 class TransactionDetailLoaded implements TransactionDetailUiState {
   const TransactionDetailLoaded({required this.transactionId, required this.detail, required this.behavior, required this.hero, required this.occurredAtText, required this.postedAtText, required this.createdAtText, required final  List<DetailAccountRow> accountRows, required this.refund, required this.reimbursement, required this.showExcludeStats, required this.showExcludeBudget, required this.excludeStats, required this.excludeBudget, required final  List<DetailActionButton> actionButtons, required this.submitting, this.noteText}): _accountRows = accountRows,_actionButtons = actionButtons;
-
+  
 
  final  String transactionId;
  final  TransactionDetail detail;
@@ -283,7 +283,7 @@ as String?,
 @override
 @pragma('vm:prefer-inline')
 $DetailBehaviorConfigCopyWith<$Res> get behavior {
-
+  
   return $DetailBehaviorConfigCopyWith<$Res>(_self.behavior, (value) {
     return _then(_self.copyWith(behavior: value));
   });
@@ -319,7 +319,7 @@ $DetailReimbursementCopyWith<$Res>? get reimbursement {
 
 class TransactionDetailNotFound implements TransactionDetailUiState {
   const TransactionDetailNotFound();
-
+  
 
 
 
@@ -413,7 +413,7 @@ as String?,
 @override
 @pragma('vm:prefer-inline')
 $DetailEditPermissionCopyWith<$Res> get canEditOccurredAt {
-
+  
   return $DetailEditPermissionCopyWith<$Res>(_self.canEditOccurredAt, (value) {
     return _then(_self.copyWith(canEditOccurredAt: value));
   });
@@ -422,7 +422,7 @@ $DetailEditPermissionCopyWith<$Res> get canEditOccurredAt {
 @override
 @pragma('vm:prefer-inline')
 $DetailEditPermissionCopyWith<$Res> get canEditPostedAt {
-
+  
   return $DetailEditPermissionCopyWith<$Res>(_self.canEditPostedAt, (value) {
     return _then(_self.copyWith(canEditPostedAt: value));
   });
@@ -431,7 +431,7 @@ $DetailEditPermissionCopyWith<$Res> get canEditPostedAt {
 @override
 @pragma('vm:prefer-inline')
 $DetailEditPermissionCopyWith<$Res> get canEditNote {
-
+  
   return $DetailEditPermissionCopyWith<$Res>(_self.canEditNote, (value) {
     return _then(_self.copyWith(canEditNote: value));
   });
@@ -440,7 +440,7 @@ $DetailEditPermissionCopyWith<$Res> get canEditNote {
 @override
 @pragma('vm:prefer-inline')
 $DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount {
-
+  
   return $DetailEditPermissionCopyWith<$Res>(_self.canEditSettlementAccount, (value) {
     return _then(_self.copyWith(canEditSettlementAccount: value));
   });
@@ -583,7 +583,7 @@ return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,
 
 class _DetailBehaviorConfig implements DetailBehaviorConfig {
   const _DetailBehaviorConfig({required this.canEditOccurredAt, required this.canEditPostedAt, required this.canEditNote, required this.canEditSettlementAccount, this.bannerText, this.editRoute});
-
+  
 
 @override final  DetailEditPermission canEditOccurredAt;
 @override final  DetailEditPermission canEditPostedAt;
@@ -656,7 +656,7 @@ as String?,
 @override
 @pragma('vm:prefer-inline')
 $DetailEditPermissionCopyWith<$Res> get canEditOccurredAt {
-
+  
   return $DetailEditPermissionCopyWith<$Res>(_self.canEditOccurredAt, (value) {
     return _then(_self.copyWith(canEditOccurredAt: value));
   });
@@ -665,7 +665,7 @@ $DetailEditPermissionCopyWith<$Res> get canEditOccurredAt {
 @override
 @pragma('vm:prefer-inline')
 $DetailEditPermissionCopyWith<$Res> get canEditPostedAt {
-
+  
   return $DetailEditPermissionCopyWith<$Res>(_self.canEditPostedAt, (value) {
     return _then(_self.copyWith(canEditPostedAt: value));
   });
@@ -674,7 +674,7 @@ $DetailEditPermissionCopyWith<$Res> get canEditPostedAt {
 @override
 @pragma('vm:prefer-inline')
 $DetailEditPermissionCopyWith<$Res> get canEditNote {
-
+  
   return $DetailEditPermissionCopyWith<$Res>(_self.canEditNote, (value) {
     return _then(_self.copyWith(canEditNote: value));
   });
@@ -683,7 +683,7 @@ $DetailEditPermissionCopyWith<$Res> get canEditNote {
 @override
 @pragma('vm:prefer-inline')
 $DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount {
-
+  
   return $DetailEditPermissionCopyWith<$Res>(_self.canEditSettlementAccount, (value) {
     return _then(_self.copyWith(canEditSettlementAccount: value));
   });
@@ -756,7 +756,7 @@ as AccountSelectionPurpose?,
 @override
 @pragma('vm:prefer-inline')
 $DetailEditPermissionCopyWith<$Res> get permission {
-
+  
   return $DetailEditPermissionCopyWith<$Res>(_self.permission, (value) {
     return _then(_self.copyWith(permission: value));
   });
@@ -899,7 +899,7 @@ return $default(_that.label,_that.accountId,_that.endpoint,_that.permission,_tha
 
 class _DetailAccountRow implements DetailAccountRow {
   const _DetailAccountRow({required this.label, required this.accountId, required this.endpoint, required this.permission, this.editPurpose});
-
+  
 
 @override final  String label;
 @override final  String accountId;
@@ -970,7 +970,7 @@ as AccountSelectionPurpose?,
 @override
 @pragma('vm:prefer-inline')
 $DetailEditPermissionCopyWith<$Res> get permission {
-
+  
   return $DetailEditPermissionCopyWith<$Res>(_self.permission, (value) {
     return _then(_self.copyWith(permission: value));
   });
@@ -1148,7 +1148,7 @@ return denied(_that.reason);case _:
 
 class DetailEditAllowed implements DetailEditPermission {
   const DetailEditAllowed();
-
+  
 
 
 
@@ -1180,7 +1180,7 @@ String toString() {
 
 class DetailEditDenied implements DetailEditPermission {
   const DetailEditDenied({required this.reason});
-
+  
 
  final  String reason;
 
@@ -1439,7 +1439,7 @@ return $default(_that.hasRefund,_that.items,_that.refundedTotal);case _:
 
 class _DetailRefund implements DetailRefund {
   const _DetailRefund({required this.hasRefund, required final  List<DetailSheetItem> items, this.refundedTotal}): _items = items;
-
+  
 
 @override final  bool hasRefund;
  final  List<DetailSheetItem> _items;
@@ -1710,7 +1710,7 @@ return $default(_that.summaryText,_that.hasActivity,_that.isClosed,_that.items,_
 
 class _DetailReimbursement implements DetailReimbursement {
   const _DetailReimbursement({required this.summaryText, required this.hasActivity, required this.isClosed, required final  List<DetailSheetItem> items, this.outstanding}): _items = items;
-
+  
 
 @override final  String summaryText;
 @override final  bool hasActivity;
@@ -1986,7 +1986,7 @@ return $default(_that.kind,_that.label,_that.primary,_that.enabled,_that.route,_
 
 class _DetailActionButton implements DetailActionButton {
   const _DetailActionButton({required this.kind, required this.label, required this.primary, required this.enabled, this.route, this.deniedReason});
-
+  
 
 @override final  DetailActionKind kind;
 @override final  String label;

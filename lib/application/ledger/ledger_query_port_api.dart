@@ -9,4 +9,5 @@ export 'transaction/query/port/entry_read_repository.dart';
 export 'transaction/query/port/transaction_detail_read_repository.dart';
 export 'transaction/query/port/transaction_read_repository.dart';
 export 'transaction/query/transaction_queries.dart';
+export 'transaction/query/transaction_read_models.dart';
 export 'transaction/query/transaction_scope.dart';

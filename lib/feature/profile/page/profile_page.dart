@@ -95,6 +95,12 @@ class _ProfilePageState extends State<ProfilePage> {
                   description: '从外部账单或记账应用导入交易',
                   onTap: () => context.push('/profile/import'),
                 ),
+                _ProfileActionRow(
+                  icon: RemixIcons.delete_bin_6_line,
+                  label: '数据清理',
+                  description: '按分类、账户、时间批量清理交易',
+                  onTap: () => context.push('/profile/data-cleanup'),
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.space16),

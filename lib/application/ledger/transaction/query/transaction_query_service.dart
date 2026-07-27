@@ -43,6 +43,10 @@ abstract interface class TransactionQueryService {
     required Iterable<String> transactionIds,
     required TransactionDetailType detailType,
   });
+
+  Stream<TransactionCleanupPreview> watchCleanupPreview(
+    TransactionCleanupQuery query,
+  );
 }
 
 class TransactionQueryServiceImpl implements TransactionQueryService {
@@ -392,5 +396,12 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
       total += byType[detailType] ?? 0;
     }
     return total;
+  }
+
+  @override
+  Stream<TransactionCleanupPreview> watchCleanupPreview(
+    TransactionCleanupQuery query,
+  ) {
+    return _txRead.watchCleanupPreview(query);
   }
 }

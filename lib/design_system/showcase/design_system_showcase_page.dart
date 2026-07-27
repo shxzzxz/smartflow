@@ -772,6 +772,15 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
             ),
           ),
           const SizedBox(height: AppSpacing.space12),
+          _ShowcaseState(
+            label: '危险操作',
+            child: AppSubmitButton(
+              label: '危险按钮',
+              tone: AppSubmitButtonTone.danger,
+              onPressed: () => _showMessage('已触发危险按钮'),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space12),
           const _ShowcaseState(
             label: '加载状态',
             child: AppSubmitButton(

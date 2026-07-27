@@ -251,6 +251,16 @@ class _FakeTransactionReadRepository implements TransactionReadRepository {
   }
 
   @override
+  Stream<TransactionCleanupPreview> watchCleanupPreview(
+    TransactionCleanupQuery query,
+  ) => Stream.value(TransactionCleanupPreview.empty);
+
+  @override
+  Future<List<TransactionCleanupTarget>> findCleanupTargets(
+    TransactionCleanupQuery query,
+  ) async => const [];
+
+  @override
   Stream<void> watchChanges() => const Stream.empty();
 }
 

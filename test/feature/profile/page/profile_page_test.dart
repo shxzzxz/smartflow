@@ -31,6 +31,10 @@ void main() {
   testWidgets('shows profile actions and debug tools in purpose groups', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       MaterialApp(theme: AppTheme.light(), home: const ProfilePage()),
     );
@@ -53,6 +57,10 @@ void main() {
     );
     expect(
       find.descendant(of: sections.at(1), matching: find.text('数据导入')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sections.at(1), matching: find.text('数据清理')),
       findsOneWidget,
     );
     expect(

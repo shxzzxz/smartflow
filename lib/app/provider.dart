@@ -258,6 +258,15 @@ TransactionUpdateAppService transactionUpdateAppService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+TransactionCleanupAppService transactionCleanupAppService(Ref ref) {
+  return TransactionCleanupAppServiceImpl(
+    transactionRunner: ref.watch(transactionRunnerProvider),
+    transactionReadRepository: ref.watch(transactionReadRepositoryProvider),
+    editService: ref.watch(transactionEditAppServiceProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
 TransactionQueryService transactionQueryService(Ref ref) {
   return TransactionQueryServiceImpl(
     transactionRead: ref.watch(transactionReadRepositoryProvider),

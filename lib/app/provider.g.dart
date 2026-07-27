@@ -195,7 +195,7 @@ final class ImportPlanAppServiceProvider
 }
 
 String _$importPlanAppServiceHash() =>
-    r'6c4484948e918f50e100f4dcad0f9631b7c882ef';
+    r'3e8b1bb7069bcee123b514ea83d4621c620a5fc7';
 
 @ProviderFor(importMappingRepository)
 final importMappingRepositoryProvider = ImportMappingRepositoryProvider._();
@@ -337,7 +337,7 @@ final class ImportLedgerPortProvider
   }
 }
 
-String _$importLedgerPortHash() => r'6d845197238de6827b682df11f511578a04fb028';
+String _$importLedgerPortHash() => r'1409658c0887e6909f20417914f93f335debff91';
 
 @ProviderFor(importWorkflowAppService)
 final importWorkflowAppServiceProvider = ImportWorkflowAppServiceProvider._();
@@ -1340,6 +1340,55 @@ final class TransactionUpdateAppServiceProvider
 
 String _$transactionUpdateAppServiceHash() =>
     r'bad05f7f024db61c13646f6a61202f1e5d0f1a94';
+
+@ProviderFor(transactionCleanupAppService)
+final transactionCleanupAppServiceProvider =
+    TransactionCleanupAppServiceProvider._();
+
+final class TransactionCleanupAppServiceProvider
+    extends
+        $FunctionalProvider<
+          TransactionCleanupAppService,
+          TransactionCleanupAppService,
+          TransactionCleanupAppService
+        >
+    with $Provider<TransactionCleanupAppService> {
+  TransactionCleanupAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'transactionCleanupAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$transactionCleanupAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<TransactionCleanupAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  TransactionCleanupAppService create(Ref ref) {
+    return transactionCleanupAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TransactionCleanupAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TransactionCleanupAppService>(value),
+    );
+  }
+}
+
+String _$transactionCleanupAppServiceHash() =>
+    r'c8304419df88ce0b1a20a2375de69d7d4e2e214d';
 
 @ProviderFor(transactionQueryService)
 final transactionQueryServiceProvider = TransactionQueryServiceProvider._();

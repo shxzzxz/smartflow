@@ -12,6 +12,7 @@ export 'account/command/account_command.dart';
 export 'category/command/category_app_service.dart';
 export 'category/command/category_command.dart';
 export 'transaction/command/transaction_command.dart';
+export 'transaction/command/transaction_cleanup_app_service.dart';
 export 'transaction/command/transaction_edit_app_service.dart';
 export 'transaction/command/transaction_ledger_writer.dart';
 export 'transaction/command/transaction_posting_app_service.dart';

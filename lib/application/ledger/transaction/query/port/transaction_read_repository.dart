@@ -2,6 +2,7 @@ import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 import '../transaction_queries.dart';
+import '../transaction_read_models.dart';
 
 class TransactionChildAggregate {
   const TransactionChildAggregate({
@@ -16,6 +17,20 @@ class TransactionChildAggregate {
     sumMinor: 0,
     count: 0,
   );
+}
+
+/// 数据清理条件命中的一个交易组。
+class TransactionCleanupTarget {
+  const TransactionCleanupTarget({
+    required this.transactionId,
+    required this.owned,
+  });
+
+  /// 顶层交易 ID。
+  final String transactionId;
+
+  /// 组内是否存在带业务归属的交易。
+  final bool owned;
 }
 
 abstract interface class TransactionReadRepository {
@@ -45,6 +60,14 @@ abstract interface class TransactionReadRepository {
     required Set<String> parentIds,
     required Set<BusinessPurpose> purposes,
   });
+
+  Stream<TransactionCleanupPreview> watchCleanupPreview(
+    TransactionCleanupQuery query,
+  );
+
+  Future<List<TransactionCleanupTarget>> findCleanupTargets(
+    TransactionCleanupQuery query,
+  );
 
   Stream<void> watchChanges();
 }

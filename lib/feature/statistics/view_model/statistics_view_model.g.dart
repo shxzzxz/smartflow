@@ -42,7 +42,7 @@ final class StatisticsViewModelProvider
 }
 
 String _$statisticsViewModelHash() =>
-    r'0172f8556102db39f4f733334f13c31213926916';
+    r'e098e061c2d596e495311f5485b61bae68054c76';
 
 abstract class _$StatisticsViewModel extends $Notifier<StatisticsControlState> {
   StatisticsControlState build();
@@ -108,7 +108,7 @@ final class StatisticsPageProvider
   }
 }
 
-String _$statisticsPageHash() => r'8cb43be1c3885e9b04119d7d33b4bdc59ddd8eaf';
+String _$statisticsPageHash() => r'24be91a30bc368b0c3140826d1a09a6e840a3150';
 
 @ProviderFor(statisticsRangeReport)
 final statisticsRangeReportProvider = StatisticsRangeReportFamily._();

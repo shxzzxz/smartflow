@@ -287,11 +287,13 @@ void main() {
     await tester.pump();
 
     expect(find.text('提交按钮'), findsOneWidget);
-    expect(find.byType(AppSubmitButton), findsNWidgets(3));
+    expect(find.byType(AppSubmitButton), findsNWidgets(4));
     expect(find.text('默认状态'), findsOneWidget);
+    expect(find.text('危险操作'), findsOneWidget);
     expect(find.text('加载状态'), findsOneWidget);
     expect(find.text('禁用状态'), findsOneWidget);
     expect(find.text('主要按钮'), findsOneWidget);
+    expect(find.text('危险按钮'), findsOneWidget);
     expect(find.text('保存'), findsNothing);
     expect(find.text('保存中'), findsNothing);
 

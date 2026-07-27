@@ -13,6 +13,26 @@ class CashflowSummary {
   Money get net => income - expense;
 }
 
+/// 数据清理条件命中的交易组统计。
+///
+/// 带业务归属的交易组不允许在账务侧直接删除，只计入 [ownedGroupCount]。
+class TransactionCleanupPreview {
+  const TransactionCleanupPreview({
+    required this.matchedGroupCount,
+    required this.ownedGroupCount,
+  });
+
+  static const TransactionCleanupPreview empty = TransactionCleanupPreview(
+    matchedGroupCount: 0,
+    ownedGroupCount: 0,
+  );
+
+  final int matchedGroupCount;
+  final int ownedGroupCount;
+
+  int get deletableGroupCount => matchedGroupCount - ownedGroupCount;
+}
+
 class TransactionListReadModel {
   const TransactionListReadModel({
     required this.id,

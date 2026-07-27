@@ -194,6 +194,91 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
   }
 
   @override
+  Future<List<TransactionCleanupTarget>> findCleanupTargets(
+    TransactionCleanupQuery query,
+  ) async {
+    final owned = _cleanupGroupOwnedExpression();
+    final select =
+        _db.selectOnly(_db.transactions)
+          ..addColumns([_db.transactions.id, owned])
+          ..where(_cleanupMatchExpression(query))
+          ..orderBy([
+            OrderingTerm.asc(_db.transactions.occurredAt),
+            OrderingTerm.asc(_db.transactions.id),
+          ]);
+    final rows = await select.get();
+    return [
+      for (final row in rows)
+        TransactionCleanupTarget(
+          transactionId: row.read(_db.transactions.id)!,
+          owned: row.read(owned) ?? false,
+        ),
+    ];
+  }
+
+  @override
+  Stream<TransactionCleanupPreview> watchCleanupPreview(
+    TransactionCleanupQuery query,
+  ) {
+    final matched = countAll();
+    final owned = countAll(filter: _cleanupGroupOwnedExpression());
+    final select =
+        _db.selectOnly(_db.transactions)
+          ..addColumns([matched, owned])
+          ..where(_cleanupMatchExpression(query));
+    return select.watchSingle().map(
+      (row) => TransactionCleanupPreview(
+        matchedGroupCount: row.read(matched) ?? 0,
+        ownedGroupCount: row.read(owned) ?? 0,
+      ),
+    );
+  }
+
+  Expression<bool> _cleanupMatchExpression(TransactionCleanupQuery query) {
+    Expression<bool> expression = _db.transactions.parentTransactionId.isNull();
+    final occurredFrom = query.occurredFrom;
+    if (occurredFrom != null) {
+      expression =
+          expression &
+          _db.transactions.occurredAt.isBiggerOrEqualValue(occurredFrom);
+    }
+    final occurredUntil = query.occurredUntil;
+    if (occurredUntil != null) {
+      expression =
+          expression &
+          _db.transactions.occurredAt.isSmallerThanValue(occurredUntil);
+    }
+    expression = _andEntryAccountMatch(expression, query.categoryIds);
+    expression = _andEntryAccountMatch(expression, query.accountIds);
+    return expression;
+  }
+
+  Expression<bool> _andEntryAccountMatch(
+    Expression<bool> expression,
+    Set<String>? accountIds,
+  ) {
+    if (accountIds == null) return expression;
+    final subquery =
+        _db.selectOnly(_db.entries, distinct: true)
+          ..addColumns([_db.entries.transactionId])
+          ..where(_db.entries.accountId.isIn(accountIds));
+    return expression & _db.transactions.id.isInQuery(subquery);
+  }
+
+  Expression<bool> _cleanupGroupOwnedExpression() {
+    final members = _db.alias(_db.transactions, 'cleanup_members');
+    return existsQuery(
+      _db.selectOnly(members)
+        ..addColumns([members.id])
+        ..where(
+          members.ownerType.isNotNull() &
+              (members.id.equalsExp(_db.transactions.id) |
+                  members.parentTransactionId.equalsExp(_db.transactions.id)),
+        ),
+    );
+  }
+
+  @override
   Stream<void> watchChanges() async* {
     yield null;
     await for (final _ in _db.tableUpdates(

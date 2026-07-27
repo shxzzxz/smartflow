@@ -465,6 +465,34 @@ class DeleteTransactionCommand {
   final String transactionId;
 }
 
+/// 按条件批量清理交易组。条件语义与 `TransactionCleanupQuery` 一致。
+class CleanupTransactionsCommand {
+  const CleanupTransactionsCommand({
+    this.categoryIds,
+    this.accountIds,
+    this.occurredFrom,
+    this.occurredUntil,
+  });
+
+  final Set<String>? categoryIds;
+  final Set<String>? accountIds;
+  final DateTime? occurredFrom;
+  final DateTime? occurredUntil;
+}
+
+class TransactionCleanupResult {
+  const TransactionCleanupResult({
+    required this.deletedGroupCount,
+    required this.skippedGroupCount,
+  });
+
+  /// 已删除的交易组数量。
+  final int deletedGroupCount;
+
+  /// 因带业务归属而跳过的交易组数量。
+  final int skippedGroupCount;
+}
+
 class UpdateTransactionBasicInfoCommand {
   const UpdateTransactionBasicInfoCommand({
     required this.transactionId,
