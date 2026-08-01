@@ -20,6 +20,10 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     required this.chart3,
     required this.chart4,
     required this.chart5,
+    required this.chart6,
+    required this.chart7,
+    required this.chart8,
+    required this.chartOther,
   });
 
   factory AppThemeExtension.light() {
@@ -34,11 +38,15 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       asset: AppColors.income,
       liability: AppColors.expense,
       equity: AppColors.equity,
-      chart1: AppColors.categoryFood,
-      chart2: AppColors.categoryDining,
-      chart3: AppColors.categoryShopping,
-      chart4: AppColors.categoryTransport,
-      chart5: AppColors.categorySalary,
+      chart1: AppColors.chart1,
+      chart2: AppColors.chart2,
+      chart3: AppColors.chart3,
+      chart4: AppColors.chart4,
+      chart5: AppColors.chart5,
+      chart6: AppColors.chart6,
+      chart7: AppColors.chart7,
+      chart8: AppColors.chart8,
+      chartOther: AppColors.chartOther,
     );
   }
 
@@ -59,6 +67,10 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       chart3: AppColors.chart3Dark,
       chart4: AppColors.chart4Dark,
       chart5: AppColors.chart5Dark,
+      chart6: AppColors.chart6Dark,
+      chart7: AppColors.chart7Dark,
+      chart8: AppColors.chart8Dark,
+      chartOther: AppColors.chartOtherDark,
     );
   }
 
@@ -77,6 +89,10 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   final Color chart3;
   final Color chart4;
   final Color chart5;
+  final Color chart6;
+  final Color chart7;
+  final Color chart8;
+  final Color chartOther;
 
   @override
   AppThemeExtension copyWith({
@@ -95,6 +111,10 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     Color? chart3,
     Color? chart4,
     Color? chart5,
+    Color? chart6,
+    Color? chart7,
+    Color? chart8,
+    Color? chartOther,
   }) {
     return AppThemeExtension(
       success: success ?? this.success,
@@ -112,6 +132,10 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       chart3: chart3 ?? this.chart3,
       chart4: chart4 ?? this.chart4,
       chart5: chart5 ?? this.chart5,
+      chart6: chart6 ?? this.chart6,
+      chart7: chart7 ?? this.chart7,
+      chart8: chart8 ?? this.chart8,
+      chartOther: chartOther ?? this.chartOther,
     );
   }
 
@@ -140,6 +164,10 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       chart3: Color.lerp(chart3, other.chart3, t)!,
       chart4: Color.lerp(chart4, other.chart4, t)!,
       chart5: Color.lerp(chart5, other.chart5, t)!,
+      chart6: Color.lerp(chart6, other.chart6, t)!,
+      chart7: Color.lerp(chart7, other.chart7, t)!,
+      chart8: Color.lerp(chart8, other.chart8, t)!,
+      chartOther: Color.lerp(chartOther, other.chartOther, t)!,
     );
   }
 }

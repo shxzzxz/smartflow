@@ -15,7 +15,7 @@ enum StatisticsSection { cashflow, balance }
 
 enum StatisticsPeriodKind { month, year, custom }
 
-enum CashflowChartMetric { expense, income, net }
+enum CashflowChartMetric { expense, income, net, compare, cumulative }
 
 enum StatisticsCategoryKind { expense, income }
 

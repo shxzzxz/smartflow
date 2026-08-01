@@ -10,11 +10,13 @@ import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_datetime_picker.dart';
 import 'package:smartflow/design_system/widget/app_month_picker.dart';
 import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
 import 'package:smartflow/feature/statistics/page/statistics_page.dart';
 import 'package:smartflow/feature/statistics/presentation/statistics_presentation.dart';
 import 'package:smartflow/feature/statistics/view_model/statistics_view_model.dart';
+import 'package:smartflow/feature/statistics/widget/statistics_charts.dart';
 
 void main() {
   setUpAll(_loadAppFonts);
@@ -92,7 +94,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('支出数据'),
       200,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: _verticalScrollable().last,
     );
 
     final headerY = tester.getCenter(find.text('支出数据')).dy;
@@ -162,7 +164,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('支出数据'),
       200,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: _verticalScrollable().last,
     );
 
     expect(find.text('主分类'), findsOneWidget);
@@ -182,7 +184,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('支出数据'),
       200,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: _verticalScrollable().last,
     );
 
     expect(find.text('主分类'), findsOneWidget);
@@ -217,10 +219,15 @@ void main() {
       ),
     );
     await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.text('10'));
+    final rangeDialog = find.byType(AppDateRangePickerDialog);
+    await tester.tap(
+      find.descendant(of: rangeDialog, matching: find.text('10')),
+    );
     await tester.pump();
     expect(find.text('请选择结束日期'), findsOneWidget);
-    await tester.tap(find.text('12'));
+    await tester.tap(
+      find.descendant(of: rangeDialog, matching: find.text('12')),
+    );
     await tester.tap(find.text('确定'));
     await tester.pumpAndSettle();
 
@@ -264,17 +271,31 @@ void main() {
     expect(find.text('年'), findsOneWidget);
     expect(find.text('自定义'), findsOneWidget);
     expect(find.text('收支统计'), findsOneWidget);
+    expect(find.text('对比'), findsOneWidget);
+    expect(find.text('累计'), findsOneWidget);
     expect(find.byType(BarChart), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('支出数据'),
       200,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: _verticalScrollable().last,
     );
     expect(find.byType(PieChart), findsOneWidget);
     expect(find.text('主分类'), findsOneWidget);
     expect(find.text('子分类'), findsOneWidget);
     expect(find.text('金额'), findsOneWidget);
     expect(find.text('占比'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('支出习惯'),
+      200,
+      scrollable: _verticalScrollable().last,
+    );
+    expect(find.byType(StatisticsWeekdayChart), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('支出数据'),
+      -200,
+      scrollable: _verticalScrollable().last,
+    );
 
     expect(find.byTooltip('切换为收入数据'), findsOneWidget);
     await tester.tap(find.text('支出数据'));
@@ -292,13 +313,19 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('工资'),
       100,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: _verticalScrollable().last,
     );
     await tester.tap(find.text('工资'));
     await tester.pumpAndSettle();
     expect(find.byType(PieChart), findsOneWidget);
   });
 }
+
+Finder _verticalScrollable() => find.byWidgetPredicate(
+  (widget) =>
+      widget is Scrollable &&
+      axisDirectionToAxis(widget.axisDirection) == Axis.vertical,
+);
 
 Future<void> _loadAppFonts() async {
   final primary = FontLoader('HarmonyOS Sans')..addFont(

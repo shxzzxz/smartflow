@@ -44,9 +44,24 @@ abstract final class AppColors {
   static const categoryGenericIncome = Color(0xFF00B85C);
   static const categoryGenericNeutral = Color(0xFF8C8C8C);
 
-  static const chart1Dark = Color(0xFF8BD88F);
-  static const chart2Dark = Color(0xFFD2BFFF);
-  static const chart3Dark = Color(0xFFFFB4AB);
-  static const chart4Dark = Color(0xFFA9C7FF);
-  static const chart5Dark = Color(0xFFFFC266);
+  // 系列图表色：亮/暗各 8 槽位，同一组色相分别对实际表面色取阶。
+  // 顺序是色盲可分性校验的一部分，调整色值或顺序后必须重新校验。
+  static const chart1 = Color(0xFF2A78D6);
+  static const chart2 = Color(0xFFEB6834);
+  static const chart3 = Color(0xFF1BAF7A);
+  static const chart4 = Color(0xFFEDA100);
+  static const chart5 = Color(0xFFE87BA4);
+  static const chart6 = Color(0xFF008300);
+  static const chart7 = Color(0xFF4A3AA7);
+  static const chart8 = Color(0xFFE34948);
+  static const chartOther = Color(0xFF8C929E);
+  static const chart1Dark = Color(0xFF3987E5);
+  static const chart2Dark = Color(0xFFD95926);
+  static const chart3Dark = Color(0xFF199E70);
+  static const chart4Dark = Color(0xFFC98500);
+  static const chart5Dark = Color(0xFFD55181);
+  static const chart6Dark = Color(0xFF008300);
+  static const chart7Dark = Color(0xFF9085E9);
+  static const chart8Dark = Color(0xFFE66767);
+  static const chartOtherDark = Color(0xFF7A818C);
 }

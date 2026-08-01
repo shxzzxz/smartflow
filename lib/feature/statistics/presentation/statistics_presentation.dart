@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
 
@@ -152,9 +154,9 @@ extension StatisticsTimeGroupingPresentation on StatisticsTimeGrouping {
   }
 
   String labelFor(DateTime start) => switch (this) {
-    StatisticsTimeGrouping.day => '${start.day}',
-    StatisticsTimeGrouping.week => '${start.day}',
-    StatisticsTimeGrouping.month => '${start.month}',
+    StatisticsTimeGrouping.day => '${start.month}/${start.day}',
+    StatisticsTimeGrouping.week => '${start.month}/${start.day}',
+    StatisticsTimeGrouping.month => '${start.month}月',
     StatisticsTimeGrouping.year => '${start.year}',
   };
 
@@ -310,7 +312,8 @@ List<StatisticsBreakdownItem> selectStatisticsCategoryItems(
     ...(secondary ? primary.expand((item) => item.children) : primary),
   ];
   result.sort(_compareBreakdown);
-  return result;
+  // 子分类的 progress 原本按各自父分类内归一，扁平后需要跨全表重新归一。
+  return secondary ? _withProgress(result) : result;
 }
 
 double statisticsCategoryShare(
@@ -346,6 +349,121 @@ String statisticsCategoryValueText(
 }
 
 String statisticsDateLabel(DateTime date) => '${date.month}/${date.day}';
+
+/// 系列色槽位上限，超出部分折叠为"其他"，系列色不循环复用。
+const statisticsSeriesSlotCount = 8;
+
+class StatisticsDonutSlice {
+  const StatisticsDonutSlice({
+    required this.title,
+    required this.valueMinor,
+    this.isOther = false,
+  });
+
+  final String title;
+  final int valueMinor;
+  final bool isOther;
+}
+
+List<StatisticsDonutSlice> buildStatisticsDonutSlices(
+  List<StatisticsBreakdownItem> items,
+) {
+  final slices = [
+    for (final item in items)
+      StatisticsDonutSlice(
+        title: item.title,
+        valueMinor: statisticsCategoryMagnitude(item),
+      ),
+  ];
+  if (slices.length <= statisticsSeriesSlotCount) {
+    return slices;
+  }
+  final foldedMinor = slices
+      .skip(statisticsSeriesSlotCount - 1)
+      .fold(0, (sum, slice) => sum + slice.valueMinor);
+  return [
+    ...slices.take(statisticsSeriesSlotCount - 1),
+    StatisticsDonutSlice(title: '其他', valueMinor: foldedMinor, isOther: true),
+  ];
+}
+
+class StatisticsCashflowKpis {
+  const StatisticsCashflowKpis({
+    required this.dailyAverageExpense,
+    required this.dailyAverageIncome,
+    required this.maxDailyExpense,
+  });
+
+  final Money dailyAverageExpense;
+  final Money dailyAverageIncome;
+  final Money maxDailyExpense;
+}
+
+StatisticsCashflowKpis buildStatisticsCashflowKpis(
+  List<DailyCashflowSummary> items,
+) {
+  if (items.isEmpty) {
+    return const StatisticsCashflowKpis(
+      dailyAverageExpense: Money(minorUnits: 0),
+      dailyAverageIncome: Money(minorUnits: 0),
+      maxDailyExpense: Money(minorUnits: 0),
+    );
+  }
+  var expenseMinor = 0;
+  var incomeMinor = 0;
+  var maxExpenseMinor = 0;
+  for (final item in items) {
+    expenseMinor += item.expense.minorUnits;
+    incomeMinor += item.income.minorUnits;
+    maxExpenseMinor = math.max(maxExpenseMinor, item.expense.minorUnits);
+  }
+  return StatisticsCashflowKpis(
+    dailyAverageExpense: Money(minorUnits: (expenseMinor / items.length).round()),
+    dailyAverageIncome: Money(minorUnits: (incomeMinor / items.length).round()),
+    maxDailyExpense: Money(minorUnits: maxExpenseMinor),
+  );
+}
+
+const statisticsWeekdayLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+
+class StatisticsWeekdayBucket {
+  const StatisticsWeekdayBucket({
+    required this.weekday,
+    required this.label,
+    required this.totalExpenseMinor,
+    required this.dayCount,
+  });
+
+  final int weekday;
+  final String label;
+  final int totalExpenseMinor;
+  final int dayCount;
+
+  /// 按该星期在区间内出现的天数取日均，避免区间长度不整周时高估。
+  int get averageExpenseMinor =>
+      dayCount == 0 ? 0 : (totalExpenseMinor / dayCount).round();
+}
+
+List<StatisticsWeekdayBucket> buildStatisticsWeekdayExpenseBuckets(
+  List<DailyCashflowSummary> items,
+) {
+  final totals = List<int>.filled(7, 0);
+  final counts = List<int>.filled(7, 0);
+  for (final item in items) {
+    final index = item.date.weekday - 1;
+    totals[index] += item.expense.minorUnits;
+    counts[index] += 1;
+  }
+  return [
+    for (var i = 0; i < 7; i++)
+      StatisticsWeekdayBucket(
+        weekday: i + 1,
+        label: statisticsWeekdayLabels[i],
+        totalExpenseMinor: totals[i],
+        dayCount: counts[i],
+      ),
+  ];
+}
 
 String statisticsCategoryLevelLabel(StatisticsCategoryLevel level) =>
     switch (level) {
