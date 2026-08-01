@@ -8,6 +8,7 @@ import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_month_picker.dart';
+import '../../../design_system/widget/app_popup_menu_button.dart';
 import 'package:smartflow/widget/business/finance/finance_tone_color.dart';
 import 'package:smartflow/widget/business/transaction/transaction_day_card.dart';
 import '../presentation/calendar_month_presentation.dart';
@@ -151,28 +152,22 @@ class _CalendarHeader extends StatelessWidget {
               showLunar ? RemixIcons.eye_line : RemixIcons.eye_off_line,
             ),
           ),
-          PopupMenuButton<_CalendarMenuAction>(
+          AppPopupMenuButton<_CalendarMenuAction>(
             tooltip: '更多',
-            icon: const Icon(RemixIcons.more_2_line),
-            iconSize: AppSpacing.space20,
-            padding: const EdgeInsets.all(AppSpacing.space6),
-            constraints: const BoxConstraints.tightFor(
-              width: AppSpacing.space32,
-              height: AppSpacing.space32,
-            ),
+            icon: RemixIcons.more_2_line,
             onSelected: (action) {
               switch (action) {
                 case _CalendarMenuAction.today:
                   onTodayPressed();
               }
             },
-            itemBuilder:
-                (context) => const [
-                  PopupMenuItem(
-                    value: _CalendarMenuAction.today,
-                    child: Text('回到今天'),
-                  ),
-                ],
+            options: const [
+              AppPopupMenuOption(
+                value: _CalendarMenuAction.today,
+                label: '回到今天',
+                icon: RemixIcons.calendar_check_line,
+              ),
+            ],
           ),
         ],
       ),
