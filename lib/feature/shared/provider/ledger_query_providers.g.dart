@@ -26,7 +26,7 @@ final class AccountListProvider
         argument: null,
         retry: null,
         name: r'accountListProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -46,7 +46,7 @@ final class AccountListProvider
   }
 }
 
-String _$accountListHash() => r'95dee3110f192c62457e962aca9bdbefc29c02c6';
+String _$accountListHash() => r'e2fbceec8eca02ea4b44e45bfa672c5ee444e581';
 
 @ProviderFor(creditLiabilityAccountsByAccountId)
 final creditLiabilityAccountsByAccountIdProvider =
@@ -68,7 +68,7 @@ final class CreditLiabilityAccountsByAccountIdProvider
         argument: null,
         retry: null,
         name: r'creditLiabilityAccountsByAccountIdProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -89,7 +89,7 @@ final class CreditLiabilityAccountsByAccountIdProvider
 }
 
 String _$creditLiabilityAccountsByAccountIdHash() =>
-    r'7e960b02eaade95eef2f46ca54d41c73a64cfc84';
+    r'7dba339914c95f3ec22cb2f8a1a74347cd07d488';
 
 /// 全量账户索引。覆盖 5 种 account_type,供 UI 层把 entries 的 accountId
 /// 解析为 Account 元数据(type / name / iconKey 等)。
@@ -124,7 +124,7 @@ final class AccountsByIdProvider
         argument: null,
         retry: null,
         name: r'accountsByIdProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -144,7 +144,7 @@ final class AccountsByIdProvider
   }
 }
 
-String _$accountsByIdHash() => r'0c0c7d4fc91a4f029ff3081a98c2a9d98b31ff20';
+String _$accountsByIdHash() => r'd5dd9f6c637be34d228fa06288f65ce2c7dbd9ca';
 
 @ProviderFor(accountLookup)
 final accountLookupProvider = AccountLookupProvider._();
@@ -163,7 +163,7 @@ final class AccountLookupProvider
         argument: null,
         retry: null,
         name: r'accountLookupProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -183,7 +183,7 @@ final class AccountLookupProvider
   }
 }
 
-String _$accountLookupHash() => r'1e7f3ff1a838b081749c675acdf5c4be8a9f8505';
+String _$accountLookupHash() => r'58ca34461603d4b13ddf7d435acbe6c45cbbb342';
 
 @ProviderFor(accountsForSelectionPurpose)
 final accountsForSelectionPurposeProvider =
@@ -203,7 +203,7 @@ final class AccountsForSelectionPurposeProvider
   }) : super(
          retry: null,
          name: r'accountsForSelectionPurposeProvider',
-         isAutoDispose: true,
+         isAutoDispose: false,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
@@ -243,7 +243,7 @@ final class AccountsForSelectionPurposeProvider
 }
 
 String _$accountsForSelectionPurposeHash() =>
-    r'3425b75f9f7150f6f28fe1c0867a1f5e3af5cd04';
+    r'6bbcecaf03c300be8338b39ff20eee9d5b837558';
 
 final class AccountsForSelectionPurposeFamily extends $Family
     with
@@ -257,7 +257,7 @@ final class AccountsForSelectionPurposeFamily extends $Family
         name: r'accountsForSelectionPurposeProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
-        isAutoDispose: true,
+        isAutoDispose: false,
       );
 
   AccountsForSelectionPurposeProvider call(AccountSelectionPurpose purpose) =>
@@ -361,7 +361,7 @@ final class CategoryTreeProvider
   }) : super(
          retry: null,
          name: r'categoryTreeProvider',
-         isAutoDispose: true,
+         isAutoDispose: false,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
@@ -399,7 +399,7 @@ final class CategoryTreeProvider
   }
 }
 
-String _$categoryTreeHash() => r'7723f395e8ee6c05549c642617b4f3724b160242';
+String _$categoryTreeHash() => r'8eaaacd2541a9fc1801c6dc0e1a5107b6271b47a';
 
 final class CategoryTreeFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<CategoryNode>>, AccountType> {
@@ -409,7 +409,7 @@ final class CategoryTreeFamily extends $Family
         name: r'categoryTreeProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
-        isAutoDispose: true,
+        isAutoDispose: false,
       );
 
   CategoryTreeProvider call(AccountType type) =>

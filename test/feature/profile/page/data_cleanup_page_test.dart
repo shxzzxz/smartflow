@@ -6,16 +6,8 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/profile/page/data_cleanup_page.dart';
-import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 
 void main() {
-  // 选项 stream 延迟发射，模拟真机上首个值来自异步数据库查询的时序。
-  Stream<T> delayed<T>(T value) {
-    return Stream.fromFuture(
-      Future.delayed(const Duration(milliseconds: 50), () => value),
-    );
-  }
-
   Future<void> pumpPage(WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -23,19 +15,11 @@ void main() {
           transactionQueryServiceProvider.overrideWith(
             (ref) => _FakeTransactionQueryService(),
           ),
-          categoryTreeProvider(AccountType.expense).overrideWith(
-            (ref) => delayed([
-              CategoryNode(
-                account: _category('cat-food', '餐饮'),
-                children: [_category('cat-lunch', '午餐')],
-              ),
-            ]),
+          categoryQueryServiceProvider.overrideWith(
+            (ref) => _FakeCategoryQueryService(),
           ),
-          categoryTreeProvider(
-            AccountType.income,
-          ).overrideWith((ref) => delayed(const <CategoryNode>[])),
-          accountListProvider.overrideWith(
-            (ref) => delayed([_account('acc-cash', '现金')]),
+          accountQueryServiceProvider.overrideWith(
+            (ref) => _FakeAccountQueryService(),
           ),
         ],
         child: MaterialApp(theme: AppTheme.light(), home: const DataCleanupPage()),
@@ -106,6 +90,40 @@ class _FakeTransactionQueryService implements TransactionQueryService {
     TransactionCleanupQuery query,
   ) {
     return Stream.value(TransactionCleanupPreview.empty);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
+}
+
+// find* 延迟返回，模拟真机上选项来自异步数据库查询的时序。
+class _FakeCategoryQueryService implements CategoryQueryService {
+  @override
+  Future<List<CategoryNode>> findCategoryTree(AccountType type) {
+    return Future.delayed(const Duration(milliseconds: 50), () {
+      if (type != AccountType.expense) return const <CategoryNode>[];
+      return [
+        CategoryNode(
+          account: _category('cat-food', '餐饮'),
+          children: [_category('cat-lunch', '午餐')],
+        ),
+      ];
+    });
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
+}
+
+class _FakeAccountQueryService implements AccountQueryService {
+  @override
+  Future<List<Account>> findAccounts(Set<AccountType> types) {
+    return Future.delayed(
+      const Duration(milliseconds: 50),
+      () => [_account('acc-cash', '现金')],
+    );
   }
 
   @override
