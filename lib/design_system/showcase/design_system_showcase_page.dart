@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
@@ -18,7 +19,9 @@ import '../widget/app_form_section.dart';
 import '../widget/app_page_header.dart';
 import '../widget/app_plain_form_field.dart';
 import '../widget/app_plain_form_row.dart';
+import '../widget/app_popup_menu_button.dart';
 import '../widget/app_segmented_control.dart';
+import '../widget/app_sliding_segmented_control.dart';
 import '../widget/app_status_banner.dart';
 import '../widget/app_submit_button.dart';
 import '../widget/app_surface.dart';
@@ -46,6 +49,7 @@ enum _ShowcaseExampleKind {
   radius,
   buttons,
   segmentedControl,
+  popupMenu,
   surface,
   textFormRow,
   selectFormRow,
@@ -108,8 +112,15 @@ const _showcaseExamples = <_ShowcaseExample>[
     kind: _ShowcaseExampleKind.segmentedControl,
     category: '基础组件',
     title: '分段控件',
-    componentNames: 'AppSegmentedControl',
-    keywords: ['分段', '切换', '选中'],
+    componentNames: 'AppSegmentedControl / AppSlidingSegmentedControl',
+    keywords: ['分段', '切换', '选中', '滑动'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.popupMenu,
+    category: '基础组件',
+    title: '弹出菜单',
+    componentNames: 'AppPopupMenuButton',
+    keywords: ['菜单', '弹出', '更多', '设置'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.surface,
@@ -276,6 +287,8 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   var _selectedOption = '选项一';
   var _switchValue = true;
   var _selectedSegment = 0;
+  var _selectedSlidingSegment = 0;
+  var _selectedMenuOption = 0;
 
   @override
   void initState() {
@@ -668,14 +681,57 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
     }
 
     if (example.kind == _ShowcaseExampleKind.segmentedControl) {
-      return AppSegmentedControl<int>(
-        segments: const [
-          AppSegment(value: 0, label: '本月'),
-          AppSegment(value: 1, label: '年度'),
-          AppSegment(value: 2, label: '自定义'),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppSegmentedControl<int>(
+            segments: const [
+              AppSegment(value: 0, label: '本月'),
+              AppSegment(value: 1, label: '年度'),
+              AppSegment(value: 2, label: '自定义'),
+            ],
+            selected: _selectedSegment,
+            onChanged: (value) => setState(() => _selectedSegment = value),
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          AppSlidingSegmentedControl<int>(
+            segments: const [
+              AppSegment(value: 0, label: '支出'),
+              AppSegment(value: 1, label: '收入'),
+              AppSegment(value: 2, label: '对比'),
+            ],
+            selected: _selectedSlidingSegment,
+            onChanged:
+                (value) => setState(() => _selectedSlidingSegment = value),
+          ),
         ],
-        selected: _selectedSegment,
-        onChanged: (value) => setState(() => _selectedSegment = value),
+      );
+    }
+
+    if (example.kind == _ShowcaseExampleKind.popupMenu) {
+      return Row(
+        children: [
+          AppPopupMenuButton<int>(
+            tooltip: '图表设置',
+            icon: RemixIcons.settings_3_line,
+            selected: _selectedMenuOption,
+            onSelected: (value) => setState(() => _selectedMenuOption = value),
+            options: const [
+              AppPopupMenuOption(
+                value: 0,
+                label: '柱状图',
+                icon: RemixIcons.bar_chart_line,
+              ),
+              AppPopupMenuOption(
+                value: 1,
+                label: '曲线',
+                icon: RemixIcons.line_chart_line,
+              ),
+            ],
+          ),
+          const SizedBox(width: AppSpacing.space12),
+          Text(_selectedMenuOption == 0 ? '当前：柱状图' : '当前：曲线'),
+        ],
       );
     }
 

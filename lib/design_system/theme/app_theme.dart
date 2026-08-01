@@ -334,6 +334,19 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.circular(AppRadius.radiusXl),
         ),
       ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: colors.surfaceContainerLowest,
+        surfaceTintColor: Colors.transparent,
+        elevation: AppComponentTokens.menuElevation,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.radiusLg),
+        ),
+        menuPadding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
+        position: PopupMenuPosition.under,
+        iconColor: colors.onSurfaceVariant,
+        iconSize: AppSpacing.space20,
+        labelTextStyle: WidgetStatePropertyAll(textTheme.bodyMedium),
+      ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: colors.surfaceContainerLowest,
         modalBackgroundColor: colors.surfaceContainerLowest,

@@ -1,6 +1,8 @@
 abstract final class AppComponentTokens {
   static const double controlMinHeight = 48;
   static const double navigationBarHeight = 64;
+  static const double menuElevation = 8;
+  static const double menuMinWidth = 180;
   static const double outlineWidth = 1;
   static const double focusedOutlineWidth = 1.5;
   static const double adaptiveLayoutTextScaleThreshold = 1.3;
