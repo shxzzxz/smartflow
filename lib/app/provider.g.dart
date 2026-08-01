@@ -1088,6 +1088,53 @@ final class AppSettingsStoreProvider
 
 String _$appSettingsStoreHash() => r'8f7ae829a5cb0eed68c824855246b645d273e442';
 
+@ProviderFor(logRetentionStore)
+final logRetentionStoreProvider = LogRetentionStoreProvider._();
+
+final class LogRetentionStoreProvider
+    extends
+        $FunctionalProvider<
+          LogRetentionStore,
+          LogRetentionStore,
+          LogRetentionStore
+        >
+    with $Provider<LogRetentionStore> {
+  LogRetentionStoreProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'logRetentionStoreProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$logRetentionStoreHash();
+
+  @$internal
+  @override
+  $ProviderElement<LogRetentionStore> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  LogRetentionStore create(Ref ref) {
+    return logRetentionStore(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LogRetentionStore value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LogRetentionStore>(value),
+    );
+  }
+}
+
+String _$logRetentionStoreHash() => r'139cd9d6157bbf0a86043dcb3d0953d887135059';
+
 @ProviderFor(accountAppService)
 final accountAppServiceProvider = AccountAppServiceProvider._();
 

@@ -31,7 +31,25 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
     appRouter.routerDelegate.addListener(_logNavigation);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(ref.read(pullTaskSchedulerProvider).trigger());
+      unawaited(_applyLogRetentionSettings());
     });
+  }
+
+  /// 日志在数据库可用前初始化，持久化的保留设置需在启动后补应用。
+  Future<void> _applyLogRetentionSettings() async {
+    try {
+      final settings = await ref.read(logRetentionStoreProvider).read();
+      await ref
+          .read(appLogFileSinkProvider)
+          .applyRetention(
+            maxFiles: settings.maxFiles,
+            maxFileAge: settings.maxFileAge,
+          );
+    } catch (error, stackTrace) {
+      Logger(
+        'app.logging',
+      ).warning('Failed to apply log retention settings.', error, stackTrace);
+    }
   }
 
   @override
@@ -42,8 +60,8 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
   }
 
   void _logNavigation() {
-    final location = appRouter.routerDelegate.currentConfiguration.uri
-        .toString();
+    final location =
+        appRouter.routerDelegate.currentConfiguration.uri.toString();
     if (location == _lastLoggedLocation) return;
     _lastLoggedLocation = location;
     _navigationLogger.info('Navigated to $location');

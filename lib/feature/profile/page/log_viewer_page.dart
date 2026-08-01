@@ -14,6 +14,7 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/log_viewer_presentation.dart';
 import '../view_model/log_viewer_view_model.dart';
 import '../widget/log_entry_detail_sheet.dart';
+import '../widget/log_retention_settings_sheet.dart';
 
 class LogViewerPage extends ConsumerWidget {
   const LogViewerPage({super.key});
@@ -42,7 +43,6 @@ class LogViewerPage extends ConsumerWidget {
                 children: [
                   AppPageHeader(
                     title: '日志',
-                    subtitle: '浏览与搜索应用运行日志',
                     showBackButton: true,
                     actions: [
                       AppHeaderIconButton(
@@ -53,6 +53,13 @@ class LogViewerPage extends ConsumerWidget {
                                 ref
                                     .read(logViewerViewModelProvider.notifier)
                                     .refresh(),
+                      ),
+                      AppHeaderIconButton(
+                        icon: RemixIcons.settings_3_line,
+                        tooltip: '清理设置',
+                        onPressed:
+                            () =>
+                                showLogRetentionSettingsSheet(context: context),
                       ),
                       AppHeaderIconButton(
                         icon: RemixIcons.delete_bin_6_line,
@@ -196,9 +203,7 @@ class _LogEntryList extends StatelessWidget {
           query: state.query,
         );
         if (filtered.isEmpty) {
-          return _EmptyPlaceholder(
-            message: value.isEmpty ? '暂无日志' : '没有匹配的日志',
-          );
+          return _EmptyPlaceholder(message: value.isEmpty ? '暂无日志' : '没有匹配的日志');
         }
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(

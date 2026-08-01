@@ -102,3 +102,59 @@ final class LogEntriesProvider
 }
 
 String _$logEntriesHash() => r'995696dc6f97304b6656c1cb905641d382af30eb';
+
+@ProviderFor(LogRetentionSettingsViewModel)
+final logRetentionSettingsViewModelProvider =
+    LogRetentionSettingsViewModelProvider._();
+
+final class LogRetentionSettingsViewModelProvider
+    extends
+        $AsyncNotifierProvider<
+          LogRetentionSettingsViewModel,
+          LogRetentionSettings
+        > {
+  LogRetentionSettingsViewModelProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'logRetentionSettingsViewModelProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$logRetentionSettingsViewModelHash();
+
+  @$internal
+  @override
+  LogRetentionSettingsViewModel create() => LogRetentionSettingsViewModel();
+}
+
+String _$logRetentionSettingsViewModelHash() =>
+    r'0585ce40bc153d7600836f758e4b5820027b50d3';
+
+abstract class _$LogRetentionSettingsViewModel
+    extends $AsyncNotifier<LogRetentionSettings> {
+  FutureOr<LogRetentionSettings> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref =
+        this.ref
+            as $Ref<AsyncValue<LogRetentionSettings>, LogRetentionSettings>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<
+                AsyncValue<LogRetentionSettings>,
+                LogRetentionSettings
+              >,
+              AsyncValue<LogRetentionSettings>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}

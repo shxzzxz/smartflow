@@ -9,26 +9,45 @@ class AppLogFileSink {
   AppLogFileSink({
     required this.directory,
     this.maxFileBytes = defaultMaxFileBytes,
-    this.maxFiles = defaultMaxFiles,
-    this.maxFileAge = defaultMaxFileAge,
+    int maxFiles = defaultMaxFiles,
+    Duration maxFileAge = defaultMaxFileAge,
     AppLogClock? clock,
-  }) : _clock = clock ?? DateTime.now;
+  }) : _maxFiles = maxFiles,
+       _maxFileAge = maxFileAge,
+       _clock = clock ?? DateTime.now;
 
   static const int defaultMaxFileBytes = 1024 * 1024;
   static const int defaultMaxFiles = 5;
-  static const Duration defaultMaxFileAge = Duration(days: 14);
+  static const int defaultMaxFileAgeDays = 14;
+  static const Duration defaultMaxFileAge = Duration(
+    days: defaultMaxFileAgeDays,
+  );
   static const String currentFileName = 'smartflow.log';
 
   final Directory directory;
   final int maxFileBytes;
-  final int maxFiles;
-  final Duration maxFileAge;
+  int _maxFiles;
+  Duration _maxFileAge;
   final AppLogClock _clock;
+
+  int get maxFiles => _maxFiles;
+
+  Duration get maxFileAge => _maxFileAge;
 
   File get currentFile => File(_join(directory.path, currentFileName));
 
   Future<void> initialize() async {
     await directory.create(recursive: true);
+    await cleanup();
+  }
+
+  /// 更新保留上限并立即执行一次清理。
+  Future<void> applyRetention({
+    required int maxFiles,
+    required Duration maxFileAge,
+  }) async {
+    _maxFiles = maxFiles;
+    _maxFileAge = maxFileAge;
     await cleanup();
   }
 

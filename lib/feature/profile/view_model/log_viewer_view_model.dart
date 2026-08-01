@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
+import '../../../application/shared/log_retention_store.dart';
 import '../../../core/logging/app_log_reader.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 
@@ -59,4 +60,37 @@ class LogViewerViewModel extends _$LogViewerViewModel {
 @riverpod
 Future<List<AppLogEntry>> logEntries(Ref ref) {
   return ref.watch(appLogReaderProvider).readEntries();
+}
+
+@riverpod
+class LogRetentionSettingsViewModel extends _$LogRetentionSettingsViewModel {
+  @override
+  Future<LogRetentionSettings> build() {
+    return ref.watch(logRetentionStoreProvider).read();
+  }
+
+  Future<void> setMaxFileAgeDays(int days) {
+    return _save((settings) => settings.copyWith(maxFileAgeDays: days));
+  }
+
+  Future<void> setMaxFiles(int count) {
+    return _save((settings) => settings.copyWith(maxFiles: count));
+  }
+
+  Future<void> _save(
+    LogRetentionSettings Function(LogRetentionSettings settings) change,
+  ) async {
+    final store = ref.read(logRetentionStoreProvider);
+    final sink = ref.read(appLogFileSinkProvider);
+    final next = change(state.value ?? const LogRetentionSettings());
+    state = AsyncData(next);
+    await store.save(next);
+    await sink.applyRetention(
+      maxFiles: next.maxFiles,
+      maxFileAge: next.maxFileAge,
+    );
+    if (ref.mounted) {
+      ref.invalidate(logEntriesProvider);
+    }
+  }
 }

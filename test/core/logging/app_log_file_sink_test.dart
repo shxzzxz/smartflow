@@ -88,6 +88,43 @@ void main() {
       final names = await _fileNames(directory);
       expect(names, ['smartflow-new.log', 'smartflow.log']);
     });
+
+    test('applyRetention tightens limits and prunes immediately', () async {
+      final directory = await _tempDirectory();
+      final now = DateTime(2026, 6, 3, 12);
+      final sink = AppLogFileSink(directory: directory, clock: () => now);
+      await directory.create(recursive: true);
+      await _writeLogFile(directory, 'smartflow.log', modified: now);
+      await _writeLogFile(
+        directory,
+        'smartflow-recent.log',
+        modified: now.subtract(const Duration(days: 1)),
+      );
+      await _writeLogFile(
+        directory,
+        'smartflow-week.log',
+        modified: now.subtract(const Duration(days: 5)),
+      );
+      await _writeLogFile(
+        directory,
+        'smartflow-aged.log',
+        modified: now.subtract(const Duration(days: 10)),
+      );
+      await sink.cleanup();
+      expect(await _fileNames(directory), hasLength(4));
+
+      await sink.applyRetention(
+        maxFiles: 2,
+        maxFileAge: const Duration(days: 7),
+      );
+
+      expect(sink.maxFiles, 2);
+      expect(sink.maxFileAge, const Duration(days: 7));
+      expect(await _fileNames(directory), [
+        'smartflow-recent.log',
+        'smartflow.log',
+      ]);
+    });
   });
 }
 
