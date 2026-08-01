@@ -15,7 +15,9 @@ enum StatisticsSection { cashflow, balance }
 
 enum StatisticsPeriodKind { month, year, custom }
 
-enum CashflowChartMetric { expense, income, net, compare, cumulative }
+enum CashflowChartMetric { expense, income, compare }
+
+enum CashflowChartForm { bar, line }
 
 enum StatisticsCategoryKind { expense, income }
 
@@ -37,9 +39,9 @@ class StatisticsViewModel extends _$StatisticsViewModel {
       ).subtract(const Duration(days: 30)),
       customUntil: DateTime(now.year, now.month, now.day + 1),
       chartMetric: CashflowChartMetric.expense,
+      chartForm: CashflowChartForm.bar,
       categoryKind: StatisticsCategoryKind.expense,
       categoryLevel: StatisticsCategoryLevel.primary,
-      valueMode: StatisticsValueMode.amount,
     );
   }
 
@@ -70,14 +72,14 @@ class StatisticsViewModel extends _$StatisticsViewModel {
   void selectChartMetric(CashflowChartMetric metric) =>
       state = state.copyWith(chartMetric: metric);
 
+  void selectChartForm(CashflowChartForm form) =>
+      state = state.copyWith(chartForm: form);
+
   void selectCategoryKind(StatisticsCategoryKind kind) =>
       state = state.copyWith(categoryKind: kind);
 
   void selectCategoryLevel(StatisticsCategoryLevel level) =>
       state = state.copyWith(categoryLevel: level);
-
-  void selectValueMode(StatisticsValueMode mode) =>
-      state = state.copyWith(valueMode: mode);
 }
 
 @riverpod
@@ -289,9 +291,9 @@ class StatisticsControlState {
     required this.customFrom,
     required this.customUntil,
     required this.chartMetric,
+    required this.chartForm,
     required this.categoryKind,
     required this.categoryLevel,
-    required this.valueMode,
   });
 
   final DateTime visibleMonth;
@@ -300,9 +302,9 @@ class StatisticsControlState {
   final DateTime customFrom;
   final DateTime customUntil;
   final CashflowChartMetric chartMetric;
+  final CashflowChartForm chartForm;
   final StatisticsCategoryKind categoryKind;
   final StatisticsCategoryLevel categoryLevel;
-  final StatisticsValueMode valueMode;
 
   StatisticsTimeGrouping get trendGrouping => switch (periodKind) {
     StatisticsPeriodKind.month => StatisticsTimeGrouping.day,
@@ -376,9 +378,9 @@ class StatisticsControlState {
     DateTime? customFrom,
     DateTime? customUntil,
     CashflowChartMetric? chartMetric,
+    CashflowChartForm? chartForm,
     StatisticsCategoryKind? categoryKind,
     StatisticsCategoryLevel? categoryLevel,
-    StatisticsValueMode? valueMode,
   }) {
     return StatisticsControlState(
       visibleMonth: visibleMonth ?? this.visibleMonth,
@@ -387,9 +389,9 @@ class StatisticsControlState {
       customFrom: customFrom ?? this.customFrom,
       customUntil: customUntil ?? this.customUntil,
       chartMetric: chartMetric ?? this.chartMetric,
+      chartForm: chartForm ?? this.chartForm,
       categoryKind: categoryKind ?? this.categoryKind,
       categoryLevel: categoryLevel ?? this.categoryLevel,
-      valueMode: valueMode ?? this.valueMode,
     );
   }
 }

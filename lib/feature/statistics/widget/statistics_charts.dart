@@ -19,12 +19,14 @@ class StatisticsCashflowChart extends StatelessWidget {
     required this.dailySummaries,
     required this.grouping,
     required this.metric,
+    required this.form,
     super.key,
   });
 
   final List<DailyCashflowSummary> dailySummaries;
   final StatisticsTimeGrouping grouping;
   final CashflowChartMetric metric;
+  final CashflowChartForm form;
 
   @override
   Widget build(BuildContext context) {
@@ -38,12 +40,19 @@ class StatisticsCashflowChart extends StatelessWidget {
         )) {
       return const StatisticsEmptyState(message: '区间内暂无收支数据');
     }
-    return switch (metric) {
-      CashflowChartMetric.compare => _CashflowCompareBars(buckets: buckets),
-      CashflowChartMetric.cumulative => _CashflowCumulativeLine(
+    return switch ((form, metric)) {
+      (CashflowChartForm.bar, CashflowChartMetric.compare) =>
+        _CashflowCompareBars(buckets: buckets),
+      (CashflowChartForm.line, CashflowChartMetric.compare) =>
+        _CashflowCompareLines(buckets: buckets),
+      (CashflowChartForm.bar, _) => _CashflowMetricBars(
         buckets: buckets,
+        metric: metric,
       ),
-      _ => _CashflowMetricBars(buckets: buckets, metric: metric),
+      (CashflowChartForm.line, _) => _CashflowMetricLine(
+        buckets: buckets,
+        metric: metric,
+      ),
     };
   }
 }
@@ -57,15 +66,11 @@ class _CashflowMetricBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
     final values = [
       for (final bucket in buckets) _metricMinor(bucket, metric) / 100,
     ];
     final scale = StatisticsChartScale.fromValues(values, includeZero: true);
-    Color barColor(double value) =>
-        metric == CashflowChartMetric.net
-            ? (value < 0 ? financeColors.expense : financeColors.income)
-            : statisticsCashflowMetricColor(context, metric);
+    final barColor = statisticsCashflowMetricColor(context, metric);
 
     return SizedBox(
       height: AppChartGeometry.primaryPlotHeight,
@@ -112,7 +117,7 @@ class _CashflowMetricBars extends StatelessWidget {
                     barRods: [
                       BarChartRodData(
                         toY: values[i],
-                        color: barColor(values[i]),
+                        color: barColor,
                         width: barWidth,
                         borderRadius: _barRadius(values[i]),
                       ),
@@ -246,23 +251,19 @@ class _CashflowCompareBars extends StatelessWidget {
   }
 }
 
-class _CashflowCumulativeLine extends StatelessWidget {
-  const _CashflowCumulativeLine({required this.buckets});
+class _CashflowMetricLine extends StatelessWidget {
+  const _CashflowMetricLine({required this.buckets, required this.metric});
 
   final List<StatisticsCashflowBucket> buckets;
+  final CashflowChartMetric metric;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
-    var runningMinor = 0;
-    final cumulativeMinor = <int>[];
-    final values = <double>[];
-    for (final bucket in buckets) {
-      runningMinor += bucket.netMinor;
-      cumulativeMinor.add(runningMinor);
-      values.add(runningMinor / 100);
-    }
+    final lineColor = statisticsCashflowMetricColor(context, metric);
+    final values = [
+      for (final bucket in buckets) _metricMinor(bucket, metric) / 100,
+    ];
     final scale = StatisticsChartScale.fromValues(values, includeZero: true);
     return SizedBox(
       height: AppChartGeometry.primaryPlotHeight,
@@ -291,7 +292,7 @@ class _CashflowCumulativeLine extends StatelessWidget {
                     for (final spot in touchedSpots)
                       LineTooltipItem(
                         '${buckets[spot.x.round()].label}\n'
-                        '累计结余 ${Money(minorUnits: cumulativeMinor[spot.x.round()]).format()}',
+                        '${Money(minorUnits: _metricMinor(buckets[spot.x.round()], metric)).format()}',
                         TextStyle(color: colors.onInverseSurface),
                       ),
                   ],
@@ -300,7 +301,7 @@ class _CashflowCumulativeLine extends StatelessWidget {
           lineBarsData: [
             _trendLine(
               values,
-              financeColors.equity,
+              lineColor,
               buckets.length,
               surfaceColor: colors.surfaceContainerLowest,
               fillArea: true,
@@ -310,6 +311,111 @@ class _CashflowCumulativeLine extends StatelessWidget {
       ),
     );
   }
+}
+
+class _CashflowCompareLines extends StatelessWidget {
+  const _CashflowCompareLines({required this.buckets});
+
+  final List<StatisticsCashflowBucket> buckets;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
+    final incomeValues = [
+      for (final bucket in buckets) bucket.incomeMinor / 100,
+    ];
+    final expenseValues = [
+      for (final bucket in buckets) bucket.expenseMinor / 100,
+    ];
+    final scale = StatisticsChartScale.fromValues([
+      ...incomeValues,
+      ...expenseValues,
+    ], includeZero: true);
+    return Column(
+      children: [
+        SizedBox(
+          height: AppChartGeometry.primaryPlotHeight,
+          child: LineChart(
+            duration: AppChartMotion.switchDuration,
+            LineChartData(
+              minX: 0,
+              maxX: math.max(1, buckets.length - 1).toDouble(),
+              minY: scale.min,
+              maxY: scale.max,
+              borderData: FlBorderData(show: false),
+              gridData: _gridData(context, scale),
+              titlesData: _titlesData(
+                context,
+                labels: [for (final bucket in buckets) bucket.label],
+                maxLabels: AppChartGeometry.cashflowAxisLabelLimit,
+                scale: scale,
+              ),
+              lineTouchData: LineTouchData(
+                touchTooltipData: LineTouchTooltipData(
+                  fitInsideHorizontally: true,
+                  fitInsideVertically: true,
+                  getTooltipColor: (_) => colors.inverseSurface,
+                  getTooltipItems:
+                      (touchedSpots) => [
+                        for (final spot in touchedSpots)
+                          _cashflowCompareTooltipItem(context, buckets, spot),
+                      ],
+                ),
+              ),
+              lineBarsData: [
+                _trendLine(
+                  incomeValues,
+                  financeColors.income,
+                  buckets.length,
+                  surfaceColor: colors.surfaceContainerLowest,
+                ),
+                _trendLine(
+                  expenseValues,
+                  financeColors.expense,
+                  buckets.length,
+                  surfaceColor: colors.surfaceContainerLowest,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space12),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: AppSpacing.space16,
+          runSpacing: AppSpacing.space8,
+          children: [
+            _ChartLegendItem(label: '收入', color: financeColors.income),
+            _ChartLegendItem(label: '支出', color: financeColors.expense),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+LineTooltipItem _cashflowCompareTooltipItem(
+  BuildContext context,
+  List<StatisticsCashflowBucket> buckets,
+  LineBarSpot spot,
+) {
+  final colors = Theme.of(context).colorScheme;
+  final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
+  final bucket = buckets[spot.x.round()];
+  final (name, seriesColor, minor) = switch (spot.barIndex) {
+    0 => ('收入', financeColors.income, bucket.incomeMinor),
+    _ => ('支出', financeColors.expense, bucket.expenseMinor),
+  };
+  return LineTooltipItem(
+    spot.barIndex == 0 ? '${bucket.label}\n' : '',
+    TextStyle(color: colors.onInverseSurface),
+    textAlign: TextAlign.left,
+    children: [
+      TextSpan(text: '● ', style: TextStyle(color: seriesColor)),
+      TextSpan(text: '$name ${Money(minorUnits: minor).format()}'),
+    ],
+  );
 }
 
 class StatisticsBalanceTrendChart extends StatelessWidget {
@@ -694,7 +800,7 @@ Color statisticsCashflowMetricColor(
   return switch (metric) {
     CashflowChartMetric.expense => colors.expense,
     CashflowChartMetric.income => colors.income,
-    _ => colors.equity,
+    CashflowChartMetric.compare => colors.equity,
   };
 }
 
@@ -908,9 +1014,11 @@ FlTitlesData _titlesData(
   );
 }
 
+/// 单指标图取值；对比视图双系列各自取值，不经过此函数。
 int _metricMinor(StatisticsCashflowBucket bucket, CashflowChartMetric metric) =>
     switch (metric) {
       CashflowChartMetric.expense => bucket.expenseMinor,
       CashflowChartMetric.income => bucket.incomeMinor,
-      _ => bucket.netMinor,
+      CashflowChartMetric.compare =>
+        throw StateError('对比视图不使用单指标取值'),
     };

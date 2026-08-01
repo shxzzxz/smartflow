@@ -104,8 +104,10 @@ void main() {
     ]);
 
     expect(buckets.map((item) => item.label), ['1/1', '1/2']);
-    expect(buckets.first.netMinor, 0);
-    expect(buckets.last.netMinor, 1300);
+    expect(buckets.first.incomeMinor, 0);
+    expect(buckets.first.expenseMinor, 0);
+    expect(buckets.last.incomeMinor, 2000);
+    expect(buckets.last.expenseMinor, 700);
   });
 
   test('groups daily cashflow into calendar months for year charts', () {
@@ -130,7 +132,8 @@ void main() {
     expect(buckets.map((item) => item.label), ['1月', '2月']);
     expect(buckets.first.incomeMinor, 1500);
     expect(buckets.first.expenseMinor, 500);
-    expect(buckets.last.netMinor, 700);
+    expect(buckets.last.incomeMinor, 800);
+    expect(buckets.last.expenseMinor, 100);
   });
 
   test('groups custom-range cashflow into seven-day buckets', () {
@@ -153,8 +156,10 @@ void main() {
     ], grouping: StatisticsTimeGrouping.week);
 
     expect(buckets.map((item) => item.label), ['1/1', '1/8']);
-    expect(buckets.first.netMinor, 700);
-    expect(buckets.last.netMinor, 150);
+    expect(buckets.first.incomeMinor, 1000);
+    expect(buckets.first.expenseMinor, 300);
+    expect(buckets.last.incomeMinor, 200);
+    expect(buckets.last.expenseMinor, 50);
   });
 
   test('scopes weekly axis labels with their month', () {
@@ -218,11 +223,6 @@ void main() {
 
   test('provides display copy for statistics controls', () {
     expect(StatisticsTimeGrouping.day.description, contains('按日'));
-    expect(
-      statisticsCategoryLevelLabel(StatisticsCategoryLevel.secondary),
-      '二级',
-    );
-    expect(statisticsValueModeLabel(StatisticsValueMode.percentage), '占比');
   });
 
   test('selects secondary categories and calculates their share', () {

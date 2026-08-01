@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
-import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
@@ -82,7 +81,7 @@ void main() {
     expect(find.byType(BarChart), findsNothing);
   });
 
-  testWidgets('keeps category controls in one row on a compact phone', (
+  testWidgets('keeps the category header compact with inline controls', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(360, 800);
@@ -92,63 +91,33 @@ void main() {
 
     await _pumpStatisticsPage(tester);
     await tester.scrollUntilVisible(
-      find.text('支出数据'),
+      find.text('分类构成'),
       200,
       scrollable: _verticalScrollable().last,
     );
 
-    final headerY = tester.getCenter(find.text('支出数据')).dy;
-    final categoryLevelY = tester.getCenter(find.text('主分类')).dy;
-    final valueModeY = tester.getCenter(find.text('金额')).dy;
-    expect((headerY - categoryLevelY).abs(), lessThan(8));
-    expect((headerY - valueModeY).abs(), lessThan(8));
+    final kindControl = find.byKey(const ValueKey('statistics-category-kind'));
+    final levelControl = find.byKey(const ValueKey('statistics-category-level'));
+    expect(kindControl, findsOneWidget);
+    expect(levelControl, findsOneWidget);
+    expect(tester.getRect(kindControl).right, lessThanOrEqualTo(360));
+    expect(tester.getRect(levelControl).right, lessThanOrEqualTo(360));
+    expect(find.text('主分类'), findsOneWidget);
 
-    final titleRect = tester.getRect(find.text('支出数据'));
-    final toggleRect = tester.getRect(
-      find.byKey(const ValueKey('statistics-section-title-action')),
-    );
-    final switchIconRect = tester.getRect(
-      find.byIcon(RemixIcons.arrow_left_right_line),
-    );
-    final categoryControlRect = tester.getRect(
-      find.byType(SegmentedButton<StatisticsCategoryLevel>),
-    );
-    final valueModeControlRect = tester.getRect(
-      find.byType(SegmentedButton<StatisticsValueMode>),
-    );
-    expect(toggleRect.contains(titleRect.center), isTrue);
-    expect(toggleRect.contains(switchIconRect.center), isTrue);
-    expect(toggleRect.right, lessThanOrEqualTo(categoryControlRect.left));
-    expect(
-      categoryControlRect.right,
-      lessThanOrEqualTo(valueModeControlRect.left),
-    );
-    expect(valueModeControlRect.right, lessThanOrEqualTo(360));
+    // 金额与占比同时展示，不再提供数值模式开关。
+    expect(find.text('金额'), findsNothing);
+    expect(find.text('占比'), findsNothing);
+    expect(find.text('100.0%'), findsOneWidget);
 
     final colors =
         Theme.of(tester.element(find.byType(StatisticsPage))).colorScheme;
     final periodControl = tester.widget<SegmentedButton<StatisticsPeriodKind>>(
       find.byType(SegmentedButton<StatisticsPeriodKind>),
     );
-    final categoryControl = tester
-        .widget<SegmentedButton<StatisticsCategoryLevel>>(
-          find.byType(SegmentedButton<StatisticsCategoryLevel>),
-        );
     expect(
       periodControl.style?.backgroundColor?.resolve({WidgetState.selected}),
       colors.primaryContainer,
     );
-    expect(
-      categoryControl.style?.backgroundColor?.resolve({WidgetState.selected}),
-      colors.surfaceContainerHighest,
-    );
-    expect(
-      categoryControl.style?.foregroundColor?.resolve({WidgetState.selected}),
-      colors.onSurface,
-    );
-    final categoryTitle = tester.widget<Text>(find.text('支出数据'));
-    final cashflowTitle = tester.widget<Text>(find.text('收支统计'));
-    expect(categoryTitle.style, cashflowTitle.style);
     expect(tester.takeException(), isNull);
   });
 
@@ -162,13 +131,13 @@ void main() {
 
     await _pumpStatisticsPage(tester, textScaler: const TextScaler.linear(1.3));
     await tester.scrollUntilVisible(
-      find.text('支出数据'),
+      find.text('分类构成'),
       200,
       scrollable: _verticalScrollable().last,
     );
 
     expect(find.text('主分类'), findsOneWidget);
-    expect(find.text('金额'), findsOneWidget);
+    expect(find.text('子分类'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -182,13 +151,13 @@ void main() {
 
     await _pumpStatisticsPage(tester, textScaler: const TextScaler.linear(2));
     await tester.scrollUntilVisible(
-      find.text('支出数据'),
+      find.text('分类构成'),
       200,
       scrollable: _verticalScrollable().last,
     );
 
     expect(find.text('主分类'), findsOneWidget);
-    expect(find.text('金额'), findsOneWidget);
+    expect(find.text('子分类'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -271,19 +240,49 @@ void main() {
     expect(find.text('年'), findsOneWidget);
     expect(find.text('自定义'), findsOneWidget);
     expect(find.text('收支统计'), findsOneWidget);
-    expect(find.text('对比'), findsOneWidget);
-    expect(find.text('累计'), findsOneWidget);
-    expect(find.byType(BarChart), findsOneWidget);
+    expect(find.text('累计'), findsNothing);
+
+    final cashflowChart = find.byKey(
+      const ValueKey('statistics-cashflow-chart'),
+    );
+    expect(
+      find.descendant(of: cashflowChart, matching: find.byType(BarChart)),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('statistics-cashflow-metric')),
+        matching: find.text('对比'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: cashflowChart, matching: find.text('收入')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('statistics-cashflow-settings')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('柱状图'), findsOneWidget);
+    await tester.tap(find.text('曲线'));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: cashflowChart, matching: find.byType(LineChart)),
+      findsOneWidget,
+    );
+
     await tester.scrollUntilVisible(
-      find.text('支出数据'),
+      find.text('分类构成'),
       200,
       scrollable: _verticalScrollable().last,
     );
     expect(find.byType(PieChart), findsOneWidget);
     expect(find.text('主分类'), findsOneWidget);
     expect(find.text('子分类'), findsOneWidget);
-    expect(find.text('金额'), findsOneWidget);
-    expect(find.text('占比'), findsOneWidget);
+    expect(find.text('总支出'), findsOneWidget);
+    expect(find.text('100.0%'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('支出习惯'),
@@ -292,22 +291,19 @@ void main() {
     );
     expect(find.byType(StatisticsWeekdayChart), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('支出数据'),
+      find.text('分类构成'),
       -200,
       scrollable: _verticalScrollable().last,
     );
 
-    expect(find.byTooltip('切换为收入数据'), findsOneWidget);
-    await tester.tap(find.text('支出数据'));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('statistics-category-kind')),
+        matching: find.text('收入'),
+      ),
+    );
     await tester.pump();
-    expect(find.text('收入数据'), findsOneWidget);
-    expect(find.byTooltip('切换为支出数据'), findsOneWidget);
-    await tester.tap(find.byIcon(RemixIcons.arrow_left_right_line));
-    await tester.pump();
-    expect(find.text('支出数据'), findsOneWidget);
-    await tester.tap(find.byIcon(RemixIcons.arrow_left_right_line));
-    await tester.pump();
-    expect(find.text('收入数据'), findsOneWidget);
+    expect(find.text('总收入'), findsOneWidget);
     expect(find.text('工资'), findsOneWidget);
 
     await tester.scrollUntilVisible(

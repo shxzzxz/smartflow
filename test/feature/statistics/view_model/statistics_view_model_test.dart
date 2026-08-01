@@ -23,6 +23,8 @@ void main() {
     expect(state.periodKind, StatisticsPeriodKind.month);
     expect(state.customFrom, DateTime(2026, 6, 18));
     expect(state.customUntil, DateTime(2026, 7, 19));
+    expect(state.chartMetric, CashflowChartMetric.expense);
+    expect(state.chartForm, CashflowChartForm.bar);
   });
 
   test('switches month, year and custom statistic ranges', () {
@@ -211,9 +213,9 @@ StatisticsControlState _control({
     customFrom: customFrom,
     customUntil: customUntil,
     chartMetric: CashflowChartMetric.expense,
+    chartForm: CashflowChartForm.bar,
     categoryKind: StatisticsCategoryKind.expense,
     categoryLevel: StatisticsCategoryLevel.primary,
-    valueMode: StatisticsValueMode.amount,
   );
 }
 

@@ -139,8 +139,6 @@ enum StatisticsTimeGrouping { day, week, month, year }
 
 enum StatisticsCategoryLevel { primary, secondary }
 
-enum StatisticsValueMode { amount, percentage }
-
 extension StatisticsTimeGroupingPresentation on StatisticsTimeGrouping {
   DateTime bucketStart(DateTime date, {required DateTime anchor}) {
     return switch (this) {
@@ -180,7 +178,6 @@ class StatisticsCashflowBucket {
   final String label;
   final int incomeMinor;
   final int expenseMinor;
-  int get netMinor => incomeMinor - expenseMinor;
 }
 
 class StatisticsBalanceTrendBucket {
@@ -338,16 +335,6 @@ String statisticsCategoryPercentageText(
   return '${(statisticsCategoryShare(item, items) * 100).toStringAsFixed(1)}%';
 }
 
-String statisticsCategoryValueText(
-  StatisticsBreakdownItem item,
-  List<StatisticsBreakdownItem> items, {
-  required bool percentage,
-}) {
-  return percentage
-      ? statisticsCategoryPercentageText(item, items)
-      : item.amount.abs().format();
-}
-
 String statisticsDateLabel(DateTime date) => '${date.month}/${date.day}';
 
 /// 系列色槽位上限，超出部分折叠为"其他"，系列色不循环复用。
@@ -464,17 +451,6 @@ List<StatisticsWeekdayBucket> buildStatisticsWeekdayExpenseBuckets(
       ),
   ];
 }
-
-String statisticsCategoryLevelLabel(StatisticsCategoryLevel level) =>
-    switch (level) {
-      StatisticsCategoryLevel.primary => '一级',
-      StatisticsCategoryLevel.secondary => '二级',
-    };
-
-String statisticsValueModeLabel(StatisticsValueMode mode) => switch (mode) {
-  StatisticsValueMode.amount => '金额',
-  StatisticsValueMode.percentage => '占比',
-};
 
 StatisticsPresentation buildStatisticsPresentation({
   required CashflowReport cashflow,

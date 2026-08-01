@@ -12,7 +12,9 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_month_picker.dart';
 import '../../../design_system/widget/app_page_header.dart';
+import '../../../design_system/widget/app_popup_menu_button.dart';
 import '../../../design_system/widget/app_segmented_control.dart';
+import '../../../design_system/widget/app_sliding_segmented_control.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../feature/shared/presentation/transaction_list_presentation.dart';
 import '../../../widget/business/finance/cashflow_summary_card.dart';
@@ -377,37 +379,50 @@ class _CashflowSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(statisticsViewModelProvider.notifier);
     return StatisticsSectionCard(
       title: '收支统计',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: AppSegmentedControl<CashflowChartMetric>(
-              segments: const [
-                AppSegment(value: CashflowChartMetric.expense, label: '支出'),
-                AppSegment(value: CashflowChartMetric.income, label: '收入'),
-                AppSegment(value: CashflowChartMetric.net, label: '结余'),
-                AppSegment(value: CashflowChartMetric.compare, label: '对比'),
-                AppSegment(value: CashflowChartMetric.cumulative, label: '累计'),
-              ],
-              selected: control.chartMetric,
-              onChanged:
-                  ref
-                      .read(statisticsViewModelProvider.notifier)
-                      .selectChartMetric,
-              size: AppSegmentedControlSize.small,
-              tone: AppSegmentedControlTone.neutral,
-            ),
+          AppSlidingSegmentedControl<CashflowChartMetric>(
+            key: const ValueKey('statistics-cashflow-metric'),
+            segments: const [
+              AppSegment(value: CashflowChartMetric.expense, label: '支出'),
+              AppSegment(value: CashflowChartMetric.income, label: '收入'),
+              AppSegment(value: CashflowChartMetric.compare, label: '对比'),
+            ],
+            selected: control.chartMetric,
+            onChanged: notifier.selectChartMetric,
           ),
-          const SizedBox(height: AppSpacing.space12),
-          StatisticsCashflowChart(
-            dailySummaries: presentation.dailySummaries,
-            grouping: control.trendGrouping,
-            metric: control.chartMetric,
+          const SizedBox(width: AppSpacing.space4),
+          AppPopupMenuButton<CashflowChartForm>(
+            key: const ValueKey('statistics-cashflow-settings'),
+            tooltip: '图表设置',
+            icon: RemixIcons.settings_3_line,
+            selected: control.chartForm,
+            onSelected: notifier.selectChartForm,
+            options: const [
+              AppPopupMenuOption(
+                value: CashflowChartForm.bar,
+                label: '柱状图',
+                icon: RemixIcons.bar_chart_line,
+              ),
+              AppPopupMenuOption(
+                value: CashflowChartForm.line,
+                label: '曲线',
+                icon: RemixIcons.line_chart_line,
+              ),
+            ],
           ),
         ],
+      ),
+      child: StatisticsCashflowChart(
+        key: const ValueKey('statistics-cashflow-chart'),
+        dailySummaries: presentation.dailySummaries,
+        grouping: control.trendGrouping,
+        metric: control.chartMetric,
+        form: control.chartForm,
       ),
     );
   }
@@ -457,8 +472,10 @@ class _CategoryAnalysis extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(statisticsViewModelProvider.notifier);
+    final showingExpense =
+        control.categoryKind == StatisticsCategoryKind.expense;
     final primary =
-        control.categoryKind == StatisticsCategoryKind.expense
+        showingExpense
             ? presentation.expenseCategories
             : presentation.incomeCategories;
     final items = selectStatisticsCategoryItems(
@@ -466,30 +483,28 @@ class _CategoryAnalysis extends ConsumerWidget {
       secondary: control.categoryLevel == StatisticsCategoryLevel.secondary,
     );
     final semantic =
-        control.categoryKind == StatisticsCategoryKind.expense
-            ? MoneySemantic.expense
-            : MoneySemantic.income;
+        showingExpense ? MoneySemantic.expense : MoneySemantic.income;
     final totalMinor = items.fold<int>(
       0,
       (sum, item) => sum + statisticsCategoryMagnitude(item),
     );
-    final showingExpense =
-        control.categoryKind == StatisticsCategoryKind.expense;
     return StatisticsSectionCard(
-      title: showingExpense ? '支出数据' : '收入数据',
-      titleTooltip: showingExpense ? '切换为收入数据' : '切换为支出数据',
-      titleActionIcon: RemixIcons.arrow_left_right_line,
-      onTitleTap:
-          () => notifier.selectCategoryKind(
-            showingExpense
-                ? StatisticsCategoryKind.income
-                : StatisticsCategoryKind.expense,
-          ),
+      title: '分类构成',
       trailing: Wrap(
         spacing: AppSpacing.space6,
         runSpacing: AppSpacing.space6,
         children: [
-          AppSegmentedControl<StatisticsCategoryLevel>(
+          AppSlidingSegmentedControl<StatisticsCategoryKind>(
+            key: const ValueKey('statistics-category-kind'),
+            segments: const [
+              AppSegment(value: StatisticsCategoryKind.expense, label: '支出'),
+              AppSegment(value: StatisticsCategoryKind.income, label: '收入'),
+            ],
+            selected: control.categoryKind,
+            onChanged: notifier.selectCategoryKind,
+          ),
+          AppSlidingSegmentedControl<StatisticsCategoryLevel>(
+            key: const ValueKey('statistics-category-level'),
             segments: const [
               AppSegment(value: StatisticsCategoryLevel.primary, label: '主分类'),
               AppSegment(
@@ -499,18 +514,6 @@ class _CategoryAnalysis extends ConsumerWidget {
             ],
             selected: control.categoryLevel,
             onChanged: notifier.selectCategoryLevel,
-            size: AppSegmentedControlSize.small,
-            tone: AppSegmentedControlTone.neutral,
-          ),
-          AppSegmentedControl<StatisticsValueMode>(
-            segments: const [
-              AppSegment(value: StatisticsValueMode.amount, label: '金额'),
-              AppSegment(value: StatisticsValueMode.percentage, label: '占比'),
-            ],
-            selected: control.valueMode,
-            onChanged: notifier.selectValueMode,
-            size: AppSegmentedControlSize.small,
-            tone: AppSegmentedControlTone.neutral,
           ),
         ],
       ),
@@ -521,16 +524,12 @@ class _CategoryAnalysis extends ConsumerWidget {
                 children: [
                   StatisticsDonutChart(
                     items: items,
-                    centerLabel:
-                        control.categoryKind == StatisticsCategoryKind.expense
-                            ? '总支出'
-                            : '总收入',
+                    centerLabel: showingExpense ? '总支出' : '总收入',
                     centerValue: Money(minorUnits: totalMinor).format(),
                   ),
                   _CategoryList(
                     items: items,
                     semantic: semantic,
-                    valueMode: control.valueMode,
                     level: control.categoryLevel,
                     from: presentation.cashflowFrom,
                     until: presentation.cashflowUntil,
@@ -545,7 +544,6 @@ class _CategoryList extends StatelessWidget {
   const _CategoryList({
     required this.items,
     required this.semantic,
-    required this.valueMode,
     required this.level,
     required this.from,
     required this.until,
@@ -553,7 +551,6 @@ class _CategoryList extends StatelessWidget {
 
   final List<StatisticsBreakdownItem> items;
   final MoneySemantic semantic;
-  final StatisticsValueMode valueMode;
   final StatisticsCategoryLevel level;
   final DateTime from;
   final DateTime until;
@@ -570,17 +567,11 @@ class _CategoryList extends StatelessWidget {
               index: i,
               itemCount: items.length,
             ),
-            trailing:
-                valueMode == StatisticsValueMode.amount
-                    ? MoneyText(
-                      money: items[i].amount,
-                      semantic: semantic,
-                      style: context.appTextStyles.amountList,
-                    )
-                    : Text(
-                      statisticsCategoryPercentageText(items[i], items),
-                      style: context.appTextStyles.amountList,
-                    ),
+            trailing: _CategoryRowValue(
+              item: items[i],
+              items: items,
+              semantic: semantic,
+            ),
             onTap:
                 level == StatisticsCategoryLevel.primary &&
                         items[i].children.isNotEmpty
@@ -597,6 +588,38 @@ class _CategoryList extends StatelessWidget {
                     )
                     : () => _openTransactions(context, items[i], from, until),
           ),
+      ],
+    );
+  }
+}
+
+/// 行尾金额与占比同时展示，占比随所在列表整体归一。
+class _CategoryRowValue extends StatelessWidget {
+  const _CategoryRowValue({
+    required this.item,
+    required this.items,
+    required this.semantic,
+  });
+
+  final StatisticsBreakdownItem item;
+  final List<StatisticsBreakdownItem> items;
+  final MoneySemantic semantic;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        MoneyText(
+          money: item.amount,
+          semantic: semantic,
+          style: context.appTextStyles.amountList,
+        ),
+        const SizedBox(height: AppSpacing.space2),
+        Text(
+          statisticsCategoryPercentageText(item, items),
+          style: context.appTextStyles.listSupporting,
+        ),
       ],
     );
   }
@@ -758,10 +781,10 @@ class _CategoryDetailPage extends StatelessWidget {
                               index: i,
                               itemCount: children.length,
                             ),
-                            trailing: MoneyText(
-                              money: children[i].amount,
+                            trailing: _CategoryRowValue(
+                              item: children[i],
+                              items: children,
                               semantic: semantic,
-                              style: context.appTextStyles.amountList,
                             ),
                             onTap:
                                 () => _openTransactions(
