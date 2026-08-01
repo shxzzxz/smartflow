@@ -5,6 +5,8 @@ import '../../account/query/account_query_service.dart';
 import 'category_read_models.dart';
 
 abstract interface class CategoryQueryService {
+  Future<List<CategoryNode>> findCategoryTree(AccountType type);
+
   Stream<List<CategoryNode>> watchCategoryTree(AccountType type);
 }
 
@@ -13,6 +15,11 @@ class CategoryQueryServiceImpl implements CategoryQueryService {
     : _accounts = accounts;
 
   final AccountQueryService _accounts;
+
+  @override
+  Future<List<CategoryNode>> findCategoryTree(AccountType type) {
+    return watchCategoryTree(type).first;
+  }
 
   @override
   Stream<List<CategoryNode>> watchCategoryTree(AccountType type) {

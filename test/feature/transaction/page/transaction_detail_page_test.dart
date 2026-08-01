@@ -28,14 +28,12 @@ void main() {
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(AccountLookup(_accounts)),
           ),
-          accountsForSelectionPurposeProvider(
-            AccountSelectionPurpose.settlement,
-          ).overrideWith(
-            (ref) => Stream.value([_accounts['cash']!, _accounts['bank']!]),
+          accountQueryServiceProvider.overrideWith(
+            (ref) => _FakeAccountQueryService([
+              _accounts['cash']!,
+              _accounts['bank']!,
+            ]),
           ),
-          accountsForSelectionPurposeProvider(
-            AccountSelectionPurpose.reimbursementReceivable,
-          ).overrideWith((ref) => Stream.value(const <Account>[])),
           transactionUpdateAppServiceProvider.overrideWithValue(update),
           transactionEditAppServiceProvider.overrideWithValue(editService),
         ],
@@ -240,6 +238,21 @@ void main() {
     expect(tester.widget<Switch>(formSwitch).value, isTrue);
     expect(tester.widget<Text>(dateText).data, initialDateText);
   });
+}
+
+class _FakeAccountQueryService implements AccountQueryService {
+  _FakeAccountQueryService(this._accounts);
+
+  final List<Account> _accounts;
+
+  @override
+  Future<List<Account>> findAccounts(Set<AccountType> types) async {
+    return _accounts;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 final _accounts = <String, Account>{

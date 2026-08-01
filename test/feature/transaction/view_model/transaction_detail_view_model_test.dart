@@ -397,14 +397,9 @@ ProviderContainer _container({
       accountLookupProvider.overrideWith(
         (ref) => Stream.value(AccountLookup(accounts)),
       ),
-      accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.settlement,
-      ).overrideWith(
-        (ref) => Stream.value([accounts['cash']!, accounts['bank']!]),
+      accountQueryServiceProvider.overrideWith(
+        (ref) => _FakeAccountQueryService(accounts),
       ),
-      accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.reimbursementReceivable,
-      ).overrideWith((ref) => Stream.value([accounts['company']!])),
       transactionUpdateAppServiceProvider.overrideWithValue(
         update ?? _FakeTransactionUpdateAppService(),
       ),
@@ -497,6 +492,26 @@ Account _account(
 
 PostedTransactionResult _posted() {
   return const PostedTransactionResult(transactionId: 'tx-1');
+}
+
+class _FakeAccountQueryService implements AccountQueryService {
+  _FakeAccountQueryService(this._accountsById);
+
+  final Map<String, Account> _accountsById;
+
+  @override
+  Future<Map<String, Account>> findAccountsById() async => _accountsById;
+
+  @override
+  Future<List<Account>> findAccounts(Set<AccountType> types) async {
+    return _accountsById.values
+        .where((account) => types.contains(account.type))
+        .toList();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 class _FakeTransactionUpdateAppService implements TransactionUpdateAppService {

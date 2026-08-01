@@ -48,6 +48,22 @@ ViewModel state 使用不可变对象表达，每次状态变化发布新的 sta
 
 Feature provider 只能组合 application query / use case，不直接读取 repository provider、ledger query 或实例化 domain service。需要合同、计划、还款等多来源事实时，由 application query 加载并返回 read model。
 
+### Provider 生命周期
+
+query provider 默认 autodispose。同时满足以下条件的转 `@Riverpod(keepAlive: true)`：
+
+1. 全 app 高频消费（跨多个 feature）；
+2. 体量小（几十~几百条记录）；
+3. 无参数，或参数为有限枚举（keepAlive family 的参数无界会导致缓存泄漏）。
+
+按 id / 分页参数展开（如交易列表、交易详情）或依赖 `currentDateTime` 的 provider 保持 autodispose。
+
+### 回调中的一次性取数
+
+provider 只承担「被 watch 的响应式渲染数据」。View / ViewModel 回调里的一次性取数（如打开选择面板时加载选项）走 query service 的 Future API（`findAccounts`、`findCategoryTree` 等），不使用 `ref.read(provider.future)`：autodispose provider 的 `ref.read(.future)` 不构成订阅，provider 可能在首个值返回前被回收，抛出 `Bad state: The provider ... was disposed during loading state`。provider build 内的 `ref.watch(provider.future)` 构成订阅，不受此限制。
+
+riverpod_lint 暂无对应 lint，此规则依赖评审约束，已列为 custom_lint 候选（与设计系统 B 级静态扫描同批）。
+
 ## Presentation
 
 纯展示计算放在 `feature/<feature>/presentation`，不放在 `view_model`。presentation 必须是无状态、无 Riverpod、无 application service 调用、无副作用的展示转换；它只把已有 read model / UI state 转换为展示文案、格式化金额、图标 key、排序分组或日历格子等可测试结果。ViewModel 可以调用 presentation 函数构造 UI state，presentation 不反向依赖 ViewModel。

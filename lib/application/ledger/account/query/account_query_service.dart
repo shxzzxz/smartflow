@@ -7,6 +7,10 @@ import 'account_query_repository.dart';
 abstract interface class AccountQueryService {
   Future<Account?> findAccountById(String id);
 
+  Future<List<Account>> findAccounts(Set<AccountType> types);
+
+  Future<Map<String, Account>> findAccountsById();
+
   Stream<List<Account>> watchAccounts(Set<AccountType> types);
 
   Stream<Map<String, Account>> watchAccountsById();
@@ -25,6 +29,16 @@ class AccountQueryServiceImpl implements AccountQueryService {
   @override
   Future<Account?> findAccountById(String id) {
     return _accounts.findAccountById(id);
+  }
+
+  @override
+  Future<List<Account>> findAccounts(Set<AccountType> types) {
+    return watchAccounts(types).first;
+  }
+
+  @override
+  Future<Map<String, Account>> findAccountsById() {
+    return watchAccountsById().first;
   }
 
   @override

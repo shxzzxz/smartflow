@@ -5,6 +5,7 @@ import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/text/text_normalizer.dart';
+import '../../../shared/account_profile/account_selection_policy.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import '../../shared/provider/ledger_query_providers.dart';
@@ -35,13 +36,13 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
   }
 
   Future<List<Account>> accountOptions(AccountSelectionPurpose purpose) async {
-    final provider = accountsForSelectionPurposeProvider(purpose);
-    final subscription = ref.listen(provider, (_, _) {});
-    try {
-      return await ref.read(provider.future);
-    } finally {
-      subscription.close();
-    }
+    final accounts = await ref.read(accountQueryServiceProvider).findAccounts({
+      AccountType.asset,
+      AccountType.liability,
+    });
+    return accounts
+        .where((account) => accountMatchesSelectionPurpose(account, purpose))
+        .toList();
   }
 
   Future<UiActionOutcome<void>> delete() {
@@ -142,7 +143,9 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     ReimbursementSubmitInput input,
   ) {
     return _runAction((loaded) async {
-      final accountLookup = await ref.read(accountLookupProvider.future);
+      final accountLookup = AccountLookup(
+        await ref.read(accountQueryServiceProvider).findAccountsById(),
+      );
       final receivableAccountId = _receivableAccountId(
         loaded.detail,
         accountLookup,

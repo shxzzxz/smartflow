@@ -5,7 +5,6 @@ import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/error/app_exception.dart';
-import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 
 part 'data_cleanup_view_model.g.dart';
@@ -82,23 +81,15 @@ class DataCleanupViewModel extends _$DataCleanupViewModel {
     state = state.copyWith(accountIds: Set.unmodifiable(ids));
   }
 
-  Future<List<CategoryNode>> categoryTreeOptions(AccountType type) async {
-    final provider = categoryTreeProvider(type);
-    final subscription = ref.listen(provider, (_, _) {});
-    try {
-      return await ref.read(provider.future);
-    } finally {
-      subscription.close();
-    }
+  Future<List<CategoryNode>> categoryTreeOptions(AccountType type) {
+    return ref.read(categoryQueryServiceProvider).findCategoryTree(type);
   }
 
-  Future<List<Account>> accountOptions() async {
-    final subscription = ref.listen(accountListProvider, (_, _) {});
-    try {
-      return await ref.read(accountListProvider.future);
-    } finally {
-      subscription.close();
-    }
+  Future<List<Account>> accountOptions() {
+    return ref.read(accountQueryServiceProvider).findAccounts({
+      AccountType.asset,
+      AccountType.liability,
+    });
   }
 
   /// [from] 与 [untilInclusive] 都是日历日；范围换算为排他端点存储。

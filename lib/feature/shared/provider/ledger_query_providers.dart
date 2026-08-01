@@ -11,7 +11,10 @@ import 'current_date_time_provider.dart';
 
 part 'ledger_query_providers.g.dart';
 
-@riverpod
+// 全局小列表 provider（全 app 高频消费、体量小、参数为有限枚举）统一 keepAlive，
+// 消除「autodispose provider 在回调 read(.future) 期间被回收」一类时序问题;
+// 按 id / 分页参数展开或依赖 currentDateTime 的仍保持 autodispose。
+@Riverpod(keepAlive: true)
 Stream<List<Account>> accountList(Ref ref) {
   return ref.watch(accountQueryServiceProvider).watchAccounts({
     AccountType.asset,
@@ -19,7 +22,7 @@ Stream<List<Account>> accountList(Ref ref) {
   });
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 Stream<Map<String, CreditLiabilityAccountReadModel>>
 creditLiabilityAccountsByAccountId(Ref ref) {
   return ref
@@ -31,12 +34,12 @@ creditLiabilityAccountsByAccountId(Ref ref) {
 /// 解析为 Account 元数据(type / name / iconKey 等)。
 ///
 /// 新 UI 优先使用 `accountLookupProvider`; 仍保留 Map 形式给表单解析等旧路径使用。
-@riverpod
+@Riverpod(keepAlive: true)
 Stream<Map<String, Account>> accountsById(Ref ref) {
   return ref.watch(accountQueryServiceProvider).watchAccountsById();
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 Stream<AccountLookup> accountLookup(Ref ref) {
   return ref
       .watch(accountQueryServiceProvider)
@@ -44,7 +47,7 @@ Stream<AccountLookup> accountLookup(Ref ref) {
       .map(AccountLookup.new);
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 Stream<List<Account>> accountsForSelectionPurpose(
   Ref ref,
   AccountSelectionPurpose purpose,
@@ -66,7 +69,7 @@ Stream<List<Account>> accountsByTypes(Ref ref, Set<AccountType> types) {
   return ref.watch(accountQueryServiceProvider).watchAccounts(types);
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 Stream<List<CategoryNode>> categoryTree(Ref ref, AccountType type) {
   return ref.watch(categoryQueryServiceProvider).watchCategoryTree(type);
 }
