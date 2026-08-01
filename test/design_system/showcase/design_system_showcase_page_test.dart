@@ -13,7 +13,14 @@ import 'package:smartflow/design_system/widget/app_submit_button.dart';
 import 'package:smartflow/design_system/widget/app_surface.dart';
 import 'package:smartflow/design_system/widget/app_swipe_action.dart';
 import 'package:smartflow/widget/business/account/account_type_tag.dart';
+import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
+import 'package:smartflow/widget/business/finance/cashflow_summary_card.dart';
+import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
+import 'package:smartflow/widget/business/icon/business_icon.dart';
+import 'package:smartflow/widget/business/icon/icon_choice_grid.dart';
+import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
+import 'package:smartflow/widget/business/transaction/transaction_progress_badges.dart';
 import 'package:smartflow/widget/business/transaction/transaction_purpose_badge.dart';
 import 'package:smartflow/widget/business/transaction/empty_transaction_card.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
@@ -246,6 +253,173 @@ void main() {
     expect(find.byType(AppPlainTextFormRow), findsWidgets);
     expect(find.byType(AppSubmitButton), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('covers required, read-only and error states for text rows', (
+    tester,
+  ) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'AppPlainTextFormRow');
+    await tester.pump();
+
+    expect(find.text('必填状态'), findsOneWidget);
+    expect(find.text('*'), findsOneWidget);
+    expect(find.text('带必填标识与辅助说明'), findsOneWidget);
+    expect(find.text('只读状态'), findsOneWidget);
+    expect(find.text('输入错误'), findsOneWidget);
+    expect(find.text('禁用状态'), findsOneWidget);
+  });
+
+  testWidgets('keeps money form rows separate from text form rows', (
+    tester,
+  ) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'MoneyPlainFormRow');
+    await tester.pump();
+
+    expect(find.text('金额输入行'), findsOneWidget);
+    expect(find.byType(MoneyPlainFormRow), findsNWidgets(2));
+    expect(find.text('仅允许数字与两位小数'), findsOneWidget);
+    expect(find.text('文本输入行'), findsNothing);
+  });
+
+  testWidgets('selects a sample account through the account picker sheet', (
+    tester,
+  ) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'AccountPlainFormRow');
+    await tester.pump();
+
+    expect(find.text('业务字段行'), findsOneWidget);
+    expect(find.text('现金账户'), findsOneWidget);
+
+    await tester.tap(find.text('现金账户'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('选择账户'), findsOneWidget);
+    expect(find.text('工资卡'), findsOneWidget);
+
+    await tester.tap(find.text('工资卡'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('选择账户'), findsNothing);
+    expect(find.text('工资卡'), findsOneWidget);
+    expect(find.text('现金账户'), findsNothing);
+  });
+
+  testWidgets('shows the transaction amount panel with expense semantics', (
+    tester,
+  ) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'TransactionAmountInput');
+    await tester.pump();
+
+    expect(find.text('交易金额面板'), findsOneWidget);
+    expect(find.byType(TransactionAmountInput), findsOneWidget);
+    expect(find.text('¥'), findsOneWidget);
+  });
+
+  testWidgets('keeps business icons separate from the icon choice grid', (
+    tester,
+  ) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'BusinessIconBubble');
+    await tester.pumpAndSettle();
+
+    expect(find.text('业务图标'), findsOneWidget);
+    expect(find.byType(BusinessIcon), findsWidgets);
+    expect(find.byType(IconChoiceGrid), findsNothing);
+
+    await tester.enterText(find.byType(SearchBar), 'IconChoiceGrid');
+    await tester.pumpAndSettle();
+
+    expect(find.text('图标选择网格'), findsOneWidget);
+    expect(find.byType(IconChoiceGrid), findsOneWidget);
+    expect(find.text('业务图标'), findsNothing);
+  });
+
+  testWidgets('switches category roots in the category grid picker', (
+    tester,
+  ) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'CategoryGridPicker');
+    await tester.pumpAndSettle();
+
+    expect(find.text('分类网格选择'), findsOneWidget);
+    expect(find.text('早餐'), findsOneWidget);
+    expect(find.text('午餐'), findsOneWidget);
+
+    await tester.tap(find.text('交通'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('早餐'), findsNothing);
+    expect(find.text('午餐'), findsNothing);
+  });
+
+  testWidgets('keeps adaptive money text separate from money text', (
+    tester,
+  ) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'SummaryMoneyText');
+    await tester.pump();
+
+    expect(find.text('自适应金额文本'), findsOneWidget);
+    expect(find.byType(SummaryMoneyText), findsNWidgets(2));
+    expect(find.byType(ComparedMoneyText), findsOneWidget);
+    expect(find.byType(MoneyText), findsNothing);
+  });
+
+  testWidgets('keeps the cashflow summary card in its own example', (
+    tester,
+  ) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'CashflowSummaryCard');
+    await tester.pump();
+
+    expect(find.text('现金流汇总卡'), findsOneWidget);
+    expect(find.byType(CashflowSummaryCard), findsNWidgets(2));
+    expect(find.text('本月收入'), findsNWidgets(2));
+    expect(find.text('+1.2千/18%/12%'), findsOneWidget);
+  });
+
+  testWidgets('aggregates transaction badges when width is constrained', (
+    tester,
+  ) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'TransactionProgressBadges');
+    await tester.pump();
+
+    expect(find.text('交易进度徽章'), findsOneWidget);
+    expect(find.byType(TransactionProgressBadges), findsNWidgets(2));
+    expect(find.textContaining('+'), findsWidgets);
+  });
+
+  testWidgets('shows the transaction day card with daily totals', (
+    tester,
+  ) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'TransactionDayCard');
+    await tester.pump();
+
+    expect(find.text('交易日卡片'), findsOneWidget);
+    expect(find.text('5月20日'), findsOneWidget);
+    expect(find.byType(TransactionRow), findsNWidgets(2));
+    expect(find.byType(EmptyTransactionCard), findsNothing);
+
+    await tester.tap(find.text('餐饮'));
+    await tester.pump();
+
+    expect(find.text('打开交易详情'), findsOneWidget);
   });
 
   testWidgets('uses tabs and separates buttons from segmented controls', (
