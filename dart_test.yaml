@@ -1,0 +1,3 @@
+tags:
+  # 像素基线在 Windows 开发机生成并对比，CI（Linux）排除
+  golden:

@@ -38,6 +38,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // 基线在 Windows 开发机生成，Linux 渲染有像素差，CI 通过 --exclude-tags 跳过
   testWidgets('matches the compact Android phone visual baseline', (
     tester,
   ) async {
@@ -54,7 +55,7 @@ void main() {
       find.byKey(boundaryKey),
       matchesGoldenFile('goldens/statistics_page_compact.png'),
     );
-  });
+  }, tags: ['golden']);
 
   testWidgets('shows a cashflow empty state when the range has no activity', (
     tester,
