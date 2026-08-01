@@ -1,8 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:logging/logging.dart';
 
 import 'app_update_info.dart';
+
+final _logger = Logger('core.update');
 
 class AppUpdatePlatform {
   const AppUpdatePlatform({
@@ -59,6 +62,9 @@ class AppUpdatePlatform {
       num value => value.toInt(),
       _ => throw StateError('Missing APK download ID.'),
     };
+    _logger.info(
+      'APK download started: version=$versionName, abi=${package.abi}.',
+    );
 
     while (true) {
       final result = await _channel.invokeMapMethod<String, Object?>(
@@ -84,11 +90,13 @@ class AppUpdatePlatform {
           if (filePath is! String || filePath.isEmpty) {
             throw StateError('Missing downloaded APK path.');
           }
+          _logger.info('APK download completed: $filePath');
           return AppUpdateDownloadResult(
             downloadId: downloadId,
             file: File(filePath),
           );
         case 'failed':
+          _logger.warning('APK download failed: ${result['reason']}.');
           throw PlatformException(
             code: 'downloadFailed',
             message: 'APK download failed: ${result['reason']}.',

@@ -1,3 +1,5 @@
+import 'package:logging/logging.dart';
+
 import '../../application/shared/transaction_runner.dart';
 import '../../core/id/id_generator.dart';
 import '../../domain/import/import_error_code.dart';
@@ -9,6 +11,8 @@ import '../../domain/import/port/import_mapping_repository.dart';
 import '../../domain/import/service/import_target_compatibility.dart';
 import 'import_workflow_models.dart';
 import 'import_account_creation_defaults.dart';
+
+final _logger = Logger('application.import');
 
 abstract interface class ImportWorkflowAppService {
   Future<ImportPlanReview> review(
@@ -279,7 +283,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
   Future<ImportCommitResult> commit(ImportCommitCommand command) async {
     _ensurePlanCanBeReviewed(command.plan);
     try {
-      return await _transactionRunner.run(() async {
+      final result = await _transactionRunner.run(() async {
         final plan = command.plan;
         final currentFingerprints = _fingerprintCounts(plan.groups);
         final duplicateKeyIndexes = _duplicateOperationKeyIndexes(plan);
@@ -428,6 +432,11 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
             );
           } catch (error, stackTrace) {
             if (error is ImportWorkflowException) rethrow;
+            _logger.severe(
+              'Import group ${index + 1} creation failed; rolling back.',
+              error,
+              stackTrace,
+            );
             throw ImportWorkflowException(
               ImportErrorCode.commitFailed,
               message: '第 ${index + 1} 个交易组创建失败，所有更改已回滚。',
@@ -461,6 +470,11 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         try {
           await _batches.saveImportedBatch(batch: batch, items: items);
         } catch (error, stackTrace) {
+          _logger.severe(
+            'Import batch persistence failed; rolling back.',
+            error,
+            stackTrace,
+          );
           throw ImportWorkflowException(
             ImportErrorCode.commitFailed,
             message: '导入批次写入失败，所有账务交易已回滚。',
@@ -474,9 +488,26 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           createdMappings: createdMappings,
         );
       });
+      final batch = result.batch;
+      if (batch == null) {
+        _logger.info(
+          'Import commit selected no groups: '
+          'source=${command.plan.source.name}, '
+          'skipped=${result.skippedGroupCount}.',
+        );
+      } else {
+        _logger.info(
+          'Import batch committed: source=${batch.source.name}, '
+          'batch=${batch.id}, groups=${batch.importedGroupCount}, '
+          'transactions=${batch.createdTransactionCount}, '
+          'skipped=${batch.skippedGroupCount}.',
+        );
+      }
+      return result;
     } on ImportWorkflowException {
       rethrow;
     } catch (error, stackTrace) {
+      _logger.severe('Import commit failed unexpectedly.', error, stackTrace);
       throw ImportWorkflowException(
         ImportErrorCode.commitFailed,
         cause: error,
@@ -501,7 +532,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     DateTime? revertedAt,
   }) async {
     try {
-      return await _transactionRunner.run(() async {
+      final batch = await _transactionRunner.run(() async {
         final batch = await _batches.findById(batchId);
         if (batch == null) {
           throw ImportWorkflowException(ImportErrorCode.batchNotFound);
@@ -530,9 +561,19 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           revertedAt: actualRevertedAt,
         );
       });
+      _logger.info(
+        'Import batch revert completed: batch=$batchId, '
+        'source=${batch.source.name}.',
+      );
+      return batch;
     } on ImportWorkflowException {
       rethrow;
     } catch (error, stackTrace) {
+      _logger.severe(
+        'Import batch revert failed unexpectedly: batch=$batchId.',
+        error,
+        stackTrace,
+      );
       throw ImportWorkflowException(
         ImportErrorCode.revertFailed,
         cause: error,

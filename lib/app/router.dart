@@ -30,6 +30,7 @@ import '../feature/profile/page/installment_guide_page.dart';
 import '../feature/import/page/import_page.dart';
 import '../feature/import/presentation/import_presentation.dart';
 import '../feature/profile/page/data_cleanup_page.dart';
+import '../feature/profile/page/log_viewer_page.dart';
 import '../feature/profile/page/profile_page.dart';
 import '../feature/profile/page/settings_page.dart';
 import '../feature/profile/page/software_version_page.dart';
@@ -117,6 +118,10 @@ final appRouter = GoRouter(
         path: '/dev/design-system',
         builder: (context, state) => const DesignSystemShowcasePage(),
       ),
+    GoRoute(
+      path: '/dev/logs',
+      builder: (context, state) => const LogViewerPage(),
+    ),
     GoRoute(
       path: '/transaction/new',
       builder: (context, state) {

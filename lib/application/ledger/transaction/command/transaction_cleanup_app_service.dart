@@ -1,9 +1,12 @@
+import 'package:logging/logging.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 
 import '../query/port/transaction_read_repository.dart';
 import '../query/transaction_queries.dart';
 import 'transaction_command.dart';
 import 'transaction_edit_app_service.dart';
+
+final _logger = Logger('application.ledger.cleanup');
 
 abstract interface class TransactionCleanupAppService {
   Future<TransactionCleanupResult> cleanupTransactions(
@@ -31,8 +34,8 @@ class TransactionCleanupAppServiceImpl implements TransactionCleanupAppService {
   @override
   Future<TransactionCleanupResult> cleanupTransactions(
     CleanupTransactionsCommand command,
-  ) {
-    return _transactionRunner.run(() async {
+  ) async {
+    final result = await _transactionRunner.run(() async {
       final targets = await _transactionRead.findCleanupTargets(
         TransactionCleanupQuery(
           categoryIds: command.categoryIds,
@@ -58,5 +61,11 @@ class TransactionCleanupAppServiceImpl implements TransactionCleanupAppService {
         skippedGroupCount: skippedGroupCount,
       );
     });
+    _logger.info(
+      'Transaction cleanup completed: '
+      'deleted=${result.deletedGroupCount} groups, '
+      'skipped=${result.skippedGroupCount}.',
+    );
+    return result;
   }
 }

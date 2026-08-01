@@ -1,3 +1,7 @@
+import 'package:logging/logging.dart';
+
+final _logger = Logger('application.task');
+
 abstract interface class AppTask {
   String get key;
 
@@ -17,8 +21,18 @@ class PullTaskScheduler {
       if (!force && _lastRunDayByTask[task.key] == day) {
         continue;
       }
-      await task.run(instant);
+      try {
+        await task.run(instant);
+      } on Exception catch (error, stackTrace) {
+        _logger.severe(
+          'Task ${task.key} failed; it will retry on the next trigger.',
+          error,
+          stackTrace,
+        );
+        continue;
+      }
       _lastRunDayByTask[task.key] = day;
+      _logger.info('Task ${task.key} completed.');
     }
   }
 }

@@ -1,28 +1,46 @@
 // ignore_for_file: experimental_member_use
 
 import 'package:drift/drift.dart';
+import 'package:logging/logging.dart';
 
 import '../app_database.dart';
 import '../builtin_data.dart';
 
+final _logger = Logger('infra.database');
+
 MigrationStrategy buildMigrationStrategy(AppDatabase database) {
   return MigrationStrategy(
     onCreate: (migrator) async {
+      _logger.info(
+        'Creating database schema at v${database.schemaVersion}.',
+      );
       await _createCurrentSchema(database, migrator);
     },
-    beforeOpen: (_) async {
+    beforeOpen: (details) async {
+      if (details.hadUpgrade) {
+        _logger.info(
+          'Database opened after upgrade: '
+          'v${details.versionBefore} -> v${details.versionNow}.',
+        );
+      } else {
+        _logger.info('Database opened at v${details.versionNow}.');
+      }
       await ensureBuiltinData(database);
     },
-    onUpgrade: (migrator, from, _) async {
+    onUpgrade: (migrator, from, to) async {
       if (from < 19) {
         // Versions before v19 still follow the development-channel rebuild
         // policy. The v19 -> v20 step below is the first compatible upgrade.
+        _logger.warning(
+          'Database schema v$from predates v19; rebuilding all tables.',
+        );
         for (final table in database.allTables.toList().reversed) {
           await migrator.drop(table);
         }
         await _createCurrentSchema(database, migrator);
         return;
       }
+      _logger.info('Upgrading database schema: v$from -> v$to.');
       if (from < 20) {
         await database.customStatement(
           'ALTER TABLE transactions ADD COLUMN posted_at INTEGER',

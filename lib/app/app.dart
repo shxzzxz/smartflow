@@ -2,11 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logging/logging.dart';
 
 import '../design_system/theme/app_theme.dart';
 import 'app_error_boundary.dart';
 import 'provider.dart';
 import 'router.dart';
+
+final _navigationLogger = Logger('app.navigation');
 
 class SmartFlowApp extends ConsumerStatefulWidget {
   const SmartFlowApp({super.key, this.scaffoldMessengerKey});
@@ -19,10 +22,13 @@ class SmartFlowApp extends ConsumerStatefulWidget {
 
 class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
     with WidgetsBindingObserver {
+  String? _lastLoggedLocation;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    appRouter.routerDelegate.addListener(_logNavigation);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(ref.read(pullTaskSchedulerProvider).trigger());
     });
@@ -30,8 +36,17 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
 
   @override
   void dispose() {
+    appRouter.routerDelegate.removeListener(_logNavigation);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _logNavigation() {
+    final location = appRouter.routerDelegate.currentConfiguration.uri
+        .toString();
+    if (location == _lastLoggedLocation) return;
+    _lastLoggedLocation = location;
+    _navigationLogger.info('Navigated to $location');
   }
 
   @override

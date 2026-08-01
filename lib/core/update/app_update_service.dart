@@ -2,11 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import 'app_update_channel.dart';
 import 'app_update_info.dart';
+
+final _logger = Logger('core.update');
 
 class AppUpdateService {
   AppUpdateService({
@@ -58,6 +61,13 @@ class AppUpdateService {
         );
       }
       return info;
+    } catch (error, stackTrace) {
+      _logger.warning(
+        'Update manifest fetch failed: $manifestUri',
+        error,
+        stackTrace,
+      );
+      rethrow;
     } finally {
       client.close(force: true);
     }
@@ -68,12 +78,16 @@ class AppUpdateService {
     required List<String> supportedAbis,
   }) async {
     final info = await fetchUpdateInfo();
-    return info.hasInstallableUpdate(
-          currentAndroidVersionCode: currentAndroidVersionCode,
-          supportedAbis: supportedAbis,
-        )
-        ? info
-        : null;
+    final installable = info.hasInstallableUpdate(
+      currentAndroidVersionCode: currentAndroidVersionCode,
+      supportedAbis: supportedAbis,
+    );
+    _logger.info(
+      'Update check completed: latest=${info.versionName} '
+      '(build ${info.buildNumber}), channel=${info.channel.code}, '
+      'installable=$installable.',
+    );
+    return installable ? info : null;
   }
 
   Future<File> downloadApk(

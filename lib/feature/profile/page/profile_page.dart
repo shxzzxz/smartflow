@@ -136,20 +136,25 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ],
             ),
-            if (kDebugMode) ...[
-              const SizedBox(height: AppSpacing.space16),
-              _ProfileActionSection(
-                title: '开发工具',
-                actions: [
+            const SizedBox(height: AppSpacing.space16),
+            _ProfileActionSection(
+              title: '开发工具',
+              actions: [
+                if (kDebugMode)
                   _ProfileActionRow(
                     icon: Icons.widgets_outlined,
                     label: '组件示例',
                     description: '查看设计规范与组件交互状态',
                     onTap: () => context.push('/dev/design-system'),
                   ),
-                ],
-              ),
-            ],
+                _ProfileActionRow(
+                  icon: RemixIcons.file_list_3_line,
+                  label: '日志',
+                  description: '浏览与搜索应用运行日志',
+                  onTap: () => context.push('/dev/logs'),
+                ),
+              ],
+            ),
           ],
         ),
       ),

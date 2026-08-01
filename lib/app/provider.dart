@@ -1,5 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../core/logging/app_log_file_sink.dart';
+import '../core/logging/app_log_reader.dart';
 import '../infrastructure/database/database_provider.dart';
 import '../infrastructure/import/ledger_import_port.dart';
 import '../infrastructure/import/platform_import_file_picker.dart';
@@ -58,6 +60,17 @@ import '../application/shared/update_channel_store.dart';
 import '../core/id/id_generator.dart';
 
 part 'provider.g.dart';
+
+/// 由 main() 用 bootstrap 创建的实例 override。
+@Riverpod(keepAlive: true)
+AppLogFileSink appLogFileSink(Ref ref) {
+  throw UnimplementedError('appLogFileSink 必须在 ProviderScope 中 override。');
+}
+
+@Riverpod(keepAlive: true)
+AppLogReader appLogReader(Ref ref) {
+  return AppLogReader(directory: ref.watch(appLogFileSinkProvider).directory);
+}
 
 @Riverpod(keepAlive: true)
 ImportFilePicker importFilePicker(Ref ref) {

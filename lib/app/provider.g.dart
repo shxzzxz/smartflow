@@ -8,6 +8,92 @@ part of 'provider.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// 由 main() 用 bootstrap 创建的实例 override。
+
+@ProviderFor(appLogFileSink)
+final appLogFileSinkProvider = AppLogFileSinkProvider._();
+
+/// 由 main() 用 bootstrap 创建的实例 override。
+
+final class AppLogFileSinkProvider
+    extends $FunctionalProvider<AppLogFileSink, AppLogFileSink, AppLogFileSink>
+    with $Provider<AppLogFileSink> {
+  /// 由 main() 用 bootstrap 创建的实例 override。
+  AppLogFileSinkProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'appLogFileSinkProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$appLogFileSinkHash();
+
+  @$internal
+  @override
+  $ProviderElement<AppLogFileSink> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  AppLogFileSink create(Ref ref) {
+    return appLogFileSink(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AppLogFileSink value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AppLogFileSink>(value),
+    );
+  }
+}
+
+String _$appLogFileSinkHash() => r'd4aee75c48b011feb9b86d4eab439df970a1cccc';
+
+@ProviderFor(appLogReader)
+final appLogReaderProvider = AppLogReaderProvider._();
+
+final class AppLogReaderProvider
+    extends $FunctionalProvider<AppLogReader, AppLogReader, AppLogReader>
+    with $Provider<AppLogReader> {
+  AppLogReaderProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'appLogReaderProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$appLogReaderHash();
+
+  @$internal
+  @override
+  $ProviderElement<AppLogReader> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  AppLogReader create(Ref ref) {
+    return appLogReader(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AppLogReader value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AppLogReader>(value),
+    );
+  }
+}
+
+String _$appLogReaderHash() => r'33592558634ffd5d2acc71727ed069b198dde985';
 
 @ProviderFor(importFilePicker)
 final importFilePickerProvider = ImportFilePickerProvider._();

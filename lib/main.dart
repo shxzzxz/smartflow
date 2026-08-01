@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app.dart';
 import 'app/app_error_boundary.dart';
 import 'app/bootstrap.dart';
+import 'app/provider.dart';
 import 'app/provider_error_observer.dart';
 
 Future<void> main() async {
@@ -15,12 +16,13 @@ Future<void> main() async {
 
   await runZonedGuarded<Future<void>>(() async {
     WidgetsFlutterBinding.ensureInitialized();
-    await bootstrap();
+    final logFileSink = await bootstrap();
     errorHandler.install();
 
     runApp(
       ProviderScope(
         observers: [AppProviderErrorObserver()],
+        overrides: [appLogFileSinkProvider.overrideWithValue(logFileSink)],
         child: SmartFlowApp(scaffoldMessengerKey: appScaffoldMessengerKey),
       ),
     );
