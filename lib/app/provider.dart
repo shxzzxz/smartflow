@@ -21,6 +21,7 @@ import '../infrastructure/ledger/repository/drift_posting_repository.dart';
 import '../infrastructure/ledger/repository/drift_system_account_resolver.dart';
 import '../infrastructure/ledger/repository/drift_transaction_detail_read_repository.dart';
 import '../infrastructure/ledger/repository/drift_transaction_read_repository.dart';
+import '../infrastructure/database/drift_app_settings_store.dart';
 import '../infrastructure/database/drift_transaction_runner.dart';
 import '../infrastructure/database/drift_update_channel_store.dart';
 import '../infrastructure/shared/uuid_id_generator.dart';
@@ -51,6 +52,7 @@ import '../domain/ledger/service/account/account_role_policy.dart';
 import '../domain/ledger/service/posting/account_posting_service.dart';
 import '../domain/ledger/service/posting/ledger_posting_service.dart';
 import '../domain/ledger/service/posting/posting_engine.dart';
+import '../application/shared/app_settings_store.dart';
 import '../application/shared/transaction_runner.dart';
 import '../application/shared/update_channel_store.dart';
 import '../core/id/id_generator.dart';
@@ -174,6 +176,11 @@ TransactionRunner transactionRunner(Ref ref) {
 @Riverpod(keepAlive: true)
 UpdateChannelStore updateChannelStore(Ref ref) {
   return DriftUpdateChannelStore(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+AppSettingsStore appSettingsStore(Ref ref) {
+  return DriftAppSettingsStore(ref.watch(appDatabaseProvider));
 }
 
 @Riverpod(keepAlive: true)

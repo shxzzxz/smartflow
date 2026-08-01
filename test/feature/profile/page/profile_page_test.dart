@@ -42,11 +42,12 @@ void main() {
 
     expect(find.text('账务管理'), findsOneWidget);
     expect(find.text('数据管理'), findsOneWidget);
+    expect(find.text('偏好设置'), findsOneWidget);
     expect(find.text('帮助与关于'), findsOneWidget);
     expect(find.text('开发工具'), findsOneWidget);
 
     final sections = find.byType(AppSurface);
-    expect(sections, findsNWidgets(4));
+    expect(sections, findsNWidgets(5));
     expect(
       find.descendant(of: sections.at(0), matching: find.text('分类管理')),
       findsOneWidget,
@@ -64,15 +65,19 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.descendant(of: sections.at(2), matching: find.text('使用说明')),
+      find.descendant(of: sections.at(2), matching: find.text('界面设置')),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: sections.at(2), matching: find.text('软件版本')),
+      find.descendant(of: sections.at(3), matching: find.text('使用说明')),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: sections.at(3), matching: find.text('组件示例')),
+      find.descendant(of: sections.at(3), matching: find.text('软件版本')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sections.at(4), matching: find.text('组件示例')),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);

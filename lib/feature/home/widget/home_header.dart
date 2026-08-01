@@ -9,6 +9,7 @@ class HomeHeader extends StatelessWidget {
     required this.onMonthPressed,
     required this.onPreviousMonth,
     required this.onNextMonth,
+    this.trailing,
     super.key,
   });
 
@@ -16,6 +17,7 @@ class HomeHeader extends StatelessWidget {
   final VoidCallback onMonthPressed;
   final VoidCallback onPreviousMonth;
   final VoidCallback onNextMonth;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +37,7 @@ class HomeHeader extends StatelessWidget {
             onNextMonth: onNextMonth,
           ),
           const Spacer(),
+          if (trailing != null) trailing!,
         ],
       ),
     );

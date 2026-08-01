@@ -31,6 +31,7 @@ import '../feature/import/page/import_page.dart';
 import '../feature/import/presentation/import_presentation.dart';
 import '../feature/profile/page/data_cleanup_page.dart';
 import '../feature/profile/page/profile_page.dart';
+import '../feature/profile/page/settings_page.dart';
 import '../feature/profile/page/software_version_page.dart';
 import '../feature/transaction/page/refund_form_page.dart';
 import '../feature/transaction/page/reimbursement_close_form_page.dart';
@@ -293,6 +294,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/category',
       builder: (context, state) => const CategoriesPage(),
+    ),
+    GoRoute(
+      path: '/profile/settings',
+      builder: (context, state) => const SettingsPage(),
     ),
     GoRoute(
       path: '/profile/software-version',

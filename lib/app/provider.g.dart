@@ -956,6 +956,52 @@ final class UpdateChannelStoreProvider
 String _$updateChannelStoreHash() =>
     r'c796ea2e6828c56f68155adc5f4f8ea1e59de7be';
 
+@ProviderFor(appSettingsStore)
+final appSettingsStoreProvider = AppSettingsStoreProvider._();
+
+final class AppSettingsStoreProvider
+    extends
+        $FunctionalProvider<
+          AppSettingsStore,
+          AppSettingsStore,
+          AppSettingsStore
+        >
+    with $Provider<AppSettingsStore> {
+  AppSettingsStoreProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'appSettingsStoreProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$appSettingsStoreHash();
+
+  @$internal
+  @override
+  $ProviderElement<AppSettingsStore> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  AppSettingsStore create(Ref ref) {
+    return appSettingsStore(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AppSettingsStore value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AppSettingsStore>(value),
+    );
+  }
+}
+
+String _$appSettingsStoreHash() => r'8f7ae829a5cb0eed68c824855246b645d273e442';
+
 @ProviderFor(accountAppService)
 final accountAppServiceProvider = AccountAppServiceProvider._();
 

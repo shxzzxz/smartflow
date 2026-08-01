@@ -105,6 +105,18 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: AppSpacing.space16),
             _ProfileActionSection(
+              title: '偏好设置',
+              actions: [
+                _ProfileActionRow(
+                  icon: RemixIcons.settings_3_line,
+                  label: '界面设置',
+                  description: '记账悬浮按钮、导航栏文字显示',
+                  onTap: () => context.push('/profile/settings'),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.space16),
+            _ProfileActionSection(
               title: '帮助与关于',
               actions: [
                 _ProfileActionRow(

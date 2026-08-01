@@ -1,22 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../design_system/theme/app_text_styles.dart';
 import '../design_system/token/spacing.dart';
+import '../feature/shared/view_model/app_settings_view_model.dart';
 
-class AppShell extends StatelessWidget {
+class AppShell extends ConsumerWidget {
   const AppShell({required this.child, super.key});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final path = GoRouterState.of(context).uri.path;
     if (_hidesBottomNavigation(path)) return child;
 
     final colors = Theme.of(context).colorScheme;
     final selectedIndex = _selectedIndex(context);
+    final showLabels =
+        ref.watch(appSettingsViewModelProvider).value?.showBottomNavLabels ??
+        true;
 
     return Scaffold(
       body: child,
@@ -41,6 +46,7 @@ class AppShell extends StatelessWidget {
                 icon: RemixIcons.home_4_line,
                 selectedIcon: RemixIcons.home_4_fill,
                 label: '首页',
+                showLabel: showLabels,
                 selected: selectedIndex == 0,
                 onTap: () => context.go('/'),
               ),
@@ -48,6 +54,7 @@ class AppShell extends StatelessWidget {
                 icon: RemixIcons.calendar_line,
                 selectedIcon: RemixIcons.calendar_fill,
                 label: '日历',
+                showLabel: showLabels,
                 selected: selectedIndex == 1,
                 onTap: () => context.go('/calendar'),
               ),
@@ -55,6 +62,7 @@ class AppShell extends StatelessWidget {
                 icon: RemixIcons.wallet_3_line,
                 selectedIcon: RemixIcons.wallet_3_fill,
                 label: '资产',
+                showLabel: showLabels,
                 selected: selectedIndex == 2,
                 onTap: () => context.go('/account'),
               ),
@@ -62,6 +70,7 @@ class AppShell extends StatelessWidget {
                 icon: RemixIcons.pie_chart_line,
                 selectedIcon: RemixIcons.pie_chart_fill,
                 label: '统计',
+                showLabel: showLabels,
                 selected: selectedIndex == 3,
                 onTap: () => context.go('/statistics'),
               ),
@@ -69,6 +78,7 @@ class AppShell extends StatelessWidget {
                 icon: RemixIcons.user_3_line,
                 selectedIcon: RemixIcons.user_3_fill,
                 label: '我的',
+                showLabel: showLabels,
                 selected: selectedIndex == 4,
                 onTap: () => context.go('/profile'),
               ),
@@ -108,6 +118,7 @@ class _BottomNavItem extends StatelessWidget {
     required this.icon,
     required this.selectedIcon,
     required this.label,
+    required this.showLabel,
     required this.selected,
     required this.onTap,
   });
@@ -115,6 +126,7 @@ class _BottomNavItem extends StatelessWidget {
   final IconData icon;
   final IconData selectedIcon;
   final String label;
+  final bool showLabel;
   final bool selected;
   final VoidCallback onTap;
 
@@ -128,18 +140,22 @@ class _BottomNavItem extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppSpacing.space8),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.space4),
+          padding: EdgeInsets.symmetric(
+            vertical: showLabel ? AppSpacing.space4 : AppSpacing.space8,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(selected ? selectedIcon : icon, color: color, size: 22),
-              const SizedBox(height: AppSpacing.space4),
-              Text(
-                label,
-                style: context.appTextStyles.navigationLabel.copyWith(
-                  color: color,
+              if (showLabel) ...[
+                const SizedBox(height: AppSpacing.space4),
+                Text(
+                  label,
+                  style: context.appTextStyles.navigationLabel.copyWith(
+                    color: color,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
