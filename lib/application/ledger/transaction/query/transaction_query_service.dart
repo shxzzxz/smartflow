@@ -17,6 +17,10 @@ abstract interface class TransactionQueryService {
     TransactionListQuery query,
   );
 
+  Future<List<TransactionListReadModel>> findTransactions(
+    TransactionListQuery query,
+  );
+
   Stream<CashflowSummary> watchCashflowSummary(CashflowSummaryQuery query);
 
   Stream<TransactionDetail?> watchTransactionDetail(String transactionId);
@@ -70,6 +74,13 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     TransactionListQuery query,
   ) {
     return _txRead.watchPage(query).asyncMap(_projectListItems);
+  }
+
+  @override
+  Future<List<TransactionListReadModel>> findTransactions(
+    TransactionListQuery query,
+  ) async {
+    return _projectListItems(await _txRead.watchPage(query).first);
   }
 
   Future<List<TransactionListReadModel>> _projectListItems(

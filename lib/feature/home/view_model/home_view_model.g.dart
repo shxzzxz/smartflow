@@ -118,7 +118,7 @@ final class HomeTransactionsProvider
   }
 }
 
-String _$homeTransactionsHash() => r'ae59e639e51c58b89dc52645fdd15f59ba408730';
+String _$homeTransactionsHash() => r'de8f4bb6bfd49cc5a71d0ddc4cbedefb0e2c4c17';
 
 final class HomeTransactionsFamily extends $Family
     with
@@ -140,6 +140,115 @@ final class HomeTransactionsFamily extends $Family
 
   @override
   String toString() => r'homeTransactionsProvider';
+}
+
+@ProviderFor(HomeTransactionFeedViewModel)
+final homeTransactionFeedViewModelProvider =
+    HomeTransactionFeedViewModelFamily._();
+
+final class HomeTransactionFeedViewModelProvider
+    extends
+        $NotifierProvider<
+          HomeTransactionFeedViewModel,
+          HomeTransactionFeedState
+        > {
+  HomeTransactionFeedViewModelProvider._({
+    required HomeTransactionFeedViewModelFamily super.from,
+    required DateTime super.argument,
+  }) : super(
+         retry: null,
+         name: r'homeTransactionFeedViewModelProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$homeTransactionFeedViewModelHash();
+
+  @override
+  String toString() {
+    return r'homeTransactionFeedViewModelProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  HomeTransactionFeedViewModel create() => HomeTransactionFeedViewModel();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(HomeTransactionFeedState value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<HomeTransactionFeedState>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is HomeTransactionFeedViewModelProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$homeTransactionFeedViewModelHash() =>
+    r'df75a6e5552a3e2d450ac40ea9db407433e50b31';
+
+final class HomeTransactionFeedViewModelFamily extends $Family
+    with
+        $ClassFamilyOverride<
+          HomeTransactionFeedViewModel,
+          HomeTransactionFeedState,
+          HomeTransactionFeedState,
+          HomeTransactionFeedState,
+          DateTime
+        > {
+  HomeTransactionFeedViewModelFamily._()
+    : super(
+        retry: null,
+        name: r'homeTransactionFeedViewModelProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  HomeTransactionFeedViewModelProvider call(DateTime visibleMonth) =>
+      HomeTransactionFeedViewModelProvider._(
+        argument: visibleMonth,
+        from: this,
+      );
+
+  @override
+  String toString() => r'homeTransactionFeedViewModelProvider';
+}
+
+abstract class _$HomeTransactionFeedViewModel
+    extends $Notifier<HomeTransactionFeedState> {
+  late final _$args = ref.$arg as DateTime;
+  DateTime get visibleMonth => _$args;
+
+  HomeTransactionFeedState build(DateTime visibleMonth);
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref =
+        this.ref as $Ref<HomeTransactionFeedState, HomeTransactionFeedState>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<HomeTransactionFeedState, HomeTransactionFeedState>,
+              HomeTransactionFeedState,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, () => build(_$args));
+  }
 }
 
 @ProviderFor(homeCashflowComparison)
@@ -366,7 +475,7 @@ final class HomeContentProvider
   }
 }
 
-String _$homeContentHash() => r'3b8fe05d033413b8c64ad09a54482c2a25ef1178';
+String _$homeContentHash() => r'ed2e8acff202f976ab151a14c4d7f4aea4dc4ee4';
 
 final class HomeContentFamily extends $Family
     with $FunctionalFamilyOverride<HomeContentState, DateTime> {

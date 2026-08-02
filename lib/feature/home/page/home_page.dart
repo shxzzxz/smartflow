@@ -50,11 +50,29 @@ class _HomePageState extends ConsumerState<HomePage> {
                 onTrigger: _openNewTransaction,
                 triggerExtent: settings.pullToCreateSensitivity.triggerExtent,
                 child: switch (content) {
-                  HomeContentLoaded(:final summary, :final groups) =>
+                  HomeContentLoaded(
+                    :final summary,
+                    :final groups,
+                    :final hasMore,
+                    :final isLoadingMore,
+                    :final loadMoreErrorMessage,
+                  ) =>
                     _HomeContent(
                       summary: summary,
                       groups: groups,
                       reserveFabSpace: settings.showAddTransactionFab,
+                      hasMore: hasMore,
+                      isLoadingMore: isLoadingMore,
+                      loadMoreErrorMessage: loadMoreErrorMessage,
+                      onLoadMore:
+                          () =>
+                              ref
+                                  .read(
+                                    homeTransactionFeedViewModelProvider(
+                                      state.visibleMonth,
+                                    ).notifier,
+                                  )
+                                  .loadMore(),
                     ),
                   HomeContentError(:final message) => Center(
                     child: Text(message),
@@ -178,11 +196,19 @@ class _HomeContent extends StatelessWidget {
     required this.summary,
     required this.groups,
     required this.reserveFabSpace,
+    required this.hasMore,
+    required this.isLoadingMore,
+    required this.loadMoreErrorMessage,
+    required this.onLoadMore,
   });
 
   final CashflowSummaryPresentation summary;
   final List<TransactionDayGroup> groups;
   final bool reserveFabSpace;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final String? loadMoreErrorMessage;
+  final VoidCallback onLoadMore;
 
   @override
   Widget build(BuildContext context) {
@@ -199,6 +225,10 @@ class _HomeContent extends StatelessWidget {
         const SizedBox(height: AppSpacing.space20),
       ],
       groups: groups,
+      hasMore: hasMore,
+      isLoadingMore: isLoadingMore,
+      loadMoreErrorMessage: loadMoreErrorMessage,
+      onLoadMore: onLoadMore,
       emptyMessage: '本月暂无交易记录',
     );
   }

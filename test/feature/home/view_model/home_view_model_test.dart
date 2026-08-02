@@ -103,6 +103,88 @@ void main() {
       expect(metricsService.comparisonQueries.last.month.month, 2);
       expect(metricsService.comparisonQueries.last.asOfDate, isNull);
     });
+
+    test(
+      'queries the first page of top-level transactions in the visible month',
+      () {
+        final transactionService = _FakeTransactionQueryService();
+        final metricsService = _FakeFinancialMetricsService();
+        final accountService = _FakeAccountQueryService();
+        final container = _container(
+          transactionService,
+          metricsService,
+          accountService,
+        );
+        final visibleMonth = DateTime(2026, 1);
+        final contentSub = container.listen(
+          homeContentProvider(visibleMonth),
+          (_, _) {},
+        );
+        addTearDown(contentSub.close);
+
+        final query = transactionService.queries.single;
+
+        expect(query.limit, homeTransactionPageSize);
+        expect(query.topLevelOnly, isTrue);
+        expect(query.occurredFrom, DateTime(2026, 1));
+        expect(query.occurredUntil, DateTime(2026, 2));
+      },
+    );
+
+    test(
+      'loads the next month page with an exclusive transaction cursor',
+      () async {
+        final transactionService = _FakeTransactionQueryService();
+        final metricsService = _FakeFinancialMetricsService();
+        final accountService = _FakeAccountQueryService(
+          accountsById: const <String, Account>{},
+        );
+        final container = _container(
+          transactionService,
+          metricsService,
+          accountService,
+        );
+        final visibleMonth = DateTime(2026, 1);
+        final sub = container.listen(
+          homeTransactionFeedViewModelProvider(visibleMonth),
+          (_, _) {},
+        );
+        addTearDown(sub.close);
+        final firstPage = [
+          for (var i = 0; i < homeTransactionPageSize; i++)
+            _item(
+              id: 'tx-$i',
+              occurredAt: DateTime(
+                2026,
+                1,
+                2,
+                8,
+                0,
+                homeTransactionPageSize - i,
+              ),
+            ),
+        ];
+        transactionService.emit(firstPage);
+        await _flush();
+        transactionService.nextPage = [_item(id: 'tx-next')];
+
+        await container
+            .read(homeTransactionFeedViewModelProvider(visibleMonth).notifier)
+            .loadMore();
+
+        final query = transactionService.queries.last;
+        expect(query.limit, homeTransactionPageSize);
+        expect(query.before?.id, firstPage.last.id);
+        expect(query.before?.occurredAt, firstPage.last.occurredAt);
+        final state = container.read(
+          homeTransactionFeedViewModelProvider(visibleMonth),
+        );
+        expect(state, isA<HomeTransactionFeedLoaded>());
+        final loaded = state as HomeTransactionFeedLoaded;
+        expect(loaded.items, hasLength(homeTransactionPageSize + 1));
+        expect(loaded.hasMore, isFalse);
+      },
+    );
   });
 }
 
@@ -133,11 +215,11 @@ Future<void> _flush() async {
   await Future<void>.delayed(Duration.zero);
 }
 
-TransactionListReadModel _item() {
+TransactionListReadModel _item({String id = 'tx-1', DateTime? occurredAt}) {
   return TransactionListReadModel(
-    id: 'tx-1',
+    id: id,
     businessPurpose: BusinessPurpose.dailyIncome,
-    occurredAt: DateTime(2026, 1, 1, 8),
+    occurredAt: occurredAt ?? DateTime(2026, 1, 1, 8),
     primaryAmount: const Money(minorUnits: 10000),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
@@ -166,6 +248,7 @@ CashflowComparison _comparison() {
 class _FakeTransactionQueryService implements TransactionQueryService {
   final queries = <TransactionListQuery>[];
   final _streams = <_ReplayStream<List<TransactionListReadModel>>>[];
+  List<TransactionListReadModel>? nextPage;
 
   @override
   Stream<List<TransactionListReadModel>> watchTransactions(
@@ -175,6 +258,14 @@ class _FakeTransactionQueryService implements TransactionQueryService {
     final stream = _ReplayStream<List<TransactionListReadModel>>();
     _streams.add(stream);
     return stream.watch();
+  }
+
+  @override
+  Future<List<TransactionListReadModel>> findTransactions(
+    TransactionListQuery query,
+  ) async {
+    queries.add(query);
+    return nextPage ?? const [];
   }
 
   void emit(List<TransactionListReadModel> items) {

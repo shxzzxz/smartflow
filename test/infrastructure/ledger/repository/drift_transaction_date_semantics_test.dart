@@ -8,6 +8,77 @@ import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_rea
 import '../../../helper/test_app_database.dart';
 
 void main() {
+  test(
+    'loads the next page exclusively after an occurred-at and id cursor',
+    () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      await database.batch((batch) {
+        batch.insertAll(database.transactions, [
+          TransactionsCompanion.insert(
+            id: 'tx-newest',
+            businessPurpose: BusinessPurpose.dailyExpense,
+            occurredAt: DateTime(2026, 4, 3),
+            postedAt: DateTime(2026, 4, 3),
+            primaryAmountMinor: 100,
+            sourceKind: SourceKind.manual,
+          ),
+          TransactionsCompanion.insert(
+            id: 'tx-same-time-b',
+            businessPurpose: BusinessPurpose.dailyExpense,
+            occurredAt: DateTime(2026, 4, 2),
+            postedAt: DateTime(2026, 4, 2),
+            primaryAmountMinor: 100,
+            sourceKind: SourceKind.manual,
+          ),
+          TransactionsCompanion.insert(
+            id: 'tx-same-time-a',
+            businessPurpose: BusinessPurpose.dailyExpense,
+            occurredAt: DateTime(2026, 4, 2),
+            postedAt: DateTime(2026, 4, 2),
+            primaryAmountMinor: 100,
+            sourceKind: SourceKind.manual,
+          ),
+          TransactionsCompanion.insert(
+            id: 'tx-oldest',
+            businessPurpose: BusinessPurpose.dailyExpense,
+            occurredAt: DateTime(2026, 4, 1),
+            postedAt: DateTime(2026, 4, 1),
+            primaryAmountMinor: 100,
+            sourceKind: SourceKind.manual,
+          ),
+        ]);
+      });
+      final transactions = DriftTransactionReadRepository(database);
+
+      final firstPage =
+          await transactions
+              .watchPage(const TransactionListQuery(limit: 2))
+              .first;
+      final nextPage =
+          await transactions
+              .watchPage(
+                TransactionListQuery(
+                  limit: 2,
+                  before: TransactionListCursor(
+                    occurredAt: firstPage.last.occurredAt,
+                    id: firstPage.last.id,
+                  ),
+                ),
+              )
+              .first;
+
+      expect(firstPage.map((transaction) => transaction.id), [
+        'tx-newest',
+        'tx-same-time-b',
+      ]);
+      expect(nextPage.map((transaction) => transaction.id), [
+        'tx-same-time-a',
+        'tx-oldest',
+      ]);
+    },
+  );
+
   test('keeps transaction lists and stats on occurred_at', () async {
     final database = createTestDatabase();
     addTearDown(database.close);

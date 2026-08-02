@@ -10,6 +10,8 @@ import '../../shared/provider/ledger_query_providers.dart';
 
 part 'home_view_model.g.dart';
 
+const homeTransactionPageSize = 50;
+
 @riverpod
 class HomeViewModel extends _$HomeViewModel {
   @override
@@ -43,8 +45,70 @@ Stream<List<TransactionListReadModel>> homeTransactions(
           topLevelOnly: true,
           occurredFrom: month.start,
           occurredUntil: month.nextMonthStart,
+          limit: homeTransactionPageSize,
         ),
       );
+}
+
+@riverpod
+class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
+  @override
+  HomeTransactionFeedState build(DateTime visibleMonth) {
+    final transactions = ref.watch(homeTransactionsProvider(visibleMonth));
+    return switch (transactions) {
+      AsyncData(:final value) => HomeTransactionFeedState.loaded(
+        items: value,
+        hasMore: value.length == homeTransactionPageSize,
+      ),
+      AsyncError() => const HomeTransactionFeedState.error(
+        message: '加载失败，请稍后重试',
+      ),
+      AsyncLoading() => const HomeTransactionFeedState.loading(),
+    };
+  }
+
+  Future<void> loadMore() async {
+    final current = state;
+    if (current is! HomeTransactionFeedLoaded ||
+        !current.hasMore ||
+        current.isLoadingMore) {
+      return;
+    }
+    final cursorItem = current.items.last;
+    state = current.copyWith(isLoadingMore: true);
+    try {
+      final month = MonthKey(
+        year: visibleMonth.year,
+        month: visibleMonth.month,
+      );
+      final nextPage = await ref
+          .read(transactionQueryServiceProvider)
+          .findTransactions(
+            TransactionListQuery(
+              topLevelOnly: true,
+              occurredFrom: month.start,
+              occurredUntil: month.nextMonthStart,
+              limit: homeTransactionPageSize,
+              before: TransactionListCursor(
+                occurredAt: cursorItem.occurredAt,
+                id: cursorItem.id,
+              ),
+            ),
+          );
+      if (!ref.mounted) return;
+      state = current.copyWith(
+        items: [...current.items, ...nextPage],
+        hasMore: nextPage.length == homeTransactionPageSize,
+        isLoadingMore: false,
+      );
+    } catch (_) {
+      if (!ref.mounted) return;
+      state = current.copyWith(
+        isLoadingMore: false,
+        loadMoreErrorMessage: '加载更多交易失败，请重试',
+      );
+    }
+  }
 }
 
 @riverpod
@@ -76,16 +140,15 @@ Stream<List<DailyCashflowSummary>> homeDailyCashflowSummaries(
 
 @riverpod
 HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
-  final transactions = ref.watch(homeTransactionsProvider(visibleMonth));
+  final transactions = ref.watch(
+    homeTransactionFeedViewModelProvider(visibleMonth),
+  );
   final comparison = ref.watch(homeCashflowComparisonProvider(visibleMonth));
   final dailySummaries = ref.watch(
     homeDailyCashflowSummariesProvider(visibleMonth),
   );
   final accountsById = ref.watch(accountsByIdProvider);
 
-  if (transactions case AsyncError(:final error)) {
-    return HomeContentState.error(message: '加载失败：$error');
-  }
   if (comparison case AsyncError(:final error)) {
     return HomeContentState.error(message: '加载失败：$error');
   }
@@ -96,24 +159,33 @@ HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
     return HomeContentState.error(message: '加载失败：$error');
   }
 
-  final transactionValues = transactions.value;
   final comparisonValue = comparison.value;
   final dailySummaryValues = dailySummaries.value;
   final accountValues = accountsById.value;
-  if (transactionValues == null ||
-      comparisonValue == null ||
+  if (comparisonValue == null ||
       dailySummaryValues == null ||
       accountValues == null) {
     return const HomeContentState.loading();
   }
 
+  if (transactions case HomeTransactionFeedError(:final message)) {
+    return HomeContentState.error(message: message);
+  }
+  if (transactions is HomeTransactionFeedLoading) {
+    return const HomeContentState.loading();
+  }
+  final transactionValues = transactions as HomeTransactionFeedLoaded;
+
   return HomeContentState.loaded(
     summary: buildMonthlySummaryPresentation(comparisonValue),
     groups: groupTransactionsByDay(
-      items: transactionValues,
+      items: transactionValues.items,
       accountLookup: AccountLookup(accountValues),
       dailySummaries: dailySummaryValues,
     ),
+    hasMore: transactionValues.hasMore,
+    isLoadingMore: transactionValues.isLoadingMore,
+    loadMoreErrorMessage: transactionValues.loadMoreErrorMessage,
   );
 }
 
@@ -138,6 +210,9 @@ sealed class HomeContentState {
   const factory HomeContentState.loaded({
     required CashflowSummaryPresentation summary,
     required List<TransactionDayGroup> groups,
+    required bool hasMore,
+    required bool isLoadingMore,
+    String? loadMoreErrorMessage,
   }) = HomeContentLoaded;
 }
 
@@ -152,8 +227,71 @@ final class HomeContentError extends HomeContentState {
 }
 
 final class HomeContentLoaded extends HomeContentState {
-  const HomeContentLoaded({required this.summary, required this.groups});
+  const HomeContentLoaded({
+    required this.summary,
+    required this.groups,
+    required this.hasMore,
+    required this.isLoadingMore,
+    this.loadMoreErrorMessage,
+  });
 
   final CashflowSummaryPresentation summary;
   final List<TransactionDayGroup> groups;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final String? loadMoreErrorMessage;
+}
+
+sealed class HomeTransactionFeedState {
+  const HomeTransactionFeedState();
+
+  const factory HomeTransactionFeedState.loading() = HomeTransactionFeedLoading;
+
+  const factory HomeTransactionFeedState.error({required String message}) =
+      HomeTransactionFeedError;
+
+  const factory HomeTransactionFeedState.loaded({
+    required List<TransactionListReadModel> items,
+    required bool hasMore,
+    bool isLoadingMore,
+    String? loadMoreErrorMessage,
+  }) = HomeTransactionFeedLoaded;
+}
+
+final class HomeTransactionFeedLoading extends HomeTransactionFeedState {
+  const HomeTransactionFeedLoading();
+}
+
+final class HomeTransactionFeedError extends HomeTransactionFeedState {
+  const HomeTransactionFeedError({required this.message});
+
+  final String message;
+}
+
+final class HomeTransactionFeedLoaded extends HomeTransactionFeedState {
+  const HomeTransactionFeedLoaded({
+    required this.items,
+    required this.hasMore,
+    this.isLoadingMore = false,
+    this.loadMoreErrorMessage,
+  });
+
+  final List<TransactionListReadModel> items;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final String? loadMoreErrorMessage;
+
+  HomeTransactionFeedLoaded copyWith({
+    List<TransactionListReadModel>? items,
+    bool? hasMore,
+    bool? isLoadingMore,
+    String? loadMoreErrorMessage,
+  }) {
+    return HomeTransactionFeedLoaded(
+      items: items ?? this.items,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      loadMoreErrorMessage: loadMoreErrorMessage,
+    );
+  }
 }

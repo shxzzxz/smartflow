@@ -9,9 +9,11 @@ class TransactionListQuery {
     this.topLevelOnly = true,
     this.limit = 50,
     this.offset = 0,
+    this.before,
     this.scope = TransactionScopeFilter.assetLiability,
   }) : assert(accountId == null || accountIds == null),
-       assert(limit != null || offset == 0);
+       assert(limit != null || offset == 0),
+       assert(before == null || offset == 0);
 
   final String? accountId;
   final Set<String>? accountIds;
@@ -20,7 +22,16 @@ class TransactionListQuery {
   final bool topLevelOnly;
   final int? limit;
   final int offset;
+  final TransactionListCursor? before;
   final TransactionScopeFilter scope;
+}
+
+/// 按交易列表稳定排序 `(occurredAt DESC, id DESC)` 翻页时的排他游标。
+class TransactionListCursor {
+  const TransactionListCursor({required this.occurredAt, required this.id});
+
+  final DateTime occurredAt;
+  final String id;
 }
 
 class CashflowSummaryQuery {

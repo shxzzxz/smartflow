@@ -60,6 +60,15 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
         (table) => table.occurredAt.isSmallerThanValue(query.occurredUntil!),
       );
     }
+    final before = query.before;
+    if (before != null) {
+      select.where(
+        (table) =>
+            table.occurredAt.isSmallerThanValue(before.occurredAt) |
+            (table.occurredAt.equals(before.occurredAt) &
+                table.id.isSmallerThanValue(before.id)),
+      );
+    }
     final accountIds =
         query.accountIds ??
         (query.accountId == null ? null : <String>{query.accountId!});
