@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/icon_catalog_picker.dart';
@@ -17,7 +18,7 @@ void main() {
 
       expect(expenseIcons.length, greaterThanOrEqualTo(55));
       expect(incomeIcons.length, greaterThanOrEqualTo(15));
-      expect(accountIcons.length, greaterThanOrEqualTo(25));
+      expect(accountIcons.length, greaterThanOrEqualTo(32));
       expect(
         searchBusinessIconSpecs(
           usage: BusinessIconUsage.expenseCategory,
@@ -43,11 +44,27 @@ void main() {
       expect(iconKeys.toSet(), hasLength(iconKeys.length));
       expect(resolveBusinessIconSpec('parking').label, '停车');
       expect(
+        resolveBusinessIconSpec('icbc').assetPath,
+        'assets/icons/account/icbc.svg',
+      );
+      expect(
         resolveBusinessIconSpec('missing-legacy-icon').iconKey,
         'fallback',
       );
     },
   );
+
+  testWidgets('loads every registered SVG account icon from the asset bundle', (
+    tester,
+  ) async {
+    final svgAssets = businessIconSpecs
+        .where((spec) => spec.source == BusinessIconSource.svgAsset)
+        .map((spec) => spec.assetPath!);
+
+    for (final assetPath in svgAssets) {
+      await rootBundle.load(assetPath);
+    }
+  });
 
   testWidgets('filters the visible choices and returns the selected icon key', (
     tester,

@@ -456,10 +456,46 @@ const businessIconSpecs = <BusinessIconSpec>[
     label: '招商银行',
   ),
   BusinessIconSpec.svg(
+    iconKey: 'icbc',
+    assetPath: 'assets/icons/account/icbc.svg',
+    color: AppColors.categoryGenericNeutral,
+    label: '中国工商银行',
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'abc',
+    assetPath: 'assets/icons/account/abc.svg',
+    color: AppColors.categoryGenericNeutral,
+    label: '中国农业银行',
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'ccb',
+    assetPath: 'assets/icons/account/ccb.svg',
+    color: AppColors.categoryGenericNeutral,
+    label: '中国建设银行',
+  ),
+  BusinessIconSpec.svg(
     iconKey: 'boc_debit_card',
     assetPath: 'assets/icons/account/boc_debit_card.svg',
     color: AppColors.categoryGenericNeutral,
     label: '中国银行',
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'psbc',
+    assetPath: 'assets/icons/account/psbc.svg',
+    color: AppColors.categoryGenericNeutral,
+    label: '中国邮政储蓄银行',
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'bank_of_shanghai',
+    assetPath: 'assets/icons/account/bank_of_shanghai.svg',
+    color: AppColors.categoryGenericNeutral,
+    label: '上海银行',
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'china_development_bank',
+    assetPath: 'assets/icons/account/china_development_bank.svg',
+    color: AppColors.categoryGenericNeutral,
+    label: '国家开发银行',
   ),
   BusinessIconSpec.svg(
     iconKey: 'cash',
@@ -472,6 +508,12 @@ const businessIconSpecs = <BusinessIconSpec>[
     assetPath: 'assets/icons/account/huabei.svg',
     color: AppColors.categoryGenericNeutral,
     label: '花呗',
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'jiebei',
+    assetPath: 'assets/icons/account/jiebei.svg',
+    color: AppColors.categoryGenericNeutral,
+    label: '借呗',
   ),
   BusinessIconSpec.svg(
     iconKey: 'loan_in',
