@@ -180,8 +180,9 @@ Future<void> runCategoryDeleteFlow(
   WidgetRef ref, {
   required Account category,
 }) async {
-  final viewModel = ref.read(categoriesViewModelProvider.notifier);
-  final previewOutcome = await viewModel.previewDeletion(category.id);
+  final previewOutcome = await ref
+      .read(categoriesViewModelProvider.notifier)
+      .previewDeletion(category.id);
   if (!context.mounted) return;
 
   final CategoryDeletionPreview preview;
@@ -223,7 +224,9 @@ Future<void> runCategoryDeleteFlow(
       },
     );
     if (confirmed != true || !context.mounted) return;
-    final outcome = await viewModel.deleteCategory(category.id);
+    final outcome = await ref
+        .read(categoriesViewModelProvider.notifier)
+        .deleteCategory(category.id);
     if (!context.mounted) return;
     _showDeleteOutcome(context, outcome);
     return;
@@ -237,10 +240,9 @@ Future<void> runCategoryDeleteFlow(
         (sheetContext) => _MergeTargetSheet(preview: preview),
   );
   if (mergeTargetId == null || !context.mounted) return;
-  final outcome = await viewModel.deleteCategory(
-    category.id,
-    mergeTargetId: mergeTargetId,
-  );
+  final outcome = await ref
+      .read(categoriesViewModelProvider.notifier)
+      .deleteCategory(category.id, mergeTargetId: mergeTargetId);
   if (!context.mounted) return;
   _showDeleteOutcome(context, outcome);
 }

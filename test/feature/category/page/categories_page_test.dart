@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/app/provider.dart';
+import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/category/page/categories_page.dart';
@@ -12,9 +14,12 @@ void main() {
     required List<CategoryNode> expenseTree,
     List<Account> archivedExpense = const [],
     Map<String, Account> accountsById = const {},
+    CategoryAppService? categoryAppService,
   }) {
     return ProviderScope(
       overrides: [
+        if (categoryAppService != null)
+          categoryAppServiceProvider.overrideWith((ref) => categoryAppService),
         categoryTreeProvider(
           AccountType.expense,
         ).overrideWith((ref) => Stream.value(expenseTree)),
@@ -130,6 +135,38 @@ void main() {
     expect(find.text('移动到…'), findsOneWidget);
     expect(find.text('删除'), findsOneWidget);
   });
+
+  testWidgets('deletes a category after the user confirms the preview', (
+    tester,
+  ) async {
+    final food = _category('food', name: '餐饮');
+    final service = _FakeCategoryAppService(
+      preview: CategoryDeletionPreview(
+        root: CategoryDeletionPlanNode(category: food, entryCount: 0),
+        children: const [],
+        mounts: const [],
+      ),
+    );
+
+    await tester.pumpWidget(
+      buildPage(
+        expenseTree: [CategoryNode(account: food, children: const [])],
+        categoryAppService: service,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('更多操作').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除'));
+    await tester.pumpAndSettle();
+
+    final command = service.deleteCommands.single;
+    expect(command.id, 'food');
+    expect(command.mergeTargetId, isNull);
+  });
 }
 
 Account _category(
@@ -146,4 +183,29 @@ Account _category(
     balance: const Money(minorUnits: 0),
     archivedAt: archived ? DateTime(2026) : null,
   );
+}
+
+class _FakeCategoryAppService implements CategoryAppService {
+  _FakeCategoryAppService({required this.preview});
+
+  final CategoryDeletionPreview preview;
+  final deleteCommands = <DeleteCategoryCommand>[];
+
+  @override
+  Future<Account> createCategory(CreateCategoryCommand command) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteCategory(DeleteCategoryCommand command) async {
+    deleteCommands.add(command);
+  }
+
+  @override
+  Future<void> editCategory(EditCategoryCommand command) =>
+      throw UnimplementedError();
+
+  @override
+  Future<CategoryDeletionPreview> previewCategoryDeletion(
+    String categoryId,
+  ) async => preview;
 }
