@@ -24,7 +24,28 @@ class BillDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(billDetailViewModelProvider(billId));
     return Scaffold(
-      appBar: AppBar(title: const Text('账单详情')),
+      appBar: AppBar(
+        title: const Text('账单详情'),
+        actions: switch (detail) {
+          AsyncData(value: final bill?) => [
+            if (bill.summary.windowStartDate != null)
+              IconButton(
+                icon: const Icon(RemixIcons.edit_2_line),
+                tooltip: '编辑区间',
+                onPressed: () => _openEdit(context, ref),
+              ),
+            IconButton(
+              icon: const Icon(RemixIcons.delete_bin_line),
+              tooltip: '删除账单',
+              onPressed:
+                  bill.repayments.isEmpty
+                      ? () => _deleteBill(context, ref)
+                      : null,
+            ),
+          ],
+          _ => const [],
+        },
+      ),
       body: switch (detail) {
         AsyncData(value: final bill?) => _BillDetailContent(
           detail: bill,
@@ -63,6 +84,45 @@ class BillDetailPage extends ConsumerWidget {
     final changed = await context.push<bool>('/bills/$billId/installment');
     if (changed == true) {
       ref.read(billDetailViewModelProvider(billId).notifier).reload();
+    }
+  }
+
+  Future<void> _openEdit(BuildContext context, WidgetRef ref) async {
+    final changed = await context.push<bool>('/bills/$billId/edit');
+    if (changed == true) {
+      ref.read(billDetailViewModelProvider(billId).notifier).reload();
+    }
+  }
+
+  Future<void> _deleteBill(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('删除账单'),
+            content: const Text('将删除该账单及其全部明细。仅无还款记录的账单可以删除。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('删除'),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true) return;
+    final outcome =
+        await ref
+            .read(billDetailViewModelProvider(billId).notifier)
+            .deleteBill();
+    if (!context.mounted) return;
+    if (outcome case UiActionFailure<void>()) {
+      _showFailure(context, outcome, action: '删除');
+    } else {
+      context.pop(true);
     }
   }
 
@@ -241,16 +301,24 @@ class _SummarySurface extends StatelessWidget {
                         : colors.onSurface,
               ),
             ),
-            const SizedBox(height: AppSpacing.space10),
-            Text(
-              _dueText(summary),
-              style: styles.listSupporting.copyWith(
-                color:
-                    summary.overdueItemCount > 0
-                        ? colors.error
-                        : colors.onSurfaceVariant,
+            if (summary.overdueItemCount > 0) ...[
+              const SizedBox(height: AppSpacing.space10),
+              Text(
+                '${summary.overdueItemCount} 条逾期',
+                style: styles.listSupporting.copyWith(color: colors.error),
               ),
-            ),
+            ],
+            if (summary.windowStartDate != null) ...[
+              const SizedBox(height: AppSpacing.space10),
+              Text(
+                '起始日 ${_dateLabel(summary.windowStartDate!)} · '
+                '出账日 ${_dateLabel(summary.windowBillingDate!)} · '
+                '还款日 ${_dateLabel(summary.windowRepaymentDate!)}',
+                style: styles.listSupporting.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -501,13 +569,6 @@ class _StatusPill extends StatelessWidget {
 
 String _periodLabel(BillPeriod period) {
   return '${period.year}年${period.month.toString().padLeft(2, '0')}月账单';
-}
-
-String _dueText(BillSummaryReadModel summary) {
-  final date = summary.dueDate;
-  final due = date == null ? '无到期日' : '到期日 ${_dateLabel(date)}';
-  if (summary.overdueItemCount == 0) return due;
-  return '$due · ${summary.overdueItemCount} 条逾期';
 }
 
 String _dateLabel(DateTime date) {

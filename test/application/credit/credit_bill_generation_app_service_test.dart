@@ -53,7 +53,7 @@ void main() {
         await fixture.generation.generateDueBills(now: DateTime(2026, 6, 4));
 
         var bills = await fixture.billRepository.listBillsByAccount(account.id);
-        expect(bills, hasLength(2));
+        expect(bills, hasLength(1));
         var june = bills.singleWhere(
           (bill) => bill.period == BillPeriod.fromInt(202606),
         );
@@ -151,6 +151,7 @@ void main() {
           occurredAt: DateTime(2026, 6, 1),
         );
 
+        await fixture.generation.generateDueBills(now: DateTime(2026, 6, 4));
         await fixture.generation.generateDueBills(now: DateTime(2026, 6, 5));
         final june = (await fixture.billRepository.listBillsByAccount(
           account.id,
@@ -207,7 +208,7 @@ void main() {
           occurredAt: DateTime(2026, 6, 1),
         );
 
-        await fixture.generation.generateDueBills(now: DateTime(2026, 6, 5));
+        await fixture.generation.generateDueBills(now: DateTime(2026, 6, 4));
         await fixture.generation.generateDueBills(now: DateTime(2026, 6, 5));
 
         final bills = await fixture.billRepository.listBillsByAccount(
@@ -244,6 +245,7 @@ void main() {
           amount: const Money(minorUnits: 5000),
           occurredAt: DateTime(2026, 6, 1),
         );
+        await fixture.generation.generateDueBills(now: DateTime(2026, 6, 4));
         await fixture.generation.generateDueBills(now: DateTime(2026, 6, 5));
         final june = (await fixture.billRepository.listBillsByAccount(
           account.id,
@@ -653,6 +655,60 @@ void main() {
         InstallmentContractStatus.settled,
       );
     });
+
+    test('deletes a credit bill without repayment records', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      final account = await fixture.createCreditAccount();
+      await fixture.generation.generateDueBills(now: DateTime(2026, 6, 4));
+
+      final bills = await fixture.billRepository.listBillsByAccount(account.id);
+      final june = bills.singleWhere(
+        (bill) => bill.period == BillPeriod.fromInt(202606),
+      );
+      await fixture.generation.deleteBill(june.id);
+
+      expect(await fixture.billRepository.findBill(june.id), isNull);
+      final remaining = await fixture.billRepository.listBillsByAccount(
+        account.id,
+      );
+      expect(remaining.any((bill) => bill.id == june.id), isFalse);
+    });
+
+    test(
+      'updates credit bill window and refreshes consumption projection',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        final account = await fixture.createCreditAccount();
+        await fixture.createExpenseCategory();
+        await fixture.postExpense(
+          accountId: account.id,
+          amount: const Money(minorUnits: 10000),
+          occurredAt: DateTime(2026, 6, 15),
+        );
+        await fixture.generation.generateDueBills(now: DateTime(2026, 6, 4));
+        final june = (await fixture.billRepository.listBillsByAccount(
+          account.id,
+        )).singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
+        final originalRepayment = june.window!.repaymentDate;
+
+        await fixture.generation.updateBillWindow(
+          billId: june.id,
+          startDate: DateTime(2026, 6, 10),
+          billingDate: DateTime(2026, 7, 10),
+        );
+
+        final updated = (await fixture.billRepository.findBill(june.id))!;
+        expect(updated.window!.startDate, DateTime(2026, 6, 10));
+        expect(updated.window!.billingDate, DateTime(2026, 7, 10));
+        expect(updated.window!.repaymentDate, originalRepayment);
+        expect(
+          updated.items.single.expectedPrincipal,
+          const Money(minorUnits: 10000),
+        );
+      },
+    );
   });
 }
 

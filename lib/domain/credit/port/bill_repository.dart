@@ -14,5 +14,7 @@ abstract interface class BillRepository {
 
   Future<void> replaceBillItems(String billId, List<BillItem> items);
 
+  Future<void> deleteBill(String billId);
+
   Future<bool> hasUnsettledItems(String accountId);
 }

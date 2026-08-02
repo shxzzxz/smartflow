@@ -37,6 +37,25 @@ class BillDetailViewModel extends _$BillDetailViewModel {
     }
   }
 
+  Future<UiActionOutcome<void>> deleteBill() async {
+    final detail = state.asData?.value;
+    if (detail == null) return _notLoaded();
+    try {
+      await ref.read(creditBillGenerationAppServiceProvider).deleteBill(billId);
+      _invalidateBillDependencies(detail.summary.accountId);
+      ref
+        ..invalidate(
+          transactionListProvider(accountId: detail.summary.accountId),
+        )
+        ..invalidate(accountsByIdProvider);
+      return const UiActionOutcome.success(null);
+    } on AppException catch (exception) {
+      return UiActionOutcome.failure(UiError.fromException(exception));
+    } on Exception {
+      return const UiActionOutcome.failure(UiError.unknown());
+    }
+  }
+
   Future<UiActionOutcome<void>> deleteRepayment(String repaymentId) async {
     final detail = state.asData?.value;
     if (detail == null) return _notLoaded();

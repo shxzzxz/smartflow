@@ -16,6 +16,7 @@ import '../feature/home/page/home_page.dart';
 import '../feature/credit/page/installment_contract_edit_page.dart';
 import '../feature/credit/page/bill_conversion_installment_form_page.dart';
 import '../feature/credit/page/bill_detail_page.dart';
+import '../feature/credit/page/bill_edit_page.dart';
 import '../feature/credit/page/bill_repayment_form_page.dart';
 import '../feature/credit/page/installment_detail_page.dart';
 import '../feature/credit/page/installment_form_page.dart';
@@ -253,6 +254,12 @@ final appRouter = GoRouter(
       builder:
           (context, state) =>
               BillDetailPage(billId: state.pathParameters['billId']!),
+    ),
+    GoRoute(
+      path: '/bills/:billId/edit',
+      builder:
+          (context, state) =>
+              BillEditPage(billId: state.pathParameters['billId']!),
     ),
     GoRoute(
       path: '/bills/:billId/repay',

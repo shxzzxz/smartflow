@@ -355,6 +355,9 @@ class _FakeBillRepository implements BillRepository {
 
   @override
   Future<void> updateBill(Bill bill) async {}
+
+  @override
+  Future<void> deleteBill(String billId) async {}
 }
 
 class _FakeInstallmentRepository implements InstallmentRepository {

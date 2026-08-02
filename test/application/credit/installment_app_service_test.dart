@@ -1241,6 +1241,11 @@ class _FakeBillRepository implements BillRepository {
   Future<void> updateBill(Bill bill) async {
     bills[bill.id] = bill;
   }
+
+  @override
+  Future<void> deleteBill(String billId) async {
+    bills.remove(billId);
+  }
 }
 
 class _ImmediateRunner implements TransactionRunner {

@@ -89,6 +89,16 @@ class DriftBillRepository implements BillRepository {
   }
 
   @override
+  Future<void> deleteBill(String billId) async {
+    await _database.transaction(() async {
+      await (_database.delete(_database.billItems)
+        ..where((item) => item.billId.equals(billId))).go();
+      await (_database.delete(_database.bills)
+        ..where((bill) => bill.id.equals(billId))).go();
+    });
+  }
+
+  @override
   Future<bool> hasUnsettledItems(String accountId) async {
     final countExpr = _database.billItems.id.count();
     final row =

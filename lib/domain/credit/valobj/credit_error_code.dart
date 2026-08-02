@@ -44,6 +44,18 @@ enum CreditErrorCode implements AppErrorCode {
     code: 'credit.bill.invalid_command',
     defaultMessage: '账单还款参数不完整或不合法。',
   ),
+  billHasRepayments(
+    code: 'credit.bill.has_repayments',
+    defaultMessage: '账单存在还款记录，无法删除。',
+  ),
+  billWindowInvalid(
+    code: 'credit.bill.window_invalid',
+    defaultMessage: '账单区间不合法，起始日必须早于出账日。',
+  ),
+  billWindowOverlap(
+    code: 'credit.bill.window_overlap',
+    defaultMessage: '账单区间与相邻账单重叠，请调整起始日或出账日。',
+  ),
   scheduleNotFound(
     code: 'credit.schedule.not_found',
     defaultMessage: '还款计划不存在。',

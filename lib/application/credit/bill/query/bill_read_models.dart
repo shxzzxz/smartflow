@@ -20,6 +20,9 @@ class BillSummaryReadModel {
     required this.itemCount,
     required this.overdueItemCount,
     this.dueDate,
+    this.windowStartDate,
+    this.windowBillingDate,
+    this.windowRepaymentDate,
   });
 
   final String id;
@@ -27,6 +30,11 @@ class BillSummaryReadModel {
   final BillPeriod period;
   final BillStatus status;
   final DateTime? dueDate;
+
+  /// 账单窗口：起始日 / 出账日 / 还款日（信用账户账单才有）。
+  final DateTime? windowStartDate;
+  final DateTime? windowBillingDate;
+  final DateTime? windowRepaymentDate;
   final Money expectedPrincipal;
   final Money expectedInterest;
   final Money expectedFee;

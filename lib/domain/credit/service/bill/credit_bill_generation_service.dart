@@ -18,6 +18,7 @@ import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
+import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 class CreditBillGenerationResult {
   const CreditBillGenerationResult({required this.scheduleStatuses});
@@ -161,6 +162,99 @@ class CreditBillGenerationService {
     return result;
   }
 
+  /// 删除账单：仅允许没有任何还款记录的账单。
+  ///
+  /// 账单明细是来源投影，删除账单不会影响合同、还款计划或账务交易。
+  Future<void> deleteBill(String billId) async {
+    final bill = await _bills.findBill(billId);
+    if (bill == null) {
+      throw BusinessException(CreditErrorCode.billNotFound);
+    }
+    final repayments = await _repayments.listByTarget(
+      RepaymentTargetType.bill,
+      billId,
+    );
+    if (repayments.isNotEmpty) {
+      throw BusinessException(CreditErrorCode.billHasRepayments);
+    }
+    await _bills.deleteBill(billId);
+  }
+
+  /// 调整账单窗口（起始日 / 出账日），区间不得与上一期、下一期账单重叠。
+  ///
+  /// 还款日保持不变；调整后立即按新窗口重建账单明细投影。
+  Future<void> updateBillWindow({
+    required String billId,
+    required DateTime startDate,
+    required DateTime billingDate,
+  }) async {
+    final bill = await _bills.findBill(billId);
+    if (bill == null) {
+      throw BusinessException(CreditErrorCode.billNotFound);
+    }
+    final currentWindow = bill.window;
+    if (currentWindow == null) {
+      throw BusinessException(
+        CreditErrorCode.billInvalidCommand,
+        message: '仅信用账户账单支持调整区间。',
+      );
+    }
+    await _validateRescheduleWindow(
+      startDate: startDate,
+      billingDate: billingDate,
+      accountId: bill.accountId,
+      period: bill.period,
+    );
+    bill.window = BillWindow(
+      period: bill.period,
+      startDate: startDate,
+      billingDate: billingDate,
+      repaymentDate: currentWindow.repaymentDate,
+    );
+    await _bills.updateBill(bill);
+    await _refreshBill(bill);
+  }
+
+  /// 校验新窗口不早于上一期出账日、不晚于下一期起始日，且自身区间合法。
+  Future<void> _validateRescheduleWindow({
+    required DateTime startDate,
+    required DateTime billingDate,
+    required String accountId,
+    required BillPeriod period,
+  }) async {
+    if (!startDate.isBefore(billingDate)) {
+      throw BusinessException(
+        CreditErrorCode.billWindowInvalid,
+        message: '起始日必须早于出账日。',
+      );
+    }
+    final previous = await _bills.findByAccountAndPeriod(
+      accountId,
+      period.previous(),
+    );
+    final next = await _bills.findByAccountAndPeriod(accountId, period.next());
+    final previousWindow = previous?.window;
+    final nextWindow = next?.window;
+    if (previousWindow != null &&
+        startDate.isBefore(previousWindow.billingDate)) {
+      throw BusinessException(
+        CreditErrorCode.billWindowOverlap,
+        message: '起始日不能早于上一期账单的出账日，账单区间不可重叠。',
+      );
+    }
+    if (nextWindow != null && billingDate.isAfter(nextWindow.startDate)) {
+      throw BusinessException(
+        CreditErrorCode.billWindowOverlap,
+        message: '出账日不能晚于下一期账单的起始日，账单区间不可重叠。',
+      );
+    }
+  }
+
+  /// 信用账户周期驱动生成：**不补建**历史账单。
+  ///
+  /// 出账日（`creditPeriodForDate` 落入下一周期）时：上一期账单存在且 OPEN 则
+  /// 冻结为 BILLED；上一期账单不存在时不补建，仅保证当前 OPEN 账单在位。
+  /// 窗口链式衔接：上一期存在时起始日 = 上一张账单出账日，否则按账户出账参数计算。
   Future<CreditBillGenerationResult> _generateCreditBills(
     CreditLiabilityAccount account,
     DateTime now,
@@ -168,26 +262,11 @@ class CreditBillGenerationService {
     var result = CreditBillGenerationResult.empty;
     final currentPeriod = account.creditPeriodForDate(now);
     final billedPeriod = currentPeriod.previous();
-    var billed = await _bills.findByAccountAndPeriod(
+    final billed = await _bills.findByAccountAndPeriod(
       account.accountId,
       billedPeriod,
     );
-    if (billed == null) {
-      final prior = await _bills.findByAccountAndPeriod(
-        account.accountId,
-        billedPeriod.previous(),
-      );
-      billed = await _saveEmptyBill(
-        accountId: account.accountId,
-        period: billedPeriod,
-        status: BillStatus.billed,
-        window: account.nextCreditBillWindow(
-          billedPeriod,
-          previousWindow: prior?.window,
-        ),
-      );
-      result = result.merge(await _refreshBill(billed));
-    } else if (billed.status == BillStatus.open) {
+    if (billed != null && billed.status == BillStatus.open) {
       result = result.merge(await _refreshBill(billed, freezeOpenBill: true));
     }
 
@@ -202,7 +281,7 @@ class CreditBillGenerationService {
       status: BillStatus.open,
       window: account.nextCreditBillWindow(
         currentPeriod,
-        previousWindow: billed.window,
+        previousWindow: billed?.window,
       ),
     );
     return result.merge(await _refreshBill(opened));

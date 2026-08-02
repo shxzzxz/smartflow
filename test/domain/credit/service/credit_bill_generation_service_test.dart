@@ -13,7 +13,9 @@ import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/service/bill/credit_bill_generation_service.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
+import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
@@ -272,6 +274,231 @@ void main() {
         expect(july.window!.repaymentDate, DateTime(2026, 7, 28));
       },
     );
+
+    test(
+      'on the billing day freezes the previous open bill and opens the next',
+      () async {
+        final fixture = _Fixture();
+        final account = fixture.creditAccount();
+        fixture.creditAccounts.put(account);
+        fixture.billSources.netConsumptionMinorValue = 7000;
+
+        await fixture.service.generateDueBillsForAccount(
+          account: account,
+          now: DateTime(2026, 6, 4),
+        );
+        final june = fixture.bills
+            .byAccount(account.accountId)
+            .singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
+        expect(june.status, BillStatus.open);
+
+        await fixture.service.generateDueBillsForAccount(
+          account: account,
+          now: DateTime(2026, 6, 5),
+        );
+
+        final syncedJune = fixture.bills
+            .byAccount(account.accountId)
+            .singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
+        final july = fixture.bills
+            .byAccount(account.accountId)
+            .singleWhere((bill) => bill.period == BillPeriod.fromInt(202607));
+        expect(syncedJune.status, BillStatus.billed);
+        expect(july.status, BillStatus.open);
+        expect(july.window!.startDate, syncedJune.window!.billingDate);
+      },
+    );
+
+    test('does not backfill a missing previous credit bill', () async {
+      final fixture = _Fixture();
+      final account = fixture.creditAccount();
+      fixture.creditAccounts.put(account);
+
+      // 首次生成恰逢出账日：上一期（6 月）不存在，不补建，只创建当前 OPEN 账单。
+      await fixture.service.generateDueBillsForAccount(
+        account: account,
+        now: DateTime(2026, 6, 5),
+      );
+
+      final bills = fixture.bills.byAccount(account.accountId);
+      expect(bills.map((bill) => bill.period).toList(), [
+        BillPeriod.fromInt(202607),
+      ]);
+      expect(bills.single.status, BillStatus.open);
+    });
+
+    test('deletes a bill without repayment records', () async {
+      final fixture = _Fixture();
+      final account = fixture.creditAccount();
+      fixture.creditAccounts.put(account);
+      await fixture.service.generateDueBillsForAccount(
+        account: account,
+        now: DateTime(2026, 6, 4),
+      );
+      final june = fixture.bills
+          .byAccount(account.accountId)
+          .singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
+
+      await fixture.service.deleteBill(june.id);
+
+      expect(await fixture.bills.findBill(june.id), isNull);
+    });
+
+    test('rejects deleting a bill that has repayment records', () async {
+      final fixture = _Fixture();
+      final account = fixture.creditAccount();
+      fixture.creditAccounts.put(account);
+      await fixture.service.generateDueBillsForAccount(
+        account: account,
+        now: DateTime(2026, 6, 4),
+      );
+      final june = fixture.bills
+          .byAccount(account.accountId)
+          .singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
+      await fixture.repayments.saveRepayment(
+        Repayment(
+          id: 'repayment',
+          repaymentType: RepaymentType.bill,
+          targetType: RepaymentTargetType.bill,
+          targetId: june.id,
+          items: [
+            RepaymentItem(
+              id: 'repayment-item',
+              repaymentId: 'repayment',
+              billItemId: june.items.first.id,
+              allocated: RepaymentAmountBreakdown(
+                principal: const Money(minorUnits: 1),
+                interest: Money.zero(),
+                fee: Money.zero(),
+                discount: Money.zero(),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      await expectLater(
+        fixture.service.deleteBill(june.id),
+        throwsA(
+          isA<BusinessException>().having(
+            (e) => e.code,
+            'code',
+            CreditErrorCode.billHasRepayments.code,
+          ),
+        ),
+      );
+    });
+
+    test(
+      'updates bill window and refreshes the consumption projection',
+      () async {
+        final fixture = _Fixture();
+        final account = fixture.creditAccount();
+        fixture.creditAccounts.put(account);
+        fixture.billSources.netConsumptionMinorValue = 5000;
+        await fixture.service.generateDueBillsForAccount(
+          account: account,
+          now: DateTime(2026, 6, 4),
+        );
+        final june = fixture.bills
+            .byAccount(account.accountId)
+            .singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
+        final originalRepayment = june.window!.repaymentDate;
+
+        await fixture.service.updateBillWindow(
+          billId: june.id,
+          startDate: DateTime(2026, 6, 10),
+          billingDate: DateTime(2026, 7, 10),
+        );
+
+        final updated = (await fixture.bills.findBill(june.id))!;
+        expect(updated.window!.startDate, DateTime(2026, 6, 10));
+        expect(updated.window!.billingDate, DateTime(2026, 7, 10));
+        expect(updated.window!.repaymentDate, originalRepayment);
+        expect(
+          updated.items.single.expectedPrincipal,
+          const Money(minorUnits: 5000),
+        );
+      },
+    );
+
+    test('rejects an invalid or overlapping bill window', () async {
+      final fixture = _Fixture();
+      final account = fixture.creditAccount();
+      fixture.creditAccounts.put(account);
+      // 预置上一期账单，使与上一期的重叠校验有比对对象。
+      final mayWindow = account.nextCreditBillWindow(
+        BillPeriod.fromInt(202605),
+      );
+      await fixture.bills.saveBill(
+        Bill(
+          id: 'may-bill',
+          accountId: account.accountId,
+          period: BillPeriod.fromInt(202605),
+          window: mayWindow,
+          status: BillStatus.billed,
+          items: const [],
+        ),
+      );
+      await fixture.service.generateDueBillsForAccount(
+        account: account,
+        now: DateTime(2026, 6, 4),
+      );
+      final june = fixture.bills
+          .byAccount(account.accountId)
+          .singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
+
+      await expectLater(
+        fixture.service.updateBillWindow(
+          billId: june.id,
+          startDate: DateTime(2026, 6, 10),
+          billingDate: DateTime(2026, 6, 5),
+        ),
+        throwsA(
+          isA<BusinessException>().having(
+            (e) => e.code,
+            'code',
+            CreditErrorCode.billWindowInvalid.code,
+          ),
+        ),
+      );
+
+      // 起始日早于上一期出账日（5 月账单出账日 5-05）。
+      await expectLater(
+        fixture.service.updateBillWindow(
+          billId: june.id,
+          startDate: DateTime(2026, 5, 1),
+          billingDate: DateTime(2026, 7, 1),
+        ),
+        throwsA(
+          isA<BusinessException>().having(
+            (e) => e.code,
+            'code',
+            CreditErrorCode.billWindowOverlap.code,
+          ),
+        ),
+      );
+
+      // 出账日晚于下一期起始日。
+      await fixture.service.generateDueBillsForAccount(
+        account: account,
+        now: DateTime(2026, 6, 5),
+      );
+      await expectLater(
+        fixture.service.updateBillWindow(
+          billId: june.id,
+          startDate: DateTime(2026, 5, 6),
+          billingDate: DateTime(2026, 7, 10),
+        ),
+        throwsA(
+          isA<BusinessException>().having(
+            (e) => e.code,
+            'code',
+            CreditErrorCode.billWindowOverlap.code,
+          ),
+        ),
+      );
+    });
   });
 }
 
@@ -463,6 +690,11 @@ class _FakeBillRepository implements BillRepository {
   @override
   Future<void> updateBill(Bill bill) async {
     _bills[bill.id] = bill;
+  }
+
+  @override
+  Future<void> deleteBill(String billId) async {
+    _bills.remove(billId);
   }
 }
 

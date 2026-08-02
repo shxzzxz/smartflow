@@ -30,6 +30,16 @@ abstract interface class CreditBillGenerationAppService {
     required String accountId,
     required DateTime now,
   });
+
+  /// 删除无还款记录的账单。
+  Future<void> deleteBill(String billId);
+
+  /// 调整账单起始日 / 出账日；区间不得与相邻账单重叠。
+  Future<void> updateBillWindow({
+    required String billId,
+    required DateTime startDate,
+    required DateTime billingDate,
+  });
 }
 
 class CreditBillGenerationAppServiceImpl
@@ -125,6 +135,28 @@ class CreditBillGenerationAppServiceImpl
       await _generation.refreshDisplayedBillsForAccount(
         account: account,
         now: now,
+      );
+    });
+  }
+
+  @override
+  Future<void> deleteBill(String billId) {
+    return _runner.run<void>(() async {
+      await _generation.deleteBill(billId);
+    });
+  }
+
+  @override
+  Future<void> updateBillWindow({
+    required String billId,
+    required DateTime startDate,
+    required DateTime billingDate,
+  }) {
+    return _runner.run<void>(() async {
+      await _generation.updateBillWindow(
+        billId: billId,
+        startDate: startDate,
+        billingDate: billingDate,
       );
     });
   }
