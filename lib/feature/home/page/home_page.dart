@@ -46,6 +46,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             Expanded(
               child: HomePullToCreate(
                 onTrigger: _openNewTransaction,
+                triggerExtent: settings.pullToCreateSensitivity.triggerExtent,
                 child: switch (content) {
                   HomeContentLoaded(:final summary, :final groups) =>
                     _HomeContent(

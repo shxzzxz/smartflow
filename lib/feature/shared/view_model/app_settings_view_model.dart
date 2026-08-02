@@ -20,6 +20,12 @@ class AppSettingsViewModel extends _$AppSettingsViewModel {
     return _save((settings) => settings.copyWith(showBottomNavLabels: value));
   }
 
+  Future<void> setPullToCreateSensitivity(PullToCreateSensitivity value) {
+    return _save(
+      (settings) => settings.copyWith(pullToCreateSensitivity: value),
+    );
+  }
+
   Future<void> _save(AppSettings Function(AppSettings settings) change) async {
     final next = change(state.value ?? const AppSettings());
     state = AsyncData(next);

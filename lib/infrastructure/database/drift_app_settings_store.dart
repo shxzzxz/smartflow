@@ -8,6 +8,8 @@ class DriftAppSettingsStore implements AppSettingsStore {
 
   static const _showAddTransactionFabKey = 'settings.show_add_transaction_fab';
   static const _showBottomNavLabelsKey = 'settings.show_bottom_nav_labels';
+  static const _pullToCreateSensitivityKey =
+      'settings.pull_to_create_sensitivity';
 
   final AppDatabase _database;
 
@@ -18,6 +20,7 @@ class DriftAppSettingsStore implements AppSettingsStore {
           (table) => table.key.isIn(const [
             _showAddTransactionFabKey,
             _showBottomNavLabelsKey,
+            _pullToCreateSensitivityKey,
           ]),
         )).get();
     final values = {for (final row in rows) row.key: row.value};
@@ -29,6 +32,11 @@ class DriftAppSettingsStore implements AppSettingsStore {
       showBottomNavLabels:
           _parseBool(values[_showBottomNavLabelsKey]) ??
           defaults.showBottomNavLabels,
+      pullToCreateSensitivity:
+          PullToCreateSensitivity.fromStorageValue(
+            values[_pullToCreateSensitivityKey],
+          ) ??
+          defaults.pullToCreateSensitivity,
     );
   }
 
@@ -38,11 +46,15 @@ class DriftAppSettingsStore implements AppSettingsStore {
       batch.insertAllOnConflictUpdate(_database.appMetadata, [
         _entry(_showAddTransactionFabKey, settings.showAddTransactionFab),
         _entry(_showBottomNavLabelsKey, settings.showBottomNavLabels),
+        _entry(
+          _pullToCreateSensitivityKey,
+          settings.pullToCreateSensitivity.storageValue,
+        ),
       ]);
     });
   }
 
-  AppMetadataCompanion _entry(String key, bool value) {
+  AppMetadataCompanion _entry(String key, Object value) {
     return AppMetadataCompanion.insert(
       key: key,
       value: '$value',

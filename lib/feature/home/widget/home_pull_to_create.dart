@@ -10,19 +10,19 @@ class HomePullToCreate extends StatefulWidget {
   const HomePullToCreate({
     required this.onTrigger,
     required this.child,
+    required this.triggerExtent,
     super.key,
   });
 
   final VoidCallback onTrigger;
   final Widget child;
+  final double triggerExtent;
 
   @override
   State<HomePullToCreate> createState() => _HomePullToCreateState();
 }
 
 class _HomePullToCreateState extends State<HomePullToCreate> {
-  static const _triggerExtent = 72.0;
-
   final _pulledExtent = ValueNotifier<double>(0);
   bool _dragging = false;
 
@@ -54,7 +54,8 @@ class _HomePullToCreateState extends State<HomePullToCreate> {
   }
 
   void _settleDrag() {
-    final shouldTrigger = _dragging && _pulledExtent.value >= _triggerExtent;
+    final shouldTrigger =
+        _dragging && _pulledExtent.value >= widget.triggerExtent;
     _dragging = false;
     _pulledExtent.value = 0;
     if (shouldTrigger) {
@@ -78,8 +79,8 @@ class _HomePullToCreateState extends State<HomePullToCreate> {
               }
               return _PullHint(
                 extent: pulled,
-                progress: (pulled / _triggerExtent).clamp(0.0, 1.0),
-                armed: pulled >= _triggerExtent,
+                progress: (pulled / widget.triggerExtent).clamp(0.0, 1.0),
+                armed: pulled >= widget.triggerExtent,
               );
             },
           ),
