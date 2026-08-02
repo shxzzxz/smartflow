@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
@@ -15,6 +16,8 @@ import 'transaction_detail_state.dart';
 import 'transaction_detail_state_builder.dart';
 
 part 'transaction_detail_view_model.g.dart';
+
+final _logger = Logger('feature.transaction.detail');
 
 @riverpod
 class TransactionDetailViewModel extends _$TransactionDetailViewModel {
@@ -207,7 +210,12 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
       return await body(loaded);
     } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Transaction detail action failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const UiActionOutcome.failure(UiError.unknown());
     } finally {
       _setSubmitting(false);

@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +14,8 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
+
+final _logger = Logger('feature.profile.software_version');
 
 class SoftwareVersionPage extends ConsumerStatefulWidget {
   const SoftwareVersionPage({super.key});
@@ -59,7 +62,8 @@ class _SoftwareVersionPageState extends ConsumerState<SoftwareVersionPage> {
         return;
       }
       setState(() => _versionInfo = versionInfo);
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.warning('Failed to load app version info.', error, stackTrace);
       if (!mounted) {
         return;
       }
@@ -81,7 +85,8 @@ class _SoftwareVersionPageState extends ConsumerState<SoftwareVersionPage> {
         return;
       }
       setState(() => _updateChannel = AppUpdateChannel.fromCode(code));
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.warning('Failed to load update channel.', error, stackTrace);
       // Keep the compile-time default channel when local metadata is unreadable.
     }
   }
@@ -527,6 +532,9 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
         Navigator.of(context).pop();
       }
     } on PlatformException catch (error) {
+      if (downloadCompleted) {
+        _logger.warning('APK install failed.', error);
+      }
       if (!mounted) {
         return;
       }
@@ -537,7 +545,12 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(message)));
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.warning(
+        'APK download flow failed unexpectedly.',
+        error,
+        stackTrace,
+      );
       if (!mounted) {
         return;
       }

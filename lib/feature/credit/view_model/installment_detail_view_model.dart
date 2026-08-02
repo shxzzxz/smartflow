@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
@@ -9,6 +10,8 @@ import '../provider/installment_query_providers.dart';
 import '../provider/credit_account_query_providers.dart';
 
 part 'installment_detail_view_model.g.dart';
+
+final _logger = Logger('feature.credit.installment_detail');
 
 @riverpod
 class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
@@ -52,7 +55,12 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
       return const UiActionOutcome.success(null);
     } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Contract delete failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const UiActionOutcome.failure(UiError.unknown());
     }
   }
@@ -70,7 +78,12 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
       return const UiActionOutcome.success(null);
     } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Contract repayment revert failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const UiActionOutcome.failure(UiError.unknown());
     }
   }
@@ -91,7 +104,12 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
       return const UiActionOutcome.success(null);
     } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Schedule skip failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const UiActionOutcome.failure(UiError.unknown());
     }
   }
@@ -112,7 +130,12 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
       return const UiActionOutcome.success(null);
     } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Schedule restore failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const UiActionOutcome.failure(UiError.unknown());
     }
   }
@@ -138,7 +161,12 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
       return UiActionOutcome.success(result);
     } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Contract status validation failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const UiActionOutcome.failure(UiError.unknown());
     }
   }

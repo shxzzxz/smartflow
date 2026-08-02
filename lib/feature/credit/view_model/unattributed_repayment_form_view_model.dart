@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
@@ -14,6 +15,8 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/credit_account_query_providers.dart';
 
 part 'unattributed_repayment_form_view_model.g.dart';
+
+final _logger = Logger('feature.credit.unattributed_repayment_form');
 
 @riverpod
 class UnattributedRepaymentFormViewModel
@@ -120,7 +123,12 @@ class UnattributedRepaymentFormViewModel
       return const SubmitOutcome.success();
     } on AppException catch (exception) {
       return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Unattributed repayment form submit failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const SubmitOutcome.failure(UiError.unknown());
     } finally {
       _update((state) => state.copyWith(submitting: false));

@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
@@ -14,6 +15,8 @@ import 'account_view.dart';
 import 'account_views_provider.dart';
 
 part 'account_form_view_model.g.dart';
+
+final _logger = Logger('feature.account.form');
 
 @riverpod
 class AccountFormViewModel extends _$AccountFormViewModel {
@@ -105,7 +108,12 @@ class AccountFormViewModel extends _$AccountFormViewModel {
       return const SubmitOutcome.success();
     } on AppException catch (exception) {
       return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Account form submit failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const SubmitOutcome.failure(UiError.unknown());
     } finally {
       _update((current) => current.copyWith(submitting: false));

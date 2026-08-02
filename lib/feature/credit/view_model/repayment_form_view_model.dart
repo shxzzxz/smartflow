@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
@@ -14,6 +15,8 @@ import '../provider/installment_query_providers.dart';
 import '../provider/credit_account_query_providers.dart';
 
 part 'repayment_form_view_model.g.dart';
+
+final _logger = Logger('feature.credit.repayment_form');
 
 @riverpod
 class RepaymentFormViewModel extends _$RepaymentFormViewModel {
@@ -179,7 +182,12 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
       return const SubmitOutcome.success();
     } on AppException catch (exception) {
       return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Liability repayment form submit failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const SubmitOutcome.failure(UiError.unknown());
     } finally {
       _update((state) => state.copyWith(submitting: false));

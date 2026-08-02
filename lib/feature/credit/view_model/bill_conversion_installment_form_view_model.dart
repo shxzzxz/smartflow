@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
@@ -14,6 +15,8 @@ import '../presentation/bill_repayment_allocation.dart';
 import 'bill_repayment_command_mapping.dart';
 
 part 'bill_conversion_installment_form_view_model.g.dart';
+
+final _logger = Logger('feature.credit.bill_conversion_form');
 
 @riverpod
 class BillConversionInstallmentFormViewModel
@@ -149,7 +152,12 @@ class BillConversionInstallmentFormViewModel
       return UiActionOutcome.success(result.contractId!);
     } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Bill installment conversion submit failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const UiActionOutcome.failure(UiError.unknown());
     } finally {
       final latest = _loadedOrNull();

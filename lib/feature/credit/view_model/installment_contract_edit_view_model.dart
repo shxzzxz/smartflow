@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
@@ -12,6 +13,8 @@ import '../provider/credit_account_query_providers.dart';
 import 'installment_contract_edit_state.dart';
 
 part 'installment_contract_edit_view_model.g.dart';
+
+final _logger = Logger('feature.credit.installment_contract_edit');
 
 @riverpod
 class InstallmentContractEditViewModel
@@ -151,7 +154,12 @@ class InstallmentContractEditViewModel
       return const UiActionOutcome.success(null);
     } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Contract schedule recalculation failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const UiActionOutcome.failure(UiError.unknown());
     }
   }
@@ -275,7 +283,12 @@ class InstallmentContractEditViewModel
       return const SubmitOutcome.success();
     } on AppException catch (exception) {
       return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Contract edit submit failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const SubmitOutcome.failure(UiError.unknown());
     } finally {
       final current = _loadedOrNull();

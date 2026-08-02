@@ -11,6 +11,8 @@ List<AppLogEntry> filterLogEntries(
 }) {
   final minLevel = switch (levelFilter) {
     LogLevelFilter.all => Level.ALL,
+    LogLevelFilter.fine => Level.FINE,
+    LogLevelFilter.info => Level.INFO,
     LogLevelFilter.warning => Level.WARNING,
     LogLevelFilter.severe => Level.SEVERE,
   };
@@ -45,8 +47,10 @@ String logEntryDetailTimeLabel(DateTime time) {
 String logEntryCopyText(AppLogEntry entry) {
   final buffer =
       StringBuffer()
-        ..writeln('${logEntryDetailTimeLabel(entry.time)} '
-            '[${entry.level.name}] ${entry.loggerName}')
+        ..writeln(
+          '${logEntryDetailTimeLabel(entry.time)} '
+          '[${entry.level.name}] ${entry.loggerName}',
+        )
         ..writeln(entry.message);
   if (entry.error != null) {
     buffer.writeln(entry.error);
