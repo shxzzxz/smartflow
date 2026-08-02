@@ -79,6 +79,8 @@ class LogViewerPage extends ConsumerWidget {
                     child: AppSegmentedControl<LogLevelFilter>(
                       segments: const [
                         AppSegment(value: LogLevelFilter.all, label: '全部'),
+                        AppSegment(value: LogLevelFilter.fine, label: '调试'),
+                        AppSegment(value: LogLevelFilter.info, label: '信息'),
                         AppSegment(value: LogLevelFilter.warning, label: '警告'),
                         AppSegment(value: LogLevelFilter.severe, label: '错误'),
                       ],

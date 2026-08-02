@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -8,6 +9,8 @@ import '../../../core/error/app_exception.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 
 part 'data_cleanup_view_model.g.dart';
+
+final _logger = Logger('feature.profile.data_cleanup');
 
 class DataCleanupState {
   const DataCleanupState({
@@ -93,7 +96,10 @@ class DataCleanupViewModel extends _$DataCleanupViewModel {
   }
 
   /// [from] 与 [untilInclusive] 都是日历日；范围换算为排他端点存储。
-  void setTimeRange({required DateTime from, required DateTime untilInclusive}) {
+  void setTimeRange({
+    required DateTime from,
+    required DateTime untilInclusive,
+  }) {
     final start = DateTime(from.year, from.month, from.day);
     final untilExclusive = DateTime(
       untilInclusive.year,
@@ -132,7 +138,12 @@ class DataCleanupViewModel extends _$DataCleanupViewModel {
       return UiActionOutcome.success(result);
     } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Transaction cleanup failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const UiActionOutcome.failure(UiError.unknown());
     } finally {
       state = state.copyWith(submitting: false);

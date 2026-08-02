@@ -11,9 +11,7 @@ final _logger = Logger('infra.database');
 MigrationStrategy buildMigrationStrategy(AppDatabase database) {
   return MigrationStrategy(
     onCreate: (migrator) async {
-      _logger.info(
-        'Creating database schema at v${database.schemaVersion}.',
-      );
+      _logger.info('Creating database schema at v${database.schemaVersion}.');
       await _createCurrentSchema(database, migrator);
     },
     beforeOpen: (details) async {
@@ -23,7 +21,7 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
           'v${details.versionBefore} -> v${details.versionNow}.',
         );
       } else {
-        _logger.info('Database opened at v${details.versionNow}.');
+        _logger.fine('Database opened at v${details.versionNow}.');
       }
       await ensureBuiltinData(database);
     },

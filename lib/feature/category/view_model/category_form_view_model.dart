@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
@@ -11,6 +12,8 @@ import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 
 part 'category_form_view_model.g.dart';
+
+final _logger = Logger('feature.category.form');
 
 @riverpod
 class CategoryFormViewModel extends _$CategoryFormViewModel {
@@ -125,7 +128,12 @@ class CategoryFormViewModel extends _$CategoryFormViewModel {
       return const SubmitOutcome.success();
     } on AppException catch (exception) {
       return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Category form submit failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const SubmitOutcome.failure(UiError.unknown());
     } finally {
       _update((current) => current.copyWith(submitting: false));

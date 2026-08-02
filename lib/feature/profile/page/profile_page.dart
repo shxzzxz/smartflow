@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:logging/logging.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
@@ -10,6 +10,8 @@ import '../../../design_system/token/list.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
+
+final _logger = Logger('feature.profile');
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -36,7 +38,8 @@ class _ProfilePageState extends State<ProfilePage> {
         return;
       }
       setState(() => _versionInfo = versionInfo);
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.warning('Failed to load app version info.', error, stackTrace);
       if (!mounted) {
         return;
       }
@@ -140,13 +143,12 @@ class _ProfilePageState extends State<ProfilePage> {
             _ProfileActionSection(
               title: '开发工具',
               actions: [
-                if (kDebugMode)
-                  _ProfileActionRow(
-                    icon: Icons.widgets_outlined,
-                    label: '组件示例',
-                    description: '查看设计规范与组件交互状态',
-                    onTap: () => context.push('/dev/design-system'),
-                  ),
+                _ProfileActionRow(
+                  icon: Icons.widgets_outlined,
+                  label: '组件示例',
+                  description: '查看设计规范与组件交互状态',
+                  onTap: () => context.push('/dev/design-system'),
+                ),
                 _ProfileActionRow(
                   icon: RemixIcons.file_list_3_line,
                   label: '日志',

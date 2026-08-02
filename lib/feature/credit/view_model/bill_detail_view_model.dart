@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
@@ -11,6 +12,8 @@ import '../provider/credit_account_query_providers.dart';
 import '../provider/installment_query_providers.dart';
 
 part 'bill_detail_view_model.g.dart';
+
+final _logger = Logger('feature.credit.bill_detail');
 
 @riverpod
 class BillDetailViewModel extends _$BillDetailViewModel {
@@ -32,7 +35,12 @@ class BillDetailViewModel extends _$BillDetailViewModel {
       return const UiActionOutcome.success(null);
     } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Bill refresh failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const UiActionOutcome.failure(UiError.unknown());
     }
   }
@@ -74,7 +82,12 @@ class BillDetailViewModel extends _$BillDetailViewModel {
       return const UiActionOutcome.success(null);
     } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Bill repayment delete failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const UiActionOutcome.failure(UiError.unknown());
     }
   }

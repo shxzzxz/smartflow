@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
@@ -13,6 +14,8 @@ import 'account_view.dart';
 import 'account_views_provider.dart';
 
 part 'account_detail_view_model.g.dart';
+
+final _logger = Logger('feature.account.detail');
 
 @riverpod
 class AccountDetailViewModel extends _$AccountDetailViewModel {
@@ -58,7 +61,12 @@ class AccountDetailViewModel extends _$AccountDetailViewModel {
       return const UiActionOutcome.success(null);
     } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Account archive failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const UiActionOutcome.failure(UiError.unknown());
     }
   }

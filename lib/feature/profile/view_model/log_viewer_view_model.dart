@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
@@ -7,8 +8,10 @@ import '../../shared/view_model/ui_action_outcome.dart';
 
 part 'log_viewer_view_model.g.dart';
 
+final _logger = Logger('feature.profile.log_viewer');
+
 /// 日志级别过滤，阈值语义：显示选中级别及以上的条目。
-enum LogLevelFilter { all, warning, severe }
+enum LogLevelFilter { all, fine, info, warning, severe }
 
 class LogViewerState {
   const LogViewerState({
@@ -51,7 +54,8 @@ class LogViewerViewModel extends _$LogViewerViewModel {
         ref.invalidate(logEntriesProvider);
       }
       return const UiActionOutcome.success(null);
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe('Log clear failed unexpectedly.', exception, stackTrace);
       return const UiActionOutcome.failure(UiError.unknown());
     }
   }

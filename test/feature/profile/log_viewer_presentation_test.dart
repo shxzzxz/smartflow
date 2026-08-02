@@ -6,6 +6,11 @@ import 'package:smartflow/feature/profile/view_model/log_viewer_view_model.dart'
 
 void main() {
   final entries = [
+    _entry(
+      level: Level.FINE,
+      message: 'Database opened',
+      logger: 'infra.database',
+    ),
     _entry(level: Level.INFO, message: 'App started', logger: 'app.bootstrap'),
     _entry(
       level: Level.WARNING,
@@ -25,6 +30,22 @@ void main() {
       expect(
         filterLogEntries(
           entries,
+          levelFilter: LogLevelFilter.fine,
+          query: '',
+        ).map((entry) => entry.level),
+        [Level.FINE, Level.INFO, Level.WARNING, Level.SEVERE],
+      );
+      expect(
+        filterLogEntries(
+          entries,
+          levelFilter: LogLevelFilter.info,
+          query: '',
+        ).map((entry) => entry.level),
+        [Level.INFO, Level.WARNING, Level.SEVERE],
+      );
+      expect(
+        filterLogEntries(
+          entries,
           levelFilter: LogLevelFilter.warning,
           query: '',
         ).map((entry) => entry.level),
@@ -39,12 +60,8 @@ void main() {
         [Level.SEVERE],
       );
       expect(
-        filterLogEntries(
-          entries,
-          levelFilter: LogLevelFilter.all,
-          query: '',
-        ),
-        hasLength(3),
+        filterLogEntries(entries, levelFilter: LogLevelFilter.all, query: ''),
+        hasLength(4),
       );
     });
 
@@ -86,7 +103,7 @@ void main() {
     test('blank query keeps everything', () {
       expect(
         filterLogEntries(entries, levelFilter: LogLevelFilter.all, query: '  '),
-        hasLength(3),
+        hasLength(4),
       );
     });
   });

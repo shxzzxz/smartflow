@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import '../../../application/credit/credit_command_api.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
@@ -5,6 +6,8 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/patch/patch.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+
+final _logger = Logger('feature.transaction.detail_action');
 
 abstract interface class TransactionDetailActionDispatcher {
   Future<UiActionOutcome<void>> delete();
@@ -83,7 +86,12 @@ Future<UiActionOutcome<void>> detailVoidOutcomeFromAction(
     return const UiActionOutcome.success(null);
   } on AppException catch (exception) {
     return UiActionOutcome.failure(UiError.fromException(exception));
-  } on Exception {
+  } on Exception catch (exception, stackTrace) {
+    _logger.severe(
+      'Transaction detail action failed unexpectedly.',
+      exception,
+      stackTrace,
+    );
     return const UiActionOutcome.failure(UiError.unknown());
   }
 }

@@ -1,9 +1,12 @@
+import 'package:logging/logging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/import/import_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+
+final _logger = Logger('feature.import');
 
 enum ImportPagePhase {
   idle,
@@ -265,7 +268,12 @@ class ImportViewModel extends Notifier<ImportPageState> {
       return const ImportActionOutcome.success(null);
     } on AppException catch (exception) {
       return _fail<void>(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Import file pick failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return _fail<void>(const UiError.unknown());
     }
   }
@@ -307,7 +315,12 @@ class ImportViewModel extends Notifier<ImportPageState> {
           .parse(source: ImportSource.yimu, bundle: bundle);
     } on AppException catch (exception) {
       return _failParsing<void>(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Import bundle parse failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return _failParsing<void>(const UiError.unknown());
     }
 
@@ -338,7 +351,12 @@ class ImportViewModel extends Notifier<ImportPageState> {
       return const ImportActionOutcome.success(null);
     } on AppException catch (exception) {
       return _fail<void>(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Import plan review failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return _fail<void>(const UiError.unknown());
     }
   }
@@ -477,7 +495,12 @@ class ImportViewModel extends Notifier<ImportPageState> {
       return const ImportActionOutcome.success(null);
     } on AppException catch (exception) {
       return _fail<void>(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Import mapping update failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return _fail<void>(const UiError.unknown());
     }
   }
@@ -654,7 +677,12 @@ class ImportViewModel extends Notifier<ImportPageState> {
         batches = await service.listBatches(source: ImportSource.yimu);
       } on AppException catch (exception) {
         refreshError = UiError.fromException(exception);
-      } on Exception {
+      } on Exception catch (exception, stackTrace) {
+        _logger.severe(
+          'Import commit refresh failed unexpectedly.',
+          exception,
+          stackTrace,
+        );
         refreshError = const UiError.unknown();
       }
 
@@ -681,7 +709,12 @@ class ImportViewModel extends Notifier<ImportPageState> {
       return ImportActionOutcome.success(result);
     } on AppException catch (exception) {
       return _fail<ImportCommitResult>(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Import commit failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return _fail<ImportCommitResult>(const UiError.unknown());
     }
   }
@@ -696,7 +729,12 @@ class ImportViewModel extends Notifier<ImportPageState> {
       return ImportActionOutcome.success(batches);
     } on AppException catch (exception) {
       return _failHistory(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Import history load failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return _failHistory(const UiError.unknown());
     }
   }
@@ -730,7 +768,12 @@ class ImportViewModel extends Notifier<ImportPageState> {
       return ImportActionOutcome.success(reverted);
     } on AppException catch (exception) {
       return _failRevert<ImportBatch>(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Import batch revert failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return _failRevert<ImportBatch>(const UiError.unknown());
     }
   }
@@ -778,7 +821,12 @@ class ImportViewModel extends Notifier<ImportPageState> {
       return const ImportActionOutcome.success(null);
     } on AppException catch (exception) {
       return _fail<void>(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Import plan review failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return _fail<void>(const UiError.unknown());
     }
   }
@@ -821,7 +869,12 @@ class ImportViewModel extends Notifier<ImportPageState> {
       return const ImportActionOutcome.success(null);
     } on AppException catch (exception) {
       return _fail<void>(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Import plan review failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return _fail<void>(const UiError.unknown());
     }
   }

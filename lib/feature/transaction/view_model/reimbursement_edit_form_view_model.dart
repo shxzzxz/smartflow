@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
@@ -15,6 +16,8 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_form_presentation.dart';
 
 part 'reimbursement_edit_form_view_model.g.dart';
+
+final _logger = Logger('feature.transaction.reimbursement_edit_form');
 
 @riverpod
 class ReimbursementEditFormViewModel extends _$ReimbursementEditFormViewModel {
@@ -189,7 +192,12 @@ class ReimbursementEditFormViewModel extends _$ReimbursementEditFormViewModel {
       return const SubmitOutcome.success();
     } on AppException catch (exception) {
       return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Reimbursement edit form submit failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const SubmitOutcome.failure(UiError.unknown());
     } finally {
       _update((state) => state.copyWith(submitting: false));

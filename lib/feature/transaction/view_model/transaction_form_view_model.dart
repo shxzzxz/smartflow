@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
@@ -14,6 +15,8 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_form_presentation.dart';
 
 part 'transaction_form_view_model.g.dart';
+
+final _logger = Logger('feature.transaction.form');
 
 @riverpod
 class TransactionFormViewModel extends _$TransactionFormViewModel {
@@ -240,7 +243,12 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       return const SubmitOutcome.success();
     } on AppException catch (exception) {
       return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Transaction form submit failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const SubmitOutcome.failure(UiError.unknown());
     } finally {
       _update((current) => current.copyWith(submitting: false));
@@ -258,7 +266,12 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       return const UiActionOutcome.success(null);
     } on AppException catch (exception) {
       return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception {
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Transaction delete failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
       return const UiActionOutcome.failure(UiError.unknown());
     } finally {
       _update((current) => current.copyWith(submitting: false));
