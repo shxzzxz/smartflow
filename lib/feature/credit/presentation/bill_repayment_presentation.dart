@@ -1,5 +1,6 @@
 import '../../../application/credit/credit_query_api.dart';
 import '../../../core/money/money.dart';
+import '../../../core/time/date_label.dart';
 import 'bill_repayment_allocation.dart';
 
 Money? _parseOptionalBillRepaymentMoneyText(String value) {
@@ -82,7 +83,7 @@ String billRepaymentDateText(BillRepaymentReadModel repayment) {
       repayment.timeSource == BillRepaymentTimeSource.transaction
           ? '还款日'
           : '记录于';
-  return '$prefix ${_dateLabel(repayment.displayTime)}';
+  return '$prefix ${formatDateLabel(repayment.displayTime)}';
 }
 
 String billRepaymentBreakdownText(BillRepaymentReadModel repayment) {
@@ -92,10 +93,6 @@ String billRepaymentBreakdownText(BillRepaymentReadModel repayment) {
       '费 ${amount.fee.format()}';
 }
 
-String _dateLabel(DateTime date) {
-  return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
-      '${date.day.toString().padLeft(2, '0')}';
-}
 
 bool _hasPositiveAmount(RepaymentAmountBreakdown amount) {
   return amount.principal.minorUnits > 0 ||

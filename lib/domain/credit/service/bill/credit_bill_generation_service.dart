@@ -202,6 +202,7 @@ class CreditBillGenerationService {
     await _validateRescheduleWindow(
       startDate: startDate,
       billingDate: billingDate,
+      repaymentDate: currentWindow.repaymentDate,
       accountId: bill.accountId,
       period: bill.period,
     );
@@ -219,6 +220,7 @@ class CreditBillGenerationService {
   Future<void> _validateRescheduleWindow({
     required DateTime startDate,
     required DateTime billingDate,
+    required DateTime repaymentDate,
     required String accountId,
     required BillPeriod period,
   }) async {
@@ -226,6 +228,12 @@ class CreditBillGenerationService {
       throw BusinessException(
         CreditErrorCode.billWindowInvalid,
         message: '起始日必须早于出账日。',
+      );
+    }
+    if (billingDate.isAfter(repaymentDate)) {
+      throw BusinessException(
+        CreditErrorCode.billWindowInvalid,
+        message: '出账日不能晚于还款日。',
       );
     }
     final previous = await _bills.findByAccountAndPeriod(

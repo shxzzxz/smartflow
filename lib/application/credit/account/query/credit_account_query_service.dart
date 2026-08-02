@@ -211,7 +211,6 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
           accountId: account.accountId,
           billId: bill.id,
           period: bill.period,
-          dueDate: bill.window?.repaymentDate ?? _earliestRepaymentDate(bill),
           status: bill.status,
           expectedPrincipal: bill.expectedPrincipal,
           expectedInterest: bill.expectedInterest,
@@ -233,12 +232,6 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
       return account == null ? const [] : [account];
     }
     return _creditAccounts.listAll();
-  }
-
-  DateTime? _earliestRepaymentDate(Bill bill) {
-    if (bill.items.isEmpty) return null;
-    final dates = bill.items.map((item) => item.repaymentDate).toList()..sort();
-    return dates.first;
   }
 
   bool _inWindow(DateTime value, DateTime from, DateTime until) {

@@ -4,9 +4,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
 import '../../../application/credit/credit_query_api.dart';
-import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
 import '../provider/credit_account_query_providers.dart';
@@ -109,7 +109,7 @@ class InstallmentContractEditViewModel
       return _invalidAction('没有可重算的待还期次');
     }
 
-    try {
+    return guardUiAction(_logger, 'Contract schedule recalculation', () async {
       final preview = await ref
           .read(installmentAppServiceProvider)
           .previewContractRecalculation(
@@ -151,17 +151,7 @@ class InstallmentContractEditViewModel
           },
         ),
       );
-      return const UiActionOutcome.success(null);
-    } on AppException catch (exception) {
-      return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Contract schedule recalculation failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const UiActionOutcome.failure(UiError.unknown());
-    }
+    });
   }
 
   void applyAmount(
@@ -252,44 +242,36 @@ class InstallmentContractEditViewModel
 
     _setLoaded(loaded.copyWith(submitting: true));
     try {
-      await ref
-          .read(installmentAppServiceProvider)
-          .updateContract(
-            UpdateContractCommand(
-              contractId: contractId,
-              totalPeriods: totalPeriods,
-              firstRepaymentDate: loaded.firstRepaymentDate,
-              lastRepaymentDate: loaded.lastRepaymentDate,
-              repaymentMethod: loaded.method,
-              interestRatePeriod:
-                  ratePpm == null
-                      ? const Patch<InterestRatePeriod>.clear()
-                      : Patch.set(loaded.ratePeriod),
-              interestRatePpm:
-                  ratePpm == null
-                      ? const Patch<int>.clear()
-                      : Patch.set(ratePpm),
-              interestAccrualMethod: loaded.accrualMethod,
-              totalFeeMinor: feeMinor,
-              equalInstallmentOverrideMinor: overrideMinor,
-              schedulePatches: patches,
-            ),
-          );
-      final current = _loadedOrNull();
-      if (current != null) {
-        _setLoaded(current.copyWith(submitting: false));
-      }
-      _invalidateCreditContractProviders(loaded.contract.liabilityAccountId);
-      return const SubmitOutcome.success();
-    } on AppException catch (exception) {
-      return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Contract edit submit failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const SubmitOutcome.failure(UiError.unknown());
+      return await guardSubmit(_logger, 'Contract edit submit', () async {
+        await ref
+            .read(installmentAppServiceProvider)
+            .updateContract(
+              UpdateContractCommand(
+                contractId: contractId,
+                totalPeriods: totalPeriods,
+                firstRepaymentDate: loaded.firstRepaymentDate,
+                lastRepaymentDate: loaded.lastRepaymentDate,
+                repaymentMethod: loaded.method,
+                interestRatePeriod:
+                    ratePpm == null
+                        ? const Patch<InterestRatePeriod>.clear()
+                        : Patch.set(loaded.ratePeriod),
+                interestRatePpm:
+                    ratePpm == null
+                        ? const Patch<int>.clear()
+                        : Patch.set(ratePpm),
+                interestAccrualMethod: loaded.accrualMethod,
+                totalFeeMinor: feeMinor,
+                equalInstallmentOverrideMinor: overrideMinor,
+                schedulePatches: patches,
+              ),
+            );
+        final current = _loadedOrNull();
+        if (current != null) {
+          _setLoaded(current.copyWith(submitting: false));
+        }
+        _invalidateCreditContractProviders(loaded.contract.liabilityAccountId);
+      });
     } finally {
       final current = _loadedOrNull();
       if (current != null) {

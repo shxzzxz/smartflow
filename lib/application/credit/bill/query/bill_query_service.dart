@@ -133,7 +133,6 @@ class BillQueryServiceImpl implements BillQueryService {
     required DateTime now,
     required Map<String, RepaymentAmountBreakdown> allocatedByItemId,
   }) {
-    final dueDate = bill.window?.repaymentDate ?? _earliestRepaymentDate(bill);
     final overdueCount =
         bill.items.where((item) {
           return _isOutstanding(item.status) &&
@@ -144,7 +143,6 @@ class BillQueryServiceImpl implements BillQueryService {
       accountId: bill.accountId,
       period: bill.period,
       status: bill.status,
-      dueDate: dueDate,
       windowStartDate: bill.window?.startDate,
       windowBillingDate: bill.window?.billingDate,
       windowRepaymentDate: bill.window?.repaymentDate,
@@ -240,12 +238,6 @@ class BillQueryServiceImpl implements BillQueryService {
       transactionId: transactionId,
       paidFromAccountId: usesTransaction ? detail.paidFromAccountId : null,
     );
-  }
-
-  DateTime? _earliestRepaymentDate(Bill bill) {
-    if (bill.items.isEmpty) return null;
-    final dates = bill.items.map((item) => item.repaymentDate).toList()..sort();
-    return dates.first;
   }
 
   DateTime _currentTime() {

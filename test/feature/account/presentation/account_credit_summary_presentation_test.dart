@@ -14,7 +14,7 @@ void main() {
       expect(billed.status.label, '已出账');
       expect(billed.status.tone, AccountCreditSummaryTone.warning);
       expect(billed.supportingItems.map((item) => item.text), [
-        '到期 07-25',
+        '还款 07-25',
         '12 条明细',
       ]);
 
@@ -79,7 +79,7 @@ BillSummaryReadModel _bill({
     accountId: 'account',
     period: BillPeriod(year: 2026, month: 7),
     status: status,
-    dueDate: DateTime(2026, 7, 25),
+    windowRepaymentDate: DateTime(2026, 7, 25),
     expectedPrincipal: Money.zero(),
     expectedInterest: Money.zero(),
     expectedFee: Money.zero(),

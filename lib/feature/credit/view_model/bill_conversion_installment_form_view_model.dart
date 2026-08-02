@@ -4,9 +4,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart' as credit;
 import '../../../application/credit/credit_query_api.dart' as credit_query;
-import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/bill_query_providers.dart';
 import '../provider/credit_account_query_providers.dart';
@@ -41,7 +41,7 @@ class BillConversionInstallmentFormViewModel
     }
 
     final principal = _pendingPrincipal(lines);
-    final borrowingDate = detail.summary.dueDate ?? DateTime.now();
+    final borrowingDate = detail.summary.windowRepaymentDate ?? DateTime.now();
     return BillConversionInstallmentFormState.loaded(
       summary: detail.summary,
       lines: lines,
@@ -130,35 +130,30 @@ class BillConversionInstallmentFormViewModel
 
     _setLoaded(current.copyWith(submitting: true));
     try {
-      final result = await ref
-          .read(repaymentAppServiceProvider)
-          .createBillConversionInstallmentRepayment(
-            credit.CreateBillConversionInstallmentRepaymentCommand(
-              billId: billId,
-              allocations: billRepaymentCommandAllocations(review.allocations),
-              totalPeriods: totalPeriods,
-              borrowingDate: current.borrowingDate,
-              firstRepaymentDate: current.firstRepaymentDate,
-              repaymentMethod: current.method,
-              interestRatePeriod: ratePpm == null ? null : current.ratePeriod,
-              interestRatePpm: ratePpm,
-              interestAccrualMethod: current.accrualMethod,
-              totalFeeMinor: totalFee.minorUnits,
-              equalInstallmentOverrideMinor: overrideMinor,
-              note: trimToNull(noteText),
-            ),
-          );
-      _invalidateAfterSubmit(accountId: current.summary.accountId);
-      return UiActionOutcome.success(result.contractId!);
-    } on AppException catch (exception) {
-      return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Bill installment conversion submit failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const UiActionOutcome.failure(UiError.unknown());
+      return await guardUiAction(_logger, 'Bill installment conversion submit', () async {
+        final result = await ref
+            .read(repaymentAppServiceProvider)
+            .createBillConversionInstallmentRepayment(
+              credit.CreateBillConversionInstallmentRepaymentCommand(
+                billId: billId,
+                allocations: billRepaymentCommandAllocations(
+                  review.allocations,
+                ),
+                totalPeriods: totalPeriods,
+                borrowingDate: current.borrowingDate,
+                firstRepaymentDate: current.firstRepaymentDate,
+                repaymentMethod: current.method,
+                interestRatePeriod: ratePpm == null ? null : current.ratePeriod,
+                interestRatePpm: ratePpm,
+                interestAccrualMethod: current.accrualMethod,
+                totalFeeMinor: totalFee.minorUnits,
+                equalInstallmentOverrideMinor: overrideMinor,
+                note: trimToNull(noteText),
+              ),
+            );
+        _invalidateAfterSubmit(accountId: current.summary.accountId);
+        return result.contractId!;
+      });
     } finally {
       final latest = _loadedOrNull();
       if (latest != null) {

@@ -118,13 +118,11 @@ class MonthlyBillSummaryReadModel {
     required this.expectedFee,
     required this.pendingPrincipal,
     required this.itemCount,
-    this.dueDate,
   });
 
   final String accountId;
   final String billId;
   final BillPeriod period;
-  final DateTime? dueDate;
   final BillStatus status;
   final Money expectedPrincipal;
   final Money expectedInterest;

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../application/credit/credit_query_api.dart';
+import '../../../core/time/date_label.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/radius.dart';
@@ -311,9 +312,9 @@ class _SummarySurface extends StatelessWidget {
             if (summary.windowStartDate != null) ...[
               const SizedBox(height: AppSpacing.space10),
               Text(
-                '起始日 ${_dateLabel(summary.windowStartDate!)} · '
-                '出账日 ${_dateLabel(summary.windowBillingDate!)} · '
-                '还款日 ${_dateLabel(summary.windowRepaymentDate!)}',
+                '起始日 ${formatDateLabel(summary.windowStartDate!)} · '
+                '出账日 ${formatDateLabel(summary.windowBillingDate!)} · '
+                '还款日 ${formatDateLabel(summary.windowRepaymentDate!)}',
                 style: styles.listSupporting.copyWith(
                   color: colors.onSurfaceVariant,
                 ),
@@ -516,7 +517,7 @@ class _BillItemRow extends StatelessWidget {
                   Text(billItemLabel(item), style: styles.formLabel),
                   const SizedBox(height: AppSpacing.space2),
                   Text(
-                    '${_dateLabel(item.repaymentDate)} · ${_itemStatusLabel(item)}',
+                    '${formatDateLabel(item.repaymentDate)} · ${_itemStatusLabel(item)}',
                     style: styles.listSupporting.copyWith(
                       color:
                           item.isOverdue
@@ -571,10 +572,6 @@ String _periodLabel(BillPeriod period) {
   return '${period.year}年${period.month.toString().padLeft(2, '0')}月账单';
 }
 
-String _dateLabel(DateTime date) {
-  return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
-      '${date.day.toString().padLeft(2, '0')}';
-}
 
 String _itemStatusLabel(BillItemReadModel item) {
   if (item.isOverdue) return '已逾期';

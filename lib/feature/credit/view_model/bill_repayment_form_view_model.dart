@@ -5,12 +5,12 @@ import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart' as credit;
 import '../../../application/credit/credit_query_api.dart' as credit_query;
 import '../../../application/ledger/ledger_query_api.dart';
-import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/bill_query_providers.dart';
 import '../provider/installment_query_providers.dart';
@@ -217,50 +217,42 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
 
     _update((state) => state.copyWith(submitting: true));
     try {
-      final service = ref.read(repaymentAppServiceProvider);
-      if (current.editingRepaymentId == null) {
-        await service.createBillRepayment(
-          credit.CreateBillRepaymentCommand(
-            billId: current.summary!.id,
-            allocations: commandAllocations,
-            transactionInfo:
-                paidFromAccountId == null
-                    ? null
-                    : credit.RepaymentTransactionInfo(
-                      paidFromAccountId: paidFromAccountId,
-                      occurredAt: current.occurredAt,
-                    ),
-            note: trimToNull(noteText),
-          ),
-        );
-      } else {
-        await service.editBillRepayment(
-          credit.EditBillRepaymentCommand(
-            repaymentId: current.editingRepaymentId!,
-            allocations: commandAllocations,
-            transactionInfo:
-                paidFromAccountId == null
-                    ? null
-                    : credit.RepaymentTransactionInfo(
-                      paidFromAccountId: paidFromAccountId,
-                      occurredAt: current.occurredAt,
-                      note: trimToNull(noteText),
-                    ),
-            note: trimToNull(noteText),
-          ),
-        );
-      }
-      _invalidateAfterSubmit(accountId: current.summary!.accountId);
-      return const SubmitOutcome.success();
-    } on AppException catch (exception) {
-      return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Bill repayment form submit failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const SubmitOutcome.failure(UiError.unknown());
+      return await guardSubmit(_logger, 'Bill repayment form submit', () async {
+        final service = ref.read(repaymentAppServiceProvider);
+        if (current.editingRepaymentId == null) {
+          await service.createBillRepayment(
+            credit.CreateBillRepaymentCommand(
+              billId: current.summary!.id,
+              allocations: commandAllocations,
+              transactionInfo:
+                  paidFromAccountId == null
+                      ? null
+                      : credit.RepaymentTransactionInfo(
+                        paidFromAccountId: paidFromAccountId,
+                        occurredAt: current.occurredAt,
+                      ),
+              note: trimToNull(noteText),
+            ),
+          );
+        } else {
+          await service.editBillRepayment(
+            credit.EditBillRepaymentCommand(
+              repaymentId: current.editingRepaymentId!,
+              allocations: commandAllocations,
+              transactionInfo:
+                  paidFromAccountId == null
+                      ? null
+                      : credit.RepaymentTransactionInfo(
+                        paidFromAccountId: paidFromAccountId,
+                        occurredAt: current.occurredAt,
+                        note: trimToNull(noteText),
+                      ),
+              note: trimToNull(noteText),
+            ),
+          );
+        }
+        _invalidateAfterSubmit(accountId: current.summary!.accountId);
+      });
     } finally {
       _update((state) => state.copyWith(submitting: false));
     }

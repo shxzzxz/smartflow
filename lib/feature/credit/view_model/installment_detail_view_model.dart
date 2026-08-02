@@ -4,7 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
 import '../../../application/credit/credit_query_api.dart';
-import '../../../core/error/app_exception.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
 import '../provider/credit_account_query_providers.dart';
@@ -38,7 +38,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
   Future<UiActionOutcome<void>> deleteContract() async {
     final loaded = _loadedOrNull();
     if (loaded == null) return _invalidAction('合同尚未加载');
-    try {
+    return guardUiAction(_logger, 'Contract delete', () async {
       await ref
           .read(installmentAppServiceProvider)
           .deleteContract(
@@ -52,46 +52,26 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
       ref.invalidate(
         creditAccountOverviewProvider(loaded.contract.liabilityAccountId),
       );
-      return const UiActionOutcome.success(null);
-    } on AppException catch (exception) {
-      return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Contract delete failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const UiActionOutcome.failure(UiError.unknown());
-    }
+    });
   }
 
   Future<UiActionOutcome<void>> revertRepayment(String repaymentId) async {
     final loaded = _loadedOrNull();
     if (loaded == null) return _invalidAction('合同尚未加载');
-    try {
+    return guardUiAction(_logger, 'Contract repayment revert', () async {
       await ref
           .read(repaymentAppServiceProvider)
           .deleteRepayment(
             DeleteCreditRepaymentCommand(repaymentId: repaymentId),
           );
       _invalidateContract(loaded.contract);
-      return const UiActionOutcome.success(null);
-    } on AppException catch (exception) {
-      return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Contract repayment revert failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const UiActionOutcome.failure(UiError.unknown());
-    }
+    });
   }
 
   Future<UiActionOutcome<void>> skipSchedule(String scheduleId) async {
     final loaded = _loadedOrNull();
     if (loaded == null) return _invalidAction('合同尚未加载');
-    try {
+    return guardUiAction(_logger, 'Schedule skip', () async {
       await ref
           .read(installmentAppServiceProvider)
           .skipSchedule(
@@ -101,23 +81,13 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
             ),
           );
       _invalidateContract(loaded.contract);
-      return const UiActionOutcome.success(null);
-    } on AppException catch (exception) {
-      return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Schedule skip failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const UiActionOutcome.failure(UiError.unknown());
-    }
+    });
   }
 
   Future<UiActionOutcome<void>> restoreSchedule(String scheduleId) async {
     final loaded = _loadedOrNull();
     if (loaded == null) return _invalidAction('合同尚未加载');
-    try {
+    return guardUiAction(_logger, 'Schedule restore', () async {
       await ref
           .read(installmentAppServiceProvider)
           .restoreSchedule(
@@ -127,17 +97,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
             ),
           );
       _invalidateContract(loaded.contract);
-      return const UiActionOutcome.success(null);
-    } on AppException catch (exception) {
-      return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Schedule restore failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const UiActionOutcome.failure(UiError.unknown());
-    }
+    });
   }
 
   Future<UiActionOutcome<ContractStatusValidationResult>>
@@ -151,24 +111,15 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
         ),
       );
     }
-    try {
+    return guardUiAction(_logger, 'Contract status validation', () async {
       final result = await ref
           .read(installmentAppServiceProvider)
           .validateContractStatuses(
             ValidateContractStatusesCommand(contractId: loaded.contract.id),
           );
       _invalidateContract(loaded.contract);
-      return UiActionOutcome.success(result);
-    } on AppException catch (exception) {
-      return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Contract status validation failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const UiActionOutcome.failure(UiError.unknown());
-    }
+      return result;
+    });
   }
 
   InstallmentDetailLoaded? _loadedOrNull() {

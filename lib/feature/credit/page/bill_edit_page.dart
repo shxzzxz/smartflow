@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 
+import '../../../core/time/date_label.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_section.dart';
@@ -101,7 +102,7 @@ class _BillEditPageState extends ConsumerState<BillEditPage> {
             DateTimePlainFormRow(
               label: '起始日',
               dateTime: state.startDate,
-              value: _formatDate(state.startDate!),
+              value: formatDateLabel(state.startDate!),
               onTap:
                   (onSelected) => _pickStartDate(state.startDate!, onSelected),
               onChanged: (value) {
@@ -111,7 +112,7 @@ class _BillEditPageState extends ConsumerState<BillEditPage> {
             DateTimePlainFormRow(
               label: '出账日',
               dateTime: state.billingDate,
-              value: _formatDate(state.billingDate!),
+              value: formatDateLabel(state.billingDate!),
               onTap:
                   (onSelected) =>
                       _pickBillingDate(state.billingDate!, onSelected),
@@ -121,7 +122,7 @@ class _BillEditPageState extends ConsumerState<BillEditPage> {
             ),
             AppPlainFormRow(
               label: '还款日',
-              child: AppPlainValueText(text: _formatDate(state.repaymentDate!)),
+              child: AppPlainValueText(text: formatDateLabel(state.repaymentDate!)),
             ),
           ],
         ),
@@ -136,7 +137,3 @@ class _BillEditPageState extends ConsumerState<BillEditPage> {
   }
 }
 
-String _formatDate(DateTime date) {
-  return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
-      '${date.day.toString().padLeft(2, '0')}';
-}

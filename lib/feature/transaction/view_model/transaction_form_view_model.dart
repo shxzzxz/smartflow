@@ -11,6 +11,7 @@ import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_form_presentation.dart';
 
@@ -234,22 +235,14 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 
     _update((current) => current.copyWith(submitting: true));
     try {
-      final editTransactionId = _editTransactionId;
-      if (editTransactionId == null) {
-        await _submitCreate(current, amount, noteText);
-      } else {
-        await _submitEdit(current, editTransactionId, amount, noteText);
-      }
-      return const SubmitOutcome.success();
-    } on AppException catch (exception) {
-      return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Transaction form submit failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const SubmitOutcome.failure(UiError.unknown());
+      return await guardSubmit(_logger, 'Transaction form submit', () async {
+        final editTransactionId = _editTransactionId;
+        if (editTransactionId == null) {
+          await _submitCreate(current, amount, noteText);
+        } else {
+          await _submitEdit(current, editTransactionId, amount, noteText);
+        }
+      });
     } finally {
       _update((current) => current.copyWith(submitting: false));
     }
@@ -258,21 +251,13 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   Future<UiActionOutcome<void>> deleteTransaction(String transactionId) async {
     _update((current) => current.copyWith(submitting: true));
     try {
-      await ref
-          .read(transactionEditAppServiceProvider)
-          .deleteTransaction(
-            DeleteTransactionCommand(transactionId: transactionId),
-          );
-      return const UiActionOutcome.success(null);
-    } on AppException catch (exception) {
-      return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Transaction delete failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const UiActionOutcome.failure(UiError.unknown());
+      return await guardUiAction(_logger, 'Transaction delete', () async {
+        await ref
+            .read(transactionEditAppServiceProvider)
+            .deleteTransaction(
+              DeleteTransactionCommand(transactionId: transactionId),
+            );
+      });
     } finally {
       _update((current) => current.copyWith(submitting: false));
     }

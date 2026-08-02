@@ -3,12 +3,12 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_command_api.dart';
-import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_form_presentation.dart';
 
@@ -63,29 +63,25 @@ class ReimbursementReceiptFormViewModel
 
     _update((state) => state.copyWith(submitting: true));
     try {
-      await ref
-          .read(transactionPostingAppServiceProvider)
-          .createReimbursementReceipt(
-            CreateReimbursementReceiptCommand(
-              amount: amount,
-              advanceTransactionId: advanceTransactionId,
-              receivableAccountId: current.receivableAccountId!,
-              receiveAccountId: receiveAccountId,
-              occurredAt: current.occurredAt,
-              note: trimToNull(noteText),
-            ),
-          );
-      _invalidateAfterSubmit(ref, advanceTransactionId);
-      return const SubmitOutcome.success();
-    } on AppException catch (exception) {
-      return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Reimbursement receipt submit failed unexpectedly.',
-        exception,
-        stackTrace,
+      return await guardSubmit(
+        _logger,
+        'Reimbursement receipt submit',
+        () async {
+          await ref
+              .read(transactionPostingAppServiceProvider)
+              .createReimbursementReceipt(
+                CreateReimbursementReceiptCommand(
+                  amount: amount,
+                  advanceTransactionId: advanceTransactionId,
+                  receivableAccountId: current.receivableAccountId!,
+                  receiveAccountId: receiveAccountId,
+                  occurredAt: current.occurredAt,
+                  note: trimToNull(noteText),
+                ),
+              );
+          _invalidateAfterSubmit(ref, advanceTransactionId);
+        },
       );
-      return const SubmitOutcome.failure(UiError.unknown());
     } finally {
       _update((state) => state.copyWith(submitting: false));
     }
@@ -148,29 +144,21 @@ class ReimbursementCloseFormViewModel
 
     _update((state) => state.copyWith(submitting: true));
     try {
-      await ref
-          .read(transactionPostingAppServiceProvider)
-          .closeReimbursement(
-            CloseReimbursementCommand(
-              actualReceivedAmount: amount,
-              advanceTransactionId: advanceTransactionId,
-              receivableAccountId: current.receivableAccountId!,
-              receiveAccountId: receiveAccountId,
-              occurredAt: current.occurredAt,
-              note: trimToNull(noteText),
-            ),
-          );
-      _invalidateAfterSubmit(ref, advanceTransactionId);
-      return const SubmitOutcome.success();
-    } on AppException catch (exception) {
-      return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Reimbursement close submit failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const SubmitOutcome.failure(UiError.unknown());
+      return await guardSubmit(_logger, 'Reimbursement close submit', () async {
+        await ref
+            .read(transactionPostingAppServiceProvider)
+            .closeReimbursement(
+              CloseReimbursementCommand(
+                actualReceivedAmount: amount,
+                advanceTransactionId: advanceTransactionId,
+                receivableAccountId: current.receivableAccountId!,
+                receiveAccountId: receiveAccountId,
+                occurredAt: current.occurredAt,
+                note: trimToNull(noteText),
+              ),
+            );
+        _invalidateAfterSubmit(ref, advanceTransactionId);
+      });
     } finally {
       _update((state) => state.copyWith(submitting: false));
     }
@@ -281,29 +269,25 @@ class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
   }) async {
     _update((state) => state.copyWith(submitting: true));
     try {
-      await ref
-          .read(transactionPostingAppServiceProvider)
-          .createReimbursementReceipt(
-            CreateReimbursementReceiptCommand(
-              amount: amount,
-              advanceTransactionId: advanceTransactionId,
-              receivableAccountId: current.receivableAccountId!,
-              receiveAccountId: receiveAccountId,
-              occurredAt: current.occurredAt,
-              note: trimToNull(noteText),
-            ),
-          );
-      _invalidateAfterSubmit(ref, advanceTransactionId);
-      return const SubmitOutcome.success();
-    } on AppException catch (exception) {
-      return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Reimbursement receipt submit failed unexpectedly.',
-        exception,
-        stackTrace,
+      return await guardSubmit(
+        _logger,
+        'Reimbursement receipt submit',
+        () async {
+          await ref
+              .read(transactionPostingAppServiceProvider)
+              .createReimbursementReceipt(
+                CreateReimbursementReceiptCommand(
+                  amount: amount,
+                  advanceTransactionId: advanceTransactionId,
+                  receivableAccountId: current.receivableAccountId!,
+                  receiveAccountId: receiveAccountId,
+                  occurredAt: current.occurredAt,
+                  note: trimToNull(noteText),
+                ),
+              );
+          _invalidateAfterSubmit(ref, advanceTransactionId);
+        },
       );
-      return const SubmitOutcome.failure(UiError.unknown());
     } finally {
       _update((state) => state.copyWith(submitting: false));
     }
@@ -317,29 +301,21 @@ class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
   }) async {
     _update((state) => state.copyWith(submitting: true));
     try {
-      await ref
-          .read(transactionPostingAppServiceProvider)
-          .closeReimbursement(
-            CloseReimbursementCommand(
-              actualReceivedAmount: amount,
-              advanceTransactionId: advanceTransactionId,
-              receivableAccountId: current.receivableAccountId!,
-              receiveAccountId: receiveAccountId,
-              occurredAt: current.occurredAt,
-              note: trimToNull(noteText),
-            ),
-          );
-      _invalidateAfterSubmit(ref, advanceTransactionId);
-      return const SubmitOutcome.success();
-    } on AppException catch (exception) {
-      return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Reimbursement close submit failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const SubmitOutcome.failure(UiError.unknown());
+      return await guardSubmit(_logger, 'Reimbursement close submit', () async {
+        await ref
+            .read(transactionPostingAppServiceProvider)
+            .closeReimbursement(
+              CloseReimbursementCommand(
+                actualReceivedAmount: amount,
+                advanceTransactionId: advanceTransactionId,
+                receivableAccountId: current.receivableAccountId!,
+                receiveAccountId: receiveAccountId,
+                occurredAt: current.occurredAt,
+                note: trimToNull(noteText),
+              ),
+            );
+        _invalidateAfterSubmit(ref, advanceTransactionId);
+      });
     } finally {
       _update((state) => state.copyWith(submitting: false));
     }

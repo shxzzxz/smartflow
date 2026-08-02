@@ -4,11 +4,11 @@ import 'package:logging/logging.dart';
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
 import '../../../application/ledger/ledger_command_api.dart';
-import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
 import '../provider/credit_account_query_providers.dart';
@@ -126,43 +126,36 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
 
     _setLoaded(current.copyWith(submitting: true));
     try {
-      final service = ref.read(installmentAppServiceProvider);
-      final note = trimToNull(noteText);
-      final result = await service.createDisbursementContract(
-        CreateDisbursementContractCommand(
-          liabilityAccountId: current.liability.id,
-          disbursementAccountId:
-              current.createDisbursementTransaction
-                  ? current.disbursementAccountId
-                  : null,
-          principal: principal,
-          totalPeriods: totalPeriods,
-          borrowingDate: current.borrowingDate,
-          firstRepaymentDate: current.firstRepaymentDate,
-          lastRepaymentDate: current.lastRepaymentDate,
-          repaymentMethod: current.method,
-          interestRatePeriod: ratePpm == null ? null : current.ratePeriod,
-          interestRatePpm: ratePpm,
-          interestAccrualMethod: current.accrualMethod,
-          totalFeeMinor: totalFee.minorUnits,
-          equalInstallmentOverrideMinor: overrideMinor,
-          note: note,
-        ),
-      );
-      ref.invalidate(
-        installmentContractsByAccountProvider(current.liability.id),
-      );
-      ref.invalidate(creditAccountOverviewProvider(current.liability.id));
-      return UiActionOutcome.success(result.contractId);
-    } on AppException catch (exception) {
-      return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Installment form submission failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const UiActionOutcome.failure(UiError.unknown());
+      return await guardUiAction(_logger, 'Installment form submission', () async {
+        final service = ref.read(installmentAppServiceProvider);
+        final note = trimToNull(noteText);
+        final result = await service.createDisbursementContract(
+          CreateDisbursementContractCommand(
+            liabilityAccountId: current.liability.id,
+            disbursementAccountId:
+                current.createDisbursementTransaction
+                    ? current.disbursementAccountId
+                    : null,
+            principal: principal,
+            totalPeriods: totalPeriods,
+            borrowingDate: current.borrowingDate,
+            firstRepaymentDate: current.firstRepaymentDate,
+            lastRepaymentDate: current.lastRepaymentDate,
+            repaymentMethod: current.method,
+            interestRatePeriod: ratePpm == null ? null : current.ratePeriod,
+            interestRatePpm: ratePpm,
+            interestAccrualMethod: current.accrualMethod,
+            totalFeeMinor: totalFee.minorUnits,
+            equalInstallmentOverrideMinor: overrideMinor,
+            note: note,
+          ),
+        );
+        ref.invalidate(
+          installmentContractsByAccountProvider(current.liability.id),
+        );
+        ref.invalidate(creditAccountOverviewProvider(current.liability.id));
+        return result.contractId;
+      });
     } finally {
       final latest = _loadedOrNull();
       if (latest != null) {

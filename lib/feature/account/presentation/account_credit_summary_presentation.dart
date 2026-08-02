@@ -46,7 +46,10 @@ AccountCreditSummaryPresentation billAccountCreditSummary(
     title: _billTitle(bill.period),
     amount: bill.pendingPrincipal,
     supportingItems: [
-      AccountCreditSummarySupportingItem(text: _billDueLabel(bill.dueDate)),
+      if (bill.windowRepaymentDate != null)
+        AccountCreditSummarySupportingItem(
+          text: _billRepaymentLabel(bill.windowRepaymentDate!),
+        ),
       AccountCreditSummarySupportingItem(text: '${bill.itemCount} 条明细'),
       if (bill.overdueItemCount > 0)
         AccountCreditSummarySupportingItem(
@@ -118,9 +121,9 @@ String _billTitle(BillPeriod period) {
   return '${period.year}年${period.month.toString().padLeft(2, '0')}月';
 }
 
-String _billDueLabel(DateTime? dueDate) {
-  if (dueDate == null) return '无到期日';
-  return '到期 ${dueDate.month.toString().padLeft(2, '0')}-${dueDate.day.toString().padLeft(2, '0')}';
+String _billRepaymentLabel(DateTime repaymentDate) {
+  return '还款 ${repaymentDate.month.toString().padLeft(2, '0')}-'
+      '${repaymentDate.day.toString().padLeft(2, '0')}';
 }
 
 String _fullDate(DateTime date) {

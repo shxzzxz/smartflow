@@ -696,12 +696,12 @@ void main() {
         await fixture.generation.updateBillWindow(
           billId: june.id,
           startDate: DateTime(2026, 6, 10),
-          billingDate: DateTime(2026, 7, 10),
+          billingDate: DateTime(2026, 6, 20),
         );
 
         final updated = (await fixture.billRepository.findBill(june.id))!;
         expect(updated.window!.startDate, DateTime(2026, 6, 10));
-        expect(updated.window!.billingDate, DateTime(2026, 7, 10));
+        expect(updated.window!.billingDate, DateTime(2026, 6, 20));
         expect(updated.window!.repaymentDate, originalRepayment);
         expect(
           updated.items.single.expectedPrincipal,

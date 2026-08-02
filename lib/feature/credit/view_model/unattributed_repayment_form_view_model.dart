@@ -5,12 +5,12 @@ import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart' as credit;
 import '../../../application/credit/credit_query_api.dart' as credit_query;
 import '../../../application/ledger/ledger_query_api.dart';
-import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/credit_account_query_providers.dart';
 
@@ -101,35 +101,31 @@ class UnattributedRepaymentFormViewModel
 
     _update((state) => state.copyWith(submitting: true));
     try {
-      await ref
-          .read(repaymentAppServiceProvider)
-          .createUnattributedRepayment(
-            credit.CreateUnattributedRepaymentCommand(
-              accountId: accountId,
-              amount: credit.RepaymentAmountDto(
-                principal: principal,
-                interest: interest,
-                fee: fee,
-                discount: discount,
-              ),
-              transactionInfo: credit.RepaymentTransactionInfo(
-                paidFromAccountId: paidFromAccountId,
-                occurredAt: current.occurredAt,
-              ),
-              note: trimToNull(noteText),
-            ),
-          );
-      _invalidateAfterSubmit(accountId);
-      return const SubmitOutcome.success();
-    } on AppException catch (exception) {
-      return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Unattributed repayment form submit failed unexpectedly.',
-        exception,
-        stackTrace,
+      return await guardSubmit(
+        _logger,
+        'Unattributed repayment form submit',
+        () async {
+          await ref
+              .read(repaymentAppServiceProvider)
+              .createUnattributedRepayment(
+                credit.CreateUnattributedRepaymentCommand(
+                  accountId: accountId,
+                  amount: credit.RepaymentAmountDto(
+                    principal: principal,
+                    interest: interest,
+                    fee: fee,
+                    discount: discount,
+                  ),
+                  transactionInfo: credit.RepaymentTransactionInfo(
+                    paidFromAccountId: paidFromAccountId,
+                    occurredAt: current.occurredAt,
+                  ),
+                  note: trimToNull(noteText),
+                ),
+              );
+          _invalidateAfterSubmit(accountId);
+        },
       );
-      return const SubmitOutcome.failure(UiError.unknown());
     } finally {
       _update((state) => state.copyWith(submitting: false));
     }

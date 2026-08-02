@@ -408,12 +408,12 @@ void main() {
         await fixture.service.updateBillWindow(
           billId: june.id,
           startDate: DateTime(2026, 6, 10),
-          billingDate: DateTime(2026, 7, 10),
+          billingDate: DateTime(2026, 6, 20),
         );
 
         final updated = (await fixture.bills.findBill(june.id))!;
         expect(updated.window!.startDate, DateTime(2026, 6, 10));
-        expect(updated.window!.billingDate, DateTime(2026, 7, 10));
+        expect(updated.window!.billingDate, DateTime(2026, 6, 20));
         expect(updated.window!.repaymentDate, originalRepayment);
         expect(
           updated.items.single.expectedPrincipal,
@@ -463,12 +463,28 @@ void main() {
         ),
       );
 
+      // 出账日晚于还款日。
+      await expectLater(
+        fixture.service.updateBillWindow(
+          billId: june.id,
+          startDate: DateTime(2026, 6, 1),
+          billingDate: june.window!.repaymentDate.add(const Duration(days: 1)),
+        ),
+        throwsA(
+          isA<BusinessException>().having(
+            (e) => e.code,
+            'code',
+            CreditErrorCode.billWindowInvalid.code,
+          ),
+        ),
+      );
+
       // 起始日早于上一期出账日（5 月账单出账日 5-05）。
       await expectLater(
         fixture.service.updateBillWindow(
           billId: june.id,
           startDate: DateTime(2026, 5, 1),
-          billingDate: DateTime(2026, 7, 1),
+          billingDate: DateTime(2026, 6, 20),
         ),
         throwsA(
           isA<BusinessException>().having(
@@ -488,7 +504,7 @@ void main() {
         fixture.service.updateBillWindow(
           billId: june.id,
           startDate: DateTime(2026, 5, 6),
-          billingDate: DateTime(2026, 7, 10),
+          billingDate: DateTime(2026, 6, 20),
         ),
         throwsA(
           isA<BusinessException>().having(

@@ -4,8 +4,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
 import '../../../application/credit/credit_query_api.dart';
-import '../../../core/error/app_exception.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/bill_query_providers.dart';
 import '../provider/credit_account_query_providers.dart';
@@ -27,47 +27,27 @@ class BillDetailViewModel extends _$BillDetailViewModel {
   Future<UiActionOutcome<void>> synchronizeProjection() async {
     final detail = state.asData?.value;
     if (detail == null) return _notLoaded();
-    try {
+    return guardUiAction(_logger, 'Bill refresh', () async {
       await ref
           .read(creditBillGenerationAppServiceProvider)
           .refreshBill(billId);
       _invalidateBillDependencies(detail.summary.accountId);
-      return const UiActionOutcome.success(null);
-    } on AppException catch (exception) {
-      return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Bill refresh failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const UiActionOutcome.failure(UiError.unknown());
-    }
+    });
   }
 
   Future<UiActionOutcome<void>> deleteBill() async {
     final detail = state.asData?.value;
     if (detail == null) return _notLoaded();
-    try {
+    return guardUiAction(_logger, 'Bill delete', () async {
       await ref.read(creditBillGenerationAppServiceProvider).deleteBill(billId);
       _invalidateBillDependencies(detail.summary.accountId);
-      ref
-        ..invalidate(
-          transactionListProvider(accountId: detail.summary.accountId),
-        )
-        ..invalidate(accountsByIdProvider);
-      return const UiActionOutcome.success(null);
-    } on AppException catch (exception) {
-      return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception {
-      return const UiActionOutcome.failure(UiError.unknown());
-    }
+    });
   }
 
   Future<UiActionOutcome<void>> deleteRepayment(String repaymentId) async {
     final detail = state.asData?.value;
     if (detail == null) return _notLoaded();
-    try {
+    return guardUiAction(_logger, 'Bill repayment delete', () async {
       await ref
           .read(repaymentAppServiceProvider)
           .deleteRepayment(
@@ -79,17 +59,7 @@ class BillDetailViewModel extends _$BillDetailViewModel {
           transactionListProvider(accountId: detail.summary.accountId),
         )
         ..invalidate(accountsByIdProvider);
-      return const UiActionOutcome.success(null);
-    } on AppException catch (exception) {
-      return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Bill repayment delete failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const UiActionOutcome.failure(UiError.unknown());
-    }
+    });
   }
 
   void _invalidateBillDependencies(String accountId) {

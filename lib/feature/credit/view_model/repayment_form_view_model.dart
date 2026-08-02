@@ -4,12 +4,12 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart' as credit;
 import '../../../application/ledger/ledger_command_api.dart';
-import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
 import '../provider/credit_account_query_providers.dart';
@@ -144,51 +144,47 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
 
     _update((state) => state.copyWith(submitting: true));
     try {
-      final service = ref.read(repaymentAppServiceProvider);
-      final editTransactionId = args.editTransactionId;
-      final note = trimToNull(noteText);
-      final amount = credit.RepaymentAmountDto(
-        principal: principal,
-        interest: interest,
-        fee: fee,
-        discount: discount,
+      return await guardSubmit(
+        _logger,
+        'Liability repayment form submit',
+        () async {
+          final service = ref.read(repaymentAppServiceProvider);
+          final editTransactionId = args.editTransactionId;
+          final note = trimToNull(noteText);
+          final amount = credit.RepaymentAmountDto(
+            principal: principal,
+            interest: interest,
+            fee: fee,
+            discount: discount,
+          );
+          final result =
+              editTransactionId == null
+                  ? await service.createLiabilityRepayment(
+                    credit.CreateLiabilityRepaymentCommand(
+                      liabilityAccountId: liabilityAccountId,
+                      paidFromAccountId: paidFromAccountId,
+                      amount: amount,
+                      occurredAt: current.occurredAt,
+                      note: note,
+                    ),
+                  )
+                  : await service.editLiabilityRepayment(
+                    credit.EditLiabilityRepaymentCommand(
+                      transactionId: editTransactionId,
+                      liabilityAccountId: liabilityAccountId,
+                      paidFromAccountId: paidFromAccountId,
+                      amount: amount,
+                      occurredAt: current.occurredAt,
+                      note: note,
+                    ),
+                  );
+          _invalidateAfterSubmit(
+            liabilityAccountId: liabilityAccountId,
+            transactionId: editTransactionId,
+            newTransactionId: result.transactionId,
+          );
+        },
       );
-      final result =
-          editTransactionId == null
-              ? await service.createLiabilityRepayment(
-                credit.CreateLiabilityRepaymentCommand(
-                  liabilityAccountId: liabilityAccountId,
-                  paidFromAccountId: paidFromAccountId,
-                  amount: amount,
-                  occurredAt: current.occurredAt,
-                  note: note,
-                ),
-              )
-              : await service.editLiabilityRepayment(
-                credit.EditLiabilityRepaymentCommand(
-                  transactionId: editTransactionId,
-                  liabilityAccountId: liabilityAccountId,
-                  paidFromAccountId: paidFromAccountId,
-                  amount: amount,
-                  occurredAt: current.occurredAt,
-                  note: note,
-                ),
-              );
-      _invalidateAfterSubmit(
-        liabilityAccountId: liabilityAccountId,
-        transactionId: editTransactionId,
-        newTransactionId: result.transactionId,
-      );
-      return const SubmitOutcome.success();
-    } on AppException catch (exception) {
-      return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Liability repayment form submit failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const SubmitOutcome.failure(UiError.unknown());
     } finally {
       _update((state) => state.copyWith(submitting: false));
     }

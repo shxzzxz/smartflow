@@ -5,7 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
-import '../../../core/error/app_exception.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 
 part 'data_cleanup_view_model.g.dart';
@@ -124,27 +124,19 @@ class DataCleanupViewModel extends _$DataCleanupViewModel {
     }
     state = state.copyWith(submitting: true);
     try {
-      final query = state.toQuery();
-      final result = await ref
-          .read(transactionCleanupAppServiceProvider)
-          .cleanupTransactions(
-            CleanupTransactionsCommand(
-              categoryIds: query.categoryIds,
-              accountIds: query.accountIds,
-              occurredFrom: query.occurredFrom,
-              occurredUntil: query.occurredUntil,
-            ),
-          );
-      return UiActionOutcome.success(result);
-    } on AppException catch (exception) {
-      return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Transaction cleanup failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const UiActionOutcome.failure(UiError.unknown());
+      return await guardUiAction(_logger, 'Transaction cleanup', () async {
+        final query = state.toQuery();
+        return ref
+            .read(transactionCleanupAppServiceProvider)
+            .cleanupTransactions(
+              CleanupTransactionsCommand(
+                categoryIds: query.categoryIds,
+                accountIds: query.accountIds,
+                occurredFrom: query.occurredFrom,
+                occurredUntil: query.occurredUntil,
+              ),
+            );
+      });
     } finally {
       state = state.copyWith(submitting: false);
     }

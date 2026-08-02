@@ -3,9 +3,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_query_api.dart';
-import '../../../core/error/app_exception.dart';
 import '../../credit/provider/bill_query_providers.dart';
 import '../../credit/provider/credit_account_query_providers.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import 'account_detail_view_model.dart';
 import 'account_views_provider.dart';
@@ -47,26 +47,18 @@ class AccountBillsViewModel extends _$AccountBillsViewModel {
   Future<UiActionOutcome<void>> generateHistoricalBill(DateTime month) async {
     final keepAlive = ref.keepAlive();
     try {
-      await ref
-          .read(creditBillGenerationAppServiceProvider)
-          .generateBillForPeriod(
-            accountId: accountId,
-            period: BillPeriod(year: month.year, month: month.month),
-            now: DateTime.now(),
-          );
-      if (ref.mounted) {
-        _invalidateAccount();
-      }
-      return const UiActionOutcome.success(null);
-    } on AppException catch (exception) {
-      return UiActionOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Historical bill generation failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const UiActionOutcome.failure(UiError.unknown());
+      return await guardUiAction(_logger, 'Historical bill generation', () async {
+        await ref
+            .read(creditBillGenerationAppServiceProvider)
+            .generateBillForPeriod(
+              accountId: accountId,
+              period: BillPeriod(year: month.year, month: month.month),
+              now: DateTime.now(),
+            );
+        if (ref.mounted) {
+          _invalidateAccount();
+        }
+      });
     } finally {
       keepAlive.close();
     }

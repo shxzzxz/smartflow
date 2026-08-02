@@ -4,12 +4,12 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
 import '../../../application/ledger/ledger_command_api.dart';
-import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import 'account_view.dart';
 import 'account_views_provider.dart';
@@ -86,35 +86,27 @@ class AccountFormViewModel extends _$AccountFormViewModel {
 
     _update((current) => current.copyWith(submitting: true));
     try {
-      final targetAccountId = accountId;
-      if (targetAccountId == null) {
-        await _createAccount(
-          formState: current,
-          name: name,
-          openingBalance: openingBalance,
-          creditLimit: creditLimit,
-          note: note,
-        );
-      } else {
-        await _editAccount(
-          formState: current,
-          id: targetAccountId,
-          name: name,
-          openingBalance: openingBalance,
-          creditLimit: creditLimit,
-          note: note,
-        );
-      }
-      return const SubmitOutcome.success();
-    } on AppException catch (exception) {
-      return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Account form submit failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const SubmitOutcome.failure(UiError.unknown());
+      return await guardSubmit(_logger, 'Account form submit', () async {
+        final targetAccountId = accountId;
+        if (targetAccountId == null) {
+          await _createAccount(
+            formState: current,
+            name: name,
+            openingBalance: openingBalance,
+            creditLimit: creditLimit,
+            note: note,
+          );
+        } else {
+          await _editAccount(
+            formState: current,
+            id: targetAccountId,
+            name: name,
+            openingBalance: openingBalance,
+            creditLimit: creditLimit,
+            note: note,
+          );
+        }
+      });
     } finally {
       _update((current) => current.copyWith(submitting: false));
     }

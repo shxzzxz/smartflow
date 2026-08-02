@@ -848,7 +848,7 @@ credit_query.BillDetailReadModel _billDetail() {
       pendingPrincipal: const Money(minorUnits: 6000),
       itemCount: 1,
       overdueItemCount: 0,
-      dueDate: DateTime(2026, 6, 20),
+      windowRepaymentDate: DateTime(2026, 6, 20),
     ),
     items: [
       credit_query.BillItemReadModel(

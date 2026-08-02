@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/money/money.dart';
+import '../../../core/time/date_label.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
@@ -356,7 +357,7 @@ class _ConfigSection extends StatelessWidget {
         AppPlainFormRow(
           label: '借款日期',
           minHeight: _rowMinHeight,
-          child: _readOnly(context, _formatDate(contract.borrowingDate)),
+          child: _readOnly(context, formatDateLabel(contract.borrowingDate)),
         ),
         AppPlainFormRow(
           label: '分期类型',
@@ -385,7 +386,7 @@ class _ConfigSection extends StatelessWidget {
         DateTimePlainFormRow(
           label: '首期还款日',
           dateTime: firstRepaymentDate,
-          value: _formatDate(firstRepaymentDate),
+          value: formatDateLabel(firstRepaymentDate),
           onTap: onPickFirstDate,
           onChanged: onFirstDateChanged,
           minHeight: _rowMinHeight,
@@ -393,7 +394,7 @@ class _ConfigSection extends StatelessWidget {
         DateTimePlainFormRow(
           label: '末期还款日',
           dateTime: lastRepaymentDate,
-          value: _formatDate(lastRepaymentDate),
+          value: formatDateLabel(lastRepaymentDate),
           onTap: onPickLastDate,
           onChanged: onLastDateChanged,
           minHeight: _rowMinHeight,
@@ -1001,10 +1002,6 @@ class _MetricCell extends StatelessWidget {
   }
 }
 
-String _formatDate(DateTime date) {
-  return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
-      '${date.day.toString().padLeft(2, '0')}';
-}
 
 String _formatDateShort(DateTime date) {
   return '${date.month.toString().padLeft(2, '0')}-'

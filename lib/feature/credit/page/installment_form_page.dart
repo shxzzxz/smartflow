@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../core/time/date_label.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_section.dart';
@@ -145,7 +146,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
               DateTimePlainFormRow(
                 label: '借款日期',
                 dateTime: state.borrowingDate,
-                value: _formatDate(state.borrowingDate),
+                value: formatDateLabel(state.borrowingDate),
                 onTap:
                     (onSelected) =>
                         _pickBorrowingDate(state.borrowingDate, onSelected),
@@ -156,7 +157,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
               DateTimePlainFormRow(
                 label: '首期还款日',
                 dateTime: state.firstRepaymentDate,
-                value: _formatDate(state.firstRepaymentDate),
+                value: formatDateLabel(state.firstRepaymentDate),
                 onTap:
                     (onSelected) => _pickFirstRepaymentDate(
                       state.firstRepaymentDate,
@@ -172,7 +173,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                 value:
                     state.lastRepaymentDate == null
                         ? '按期数自动计算'
-                        : _formatDate(state.lastRepaymentDate!),
+                        : formatDateLabel(state.lastRepaymentDate!),
                 onTap:
                     (onSelected) => _pickLastRepaymentDate(
                       state.lastRepaymentDate ?? state.firstRepaymentDate,
@@ -333,7 +334,3 @@ Account? _findAccount(List<Account> accounts, String? id) {
   return null;
 }
 
-String _formatDate(DateTime date) {
-  return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
-      '${date.day.toString().padLeft(2, '0')}';
-}

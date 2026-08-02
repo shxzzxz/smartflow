@@ -4,7 +4,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
-import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/money/money_formatter.dart';
 import '../../../core/patch/patch.dart';
@@ -12,6 +11,7 @@ import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_form_presentation.dart';
 
@@ -158,47 +158,47 @@ class ReimbursementEditFormViewModel extends _$ReimbursementEditFormViewModel {
 
     _update((state) => state.copyWith(submitting: true));
     try {
-      final editService = ref.read(transactionEditAppServiceProvider);
-      switch (kind) {
-        case ReimbursementEditKind.receipt:
-          await editService.editReimbursementReceipt(
-            EditReimbursementReceiptCommand(
-              transactionId: current.transactionId,
-              amount: amount,
-              receivableAccountId: current.receivableAccountId,
-              receiveAccountId: resolvedReceiveAccountId,
-              occurredAt: current.occurredAt,
-              note: _stringPatch(trimToNull(noteText)),
+      return await guardSubmit(
+        _logger,
+        'Reimbursement edit form submit',
+        () async {
+          final editService = ref.read(transactionEditAppServiceProvider);
+          switch (kind) {
+            case ReimbursementEditKind.receipt:
+              await editService.editReimbursementReceipt(
+                EditReimbursementReceiptCommand(
+                  transactionId: current.transactionId,
+                  amount: amount,
+                  receivableAccountId: current.receivableAccountId,
+                  receiveAccountId: resolvedReceiveAccountId,
+                  occurredAt: current.occurredAt,
+                  note: _stringPatch(trimToNull(noteText)),
+                ),
+              );
+            case ReimbursementEditKind.close:
+              await editService.editReimbursementClose(
+                EditReimbursementCloseCommand(
+                  transactionId: current.transactionId,
+                  actualReceivedAmount: amount,
+                  receivableAccountId: current.receivableAccountId,
+                  receiveAccountId: resolvedReceiveAccountId,
+                  occurredAt: current.occurredAt,
+                  note: _stringPatch(trimToNull(noteText)),
+                ),
+              );
+          }
+          ref.invalidate(transactionDetailProvider(current.transactionId));
+          ref.invalidate(
+            transactionDetailProvider(current.parentTransactionId),
+          );
+          ref.invalidate(accountsByIdProvider);
+          ref.invalidate(
+            accountsForSelectionPurposeProvider(
+              AccountSelectionPurpose.settlement,
             ),
           );
-        case ReimbursementEditKind.close:
-          await editService.editReimbursementClose(
-            EditReimbursementCloseCommand(
-              transactionId: current.transactionId,
-              actualReceivedAmount: amount,
-              receivableAccountId: current.receivableAccountId,
-              receiveAccountId: resolvedReceiveAccountId,
-              occurredAt: current.occurredAt,
-              note: _stringPatch(trimToNull(noteText)),
-            ),
-          );
-      }
-      ref.invalidate(transactionDetailProvider(current.transactionId));
-      ref.invalidate(transactionDetailProvider(current.parentTransactionId));
-      ref.invalidate(accountsByIdProvider);
-      ref.invalidate(
-        accountsForSelectionPurposeProvider(AccountSelectionPurpose.settlement),
+        },
       );
-      return const SubmitOutcome.success();
-    } on AppException catch (exception) {
-      return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Reimbursement edit form submit failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return const SubmitOutcome.failure(UiError.unknown());
     } finally {
       _update((state) => state.copyWith(submitting: false));
     }

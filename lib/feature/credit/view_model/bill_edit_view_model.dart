@@ -1,13 +1,16 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
-import '../../../core/error/app_exception.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/bill_query_providers.dart';
 import 'bill_edit_form_state.dart';
 
 part 'bill_edit_view_model.g.dart';
+
+final _logger = Logger('feature.credit.bill_edit');
 
 @riverpod
 class BillEditViewModel extends _$BillEditViewModel {
@@ -53,20 +56,17 @@ class BillEditViewModel extends _$BillEditViewModel {
     }
     _setLoaded(state.copyWith(submitting: true));
     try {
-      await ref
-          .read(creditBillGenerationAppServiceProvider)
-          .updateBillWindow(
-            billId: billId,
-            startDate: state.startDate!,
-            billingDate: state.billingDate!,
-          );
-      ref.invalidate(billDetailProvider(billId));
-      ref.invalidateSelf();
-      return const SubmitOutcome.success();
-    } on AppException catch (exception) {
-      return SubmitOutcome.failure(UiError.fromException(exception));
-    } on Exception {
-      return const SubmitOutcome.failure(UiError.unknown());
+      return await guardSubmit(_logger, 'Bill window edit submit', () async {
+        await ref
+            .read(creditBillGenerationAppServiceProvider)
+            .updateBillWindow(
+              billId: billId,
+              startDate: state.startDate!,
+              billingDate: state.billingDate!,
+            );
+        ref.invalidate(billDetailProvider(billId));
+        ref.invalidateSelf();
+      });
     } finally {
       final current = _loadedOrNull();
       if (current != null) {
