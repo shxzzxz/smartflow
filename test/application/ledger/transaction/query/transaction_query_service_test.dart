@@ -261,7 +261,7 @@ class _FakeTransactionReadRepository implements TransactionReadRepository {
   ) async => const [];
 
   @override
-  Stream<void> watchChanges() => const Stream.empty();
+  Stream<void> watchChanges() => Stream.value(null);
 }
 
 class _FakeEntryReadRepository implements EntryReadRepository {

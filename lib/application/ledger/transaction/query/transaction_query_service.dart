@@ -73,7 +73,9 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   Stream<List<TransactionListReadModel>> watchTransactions(
     TransactionListQuery query,
   ) {
-    return _txRead.watchPage(query).asyncMap(_projectListItems);
+    return _txRead.watchChanges().asyncMap((_) async {
+      return _projectListItems(await _txRead.watchPage(query).first);
+    });
   }
 
   @override
