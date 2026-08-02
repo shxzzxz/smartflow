@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:smartflow/design_system/token/component.dart';
 import 'package:smartflow/design_system/token/radius.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 import 'business_icon_bubble.dart';
@@ -14,7 +15,7 @@ class IconChoiceGrid extends StatelessWidget {
     this.maxVisibleRows = 4,
     this.iconSize = 28,
     this.bubbleSize = 32,
-    this.tileMainExtent = 64,
+    this.tileMainExtent = AppComponentTokens.iconChoiceGridTileExtent,
     this.mainAxisSpacing = AppSpacing.space0,
     this.crossAxisSpacing = AppSpacing.space16,
     this.bubbleColor,

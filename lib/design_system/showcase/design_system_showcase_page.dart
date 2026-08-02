@@ -16,6 +16,7 @@ import 'package:smartflow/widget/business/finance/money_text.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/business_icon_bubble.dart';
+import 'package:smartflow/widget/business/icon/icon_catalog_picker.dart';
 import 'package:smartflow/widget/business/icon/icon_choice_grid.dart';
 import 'package:smartflow/widget/business/transaction/empty_transaction_card.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
@@ -72,6 +73,7 @@ enum _ShowcaseExampleKind {
   businessFormRows,
   transactionAmountPanel,
   iconChoiceGrid,
+  iconCatalogPicker,
   categoryGridPicker,
   submitButton,
   chips,
@@ -204,6 +206,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '图标选择网格',
     componentNames: 'IconChoiceGrid',
     keywords: ['图标', '选择', '网格'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.iconCatalogPicker,
+    category: '表单组件',
+    title: '图标目录选择',
+    componentNames: 'IconCatalogPicker',
+    keywords: ['图标', '搜索', '分类', '账户'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.categoryGridPicker,
@@ -673,6 +682,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.transactionAmountPanel =>
         _transactionAmountPanelPreview(),
       _ShowcaseExampleKind.iconChoiceGrid => _iconChoiceGridPreview(),
+      _ShowcaseExampleKind.iconCatalogPicker => _iconCatalogPickerPreview(),
       _ShowcaseExampleKind.categoryGridPicker => _categoryGridPickerPreview(),
       _ShowcaseExampleKind.submitButton => _submitButtonPreview(),
       _ShowcaseExampleKind.chips => _chipsPreview(),
@@ -1064,6 +1074,14 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       onChanged: (value) => setState(() => _selectedIconKey = value),
       maxVisibleRows: 2,
       tileMainExtent: 104,
+    );
+  }
+
+  Widget _iconCatalogPickerPreview() {
+    return IconCatalogPicker(
+      usage: BusinessIconUsage.expenseCategory,
+      selectedKey: _selectedIconKey,
+      onChanged: (value) => setState(() => _selectedIconKey = value),
     );
   }
 
