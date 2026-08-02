@@ -52,18 +52,13 @@ class SettingsPage extends ConsumerWidget {
                   value: settings.showAddTransactionFab,
                   onChanged: notifier.setShowAddTransactionFab,
                 ),
-                _SettingsSwitchRow(
-                  label: '导航栏文字',
-                  description: '在底部导航图标下方显示文字标签',
-                  value: settings.showBottomNavLabels,
-                  onChanged: notifier.setShowBottomNavLabels,
-                ),
                 AppPlainSelectFormRow<PullToCreateSensitivity>(
                   label: '下拉新增交易',
                   value: settings.pullToCreateSensitivity,
-                  valueText: _pullToCreateSensitivityLabel(
-                    settings.pullToCreateSensitivity,
-                  ),
+                  valueText:
+                      _pullToCreateSensitivityOption(
+                        settings.pullToCreateSensitivity,
+                      ).label,
                   placeholder: '标准',
                   supportingText: '调整首页下拉多远后松开即可新增交易',
                   onTap: (onSelected) async {
@@ -77,6 +72,12 @@ class SettingsPage extends ConsumerWidget {
                     await notifier.setPullToCreateSensitivity(selected);
                   },
                 ),
+                _SettingsSwitchRow(
+                  label: '导航栏文字',
+                  description: '在底部导航图标下方显示文字标签',
+                  value: settings.showBottomNavLabels,
+                  onChanged: notifier.setShowBottomNavLabels,
+                ),
               ],
             ),
           ],
@@ -86,22 +87,36 @@ class SettingsPage extends ConsumerWidget {
   }
 }
 
-String _pullToCreateSensitivityLabel(PullToCreateSensitivity sensitivity) {
-  return switch (sensitivity) {
-    PullToCreateSensitivity.sensitive => '灵敏',
-    PullToCreateSensitivity.standard => '标准',
-    PullToCreateSensitivity.cautious => '稳妥',
-  };
-}
+const _pullToCreateSensitivityOptions =
+    <PullToCreateSensitivity, _PullToCreateSensitivityOption>{
+      PullToCreateSensitivity.sensitive: _PullToCreateSensitivityOption(
+        label: '灵敏',
+        description: '短距离下拉后即可新增交易',
+      ),
+      PullToCreateSensitivity.standard: _PullToCreateSensitivityOption(
+        label: '标准',
+        description: '适中的下拉距离',
+      ),
+      PullToCreateSensitivity.cautious: _PullToCreateSensitivityOption(
+        label: '稳妥',
+        description: '更长的下拉距离，减少误触',
+      ),
+    };
 
-String _pullToCreateSensitivityDescription(
+_PullToCreateSensitivityOption _pullToCreateSensitivityOption(
   PullToCreateSensitivity sensitivity,
 ) {
-  return switch (sensitivity) {
-    PullToCreateSensitivity.sensitive => '短距离下拉后即可新增交易',
-    PullToCreateSensitivity.standard => '适中的下拉距离',
-    PullToCreateSensitivity.cautious => '更长的下拉距离，减少误触',
-  };
+  return _pullToCreateSensitivityOptions[sensitivity]!;
+}
+
+class _PullToCreateSensitivityOption {
+  const _PullToCreateSensitivityOption({
+    required this.label,
+    required this.description,
+  });
+
+  final String label;
+  final String description;
 }
 
 Future<PullToCreateSensitivity?> _showPullToCreateSensitivitySheet(
@@ -124,9 +139,11 @@ Future<PullToCreateSensitivity?> _showPullToCreateSensitivitySheet(
                         ? RemixIcons.checkbox_circle_fill
                         : RemixIcons.checkbox_blank_circle_line,
                   ),
-                  title: Text(_pullToCreateSensitivityLabel(sensitivity)),
+                  title: Text(
+                    _pullToCreateSensitivityOption(sensitivity).label,
+                  ),
                   subtitle: Text(
-                    _pullToCreateSensitivityDescription(sensitivity),
+                    _pullToCreateSensitivityOption(sensitivity).description,
                   ),
                   onTap: () => Navigator.of(sheetContext).pop(sensitivity),
                 ),
