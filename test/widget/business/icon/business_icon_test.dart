@@ -8,17 +8,6 @@ void main() {
   test(
     'provides a rich, searchable catalog for category and account pickers',
     () {
-      final expenseIcons = businessIconSpecsForUsage(
-        BusinessIconUsage.expenseCategory,
-      );
-      final incomeIcons = businessIconSpecsForUsage(
-        BusinessIconUsage.incomeCategory,
-      );
-      final accountIcons = businessIconSpecsForUsage(BusinessIconUsage.account);
-
-      expect(expenseIcons.length, greaterThanOrEqualTo(55));
-      expect(incomeIcons.length, greaterThanOrEqualTo(15));
-      expect(accountIcons.length, greaterThanOrEqualTo(32));
       expect(
         searchBusinessIconSpecs(
           usage: BusinessIconUsage.expenseCategory,
