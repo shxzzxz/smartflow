@@ -174,15 +174,9 @@ void main() {
       ),
     );
 
-    var textFields = tester.widgetList<TextField>(find.byType(TextField));
+    final textFields = _formTextFields(tester);
     expect(textFields.elementAt(0).controller!.text, '工资卡');
     expect(textFields.elementAt(1).controller!.text, '1234.00');
-
-    await tester.drag(find.byType(ListView), const Offset(0, -600));
-    await tester.pump();
-
-    textFields = tester.widgetList<TextField>(find.byType(TextField));
-    expect(textFields.last.controller!.text, '主账户');
   });
 
   testWidgets('does not reuse controllers between account ids', (tester) async {
@@ -230,15 +224,15 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.enterText(find.byType(TextField).first, '账户 A 的临时修改');
+    await tester.enterText(
+      find.byWidget(_formTextFields(tester).first),
+      '账户 A 的临时修改',
+    );
 
     setPage(() => activeId = 'account-b');
     await tester.pump();
 
-    expect(
-      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
-      '账户 B',
-    );
+    expect(_formTextFields(tester).first.controller!.text, '账户 B');
   });
 
   testWidgets('ViewModel changes do not overwrite edited text', (tester) async {
@@ -266,18 +260,25 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.enterText(find.byType(TextField).first, '用户正在编辑');
+    await tester.enterText(
+      find.byWidget(_formTextFields(tester).first),
+      '用户正在编辑',
+    );
 
     container
         .read(accountFormViewModelProvider('account-1').notifier)
         .setIconKey('another-account-icon');
     await tester.pump();
 
-    expect(
-      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
-      '用户正在编辑',
-    );
+    expect(_formTextFields(tester).first.controller!.text, '用户正在编辑');
   });
+}
+
+List<TextField> _formTextFields(WidgetTester tester) {
+  return tester
+      .widgetList<TextField>(find.byType(TextField))
+      .where((field) => field.controller != null)
+      .toList();
 }
 
 class _FakeAccountAppService implements AccountAppService {

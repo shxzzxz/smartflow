@@ -14,7 +14,7 @@ import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
-import 'package:smartflow/widget/business/icon/icon_choice_grid.dart';
+import 'package:smartflow/widget/business/icon/icon_catalog_picker.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/account_form_view_model.dart';
 
@@ -150,8 +150,8 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
                       title: '账户图标',
                       description: '选择一个容易识别的图标',
                       children: [
-                        IconChoiceGrid(
-                          choices: _accountIconGridItems,
+                        IconCatalogPicker(
+                          usage: BusinessIconUsage.account,
                           selectedKey: formState.iconKey,
                           onChanged: notifier.setIconKey,
                         ),
@@ -493,13 +493,3 @@ class _MonthlyDayField extends StatelessWidget {
     );
   }
 }
-
-final List<IconChoiceGridItem> _accountIconGridItems = [
-  for (final spec in businessIconSpecsForUsage(BusinessIconUsage.account))
-    IconChoiceGridItem(
-      iconKey: spec.iconKey,
-      label: spec.label,
-      iconBuilder:
-          (context, size) => BusinessIcon(iconKey: spec.iconKey, size: size),
-    ),
-];

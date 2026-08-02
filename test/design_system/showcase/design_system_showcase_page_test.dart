@@ -18,6 +18,7 @@ import 'package:smartflow/widget/business/finance/cashflow_summary_card.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
+import 'package:smartflow/widget/business/icon/icon_catalog_picker.dart';
 import 'package:smartflow/widget/business/icon/icon_choice_grid.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
 import 'package:smartflow/widget/business/transaction/transaction_progress_badges.dart';
@@ -341,6 +342,13 @@ void main() {
     expect(find.text('图标选择网格'), findsOneWidget);
     expect(find.byType(IconChoiceGrid), findsOneWidget);
     expect(find.text('业务图标'), findsNothing);
+
+    await tester.enterText(find.byType(SearchBar), 'IconCatalogPicker');
+    await tester.pumpAndSettle();
+
+    expect(find.text('图标目录选择'), findsOneWidget);
+    expect(find.byType(IconCatalogPicker), findsOneWidget);
+    expect(find.byType(IconChoiceGrid), findsOneWidget);
   });
 
   testWidgets('switches category roots in the category grid picker', (

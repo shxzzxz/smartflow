@@ -10,7 +10,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
-import 'package:smartflow/widget/business/icon/icon_choice_grid.dart';
+import 'package:smartflow/widget/business/icon/icon_catalog_picker.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/category_form_view_model.dart';
 
@@ -163,10 +163,8 @@ class _CategoryFormContentState extends ConsumerState<_CategoryFormContent> {
                       title: '分类图标',
                       description: '图标会用于记账和统计展示',
                       children: [
-                        IconChoiceGrid(
-                          choices: _categoryIconGridItemsForType(
-                            formState.type,
-                          ),
+                        IconCatalogPicker(
+                          usage: _iconUsageForType(formState.type),
                           selectedKey: formState.iconKey,
                           onChanged: notifier.setIconKey,
                         ),
@@ -416,16 +414,4 @@ BusinessIconUsage _iconUsageForType(AccountType type) {
   return type == AccountType.income
       ? BusinessIconUsage.incomeCategory
       : BusinessIconUsage.expenseCategory;
-}
-
-List<IconChoiceGridItem> _categoryIconGridItemsForType(AccountType type) {
-  return [
-    for (final spec in businessIconSpecsForUsage(_iconUsageForType(type)))
-      IconChoiceGridItem(
-        iconKey: spec.iconKey,
-        label: spec.label,
-        iconBuilder:
-            (context, size) => BusinessIcon(iconKey: spec.iconKey, size: size),
-      ),
-  ];
 }

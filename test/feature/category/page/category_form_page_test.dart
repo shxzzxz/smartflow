@@ -34,6 +34,9 @@ void main() {
     await tester.tap(find.text('保存'));
     await tester.pump();
 
+    await tester.drag(find.byType(ListView), const Offset(0, -400));
+    await tester.pump();
+
     expect(find.text('请输入分类名称'), findsWidgets);
     expect(service.createCommands, isEmpty);
   });
@@ -93,7 +96,7 @@ void main() {
     categories.add({category.id: category});
     await tester.pumpAndSettle();
 
-    final fields = tester.widgetList<TextField>(find.byType(TextField));
+    final fields = _formTextFields(tester);
     expect(fields.first.controller!.text, '餐饮');
   });
 
@@ -125,18 +128,25 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.enterText(find.byType(TextField).first, '用户正在编辑');
+    await tester.enterText(
+      find.byWidget(_formTextFields(tester).first),
+      '用户正在编辑',
+    );
 
     container
         .read(categoryFormViewModelProvider(categoryId: 'category-1').notifier)
         .setIconKey('another-category-icon');
     await tester.pump();
 
-    expect(
-      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
-      '用户正在编辑',
-    );
+    expect(_formTextFields(tester).first.controller!.text, '用户正在编辑');
   });
+}
+
+List<TextField> _formTextFields(WidgetTester tester) {
+  return tester
+      .widgetList<TextField>(find.byType(TextField))
+      .where((field) => field.controller != null)
+      .toList();
 }
 
 Account _category(String id, {required String name, String? note}) {
