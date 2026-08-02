@@ -185,6 +185,62 @@ void main() {
         expect(loaded.hasMore, isFalse);
       },
     );
+
+    test(
+      'keeps loaded pages in place until the user refreshes changed data',
+      () async {
+        final transactionService = _FakeTransactionQueryService();
+        final metricsService = _FakeFinancialMetricsService();
+        final accountService = _FakeAccountQueryService(
+          accountsById: const <String, Account>{},
+        );
+        final container = _container(
+          transactionService,
+          metricsService,
+          accountService,
+        );
+        final visibleMonth = DateTime(2026, 1);
+        final sub = container.listen(
+          homeTransactionFeedViewModelProvider(visibleMonth),
+          (_, _) {},
+        );
+        addTearDown(sub.close);
+        final firstPage = [
+          for (var i = 0; i < homeTransactionPageSize; i++)
+            _item(id: 'initial-$i'),
+        ];
+        transactionService.emit(firstPage);
+        await _flush();
+        transactionService.nextPage = [_item(id: 'older')];
+        await container
+            .read(homeTransactionFeedViewModelProvider(visibleMonth).notifier)
+            .loadMore();
+
+        transactionService.emit([_item(id: 'newer')]);
+        await _flush();
+
+        var loaded =
+            container.read(homeTransactionFeedViewModelProvider(visibleMonth))
+                as HomeTransactionFeedLoaded;
+        expect(loaded.items, hasLength(homeTransactionPageSize + 1));
+        expect(loaded.items.first.id, 'initial-0');
+        expect(loaded.hasPendingRefresh, isTrue);
+
+        container
+            .read(homeTransactionFeedViewModelProvider(visibleMonth).notifier)
+            .refresh();
+        await container.pump();
+        transactionService.emit([_item(id: 'newer')]);
+        await _flush();
+
+        loaded =
+            container.read(homeTransactionFeedViewModelProvider(visibleMonth))
+                as HomeTransactionFeedLoaded;
+        expect(loaded.items.map((item) => item.id), ['newer']);
+        expect(loaded.hasPendingRefresh, isFalse);
+        expect(loaded.isRefreshing, isFalse);
+      },
+    );
   });
 }
 

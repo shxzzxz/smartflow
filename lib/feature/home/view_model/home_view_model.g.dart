@@ -198,7 +198,7 @@ final class HomeTransactionFeedViewModelProvider
 }
 
 String _$homeTransactionFeedViewModelHash() =>
-    r'df75a6e5552a3e2d450ac40ea9db407433e50b31';
+    r'f5cd9f5d9c2f0858c999aae075e073eb7a0ecbec';
 
 final class HomeTransactionFeedViewModelFamily extends $Family
     with
@@ -475,7 +475,7 @@ final class HomeContentProvider
   }
 }
 
-String _$homeContentHash() => r'ed2e8acff202f976ab151a14c4d7f4aea4dc4ee4';
+String _$homeContentHash() => r'6468076ab945c1085cd7bf89487854ce4131c6e6';
 
 final class HomeContentFamily extends $Family
     with $FunctionalFamilyOverride<HomeContentState, DateTime> {

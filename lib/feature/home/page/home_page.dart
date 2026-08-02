@@ -56,6 +56,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                     :final hasMore,
                     :final isLoadingMore,
                     :final loadMoreErrorMessage,
+                    :final hasPendingRefresh,
+                    :final isRefreshing,
+                    :final refreshErrorMessage,
                   ) =>
                     _HomeContent(
                       summary: summary,
@@ -64,6 +67,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                       hasMore: hasMore,
                       isLoadingMore: isLoadingMore,
                       loadMoreErrorMessage: loadMoreErrorMessage,
+                      hasPendingRefresh: hasPendingRefresh,
+                      isRefreshing: isRefreshing,
+                      refreshErrorMessage: refreshErrorMessage,
                       onLoadMore:
                           () =>
                               ref
@@ -73,6 +79,15 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     ).notifier,
                                   )
                                   .loadMore(),
+                      onRefresh:
+                          () =>
+                              ref
+                                  .read(
+                                    homeTransactionFeedViewModelProvider(
+                                      state.visibleMonth,
+                                    ).notifier,
+                                  )
+                                  .refresh(),
                     ),
                   HomeContentError(:final message) => Center(
                     child: Text(message),
@@ -199,7 +214,11 @@ class _HomeContent extends StatelessWidget {
     required this.hasMore,
     required this.isLoadingMore,
     required this.loadMoreErrorMessage,
+    required this.hasPendingRefresh,
+    required this.isRefreshing,
+    required this.refreshErrorMessage,
     required this.onLoadMore,
+    required this.onRefresh,
   });
 
   final CashflowSummaryPresentation summary;
@@ -208,7 +227,11 @@ class _HomeContent extends StatelessWidget {
   final bool hasMore;
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
+  final bool hasPendingRefresh;
+  final bool isRefreshing;
+  final String? refreshErrorMessage;
   final VoidCallback onLoadMore;
+  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -222,6 +245,26 @@ class _HomeContent extends StatelessWidget {
       bottomPadding: AppSpacing.space24 + (reserveFabSpace ? 56 : 0), // 留给 FAB
       leading: [
         CashflowSummaryCard(summary: summary),
+        if (hasPendingRefresh || isRefreshing) ...[
+          const SizedBox(height: AppSpacing.space12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: isRefreshing ? null : onRefresh,
+              icon:
+                  isRefreshing
+                      ? const SizedBox(
+                        width: AppSpacing.space16,
+                        height: AppSpacing.space16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                      : const Icon(RemixIcons.refresh_line),
+              label: Text(
+                refreshErrorMessage ?? (isRefreshing ? '正在刷新交易' : '交易有更新，点击刷新'),
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpacing.space20),
       ],
       groups: groups,

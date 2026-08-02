@@ -52,9 +52,14 @@ Stream<List<TransactionListReadModel>> homeTransactions(
 
 @riverpod
 class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
+  var _requestGeneration = 0;
+  var _refreshRequested = false;
+
   @override
   HomeTransactionFeedState build(DateTime visibleMonth) {
-    final transactions = ref.watch(homeTransactionsProvider(visibleMonth));
+    final provider = homeTransactionsProvider(visibleMonth);
+    final transactions = ref.read(provider);
+    ref.listen(provider, (_, next) => _applyFirstPage(next));
     return switch (transactions) {
       AsyncData(:final value) => HomeTransactionFeedState.loaded(
         items: value,
@@ -67,6 +72,58 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
     };
   }
 
+  void _applyFirstPage(AsyncValue<List<TransactionListReadModel>> next) {
+    final current = state;
+    switch (next) {
+      case AsyncData(:final value):
+        _applyFirstPageData(current, value);
+      case AsyncError():
+        _applyFirstPageError(current);
+      case AsyncLoading():
+        _applyFirstPageLoading(current);
+    }
+  }
+
+  void _applyFirstPageData(
+    HomeTransactionFeedState current,
+    List<TransactionListReadModel> items,
+  ) {
+    if (_refreshRequested ||
+        current is! HomeTransactionFeedLoaded ||
+        current.items.length <= homeTransactionPageSize) {
+      _refreshRequested = false;
+      _requestGeneration += 1;
+      state = HomeTransactionFeedState.loaded(
+        items: items,
+        hasMore: items.length == homeTransactionPageSize,
+      );
+      return;
+    }
+    _requestGeneration += 1;
+    state = current.copyWith(hasPendingRefresh: true, isLoadingMore: false);
+  }
+
+  void _applyFirstPageError(HomeTransactionFeedState current) {
+    if (current is! HomeTransactionFeedLoaded) {
+      state = const HomeTransactionFeedState.error(message: '加载失败，请稍后重试');
+      return;
+    }
+    if (_refreshRequested) {
+      _refreshRequested = false;
+      state = current.copyWith(
+        hasPendingRefresh: true,
+        isRefreshing: false,
+        refreshErrorMessage: '刷新交易失败，请重试',
+      );
+    }
+  }
+
+  void _applyFirstPageLoading(HomeTransactionFeedState current) {
+    if (current is! HomeTransactionFeedLoaded) {
+      state = const HomeTransactionFeedState.loading();
+    }
+  }
+
   Future<void> loadMore() async {
     final current = state;
     if (current is! HomeTransactionFeedLoaded ||
@@ -75,6 +132,7 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
       return;
     }
     final cursorItem = current.items.last;
+    final requestGeneration = _requestGeneration;
     state = current.copyWith(isLoadingMore: true);
     try {
       final month = MonthKey(
@@ -95,19 +153,28 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
               ),
             ),
           );
-      if (!ref.mounted) return;
+      if (!ref.mounted || requestGeneration != _requestGeneration) return;
       state = current.copyWith(
         items: [...current.items, ...nextPage],
         hasMore: nextPage.length == homeTransactionPageSize,
         isLoadingMore: false,
       );
     } catch (_) {
-      if (!ref.mounted) return;
+      if (!ref.mounted || requestGeneration != _requestGeneration) return;
       state = current.copyWith(
         isLoadingMore: false,
         loadMoreErrorMessage: '加载更多交易失败，请重试',
       );
     }
+  }
+
+  void refresh() {
+    final current = state;
+    if (current is! HomeTransactionFeedLoaded || current.isRefreshing) return;
+    _requestGeneration += 1;
+    _refreshRequested = true;
+    state = current.copyWith(hasPendingRefresh: false, isRefreshing: true);
+    ref.invalidate(homeTransactionsProvider(visibleMonth));
   }
 }
 
@@ -186,6 +253,9 @@ HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
     hasMore: transactionValues.hasMore,
     isLoadingMore: transactionValues.isLoadingMore,
     loadMoreErrorMessage: transactionValues.loadMoreErrorMessage,
+    hasPendingRefresh: transactionValues.hasPendingRefresh,
+    isRefreshing: transactionValues.isRefreshing,
+    refreshErrorMessage: transactionValues.refreshErrorMessage,
   );
 }
 
@@ -213,6 +283,9 @@ sealed class HomeContentState {
     required bool hasMore,
     required bool isLoadingMore,
     String? loadMoreErrorMessage,
+    required bool hasPendingRefresh,
+    required bool isRefreshing,
+    String? refreshErrorMessage,
   }) = HomeContentLoaded;
 }
 
@@ -233,6 +306,9 @@ final class HomeContentLoaded extends HomeContentState {
     required this.hasMore,
     required this.isLoadingMore,
     this.loadMoreErrorMessage,
+    required this.hasPendingRefresh,
+    required this.isRefreshing,
+    this.refreshErrorMessage,
   });
 
   final CashflowSummaryPresentation summary;
@@ -240,6 +316,9 @@ final class HomeContentLoaded extends HomeContentState {
   final bool hasMore;
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
+  final bool hasPendingRefresh;
+  final bool isRefreshing;
+  final String? refreshErrorMessage;
 }
 
 sealed class HomeTransactionFeedState {
@@ -255,6 +334,9 @@ sealed class HomeTransactionFeedState {
     required bool hasMore,
     bool isLoadingMore,
     String? loadMoreErrorMessage,
+    bool hasPendingRefresh,
+    bool isRefreshing,
+    String? refreshErrorMessage,
   }) = HomeTransactionFeedLoaded;
 }
 
@@ -274,24 +356,36 @@ final class HomeTransactionFeedLoaded extends HomeTransactionFeedState {
     required this.hasMore,
     this.isLoadingMore = false,
     this.loadMoreErrorMessage,
+    this.hasPendingRefresh = false,
+    this.isRefreshing = false,
+    this.refreshErrorMessage,
   });
 
   final List<TransactionListReadModel> items;
   final bool hasMore;
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
+  final bool hasPendingRefresh;
+  final bool isRefreshing;
+  final String? refreshErrorMessage;
 
   HomeTransactionFeedLoaded copyWith({
     List<TransactionListReadModel>? items,
     bool? hasMore,
     bool? isLoadingMore,
     String? loadMoreErrorMessage,
+    bool? hasPendingRefresh,
+    bool? isRefreshing,
+    String? refreshErrorMessage,
   }) {
     return HomeTransactionFeedLoaded(
       items: items ?? this.items,
       hasMore: hasMore ?? this.hasMore,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       loadMoreErrorMessage: loadMoreErrorMessage,
+      hasPendingRefresh: hasPendingRefresh ?? this.hasPendingRefresh,
+      isRefreshing: isRefreshing ?? this.isRefreshing,
+      refreshErrorMessage: refreshErrorMessage,
     );
   }
 }
