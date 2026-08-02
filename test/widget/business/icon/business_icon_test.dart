@@ -49,7 +49,21 @@ void main() {
       );
       expect(
         resolveBusinessIconSpec('missing-legacy-icon').iconKey,
-        'fallback',
+        'more-line',
+      );
+      expect(
+        resolveBusinessIconSpec(
+          'missing-legacy-icon',
+          usage: BusinessIconUsage.account,
+        ).iconKey,
+        'bank-account',
+      );
+      expect(
+        resolveBusinessIconSpec(
+          'missing-legacy-icon',
+          usage: BusinessIconUsage.incomeCategory,
+        ).iconKey,
+        'more-2-line',
       );
     },
   );

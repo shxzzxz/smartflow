@@ -56,7 +56,7 @@ AccountView buildAccountView(
     name: account.name,
     kind: kind,
     balance: account.balance,
-    iconKey: account.iconKey ?? kind.iconKey,
+    iconKey: account.iconKey ?? 'bank-account',
     isArchived: account.isArchived,
     note: account.note,
     creditLimit: creditAccount?.creditLimit,

@@ -51,7 +51,11 @@ class AccountEndpointView extends StatelessWidget {
         SizedBox.square(
           dimension: iconSize,
           child: Center(
-            child: BusinessIcon(iconKey: endpoint.iconKey, size: iconSize),
+            child: BusinessIcon(
+              iconKey: endpoint.iconKey,
+              size: iconSize,
+              usage: BusinessIconUsage.account,
+            ),
           ),
         ),
         SizedBox(width: iconLabelSpacing),

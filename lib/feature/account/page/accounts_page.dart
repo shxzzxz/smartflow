@@ -574,6 +574,7 @@ class _AccountRow extends StatelessWidget {
               child: BusinessIcon(
                 iconKey: model.iconKey,
                 size: AppSpacing.space28,
+                usage: BusinessIconUsage.account,
               ),
             ),
             const SizedBox(width: AppSpacing.space14),

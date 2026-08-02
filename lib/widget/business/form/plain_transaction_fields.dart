@@ -332,6 +332,7 @@ class AccountPlainValue extends StatelessWidget {
             child: BusinessIcon(
               iconKey: account.iconKey,
               size: AppSpacing.space20,
+              usage: BusinessIconUsage.account,
             ),
           ),
         ),
@@ -496,6 +497,7 @@ class _AccountPickerRow extends StatelessWidget {
                         : BusinessIcon(
                           iconKey: iconKey,
                           size: AppSpacing.space20,
+                          usage: BusinessIconUsage.account,
                         ),
               ),
             ),

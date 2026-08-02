@@ -45,15 +45,17 @@ class BusinessIcon extends StatelessWidget {
     super.key,
     this.size = 24,
     this.color,
+    this.usage = BusinessIconUsage.expenseCategory,
   });
 
   final String? iconKey;
   final double size;
   final Color? color;
+  final BusinessIconUsage usage;
 
   @override
   Widget build(BuildContext context) {
-    final spec = resolveBusinessIconSpec(iconKey);
+    final spec = resolveBusinessIconSpec(iconKey, usage: usage);
     return switch (spec.source) {
       BusinessIconSource.remixIcon => Icon(
         spec.icon,
@@ -80,19 +82,19 @@ const businessIconSpecs = <BusinessIconSpec>[
     iconKey: 'social',
     icon: RemixIcons.user_3_line,
     color: AppColors.categorySocial,
-    label: '人情社交',
+    label: '人情社交-1',
   ),
   BusinessIconSpec.remix(
     iconKey: 'team-line',
     icon: RemixIcons.team_line,
     color: AppColors.categorySocial,
-    label: '人情社交',
+    label: '人情社交-2',
   ),
   BusinessIconSpec.remix(
     iconKey: 'home',
     icon: RemixIcons.home_5_line,
     color: AppColors.categoryHome,
-    label: '家里',
+    label: '家里-1',
   ),
   BusinessIconSpec.remix(
     iconKey: 'home-office-line',
@@ -110,7 +112,7 @@ const businessIconSpecs = <BusinessIconSpec>[
     iconKey: 'flashlight-line',
     icon: RemixIcons.flashlight_line,
     color: AppColors.categoryTransfer,
-    label: '水电燃',
+    label: '电',
   ),
   BusinessIconSpec.remix(
     iconKey: 'meal',
@@ -137,39 +139,21 @@ const businessIconSpecs = <BusinessIconSpec>[
     label: '衣物',
   ),
   BusinessIconSpec.remix(
-    iconKey: 'coffee',
-    icon: RemixIcons.cup_line,
-    color: AppColors.categoryFood,
-    label: '咖啡',
-  ),
-  BusinessIconSpec.remix(
     iconKey: 'drinks-line',
     icon: RemixIcons.drinks_line,
     color: AppColors.categoryFood,
-    label: '茶饮',
+    label: '茶饮-1',
   ),
   BusinessIconSpec.remix(
     iconKey: 'cup-line',
     icon: RemixIcons.cup_line,
     color: AppColors.categoryFood,
-    label: '早餐',
+    label: '咖啡',
   ),
   BusinessIconSpec.remix(
     iconKey: 'bowl-line',
     icon: RemixIcons.bowl_line,
     color: AppColors.categoryFood,
-    label: '午餐',
-  ),
-  BusinessIconSpec.remix(
-    iconKey: 'breakfast',
-    icon: RemixIcons.bowl_line,
-    color: AppColors.categoryGift,
-    label: '早餐',
-  ),
-  BusinessIconSpec.remix(
-    iconKey: 'lunch',
-    icon: RemixIcons.briefcase_4_line,
-    color: AppColors.categoryGift,
     label: '午餐',
   ),
   BusinessIconSpec.remix(
@@ -190,24 +174,138 @@ const businessIconSpecs = <BusinessIconSpec>[
     color: AppColors.categorySnack,
     label: '休闲零食',
   ),
-  BusinessIconSpec.remix(
-    iconKey: 'seafood',
-    icon: RemixIcons.gitlab_line,
-    color: AppColors.categorySeafood,
-    label: '生鲜食品',
-  ),
   BusinessIconSpec.svg(
-    iconKey: 'cabbage',
-    assetPath: 'assets/icons/category/cabbage.svg',
+    iconKey: 'fresh-food',
+    assetPath: 'assets/icons/category/fresh_food.svg',
     color: AppColors.categorySeafood,
     label: '食材生鲜',
     usage: BusinessIconUsage.expenseCategory,
   ),
-  BusinessIconSpec.remix(
-    iconKey: 'seasoning',
-    icon: RemixIcons.archive_line,
+  BusinessIconSpec.svg(
+    iconKey: 'vegetables',
+    assetPath: 'assets/icons/category/vegetables.svg',
+    color: AppColors.categorySeafood,
+    label: '蔬菜',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'seasonings',
+    assetPath: 'assets/icons/category/seasonings.svg',
+    color: AppColors.categoryFood,
+    label: '调味底料',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'teapot',
+    assetPath: 'assets/icons/category/teapot.svg',
+    color: AppColors.categoryFood,
+    label: '茶饮-2',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'snacks',
+    assetPath: 'assets/icons/category/snacks.svg',
+    color: AppColors.categorySnack,
+    label: '零食',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'group-dining',
+    assetPath: 'assets/icons/category/group_dining.svg',
+    color: AppColors.categoryDining,
+    label: '聚餐',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'dining-with-friends',
+    assetPath: 'assets/icons/category/dining_with_friends.svg',
+    color: AppColors.categoryDining,
+    label: '朋友聚餐',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'office-supplies',
+    assetPath: 'assets/icons/category/office_supplies.svg',
+    color: AppColors.categoryShopping,
+    label: '办公用品',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'appliances',
+    assetPath: 'assets/icons/category/appliances.svg',
     color: AppColors.categoryHome,
-    label: '粮油调味',
+    label: '电器',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'home-illustration',
+    assetPath: 'assets/icons/category/home.svg',
+    color: AppColors.categoryHome,
+    label: '家里-2',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'electricity-bill',
+    assetPath: 'assets/icons/category/electricity_bill.svg',
+    color: AppColors.categoryTransfer,
+    label: '电费',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'gas-bill',
+    assetPath: 'assets/icons/category/gas_bill.svg',
+    color: AppColors.categoryTransfer,
+    label: '燃气费',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'water-bill',
+    assetPath: 'assets/icons/category/water_bill.svg',
+    color: AppColors.categoryTransfer,
+    label: '水费',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'internet',
+    assetPath: 'assets/icons/category/internet.svg',
+    color: AppColors.categoryTransfer,
+    label: '网络代理',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'tobacco-alcohol',
+    assetPath: 'assets/icons/category/tobacco_alcohol.svg',
+    color: AppColors.categoryFood,
+    label: '烟酒',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'entertainment',
+    assetPath: 'assets/icons/category/entertainment.svg',
+    color: AppColors.categoryGift,
+    label: '游玩',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'elders',
+    assetPath: 'assets/icons/category/elders.svg',
+    color: AppColors.categorySocial,
+    label: '长辈',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'ai-tools',
+    assetPath: 'assets/icons/category/ai_tools.svg',
+    color: AppColors.categoryGenericNeutral,
+    label: 'AI 工具箱',
+    usage: BusinessIconUsage.expenseCategory,
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'haircut',
+    assetPath: 'assets/icons/category/haircut.svg',
+    color: AppColors.categoryShopping,
+    label: '理发',
+    usage: BusinessIconUsage.expenseCategory,
   ),
   BusinessIconSpec.svg(
     iconKey: 'rice',
@@ -265,12 +363,6 @@ const businessIconSpecs = <BusinessIconSpec>[
     label: '通讯',
   ),
   BusinessIconSpec.remix(
-    iconKey: 'send-plane-line',
-    icon: RemixIcons.send_plane_line,
-    color: AppColors.categoryGenericNeutral,
-    label: '通讯',
-  ),
-  BusinessIconSpec.remix(
     iconKey: 'book',
     icon: RemixIcons.book_open_line,
     color: AppColors.categoryReading,
@@ -298,7 +390,7 @@ const businessIconSpecs = <BusinessIconSpec>[
     iconKey: 'salary',
     icon: RemixIcons.briefcase_4_line,
     color: AppColors.categorySalary,
-    label: '工资',
+    label: '工资-1',
     usage: BusinessIconUsage.incomeCategory,
   ),
   BusinessIconSpec.remix(
@@ -312,7 +404,7 @@ const businessIconSpecs = <BusinessIconSpec>[
     iconKey: 'wallet-3-line',
     icon: RemixIcons.wallet_3_line,
     color: AppColors.categorySalary,
-    label: '工资',
+    label: '工资-2',
     usage: BusinessIconUsage.incomeCategory,
   ),
   BusinessIconSpec.remix(
@@ -400,42 +492,17 @@ const businessIconSpecs = <BusinessIconSpec>[
     usage: BusinessIconUsage.system,
   ),
   BusinessIconSpec.remix(
-    iconKey: 'expense',
-    icon: RemixIcons.price_tag_3_line,
-    color: AppColors.categoryGenericExpense,
-    label: '通用支出',
-  ),
-  BusinessIconSpec.remix(
-    iconKey: 'income',
-    icon: RemixIcons.price_tag_3_line,
-    color: AppColors.categoryGenericIncome,
-    label: '通用收入',
-    usage: BusinessIconUsage.incomeCategory,
-  ),
-  BusinessIconSpec.remix(
     iconKey: 'more-2-line',
     icon: RemixIcons.more_2_line,
     color: AppColors.categoryGenericIncome,
-    label: '其他',
+    label: '其他-2',
     usage: BusinessIconUsage.incomeCategory,
-  ),
-  BusinessIconSpec.remix(
-    iconKey: 'category',
-    icon: RemixIcons.price_tag_3_line,
-    color: AppColors.categoryGenericNeutral,
-    label: '其他',
   ),
   BusinessIconSpec.remix(
     iconKey: 'more-line',
     icon: RemixIcons.more_line,
     color: AppColors.categoryGenericNeutral,
-    label: '其他',
-  ),
-  BusinessIconSpec.svg(
-    iconKey: 'account',
-    assetPath: 'assets/icons/account/account.svg',
-    color: AppColors.categoryGenericNeutral,
-    label: '账户',
+    label: '其他-1',
   ),
   BusinessIconSpec.svg(
     iconKey: 'alipay',
@@ -486,12 +553,6 @@ const businessIconSpecs = <BusinessIconSpec>[
     label: '中国邮政储蓄银行',
   ),
   BusinessIconSpec.svg(
-    iconKey: 'bank_of_shanghai',
-    assetPath: 'assets/icons/account/bank_of_shanghai.svg',
-    color: AppColors.categoryGenericNeutral,
-    label: '上海银行',
-  ),
-  BusinessIconSpec.svg(
     iconKey: 'china_development_bank',
     assetPath: 'assets/icons/account/china_development_bank.svg',
     color: AppColors.categoryGenericNeutral,
@@ -532,13 +593,6 @@ const businessIconSpecs = <BusinessIconSpec>[
     assetPath: 'assets/icons/account/reimburse.svg',
     color: AppColors.categoryGenericNeutral,
     label: '报销',
-  ),
-  BusinessIconSpec.remix(
-    iconKey: 'meal-delivery',
-    icon: RemixIcons.restaurant_line,
-    color: AppColors.categoryDining,
-    label: '外卖',
-    keywords: ['配送'],
   ),
   BusinessIconSpec.remix(
     iconKey: 'dessert',
@@ -913,7 +967,7 @@ List<BusinessIconSpec> searchBusinessIconSpecs({
   );
 }
 
-const _fallbackIconSpec = BusinessIconSpec.remix(
+const _systemFallbackIconSpec = BusinessIconSpec.remix(
   iconKey: 'fallback',
   icon: RemixIcons.remixicon_line,
   color: AppColors.categoryGenericNeutral,
@@ -921,12 +975,20 @@ const _fallbackIconSpec = BusinessIconSpec.remix(
   usage: BusinessIconUsage.system,
 );
 
-BusinessIconSpec resolveBusinessIconSpec(String? iconKey) {
+BusinessIconSpec resolveBusinessIconSpec(
+  String? iconKey, {
+  BusinessIconUsage usage = BusinessIconUsage.expenseCategory,
+}) {
   final normalized = normalizeBusinessIconKey(iconKey);
   if (normalized != null && businessIconSpecsByKey.containsKey(normalized)) {
     return businessIconSpecsByKey[normalized]!;
   }
-  return _fallbackIconSpec;
+  return switch (usage) {
+    BusinessIconUsage.account => businessIconSpecsByKey['bank-account']!,
+    BusinessIconUsage.incomeCategory => businessIconSpecsByKey['more-2-line']!,
+    BusinessIconUsage.expenseCategory => businessIconSpecsByKey['more-line']!,
+    BusinessIconUsage.system => _systemFallbackIconSpec,
+  };
 }
 
 String? normalizeBusinessIconKey(String? iconKey) {

@@ -242,7 +242,7 @@ class CategoryFormInitialValues {
 }
 
 String defaultCategoryIconKey(AccountType type) {
-  return type == AccountType.income ? 'salary' : 'social';
+  return type == AccountType.income ? 'more-2-line' : 'more-line';
 }
 
 List<Account> categoryParentOptions({

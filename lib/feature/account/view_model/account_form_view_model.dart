@@ -288,7 +288,7 @@ class AccountFormState {
     return AccountFormState(
       initialValues: const AccountFormInitialValues(),
       kind: AccountProfileKind.fund,
-      iconKey: AccountProfileKind.fund.iconKey,
+      iconKey: 'bank-account',
       submitting: false,
     );
   }
@@ -297,7 +297,7 @@ class AccountFormState {
     return AccountFormState(
       initialValues: AccountFormInitialValues.fromAccount(account),
       kind: account.kind,
-      iconKey: account.iconKey ?? account.kind.iconKey,
+      iconKey: account.iconKey ?? 'bank-account',
       billingDay: account.billingDay,
       repaymentDay: account.repaymentDay,
       billingDayToNext: account.billingDayToNext ?? true,

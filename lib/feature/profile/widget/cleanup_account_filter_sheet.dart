@@ -104,6 +104,7 @@ class _CleanupAccountFilterSheetState
                             BusinessIcon(
                               iconKey: account.iconKey,
                               size: AppSpacing.space20,
+                              usage: BusinessIconUsage.account,
                             ),
                             const SizedBox(width: AppSpacing.space8),
                           ],

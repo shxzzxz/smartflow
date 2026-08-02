@@ -192,7 +192,7 @@ Future<void> _upgradeBuiltinIcons(AppDatabase database) async {
     database,
     name: '通讯',
     type: AccountType.expense,
-    iconKey: 'send-plane-line',
+    iconKey: 'phone',
   );
   await _updateCategoryIcon(
     database,
@@ -629,7 +629,7 @@ const _expenseCategories = [
   _BuiltinCategory(
     name: '通讯',
     type: AccountType.expense,
-    iconKey: 'send-plane-line',
+    iconKey: 'phone',
     sortOrder: 90,
   ),
   _BuiltinCategory(

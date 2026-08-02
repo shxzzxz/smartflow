@@ -762,6 +762,7 @@ class _MainAccountPickerTile extends StatelessWidget {
                           child: BusinessIcon(
                             iconKey: effective?.iconKey,
                             size: 28,
+                            usage: BusinessIconUsage.account,
                           ),
                         ),
                       ),
@@ -981,7 +982,11 @@ class _AccountSelectorChip extends StatelessWidget {
     final leading =
         effective == null || (allowNone && selectedId == null)
             ? null
-            : BusinessIcon(iconKey: effective.iconKey, size: 14);
+            : BusinessIcon(
+              iconKey: effective.iconKey,
+              size: 14,
+              usage: BusinessIconUsage.account,
+            );
 
     return _QuickActionChip(
       label: text,
