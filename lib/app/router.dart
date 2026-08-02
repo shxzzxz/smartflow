@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 
 import 'app_shell.dart';
@@ -113,11 +112,10 @@ final appRouter = GoRouter(
         ),
       ],
     ),
-    if (kDebugMode)
-      GoRoute(
-        path: '/dev/design-system',
-        builder: (context, state) => const DesignSystemShowcasePage(),
-      ),
+    GoRoute(
+      path: '/dev/design-system',
+      builder: (context, state) => const DesignSystemShowcasePage(),
+    ),
     GoRoute(
       path: '/dev/logs',
       builder: (context, state) => const LogViewerPage(),
