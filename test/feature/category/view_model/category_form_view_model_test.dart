@@ -226,6 +226,14 @@ class _FakeCategoryAppService implements CategoryAppService {
     _throwIfNeeded();
   }
 
+  @override
+  Future<CategoryDeletionPreview> previewCategoryDeletion(String categoryId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteCategory(DeleteCategoryCommand command) =>
+      throw UnimplementedError();
+
   void _throwIfNeeded() {
     final exception = this.exception;
     if (exception != null) throw exception;

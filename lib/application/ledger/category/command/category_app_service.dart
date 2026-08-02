@@ -1,11 +1,14 @@
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/core/patch/patch.dart';
+import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/service/account/category_factory.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
+import 'package:smartflow/domain/ledger/port/transaction_repository.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_violation_reason.dart';
 
 import 'category_command.dart';
 
@@ -13,18 +16,28 @@ abstract interface class CategoryAppService {
   Future<Account> createCategory(CreateCategoryCommand command);
 
   Future<void> editCategory(EditCategoryCommand command);
+
+  Future<CategoryDeletionPreview> previewCategoryDeletion(String categoryId);
+
+  Future<void> deleteCategory(DeleteCategoryCommand command);
 }
 
 class CategoryAppServiceImpl implements CategoryAppService {
   const CategoryAppServiceImpl({
     required AccountRepository repository,
+    required TransactionRepository transactionRepository,
+    required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
     CategoryFactory categoryFactory = const CategoryFactory(),
   }) : _repository = repository,
+       _transactionRepository = transactionRepository,
+       _runner = transactionRunner,
        _idGenerator = idGenerator,
        _categoryFactory = categoryFactory;
 
   final AccountRepository _repository;
+  final TransactionRepository _transactionRepository;
+  final TransactionRunner _runner;
   final IdGenerator _idGenerator;
   final CategoryFactory _categoryFactory;
 
@@ -100,5 +113,118 @@ class CategoryAppServiceImpl implements CategoryAppService {
     );
     category.moveCategoryTo(parent);
     await _repository.save(category);
+  }
+
+  @override
+  Future<CategoryDeletionPreview> previewCategoryDeletion(
+    String categoryId,
+  ) async {
+    final category = await _loadDeletableCategory(categoryId);
+    final (activeChildren, mounts) = await _collectDeletionScope(category);
+    final nodes = [category, ...activeChildren];
+    final counts = await _transactionRepository.countEntriesByAccount({
+      for (final node in nodes) node.id,
+    });
+    return CategoryDeletionPreview(
+      root: CategoryDeletionPlanNode(
+        category: category,
+        entryCount: counts[category.id] ?? 0,
+      ),
+      children: [
+        for (final child in activeChildren)
+          CategoryDeletionPlanNode(
+            category: child,
+            entryCount: counts[child.id] ?? 0,
+          ),
+      ],
+      mounts: mounts,
+    );
+  }
+
+  @override
+  Future<void> deleteCategory(DeleteCategoryCommand command) async {
+    final category = await _loadDeletableCategory(command.id);
+    final (activeChildren, mounts) = await _collectDeletionScope(category);
+    final nodes = [category, ...activeChildren];
+    final counts = await _transactionRepository.countEntriesByAccount({
+      for (final node in nodes) node.id,
+    });
+    final referenced = [
+      for (final node in nodes)
+        if ((counts[node.id] ?? 0) > 0) node,
+    ];
+    final unreferenced = [
+      for (final node in nodes)
+        if ((counts[node.id] ?? 0) == 0) node,
+    ];
+
+    if (referenced.isEmpty && mounts.isEmpty) {
+      await _runner.run<void>(() async {
+        for (final node in [...activeChildren, category]) {
+          await _repository.delete(node.id);
+        }
+      });
+      return;
+    }
+
+    final target = await _resolveMergeTarget(
+      command.mergeTargetId,
+      excludedIds: {for (final node in nodes) node.id},
+    );
+    final now = DateTime.now();
+    final merged = <Account>[
+      for (final node in referenced) node..archiveCategoryMergingTo(target, now),
+      for (final mount in mounts) mount..remountMergedCategoryTo(target),
+    ];
+    await _runner.run<void>(() async {
+      await _repository.saveAll(merged);
+      for (final node in unreferenced) {
+        await _repository.delete(node.id);
+      }
+    });
+  }
+
+  Future<Account> _loadDeletableCategory(String categoryId) async {
+    final category = await _repository.findById(categoryId);
+    if (category == null || !category.type.isCategory) {
+      throw BusinessException(LedgerErrorCode.categoryNotFound);
+    }
+    if (category.isArchived) {
+      LedgerViolationReason.categoryArchived.throwException();
+    }
+    return category;
+  }
+
+  /// 收集删除范围：active 子分类，以及挂在被删子树任意节点上的归档节点。
+  Future<(List<Account>, List<Account>)> _collectDeletionScope(
+    Account category,
+  ) async {
+    final activeChildren = await _repository.findChildrenOf(category.id);
+    final mounts = await _repository.findArchivedMountsOf({
+      category.id,
+      for (final child in activeChildren) child.id,
+    });
+    return (activeChildren, mounts);
+  }
+
+  Future<Account> _resolveMergeTarget(
+    String? mergeTargetId, {
+    required Set<String> excludedIds,
+  }) async {
+    if (mergeTargetId == null) {
+      LedgerViolationReason.categoryMergeTargetRequired.throwException();
+    }
+    if (excludedIds.contains(mergeTargetId)) {
+      LedgerViolationReason.categoryMergeTargetInvalid.throwException(
+        message: '承接分类不能在被删除的分类范围内。',
+      );
+    }
+    final target = await _repository.findById(mergeTargetId);
+    if (target == null || !target.type.isCategory) {
+      LedgerViolationReason.categoryMergeTargetInvalid.throwException(
+        message: '承接分类不存在。',
+      );
+    }
+    return target;
   }
 }

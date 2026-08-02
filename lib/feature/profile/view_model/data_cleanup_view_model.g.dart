@@ -42,7 +42,7 @@ final class DataCleanupViewModelProvider
 }
 
 String _$dataCleanupViewModelHash() =>
-    r'98e240fef2613a22606f8b5feccaf90ac446671c';
+    r'd09585a77b72f8a6b3fbdc2e92ba3b1f9952e406';
 
 abstract class _$DataCleanupViewModel extends $Notifier<DataCleanupState> {
   DataCleanupState build();

@@ -365,6 +365,13 @@ class _AccountRepository implements AccountRepository {
 
   @override
   Future<void> saveAll(Iterable<Account> accounts) async {}
+
+  @override
+  Future<List<Account>> findArchivedMountsOf(Set<String> categoryIds) async =>
+      const [];
+
+  @override
+  Future<void> delete(String id) async {}
 }
 
 class _AccountPostingService implements AccountPostingService {

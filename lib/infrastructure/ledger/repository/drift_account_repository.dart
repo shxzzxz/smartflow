@@ -27,6 +27,27 @@ class DriftAccountRepository implements AccountRepository {
     return rows.map(mapAccount).toList();
   }
 
+  @override
+  Future<List<Account>> findArchivedMountsOf(Set<String> categoryIds) async {
+    if (categoryIds.isEmpty) {
+      return const [];
+    }
+
+    final rows =
+        await (_database.select(_database.accounts)..where(
+          (account) =>
+              account.archivedAt.isNotNull() &
+              account.parentId.isIn(categoryIds),
+        )).get();
+    return rows.map(mapAccount).toList();
+  }
+
+  @override
+  Future<void> delete(String id) async {
+    await (_database.delete(_database.accounts)
+      ..where((account) => account.id.equals(id))).go();
+  }
+
   Future<Account?> findAccountById(String id) async {
     final row =
         await (_database.select(_database.accounts)

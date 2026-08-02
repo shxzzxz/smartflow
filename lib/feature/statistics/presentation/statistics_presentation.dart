@@ -509,7 +509,7 @@ List<StatisticsBreakdownItem> _buildCategoryGroups(
 ) {
   final groups = <String, _MutableBreakdown>{};
   for (final metric in metrics) {
-    final rootId = metric.parentAccountId ?? metric.accountId;
+    final rootId = _resolveCategoryRootId(metric, accountsById);
     final rootAccount = accountsById[rootId];
     final group = groups.putIfAbsent(
       rootId,
@@ -547,6 +547,21 @@ List<StatisticsBreakdownItem> _buildCategoryGroups(
       ),
   ]..sort(_compareBreakdown);
   return _withProgress(result);
+}
+
+/// 沿 parentId 链解析到一级分类。归档分类挂载在承接分类下（可能是二级），
+/// 链最多三层（归档叶子 → 二级 → 一级）；上限防御异常数据成环。
+String _resolveCategoryRootId(
+  AccountMetric metric,
+  Map<String, Account> accountsById,
+) {
+  var currentId = metric.accountId;
+  var parentId = metric.parentAccountId;
+  for (var depth = 0; parentId != null && depth < 4; depth++) {
+    currentId = parentId;
+    parentId = accountsById[currentId]?.parentId;
+  }
+  return currentId;
 }
 
 List<StatisticsBreakdownItem> _withProgress(

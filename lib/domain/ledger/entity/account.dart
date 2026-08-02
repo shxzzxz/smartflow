@@ -132,6 +132,54 @@ class Account {
     parentId = parent?.id;
   }
 
+  /// 分类归档并把统计归属并入 [target]，分录不改写。
+  /// 归档后 parentId 表示"归并目标"而非层级父：active 树维持二层，
+  /// 归档节点恒为挂载叶子（归并目标必是 active 分类，链不叠加）。
+  void archiveCategoryMergingTo(Account target, DateTime archivedAt) {
+    if (!type.isCategory) {
+      throw BusinessException(
+        LedgerErrorCode.categoryInvalidCommand,
+        message: 'Only income and expense category can be archived.',
+      );
+    }
+    if (isArchived) {
+      LedgerViolationReason.categoryArchived.throwException();
+    }
+    _ensureValidMergeTarget(target);
+    this.archivedAt = archivedAt;
+    parentId = target.id;
+  }
+
+  /// 挂载点被删除时，归档节点重挂到新的归并目标（链式打平）。
+  void remountMergedCategoryTo(Account target) {
+    if (!type.isCategory || !isArchived) {
+      throw BusinessException(
+        LedgerErrorCode.categoryInvalidCommand,
+        message: 'Only archived category can be remounted.',
+      );
+    }
+    _ensureValidMergeTarget(target);
+    parentId = target.id;
+  }
+
+  void _ensureValidMergeTarget(Account target) {
+    if (target.id == id) {
+      LedgerViolationReason.categoryMergeTargetInvalid.throwException(
+        message: 'Category cannot merge into itself.',
+      );
+    }
+    if (target.isArchived) {
+      LedgerViolationReason.categoryMergeTargetInvalid.throwException(
+        message: 'Merge target category is archived.',
+      );
+    }
+    if (target.type != type) {
+      LedgerViolationReason.categoryMergeTargetInvalid.throwException(
+        message: 'Merge target category type must match.',
+      );
+    }
+  }
+
   void changeCategoryProfile(CategoryProfilePatch patch) {
     _ensureCategoryEditable();
     if (!type.isCategory) {

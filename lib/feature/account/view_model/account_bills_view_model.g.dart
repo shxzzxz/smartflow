@@ -59,7 +59,7 @@ final class AccountBillsViewModelProvider
 }
 
 String _$accountBillsViewModelHash() =>
-    r'6e79e05de9a84dffffd7f1d8876dc69f98681663';
+    r'a2a06371d9aa6383a2cf6ddcbb5e3be9f8ae340b';
 
 final class AccountBillsViewModelFamily extends $Family
     with

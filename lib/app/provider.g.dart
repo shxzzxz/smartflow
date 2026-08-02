@@ -1276,7 +1276,7 @@ final class CategoryAppServiceProvider
 }
 
 String _$categoryAppServiceHash() =>
-    r'8276e832859893662b833bd9d014f0abe5a70dda';
+    r'ee7f98bec771a991658af07a78255034deb0497f';
 
 @ProviderFor(categoryQueryService)
 final categoryQueryServiceProvider = CategoryQueryServiceProvider._();

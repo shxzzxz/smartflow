@@ -56,7 +56,7 @@ final class InstallmentDetailViewModelProvider
 }
 
 String _$installmentDetailViewModelHash() =>
-    r'18e71dc5ed32a66fb67665c8dac14570a34f916e';
+    r'c27e6d97951d87085efeaaef79963b452ad8d816';
 
 final class InstallmentDetailViewModelFamily extends $Family
     with

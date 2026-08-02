@@ -11,6 +11,16 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
 
   final AppDatabase _db;
 
+  /// 归档账户不参与统计；分类（income/expense）例外——归档分类的历史分录
+  /// 仍计入统计，由上层沿 parentId 归并到承接分类。
+  Expression<bool> _statisticalAccountFilter() {
+    return _db.accounts.archivedAt.isNull() |
+        _db.accounts.accountType.isInValues(const [
+          AccountType.income,
+          AccountType.expense,
+        ]);
+  }
+
   @override
   Future<List<AccountAggregate>> aggregateByAccount({
     required Set<AccountType> accountTypes,
@@ -39,7 +49,7 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
           ..where(
             applyTransactionScope(transactions: _db.transactions, scope: scope),
           )
-          ..where(_db.accounts.archivedAt.isNull())
+          ..where(_statisticalAccountFilter())
           ..where(_db.accounts.accountType.isInValues(accountTypes))
           ..groupBy([accountIdCol, parentIdCol, typeCol]);
 
@@ -97,7 +107,7 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
           ..where(
             applyTransactionScope(transactions: _db.transactions, scope: scope),
           )
-          ..where(_db.accounts.archivedAt.isNull())
+          ..where(_statisticalAccountFilter())
           ..where(_db.accounts.accountType.isInValues(accountTypes))
           ..groupBy([typeCol]);
 
@@ -152,7 +162,7 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
           ..where(
             applyTransactionScope(transactions: _db.transactions, scope: scope),
           )
-          ..where(_db.accounts.archivedAt.isNull())
+          ..where(_statisticalAccountFilter())
           ..where(_db.accounts.accountType.isInValues(accountTypes))
           ..groupBy([occurredAtCol, typeCol]);
 
@@ -222,7 +232,7 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
           ..where(
             applyTransactionScope(transactions: _db.transactions, scope: scope),
           )
-          ..where(_db.accounts.archivedAt.isNull())
+          ..where(_statisticalAccountFilter())
           ..where(_db.accounts.accountType.isInValues(accountTypes))
           ..groupBy([monthExpr, typeCol]);
 

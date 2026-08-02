@@ -50,7 +50,7 @@ final class BillEditViewModelProvider
   }
 }
 
-String _$billEditViewModelHash() => r'46ad116bd9c66097168ab6482958e886de332cef';
+String _$billEditViewModelHash() => r'761b1ceea66115a2d8cdcb4d042610ecbb148e56';
 
 final class BillEditViewModelFamily extends $Family
     with

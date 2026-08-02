@@ -95,6 +95,25 @@ class DriftPostingRepository
   }
 
   @override
+  Future<Map<String, int>> countEntriesByAccount(Set<String> accountIds) async {
+    if (accountIds.isEmpty) {
+      return const {};
+    }
+
+    final countExpr = _database.entries.id.count();
+    final rows =
+        await (_database.selectOnly(_database.entries)
+              ..addColumns([_database.entries.accountId, countExpr])
+              ..where(_database.entries.accountId.isIn(accountIds))
+              ..groupBy([_database.entries.accountId]))
+            .get();
+    return {
+      for (final row in rows)
+        row.read(_database.entries.accountId)!: row.read(countExpr) ?? 0,
+    };
+  }
+
+  @override
   Future<void> applyRewrite(TransactionGroupRewritePlan plan) async {
     await Future.forEach<Transaction>(plan.rowUpdates, updateTransaction);
     await Future.forEach<TransactionRewrite>(

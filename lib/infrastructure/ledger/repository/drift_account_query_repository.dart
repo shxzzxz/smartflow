@@ -37,6 +37,16 @@ class DriftAccountQueryRepository implements AccountQueryRepository {
   }
 
   @override
+  Stream<List<Account>> watchAllAccounts() {
+    final query = _database.select(_database.accounts)..orderBy([
+      (account) => OrderingTerm.asc(account.sortOrder),
+      (account) => OrderingTerm.asc(account.name),
+    ]);
+
+    return query.watch().map((rows) => rows.map(mapAccount).toList());
+  }
+
+  @override
   Stream<List<Account>> watchCategories(AccountType type) {
     final query =
         _database.select(_database.accounts)
@@ -47,6 +57,23 @@ class DriftAccountQueryRepository implements AccountQueryRepository {
           )
           ..orderBy([
             (account) => OrderingTerm.asc(account.parentId),
+            (account) => OrderingTerm.asc(account.sortOrder),
+            (account) => OrderingTerm.asc(account.name),
+          ]);
+
+    return query.watch().map((rows) => rows.map(mapAccount).toList());
+  }
+
+  @override
+  Stream<List<Account>> watchArchivedCategories(AccountType type) {
+    final query =
+        _database.select(_database.accounts)
+          ..where(
+            (account) =>
+                account.archivedAt.isNotNull() &
+                account.accountType.equalsValue(type),
+          )
+          ..orderBy([
             (account) => OrderingTerm.asc(account.sortOrder),
             (account) => OrderingTerm.asc(account.name),
           ]);

@@ -1247,6 +1247,8 @@ class _Fixture {
     );
     final categoryCommands = CategoryAppServiceImpl(
       repository: accounts,
+      transactionRepository: postings,
+      transactionRunner: runner,
       idGenerator: ids,
     );
     final ledger = LedgerImportPort(

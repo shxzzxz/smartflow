@@ -225,6 +225,8 @@ AccountAppService accountAppService(Ref ref) {
 CategoryAppService categoryAppService(Ref ref) {
   return CategoryAppServiceImpl(
     repository: ref.watch(accountRepositoryProvider),
+    transactionRepository: ref.watch(ledgerRepositoryProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
     idGenerator: ref.watch(idGeneratorProvider),
   );
 }

@@ -42,7 +42,7 @@ final class LogViewerViewModelProvider
 }
 
 String _$logViewerViewModelHash() =>
-    r'2c7e334a8a36d6406a041043cb6177d6d42b4ff0';
+    r'f156d078282ac3d71f52bfacb0c80500511554e7';
 
 abstract class _$LogViewerViewModel extends $Notifier<LogViewerState> {
   LogViewerState build();

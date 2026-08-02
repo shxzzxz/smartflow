@@ -18,6 +18,8 @@ abstract interface class AccountQueryService {
   Stream<List<Account>> watchAccountsForUsage(AccountUsage usage);
 
   Stream<List<Account>> watchCategories(AccountType type);
+
+  Stream<List<Account>> watchArchivedCategories(AccountType type);
 }
 
 class AccountQueryServiceImpl implements AccountQueryService {
@@ -46,15 +48,13 @@ class AccountQueryServiceImpl implements AccountQueryService {
     return _accounts.watchAccounts(types);
   }
 
+  /// 含归档账户：历史分录可能引用归档账户/分类，按 id 解析必须全量。
+  /// 候选/选择场景不要用这个，走 watchAccounts / watchAccountsForUsage。
   @override
   Stream<Map<String, Account>> watchAccountsById() {
-    return watchAccounts({
-      AccountType.asset,
-      AccountType.liability,
-      AccountType.equity,
-      AccountType.income,
-      AccountType.expense,
-    }).map((accounts) => {for (final account in accounts) account.id: account});
+    return _accounts.watchAllAccounts().map(
+      (accounts) => {for (final account in accounts) account.id: account},
+    );
   }
 
   @override
@@ -70,5 +70,10 @@ class AccountQueryServiceImpl implements AccountQueryService {
   @override
   Stream<List<Account>> watchCategories(AccountType type) {
     return _accounts.watchCategories(type);
+  }
+
+  @override
+  Stream<List<Account>> watchArchivedCategories(AccountType type) {
+    return _accounts.watchArchivedCategories(type);
   }
 }

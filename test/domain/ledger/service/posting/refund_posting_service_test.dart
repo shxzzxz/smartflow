@@ -148,4 +148,18 @@ class _AccountRepository implements AccountRepository {
       _accounts[account.id] = account;
     }
   }
+
+  @override
+  Future<List<Account>> findArchivedMountsOf(Set<String> categoryIds) async {
+    return [
+      for (final account in _accounts.values)
+        if (account.isArchived && categoryIds.contains(account.parentId))
+          account,
+    ];
+  }
+
+  @override
+  Future<void> delete(String id) async {
+    _accounts.remove(id);
+  }
 }

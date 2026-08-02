@@ -44,9 +44,21 @@ enum LedgerViolationReason {
     LedgerErrorCode.transactionPostingFailed,
     'Borrowing accounts cannot be resolved.',
   ),
+  categoryArchived(
+    LedgerErrorCode.categoryUnavailable,
+    'Category is archived.',
+  ),
   categoryDepthExceeded(
     LedgerErrorCode.categoryInvalidCommand,
     'Categories support one child level in this stage.',
+  ),
+  categoryMergeTargetInvalid(
+    LedgerErrorCode.categoryInvalidCommand,
+    'Merge target category is invalid.',
+  ),
+  categoryMergeTargetRequired(
+    LedgerErrorCode.categoryInvalidCommand,
+    'A merge target category is required.',
   ),
   categoryParentArchived(
     LedgerErrorCode.categoryInvalidParent,
