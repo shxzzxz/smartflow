@@ -7,7 +7,7 @@ import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/profile/page/settings_page.dart';
 
 void main() {
-  testWidgets('user can select pull-to-create sensitivity', (tester) async {
+  testWidgets('user can change pull-to-create sensitivity', (tester) async {
     final store = _InMemoryAppSettingsStore();
     await tester.pumpWidget(
       ProviderScope(
@@ -17,9 +17,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('下拉新增交易'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('灵敏').last);
+    await tester.tap(find.text('灵敏'));
     await tester.pumpAndSettle();
 
     expect(

@@ -8,6 +8,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_month_picker.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
 import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
+import 'package:smartflow/feature/shared/presentation/pull_to_create_sensitivity_control.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../shared/view_model/app_settings_view_model.dart';
 import '../view_model/home_view_model.dart';
@@ -41,6 +42,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               onNextMonth: () => _shiftMonth(1),
               trailing: _HomeSettingsMenu(
                 showAddTransactionFab: settings.showAddTransactionFab,
+                pullToCreateSensitivity: settings.pullToCreateSensitivity,
               ),
             ),
             Expanded(
@@ -101,25 +103,70 @@ class _HomePageState extends ConsumerState<HomePage> {
 }
 
 class _HomeSettingsMenu extends ConsumerWidget {
-  const _HomeSettingsMenu({required this.showAddTransactionFab});
+  const _HomeSettingsMenu({
+    required this.showAddTransactionFab,
+    required this.pullToCreateSensitivity,
+  });
 
   final bool showAddTransactionFab;
+  final PullToCreateSensitivity pullToCreateSensitivity;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return AppPopupMenuButton<bool>(
+    final notifier = ref.read(appSettingsViewModelProvider.notifier);
+    return AppPopupMenuButton<_HomeSettingOption>(
       tooltip: '页面设置',
       icon: RemixIcons.settings_3_line,
-      selected: showAddTransactionFab ? true : null,
-      onSelected:
-          (_) => ref
-              .read(appSettingsViewModelProvider.notifier)
-              .setShowAddTransactionFab(!showAddTransactionFab),
-      options: const [
+      onSelected: (option) async {
+        switch (option) {
+          case _HomeSettingOption.addTransactionFab:
+            await notifier.setShowAddTransactionFab(!showAddTransactionFab);
+          case _HomeSettingOption.pullToCreate:
+            break;
+        }
+      },
+      options: [
         AppPopupMenuOption(
-          value: true,
-          label: '显示记账悬浮按钮',
-          icon: RemixIcons.add_circle_line,
+          value: _HomeSettingOption.addTransactionFab,
+          label: '记账悬浮按钮',
+          switchValue: showAddTransactionFab,
+        ),
+        AppPopupMenuOption(
+          value: _HomeSettingOption.pullToCreate,
+          label: '下拉新增交易',
+          enabled: false,
+          child: _PullToCreateSensitivityMenuItem(
+            selected: pullToCreateSensitivity,
+            onChanged: notifier.setPullToCreateSensitivity,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+enum _HomeSettingOption { addTransactionFab, pullToCreate }
+
+class _PullToCreateSensitivityMenuItem extends StatelessWidget {
+  const _PullToCreateSensitivityMenuItem({
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final PullToCreateSensitivity selected;
+  final ValueChanged<PullToCreateSensitivity> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('下拉新增交易', style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(height: AppSpacing.space8),
+        PullToCreateSensitivityControl(
+          selected: selected,
+          onChanged: onChanged,
         ),
       ],
     );

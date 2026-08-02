@@ -7,8 +7,9 @@ import '../../../application/shared/app_settings_store.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/list.dart';
 import '../../../design_system/token/spacing.dart';
-import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../design_system/widget/app_switch.dart';
+import '../../shared/presentation/pull_to_create_sensitivity_control.dart';
 import '../../shared/view_model/app_settings_view_model.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -52,25 +53,13 @@ class SettingsPage extends ConsumerWidget {
                   value: settings.showAddTransactionFab,
                   onChanged: notifier.setShowAddTransactionFab,
                 ),
-                AppPlainSelectFormRow<PullToCreateSensitivity>(
+                _SettingsSegmentedControlRow(
                   label: '下拉新增交易',
-                  value: settings.pullToCreateSensitivity,
-                  valueText:
-                      _pullToCreateSensitivityOption(
-                        settings.pullToCreateSensitivity,
-                      ).label,
-                  placeholder: '标准',
-                  supportingText: '调整首页下拉多远后松开即可新增交易',
-                  onTap: (onSelected) async {
-                    final selected = await _showPullToCreateSensitivitySheet(
-                      context,
-                      settings.pullToCreateSensitivity,
-                    );
-                    if (selected == null) return;
-
-                    onSelected(selected);
-                    await notifier.setPullToCreateSensitivity(selected);
-                  },
+                  description: '调整首页下拉多远后松开即可新增交易',
+                  control: PullToCreateSensitivityControl(
+                    selected: settings.pullToCreateSensitivity,
+                    onChanged: notifier.setPullToCreateSensitivity,
+                  ),
                 ),
                 _SettingsSwitchRow(
                   label: '导航栏文字',
@@ -85,72 +74,6 @@ class SettingsPage extends ConsumerWidget {
       ),
     );
   }
-}
-
-const _pullToCreateSensitivityOptions =
-    <PullToCreateSensitivity, _PullToCreateSensitivityOption>{
-      PullToCreateSensitivity.sensitive: _PullToCreateSensitivityOption(
-        label: '灵敏',
-        description: '短距离下拉后即可新增交易',
-      ),
-      PullToCreateSensitivity.standard: _PullToCreateSensitivityOption(
-        label: '标准',
-        description: '适中的下拉距离',
-      ),
-      PullToCreateSensitivity.cautious: _PullToCreateSensitivityOption(
-        label: '稳妥',
-        description: '更长的下拉距离，减少误触',
-      ),
-    };
-
-_PullToCreateSensitivityOption _pullToCreateSensitivityOption(
-  PullToCreateSensitivity sensitivity,
-) {
-  return _pullToCreateSensitivityOptions[sensitivity]!;
-}
-
-class _PullToCreateSensitivityOption {
-  const _PullToCreateSensitivityOption({
-    required this.label,
-    required this.description,
-  });
-
-  final String label;
-  final String description;
-}
-
-Future<PullToCreateSensitivity?> _showPullToCreateSensitivitySheet(
-  BuildContext context,
-  PullToCreateSensitivity selected,
-) {
-  return showModalBottomSheet<PullToCreateSensitivity>(
-    context: context,
-    showDragHandle: true,
-    builder:
-        (sheetContext) => SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final sensitivity in PullToCreateSensitivity.values)
-                ListTile(
-                  leading: Icon(
-                    sensitivity == selected
-                        ? RemixIcons.checkbox_circle_fill
-                        : RemixIcons.checkbox_blank_circle_line,
-                  ),
-                  title: Text(
-                    _pullToCreateSensitivityOption(sensitivity).label,
-                  ),
-                  subtitle: Text(
-                    _pullToCreateSensitivityOption(sensitivity).description,
-                  ),
-                  onTap: () => Navigator.of(sheetContext).pop(sensitivity),
-                ),
-            ],
-          ),
-        ),
-  );
 }
 
 class _SettingsSection extends StatelessWidget {
@@ -186,6 +109,47 @@ class _SettingsSection extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SettingsSegmentedControlRow extends StatelessWidget {
+  const _SettingsSegmentedControlRow({
+    required this.label,
+    required this.description,
+    required this.control,
+  });
+
+  final String label;
+  final String description;
+  final Widget control;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space16,
+        AppSpacing.space10,
+        AppSpacing.space16,
+        AppSpacing.space10,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: context.appTextStyles.formValue),
+          const SizedBox(height: AppSpacing.space4),
+          Text(
+            description,
+            style: context.appTextStyles.listSupporting.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          control,
+        ],
+      ),
     );
   }
 }
@@ -232,7 +196,7 @@ class _SettingsSwitchRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.space12),
-          Switch(value: value, onChanged: onChanged),
+          AppSwitch(value: value, onChanged: onChanged),
         ],
       ),
     );

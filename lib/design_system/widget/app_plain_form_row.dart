@@ -5,6 +5,7 @@ import '../token/form.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
 import 'app_form_field.dart';
+import 'app_switch.dart';
 
 enum AppPlainRowValueAlignment { start, end }
 
@@ -229,16 +230,32 @@ class AppPlainSwitchRow extends StatelessWidget {
           constraints: const BoxConstraints(
             minHeight: AppFormTokens.rowMinHeight,
           ),
-          child: SwitchListTile.adaptive(
-            contentPadding: EdgeInsets.zero,
-            minTileHeight: AppFormTokens.rowMinHeight,
-            title: Text(label, style: styleForState(labelStyle)),
-            subtitle:
-                description != null && description.isNotEmpty
-                    ? Text(description, style: styleForState(descriptionStyle))
-                    : null,
-            value: fieldValue ?? value,
-            onChanged: enabled ? fieldChanged : null,
+          child: InkWell(
+            onTap: enabled ? () => fieldChanged(!(fieldValue ?? value)) : null,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: styleForState(labelStyle)),
+                      if (description != null && description.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.space4),
+                        Text(
+                          description,
+                          style: styleForState(descriptionStyle),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                AppSwitch(
+                  value: fieldValue ?? value,
+                  onChanged: enabled ? fieldChanged : null,
+                ),
+              ],
+            ),
           ),
         );
       },

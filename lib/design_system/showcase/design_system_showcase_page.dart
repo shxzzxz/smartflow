@@ -147,7 +147,7 @@ const _showcaseExamples = <_ShowcaseExample>[
     category: '基础组件',
     title: '弹出菜单',
     componentNames: 'AppPopupMenuButton',
-    keywords: ['菜单', '弹出', '更多', '设置'],
+    keywords: ['菜单', '弹出', '更多', '设置', '开关'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.surface,
@@ -174,7 +174,7 @@ const _showcaseExamples = <_ShowcaseExample>[
     kind: _ShowcaseExampleKind.switchRow,
     category: '表单组件',
     title: '开关行',
-    componentNames: 'AppPlainSwitchRow',
+    componentNames: 'AppSwitch / AppPlainSwitchRow',
     keywords: ['开关', '开启', '关闭', '描述', '禁用'],
   ),
   _ShowcaseExample(
@@ -517,6 +517,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   var _selectedSegment = 0;
   var _selectedSlidingSegment = 0;
   var _selectedMenuOption = 0;
+  var _menuSwitchOn = true;
   var _selectedCycle = 0;
   var _selectedTermUnit = 0;
   String? _selectedAccountId = 'acc-cash';
@@ -844,28 +845,54 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   }
 
   Widget _popupMenuPreview() {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacing.space12,
       children: [
-        AppPopupMenuButton<int>(
-          tooltip: '图表设置',
-          icon: RemixIcons.settings_3_line,
-          selected: _selectedMenuOption,
-          onSelected: (value) => setState(() => _selectedMenuOption = value),
-          options: const [
-            AppPopupMenuOption(
-              value: 0,
-              label: '柱状图',
-              icon: RemixIcons.bar_chart_line,
+        Row(
+          children: [
+            AppPopupMenuButton<int>(
+              tooltip: '图表设置',
+              icon: RemixIcons.settings_3_line,
+              selected: _selectedMenuOption,
+              onSelected:
+                  (value) => setState(() => _selectedMenuOption = value),
+              options: const [
+                AppPopupMenuOption(
+                  value: 0,
+                  label: '柱状图',
+                  icon: RemixIcons.bar_chart_line,
+                ),
+                AppPopupMenuOption(
+                  value: 1,
+                  label: '曲线',
+                  icon: RemixIcons.line_chart_line,
+                ),
+              ],
             ),
-            AppPopupMenuOption(
-              value: 1,
-              label: '曲线',
-              icon: RemixIcons.line_chart_line,
-            ),
+            const SizedBox(width: AppSpacing.space12),
+            Text(_selectedMenuOption == 0 ? '当前：柱状图' : '当前：曲线'),
           ],
         ),
-        const SizedBox(width: AppSpacing.space12),
-        Text(_selectedMenuOption == 0 ? '当前：柱状图' : '当前：曲线'),
+        Row(
+          children: [
+            AppPopupMenuButton<int>(
+              tooltip: '视图设置',
+              icon: RemixIcons.settings_3_line,
+              onSelected: (_) => setState(() => _menuSwitchOn = !_menuSwitchOn),
+              options: [
+                AppPopupMenuOption(
+                  value: 0,
+                  label: '显示图例',
+                  icon: RemixIcons.eye_line,
+                  switchValue: _menuSwitchOn,
+                ),
+              ],
+            ),
+            const SizedBox(width: AppSpacing.space12),
+            Text(_menuSwitchOn ? '图例：显示' : '图例：隐藏'),
+          ],
+        ),
       ],
     );
   }

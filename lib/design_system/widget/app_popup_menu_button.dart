@@ -3,18 +3,27 @@ import 'package:remixicon/remixicon.dart';
 
 import '../token/component.dart';
 import '../token/spacing.dart';
+import 'app_switch.dart';
 
 /// 弹出菜单选项；[icon] 为条目前置图标，可省略。
+/// [switchValue] 非空时条目按开关项渲染，右侧展示开关状态，点击条目即切换。
+/// [child] 可提供不触发菜单选择的自定义内容，例如内嵌选择控件。
 class AppPopupMenuOption<T> {
   const AppPopupMenuOption({
     required this.value,
     required this.label,
     this.icon,
+    this.switchValue,
+    this.child,
+    this.enabled = true,
   });
 
   final T value;
   final String label;
   final IconData? icon;
+  final bool? switchValue;
+  final Widget? child;
+  final bool enabled;
 }
 
 /// 紧凑图标触发的弹出菜单，容器观感由全局 popupMenuTheme 统一。
@@ -60,25 +69,36 @@ class AppPopupMenuButton<T> extends StatelessWidget {
             for (final option in options)
               PopupMenuItem(
                 value: option.value,
-                child: Row(
-                  children: [
-                    if (option.icon != null) ...[
-                      Icon(
-                        option.icon,
-                        size: AppSpacing.space20,
-                        color: colors.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: AppSpacing.space12),
-                    ],
-                    Expanded(child: Text(option.label)),
-                    if (selected != null && option.value == selected)
-                      Icon(
-                        RemixIcons.check_line,
-                        size: AppSpacing.space20,
-                        color: colors.primary,
-                      ),
-                  ],
-                ),
+                enabled: option.enabled,
+                child:
+                    option.child ??
+                    Row(
+                      children: [
+                        if (option.icon != null) ...[
+                          Icon(
+                            option.icon,
+                            size: AppSpacing.space20,
+                            color: colors.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: AppSpacing.space12),
+                        ],
+                        Expanded(child: Text(option.label)),
+                        if (option.switchValue != null) ...[
+                          const SizedBox(width: AppSpacing.space12),
+                          IgnorePointer(
+                            child: AppSwitch(
+                              value: option.switchValue!,
+                              onChanged: (_) {},
+                            ),
+                          ),
+                        ] else if (selected != null && option.value == selected)
+                          Icon(
+                            RemixIcons.check_line,
+                            size: AppSpacing.space20,
+                            color: colors.primary,
+                          ),
+                      ],
+                    ),
               ),
           ],
     );

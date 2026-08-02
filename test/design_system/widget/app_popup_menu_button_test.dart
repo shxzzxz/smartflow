@@ -86,4 +86,71 @@ void main() {
     expect(find.text('柱状图'), findsOneWidget);
     expect(find.byIcon(RemixIcons.check_line), findsNothing);
   });
+
+  testWidgets('renders toggle options with a trailing switch', (tester) async {
+    int? tapped;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Center(
+            child: AppPopupMenuButton<int>(
+              tooltip: '视图设置',
+              icon: RemixIcons.settings_3_line,
+              onSelected: (value) => tapped = value,
+              options: const [
+                AppPopupMenuOption(value: 0, label: '显示图例', switchValue: true),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byType(AppPopupMenuButton<int>));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+
+    // 开关只展示状态，点击整个条目（含开关区域）都触发选择。
+    await tester.tap(find.byType(Switch), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(tapped, 0);
+  });
+
+  testWidgets('keeps custom disabled menu content interactive', (tester) async {
+    var controlChanged = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Center(
+            child: AppPopupMenuButton<int>(
+              tooltip: '页面设置',
+              icon: RemixIcons.settings_3_line,
+              onSelected: (_) {},
+              options: [
+                AppPopupMenuOption(
+                  value: 0,
+                  label: '下拉新增交易',
+                  enabled: false,
+                  child: TextButton(
+                    onPressed: () => controlChanged = true,
+                    child: const Text('灵敏'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byType(AppPopupMenuButton<int>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('灵敏'));
+    await tester.pumpAndSettle();
+
+    expect(controlChanged, isTrue);
+  });
 }
