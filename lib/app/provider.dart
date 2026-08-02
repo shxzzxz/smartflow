@@ -24,6 +24,7 @@ import '../infrastructure/ledger/repository/drift_system_account_resolver.dart';
 import '../infrastructure/ledger/repository/drift_transaction_detail_read_repository.dart';
 import '../infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 import '../infrastructure/database/drift_app_settings_store.dart';
+import '../infrastructure/database/drift_asset_section_collapse_store.dart';
 import '../infrastructure/database/drift_log_retention_store.dart';
 import '../infrastructure/database/drift_transaction_runner.dart';
 import '../infrastructure/database/drift_update_channel_store.dart';
@@ -56,6 +57,7 @@ import '../domain/ledger/service/posting/account_posting_service.dart';
 import '../domain/ledger/service/posting/ledger_posting_service.dart';
 import '../domain/ledger/service/posting/posting_engine.dart';
 import '../application/shared/app_settings_store.dart';
+import '../application/shared/asset_section_collapse_store.dart';
 import '../application/shared/log_retention_store.dart';
 import '../application/shared/transaction_runner.dart';
 import '../application/shared/update_channel_store.dart';
@@ -196,6 +198,11 @@ UpdateChannelStore updateChannelStore(Ref ref) {
 @Riverpod(keepAlive: true)
 AppSettingsStore appSettingsStore(Ref ref) {
   return DriftAppSettingsStore(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+AssetSectionCollapseStore assetSectionCollapseStore(Ref ref) {
+  return DriftAssetSectionCollapseStore(ref.watch(appDatabaseProvider));
 }
 
 @Riverpod(keepAlive: true)

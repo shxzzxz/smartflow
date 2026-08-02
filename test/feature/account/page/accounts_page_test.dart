@@ -3,12 +3,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/shared/asset_section_collapse_store.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/account/page/accounts_page.dart';
+import 'package:smartflow/feature/account/view_model/account_view.dart';
 import 'package:smartflow/feature/account/view_model/account_views_provider.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
+import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 void main() {
   testWidgets('shows asset and liability amounts in the donut legend', (
@@ -64,12 +68,138 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('shows empty hint and no sections without accounts', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_buildAccountsPageApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('还没有账户，点击右上角"+"新建'), findsOneWidget);
+    expect(find.text('资金账户'), findsNothing);
+    expect(find.text('信用账户'), findsNothing);
+    expect(find.text('贷款账户'), findsNothing);
+    expect(find.text('报销账户'), findsNothing);
+    expect(find.byTooltip('折叠全部分组'), findsNothing);
+  });
+
+  testWidgets('renders only sections that have accounts', (tester) async {
+    await tester.pumpWidget(_buildAccountsPageApp(accounts: [_fundAccount()]));
+    await tester.pumpAndSettle();
+
+    expect(find.text('资金账户'), findsOneWidget);
+    expect(find.text('招行储蓄卡'), findsOneWidget);
+    expect(find.text('信用账户'), findsNothing);
+    expect(find.text('贷款账户'), findsNothing);
+    expect(find.text('报销账户'), findsNothing);
+  });
+
+  testWidgets('collapses and expands a section on header tap', (tester) async {
+    final store = _InMemoryAssetSectionCollapseStore();
+    await tester.pumpWidget(
+      _buildAccountsPageApp(accounts: [_fundAccount()], collapseStore: store),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('资金账户'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('招行储蓄卡'), findsNothing);
+    expect(find.text('资金账户'), findsOneWidget);
+    expect(store.collapsed, {AccountProfileKind.fund.key});
+
+    await tester.tap(find.text('资金账户'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('招行储蓄卡'), findsOneWidget);
+    expect(store.collapsed, isEmpty);
+  });
+
+  testWidgets('collapse-all button toggles every section', (tester) async {
+    final store = _InMemoryAssetSectionCollapseStore();
+    await tester.pumpWidget(
+      _buildAccountsPageApp(
+        accounts: [_fundAccount(), _creditAccount()],
+        collapseStore: store,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('折叠全部分组'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('招行储蓄卡'), findsNothing);
+    expect(find.text('招行信用卡'), findsNothing);
+    expect(store.collapsed, {
+      AccountProfileKind.fund.key,
+      AccountProfileKind.credit.key,
+    });
+
+    await tester.tap(find.byTooltip('展开全部分组'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('招行储蓄卡'), findsOneWidget);
+    expect(find.text('招行信用卡'), findsOneWidget);
+    expect(store.collapsed, isEmpty);
+  });
+
+  testWidgets('restores persisted collapse state', (tester) async {
+    final store = _InMemoryAssetSectionCollapseStore()
+      ..collapsed = {AccountProfileKind.fund.key};
+    await tester.pumpWidget(
+      _buildAccountsPageApp(accounts: [_fundAccount()], collapseStore: store),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('资金账户'), findsOneWidget);
+    expect(find.text('招行储蓄卡'), findsNothing);
+  });
 }
 
-Widget _buildAccountsPageApp() {
+class _InMemoryAssetSectionCollapseStore implements AssetSectionCollapseStore {
+  Set<String> collapsed = {};
+
+  @override
+  Future<Set<String>> read() async => collapsed;
+
+  @override
+  Future<void> save(Set<String> collapsedSectionKeys) async {
+    collapsed = collapsedSectionKeys;
+  }
+}
+
+AccountView _fundAccount() {
+  return const AccountView(
+    id: 'fund-1',
+    name: '招行储蓄卡',
+    kind: AccountProfileKind.fund,
+    balance: Money(minorUnits: 10000),
+    iconKey: null,
+    isArchived: false,
+  );
+}
+
+AccountView _creditAccount() {
+  return const AccountView(
+    id: 'credit-1',
+    name: '招行信用卡',
+    kind: AccountProfileKind.credit,
+    balance: Money(minorUnits: 5000),
+    iconKey: null,
+    isArchived: false,
+  );
+}
+
+Widget _buildAccountsPageApp({
+  List<AccountView> accounts = const [],
+  AssetSectionCollapseStore? collapseStore,
+}) {
   return ProviderScope(
     overrides: [
-      accountViewsProvider.overrideWith((ref) => const AsyncValue.data([])),
+      accountViewsProvider.overrideWith((ref) => AsyncValue.data(accounts)),
+      assetSectionCollapseStoreProvider.overrideWith(
+        (ref) => collapseStore ?? _InMemoryAssetSectionCollapseStore(),
+      ),
       balanceSheetComparisonProvider.overrideWith(
         (ref) => Stream.value(
           const BalanceSheetComparison(

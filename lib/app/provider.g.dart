@@ -1088,6 +1088,54 @@ final class AppSettingsStoreProvider
 
 String _$appSettingsStoreHash() => r'8f7ae829a5cb0eed68c824855246b645d273e442';
 
+@ProviderFor(assetSectionCollapseStore)
+final assetSectionCollapseStoreProvider = AssetSectionCollapseStoreProvider._();
+
+final class AssetSectionCollapseStoreProvider
+    extends
+        $FunctionalProvider<
+          AssetSectionCollapseStore,
+          AssetSectionCollapseStore,
+          AssetSectionCollapseStore
+        >
+    with $Provider<AssetSectionCollapseStore> {
+  AssetSectionCollapseStoreProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'assetSectionCollapseStoreProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$assetSectionCollapseStoreHash();
+
+  @$internal
+  @override
+  $ProviderElement<AssetSectionCollapseStore> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AssetSectionCollapseStore create(Ref ref) {
+    return assetSectionCollapseStore(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AssetSectionCollapseStore value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AssetSectionCollapseStore>(value),
+    );
+  }
+}
+
+String _$assetSectionCollapseStoreHash() =>
+    r'f4f730eaa589240c612d3a81d45a48ccaa242cde';
+
 @ProviderFor(logRetentionStore)
 final logRetentionStoreProvider = LogRetentionStoreProvider._();
 

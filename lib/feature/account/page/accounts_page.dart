@@ -18,6 +18,7 @@ import 'package:smartflow/widget/business/finance/money_text.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../view_model/account_view.dart';
 import '../view_model/account_views_provider.dart';
+import '../view_model/asset_section_collapse_view_model.dart';
 
 class AccountsPage extends ConsumerStatefulWidget {
   const AccountsPage({super.key});
@@ -59,7 +60,7 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
   }
 }
 
-class _AccountsContent extends StatelessWidget {
+class _AccountsContent extends ConsumerWidget {
   const _AccountsContent({
     required this.accounts,
     required this.balanceSheet,
@@ -73,24 +74,14 @@ class _AccountsContent extends StatelessWidget {
   final VoidCallback onToggleHide;
 
   @override
-  Widget build(BuildContext context) {
-    final fundAccounts = accounts.where(_isFundAccount).toList();
-    final creditAccounts = accounts.where(_isCreditAccount).toList();
-    final loanAccounts = accounts.where(_isLoanAccount).toList();
-    final reimbursementAccounts =
-        accounts.where(_isReimbursementAccount).toList();
-    final fundMinor = fundAccounts.fold(0, (sum, account) {
-      return sum + account.balance.minorUnits;
-    });
-    final creditMinor = creditAccounts.fold(0, (sum, account) {
-      return sum + account.balance.minorUnits;
-    });
-    final loanMinor = loanAccounts.fold(0, (sum, account) {
-      return sum + account.balance.minorUnits;
-    });
-    final reimbursementMinor = reimbursementAccounts.fold(0, (sum, account) {
-      return sum + account.balance.minorUnits;
-    });
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sections = _buildSections(accounts);
+    final collapsedKeys =
+        ref.watch(assetSectionCollapseViewModelProvider).value ??
+        const <String>{};
+    final allCollapsed =
+        sections.isNotEmpty &&
+        sections.every((section) => collapsedKeys.contains(section.kind.key));
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -100,79 +91,144 @@ class _AccountsContent extends StatelessWidget {
         AppSpacing.space48 + AppSpacing.space48,
       ),
       children: [
-        _AssetsHeader(hideBalances: hideBalances, onToggleHide: onToggleHide),
+        _AssetsHeader(
+          hideBalances: hideBalances,
+          onToggleHide: onToggleHide,
+          allCollapsed: sections.isEmpty ? null : allCollapsed,
+          onToggleCollapseAll: () {
+            final viewModel = ref.read(
+              assetSectionCollapseViewModelProvider.notifier,
+            );
+            if (allCollapsed) {
+              viewModel.expandAll();
+            } else {
+              viewModel.collapseAll([
+                for (final section in sections) section.kind.key,
+              ]);
+            }
+          },
+        ),
         const SizedBox(height: AppSpacing.space18),
         _NetAssetCard(comparison: balanceSheet, hideBalances: hideBalances),
-        const SizedBox(height: AppSpacing.space24),
-        _AccountSection(
-          title: '资金账户',
-          totalLabel: '资金',
-          total: Money(minorUnits: fundMinor),
-          totalSemantic: MoneySemantic.asset,
-          accounts: fundAccounts,
-          hideBalances: hideBalances,
-        ),
-        const SizedBox(height: AppSpacing.space24),
-        _AccountSection(
-          title: '信用账户',
-          totalLabel: '信用欠款',
-          total: Money(minorUnits: creditMinor),
-          totalSemantic: MoneySemantic.liability,
-          accounts: creditAccounts,
-          hideBalances: hideBalances,
-        ),
-        const SizedBox(height: AppSpacing.space24),
-        _AccountSection(
-          title: '贷款账户',
-          totalLabel: '贷款欠款',
-          total: Money(minorUnits: loanMinor),
-          totalSemantic: MoneySemantic.liability,
-          accounts: loanAccounts,
-          hideBalances: hideBalances,
-        ),
-        const SizedBox(height: AppSpacing.space24),
-        _AccountSection(
-          title: '报销账户',
-          totalLabel: '应收报销',
-          total: Money(minorUnits: reimbursementMinor),
-          totalSemantic: MoneySemantic.asset,
-          accounts: reimbursementAccounts,
-          hideBalances: hideBalances,
-        ),
+        if (sections.isEmpty) ...[
+          const SizedBox(height: AppSpacing.space24),
+          const _EmptyAccountsHint(),
+        ],
+        for (final section in sections) ...[
+          const SizedBox(height: AppSpacing.space24),
+          _AccountSection(
+            section: section,
+            hideBalances: hideBalances,
+            collapsed: collapsedKeys.contains(section.kind.key),
+            onToggleCollapsed:
+                () => ref
+                    .read(assetSectionCollapseViewModelProvider.notifier)
+                    .toggle(section.kind.key),
+          ),
+        ],
       ],
     );
   }
 }
 
-bool _isFundAccount(AccountView model) {
-  return model.kind == AccountProfileKind.fund;
+class _SectionSpec {
+  const _SectionSpec({
+    required this.kind,
+    required this.totalLabel,
+    required this.totalSemantic,
+    required this.accounts,
+  });
+
+  final AccountProfileKind kind;
+  final String totalLabel;
+  final MoneySemantic totalSemantic;
+  final List<AccountView> accounts;
+
+  String get title => kind.label;
+
+  Money get total {
+    return Money(
+      minorUnits: accounts.fold(0, (sum, account) {
+        return sum + account.balance.minorUnits;
+      }),
+    );
+  }
 }
 
-bool _isCreditAccount(AccountView model) {
-  return model.kind == AccountProfileKind.credit;
-}
+List<_SectionSpec> _buildSections(List<AccountView> accounts) {
+  List<AccountView> ofKind(AccountProfileKind kind) {
+    return [
+      for (final account in accounts)
+        if (account.kind == kind) account,
+    ];
+  }
 
-bool _isLoanAccount(AccountView model) {
-  return model.kind == AccountProfileKind.loan;
-}
-
-bool _isReimbursementAccount(AccountView model) {
-  return model.kind == AccountProfileKind.reimbursement;
+  final sections = [
+    _SectionSpec(
+      kind: AccountProfileKind.fund,
+      totalLabel: '资金',
+      totalSemantic: MoneySemantic.asset,
+      accounts: ofKind(AccountProfileKind.fund),
+    ),
+    _SectionSpec(
+      kind: AccountProfileKind.credit,
+      totalLabel: '信用欠款',
+      totalSemantic: MoneySemantic.liability,
+      accounts: ofKind(AccountProfileKind.credit),
+    ),
+    _SectionSpec(
+      kind: AccountProfileKind.loan,
+      totalLabel: '贷款欠款',
+      totalSemantic: MoneySemantic.liability,
+      accounts: ofKind(AccountProfileKind.loan),
+    ),
+    _SectionSpec(
+      kind: AccountProfileKind.reimbursement,
+      totalLabel: '应收报销',
+      totalSemantic: MoneySemantic.asset,
+      accounts: ofKind(AccountProfileKind.reimbursement),
+    ),
+  ];
+  return [
+    for (final section in sections)
+      if (section.accounts.isNotEmpty) section,
+  ];
 }
 
 class _AssetsHeader extends StatelessWidget {
-  const _AssetsHeader({required this.hideBalances, required this.onToggleHide});
+  const _AssetsHeader({
+    required this.hideBalances,
+    required this.onToggleHide,
+    required this.allCollapsed,
+    required this.onToggleCollapseAll,
+  });
 
   final bool hideBalances;
   final VoidCallback onToggleHide;
 
+  /// null 表示没有可折叠的分组，不显示折叠按钮。
+  final bool? allCollapsed;
+  final VoidCallback onToggleCollapseAll;
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final allCollapsed = this.allCollapsed;
     return Row(
       children: [
         Text('资产', style: context.appTextStyles.pageTitle),
         const Spacer(),
+        if (allCollapsed != null)
+          IconButton(
+            onPressed: onToggleCollapseAll,
+            icon: Icon(
+              allCollapsed
+                  ? RemixIcons.expand_up_down_line
+                  : RemixIcons.contract_up_down_line,
+              color: colors.onSurfaceVariant,
+            ),
+            tooltip: allCollapsed ? '展开全部分组' : '折叠全部分组',
+          ),
         IconButton(
           onPressed: () => context.push('/account/new'),
           icon: Icon(RemixIcons.add_line, color: colors.onSurface),
@@ -410,71 +466,80 @@ class _LegendRow extends StatelessWidget {
 
 class _AccountSection extends StatelessWidget {
   const _AccountSection({
-    required this.title,
-    required this.totalLabel,
-    required this.total,
-    required this.totalSemantic,
-    required this.accounts,
+    required this.section,
     required this.hideBalances,
+    required this.collapsed,
+    required this.onToggleCollapsed,
   });
 
-  final String title;
-  final String totalLabel;
-  final Money total;
-  final MoneySemantic totalSemantic;
-  final List<AccountView> accounts;
+  final _SectionSpec section;
   final bool hideBalances;
+  final bool collapsed;
+  final VoidCallback onToggleCollapsed;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textStyles = context.appTextStyles;
+    final accounts = section.accounts;
     return Column(
       children: [
-        Row(
-          children: [
-            Text(title, style: textStyles.groupTitle),
-            const Spacer(),
-            Text(
-              totalLabel,
-              style: textStyles.detailLabel.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.space6),
-            hideBalances
-                ? const _HiddenMoneyText()
-                : MoneyText(
-                  money: total,
-                  semantic: totalSemantic,
-                  style: textStyles.amountList,
-                ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.space12),
-        AppSurface(
-          child:
-              accounts.isEmpty
-                  ? const _EmptyAccountSection()
-                  : Column(
-                    children: [
-                      for (var i = 0; i < accounts.length; i++) ...[
-                        _AccountRow(
-                          model: accounts[i],
-                          hideBalance: hideBalances,
-                        ),
-                        if (i < accounts.length - 1)
-                          const Padding(
-                            padding: EdgeInsets.only(
-                              left: AppSpacing.space48 + AppSpacing.space24,
-                              right: AppSpacing.space16,
-                            ),
-                            child: Divider(height: 1),
-                          ),
-                      ],
-                    ],
+        InkWell(
+          onTap: onToggleCollapsed,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.space4),
+            child: Row(
+              children: [
+                Text(section.title, style: textStyles.groupTitle),
+                const Spacer(),
+                Text(
+                  section.totalLabel,
+                  style: textStyles.detailLabel.copyWith(
+                    color: colors.onSurfaceVariant,
                   ),
+                ),
+                const SizedBox(width: AppSpacing.space6),
+                hideBalances
+                    ? const _HiddenMoneyText()
+                    : MoneyText(
+                      money: section.total,
+                      semantic: section.totalSemantic,
+                      style: textStyles.amountList,
+                    ),
+                const SizedBox(width: AppSpacing.space6),
+                AnimatedRotation(
+                  turns: collapsed ? -0.25 : 0,
+                  duration: const Duration(milliseconds: 150),
+                  child: Icon(
+                    RemixIcons.arrow_down_s_line,
+                    size: 18,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
+        if (!collapsed) ...[
+          const SizedBox(height: AppSpacing.space12),
+          AppSurface(
+            child: Column(
+              children: [
+                for (var i = 0; i < accounts.length; i++) ...[
+                  _AccountRow(model: accounts[i], hideBalance: hideBalances),
+                  if (i < accounts.length - 1)
+                    const Padding(
+                      padding: EdgeInsets.only(
+                        left: AppSpacing.space48 + AppSpacing.space24,
+                        right: AppSpacing.space16,
+                      ),
+                      child: Divider(height: 1),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -513,23 +578,11 @@ class _AccountRow extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.space14),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    model.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textStyles.formValue,
-                  ),
-                  const SizedBox(height: AppSpacing.space4),
-                  Text(
-                    model.kind.label,
-                    style: textStyles.listSupporting.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+              child: Text(
+                model.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textStyles.formValue,
               ),
             ),
             const SizedBox(width: AppSpacing.space12),
@@ -572,22 +625,24 @@ class _HiddenMoneyText extends StatelessWidget {
   }
 }
 
-class _EmptyAccountSection extends StatelessWidget {
-  const _EmptyAccountSection();
+class _EmptyAccountsHint extends StatelessWidget {
+  const _EmptyAccountsHint();
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.space20),
-      child: Row(
-        children: [
-          Icon(
-            RemixIcons.wallet_3_line,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: AppSpacing.space10),
-          const Expanded(child: Text('还没有账户')),
-        ],
+    return AppSurface(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.space20),
+        child: Row(
+          children: [
+            Icon(
+              RemixIcons.wallet_3_line,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: AppSpacing.space10),
+            const Expanded(child: Text('还没有账户，点击右上角"+"新建')),
+          ],
+        ),
       ),
     );
   }
