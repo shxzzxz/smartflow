@@ -9,8 +9,7 @@ import 'package:path/path.dart' as path;
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
-import 'package:smartflow/design_system/widget/app_datetime_picker.dart';
-import 'package:smartflow/design_system/widget/app_month_picker.dart';
+import 'package:smartflow/design_system/widget/app_date_picker_panel.dart';
 import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
 import 'package:smartflow/feature/statistics/page/statistics_page.dart';
 import 'package:smartflow/feature/statistics/presentation/statistics_presentation.dart';
@@ -109,16 +108,6 @@ void main() {
     expect(find.text('金额'), findsNothing);
     expect(find.text('占比'), findsNothing);
     expect(find.text('100.0%'), findsOneWidget);
-
-    final colors =
-        Theme.of(tester.element(find.byType(StatisticsPage))).colorScheme;
-    final periodControl = tester.widget<SegmentedButton<StatisticsPeriodKind>>(
-      find.byType(SegmentedButton<StatisticsPeriodKind>),
-    );
-    expect(
-      periodControl.style?.backgroundColor?.resolve({WidgetState.selected}),
-      colors.primaryContainer,
-    );
     expect(tester.takeException(), isNull);
   });
 
@@ -162,42 +151,36 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('uses the app-styled custom date range picker', (tester) async {
+  testWidgets('selects a custom date range from the period sheet', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(360, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await _pumpStatisticsPage(tester);
-    await tester.tap(find.text('自定义'));
-    await tester.pump();
-    expect(find.text('2025.12.16 - 2026.1.15'), findsOneWidget);
-    await tester.tap(find.text('2025.12.16 - 2026.1.15'));
-    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('2026.1.1 - 2026.1.31'), findsOneWidget);
+    await tester.tap(find.text('2026.1.1 - 2026.1.31'));
+    await tester.pumpAndSettle();
 
-    expect(find.text('选择时间范围'), findsNothing);
-    expect(find.text('开始'), findsOneWidget);
-    expect(find.text('结束'), findsOneWidget);
-    expect(find.text('确定'), findsOneWidget);
-    await tester.tap(find.text('2025年12月'));
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.byType(AppMonthPickerDialog), findsOneWidget);
-    await tester.tap(
-      find.descendant(
-        of: find.byType(AppMonthPickerDialog),
-        matching: find.text('取消'),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 300));
-    final rangeDialog = find.byType(AppDateRangePickerDialog);
-    await tester.tap(
-      find.descendant(of: rangeDialog, matching: find.text('10')),
-    );
+    // 粒度切到「日」，模式切到「范围」
+    await tester.tap(find.text('月'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('日'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('范围'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('上个月'));
+    await tester.pumpAndSettle();
+    expect(find.text('2025年12月'), findsOneWidget);
+    final panel = find.byType(AppDatePickerPanel);
+    await tester.tap(find.descendant(of: panel, matching: find.text('10')));
     await tester.pump();
-    expect(find.text('请选择结束日期'), findsOneWidget);
-    await tester.tap(
-      find.descendant(of: rangeDialog, matching: find.text('12')),
-    );
+    await tester.tap(find.descendant(of: panel, matching: find.text('12')));
+    await tester.pump();
+    expect(find.text('2025.12.10 - 2025.12.12'), findsOneWidget);
     await tester.tap(find.text('确定'));
     await tester.pumpAndSettle();
 
@@ -205,27 +188,32 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('uses dedicated month and year pickers', (tester) async {
+  testWidgets('quick-selects month and year from the period sheet', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(360, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await _pumpStatisticsPage(tester);
-    await tester.tap(find.text('2026年1月'));
+    await tester.tap(find.text('2026.1.1 - 2026.1.31'));
     await tester.pumpAndSettle();
-    expect(find.text('2026年'), findsWidgets);
-    expect(find.text('1月'), findsWidgets);
-    await tester.tap(find.text('取消'));
+    expect(find.text('2026年'), findsOneWidget);
+    await tester.tap(find.text('1月'));
     await tester.pumpAndSettle();
+    expect(find.text('2026.1.1 - 2026.1.31'), findsOneWidget);
 
-    await tester.tap(find.text('年'));
-    await tester.pump();
-    await tester.tap(find.text('2026年'));
+    await tester.tap(find.text('2026.1.1 - 2026.1.31'));
     await tester.pumpAndSettle();
-    expect(find.text('选择年份'), findsOneWidget);
-    expect(find.text('2026年'), findsWidgets);
-    expect(find.text('确定'), findsOneWidget);
+    await tester.tap(find.text('月'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('年'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('2026'));
+    await tester.pumpAndSettle();
+    expect(find.text('2026.1.1 - 2026.12.31'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('shows market-level charts and switches analysis dimensions', (
@@ -237,9 +225,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await _pumpStatisticsPage(tester);
 
-    expect(find.text('月'), findsOneWidget);
-    expect(find.text('年'), findsOneWidget);
-    expect(find.text('自定义'), findsOneWidget);
+    expect(find.text('2026.1.1 - 2026.1.31'), findsOneWidget);
     expect(find.text('收支统计'), findsOneWidget);
     expect(find.text('累计'), findsNothing);
 

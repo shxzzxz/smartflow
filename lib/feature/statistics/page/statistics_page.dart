@@ -9,8 +9,6 @@ import '../../../design_system/token/chart.dart';
 import '../../../design_system/token/component.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
-import '../../../design_system/widget/app_datetime_picker.dart';
-import '../../../design_system/widget/app_month_picker.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
 import '../../../design_system/widget/app_segmented_control.dart';
@@ -23,6 +21,7 @@ import '../../../widget/business/finance/money_text.dart';
 import '../presentation/statistics_presentation.dart';
 import '../view_model/statistics_view_model.dart';
 import '../widget/statistics_charts.dart';
+import '../widget/statistics_period_sheet.dart';
 import '../widget/statistics_section.dart';
 
 class StatisticsPage extends ConsumerWidget {
@@ -121,25 +120,9 @@ class _StatisticsHeader extends ConsumerWidget {
         AppSpacing.space16,
         AppSpacing.space12,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppSegmentedControl<StatisticsPeriodKind>(
-            segments: const [
-              AppSegment(value: StatisticsPeriodKind.month, label: '月'),
-              AppSegment(value: StatisticsPeriodKind.year, label: '年'),
-              AppSegment(value: StatisticsPeriodKind.custom, label: '自定义'),
-            ],
-            selected: state.periodKind,
-            onChanged: notifier.selectPeriodKind,
-          ),
-          const SizedBox(height: AppSpacing.space10),
-          _PeriodPicker(
-            label: periodLabel,
-            kind: state.periodKind,
-            onTap: () => _pickPeriod(context, notifier, lastSelectableDate),
-          ),
-        ],
+      child: _PeriodPicker(
+        label: periodLabel,
+        onTap: () => _pickPeriod(context, notifier, lastSelectableDate),
       ),
     );
   }
@@ -149,50 +132,28 @@ class _StatisticsHeader extends ConsumerWidget {
     StatisticsViewModel notifier,
     DateTime lastSelectableDate,
   ) async {
-    switch (state.periodKind) {
-      case StatisticsPeriodKind.month:
-        final month = await showAppMonthPicker(
-          context: context,
-          initialMonth: state.visibleMonth,
-          lastYear: lastSelectableDate.year,
-        );
-        if (month != null) notifier.pickMonth(month);
-        return;
-      case StatisticsPeriodKind.year:
-        final year = await showAppYearPicker(
-          context: context,
-          initialYear: state.visibleMonth.year,
-          lastYear: lastSelectableDate.year,
-        );
-        if (year != null) {
-          notifier.pickMonth(DateTime(year, state.visibleMonth.month));
-        }
-        return;
-      case StatisticsPeriodKind.custom:
-        final range = await showAppDateRangePicker(
-          context: context,
-          initialRange: DateTimeRange(
-            start: state.customFrom,
-            end: state.customUntil.subtract(const Duration(days: 1)),
-          ),
-          firstDate: DateTime(2000),
-          lastDate: lastSelectableDate,
-        );
-        if (range != null) notifier.selectCustomRange(range.start, range.end);
-        return;
-    }
+    final selection = await showStatisticsPeriodSheet(
+      context: context,
+      granularity: state.granularity,
+      mode: state.mode,
+      from: state.periodFrom,
+      untilExclusive: state.periodUntil,
+      lastSelectableDate: lastSelectableDate,
+    );
+    if (selection == null) return;
+    notifier.applyPeriodSelection(
+      granularity: selection.granularity,
+      mode: selection.mode,
+      from: selection.from,
+      untilExclusive: selection.untilExclusive,
+    );
   }
 }
 
 class _PeriodPicker extends StatelessWidget {
-  const _PeriodPicker({
-    required this.label,
-    required this.kind,
-    required this.onTap,
-  });
+  const _PeriodPicker({required this.label, required this.onTap});
 
   final String label;
-  final StatisticsPeriodKind kind;
   final VoidCallback onTap;
 
   @override
@@ -211,9 +172,7 @@ class _PeriodPicker extends StatelessWidget {
             child: Row(
               children: [
                 Icon(
-                  kind == StatisticsPeriodKind.custom
-                      ? RemixIcons.calendar_2_line
-                      : RemixIcons.calendar_line,
+                  RemixIcons.calendar_2_line,
                   size: AppSpacing.space20,
                   color: colors.onSurfaceVariant,
                 ),

@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import '../theme/app_text_styles.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
+import 'app_date_picker_panel.dart';
 
-const double _wheelItemExtent = 44;
-const double _wheelPanelHeight = 220;
-const double _wheelDialogMaxWidth = 360;
-const double _wheelSelectionOverlayOpacity = 0.26;
+const double _panelDialogMaxWidth = 336;
 
 class AppMonthSelector extends StatelessWidget {
   const AppMonthSelector({
@@ -125,63 +123,7 @@ Future<int?> showAppYearPicker({
   );
 }
 
-class AppYearPickerDialog extends StatefulWidget {
-  const AppYearPickerDialog({
-    required this.initialYear,
-    required this.firstYear,
-    required this.lastYear,
-    required this.title,
-    super.key,
-  });
-
-  final int initialYear;
-  final int firstYear;
-  final int lastYear;
-  final String title;
-
-  @override
-  State<AppYearPickerDialog> createState() => _AppYearPickerDialogState();
-}
-
-class _AppYearPickerDialogState extends State<AppYearPickerDialog> {
-  late int _selectedYear;
-  late FixedExtentScrollController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedYear = widget.initialYear.clamp(widget.firstYear, widget.lastYear);
-    _controller = FixedExtentScrollController(
-      initialItem: _selectedYear - widget.firstYear,
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final yearCount = widget.lastYear - widget.firstYear + 1;
-    return _WheelPickerDialogShell(
-      title: widget.title,
-      onConfirm: () => Navigator.of(context).pop(_selectedYear),
-      child: _WheelPicker(
-        controller: _controller,
-        itemCount: yearCount,
-        selectedIndex: _selectedYear - widget.firstYear,
-        itemExtent: _wheelItemExtent,
-        labelBuilder: (index) => '${widget.firstYear + index}年',
-        onSelectedItemChanged:
-            (index) => setState(() => _selectedYear = widget.firstYear + index),
-      ),
-    );
-  }
-}
-
-class AppMonthPickerDialog extends StatefulWidget {
+class AppMonthPickerDialog extends StatelessWidget {
   const AppMonthPickerDialog({
     required this.initialMonth,
     required this.firstYear,
@@ -196,199 +138,86 @@ class AppMonthPickerDialog extends StatefulWidget {
   final String title;
 
   @override
-  State<AppMonthPickerDialog> createState() => _AppMonthPickerDialogState();
-}
-
-class _AppMonthPickerDialogState extends State<AppMonthPickerDialog> {
-  late int _selectedYear;
-  late int _selectedMonth;
-  late FixedExtentScrollController _yearController;
-  late FixedExtentScrollController _monthController;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedYear = widget.initialMonth.year;
-    _selectedMonth = widget.initialMonth.month;
-    _yearController = FixedExtentScrollController(
-      initialItem: _selectedYear - widget.firstYear,
-    );
-    _monthController = FixedExtentScrollController(
-      initialItem: _selectedMonth - 1,
-    );
-  }
-
-  @override
-  void dispose() {
-    _yearController.dispose();
-    _monthController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final yearCount = widget.lastYear - widget.firstYear + 1;
-    return _WheelPickerDialogShell(
-      onConfirm:
-          () => Navigator.of(
-            context,
-          ).pop(DateTime(_selectedYear, _selectedMonth)),
-      child: Row(
-        children: [
-          Expanded(
-            child: _WheelPicker(
-              controller: _yearController,
-              itemCount: yearCount,
-              selectedIndex: _selectedYear - widget.firstYear,
-              itemExtent: _wheelItemExtent,
-              labelBuilder: (index) => '${widget.firstYear + index}年',
-              onSelectedItemChanged:
-                  (index) =>
-                      setState(() => _selectedYear = widget.firstYear + index),
-            ),
-          ),
-          Expanded(
-            child: _WheelPicker(
-              controller: _monthController,
-              itemCount: 12,
-              selectedIndex: _selectedMonth - 1,
-              itemExtent: _wheelItemExtent,
-              labelBuilder: (index) => '${index + 1}月',
-              onSelectedItemChanged:
-                  (index) => setState(() => _selectedMonth = index + 1),
-            ),
-          ),
-        ],
+    return _PanelDialogShell(
+      title: title,
+      child: AppDatePickerPanel(
+        granularity: AppDatePickerGranularity.month,
+        initialValue: initialMonth,
+        firstDate: DateTime(firstYear),
+        lastDate: DateTime(lastYear, 12, 31),
+        onSelected: (month) => Navigator.of(context).pop(month),
       ),
     );
   }
 }
 
-class _WheelPickerDialogShell extends StatelessWidget {
-  const _WheelPickerDialogShell({
-    required this.child,
-    required this.onConfirm,
-    this.title,
+class AppYearPickerDialog extends StatelessWidget {
+  const AppYearPickerDialog({
+    required this.initialYear,
+    required this.firstYear,
+    required this.lastYear,
+    required this.title,
+    super.key,
   });
 
-  final Widget child;
-  final VoidCallback onConfirm;
-  final String? title;
+  final int initialYear;
+  final int firstYear;
+  final int lastYear;
+  final String title;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    return _PanelDialogShell(
+      title: title,
+      child: AppDatePickerPanel(
+        granularity: AppDatePickerGranularity.year,
+        initialValue: DateTime(initialYear),
+        firstDate: DateTime(firstYear),
+        lastDate: DateTime(lastYear, 12, 31),
+        onSelected: (year) => Navigator.of(context).pop(year.year),
+      ),
+    );
+  }
+}
+
+/// 点选即回传的面板对话框外壳，无确认按钮，点击遮罩取消。
+class _PanelDialogShell extends StatelessWidget {
+  const _PanelDialogShell({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.space24,
         vertical: AppSpacing.space24,
       ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.radiusXl),
-      ),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: _wheelDialogMaxWidth),
+        constraints: const BoxConstraints(maxWidth: _panelDialogMaxWidth),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
-            AppSpacing.space20,
-            AppSpacing.space20,
-            AppSpacing.space20,
-            AppSpacing.space16,
+            AppSpacing.space12,
+            AppSpacing.space12,
+            AppSpacing.space12,
+            AppSpacing.space10,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (title != null) ...[
-                Text(
-                  title!,
-                  textAlign: TextAlign.center,
-                  style: context.appTextStyles.subsectionTitle,
-                ),
-                const SizedBox(height: AppSpacing.space12),
-              ],
-              SizedBox(
-                height: _wheelPanelHeight,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      height: _wheelItemExtent,
-                      decoration: BoxDecoration(
-                        color: colors.primaryContainer.withValues(
-                          alpha: _wheelSelectionOverlayOpacity,
-                        ),
-                        borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-                      ),
-                    ),
-                    child,
-                  ],
-                ),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: context.appTextStyles.subsectionTitle,
               ),
-              const SizedBox(height: AppSpacing.space16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('取消'),
-                  ),
-                  const SizedBox(width: AppSpacing.space8),
-                  FilledButton(onPressed: onConfirm, child: const Text('确定')),
-                ],
-              ),
+              const SizedBox(height: AppSpacing.space6),
+              child,
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _WheelPicker extends StatelessWidget {
-  const _WheelPicker({
-    required this.controller,
-    required this.itemCount,
-    required this.selectedIndex,
-    required this.itemExtent,
-    required this.labelBuilder,
-    required this.onSelectedItemChanged,
-  });
-
-  final FixedExtentScrollController controller;
-  final int itemCount;
-  final int selectedIndex;
-  final double itemExtent;
-  final String Function(int index) labelBuilder;
-  final ValueChanged<int> onSelectedItemChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return ListWheelScrollView.useDelegate(
-      controller: controller,
-      itemExtent: itemExtent,
-      physics: const FixedExtentScrollPhysics(),
-      diameterRatio: 1.35,
-      perspective: 0.003,
-      overAndUnderCenterOpacity: 0.42,
-      onSelectedItemChanged: onSelectedItemChanged,
-      childDelegate: ListWheelChildBuilderDelegate(
-        childCount: itemCount,
-        builder: (context, index) {
-          final selected = index == selectedIndex;
-          return Center(
-            child: Text(
-              labelBuilder(index),
-              style: context.appTextStyles
-                  .segmentedControlLabel(selected: selected)
-                  .copyWith(
-                    color:
-                        selected ? colors.onSurface : colors.onSurfaceVariant,
-                  ),
-            ),
-          );
-        },
       ),
     );
   }

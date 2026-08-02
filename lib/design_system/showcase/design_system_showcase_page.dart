@@ -30,6 +30,8 @@ import '../theme/app_theme_extension.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
 import '../widget/app_datetime_picker.dart';
+import '../widget/app_date_picker_panel.dart';
+import '../widget/app_dropdown.dart';
 import '../widget/app_form_section.dart';
 import '../widget/app_month_picker.dart';
 import '../widget/app_page_header.dart';
@@ -65,6 +67,7 @@ enum _ShowcaseExampleKind {
   buttons,
   segmentedControl,
   popupMenu,
+  dropdown,
   surface,
   textFormRow,
   selectFormRow,
@@ -79,6 +82,7 @@ enum _ShowcaseExampleKind {
   chips,
   progressIndicators,
   datePicker,
+  datePickerPanel,
   timePicker,
   monthPicker,
   swipeAction,
@@ -148,6 +152,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '弹出菜单',
     componentNames: 'AppPopupMenuButton',
     keywords: ['菜单', '弹出', '更多', '设置', '开关'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.dropdown,
+    category: '基础组件',
+    title: '下拉选择',
+    componentNames: 'AppDropdown',
+    keywords: ['下拉', '选择', '菜单'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.surface,
@@ -248,6 +259,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '日期选择器',
     componentNames: 'AppDatePicker / showAppDatePicker',
     keywords: ['日期', '选择器'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.datePickerPanel,
+    category: '日期组件',
+    title: '日期面板',
+    componentNames: 'AppDatePickerPanel',
+    keywords: ['日期', '面板', '范围', '月份', '年份', '宫格'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.timePicker,
@@ -511,6 +529,8 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   var _selectedDate = DateTime(2026, 5, 20);
   var _selectedTime = const TimeOfDay(hour: 9, minute: 30);
   var _visibleMonth = DateTime(2026, 5);
+  var _dropdownValue = '月';
+  DateTimeRange? _panelRange;
   var _selectedOption = '选项一';
   var _switchValue = true;
   var _describedSwitchValue = false;
@@ -674,6 +694,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.buttons => _buttonsPreview(),
       _ShowcaseExampleKind.segmentedControl => _segmentedControlPreview(),
       _ShowcaseExampleKind.popupMenu => _popupMenuPreview(),
+      _ShowcaseExampleKind.dropdown => _dropdownPreview(),
       _ShowcaseExampleKind.surface => _surfacePreview(),
       _ShowcaseExampleKind.textFormRow => _textFormRowPreview(),
       _ShowcaseExampleKind.selectFormRow => _selectFormRowPreview(),
@@ -689,6 +710,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.chips => _chipsPreview(),
       _ShowcaseExampleKind.progressIndicators => _progressIndicatorsPreview(),
       _ShowcaseExampleKind.datePicker => _datePickerPreview(),
+      _ShowcaseExampleKind.datePickerPanel => _datePickerPanelPreview(),
       _ShowcaseExampleKind.timePicker => _timePickerPreview(),
       _ShowcaseExampleKind.monthPicker => _monthPickerPreview(),
       _ShowcaseExampleKind.swipeAction => _swipeActionPreview(),
@@ -1224,6 +1246,49 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           label: '危险 50%',
           value: 0.5,
           color: financeColors.danger,
+        ),
+      ],
+    );
+  }
+
+  Widget _dropdownPreview() {
+    return Row(
+      children: [
+        AppDropdown<String>(
+          tooltip: '选择粒度',
+          options: const [
+            AppDropdownOption(value: '年', label: '年'),
+            AppDropdownOption(value: '月', label: '月'),
+            AppDropdownOption(value: '日', label: '日'),
+          ],
+          value: _dropdownValue,
+          onChanged: (value) => setState(() => _dropdownValue = value),
+        ),
+        const SizedBox(width: AppSpacing.space12),
+        Text('当前：$_dropdownValue', style: context.appTextStyles.formValue),
+      ],
+    );
+  }
+
+  Widget _datePickerPanelPreview() {
+    final range = _panelRange;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpacing.space8,
+      children: [
+        AppDatePickerPanel(
+          granularity: AppDatePickerGranularity.date,
+          mode: AppDatePickerMode.range,
+          initialValue: _selectedDate,
+          onRangeChanged:
+              (picked, _) => setState(() => _panelRange = picked),
+        ),
+        Text(
+          range == null
+              ? '点选起止日期，点击标题可切换月份 / 年份视图'
+              : '${range.start.year}.${range.start.month}.${range.start.day} - '
+                  '${range.end.year}.${range.end.month}.${range.end.day}',
+          style: context.appTextStyles.formValue,
         ),
       ],
     );

@@ -10,7 +10,7 @@ import 'package:smartflow/feature/statistics/presentation/statistics_presentatio
 import 'package:smartflow/feature/statistics/view_model/statistics_view_model.dart';
 
 void main() {
-  test('defaults to the current month and the last 30 days', () {
+  test('defaults to the current month', () {
     final container = ProviderContainer(
       overrides: [
         currentDateTimeProvider.overrideWithValue(DateTime(2026, 7, 18)),
@@ -20,9 +20,10 @@ void main() {
 
     final state = container.read(statisticsViewModelProvider);
     expect(state.visibleMonth, DateTime(2026, 7));
-    expect(state.periodKind, StatisticsPeriodKind.month);
-    expect(state.customFrom, DateTime(2026, 6, 18));
-    expect(state.customUntil, DateTime(2026, 7, 19));
+    expect(state.granularity, StatisticsPeriodGranularity.month);
+    expect(state.mode, StatisticsPeriodMode.single);
+    expect(state.periodFrom, DateTime(2026, 7));
+    expect(state.periodUntil, DateTime(2026, 8));
     expect(state.chartMetric, CashflowChartMetric.expense);
     expect(state.chartForm, CashflowChartForm.bar);
   });
@@ -36,22 +37,41 @@ void main() {
     addTearDown(container.dispose);
     final notifier = container.read(statisticsViewModelProvider.notifier);
 
-    notifier.pickMonth(DateTime(2026, 3));
+    notifier.applyPeriodSelection(
+      granularity: StatisticsPeriodGranularity.month,
+      mode: StatisticsPeriodMode.single,
+      from: DateTime(2026, 3),
+      untilExclusive: DateTime(2026, 4),
+    );
     expect(
       container.read(statisticsViewModelProvider).range(DateTime(2026, 7, 18)),
       isA<StatisticsDateRange>()
           .having((range) => range.from, 'from', DateTime(2026, 3))
           .having((range) => range.until, 'until', DateTime(2026, 4)),
     );
+    expect(
+      container.read(statisticsViewModelProvider).visibleMonth,
+      DateTime(2026, 3),
+    );
 
-    notifier.selectPeriodKind(StatisticsPeriodKind.year);
+    notifier.applyPeriodSelection(
+      granularity: StatisticsPeriodGranularity.year,
+      mode: StatisticsPeriodMode.single,
+      from: DateTime(2026),
+      untilExclusive: DateTime(2027),
+    );
     final year = container
         .read(statisticsViewModelProvider)
         .range(DateTime(2026, 7, 18));
     expect(year.from, DateTime(2026));
     expect(year.until, DateTime(2026, 7, 19));
 
-    notifier.selectCustomRange(DateTime(2026, 2, 3), DateTime(2026, 2, 8));
+    notifier.applyPeriodSelection(
+      granularity: StatisticsPeriodGranularity.date,
+      mode: StatisticsPeriodMode.range,
+      from: DateTime(2026, 2, 3),
+      untilExclusive: DateTime(2026, 2, 9),
+    );
     final custom = container
         .read(statisticsViewModelProvider)
         .range(DateTime(2026, 7, 18));
@@ -59,31 +79,20 @@ void main() {
     expect(custom.until, DateTime(2026, 2, 9));
   });
 
-  test('chooses readable trend grouping for each period kind', () {
-    final month = _control(
-      periodKind: StatisticsPeriodKind.month,
-      customFrom: DateTime(2026, 1),
-      customUntil: DateTime(2026, 2),
-    );
-    final year = _control(
-      periodKind: StatisticsPeriodKind.year,
-      customFrom: DateTime(2026, 1),
-      customUntil: DateTime(2027, 1),
-    );
+  test('chooses readable trend grouping for each period span', () {
+    final month = _control(from: DateTime(2026, 1), until: DateTime(2026, 2));
+    final year = _control(from: DateTime(2026, 1), until: DateTime(2027, 1));
     final mediumCustom = _control(
-      periodKind: StatisticsPeriodKind.custom,
-      customFrom: DateTime(2026, 1, 1),
-      customUntil: DateTime(2026, 3, 2),
+      from: DateTime(2026, 1, 1),
+      until: DateTime(2026, 3, 2),
     );
     final longCustom = _control(
-      periodKind: StatisticsPeriodKind.custom,
-      customFrom: DateTime(2026, 1, 1),
-      customUntil: DateTime(2026, 8, 1),
+      from: DateTime(2026, 1, 1),
+      until: DateTime(2026, 8, 1),
     );
     final multiYearCustom = _control(
-      periodKind: StatisticsPeriodKind.custom,
-      customFrom: DateTime(2024, 1, 1),
-      customUntil: DateTime(2026, 8, 1),
+      from: DateTime(2024, 1, 1),
+      until: DateTime(2026, 8, 1),
     );
 
     expect(month.trendGrouping, StatisticsTimeGrouping.day);
@@ -202,16 +211,16 @@ void main() {
 }
 
 StatisticsControlState _control({
-  required StatisticsPeriodKind periodKind,
-  required DateTime customFrom,
-  required DateTime customUntil,
+  required DateTime from,
+  required DateTime until,
 }) {
   return StatisticsControlState(
     visibleMonth: DateTime(2026, 1),
     section: StatisticsSection.cashflow,
-    periodKind: periodKind,
-    customFrom: customFrom,
-    customUntil: customUntil,
+    granularity: StatisticsPeriodGranularity.date,
+    mode: StatisticsPeriodMode.range,
+    periodFrom: from,
+    periodUntil: until,
     chartMetric: CashflowChartMetric.expense,
     chartForm: CashflowChartForm.bar,
     categoryKind: StatisticsCategoryKind.expense,

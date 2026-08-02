@@ -3,15 +3,14 @@ import 'package:flutter/material.dart';
 import '../theme/app_text_styles.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
-import 'app_month_picker.dart';
+import 'app_date_picker_panel.dart';
 
-const List<String> _weekdays = ['一', '二', '三', '四', '五', '六', '日'];
 const double _timeItemExtent = 34.0;
 const int _loopBase = 120;
 
 // ===== Public API =====
 
-/// 仅选日期。返回的 [DateTime] 时分秒为 0。
+/// 仅选日期，点选即回传。返回的 [DateTime] 时分秒为 0。
 Future<DateTime?> showAppDatePicker({
   required BuildContext context,
   required DateTime initialDate,
@@ -105,7 +104,7 @@ Future<int?> showAppDayOfMonthPicker({
 
 // ===== Date picker =====
 
-class AppDatePickerDialog extends StatefulWidget {
+class AppDatePickerDialog extends StatelessWidget {
   const AppDatePickerDialog({
     required this.initialDate,
     this.firstYear = 2000,
@@ -120,83 +119,20 @@ class AppDatePickerDialog extends StatefulWidget {
   final String title;
 
   @override
-  State<AppDatePickerDialog> createState() => _AppDatePickerDialogState();
-}
-
-class _AppDatePickerDialogState extends State<AppDatePickerDialog> {
-  late DateTime _selectedDate;
-  late DateTime _visibleMonth;
-
-  @override
-  void initState() {
-    super.initState();
-    final initial = _clampDateTime(
-      widget.initialDate,
-      widget.firstYear,
-      widget.lastYear,
-    );
-    _selectedDate = DateTime(initial.year, initial.month, initial.day);
-    _visibleMonth = DateTime(initial.year, initial.month);
-  }
-
-  @override
   Widget build(BuildContext context) {
     return _PickerDialogShell(
-      onCancel: () => Navigator.of(context).pop(),
-      onConfirm:
-          () => Navigator.of(context).pop(
-            DateTime(
-              _selectedDate.year,
-              _selectedDate.month,
-              _selectedDate.day,
-            ),
-          ),
       children: [
-        _CalendarPanel(
-          visibleMonth: _visibleMonth,
-          selectedDate: _selectedDate,
-          onPreviousMonth: _canPreviousMonth ? _previousMonth : null,
-          onNextMonth: _canNextMonth ? _nextMonth : null,
-          onMonthPressed: _pickVisibleMonth,
-          onDateSelected: (date) => setState(() => _selectedDate = date),
+        _TitleBar(title: title),
+        const SizedBox(height: AppSpacing.space4),
+        AppDatePickerPanel(
+          granularity: AppDatePickerGranularity.date,
+          initialValue: initialDate,
+          firstDate: DateTime(firstYear),
+          lastDate: DateTime(lastYear, 12, 31),
+          onSelected: (date) => Navigator.of(context).pop(date),
         ),
       ],
     );
-  }
-
-  bool get _canPreviousMonth =>
-      _visibleMonth.year > widget.firstYear || _visibleMonth.month > 1;
-  bool get _canNextMonth =>
-      _visibleMonth.year < widget.lastYear || _visibleMonth.month < 12;
-
-  void _previousMonth() {
-    setState(() {
-      _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month - 1);
-    });
-  }
-
-  void _nextMonth() {
-    setState(() {
-      _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + 1);
-    });
-  }
-
-  Future<void> _pickVisibleMonth() async {
-    final picked = await showAppMonthPicker(
-      context: context,
-      initialMonth: _visibleMonth,
-      firstYear: widget.firstYear,
-      lastYear: widget.lastYear,
-    );
-    if (picked == null || !mounted) return;
-    final selectedDay = _selectedDate.day.clamp(
-      1,
-      _daysInMonth(picked.year, picked.month),
-    );
-    setState(() {
-      _visibleMonth = DateTime(picked.year, picked.month);
-      _selectedDate = DateTime(picked.year, picked.month, selectedDay);
-    });
   }
 }
 
@@ -220,7 +156,6 @@ class AppDateRangePickerDialog extends StatefulWidget {
 class _AppDateRangePickerDialogState extends State<AppDateRangePickerDialog> {
   late DateTime _start;
   late DateTime _end;
-  late DateTime _visibleMonth;
   bool _selectingEnd = false;
 
   @override
@@ -229,30 +164,33 @@ class _AppDateRangePickerDialogState extends State<AppDateRangePickerDialog> {
     _start = _clampDate(widget.initialRange.start);
     _end = _clampDate(widget.initialRange.end);
     if (_end.isBefore(_start)) _end = _start;
-    _visibleMonth = DateTime(_start.year, _start.month);
   }
 
   @override
   Widget build(BuildContext context) {
     return _PickerDialogShell(
-      onCancel: () => Navigator.of(context).pop(),
-      onConfirm:
-          () => Navigator.of(
-            context,
-          ).pop(DateTimeRange(start: _start, end: _end)),
+      footer: _DialogFooter(
+        onCancel: () => Navigator.of(context).pop(),
+        onConfirm:
+            () => Navigator.of(
+              context,
+            ).pop(DateTimeRange(start: _start, end: _end)),
+      ),
       children: [
         _RangeSummary(start: _start, end: _end, selectingEnd: _selectingEnd),
         const SizedBox(height: AppSpacing.space8),
-        _DateRangeCalendarPanel(
-          visibleMonth: _visibleMonth,
-          start: _start,
-          end: _end,
+        AppDatePickerPanel(
+          granularity: AppDatePickerGranularity.date,
+          mode: AppDatePickerMode.range,
+          initialRange: DateTimeRange(start: _start, end: _end),
           firstDate: widget.firstDate,
           lastDate: widget.lastDate,
-          onPreviousMonth: _canPreviousMonth ? _previousMonth : null,
-          onNextMonth: _canNextMonth ? _nextMonth : null,
-          onMonthPressed: _pickVisibleMonth,
-          onDateSelected: _selectDate,
+          onRangeChanged:
+              (range, isComplete) => setState(() {
+                _start = range.start;
+                _end = range.end;
+                _selectingEnd = !isComplete;
+              }),
         ),
       ],
     );
@@ -273,59 +211,6 @@ class _AppDateRangePickerDialogState extends State<AppDateRangePickerDialog> {
     if (date.isBefore(first)) return first;
     if (date.isAfter(last)) return last;
     return date;
-  }
-
-  bool get _canPreviousMonth => DateTime(
-    _visibleMonth.year,
-    _visibleMonth.month,
-  ).isAfter(DateTime(widget.firstDate.year, widget.firstDate.month));
-
-  bool get _canNextMonth => DateTime(
-    _visibleMonth.year,
-    _visibleMonth.month,
-  ).isBefore(DateTime(widget.lastDate.year, widget.lastDate.month));
-
-  void _previousMonth() => setState(() {
-    _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month - 1);
-  });
-
-  void _nextMonth() => setState(() {
-    _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + 1);
-  });
-
-  Future<void> _pickVisibleMonth() async {
-    final picked = await showAppMonthPicker(
-      context: context,
-      initialMonth: _visibleMonth,
-      firstYear: widget.firstDate.year,
-      lastYear: widget.lastDate.year,
-    );
-    if (picked == null || !mounted) return;
-    final firstMonth = DateTime(widget.firstDate.year, widget.firstDate.month);
-    final lastMonth = DateTime(widget.lastDate.year, widget.lastDate.month);
-    final visibleMonth =
-        picked.isBefore(firstMonth)
-            ? firstMonth
-            : picked.isAfter(lastMonth)
-            ? lastMonth
-            : picked;
-    setState(() => _visibleMonth = visibleMonth);
-  }
-
-  void _selectDate(DateTime date) {
-    setState(() {
-      if (!_selectingEnd) {
-        _start = date;
-        _end = date;
-        _selectingEnd = true;
-      } else if (date.isBefore(_start)) {
-        _start = date;
-        _end = date;
-      } else {
-        _end = date;
-        _selectingEnd = false;
-      }
-    });
   }
 }
 
@@ -405,108 +290,6 @@ class _RangeDateValue extends StatelessWidget {
   }
 }
 
-class _DateRangeCalendarPanel extends StatelessWidget {
-  const _DateRangeCalendarPanel({
-    required this.visibleMonth,
-    required this.start,
-    required this.end,
-    required this.firstDate,
-    required this.lastDate,
-    required this.onMonthPressed,
-    required this.onDateSelected,
-    this.onPreviousMonth,
-    this.onNextMonth,
-  });
-
-  final DateTime visibleMonth;
-  final DateTime start;
-  final DateTime end;
-  final DateTime firstDate;
-  final DateTime lastDate;
-  final VoidCallback onMonthPressed;
-  final VoidCallback? onPreviousMonth;
-  final VoidCallback? onNextMonth;
-  final ValueChanged<DateTime> onDateSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final days = _calendarDays(visibleMonth);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            _MonthArrowButton(
-              icon: Icons.chevron_left,
-              tooltip: '上个月',
-              onPressed: onPreviousMonth,
-            ),
-            Expanded(
-              child: InkWell(
-                onTap: onMonthPressed,
-                borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space6,
-                    vertical: AppSpacing.space4,
-                  ),
-                  child: Text(
-                    '${visibleMonth.year}年${visibleMonth.month}月',
-                    textAlign: TextAlign.center,
-                    style: context.appTextStyles.subsectionTitle,
-                  ),
-                ),
-              ),
-            ),
-            _MonthArrowButton(
-              icon: Icons.chevron_right,
-              tooltip: '下个月',
-              onPressed: onNextMonth,
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.space4),
-        Row(
-          children: [
-            for (final weekday in _weekdays)
-              Expanded(
-                child: Text(
-                  weekday,
-                  textAlign: TextAlign.center,
-                  style: context.appTextStyles.formLabel,
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.space2),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: days.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 7,
-            mainAxisSpacing: AppSpacing.space2,
-            crossAxisSpacing: AppSpacing.space2,
-            childAspectRatio: 1,
-          ),
-          itemBuilder: (context, index) {
-            final date = days[index];
-            if (date == null) return const SizedBox.shrink();
-            final enabled =
-                !date.isBefore(firstDate) && !date.isAfter(lastDate);
-            return _CalendarDayButton(
-              date: date,
-              selected: _isSameDate(date, start) || _isSameDate(date, end),
-              inRange: date.isAfter(start) && date.isBefore(end),
-              onTap: enabled ? () => onDateSelected(date) : null,
-            );
-          },
-        ),
-      ],
-    );
-  }
-}
-
 // ===== Time picker =====
 
 class AppTimePickerDialog extends StatefulWidget {
@@ -552,11 +335,13 @@ class _AppTimePickerDialogState extends State<AppTimePickerDialog> {
   @override
   Widget build(BuildContext context) {
     return _PickerDialogShell(
-      onCancel: () => Navigator.of(context).pop(),
-      onConfirm:
-          () => Navigator.of(
-            context,
-          ).pop(TimeOfDay(hour: _selectedHour, minute: _selectedMinute)),
+      footer: _DialogFooter(
+        onCancel: () => Navigator.of(context).pop(),
+        onConfirm:
+            () => Navigator.of(
+              context,
+            ).pop(TimeOfDay(hour: _selectedHour, minute: _selectedMinute)),
+      ),
       children: [
         _TitleBar(title: widget.title),
         const SizedBox(height: AppSpacing.space6),
@@ -597,7 +382,6 @@ class AppDateTimePickerDialog extends StatefulWidget {
 
 class _AppDateTimePickerDialogState extends State<AppDateTimePickerDialog> {
   late DateTime _selectedDate;
-  late DateTime _visibleMonth;
   late int _selectedHour;
   late int _selectedMinute;
   late FixedExtentScrollController _hourController;
@@ -612,7 +396,6 @@ class _AppDateTimePickerDialogState extends State<AppDateTimePickerDialog> {
       widget.lastYear,
     );
     _selectedDate = DateTime(initial.year, initial.month, initial.day);
-    _visibleMonth = DateTime(initial.year, initial.month);
     _selectedHour = initial.hour;
     _selectedMinute = initial.minute;
     _hourController = FixedExtentScrollController(
@@ -633,25 +416,26 @@ class _AppDateTimePickerDialogState extends State<AppDateTimePickerDialog> {
   @override
   Widget build(BuildContext context) {
     return _PickerDialogShell(
-      onCancel: () => Navigator.of(context).pop(),
-      onConfirm:
-          () => Navigator.of(context).pop(
-            DateTime(
-              _selectedDate.year,
-              _selectedDate.month,
-              _selectedDate.day,
-              _selectedHour,
-              _selectedMinute,
+      footer: _DialogFooter(
+        onCancel: () => Navigator.of(context).pop(),
+        onConfirm:
+            () => Navigator.of(context).pop(
+              DateTime(
+                _selectedDate.year,
+                _selectedDate.month,
+                _selectedDate.day,
+                _selectedHour,
+                _selectedMinute,
+              ),
             ),
-          ),
+      ),
       children: [
-        _CalendarPanel(
-          visibleMonth: _visibleMonth,
-          selectedDate: _selectedDate,
-          onPreviousMonth: _canPreviousMonth ? _previousMonth : null,
-          onNextMonth: _canNextMonth ? _nextMonth : null,
-          onMonthPressed: _pickVisibleMonth,
-          onDateSelected: (date) => setState(() => _selectedDate = date),
+        AppDatePickerPanel(
+          granularity: AppDatePickerGranularity.date,
+          initialValue: _selectedDate,
+          firstDate: DateTime(widget.firstYear),
+          lastDate: DateTime(widget.lastYear, 12, 31),
+          onSelected: (date) => setState(() => _selectedDate = date),
         ),
         const SizedBox(height: AppSpacing.space10),
         _TimeWheelPanel(
@@ -666,55 +450,15 @@ class _AppDateTimePickerDialogState extends State<AppDateTimePickerDialog> {
       ],
     );
   }
-
-  bool get _canPreviousMonth =>
-      _visibleMonth.year > widget.firstYear || _visibleMonth.month > 1;
-  bool get _canNextMonth =>
-      _visibleMonth.year < widget.lastYear || _visibleMonth.month < 12;
-
-  void _previousMonth() {
-    setState(() {
-      _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month - 1);
-    });
-  }
-
-  void _nextMonth() {
-    setState(() {
-      _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + 1);
-    });
-  }
-
-  Future<void> _pickVisibleMonth() async {
-    final picked = await showAppMonthPicker(
-      context: context,
-      initialMonth: _visibleMonth,
-      firstYear: widget.firstYear,
-      lastYear: widget.lastYear,
-    );
-    if (picked == null || !mounted) return;
-    final selectedDay = _selectedDate.day.clamp(
-      1,
-      _daysInMonth(picked.year, picked.month),
-    );
-    setState(() {
-      _visibleMonth = DateTime(picked.year, picked.month);
-      _selectedDate = DateTime(picked.year, picked.month, selectedDay);
-    });
-  }
 }
 
 // ===== Shared shell + reusable panels =====
 
 class _PickerDialogShell extends StatelessWidget {
-  const _PickerDialogShell({
-    required this.children,
-    required this.onCancel,
-    required this.onConfirm,
-  });
+  const _PickerDialogShell({required this.children, this.footer});
 
   final List<Widget> children;
-  final VoidCallback onCancel;
-  final VoidCallback onConfirm;
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -740,20 +484,34 @@ class _PickerDialogShell extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 ...children,
-                const SizedBox(height: AppSpacing.space10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(onPressed: onCancel, child: const Text('取消')),
-                    const SizedBox(width: AppSpacing.space8),
-                    FilledButton(onPressed: onConfirm, child: const Text('确定')),
-                  ],
-                ),
+                if (footer != null) ...[
+                  const SizedBox(height: AppSpacing.space10),
+                  footer!,
+                ],
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _DialogFooter extends StatelessWidget {
+  const _DialogFooter({required this.onCancel, required this.onConfirm});
+
+  final VoidCallback onCancel;
+  final VoidCallback onConfirm;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        TextButton(onPressed: onCancel, child: const Text('取消')),
+        const SizedBox(width: AppSpacing.space8),
+        FilledButton(onPressed: onConfirm, child: const Text('确定')),
+      ],
     );
   }
 }
@@ -774,149 +532,6 @@ class _TitleBar extends StatelessWidget {
         title,
         textAlign: TextAlign.center,
         style: context.appTextStyles.subsectionTitle,
-      ),
-    );
-  }
-}
-
-class _CalendarPanel extends StatelessWidget {
-  const _CalendarPanel({
-    required this.visibleMonth,
-    required this.selectedDate,
-    required this.onDateSelected,
-    required this.onMonthPressed,
-    this.onPreviousMonth,
-    this.onNextMonth,
-  });
-
-  final DateTime visibleMonth;
-  final DateTime selectedDate;
-  final VoidCallback? onPreviousMonth;
-  final VoidCallback? onNextMonth;
-  final VoidCallback onMonthPressed;
-  final ValueChanged<DateTime> onDateSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final days = _calendarDays(visibleMonth);
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            _MonthArrowButton(
-              icon: Icons.chevron_left,
-              tooltip: '上个月',
-              onPressed: onPreviousMonth,
-            ),
-            Expanded(
-              child: InkWell(
-                onTap: onMonthPressed,
-                borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space6,
-                    vertical: AppSpacing.space4,
-                  ),
-                  child: Text(
-                    '${visibleMonth.year}年${visibleMonth.month}月',
-                    textAlign: TextAlign.center,
-                    style: context.appTextStyles.subsectionTitle,
-                  ),
-                ),
-              ),
-            ),
-            _MonthArrowButton(
-              icon: Icons.chevron_right,
-              tooltip: '下个月',
-              onPressed: onNextMonth,
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.space4),
-        Row(
-          children: [
-            for (final weekday in _weekdays)
-              Expanded(
-                child: Text(
-                  weekday,
-                  textAlign: TextAlign.center,
-                  style: context.appTextStyles.formLabel,
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.space2),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: days.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 7,
-            mainAxisSpacing: AppSpacing.space2,
-            crossAxisSpacing: AppSpacing.space2,
-            childAspectRatio: 1,
-          ),
-          itemBuilder: (context, index) {
-            final date = days[index];
-            if (date == null) {
-              return const SizedBox.shrink();
-            }
-            return _CalendarDayButton(
-              date: date,
-              selected: _isSameDate(date, selectedDate),
-              onTap: () => onDateSelected(date),
-            );
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class _CalendarDayButton extends StatelessWidget {
-  const _CalendarDayButton({
-    required this.date,
-    required this.selected,
-    required this.onTap,
-    this.inRange = false,
-  });
-
-  final DateTime date;
-  final bool selected;
-  final bool inRange;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return Material(
-      color:
-          selected
-              ? colors.primary
-              : inRange
-              ? colors.primaryContainer
-              : Colors.transparent,
-      borderRadius: BorderRadius.circular(AppRadius.radiusSm),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.radiusSm),
-        child: Center(
-          child: Text(
-            '${date.day}',
-            style: context.appTextStyles.detailValue.copyWith(
-              color:
-                  onTap == null
-                      ? colors.onSurfaceVariant
-                      : selected
-                      ? colors.onPrimary
-                      : colors.onSurface,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -1037,36 +652,6 @@ class _TimeWheel extends StatelessWidget {
             ),
         ],
       ),
-    );
-  }
-}
-
-class _MonthArrowButton extends StatelessWidget {
-  const _MonthArrowButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return IconButton(
-      onPressed: onPressed,
-      tooltip: tooltip,
-      icon: Icon(icon, color: colors.onSurfaceVariant),
-      iconSize: AppSpacing.space20,
-      padding: const EdgeInsets.all(AppSpacing.space4),
-      constraints: const BoxConstraints.tightFor(
-        width: AppSpacing.space32,
-        height: AppSpacing.space32,
-      ),
-      visualDensity: VisualDensity.compact,
     );
   }
 }
@@ -1227,34 +812,6 @@ DateTime _clampDateTime(DateTime value, int firstYear, int lastYear) {
 
 int _loopInitialItem(int value, int itemCount) {
   return itemCount * _loopBase + value;
-}
-
-List<DateTime?> _calendarDays(DateTime visibleMonth) {
-  final firstDay = DateTime(visibleMonth.year, visibleMonth.month);
-  final dayCount = _daysInMonth(visibleMonth.year, visibleMonth.month);
-  final leadingEmptyCount = firstDay.weekday - 1;
-  final totalCount = _roundUpToWeek(leadingEmptyCount + dayCount);
-
-  return List<DateTime?>.generate(totalCount, (index) {
-    final day = index - leadingEmptyCount + 1;
-    if (day < 1 || day > dayCount) {
-      return null;
-    }
-    return DateTime(visibleMonth.year, visibleMonth.month, day);
-  });
-}
-
-int _roundUpToWeek(int value) {
-  final remainder = value % 7;
-  return remainder == 0 ? value : value + 7 - remainder;
-}
-
-int _daysInMonth(int year, int month) {
-  return DateTime(year, month + 1, 0).day;
-}
-
-bool _isSameDate(DateTime a, DateTime b) {
-  return a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
 String _two(int value) => value.toString().padLeft(2, '0');
