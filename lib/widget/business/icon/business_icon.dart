@@ -517,6 +517,30 @@ const businessIconSpecs = <BusinessIconSpec>[
     label: '微信支付',
   ),
   BusinessIconSpec.svg(
+    iconKey: 'jd',
+    assetPath: 'assets/icons/account/jd.svg',
+    color: AppColors.categoryGenericNeutral,
+    label: '京东',
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'meituan',
+    assetPath: 'assets/icons/account/meituan.svg',
+    color: AppColors.categoryGenericNeutral,
+    label: '美团',
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'jd_baitiao',
+    assetPath: 'assets/icons/account/jd_baitiao.svg',
+    color: AppColors.categoryGenericNeutral,
+    label: '京东白条',
+  ),
+  BusinessIconSpec.svg(
+    iconKey: 'duxiaoman',
+    assetPath: 'assets/icons/account/duxiaoman.svg',
+    color: AppColors.categoryGenericNeutral,
+    label: '度小满',
+  ),
+  BusinessIconSpec.svg(
     iconKey: 'cmb_credit_card',
     assetPath: 'assets/icons/account/cmb_credit_card.svg',
     color: AppColors.categoryGenericNeutral,

@@ -22,6 +22,13 @@ void main() {
         ).map((spec) => spec.iconKey),
         contains('car-loan-account'),
       );
+      expect(
+        searchBusinessIconSpecs(
+          usage: BusinessIconUsage.account,
+          query: '京东白条',
+        ).map((spec) => spec.iconKey),
+        contains('jd_baitiao'),
+      );
     },
   );
 
