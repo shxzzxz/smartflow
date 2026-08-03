@@ -781,20 +781,6 @@ class _ArchivedAccountsEntry extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Container(
-                  width: AppSpacing.space32,
-                  height: AppSpacing.space32,
-                  decoration: BoxDecoration(
-                    color: colors.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-                  ),
-                  child: Icon(
-                    RemixIcons.archive_line,
-                    size: AppSpacing.space20,
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.space12),
                 Expanded(
                   child: Text('已归档账户', style: context.appTextStyles.formValue),
                 ),

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/account/command/account_group_app_service.dart';
 import 'package:smartflow/application/ledger/account/command/account_group_command.dart';
@@ -126,6 +127,7 @@ void main() {
     expect(find.text('已归档账户'), findsOneWidget);
     expect(find.text('1'), findsOneWidget);
     expect(find.text('已归档招行信用卡'), findsNothing);
+    expect(find.byIcon(RemixIcons.archive_line), findsNothing);
   });
 
   testWidgets('shows asset and liability amounts in the donut legend', (
