@@ -3,16 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../application/ledger/ledger_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/finance/money_text.dart';
-import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../presentation/account_section_presentation.dart';
 import '../view_model/account_organization_view_model.dart';
 import '../view_model/account_view.dart';
-import '../view_model/account_views_provider.dart';
+import '../view_model/archived_accounts_view_model.dart';
 import '../widget/account_list_row.dart';
 
 class ArchivedAccountsPage extends ConsumerStatefulWidget {
@@ -36,8 +35,7 @@ class _ArchivedAccountsPageState extends ConsumerState<ArchivedAccountsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final accountsAsync = ref.watch(archivedAccountViewsProvider);
-    final groupsAsync = ref.watch(accountGroupsProvider);
+    final pageState = ref.watch(archivedAccountsViewModelProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -52,55 +50,20 @@ class _ArchivedAccountsPageState extends ConsumerState<ArchivedAccountsPage> {
           ),
         ],
       ),
-      body: switch ((accountsAsync, groupsAsync)) {
-        (AsyncData(value: final accounts), AsyncData(value: final groups)) =>
-          _ArchivedAccountsContent(
-            sections: _buildArchivedSections(accounts, groups),
-            hideBalances: _hideBalances,
-          ),
-        (AsyncError(:final error), _) ||
-        (_, AsyncError(:final error)) => _ArchivedAccountsError(error: error),
-        _ => const Center(child: CircularProgressIndicator()),
+      body: switch (pageState) {
+        ArchivedAccountsPageLoaded(:final sections) => _ArchivedAccountsContent(
+          sections: sections,
+          hideBalances: _hideBalances,
+        ),
+        ArchivedAccountsPageError(:final error) => _ArchivedAccountsError(
+          message: error.message,
+        ),
+        ArchivedAccountsPageLoading() => const Center(
+          child: CircularProgressIndicator(),
+        ),
       },
     );
   }
-}
-
-class _ArchivedSectionSpec {
-  const _ArchivedSectionSpec({required this.title, required this.accounts});
-
-  final String title;
-  final List<AccountView> accounts;
-}
-
-List<_ArchivedSectionSpec> _buildArchivedSections(
-  List<AccountView> accounts,
-  List<AccountGroup> groups,
-) {
-  final sections = <_ArchivedSectionSpec>[];
-  final knownGroupIds = {for (final group in groups) group.id};
-  for (final group in groups) {
-    final groupedAccounts = [
-      for (final account in accounts)
-        if (account.groupId == group.id) account,
-    ];
-    if (groupedAccounts.isNotEmpty) {
-      sections.add(
-        _ArchivedSectionSpec(title: group.name, accounts: groupedAccounts),
-      );
-    }
-  }
-  final ungroupedAccounts = [
-    for (final account in accounts)
-      if (account.groupId == null || !knownGroupIds.contains(account.groupId))
-        account,
-  ];
-  if (ungroupedAccounts.isNotEmpty) {
-    sections.add(
-      _ArchivedSectionSpec(title: '未分组', accounts: ungroupedAccounts),
-    );
-  }
-  return sections;
 }
 
 class _ArchivedAccountsContent extends ConsumerWidget {
@@ -109,7 +72,7 @@ class _ArchivedAccountsContent extends ConsumerWidget {
     required this.hideBalances,
   });
 
-  final List<_ArchivedSectionSpec> sections;
+  final List<AccountSectionPresentation> sections;
   final bool hideBalances;
 
   @override
@@ -163,7 +126,7 @@ class _ArchivedAccountGroup extends StatelessWidget {
     required this.onRestore,
   });
 
-  final _ArchivedSectionSpec section;
+  final AccountSectionPresentation section;
   final bool hideBalances;
   final ValueChanged<AccountView> onRestore;
 
@@ -222,16 +185,16 @@ class _ArchivedAccountGroup extends StatelessWidget {
 }
 
 class _ArchivedAccountsError extends StatelessWidget {
-  const _ArchivedAccountsError({required this.error});
+  const _ArchivedAccountsError({required this.message});
 
-  final Object error;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space24),
-        child: Text('已归档账户加载失败：$error'),
+        child: Text(message),
       ),
     );
   }

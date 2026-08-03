@@ -13,6 +13,7 @@ import '../../../application/ledger/ledger_query_api.dart';
 import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import '../presentation/account_section_presentation.dart';
 import '../view_model/account_view.dart';
 import '../view_model/account_organization_view_model.dart';
 import '../view_model/account_views_provider.dart';
@@ -97,7 +98,7 @@ class _AccountsContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sections = _buildSections(accounts, groups);
+    final sections = buildActiveAccountSections(accounts, groups);
     final collapsedKeys =
         ref.watch(assetSectionCollapseViewModelProvider).value ??
         const <String>{};
@@ -179,62 +180,11 @@ class _AccountsContent extends ConsumerWidget {
   }
 }
 
-class _SectionSpec {
-  const _SectionSpec({
-    required this.id,
-    required this.title,
-    required this.accounts,
-  });
-
-  final String id;
-  final String title;
-  final List<AccountView> accounts;
-
-  Money totalFor(AccountType type) {
-    return Money(
-      minorUnits: accounts.fold(0, (sum, account) {
-        return sum +
-            (account.accountType == type ? account.balance.minorUnits : 0);
-      }),
-    );
-  }
-
-  Money get netTotal =>
-      totalFor(AccountType.asset) - totalFor(AccountType.liability);
-}
-
-List<_SectionSpec> _buildSections(
-  List<AccountView> accounts,
-  List<AccountGroup> groups,
-) {
-  final sections = <_SectionSpec>[
-    for (final group in groups)
-      _SectionSpec(
-        id: group.id,
-        title: group.name,
-        accounts: [
-          for (final account in accounts)
-            if (account.groupId == group.id) account,
-        ],
-      ),
-  ];
-  final ungrouped = [
-    for (final account in accounts)
-      if (account.groupId == null) account,
-  ];
-  if (ungrouped.isNotEmpty) {
-    sections.add(
-      _SectionSpec(id: 'ungrouped', title: '未分组', accounts: ungrouped),
-    );
-  }
-  return sections;
-}
-
 Future<void> _moveAccount(
   BuildContext context,
   WidgetRef ref, {
   required AccountView account,
-  required _SectionSpec section,
+  required AccountSectionPresentation section,
   required int insertAt,
 }) async {
   final outcome = await ref
@@ -256,8 +206,8 @@ Future<void> _reorderSection(
   BuildContext context,
   WidgetRef ref, {
   required List<AccountGroup> groups,
-  required _SectionSpec draggedSection,
-  required _SectionSpec targetSection,
+  required AccountSectionPresentation draggedSection,
+  required AccountSectionPresentation targetSection,
 }) async {
   if (draggedSection.id == targetSection.id ||
       draggedSection.id == 'ungrouped' ||
@@ -565,12 +515,12 @@ class _AccountSection extends StatelessWidget {
     required this.onGroupDropped,
   });
 
-  final _SectionSpec section;
+  final AccountSectionPresentation section;
   final bool hideBalances;
   final bool collapsed;
   final VoidCallback onToggleCollapsed;
   final void Function(AccountView account, int insertAt) onAccountDropped;
-  final ValueChanged<_SectionSpec> onGroupDropped;
+  final ValueChanged<AccountSectionPresentation> onGroupDropped;
 
   @override
   Widget build(BuildContext context) {
@@ -585,7 +535,7 @@ class _AccountSection extends StatelessWidget {
         ),
         child: Column(
           children: [
-            DragTarget<_SectionSpec>(
+            DragTarget<AccountSectionPresentation>(
               onWillAcceptWithDetails:
                   (details) =>
                       section.id != 'ungrouped' &&
@@ -597,7 +547,7 @@ class _AccountSection extends StatelessWidget {
                     context,
                     candidateData,
                     child,
-                  ) => LongPressDraggable<_SectionSpec>(
+                  ) => LongPressDraggable<AccountSectionPresentation>(
                     data: section,
                     feedback: Material(
                       color: Colors.transparent,
@@ -653,7 +603,7 @@ class _AccountSection extends StatelessWidget {
                                       ),
                                       child: Icon(
                                         RemixIcons.arrow_down_s_line,
-                                        size: 18,
+                                        size: AppSpacing.space18,
                                         color: colors.onSurfaceVariant,
                                       ),
                                     ),
@@ -776,7 +726,7 @@ class _AccountRow extends StatelessWidget {
         dimension: AppSpacing.space24,
         child: Icon(
           RemixIcons.arrow_right_s_line,
-          size: 18,
+          size: AppSpacing.space18,
           color: colors.onSurfaceVariant,
         ),
       ),

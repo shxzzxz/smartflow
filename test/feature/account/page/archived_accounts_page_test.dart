@@ -45,27 +45,48 @@ void main() {
     expect(service.restoredAccountId, 'archived-credit-1');
     expect(find.text('账户已恢复'), findsOneWidget);
   });
+
+  testWidgets('does not expose technical details when loading fails', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _buildArchivedAccountsPage(
+        archivedAccounts: AsyncValue<List<AccountView>>.error(
+          StateError('database connection details'),
+          StackTrace.empty,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('已归档账户加载失败，请稍后重试'), findsOneWidget);
+    expect(find.textContaining('database connection details'), findsNothing);
+  });
 }
 
-Widget _buildArchivedAccountsPage({AccountAppService? service}) {
+Widget _buildArchivedAccountsPage({
+  AccountAppService? service,
+  AsyncValue<List<AccountView>>? archivedAccounts,
+}) {
+  final archivedAccountValue =
+      archivedAccounts ??
+      const AsyncValue.data([
+        AccountView(
+          id: 'archived-credit-1',
+          name: '已归档招行信用卡',
+          kind: AccountProfileKind.credit,
+          balance: Money(minorUnits: 5000),
+          iconKey: null,
+          isArchived: true,
+          groupId: 'credit',
+          billingDay: 1,
+          repaymentDay: 15,
+        ),
+      ]);
   return ProviderScope(
     overrides: [
       if (service != null) accountAppServiceProvider.overrideWithValue(service),
-      archivedAccountViewsProvider.overrideWith(
-        (ref) => const AsyncValue.data([
-          AccountView(
-            id: 'archived-credit-1',
-            name: '已归档招行信用卡',
-            kind: AccountProfileKind.credit,
-            balance: Money(minorUnits: 5000),
-            iconKey: null,
-            isArchived: true,
-            groupId: 'credit',
-            billingDay: 1,
-            repaymentDay: 15,
-          ),
-        ]),
-      ),
+      archivedAccountViewsProvider.overrideWith((ref) => archivedAccountValue),
       accountGroupsProvider.overrideWith(
         (ref) => Stream.value([
           AccountGroup(id: 'fund', name: '资金'),

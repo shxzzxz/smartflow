@@ -58,14 +58,14 @@ final class AccountViewsProvider
 
 String _$accountViewsHash() => r'acb57b35e59e785b9cf5bcf9868ba853c27c757d';
 
-/// 已归档的资产/负债账户只用于资产页的恢复区域；它们不参与日常账户
-/// 选择和资产统计。
+/// 已归档的资产/负债账户只用于资产页归档入口及归档账户页；它们不参与
+/// 日常账户选择和资产统计。
 
 @ProviderFor(archivedAccountViews)
 final archivedAccountViewsProvider = ArchivedAccountViewsProvider._();
 
-/// 已归档的资产/负债账户只用于资产页的恢复区域；它们不参与日常账户
-/// 选择和资产统计。
+/// 已归档的资产/负债账户只用于资产页归档入口及归档账户页；它们不参与
+/// 日常账户选择和资产统计。
 
 final class ArchivedAccountViewsProvider
     extends
@@ -75,8 +75,8 @@ final class ArchivedAccountViewsProvider
           AsyncValue<List<AccountView>>
         >
     with $Provider<AsyncValue<List<AccountView>>> {
-  /// 已归档的资产/负债账户只用于资产页的恢复区域；它们不参与日常账户
-  /// 选择和资产统计。
+  /// 已归档的资产/负债账户只用于资产页归档入口及归档账户页；它们不参与
+  /// 日常账户选择和资产统计。
   ArchivedAccountViewsProvider._()
     : super(
         from: null,
