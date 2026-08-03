@@ -10,6 +10,7 @@ import 'package:smartflow/domain/ledger/service/posting/account_posting_service.
 import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_bill_generation_suppression_repository.dart';
 import 'package:smartflow/infrastructure/credit/adapter/ledger_credit_ledger_port.dart';
 import 'package:smartflow/infrastructure/credit/adapter/ledger_credit_account_port.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_repository.dart';
@@ -667,12 +668,20 @@ void main() {
         (bill) => bill.period == BillPeriod.fromInt(202606),
       );
       await fixture.generation.deleteBill(june.id);
+      await fixture.generation.generateDueBills(now: DateTime(2026, 6, 4));
 
       expect(await fixture.billRepository.findBill(june.id), isNull);
       final remaining = await fixture.billRepository.listBillsByAccount(
         account.id,
       );
       expect(remaining.any((bill) => bill.id == june.id), isFalse);
+      expect(
+        await fixture.billRepository.findByAccountAndPeriod(
+          account.id,
+          BillPeriod.fromInt(202606),
+        ),
+        isNull,
+      );
     });
 
     test(
@@ -750,6 +759,7 @@ class _Fixture {
       installments: installmentRepository,
       repayments: repaymentRepository,
       bills: billRepository,
+      suppressions: DriftBillGenerationSuppressionRepository(database),
       billSources: DriftCreditBillSourceRepository(database),
       transactionRunner: runner,
       idGenerator: ids,

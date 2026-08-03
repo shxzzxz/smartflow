@@ -1802,6 +1802,58 @@ final class BillRepositoryProvider
 
 String _$billRepositoryHash() => r'c7206b3abb40e50b5cb3aa5352fd75ea802cb988';
 
+@ProviderFor(billGenerationSuppressionRepository)
+final billGenerationSuppressionRepositoryProvider =
+    BillGenerationSuppressionRepositoryProvider._();
+
+final class BillGenerationSuppressionRepositoryProvider
+    extends
+        $FunctionalProvider<
+          BillGenerationSuppressionRepository,
+          BillGenerationSuppressionRepository,
+          BillGenerationSuppressionRepository
+        >
+    with $Provider<BillGenerationSuppressionRepository> {
+  BillGenerationSuppressionRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'billGenerationSuppressionRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() =>
+      _$billGenerationSuppressionRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<BillGenerationSuppressionRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  BillGenerationSuppressionRepository create(Ref ref) {
+    return billGenerationSuppressionRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BillGenerationSuppressionRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BillGenerationSuppressionRepository>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$billGenerationSuppressionRepositoryHash() =>
+    r'bff0ed8d24b5f8b2f38598e7049f2397df9a4893';
+
 @ProviderFor(creditBillSourceRepository)
 final creditBillSourceRepositoryProvider =
     CreditBillSourceRepositoryProvider._();
@@ -2426,7 +2478,7 @@ final class CreditBillGenerationAppServiceProvider
 }
 
 String _$creditBillGenerationAppServiceHash() =>
-    r'f420237f042867fb830c402399f0e09d3e25955d';
+    r'5fc748c2f71e965d9b225ceebc48c81c9a36677d';
 
 @ProviderFor(creditBillGenerationTask)
 final creditBillGenerationTaskProvider = CreditBillGenerationTaskProvider._();

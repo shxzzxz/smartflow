@@ -54,6 +54,9 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         await _createImportTables(database, migrator);
         await _createImportIndexes(database);
       }
+      if (from < 23) {
+        await migrator.createTable(database.billGenerationSuppressions);
+      }
     },
   );
 }

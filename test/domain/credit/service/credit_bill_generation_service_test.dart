@@ -6,6 +6,7 @@ import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
+import 'package:smartflow/domain/credit/port/bill_generation_suppression_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_bill_source_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
@@ -344,6 +345,131 @@ void main() {
       expect(await fixture.bills.findBill(june.id), isNull);
     });
 
+    test(
+      'does not automatically recreate a deleted current loan bill',
+      () async {
+        final fixture = _Fixture();
+        final account = fixture.loanAccount();
+        fixture.creditAccounts.put(account);
+        await fixture.service.generateDueBillsForAccount(
+          account: account,
+          now: DateTime(2026, 6, 4),
+        );
+        final june = fixture.bills
+            .byAccount(account.accountId)
+            .singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
+
+        await fixture.service.deleteBill(june.id);
+        await fixture.service.generateDueBillsForAccount(
+          account: account,
+          now: DateTime(2026, 6, 4),
+        );
+
+        expect(
+          await fixture.bills.findByAccountAndPeriod(
+            account.accountId,
+            BillPeriod.fromInt(202606),
+          ),
+          isNull,
+        );
+      },
+    );
+
+    test(
+      'does not automatically recreate a deleted current credit bill',
+      () async {
+        final fixture = _Fixture();
+        final account = fixture.creditAccount();
+        fixture.creditAccounts.put(account);
+        fixture.billSources.netConsumptionMinorValue = 1000;
+        await fixture.service.generateDueBillsForAccount(
+          account: account,
+          now: DateTime(2026, 6, 4),
+        );
+        final june = fixture.bills
+            .byAccount(account.accountId)
+            .singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
+
+        await fixture.service.deleteBill(june.id);
+        await fixture.service.generateDueBillsForAccount(
+          account: account,
+          now: DateTime(2026, 6, 4),
+        );
+
+        expect(
+          await fixture.bills.findByAccountAndPeriod(
+            account.accountId,
+            BillPeriod.fromInt(202606),
+          ),
+          isNull,
+        );
+      },
+    );
+
+    test('explicit generation restores a suppressed credit bill', () async {
+      final fixture = _Fixture();
+      final account = fixture.creditAccount();
+      fixture.creditAccounts.put(account);
+      await fixture.service.generateDueBillsForAccount(
+        account: account,
+        now: DateTime(2026, 6, 4),
+      );
+      final june = fixture.bills
+          .byAccount(account.accountId)
+          .singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
+
+      await fixture.service.deleteBill(june.id);
+      await fixture.service.generateBillForPeriod(
+        account: account,
+        period: BillPeriod.fromInt(202606),
+        now: DateTime(2026, 6, 4),
+      );
+
+      expect(
+        await fixture.bills.findByAccountAndPeriod(
+          account.accountId,
+          BillPeriod.fromInt(202606),
+        ),
+        isNotNull,
+      );
+      expect(
+        await fixture.suppressions.isSuppressed(
+          account.accountId,
+          BillPeriod.fromInt(202606),
+        ),
+        isFalse,
+      );
+    });
+
+    test(
+      'late generation freezes existing open bills and resets after a gap',
+      () async {
+        final fixture = _Fixture();
+        final account = fixture.creditAccount();
+        fixture.creditAccounts.put(account);
+        fixture.billSources.netConsumptionMinorValue = 1000;
+        await fixture.service.generateDueBillsForAccount(
+          account: account,
+          now: DateTime(2026, 6, 4),
+        );
+
+        await fixture.service.generateDueBillsForAccount(
+          account: account,
+          now: DateTime(2026, 8, 10),
+        );
+
+        final june = fixture.bills
+            .byAccount(account.accountId)
+            .singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
+        final september = fixture.bills
+            .byAccount(account.accountId)
+            .singleWhere((bill) => bill.period == BillPeriod.fromInt(202609));
+        expect(june.status, BillStatus.billed);
+        expect(september.window!.startDate, DateTime(2026, 8, 5));
+        expect(september.window!.billingDate, DateTime(2026, 9, 5));
+      },
+    );
+
     test('rejects deleting a bill that has repayment records', () async {
       final fixture = _Fixture();
       final account = fixture.creditAccount();
@@ -525,6 +651,7 @@ class _Fixture {
       installments: installments,
       repayments: repayments,
       bills: bills,
+      suppressions: suppressions,
       billSources: billSources,
       idGenerator: ids,
     );
@@ -535,6 +662,7 @@ class _Fixture {
   final installments = _FakeInstallmentRepository();
   final repayments = _FakeRepaymentRepository();
   final bills = _FakeBillRepository();
+  final suppressions = _FakeBillGenerationSuppressionRepository();
   final billSources = _FakeCreditBillSourceRepository();
 
   late final CreditBillGenerationService service;
@@ -597,6 +725,26 @@ class _Fixture {
       status: status,
       createdAt: DateTime(2026, 6, 1),
     );
+  }
+}
+
+class _FakeBillGenerationSuppressionRepository
+    implements BillGenerationSuppressionRepository {
+  final _suppressed = <(String, BillPeriod)>{};
+
+  @override
+  Future<void> clear(String accountId, BillPeriod period) async {
+    _suppressed.remove((accountId, period));
+  }
+
+  @override
+  Future<bool> isSuppressed(String accountId, BillPeriod period) async {
+    return _suppressed.contains((accountId, period));
+  }
+
+  @override
+  Future<void> suppress(String accountId, BillPeriod period) async {
+    _suppressed.add((accountId, period));
   }
 }
 

@@ -14,6 +14,7 @@ import '../infrastructure/ledger/repository/drift_ledger_metrics_source.dart';
 import '../infrastructure/ledger/repository/drift_entry_read_repository.dart';
 import '../infrastructure/credit/repository/drift_credit_account_repository.dart';
 import '../infrastructure/credit/repository/drift_bill_repository.dart';
+import '../infrastructure/credit/repository/drift_bill_generation_suppression_repository.dart';
 import '../infrastructure/credit/repository/drift_credit_bill_source_repository.dart';
 import '../infrastructure/credit/repository/drift_installment_repository.dart';
 import '../infrastructure/credit/repository/drift_repayment_repository.dart';
@@ -46,6 +47,7 @@ import '../domain/import/port/import_mapping_repository.dart';
 import '../domain/import/port/yimu_workbook_reader.dart';
 import '../domain/import/service/yimu_import_parser.dart';
 import '../domain/credit/port/bill_repository.dart';
+import '../domain/credit/port/bill_generation_suppression_repository.dart';
 import '../domain/credit/port/credit_account_repository.dart';
 import '../domain/credit/port/credit_bill_source_repository.dart';
 import '../domain/credit/port/installment_repository.dart';
@@ -328,6 +330,15 @@ BillRepository billRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+BillGenerationSuppressionRepository billGenerationSuppressionRepository(
+  Ref ref,
+) {
+  return DriftBillGenerationSuppressionRepository(
+    ref.watch(appDatabaseProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
 CreditBillSourceRepository creditBillSourceRepository(Ref ref) {
   return DriftCreditBillSourceRepository(ref.watch(appDatabaseProvider));
 }
@@ -434,6 +445,7 @@ CreditBillGenerationAppService creditBillGenerationAppService(Ref ref) {
     installments: ref.watch(installmentRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
     bills: ref.watch(billRepositoryProvider),
+    suppressions: ref.watch(billGenerationSuppressionRepositoryProvider),
     billSources: ref.watch(creditBillSourceRepositoryProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
     idGenerator: ref.watch(idGeneratorProvider),

@@ -6,6 +6,7 @@ import 'package:smartflow/domain/credit/entity/credit_liability_account.dart';
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
+import 'package:smartflow/domain/credit/port/bill_generation_suppression_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_bill_source_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
@@ -42,6 +43,7 @@ class CreditBillGenerationService {
     required InstallmentRepository installments,
     required RepaymentRepository repayments,
     required BillRepository bills,
+    required BillGenerationSuppressionRepository suppressions,
     required CreditBillSourceRepository billSources,
     required IdGenerator idGenerator,
     SettlementJudgementService judgement = const SettlementJudgementService(),
@@ -49,6 +51,7 @@ class CreditBillGenerationService {
        _installments = installments,
        _repayments = repayments,
        _bills = bills,
+       _suppressions = suppressions,
        _billSources = billSources,
        _idGenerator = idGenerator,
        _judgement = judgement;
@@ -57,6 +60,7 @@ class CreditBillGenerationService {
   final InstallmentRepository _installments;
   final RepaymentRepository _repayments;
   final BillRepository _bills;
+  final BillGenerationSuppressionRepository _suppressions;
   final CreditBillSourceRepository _billSources;
   final IdGenerator _idGenerator;
   final SettlementJudgementService _judgement;
@@ -94,8 +98,11 @@ class CreditBillGenerationService {
     }
     if (await _bills.findByAccountAndPeriod(account.accountId, period) !=
         null) {
+      await _suppressions.clear(account.accountId, period);
       return CreditBillGenerationResult.empty;
     }
+
+    await _suppressions.clear(account.accountId, period);
 
     switch (account.kind) {
       case CreditLiabilityAccountKind.credit:
@@ -178,6 +185,7 @@ class CreditBillGenerationService {
       throw BusinessException(CreditErrorCode.billHasRepayments);
     }
     await _bills.deleteBill(billId);
+    await _suppressions.suppress(bill.accountId, bill.period);
   }
 
   /// 调整账单窗口（起始日 / 出账日），区间不得与上一期、下一期账单重叠。
@@ -260,36 +268,43 @@ class CreditBillGenerationService {
 
   /// 信用账户周期驱动生成：**不补建**历史账单。
   ///
-  /// 出账日（`creditPeriodForDate` 落入下一周期）时：上一期账单存在且 OPEN 则
-  /// 冻结为 BILLED；上一期账单不存在时不补建，仅保证当前 OPEN 账单在位。
-  /// 窗口链式衔接：上一期存在时起始日 = 上一张账单出账日，否则按账户出账参数计算。
+  /// 迟到执行时会冻结现存且已过出账日的 OPEN 账单。缺失周期不补建；当上一期
+  /// 缺失时，当前 OPEN 账单按账户参数重新起算，遗漏消费留在未归属欠款。
   Future<CreditBillGenerationResult> _generateCreditBills(
     CreditLiabilityAccount account,
     DateTime now,
   ) async {
     var result = CreditBillGenerationResult.empty;
     final currentPeriod = account.creditPeriodForDate(now);
-    final billedPeriod = currentPeriod.previous();
-    final billed = await _bills.findByAccountAndPeriod(
-      account.accountId,
-      billedPeriod,
-    );
-    if (billed != null && billed.status == BillStatus.open) {
-      result = result.merge(await _refreshBill(billed, freezeOpenBill: true));
+    final bills = await _bills.listBillsByAccount(account.accountId);
+    for (final bill in bills) {
+      if (bill.status != BillStatus.open ||
+          bill.window == null ||
+          now.isBefore(bill.window!.billingDate)) {
+        continue;
+      }
+      result = result.merge(await _refreshBill(bill, freezeOpenBill: true));
     }
 
+    final previous = await _bills.findByAccountAndPeriod(
+      account.accountId,
+      currentPeriod.previous(),
+    );
     final current = await _bills.findByAccountAndPeriod(
       account.accountId,
       currentPeriod,
     );
     if (current != null) return result;
+    if (await _suppressions.isSuppressed(account.accountId, currentPeriod)) {
+      return result;
+    }
     final opened = await _saveEmptyBill(
       accountId: account.accountId,
       period: currentPeriod,
       status: BillStatus.open,
       window: account.nextCreditBillWindow(
         currentPeriod,
-        previousWindow: billed?.window,
+        previousWindow: previous?.window,
       ),
     );
     return result.merge(await _refreshBill(opened));
@@ -302,6 +317,9 @@ class CreditBillGenerationService {
     final period = BillPeriod.fromDate(now);
     if (await _bills.findByAccountAndPeriod(account.accountId, period) !=
         null) {
+      return CreditBillGenerationResult.empty;
+    }
+    if (await _suppressions.isSuppressed(account.accountId, period)) {
       return CreditBillGenerationResult.empty;
     }
     final bill = await _saveEmptyBill(

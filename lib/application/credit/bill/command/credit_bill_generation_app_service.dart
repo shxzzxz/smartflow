@@ -2,6 +2,7 @@ import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
+import 'package:smartflow/domain/credit/port/bill_generation_suppression_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_bill_source_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
@@ -50,6 +51,7 @@ class CreditBillGenerationAppServiceImpl
     required InstallmentRepository installments,
     required RepaymentRepository repayments,
     required BillRepository bills,
+    required BillGenerationSuppressionRepository suppressions,
     required CreditBillSourceRepository billSources,
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
@@ -65,6 +67,7 @@ class CreditBillGenerationAppServiceImpl
              installments: installments,
              repayments: repayments,
              bills: bills,
+             suppressions: suppressions,
              billSources: billSources,
              idGenerator: idGenerator,
              judgement: judgement,
