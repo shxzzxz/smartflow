@@ -310,6 +310,48 @@ void main() {
       },
     );
 
+    test(
+      'keeps billing-day consumption in the current bill when configured',
+      () async {
+        final fixture = _Fixture();
+        final account = fixture.creditAccount()..billingDayToNext = false;
+        fixture.creditAccounts.put(account);
+        fixture.billSources.netConsumptionMinorValue = 7000;
+        await fixture.service.generateDueBillsForAccount(
+          account: account,
+          now: DateTime(2026, 6, 4),
+        );
+
+        await fixture.service.generateDueBillsForAccount(
+          account: account,
+          now: DateTime(2026, 6, 5),
+        );
+
+        final june = fixture.bills
+            .byAccount(account.accountId)
+            .singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
+        expect(june.status, BillStatus.open);
+        expect(fixture.bills.byAccount(account.accountId), hasLength(1));
+
+        await fixture.service.generateDueBillsForAccount(
+          account: account,
+          now: DateTime(2026, 6, 6),
+        );
+
+        expect(
+          (await fixture.bills.findBill(june.id))!.status,
+          BillStatus.billed,
+        );
+        expect(
+          await fixture.bills.findByAccountAndPeriod(
+            account.accountId,
+            BillPeriod.fromInt(202607),
+          ),
+          isNotNull,
+        );
+      },
+    );
+
     test('does not backfill a missing previous credit bill', () async {
       final fixture = _Fixture();
       final account = fixture.creditAccount();

@@ -268,7 +268,7 @@ class CreditBillGenerationService {
 
   /// 信用账户周期驱动生成：**不补建**历史账单。
   ///
-  /// 迟到执行时会冻结现存且已过出账日的 OPEN 账单。缺失周期不补建；当上一期
+  /// 迟到执行时会冻结现存且已过有效消费窗口的 OPEN 账单。缺失周期不补建；当上一期
   /// 缺失时，当前 OPEN 账单按账户参数重新起算，遗漏消费留在未归属欠款。
   Future<CreditBillGenerationResult> _generateCreditBills(
     CreditLiabilityAccount account,
@@ -280,7 +280,7 @@ class CreditBillGenerationService {
     for (final bill in bills) {
       if (bill.status != BillStatus.open ||
           bill.window == null ||
-          now.isBefore(bill.window!.billingDate)) {
+          now.isBefore(account.effectiveCreditWindowEnd(bill.window!))) {
         continue;
       }
       result = result.merge(await _refreshBill(bill, freezeOpenBill: true));
