@@ -1436,7 +1436,8 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       ImportRepaymentDraft draft =>
         draft.principal.minorUnits <= 0 ||
             (draft.interest?.minorUnits ?? 0) < 0 ||
-            (draft.fee?.minorUnits ?? 0) < 0,
+            (draft.fee?.minorUnits ?? 0) < 0 ||
+            (draft.discount?.minorUnits ?? 0) < 0,
       ImportTransferDraft draft =>
         draft.amount.minorUnits <= 0 || (draft.feeAmount?.minorUnits ?? 0) < 0,
       _ => draft.amount.minorUnits <= 0,
@@ -1565,6 +1566,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         postedAt: draft.postedAt,
         interest: draft.interest,
         fee: draft.fee,
+        discount: draft.discount,
         note: draft.note,
       ),
       ImportInterestExpenseDraft draft => _ledger.createInterestExpense(

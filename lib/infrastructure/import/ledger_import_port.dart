@@ -311,6 +311,7 @@ class LedgerImportPort implements ImportLedgerPort {
     required DateTime postedAt,
     Money? interest,
     Money? fee,
+    Money? discount,
     String? note,
   }) async {
     final result = await _posting.createRepayment(
@@ -322,6 +323,7 @@ class LedgerImportPort implements ImportLedgerPort {
         postedAt: postedAt,
         interest: interest,
         fee: fee,
+        discount: discount,
         note: note,
         sourceKind: SourceKind.import,
       ),

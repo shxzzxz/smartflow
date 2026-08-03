@@ -19,17 +19,23 @@ abstract interface class YimuFileHandler {
   });
 }
 
-enum YimuBillFilterReason { reimbursementGap, repaymentInterest }
+enum YimuBillFilterReason {
+  reimbursementGap,
+  repaymentInterest,
+  repaymentDiscount,
+}
 
 extension YimuBillFilterReasonDescription on YimuBillFilterReason {
   String get reasonCode => switch (this) {
     YimuBillFilterReason.reimbursementGap => 'reimbursement_gap_generated',
     YimuBillFilterReason.repaymentInterest => 'repayment_interest_generated',
+    YimuBillFilterReason.repaymentDiscount => 'repayment_discount_generated',
   };
 
   String get reason => switch (this) {
     YimuBillFilterReason.reimbursementGap => '报销差额是原报销交易自动生成的结果行。',
     YimuBillFilterReason.repaymentInterest => '还款利息应由转账或债务文件中的还款记录导入。',
+    YimuBillFilterReason.repaymentDiscount => '还款优惠应由转账或债务文件中的还款记录导入。',
   };
 }
 
@@ -317,6 +323,9 @@ class YimuBillFileHandler implements YimuFileHandler {
     }
     if (note?.contains('还款利息') == true) {
       return YimuBillFilterReason.repaymentInterest;
+    }
+    if (note?.contains('还款优惠') == true) {
+      return YimuBillFilterReason.repaymentDiscount;
     }
     return null;
   }

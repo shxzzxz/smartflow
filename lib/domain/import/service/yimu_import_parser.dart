@@ -644,6 +644,8 @@ void _parseTransferRows(
                 : null,
       );
       final fee = record.feeAmount;
+      final interest = fee != null && fee.minorUnits > 0 ? fee : null;
+      final discount = fee != null && fee.minorUnits < 0 ? fee.abs() : null;
       if (actualAmount.minorUnits == 0 && (fee?.minorUnits ?? 0) > 0) {
         groups.add(
           _group(
@@ -670,7 +672,8 @@ void _parseTransferRows(
           _group(
             ImportRepaymentDraft(
               principal: actualAmount.abs(),
-              interest: fee,
+              interest: interest,
+              discount: discount,
               liabilityAccount: liability,
               paidFrom: paidFrom,
               occurredAt: actualDate,
@@ -1007,7 +1010,8 @@ String _canonicalDraft(ImportTransactionDraft draft) {
       ImportRepaymentDraft draft =>
         'principal=${draft.principal.minorUnits};'
             'interest=${draft.interest?.minorUnits ?? ''};'
-            'fee=${draft.fee?.minorUnits ?? ''}',
+            'fee=${draft.fee?.minorUnits ?? ''};'
+            'discount=${draft.discount?.minorUnits ?? ''}',
       ImportReimbursementCloseDraft draft =>
         'received=${draft.actualReceivedAmount.minorUnits}',
       _ => '',

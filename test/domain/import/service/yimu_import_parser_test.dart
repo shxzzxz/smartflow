@@ -120,6 +120,59 @@ void main() {
     );
   });
 
+  test('filters repayment discount bills and maps signed repayment fees', () {
+    final result = _parser(
+      billRows: [
+        {
+          '日期': '2026-05-20 13:14',
+          '收支类型': '收入',
+          '金额': 0.05,
+          '类别': '收入',
+          '二级分类': '其他',
+          '账户': '中国银行',
+          '备注': '美团月付 还款优惠',
+          '其他': '',
+        },
+      ],
+      transferRows: [
+        {
+          '日期': '2026-05-19 13:14',
+          '类型': '还款',
+          '转出账户': '中国银行',
+          '转入账户': '美团月付',
+          '金额': 100.0,
+          '手续费': 2.0,
+          '备注': '',
+        },
+        {
+          '日期': '2026-05-20 13:14',
+          '类型': '还款',
+          '转出账户': '中国银行',
+          '转入账户': '美团月付',
+          '金额': 5020.33,
+          '手续费': -0.05,
+          '备注': '',
+        },
+      ],
+    ).parse(_bundle(names: const ['账单.xls', '转账.xls']));
+
+    expect(
+      result.filteredRecords.map((record) => record.reasonCode),
+      contains('repayment_discount_generated'),
+    );
+    final repayments =
+        _groups(result)
+            .map((group) => group.topLevel)
+            .whereType<ImportRepaymentDraft>()
+            .toList();
+    expect(repayments, hasLength(2));
+    expect(repayments[0].interest, Money.parse('2'));
+    expect(repayments[0].discount, isNull);
+    expect(repayments[1].interest, isNull);
+    expect(repayments[1].discount, Money.parse('0.05'));
+    expect(repayments[1].amount, Money.parse('5020.28'));
+  });
+
   test(
     'maps debt rows to repayment, interest expense, borrowing, and opening',
     () {

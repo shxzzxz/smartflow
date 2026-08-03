@@ -448,16 +448,22 @@ class ImportRepaymentDraft extends ImportTransactionDraft {
     required this.paidFrom,
     this.interest,
     this.fee,
+    this.discount,
     required super.occurredAt,
     super.postedAt,
     super.note,
   }) : super(
-         amount: principal + (interest ?? Money.zero()) + (fee ?? Money.zero()),
+         amount:
+             principal +
+             (interest ?? Money.zero()) +
+             (fee ?? Money.zero()) -
+             (discount ?? Money.zero()),
        );
 
   final Money principal;
   final Money? interest;
   final Money? fee;
+  final Money? discount;
   final ImportAccountReference liabilityAccount;
   final ImportAccountReference paidFrom;
 
@@ -657,7 +663,7 @@ class ImportParseResult {
 /// User-editable fields for one draft during import review.
 ///
 /// A null scalar means "keep the parsed value". Nullable fields use [Patch]
-/// so the review can explicitly clear a note or an optional fee/interest.
+/// so the review can explicitly clear a note or an optional repayment part.
 /// The operation kind and group structure are intentionally absent from this
 /// object; callers cannot change them through the review API.
 class ImportDraftEdit {
@@ -668,6 +674,7 @@ class ImportDraftEdit {
     this.note,
     this.interest,
     this.fee,
+    this.discount,
     this.transferFee,
   });
 
@@ -677,6 +684,7 @@ class ImportDraftEdit {
   final Patch<String?>? note;
   final Patch<Money?>? interest;
   final Patch<Money?>? fee;
+  final Patch<Money?>? discount;
   final Patch<Money?>? transferFee;
 }
 
@@ -770,6 +778,7 @@ ImportTransactionDraft applyImportDraftEdit(
         paidFrom: draft.paidFrom,
         interest: edit.interest?.applyTo(draft.interest) ?? draft.interest,
         fee: edit.fee?.applyTo(draft.fee) ?? draft.fee,
+        discount: edit.discount?.applyTo(draft.discount) ?? draft.discount,
         occurredAt: occurredAt,
         postedAt: postedAt,
         note: note,

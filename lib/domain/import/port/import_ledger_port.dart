@@ -171,6 +171,7 @@ abstract interface class ImportLedgerPort {
     required DateTime postedAt,
     Money? interest,
     Money? fee,
+    Money? discount,
     String? note,
   });
 
