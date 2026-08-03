@@ -427,6 +427,11 @@ class _FakeAccountAppService implements AccountAppService {
     _throwIfNeeded();
   }
 
+  @override
+  Future<void> restoreAccount(RestoreAccountCommand command) async {
+    _throwIfNeeded();
+  }
+
   void _throwIfNeeded() {
     final exception = this.exception;
     if (exception != null) throw exception;

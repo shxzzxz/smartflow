@@ -57,6 +57,10 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
       if (from < 23) {
         await migrator.createTable(database.billGenerationSuppressions);
       }
+      if (from < 24) {
+        await migrator.createTable(database.accountGroups);
+        await migrator.addColumn(database.accounts, database.accounts.groupId);
+      }
     },
   );
 }

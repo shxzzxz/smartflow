@@ -609,6 +609,54 @@ final class AccountRepositoryProvider
 
 String _$accountRepositoryHash() => r'd18c6b65455a5da1e8787472648c66c231ce9741';
 
+@ProviderFor(accountGroupRepository)
+final accountGroupRepositoryProvider = AccountGroupRepositoryProvider._();
+
+final class AccountGroupRepositoryProvider
+    extends
+        $FunctionalProvider<
+          AccountGroupRepository,
+          AccountGroupRepository,
+          AccountGroupRepository
+        >
+    with $Provider<AccountGroupRepository> {
+  AccountGroupRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'accountGroupRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountGroupRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<AccountGroupRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AccountGroupRepository create(Ref ref) {
+    return accountGroupRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AccountGroupRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AccountGroupRepository>(value),
+    );
+  }
+}
+
+String _$accountGroupRepositoryHash() =>
+    r'7cc548d126442975801eb97511fff97fce75c00e';
+
 @ProviderFor(accountQueryRepository)
 final accountQueryRepositoryProvider = AccountQueryRepositoryProvider._();
 
@@ -704,6 +752,54 @@ final class AccountQueryServiceProvider
 
 String _$accountQueryServiceHash() =>
     r'906e4ed354b09e6f55d4ad7c2c08e5f3418a7fb3';
+
+@ProviderFor(accountGroupQueryService)
+final accountGroupQueryServiceProvider = AccountGroupQueryServiceProvider._();
+
+final class AccountGroupQueryServiceProvider
+    extends
+        $FunctionalProvider<
+          AccountGroupQueryService,
+          AccountGroupQueryService,
+          AccountGroupQueryService
+        >
+    with $Provider<AccountGroupQueryService> {
+  AccountGroupQueryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'accountGroupQueryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountGroupQueryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<AccountGroupQueryService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AccountGroupQueryService create(Ref ref) {
+    return accountGroupQueryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AccountGroupQueryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AccountGroupQueryService>(value),
+    );
+  }
+}
+
+String _$accountGroupQueryServiceHash() =>
+    r'aa5064aa55eca1a071a7d31ed09630755e9d192d';
 
 @ProviderFor(ledgerRepository)
 final ledgerRepositoryProvider = LedgerRepositoryProvider._();
@@ -1228,7 +1324,55 @@ final class AccountAppServiceProvider
   }
 }
 
-String _$accountAppServiceHash() => r'bf58132d9e6d968383bc026f0f7c4aa60a349efa';
+String _$accountAppServiceHash() => r'9ddf73c0dfea3b487b20fff42bf867cf3cfc93e3';
+
+@ProviderFor(accountGroupAppService)
+final accountGroupAppServiceProvider = AccountGroupAppServiceProvider._();
+
+final class AccountGroupAppServiceProvider
+    extends
+        $FunctionalProvider<
+          AccountGroupAppService,
+          AccountGroupAppService,
+          AccountGroupAppService
+        >
+    with $Provider<AccountGroupAppService> {
+  AccountGroupAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'accountGroupAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountGroupAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<AccountGroupAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AccountGroupAppService create(Ref ref) {
+    return accountGroupAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AccountGroupAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AccountGroupAppService>(value),
+    );
+  }
+}
+
+String _$accountGroupAppServiceHash() =>
+    r'1e00f17ce9ed8071bd652dacadb9f06dce0d7a5c';
 
 @ProviderFor(categoryAppService)
 final categoryAppServiceProvider = CategoryAppServiceProvider._();

@@ -60,6 +60,14 @@ class AccountDetailViewModel extends _$AccountDetailViewModel {
           .archiveAccount(ArchiveAccountCommand(id: accountId));
     });
   }
+
+  Future<UiActionOutcome<void>> restoreAccount() async {
+    return guardUiAction(_logger, 'Account restore', () async {
+      await ref
+          .read(accountAppServiceProvider)
+          .restoreAccount(RestoreAccountCommand(id: accountId));
+    });
+  }
 }
 
 AccountContractsState _contractsStateFor(Ref ref, AccountView account) {

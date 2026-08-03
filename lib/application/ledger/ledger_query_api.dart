@@ -5,6 +5,7 @@
 library;
 
 export '../../domain/ledger/entity/account.dart';
+export '../../domain/ledger/entity/account_group.dart';
 export '../../domain/ledger/entity/entry.dart';
 export '../../domain/ledger/entity/transaction.dart';
 export '../../domain/ledger/entity/transaction_detail_record.dart';
@@ -12,6 +13,7 @@ export '../../domain/ledger/valobj/account_usage.dart';
 export '../../domain/ledger/valobj/ledger_enum.dart';
 export '../../domain/ledger/valobj/transaction_ownership.dart';
 export 'account/query/account_query_service.dart';
+export 'account/query/account_group_query_service.dart';
 export 'category/query/category_query_service.dart';
 export 'category/query/category_read_models.dart';
 export 'metrics/query/financial_metrics_queries.dart';

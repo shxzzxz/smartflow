@@ -349,6 +349,9 @@ class _FakeAccountAppService implements AccountAppService {
   Future<void> archiveAccount(ArchiveAccountCommand command) async {
     archiveCommands.add(command);
   }
+
+  @override
+  Future<void> restoreAccount(RestoreAccountCommand command) async {}
 }
 
 BillSummaryReadModel _bill(int year, int month) {

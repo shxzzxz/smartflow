@@ -48,6 +48,12 @@ class AccountDetailPage extends ConsumerWidget {
               icon: const Icon(RemixIcons.delete_bin_line),
               tooltip: '删除账户',
             ),
+          if (loadedAccount != null && loadedAccount.isArchived)
+            IconButton(
+              onPressed: () => _restore(context, ref),
+              icon: const Icon(RemixIcons.restart_line),
+              tooltip: '恢复账户',
+            ),
         ],
       ),
       body: switch (state) {
@@ -79,6 +85,24 @@ class AccountDetailPage extends ConsumerWidget {
         ),
       },
     );
+  }
+
+  Future<void> _restore(BuildContext context, WidgetRef ref) async {
+    final outcome =
+        await ref
+            .read(accountDetailViewModelProvider(accountId).notifier)
+            .restoreAccount();
+    if (!context.mounted) return;
+    switch (outcome) {
+      case UiActionSuccess<void>():
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('账户已恢复')));
+      case UiActionFailure<void>(:final error):
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {

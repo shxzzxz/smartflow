@@ -11,6 +11,7 @@ class Accounts extends Table {
       textEnum<AccountSubtype>().named('account_subtype').nullable()();
   TextColumn get accountProfileKey =>
       text().named('account_profile_key').nullable()();
+  TextColumn get groupId => text().named('group_id').nullable()();
   TextColumn get parentId => text().named('parent_id').nullable()();
   IntColumn get balanceMinor =>
       integer().named('balance_minor').withDefault(const Constant(0))();

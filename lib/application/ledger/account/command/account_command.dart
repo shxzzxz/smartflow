@@ -9,6 +9,7 @@ class CreateAccountCommand {
     this.openingBalance = const Money(minorUnits: 0),
     this.subtype,
     this.profileKey,
+    this.groupId,
     this.iconKey,
     this.note,
     this.sortOrder = 0,
@@ -20,6 +21,7 @@ class CreateAccountCommand {
   final Money openingBalance;
   final AccountSubtype? subtype;
   final String? profileKey;
+  final String? groupId;
   final String? iconKey;
   final String? note;
   final int sortOrder;
@@ -52,6 +54,12 @@ class EditAccountCommand {
 
 class ArchiveAccountCommand {
   const ArchiveAccountCommand({required this.id});
+
+  final String id;
+}
+
+class RestoreAccountCommand {
+  const RestoreAccountCommand({required this.id});
 
   final String id;
 }

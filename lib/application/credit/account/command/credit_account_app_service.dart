@@ -44,6 +44,7 @@ class CreditAccountAppServiceImpl implements CreditAccountAppService {
           openingBalance: command.openingBalance,
           iconKey: command.iconKey,
           note: command.note,
+          groupId: command.groupId,
           sortOrder: command.sortOrder,
           isHidden: command.isHidden,
         ),

@@ -13,6 +13,7 @@ class CreateCreditLiabilityAccountCommand {
     this.billingDayToNext = true,
     this.iconKey,
     this.note,
+    this.groupId,
     this.sortOrder = 0,
     this.isHidden = false,
   });
@@ -26,6 +27,7 @@ class CreateCreditLiabilityAccountCommand {
   final bool billingDayToNext;
   final String? iconKey;
   final String? note;
+  final String? groupId;
   final int sortOrder;
   final bool isHidden;
 }

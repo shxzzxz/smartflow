@@ -69,29 +69,23 @@ void main() {
     );
   });
 
-  testWidgets('shows empty hint and no sections without accounts', (
-    tester,
-  ) async {
+  testWidgets('shows empty predefined groups without accounts', (tester) async {
     await tester.pumpWidget(_buildAccountsPageApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('还没有账户，点击右上角"+"新建'), findsOneWidget);
-    expect(find.text('资金账户'), findsNothing);
-    expect(find.text('信用账户'), findsNothing);
-    expect(find.text('贷款账户'), findsNothing);
-    expect(find.text('报销账户'), findsNothing);
-    expect(find.byTooltip('折叠全部分组'), findsNothing);
+    expect(find.text('还没有账户，点击右上角"+"新建'), findsNothing);
+    expect(find.text('资金'), findsOneWidget);
+    expect(find.text('信用'), findsOneWidget);
+    expect(find.byTooltip('折叠全部分组'), findsOneWidget);
   });
 
   testWidgets('renders only sections that have accounts', (tester) async {
     await tester.pumpWidget(_buildAccountsPageApp(accounts: [_fundAccount()]));
     await tester.pumpAndSettle();
 
-    expect(find.text('资金账户'), findsOneWidget);
+    expect(find.text('资金'), findsOneWidget);
     expect(find.text('招行储蓄卡'), findsOneWidget);
-    expect(find.text('信用账户'), findsNothing);
-    expect(find.text('贷款账户'), findsNothing);
-    expect(find.text('报销账户'), findsNothing);
+    expect(find.text('信用'), findsOneWidget);
   });
 
   testWidgets('collapses and expands a section on header tap', (tester) async {
@@ -101,14 +95,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('资金账户'));
+    await tester.tap(find.text('资金'));
     await tester.pumpAndSettle();
 
     expect(find.text('招行储蓄卡'), findsNothing);
-    expect(find.text('资金账户'), findsOneWidget);
-    expect(store.collapsed, {AccountProfileKind.fund.key});
+    expect(find.text('资金'), findsOneWidget);
+    expect(store.collapsed, {'fund'});
 
-    await tester.tap(find.text('资金账户'));
+    await tester.tap(find.text('资金'));
     await tester.pumpAndSettle();
 
     expect(find.text('招行储蓄卡'), findsOneWidget);
@@ -130,10 +124,7 @@ void main() {
 
     expect(find.text('招行储蓄卡'), findsNothing);
     expect(find.text('招行信用卡'), findsNothing);
-    expect(store.collapsed, {
-      AccountProfileKind.fund.key,
-      AccountProfileKind.credit.key,
-    });
+    expect(store.collapsed, {'fund', 'credit', 'loan', 'reimbursement'});
 
     await tester.tap(find.byTooltip('展开全部分组'));
     await tester.pumpAndSettle();
@@ -144,14 +135,13 @@ void main() {
   });
 
   testWidgets('restores persisted collapse state', (tester) async {
-    final store = _InMemoryAssetSectionCollapseStore()
-      ..collapsed = {AccountProfileKind.fund.key};
+    final store = _InMemoryAssetSectionCollapseStore()..collapsed = {'fund'};
     await tester.pumpWidget(
       _buildAccountsPageApp(accounts: [_fundAccount()], collapseStore: store),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('资金账户'), findsOneWidget);
+    expect(find.text('资金'), findsOneWidget);
     expect(find.text('招行储蓄卡'), findsNothing);
   });
 }
@@ -176,6 +166,7 @@ AccountView _fundAccount() {
     balance: Money(minorUnits: 10000),
     iconKey: null,
     isArchived: false,
+    groupId: 'fund',
   );
 }
 
@@ -187,6 +178,7 @@ AccountView _creditAccount() {
     balance: Money(minorUnits: 5000),
     iconKey: null,
     isArchived: false,
+    groupId: 'credit',
   );
 }
 
@@ -197,6 +189,14 @@ Widget _buildAccountsPageApp({
   return ProviderScope(
     overrides: [
       accountViewsProvider.overrideWith((ref) => AsyncValue.data(accounts)),
+      accountGroupsProvider.overrideWith(
+        (ref) => Stream.value([
+          AccountGroup(id: 'fund', name: '资金'),
+          AccountGroup(id: 'credit', name: '信用'),
+          AccountGroup(id: 'loan', name: '贷款'),
+          AccountGroup(id: 'reimbursement', name: '报销'),
+        ]),
+      ),
       assetSectionCollapseStoreProvider.overrideWith(
         (ref) => collapseStore ?? _InMemoryAssetSectionCollapseStore(),
       ),

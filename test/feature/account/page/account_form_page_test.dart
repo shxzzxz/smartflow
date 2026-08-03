@@ -303,4 +303,7 @@ class _FakeAccountAppService implements AccountAppService {
 
   @override
   Future<void> archiveAccount(ArchiveAccountCommand command) async {}
+
+  @override
+  Future<void> restoreAccount(RestoreAccountCommand command) async {}
 }

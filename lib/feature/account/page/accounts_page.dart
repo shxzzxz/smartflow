@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
+import '../../../app/provider.dart';
 import '../../../core/money/money.dart';
 import '../../../core/money/money_formatter.dart';
 import '../../../design_system/theme/app_text_styles.dart';
@@ -10,7 +11,7 @@ import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../application/ledger/ledger_query_api.dart';
-import '../../../shared/account_profile/account_profile_kind.dart';
+import '../../../application/ledger/ledger_command_api.dart';
 import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/business_icon_bubble.dart';
@@ -33,26 +34,30 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
   @override
   Widget build(BuildContext context) {
     final accountsAsync = ref.watch(accountViewsProvider);
+    final groupsAsync = ref.watch(accountGroupsProvider);
     final balanceSheetAsync = ref.watch(balanceSheetComparisonProvider);
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
-        child: switch ((accountsAsync, balanceSheetAsync)) {
+        child: switch ((accountsAsync, groupsAsync, balanceSheetAsync)) {
           (
             AsyncData(value: final accounts),
+            AsyncData(value: final groups),
             AsyncData(value: final balanceSheet),
           ) =>
             _AccountsContent(
               accounts: accounts,
+              groups: groups,
               balanceSheet: balanceSheet,
               hideBalances: _hideBalances,
               onToggleHide:
                   () => setState(() => _hideBalances = !_hideBalances),
             ),
-          (AsyncError(:final error), _) ||
-          (_, AsyncError(:final error)) => _AccountsErrorView(error: error),
+          (AsyncError(:final error), _, _) ||
+          (_, AsyncError(:final error), _) ||
+          (_, _, AsyncError(:final error)) => _AccountsErrorView(error: error),
           _ => const Center(child: CircularProgressIndicator()),
         },
       ),
@@ -63,25 +68,27 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
 class _AccountsContent extends ConsumerWidget {
   const _AccountsContent({
     required this.accounts,
+    required this.groups,
     required this.balanceSheet,
     required this.hideBalances,
     required this.onToggleHide,
   });
 
   final List<AccountView> accounts;
+  final List<AccountGroup> groups;
   final BalanceSheetComparison balanceSheet;
   final bool hideBalances;
   final VoidCallback onToggleHide;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sections = _buildSections(accounts);
+    final sections = _buildSections(accounts, groups);
     final collapsedKeys =
         ref.watch(assetSectionCollapseViewModelProvider).value ??
         const <String>{};
     final allCollapsed =
         sections.isNotEmpty &&
-        sections.every((section) => collapsedKeys.contains(section.kind.key));
+        sections.every((section) => collapsedKeys.contains(section.id));
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -103,7 +110,7 @@ class _AccountsContent extends ConsumerWidget {
               viewModel.expandAll();
             } else {
               viewModel.collapseAll([
-                for (final section in sections) section.kind.key,
+                for (final section in sections) section.id,
               ]);
             }
           },
@@ -119,11 +126,27 @@ class _AccountsContent extends ConsumerWidget {
           _AccountSection(
             section: section,
             hideBalances: hideBalances,
-            collapsed: collapsedKeys.contains(section.kind.key),
+            collapsed: collapsedKeys.contains(section.id),
             onToggleCollapsed:
                 () => ref
                     .read(assetSectionCollapseViewModelProvider.notifier)
-                    .toggle(section.kind.key),
+                    .toggle(section.id),
+            onAccountDropped: (account) {
+              final orderedIds = [
+                for (final item in section.accounts)
+                  if (item.id != account.id) item.id,
+                account.id,
+              ];
+              ref
+                  .read(accountGroupAppServiceProvider)
+                  .moveAccountToGroup(
+                    MoveAccountToGroupCommand(
+                      accountId: account.id,
+                      groupId: section.id == 'ungrouped' ? null : section.id,
+                      orderedAccountIds: orderedIds,
+                    ),
+                  );
+            },
           ),
         ],
       ],
@@ -133,66 +156,50 @@ class _AccountsContent extends ConsumerWidget {
 
 class _SectionSpec {
   const _SectionSpec({
-    required this.kind,
-    required this.totalLabel,
-    required this.totalSemantic,
+    required this.id,
+    required this.title,
     required this.accounts,
   });
 
-  final AccountProfileKind kind;
-  final String totalLabel;
-  final MoneySemantic totalSemantic;
+  final String id;
+  final String title;
   final List<AccountView> accounts;
 
-  String get title => kind.label;
-
-  Money get total {
+  Money totalFor(AccountType type) {
     return Money(
       minorUnits: accounts.fold(0, (sum, account) {
-        return sum + account.balance.minorUnits;
+        return sum +
+            (account.accountType == type ? account.balance.minorUnits : 0);
       }),
     );
   }
 }
 
-List<_SectionSpec> _buildSections(List<AccountView> accounts) {
-  List<AccountView> ofKind(AccountProfileKind kind) {
-    return [
-      for (final account in accounts)
-        if (account.kind == kind) account,
-    ];
+List<_SectionSpec> _buildSections(
+  List<AccountView> accounts,
+  List<AccountGroup> groups,
+) {
+  final sections = <_SectionSpec>[
+    for (final group in groups)
+      _SectionSpec(
+        id: group.id,
+        title: group.name,
+        accounts: [
+          for (final account in accounts)
+            if (account.groupId == group.id) account,
+        ],
+      ),
+  ];
+  final ungrouped = [
+    for (final account in accounts)
+      if (account.groupId == null) account,
+  ];
+  if (ungrouped.isNotEmpty) {
+    sections.add(
+      _SectionSpec(id: 'ungrouped', title: '未分组', accounts: ungrouped),
+    );
   }
-
-  final sections = [
-    _SectionSpec(
-      kind: AccountProfileKind.fund,
-      totalLabel: '资金',
-      totalSemantic: MoneySemantic.asset,
-      accounts: ofKind(AccountProfileKind.fund),
-    ),
-    _SectionSpec(
-      kind: AccountProfileKind.credit,
-      totalLabel: '信用欠款',
-      totalSemantic: MoneySemantic.liability,
-      accounts: ofKind(AccountProfileKind.credit),
-    ),
-    _SectionSpec(
-      kind: AccountProfileKind.loan,
-      totalLabel: '贷款欠款',
-      totalSemantic: MoneySemantic.liability,
-      accounts: ofKind(AccountProfileKind.loan),
-    ),
-    _SectionSpec(
-      kind: AccountProfileKind.reimbursement,
-      totalLabel: '应收报销',
-      totalSemantic: MoneySemantic.asset,
-      accounts: ofKind(AccountProfileKind.reimbursement),
-    ),
-  ];
-  return [
-    for (final section in sections)
-      if (section.accounts.isNotEmpty) section,
-  ];
+  return sections;
 }
 
 class _AssetsHeader extends StatelessWidget {
@@ -470,12 +477,14 @@ class _AccountSection extends StatelessWidget {
     required this.hideBalances,
     required this.collapsed,
     required this.onToggleCollapsed,
+    required this.onAccountDropped,
   });
 
   final _SectionSpec section;
   final bool hideBalances;
   final bool collapsed;
   final VoidCallback onToggleCollapsed;
+  final ValueChanged<AccountView> onAccountDropped;
 
   @override
   Widget build(BuildContext context) {
@@ -492,20 +501,19 @@ class _AccountSection extends StatelessWidget {
               children: [
                 Text(section.title, style: textStyles.groupTitle),
                 const Spacer(),
-                Text(
-                  section.totalLabel,
-                  style: textStyles.detailLabel.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
+                _SectionTotal(
+                  label: '资产',
+                  money: section.totalFor(AccountType.asset),
+                  semantic: MoneySemantic.asset,
+                  hidden: hideBalances,
                 ),
-                const SizedBox(width: AppSpacing.space6),
-                hideBalances
-                    ? const _HiddenMoneyText()
-                    : MoneyText(
-                      money: section.total,
-                      semantic: section.totalSemantic,
-                      style: textStyles.amountList,
-                    ),
+                const SizedBox(width: AppSpacing.space10),
+                _SectionTotal(
+                  label: '负债',
+                  money: section.totalFor(AccountType.liability),
+                  semantic: MoneySemantic.liability,
+                  hidden: hideBalances,
+                ),
                 const SizedBox(width: AppSpacing.space6),
                 AnimatedRotation(
                   turns: collapsed ? -0.25 : 0,
@@ -522,24 +530,79 @@ class _AccountSection extends StatelessWidget {
         ),
         if (!collapsed) ...[
           const SizedBox(height: AppSpacing.space12),
-          AppSurface(
-            child: Column(
-              children: [
-                for (var i = 0; i < accounts.length; i++) ...[
-                  _AccountRow(model: accounts[i], hideBalance: hideBalances),
-                  if (i < accounts.length - 1)
-                    const Padding(
-                      padding: EdgeInsets.only(
-                        left: AppSpacing.space48 + AppSpacing.space24,
-                        right: AppSpacing.space16,
-                      ),
-                      child: Divider(height: 1),
-                    ),
-                ],
-              ],
-            ),
+          DragTarget<AccountView>(
+            onWillAcceptWithDetails: (_) => true,
+            onAcceptWithDetails: (details) => onAccountDropped(details.data),
+            builder:
+                (context, candidateData, child) => AppSurface(
+                  child: Column(
+                    children: [
+                      if (candidateData.isNotEmpty)
+                        Container(
+                          height: 3,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      for (var i = 0; i < accounts.length; i++) ...[
+                        _AccountRow(
+                          model: accounts[i],
+                          hideBalance: hideBalances,
+                        ),
+                        if (i < accounts.length - 1)
+                          const Padding(
+                            padding: EdgeInsets.only(
+                              left: AppSpacing.space48 + AppSpacing.space24,
+                              right: AppSpacing.space16,
+                            ),
+                            child: Divider(height: 1),
+                          ),
+                      ],
+                      if (accounts.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(AppSpacing.space16),
+                          child: Text('长按并拖动账户到这里'),
+                        ),
+                    ],
+                  ),
+                ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+class _SectionTotal extends StatelessWidget {
+  const _SectionTotal({
+    required this.label,
+    required this.money,
+    required this.semantic,
+    required this.hidden,
+  });
+
+  final String label;
+  final Money money;
+  final MoneySemantic semantic;
+  final bool hidden;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          label,
+          style: context.appTextStyles.detailLabel.copyWith(
+            color: colors.onSurfaceVariant,
+          ),
+        ),
+        hidden
+            ? const _HiddenMoneyText()
+            : MoneyText(
+              money: money,
+              semantic: semantic,
+              style: context.appTextStyles.amountList,
+            ),
       ],
     );
   }
@@ -560,7 +623,7 @@ class _AccountRow extends StatelessWidget {
             ? MoneySemantic.asset
             : MoneySemantic.liability;
 
-    return InkWell(
+    final row = InkWell(
       onTap: () => context.push('/account/${model.id}'),
       child: Padding(
         padding: const EdgeInsets.symmetric(
@@ -613,6 +676,15 @@ class _AccountRow extends StatelessWidget {
           ],
         ),
       ),
+    );
+    return LongPressDraggable<AccountView>(
+      data: model,
+      feedback: Material(
+        color: Colors.transparent,
+        child: SizedBox(width: 280, child: Opacity(opacity: 0.86, child: row)),
+      ),
+      childWhenDragging: Opacity(opacity: 0.35, child: row),
+      child: row,
     );
   }
 }

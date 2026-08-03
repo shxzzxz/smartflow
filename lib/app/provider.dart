@@ -10,6 +10,7 @@ import '../infrastructure/import/repository/drift_import_mapping_repository.dart
 import '../infrastructure/import/yimu_excel2003_workbook_reader.dart';
 import '../infrastructure/ledger/repository/drift_account_query_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_repository.dart';
+import '../infrastructure/ledger/repository/drift_account_group_repository.dart';
 import '../infrastructure/ledger/repository/drift_ledger_metrics_source.dart';
 import '../infrastructure/ledger/repository/drift_entry_read_repository.dart';
 import '../infrastructure/credit/repository/drift_credit_account_repository.dart';
@@ -41,6 +42,7 @@ import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../application/shared/app_task.dart';
 import '../domain/ledger/port/account_repository.dart';
+import '../domain/ledger/port/account_group_repository.dart';
 import '../domain/import/port/import_batch_repository.dart';
 import '../domain/import/port/import_ledger_port.dart';
 import '../domain/import/port/import_mapping_repository.dart';
@@ -151,6 +153,11 @@ AccountRepository accountRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+AccountGroupRepository accountGroupRepository(Ref ref) {
+  return DriftAccountGroupRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
 AccountQueryRepository accountQueryRepository(Ref ref) {
   return DriftAccountQueryRepository(ref.watch(appDatabaseProvider));
 }
@@ -159,6 +166,13 @@ AccountQueryRepository accountQueryRepository(Ref ref) {
 AccountQueryService accountQueryService(Ref ref) {
   return AccountQueryServiceImpl(
     accounts: ref.watch(accountQueryRepositoryProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+AccountGroupQueryService accountGroupQueryService(Ref ref) {
+  return AccountGroupQueryServiceImpl(
+    ref.watch(accountGroupRepositoryProvider),
   );
 }
 
@@ -219,6 +233,17 @@ AccountAppService accountAppService(Ref ref) {
     transactionRunner: ref.watch(transactionRunnerProvider),
     ledgerPostingService: ref.watch(ledgerPostingServiceProvider),
     transactionRepository: ref.watch(ledgerRepositoryProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+    accountGroups: ref.watch(accountGroupRepositoryProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+AccountGroupAppService accountGroupAppService(Ref ref) {
+  return AccountGroupAppServiceImpl(
+    groups: ref.watch(accountGroupRepositoryProvider),
+    accounts: ref.watch(accountRepositoryProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
     idGenerator: ref.watch(idGeneratorProvider),
   );
 }

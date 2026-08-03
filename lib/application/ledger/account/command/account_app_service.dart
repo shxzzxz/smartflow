@@ -2,6 +2,7 @@ import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
+import 'package:smartflow/domain/ledger/port/account_group_repository.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/transaction_repository.dart';
 import 'package:smartflow/domain/ledger/service/account/account_factory.dart';
@@ -17,6 +18,8 @@ abstract interface class AccountAppService {
   Future<void> editAccount(EditAccountCommand command);
 
   Future<void> archiveAccount(ArchiveAccountCommand command);
+
+  Future<void> restoreAccount(RestoreAccountCommand command);
 }
 
 class AccountAppServiceImpl implements AccountAppService {
@@ -27,11 +30,13 @@ class AccountAppServiceImpl implements AccountAppService {
     required TransactionRepository transactionRepository,
     required IdGenerator idGenerator,
     AccountFactory accountFactory = const AccountFactory(),
+    AccountGroupRepository? accountGroups,
   }) : _runner = transactionRunner,
        _ledgerPostingService = ledgerPostingService,
        _transactionRepository = transactionRepository,
        _idGenerator = idGenerator,
-       _accountFactory = accountFactory;
+       _accountFactory = accountFactory,
+       _accountGroups = accountGroups;
 
   final AccountRepository _repository;
   final LedgerPostingService _ledgerPostingService;
@@ -39,15 +44,18 @@ class AccountAppServiceImpl implements AccountAppService {
   final TransactionRunner _runner;
   final IdGenerator _idGenerator;
   final AccountFactory _accountFactory;
+  final AccountGroupRepository? _accountGroups;
 
   @override
   Future<Account> createAccount(CreateAccountCommand command) async {
+    final groupId = await _availableGroupId(command.groupId);
     final account = _accountFactory.createUserAccount(
       id: _idGenerator.newId(),
       name: command.name,
       type: command.type,
       subtype: command.subtype,
       profileKey: command.profileKey,
+      groupId: groupId,
       iconKey: command.iconKey,
       note: command.note,
       sortOrder: command.sortOrder,
@@ -76,6 +84,11 @@ class AccountAppServiceImpl implements AccountAppService {
       await _repository.saveAll(posting.accounts);
       return account;
     });
+  }
+
+  Future<String?> _availableGroupId(String? groupId) async {
+    if (groupId == null || _accountGroups == null) return groupId;
+    return await _accountGroups!.findById(groupId) == null ? null : groupId;
   }
 
   @override
@@ -124,6 +137,18 @@ class AccountAppServiceImpl implements AccountAppService {
         throw BusinessException(LedgerErrorCode.accountNotFound);
       }
       account.archive(DateTime.now());
+      await _repository.save(account);
+    });
+  }
+
+  @override
+  Future<void> restoreAccount(RestoreAccountCommand command) async {
+    await _runner.run<void>(() async {
+      final account = await _repository.findById(command.id);
+      if (account == null) {
+        throw BusinessException(LedgerErrorCode.accountNotFound);
+      }
+      account.restore();
       await _repository.save(account);
     });
   }

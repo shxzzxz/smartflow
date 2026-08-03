@@ -48,6 +48,47 @@ final class AccountListProvider
 
 String _$accountListHash() => r'e2fbceec8eca02ea4b44e45bfa672c5ee444e581';
 
+@ProviderFor(accountGroups)
+final accountGroupsProvider = AccountGroupsProvider._();
+
+final class AccountGroupsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<AccountGroup>>,
+          List<AccountGroup>,
+          Stream<List<AccountGroup>>
+        >
+    with
+        $FutureModifier<List<AccountGroup>>,
+        $StreamProvider<List<AccountGroup>> {
+  AccountGroupsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'accountGroupsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountGroupsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<AccountGroup>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<AccountGroup>> create(Ref ref) {
+    return accountGroups(ref);
+  }
+}
+
+String _$accountGroupsHash() => r'990dee4dc0a5130a375524d819071432d2e50850';
+
 @ProviderFor(creditLiabilityAccountsByAccountId)
 final creditLiabilityAccountsByAccountIdProvider =
     CreditLiabilityAccountsByAccountIdProvider._();

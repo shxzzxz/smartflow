@@ -152,5 +152,8 @@ class _FakeAccountRepository implements AccountRepository {
   }
 
   @override
+  Future<List<Account>> findByGroupId(String? groupId) async => const [];
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

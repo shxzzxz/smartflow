@@ -10,6 +10,7 @@ import '../../domain/credit/valobj/credit_account_enums.dart';
 import '../../domain/credit/valobj/installment_enums.dart';
 import 'migration/app_migration_strategy.dart';
 import 'table/ledger/accounts.dart';
+import 'table/ledger/account_groups.dart';
 import 'table/app_metadata.dart';
 import 'table/budget/budgets.dart';
 import 'table/ledger/entries.dart';
@@ -32,6 +33,7 @@ part 'app_database.g.dart';
 @DriftDatabase(
   tables: [
     Accounts,
+    AccountGroups,
     AppMetadata,
     Transactions,
     TransactionDetails,
@@ -54,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 24;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

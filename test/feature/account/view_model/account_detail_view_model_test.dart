@@ -419,6 +419,12 @@ class _FakeAccountAppService implements AccountAppService {
     final exception = this.exception;
     if (exception != null) throw exception;
   }
+
+  @override
+  Future<void> restoreAccount(RestoreAccountCommand command) async {
+    final exception = this.exception;
+    if (exception != null) throw exception;
+  }
 }
 
 class _ReplayStream<T> {

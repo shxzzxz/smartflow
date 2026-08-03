@@ -9,6 +9,7 @@ import '../../../core/patch/patch.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
+import '../../../shared/account_group/initial_account_groups.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import 'account_view.dart';
@@ -39,6 +40,7 @@ class AccountFormViewModel extends _$AccountFormViewModel {
       if (current.kind == value) return current;
       return current.copyWith(
         kind: value,
+        groupId: initialAccountGroupIdForProfile(value),
         iconKey: value.iconKey,
         billingDay:
             value == AccountProfileKind.credit ? current.billingDay : null,
@@ -55,6 +57,9 @@ class AccountFormViewModel extends _$AccountFormViewModel {
           current.iconKey == value ? current : current.copyWith(iconKey: value),
     );
   }
+
+  void setGroupId(String? value) =>
+      _update((current) => current.copyWith(groupId: value));
 
   void setBillingDay(int? value) =>
       _update((current) => current.copyWith(billingDay: value));
@@ -158,6 +163,7 @@ class AccountFormViewModel extends _$AccountFormViewModel {
               type: formState.kind.accountType,
               subtype: formState.kind.accountSubtype,
               profileKey: formState.kind.key,
+              groupId: formState.groupId,
               iconKey: formState.iconKey,
               openingBalance: openingBalance,
               note: note,
@@ -184,6 +190,7 @@ class AccountFormViewModel extends _$AccountFormViewModel {
                     ? formState.repaymentDay
                     : null,
             billingDayToNext: formState.billingDayToNext,
+            groupId: formState.groupId,
           ),
         )
         .then((_) {});
@@ -279,6 +286,7 @@ class AccountFormState {
     required this.kind,
     required this.iconKey,
     required this.submitting,
+    this.groupId,
     this.billingDay,
     this.repaymentDay,
     this.billingDayToNext = true,
@@ -288,6 +296,7 @@ class AccountFormState {
     return AccountFormState(
       initialValues: const AccountFormInitialValues(),
       kind: AccountProfileKind.fund,
+      groupId: initialAccountGroupIdForProfile(AccountProfileKind.fund),
       iconKey: 'bank-account',
       submitting: false,
     );
@@ -297,6 +306,7 @@ class AccountFormState {
     return AccountFormState(
       initialValues: AccountFormInitialValues.fromAccount(account),
       kind: account.kind,
+      groupId: account.groupId,
       iconKey: account.iconKey ?? 'bank-account',
       billingDay: account.billingDay,
       repaymentDay: account.repaymentDay,
@@ -312,6 +322,7 @@ class AccountFormState {
   final int? repaymentDay;
   final bool billingDayToNext;
   final bool submitting;
+  final String? groupId;
 
   AccountFormState copyWith({
     AccountFormInitialValues? initialValues,
@@ -321,6 +332,7 @@ class AccountFormState {
     Object? repaymentDay = _sentinel,
     bool? billingDayToNext,
     bool? submitting,
+    Object? groupId = _sentinel,
   }) {
     return AccountFormState(
       initialValues: initialValues ?? this.initialValues,
@@ -332,6 +344,7 @@ class AccountFormState {
           repaymentDay == _sentinel ? this.repaymentDay : repaymentDay as int?,
       billingDayToNext: billingDayToNext ?? this.billingDayToNext,
       submitting: submitting ?? this.submitting,
+      groupId: groupId == _sentinel ? this.groupId : groupId as String?,
     );
   }
 }

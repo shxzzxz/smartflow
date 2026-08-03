@@ -44,6 +44,7 @@ class Account {
     required this.balance,
     this.subtype,
     this.profileKey,
+    this.groupId,
     this.parentId,
     this.iconKey,
     this.note,
@@ -62,6 +63,7 @@ class Account {
   String name;
   AccountSubtype? subtype;
   String? profileKey;
+  String? groupId;
   String? parentId;
   Money balance;
   String? iconKey;
@@ -83,6 +85,25 @@ class Account {
       LedgerViolationReason.accountArchived.throwException();
     }
     this.archivedAt = archivedAt;
+  }
+
+  void restore() {
+    if (!type.isUserAccount || systemKey != null) {
+      LedgerViolationReason.accountArchiveNotAllowed.throwException();
+    }
+    if (!isArchived) {
+      throw BusinessException(
+        LedgerErrorCode.accountUnavailable,
+        message: 'Account is not archived.',
+      );
+    }
+    archivedAt = null;
+  }
+
+  void moveToGroup(String? groupId, {required int sortOrder}) {
+    _ensureUserAccountEditable();
+    this.groupId = trimToNull(groupId);
+    this.sortOrder = sortOrder;
   }
 
   /// 是否可以作为"用户账户"被编辑(通过 EditAccountCommand 修改属性)。

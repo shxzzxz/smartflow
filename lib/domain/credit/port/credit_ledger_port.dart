@@ -44,6 +44,7 @@ class CreditLedgerRepaymentSnapshot {
     required this.entries,
     this.ownerType,
     this.note,
+    this.groupId,
   });
 
   final String transactionId;
@@ -51,6 +52,7 @@ class CreditLedgerRepaymentSnapshot {
   final DateTime occurredAt;
   final String? ownerType;
   final String? note;
+  final String? groupId;
   final List<CreditLedgerRepaymentDetail> details;
   final List<CreditLedgerRepaymentEntry> entries;
 }
@@ -97,6 +99,7 @@ class CreditLedgerCreateLiabilityAccountCommand {
     required this.openingBalance,
     this.iconKey,
     this.note,
+    this.groupId,
     this.sortOrder = 0,
     this.isHidden = false,
   });
@@ -106,6 +109,7 @@ class CreditLedgerCreateLiabilityAccountCommand {
   final Money openingBalance;
   final String? iconKey;
   final String? note;
+  final String? groupId;
   final int sortOrder;
   final bool isHidden;
 }

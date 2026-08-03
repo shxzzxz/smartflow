@@ -358,6 +358,9 @@ class _AccountRepository implements AccountRepository {
   Future<List<Account>> findChildrenOf(String parentId) async => const [];
 
   @override
+  Future<List<Account>> findByGroupId(String? groupId) async => const [];
+
+  @override
   Future<void> create(Account account) async {}
 
   @override

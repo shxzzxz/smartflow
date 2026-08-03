@@ -2,10 +2,12 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../domain/ledger/valobj/ledger_enum.dart';
+import '../../shared/account_group/initial_account_groups.dart';
+import '../../shared/account_profile/account_profile_kind.dart';
 import 'app_database.dart';
 
 const builtinDataVersionKey = 'builtin_data_version';
-const currentBuiltinDataVersion = 8;
+const currentBuiltinDataVersion = 9;
 
 const _uuid = Uuid();
 
@@ -37,9 +39,46 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
     if (version < 7) {
       await _renameOpeningBalanceAccount(database);
     }
+    if (version < 9) {
+      await _seedInitialAccountGroups(database);
+    }
 
     await _writeBuiltinDataVersion(database, currentBuiltinDataVersion);
   });
+}
+
+Future<void> _seedInitialAccountGroups(AppDatabase database) async {
+  final now = DateTime.now();
+  for (final group in initialAccountGroups) {
+    await database
+        .into(database.accountGroups)
+        .insertOnConflictUpdate(
+          AccountGroupsCompanion.insert(
+            id: group.id,
+            name: group.name,
+            sortOrder: Value(group.sortOrder),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+  }
+
+  await database.customStatement(
+    "UPDATE accounts SET group_id = '${initialAccountGroupIdForProfile(AccountProfileKind.credit)}' "
+    "WHERE group_id IS NULL AND account_profile_key = 'credit.credit'",
+  );
+  await database.customStatement(
+    "UPDATE accounts SET group_id = '${initialAccountGroupIdForProfile(AccountProfileKind.loan)}' "
+    "WHERE group_id IS NULL AND account_profile_key = 'credit.loan'",
+  );
+  await database.customStatement(
+    "UPDATE accounts SET group_id = '${initialAccountGroupIdForProfile(AccountProfileKind.reimbursement)}' "
+    "WHERE group_id IS NULL AND account_profile_key = 'ledger.reimbursement'",
+  );
+  await database.customStatement(
+    "UPDATE accounts SET group_id = '${initialAccountGroupIdForProfile(AccountProfileKind.fund)}' "
+    "WHERE group_id IS NULL AND account_type IN ('asset', 'liability')",
+  );
 }
 
 Future<void> _renameInterestAndFeeSystemKeys(AppDatabase database) async {
