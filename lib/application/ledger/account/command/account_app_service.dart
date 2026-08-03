@@ -88,7 +88,7 @@ class AccountAppServiceImpl implements AccountAppService {
 
   Future<String?> _availableGroupId(String? groupId) async {
     if (groupId == null || _accountGroups == null) return groupId;
-    return await _accountGroups!.findById(groupId) == null ? null : groupId;
+    return await _accountGroups.findById(groupId) == null ? null : groupId;
   }
 
   @override
@@ -105,6 +105,7 @@ class AccountAppServiceImpl implements AccountAppService {
         isHidden: command.isHidden,
         subtype: command.subtype,
         profileKey: command.profileKey,
+        groupId: command.groupId,
         iconKey: command.iconKey,
         note: command.note,
       ),

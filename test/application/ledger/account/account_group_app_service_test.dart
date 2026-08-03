@@ -44,6 +44,46 @@ void main() {
     expect(accounts.byId('second')!.sortOrder, 0);
     expect(accounts.byId('first')!.sortOrder, 1);
   });
+
+  test(
+    'moving an account does not disturb archived account placement',
+    () async {
+      final first = _account('first')..groupId = 'group';
+      final archived =
+          _account('archived')
+            ..groupId = 'group'
+            ..sortOrder = 8
+            ..archive(DateTime(2026));
+      final second = _account('second');
+      final accounts = _Accounts([first, archived, second]);
+      final service = _service(accounts: accounts, groups: _Groups([_group()]));
+
+      await service.moveAccountToGroup(
+        const MoveAccountToGroupCommand(
+          accountId: 'second',
+          groupId: 'group',
+          orderedAccountIds: ['second', 'first'],
+        ),
+      );
+
+      expect(accounts.byId('archived')!.groupId, 'group');
+      expect(accounts.byId('archived')!.sortOrder, 8);
+    },
+  );
+
+  test('creating a group appends after existing group order', () async {
+    final groups = _Groups([
+      AccountGroup(id: 'fund', name: '资金', sortOrder: 10),
+      AccountGroup(id: 'credit', name: '信用', sortOrder: 20),
+    ]);
+    final service = _service(accounts: _Accounts([]), groups: groups);
+
+    final created = await service.createGroup(
+      const CreateAccountGroupCommand(name: '投资'),
+    );
+
+    expect(created.sortOrder, 21);
+  });
 }
 
 AccountGroupAppService _service({
@@ -106,6 +146,11 @@ class _Groups implements AccountGroupRepository {
   @override
   Future<void> delete(String id) async {
     _items.remove(id);
+  }
+
+  @override
+  Future<void> create(AccountGroup group) async {
+    _items[group.id] = group;
   }
 
   @override

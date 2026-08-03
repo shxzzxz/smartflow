@@ -36,6 +36,7 @@ class EditAccountCommand {
     this.isHidden,
     this.subtype,
     this.profileKey,
+    this.groupId,
     this.iconKey,
     this.note,
     this.targetBalance,
@@ -47,6 +48,7 @@ class EditAccountCommand {
   final bool? isHidden;
   final Patch<AccountSubtype>? subtype;
   final Patch<String>? profileKey;
+  final Patch<String>? groupId;
   final Patch<String>? iconKey;
   final Patch<String>? note;
   final Money? targetBalance;

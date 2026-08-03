@@ -39,10 +39,17 @@ class AccountGroupAppServiceImpl implements AccountGroupAppService {
   @override
   Future<AccountGroup> createGroup(CreateAccountGroupCommand command) {
     return _runner.run(() async {
+      final groups = await _groups.findAll();
       final group = AccountGroup(
         id: _idGenerator.newId(),
         name: command.name,
-        sortOrder: (await _groups.findAll()).length,
+        sortOrder:
+            groups.fold(
+              0,
+              (maxOrder, item) =>
+                  item.sortOrder > maxOrder ? item.sortOrder : maxOrder,
+            ) +
+            1,
       );
       await _groups.create(group);
       return group;
@@ -101,11 +108,16 @@ class AccountGroupAppServiceImpl implements AccountGroupAppService {
         throw BusinessException(LedgerErrorCode.accountNotFound);
       }
       final sourceGroupId = account.groupId;
-      final sourceAccounts = await _accounts.findByGroupId(sourceGroupId);
+      final sourceAccounts =
+          (await _accounts.findByGroupId(
+            sourceGroupId,
+          )).where((item) => !item.isArchived).toList();
       final targetAccounts =
           sourceGroupId == command.groupId
               ? sourceAccounts
-              : await _accounts.findByGroupId(command.groupId);
+              : (await _accounts.findByGroupId(
+                command.groupId,
+              )).where((item) => !item.isArchived).toList();
       final updatedTarget = [
         for (final item in targetAccounts)
           if (item.id != account.id) item,

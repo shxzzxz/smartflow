@@ -79,6 +79,23 @@ Future<void> _seedInitialAccountGroups(AppDatabase database) async {
     "UPDATE accounts SET group_id = '${initialAccountGroupIdForProfile(AccountProfileKind.fund)}' "
     "WHERE group_id IS NULL AND account_type IN ('asset', 'liability')",
   );
+  await database.customStatement('''
+WITH ranked AS (
+  SELECT id,
+    ROW_NUMBER() OVER (
+      PARTITION BY group_id
+      ORDER BY sort_order, name, id
+    ) - 1 AS next_sort_order
+  FROM accounts
+  WHERE group_id IS NOT NULL
+    AND account_type IN ('asset', 'liability')
+)
+UPDATE accounts
+SET sort_order = (
+  SELECT next_sort_order FROM ranked WHERE ranked.id = accounts.id
+)
+WHERE id IN (SELECT id FROM ranked)
+''');
 }
 
 Future<void> _renameInterestAndFeeSystemKeys(AppDatabase database) async {

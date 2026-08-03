@@ -10,6 +10,7 @@ import 'package:smartflow/feature/account/page/account_form_page.dart';
 import 'package:smartflow/feature/account/view_model/account_form_view_model.dart';
 import 'package:smartflow/feature/account/view_model/account_view.dart';
 import 'package:smartflow/feature/account/view_model/account_views_provider.dart';
+import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 void main() {
@@ -17,7 +18,10 @@ void main() {
     final service = _FakeAccountAppService();
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [accountAppServiceProvider.overrideWith((ref) => service)],
+        overrides: [
+          accountAppServiceProvider.overrideWith((ref) => service),
+          _accountGroupsOverride(),
+        ],
         child: const MaterialApp(home: AccountFormPage()),
       ),
     );
@@ -40,6 +44,7 @@ void main() {
           accountAppServiceProvider.overrideWith(
             (ref) => _FakeAccountAppService(),
           ),
+          _accountGroupsOverride(),
         ],
         child: const MaterialApp(home: AccountFormPage()),
       ),
@@ -88,6 +93,7 @@ void main() {
           accountViewProvider(
             'account-1',
           ).overrideWithValue(AsyncValue.data(account)),
+          _accountGroupsOverride(),
         ],
         child: MaterialApp.router(routerConfig: router),
       ),
@@ -169,6 +175,7 @@ void main() {
           accountViewProvider(
             'account-1',
           ).overrideWithValue(AsyncValue.data(account)),
+          _accountGroupsOverride(),
         ],
         child: const MaterialApp(home: AccountFormPage(accountId: 'account-1')),
       ),
@@ -204,6 +211,7 @@ void main() {
         accountViewProvider(
           'account-b',
         ).overrideWithValue(AsyncValue.data(accountB)),
+        _accountGroupsOverride(),
       ],
     );
     addTearDown(container.dispose);
@@ -249,6 +257,7 @@ void main() {
         accountViewProvider(
           'account-1',
         ).overrideWithValue(AsyncValue.data(account)),
+        _accountGroupsOverride(),
       ],
     );
     addTearDown(container.dispose);
@@ -279,6 +288,10 @@ List<TextField> _formTextFields(WidgetTester tester) {
       .widgetList<TextField>(find.byType(TextField))
       .where((field) => field.controller != null)
       .toList();
+}
+
+dynamic _accountGroupsOverride() {
+  return accountGroupsProvider.overrideWith((ref) => Stream.value(const []));
 }
 
 class _FakeAccountAppService implements AccountAppService {

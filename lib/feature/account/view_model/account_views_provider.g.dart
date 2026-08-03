@@ -58,6 +58,64 @@ final class AccountViewsProvider
 
 String _$accountViewsHash() => r'acb57b35e59e785b9cf5bcf9868ba853c27c757d';
 
+/// 已归档的资产/负债账户只用于资产页的恢复区域；它们不参与日常账户
+/// 选择和资产统计。
+
+@ProviderFor(archivedAccountViews)
+final archivedAccountViewsProvider = ArchivedAccountViewsProvider._();
+
+/// 已归档的资产/负债账户只用于资产页的恢复区域；它们不参与日常账户
+/// 选择和资产统计。
+
+final class ArchivedAccountViewsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<AccountView>>,
+          AsyncValue<List<AccountView>>,
+          AsyncValue<List<AccountView>>
+        >
+    with $Provider<AsyncValue<List<AccountView>>> {
+  /// 已归档的资产/负债账户只用于资产页的恢复区域；它们不参与日常账户
+  /// 选择和资产统计。
+  ArchivedAccountViewsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'archivedAccountViewsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$archivedAccountViewsHash();
+
+  @$internal
+  @override
+  $ProviderElement<AsyncValue<List<AccountView>>> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AsyncValue<List<AccountView>> create(Ref ref) {
+    return archivedAccountViews(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<List<AccountView>> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AsyncValue<List<AccountView>>>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$archivedAccountViewsHash() =>
+    r'ce49dfbcb5855a12d6f3f2d62366e6f164fc8cfb';
+
 @ProviderFor(accountView)
 final accountViewProvider = AccountViewFamily._();
 

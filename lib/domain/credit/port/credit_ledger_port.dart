@@ -120,6 +120,7 @@ class CreditLedgerEditLiabilityAccountCommand {
     this.name,
     this.iconKey,
     this.note,
+    this.groupId,
     this.targetBalance,
   });
 
@@ -127,6 +128,7 @@ class CreditLedgerEditLiabilityAccountCommand {
   final String? name;
   final Patch<String>? iconKey;
   final Patch<String>? note;
+  final Patch<String>? groupId;
   final Money? targetBalance;
 }
 

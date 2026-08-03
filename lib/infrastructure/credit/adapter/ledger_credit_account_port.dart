@@ -46,6 +46,7 @@ class LedgerCreditAccountPort implements CreditAccountLedgerPort {
         name: command.name,
         iconKey: command.iconKey,
         note: command.note,
+        groupId: command.groupId,
         targetBalance: command.targetBalance,
       ),
     );

@@ -38,6 +38,7 @@ class EditCreditLiabilityAccountCommand {
     this.name,
     this.iconKey,
     this.note,
+    this.groupId,
     this.creditLimit,
     this.billingDay,
     this.repaymentDay,
@@ -49,6 +50,7 @@ class EditCreditLiabilityAccountCommand {
   final String? name;
   final Patch<String>? iconKey;
   final Patch<String>? note;
+  final Patch<String>? groupId;
   final Patch<Money>? creditLimit;
   final Patch<int>? billingDay;
   final Patch<int>? repaymentDay;

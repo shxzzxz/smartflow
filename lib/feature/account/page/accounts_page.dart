@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../app/provider.dart';
 import '../../../core/money/money.dart';
 import '../../../core/money/money_formatter.dart';
 import '../../../design_system/theme/app_text_styles.dart';
@@ -11,15 +10,16 @@ import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../application/ledger/ledger_query_api.dart';
-import '../../../application/ledger/ledger_command_api.dart';
 import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/business_icon_bubble.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../view_model/account_view.dart';
+import '../view_model/account_organization_view_model.dart';
 import '../view_model/account_views_provider.dart';
 import '../view_model/asset_section_collapse_view_model.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
 
 class AccountsPage extends ConsumerStatefulWidget {
   const AccountsPage({super.key});
@@ -34,6 +34,7 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
   @override
   Widget build(BuildContext context) {
     final accountsAsync = ref.watch(accountViewsProvider);
+    final archivedAccountsAsync = ref.watch(archivedAccountViewsProvider);
     final groupsAsync = ref.watch(accountGroupsProvider);
     final balanceSheetAsync = ref.watch(balanceSheetComparisonProvider);
     final colors = Theme.of(context).colorScheme;
@@ -41,23 +42,36 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
     return Scaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
-        child: switch ((accountsAsync, groupsAsync, balanceSheetAsync)) {
+        child: switch ((
+          accountsAsync,
+          archivedAccountsAsync,
+          groupsAsync,
+          balanceSheetAsync,
+        )) {
           (
             AsyncData(value: final accounts),
+            AsyncData(value: final archivedAccounts),
             AsyncData(value: final groups),
             AsyncData(value: final balanceSheet),
           ) =>
             _AccountsContent(
               accounts: accounts,
+              archivedAccounts: archivedAccounts,
               groups: groups,
               balanceSheet: balanceSheet,
               hideBalances: _hideBalances,
               onToggleHide:
                   () => setState(() => _hideBalances = !_hideBalances),
             ),
-          (AsyncError(:final error), _, _) ||
-          (_, AsyncError(:final error), _) ||
-          (_, _, AsyncError(:final error)) => _AccountsErrorView(error: error),
+          (AsyncError(:final error), _, _, _) ||
+          (_, AsyncError(:final error), _, _) ||
+          (_, _, AsyncError(:final error), _) ||
+          (
+            _,
+            _,
+            _,
+            AsyncError(:final error),
+          ) => _AccountsErrorView(error: error),
           _ => const Center(child: CircularProgressIndicator()),
         },
       ),
@@ -68,6 +82,7 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
 class _AccountsContent extends ConsumerWidget {
   const _AccountsContent({
     required this.accounts,
+    required this.archivedAccounts,
     required this.groups,
     required this.balanceSheet,
     required this.hideBalances,
@@ -75,6 +90,7 @@ class _AccountsContent extends ConsumerWidget {
   });
 
   final List<AccountView> accounts;
+  final List<AccountView> archivedAccounts;
   final List<AccountGroup> groups;
   final BalanceSheetComparison balanceSheet;
   final bool hideBalances;
@@ -114,6 +130,7 @@ class _AccountsContent extends ConsumerWidget {
               ]);
             }
           },
+          onManageGroups: () => _showAccountGroupManagerSheet(context, ref),
         ),
         const SizedBox(height: AppSpacing.space18),
         _NetAssetCard(comparison: balanceSheet, hideBalances: hideBalances),
@@ -131,23 +148,27 @@ class _AccountsContent extends ConsumerWidget {
                 () => ref
                     .read(assetSectionCollapseViewModelProvider.notifier)
                     .toggle(section.id),
-            onAccountDropped: (account) {
-              final orderedIds = [
-                for (final item in section.accounts)
-                  if (item.id != account.id) item.id,
-                account.id,
-              ];
-              ref
-                  .read(accountGroupAppServiceProvider)
-                  .moveAccountToGroup(
-                    MoveAccountToGroupCommand(
-                      accountId: account.id,
-                      groupId: section.id == 'ungrouped' ? null : section.id,
-                      orderedAccountIds: orderedIds,
-                    ),
-                  );
-            },
+            onAccountDropped:
+                (account, insertAt) => _moveAccount(
+                  context,
+                  ref,
+                  account: account,
+                  section: section,
+                  insertAt: insertAt,
+                ),
+            onGroupDropped:
+                (draggedSection) => _reorderSection(
+                  context,
+                  ref,
+                  groups: groups,
+                  draggedSection: draggedSection,
+                  targetSection: section,
+                ),
           ),
+        ],
+        if (archivedAccounts.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.space24),
+          _ArchivedAccountSection(accounts: archivedAccounts),
         ],
       ],
     );
@@ -202,12 +223,62 @@ List<_SectionSpec> _buildSections(
   return sections;
 }
 
+Future<void> _moveAccount(
+  BuildContext context,
+  WidgetRef ref, {
+  required AccountView account,
+  required _SectionSpec section,
+  required int insertAt,
+}) async {
+  final outcome = await ref
+      .read(accountOrganizationViewModelProvider.notifier)
+      .moveAccount(
+        accountId: account.id,
+        targetGroupId: section.id == 'ungrouped' ? null : section.id,
+        targetAccountIds: [for (final item in section.accounts) item.id],
+        insertAt: insertAt,
+      );
+  if (!context.mounted || outcome is UiActionSuccess<void>) return;
+  final failure = outcome as UiActionFailure<void>;
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(failure.error.message)));
+}
+
+Future<void> _reorderSection(
+  BuildContext context,
+  WidgetRef ref, {
+  required List<AccountGroup> groups,
+  required _SectionSpec draggedSection,
+  required _SectionSpec targetSection,
+}) async {
+  if (draggedSection.id == targetSection.id ||
+      draggedSection.id == 'ungrouped' ||
+      targetSection.id == 'ungrouped') {
+    return;
+  }
+  final orderedIds = [for (final group in groups) group.id]
+    ..remove(draggedSection.id);
+  final targetIndex = orderedIds.indexOf(targetSection.id);
+  if (targetIndex < 0) return;
+  orderedIds.insert(targetIndex, draggedSection.id);
+  final outcome = await ref
+      .read(accountOrganizationViewModelProvider.notifier)
+      .reorderGroups(orderedIds);
+  if (!context.mounted || outcome is UiActionSuccess<void>) return;
+  final failure = outcome as UiActionFailure<void>;
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(failure.error.message)));
+}
+
 class _AssetsHeader extends StatelessWidget {
   const _AssetsHeader({
     required this.hideBalances,
     required this.onToggleHide,
     required this.allCollapsed,
     required this.onToggleCollapseAll,
+    required this.onManageGroups,
   });
 
   final bool hideBalances;
@@ -216,6 +287,7 @@ class _AssetsHeader extends StatelessWidget {
   /// null 表示没有可折叠的分组，不显示折叠按钮。
   final bool? allCollapsed;
   final VoidCallback onToggleCollapseAll;
+  final VoidCallback onManageGroups;
 
   @override
   Widget build(BuildContext context) {
@@ -236,6 +308,11 @@ class _AssetsHeader extends StatelessWidget {
             ),
             tooltip: allCollapsed ? '展开全部分组' : '折叠全部分组',
           ),
+        IconButton(
+          onPressed: onManageGroups,
+          icon: Icon(RemixIcons.folder_settings_line, color: colors.onSurface),
+          tooltip: '管理分组',
+        ),
         IconButton(
           onPressed: () => context.push('/account/new'),
           icon: Icon(RemixIcons.add_line, color: colors.onSurface),
@@ -478,13 +555,15 @@ class _AccountSection extends StatelessWidget {
     required this.collapsed,
     required this.onToggleCollapsed,
     required this.onAccountDropped,
+    required this.onGroupDropped,
   });
 
   final _SectionSpec section;
   final bool hideBalances;
   final bool collapsed;
   final VoidCallback onToggleCollapsed;
-  final ValueChanged<AccountView> onAccountDropped;
+  final void Function(AccountView account, int insertAt) onAccountDropped;
+  final ValueChanged<_SectionSpec> onGroupDropped;
 
   @override
   Widget build(BuildContext context) {
@@ -493,46 +572,81 @@ class _AccountSection extends StatelessWidget {
     final accounts = section.accounts;
     return Column(
       children: [
-        InkWell(
-          onTap: onToggleCollapsed,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.space4),
-            child: Row(
-              children: [
-                Text(section.title, style: textStyles.groupTitle),
-                const Spacer(),
-                _SectionTotal(
-                  label: '资产',
-                  money: section.totalFor(AccountType.asset),
-                  semantic: MoneySemantic.asset,
-                  hidden: hideBalances,
-                ),
-                const SizedBox(width: AppSpacing.space10),
-                _SectionTotal(
-                  label: '负债',
-                  money: section.totalFor(AccountType.liability),
-                  semantic: MoneySemantic.liability,
-                  hidden: hideBalances,
-                ),
-                const SizedBox(width: AppSpacing.space6),
-                AnimatedRotation(
-                  turns: collapsed ? -0.25 : 0,
-                  duration: const Duration(milliseconds: 150),
-                  child: Icon(
-                    RemixIcons.arrow_down_s_line,
-                    size: 18,
-                    color: colors.onSurfaceVariant,
+        DragTarget<_SectionSpec>(
+          onWillAcceptWithDetails:
+              (details) =>
+                  section.id != 'ungrouped' &&
+                  details.data.id != 'ungrouped' &&
+                  details.data.id != section.id,
+          onAcceptWithDetails: (details) => onGroupDropped(details.data),
+          builder:
+              (
+                context,
+                candidateData,
+                child,
+              ) => LongPressDraggable<_SectionSpec>(
+                data: section,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: Opacity(
+                    opacity: 0.88,
+                    child: Text(section.title, style: textStyles.groupTitle),
                   ),
                 ),
-              ],
-            ),
-          ),
+                child: InkWell(
+                  onTap: onToggleCollapsed,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.space4,
+                    ),
+                    child: Column(
+                      children: [
+                        if (candidateData.isNotEmpty)
+                          Container(
+                            height: 3,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        Row(
+                          children: [
+                            Text(section.title, style: textStyles.groupTitle),
+                            const Spacer(),
+                            _SectionTotal(
+                              label: '资产',
+                              money: section.totalFor(AccountType.asset),
+                              semantic: MoneySemantic.asset,
+                              hidden: hideBalances,
+                            ),
+                            const SizedBox(width: AppSpacing.space10),
+                            _SectionTotal(
+                              label: '负债',
+                              money: section.totalFor(AccountType.liability),
+                              semantic: MoneySemantic.liability,
+                              hidden: hideBalances,
+                            ),
+                            const SizedBox(width: AppSpacing.space6),
+                            AnimatedRotation(
+                              turns: collapsed ? -0.25 : 0,
+                              duration: const Duration(milliseconds: 150),
+                              child: Icon(
+                                RemixIcons.arrow_down_s_line,
+                                size: 18,
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
         ),
         if (!collapsed) ...[
           const SizedBox(height: AppSpacing.space12),
           DragTarget<AccountView>(
             onWillAcceptWithDetails: (_) => true,
-            onAcceptWithDetails: (details) => onAccountDropped(details.data),
+            onAcceptWithDetails:
+                (details) => onAccountDropped(details.data, accounts.length),
             builder:
                 (context, candidateData, child) => AppSurface(
                   child: Column(
@@ -543,9 +657,25 @@ class _AccountSection extends StatelessWidget {
                           color: Theme.of(context).colorScheme.primary,
                         ),
                       for (var i = 0; i < accounts.length; i++) ...[
-                        _AccountRow(
-                          model: accounts[i],
-                          hideBalance: hideBalances,
+                        DragTarget<AccountView>(
+                          onWillAcceptWithDetails: (_) => true,
+                          onAcceptWithDetails:
+                              (details) => onAccountDropped(details.data, i),
+                          builder:
+                              (context, candidateData, child) => Column(
+                                children: [
+                                  if (candidateData.isNotEmpty)
+                                    Container(
+                                      height: 3,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                    ),
+                                  _AccountRow(
+                                    model: accounts[i],
+                                    hideBalance: hideBalances,
+                                  ),
+                                ],
+                              ),
                         ),
                         if (i < accounts.length - 1)
                           const Padding(
@@ -560,6 +690,28 @@ class _AccountSection extends StatelessWidget {
                         const Padding(
                           padding: EdgeInsets.all(AppSpacing.space16),
                           child: Text('长按并拖动账户到这里'),
+                        ),
+                      if (accounts.isNotEmpty)
+                        DragTarget<AccountView>(
+                          onWillAcceptWithDetails: (_) => true,
+                          onAcceptWithDetails:
+                              (details) => onAccountDropped(
+                                details.data,
+                                accounts.length,
+                              ),
+                          builder:
+                              (context, candidateData, child) =>
+                                  candidateData.isEmpty
+                                      ? const SizedBox(
+                                        height: AppSpacing.space4,
+                                      )
+                                      : Container(
+                                        height: 3,
+                                        color:
+                                            Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                      ),
                         ),
                     ],
                   ),
@@ -687,6 +839,287 @@ class _AccountRow extends StatelessWidget {
       child: row,
     );
   }
+}
+
+class _ArchivedAccountSection extends ConsumerWidget {
+  const _ArchivedAccountSection({required this.accounts});
+
+  final List<AccountView> accounts;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('已归档', style: context.appTextStyles.groupTitle),
+        const SizedBox(height: AppSpacing.space12),
+        AppSurface(
+          child: Column(
+            children: [
+              for (var index = 0; index < accounts.length; index++) ...[
+                ListTile(
+                  title: Text(accounts[index].name),
+                  subtitle: const Text('不计入资产和负债统计'),
+                  onTap: () => context.push('/account/${accounts[index].id}'),
+                  trailing: TextButton(
+                    onPressed: () => _restore(context, ref, accounts[index]),
+                    child: const Text('恢复'),
+                  ),
+                ),
+                if (index < accounts.length - 1) const Divider(height: 1),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _restore(
+    BuildContext context,
+    WidgetRef ref,
+    AccountView account,
+  ) async {
+    final outcome = await ref
+        .read(accountOrganizationViewModelProvider.notifier)
+        .restoreAccount(account.id);
+    if (!context.mounted) return;
+    final message = switch (outcome) {
+      UiActionSuccess() => '账户已恢复到原分组',
+      UiActionFailure(:final error) => error.message,
+    };
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+Future<void> _showAccountGroupManagerSheet(
+  BuildContext context,
+  WidgetRef ref,
+) {
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (_) => const _AccountGroupManagerSheet(),
+  );
+}
+
+class _AccountGroupManagerSheet extends ConsumerWidget {
+  const _AccountGroupManagerSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final groupsAsync = ref.watch(accountGroupsProvider);
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.7,
+        child: switch (groupsAsync) {
+          AsyncData(value: final groups) => Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.space20,
+                  vertical: AppSpacing.space8,
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      '管理账户分组',
+                      style: context.appTextStyles.sectionTitleStrong,
+                    ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () => _createGroup(context, ref),
+                      icon: const Icon(RemixIcons.add_line),
+                      label: const Text('新建分组'),
+                    ),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.space20),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('长按并拖动可调整分组顺序'),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.space8),
+              Expanded(
+                child: ReorderableListView.builder(
+                  itemCount: groups.length,
+                  onReorder:
+                      (oldIndex, newIndex) => _reorderGroups(
+                        context,
+                        ref,
+                        groups,
+                        oldIndex,
+                        newIndex,
+                      ),
+                  itemBuilder: (context, index) {
+                    final group = groups[index];
+                    return ListTile(
+                      key: ValueKey(group.id),
+                      leading: ReorderableDelayedDragStartListener(
+                        index: index,
+                        child: const Icon(RemixIcons.draggable),
+                      ),
+                      title: Text(group.name),
+                      trailing: PopupMenuButton<_AccountGroupAction>(
+                        onSelected:
+                            (action) => _handleAction(
+                              context,
+                              ref,
+                              group: group,
+                              action: action,
+                            ),
+                        itemBuilder:
+                            (context) => const [
+                              PopupMenuItem(
+                                value: _AccountGroupAction.rename,
+                                child: Text('重命名'),
+                              ),
+                              PopupMenuItem(
+                                value: _AccountGroupAction.delete,
+                                child: Text('删除'),
+                              ),
+                            ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+          AsyncError() => const Center(child: Text('分组加载失败，请稍后重试')),
+          _ => const Center(child: CircularProgressIndicator()),
+        },
+      ),
+    );
+  }
+
+  Future<void> _createGroup(BuildContext context, WidgetRef ref) async {
+    final name = await _requestGroupName(context, title: '新建分组');
+    if (name == null || !context.mounted) return;
+    final outcome = await ref
+        .read(accountOrganizationViewModelProvider.notifier)
+        .createGroup(name);
+    if (!context.mounted) return;
+    _showGroupOutcome(context, outcome, successMessage: '分组已创建');
+  }
+
+  Future<void> _handleAction(
+    BuildContext context,
+    WidgetRef ref, {
+    required AccountGroup group,
+    required _AccountGroupAction action,
+  }) async {
+    switch (action) {
+      case _AccountGroupAction.rename:
+        final name = await _requestGroupName(
+          context,
+          title: '重命名分组',
+          initialValue: group.name,
+        );
+        if (name == null || !context.mounted) return;
+        final outcome = await ref
+            .read(accountOrganizationViewModelProvider.notifier)
+            .renameGroup(group.id, name);
+        if (!context.mounted) return;
+        _showGroupOutcome(context, outcome, successMessage: '分组已重命名');
+      case _AccountGroupAction.delete:
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder:
+              (dialogContext) => AlertDialog(
+                title: Text('删除“${group.name}”？'),
+                content: const Text('该分组中的账户会变为未分组，账户本身不会被删除。'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(false),
+                    child: const Text('取消'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(true),
+                    child: const Text('删除'),
+                  ),
+                ],
+              ),
+        );
+        if (confirmed != true || !context.mounted) return;
+        final outcome = await ref
+            .read(accountOrganizationViewModelProvider.notifier)
+            .deleteGroup(group.id);
+        if (!context.mounted) return;
+        _showGroupOutcome(context, outcome, successMessage: '分组已删除');
+    }
+  }
+
+  Future<void> _reorderGroups(
+    BuildContext context,
+    WidgetRef ref,
+    List<AccountGroup> groups,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    final ordered = [...groups];
+    if (oldIndex < newIndex) newIndex -= 1;
+    final moved = ordered.removeAt(oldIndex);
+    ordered.insert(newIndex, moved);
+    final outcome = await ref
+        .read(accountOrganizationViewModelProvider.notifier)
+        .reorderGroups([for (final group in ordered) group.id]);
+    if (!context.mounted) return;
+    _showGroupOutcome(context, outcome, successMessage: '分组顺序已更新');
+  }
+}
+
+enum _AccountGroupAction { rename, delete }
+
+Future<String?> _requestGroupName(
+  BuildContext context, {
+  required String title,
+  String initialValue = '',
+}) async {
+  final controller = TextEditingController(text: initialValue);
+  final result = await showDialog<String>(
+    context: context,
+    builder:
+        (dialogContext) => AlertDialog(
+          title: Text(title),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(hintText: '请输入分组名称'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+  );
+  controller.dispose();
+  return result;
+}
+
+void _showGroupOutcome(
+  BuildContext context,
+  UiActionOutcome<void> outcome, {
+  required String successMessage,
+}) {
+  if (!context.mounted) return;
+  final message = switch (outcome) {
+    UiActionSuccess() => successMessage,
+    UiActionFailure(:final error) => error.message,
+  };
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
 class _HiddenMoneyText extends StatelessWidget {

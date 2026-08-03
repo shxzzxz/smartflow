@@ -15,6 +15,7 @@ class AccountProfilePatch {
     this.isHidden,
     this.subtype,
     this.profileKey,
+    this.groupId,
     this.iconKey,
     this.note,
   });
@@ -24,6 +25,7 @@ class AccountProfilePatch {
   final bool? isHidden;
   final Patch<AccountSubtype>? subtype;
   final Patch<String>? profileKey;
+  final Patch<String>? groupId;
   final Patch<String>? iconKey;
   final Patch<String>? note;
 }
@@ -133,6 +135,7 @@ class Account {
     name = normalizedName;
     subtype = nextSubtype;
     profileKey = patch.profileKey.applyMappedTo(profileKey, trimToNull);
+    groupId = patch.groupId.applyMappedTo(groupId, trimToNull);
     iconKey = patch.iconKey.applyMappedTo(iconKey, trimToNull);
     note = patch.note.applyMappedTo(note, trimToNull);
     sortOrder = patch.sortOrder ?? sortOrder;

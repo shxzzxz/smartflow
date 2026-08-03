@@ -189,6 +189,9 @@ Widget _buildAccountsPageApp({
   return ProviderScope(
     overrides: [
       accountViewsProvider.overrideWith((ref) => AsyncValue.data(accounts)),
+      archivedAccountViewsProvider.overrideWith(
+        (ref) => const AsyncValue.data([]),
+      ),
       accountGroupsProvider.overrideWith(
         (ref) => Stream.value([
           AccountGroup(id: 'fund', name: '资金'),

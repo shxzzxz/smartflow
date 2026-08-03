@@ -216,6 +216,10 @@ class AccountFormViewModel extends _$AccountFormViewModel {
                       ? const Patch<AccountSubtype>.clear()
                       : Patch.set(formState.kind.accountSubtype!),
               profileKey: Patch.set(formState.kind.key),
+              groupId:
+                  formState.groupId == null
+                      ? const Patch<String>.clear()
+                      : Patch.set(formState.groupId!),
               iconKey: Patch.set(formState.iconKey),
               note:
                   note == null ? const Patch<String>.clear() : Patch.set(note),
@@ -234,6 +238,10 @@ class AccountFormViewModel extends _$AccountFormViewModel {
             name: name,
             iconKey: Patch.set(formState.iconKey),
             note: note == null ? const Patch<String>.clear() : Patch.set(note),
+            groupId:
+                formState.groupId == null
+                    ? const Patch<String>.clear()
+                    : Patch.set(formState.groupId!),
             creditLimit:
                 creditLimit == null
                     ? const Patch<Money>.clear()

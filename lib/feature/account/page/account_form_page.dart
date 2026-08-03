@@ -11,11 +11,13 @@ import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
+import '../../../application/ledger/ledger_query_api.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/icon_catalog_picker.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../../shared/provider/ledger_query_providers.dart';
 import '../view_model/account_form_view_model.dart';
 
 class AccountFormPage extends ConsumerWidget {
@@ -121,6 +123,10 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
     final notifier = ref.read(
       accountFormViewModelProvider(widget.accountId).notifier,
     );
+    final groups =
+        ref.watch(accountGroupsProvider).value ?? const <AccountGroup>[];
+    final selectedGroup =
+        groups.where((group) => group.id == formState.groupId).firstOrNull;
 
     return Scaffold(
       backgroundColor: colors.surface,
@@ -187,6 +193,16 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
                             ),
                             validator: validateNonNegativeMoneyText,
                           ),
+                        AppPlainSelectFormRow<String>(
+                          label: '账户分组',
+                          value: formState.groupId,
+                          valueText: selectedGroup?.name,
+                          placeholder: '未分组',
+                          onTap:
+                              (onSelected) =>
+                                  _showGroupSheet(groups, onSelected),
+                          onChanged: notifier.setGroupId,
+                        ),
                       ],
                     ),
                     if (isLiabilityAccountKind(formState.kind)) ...[
@@ -251,6 +267,35 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
         ),
       ),
     );
+  }
+
+  Future<void> _showGroupSheet(
+    List<AccountGroup> groups,
+    ValueChanged<String?> onSelected,
+  ) async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder:
+          (sheetContext) => SafeArea(
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                ListTile(
+                  title: const Text('未分组'),
+                  onTap: () => Navigator.of(sheetContext).pop(''),
+                ),
+                for (final group in groups)
+                  ListTile(
+                    title: Text(group.name),
+                    onTap: () => Navigator.of(sheetContext).pop(group.id),
+                  ),
+              ],
+            ),
+          ),
+    );
+    if (!mounted || selected == null) return;
+    onSelected(selected.isEmpty ? null : selected);
   }
 
   Future<void> _pickMonthlyDay({

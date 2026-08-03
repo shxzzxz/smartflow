@@ -35,6 +35,11 @@ class DriftAccountRepository implements AccountRepository {
     } else {
       query.where((account) => account.groupId.equals(groupId));
     }
+    query.orderBy([
+      (account) => OrderingTerm.asc(account.sortOrder),
+      (account) => OrderingTerm.asc(account.name),
+      (account) => OrderingTerm.asc(account.id),
+    ]);
     final rows = await query.get();
     return rows.map(mapAccount).toList();
   }

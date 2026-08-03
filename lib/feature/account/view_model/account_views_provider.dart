@@ -34,6 +34,47 @@ AsyncValue<List<AccountView>> accountViews(Ref ref) {
   }
 }
 
+/// 已归档的资产/负债账户只用于资产页的恢复区域；它们不参与日常账户
+/// 选择和资产统计。
+@riverpod
+AsyncValue<List<AccountView>> archivedAccountViews(Ref ref) {
+  final accountsById = ref.watch(accountsByIdProvider);
+  final creditByAccountId = ref.watch(
+    creditLiabilityAccountsByAccountIdProvider,
+  );
+
+  if (accountsById case AsyncError(:final error, :final stackTrace)) {
+    return AsyncValue.error(error, stackTrace);
+  }
+  if (creditByAccountId case AsyncError(:final error, :final stackTrace)) {
+    return AsyncValue.error(error, stackTrace);
+  }
+
+  final accounts = accountsById.value;
+  final creditValues = creditByAccountId.value;
+  if (accounts == null || creditValues == null) {
+    return const AsyncValue.loading();
+  }
+
+  try {
+    return AsyncValue.data(
+      buildAccountViews(
+        accounts.values
+            .where(
+              (account) =>
+                  account.isArchived &&
+                  (account.type == AccountType.asset ||
+                      account.type == AccountType.liability),
+            )
+            .toList(),
+        creditValues,
+      ),
+    );
+  } on Object catch (error, stackTrace) {
+    return AsyncValue.error(error, stackTrace);
+  }
+}
+
 @riverpod
 AsyncValue<AccountView?> accountView(Ref ref, String accountId) {
   final accounts = ref.watch(accountViewsProvider);
