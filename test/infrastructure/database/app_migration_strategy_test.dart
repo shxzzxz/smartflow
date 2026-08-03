@@ -394,13 +394,13 @@ void main() {
     await staleDatabase.customStatement(
       "INSERT INTO accounts "
       "(id, name, account_type, balance_minor) VALUES "
-      "('food', '餐饮', 'expense', 0), "
+      "('food', '餐饮', 'expense', 200), "
       "('cash', '现金', 'asset', 0)",
     );
     await staleDatabase.customStatement(
       "INSERT INTO accounts "
       "(id, name, account_type, parent_id, balance_minor, archived_at) "
-      "VALUES ('old-dining', '旧聚餐', 'expense', 'food', 0, 1)",
+      "VALUES ('old-dining', '旧聚餐', 'expense', 'food', 1000, 1)",
     );
     await staleDatabase.customStatement(
       "INSERT INTO transactions "
@@ -456,6 +456,14 @@ void main() {
             )
             .getSingle();
     expect(mapping.read<String>('target_account_id'), 'food');
+    final target =
+        await upgradedDatabase
+            .customSelect(
+              "SELECT balance_minor, version FROM accounts WHERE id = 'food'",
+            )
+            .getSingle();
+    expect(target.read<int>('balance_minor'), 1200);
+    expect(target.read<int>('version'), 1);
   });
 }
 

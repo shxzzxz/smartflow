@@ -104,6 +104,20 @@ WHERE archived.archived_at IS NOT NULL
   AND target.account_type = archived.account_type
 ''');
   await database.customStatement('''
+UPDATE accounts
+SET balance_minor = balance_minor + (
+      SELECT COALESCE(SUM(source.balance_minor), 0)
+      FROM archived_category_migrations AS migration
+      JOIN accounts AS source ON source.id = migration.source_id
+      WHERE migration.target_id = accounts.id
+    ),
+    version = version + 1,
+    updated_at = strftime('%s', CURRENT_TIMESTAMP)
+WHERE id IN (
+  SELECT target_id FROM archived_category_migrations
+)
+''');
+  await database.customStatement('''
 UPDATE entries
 SET account_id = (
   SELECT migration.target_id
