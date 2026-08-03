@@ -1,9 +1,31 @@
 import 'transaction_scope.dart';
 
+/// 用户选择的单个活跃分类及其匹配范围。
+///
+/// 这是分类筛选这一维度的语义，不是可与 [TransactionListQuery]
+/// 其他条件自由组合的额外开关。“未细分”统计项选择一级分类自身，
+/// 其他分类选择则按其活跃二级分类展开。
+class CategorySelection {
+  const CategorySelection.withDescendants(this.id) : matchOwnOnly = false;
+
+  const CategorySelection.ownOnly(this.id) : matchOwnOnly = true;
+
+  final String id;
+  final bool matchOwnOnly;
+
+  @override
+  bool operator ==(Object other) =>
+      other is CategorySelection &&
+      other.id == id &&
+      other.matchOwnOnly == matchOwnOnly;
+
+  @override
+  int get hashCode => Object.hash(id, matchOwnOnly);
+}
+
 class TransactionListQuery {
   const TransactionListQuery({
-    this.categoryId,
-    this.categoryOwnOnly = false,
+    this.category,
     this.settlementAccountId,
     this.occurredFrom,
     this.occurredUntil,
@@ -13,16 +35,11 @@ class TransactionListQuery {
     this.before,
     this.scope = TransactionScopeFilter.assetLiability,
   }) : assert(limit != null || offset == 0),
-       assert(before == null || offset == 0),
-       assert(categoryId != null || !categoryOwnOnly);
+       assert(before == null || offset == 0);
 
   /// 用户选择的活跃分类。一级分类在查询层展开为自身与全部二级分类，
   /// 二级分类展开为自身；与结算账户维度同时存在时取交集。
-  final String? categoryId;
-
-  /// 仅命中 [categoryId] 自身的物理分录，不展开二级分类。
-  /// 用于统计"未细分"项的钻取。
-  final bool categoryOwnOnly;
+  final CategorySelection? category;
 
   /// 用户选择的结算账户，不表达"任意账户 ID"。
   final String? settlementAccountId;

@@ -809,7 +809,7 @@ void _openTransactions(
       path: '/statistics/transactions',
       queryParameters: {
         'categoryId': item.id,
-        if (item.isUnsubdivided) 'categoryOwnOnly': 'true',
+        if (item.isUnsubdivided) 'categoryScope': 'own',
         'from': from.toIso8601String(),
         'until': until.toIso8601String(),
         'title': item.title,

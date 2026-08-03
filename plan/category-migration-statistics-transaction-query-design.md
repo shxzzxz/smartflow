@@ -91,7 +91,7 @@ SQL：entries 按真实 category account_id 聚合
 
 - 用户点击一级分类 `A`：流水查询匹配 `{A, A 的全部二级分类}`。
 - 用户点击二级分类 `B` 或“未细分”项：只匹配 `{B}` 或 `{A}`。
-- 前端只提交用户所选活跃分类 ID；分类子树展开由应用查询层完成。
+- 前端将用户所选活跃分类及匹配范围作为一个分类选择提交；常规选择展开子树，“未细分”选择仅匹配一级自身。分类子树展开仍由应用查询层完成，匹配范围不是第三个独立筛选维度。
 
 ## 3. 交易流水查询
 
@@ -101,14 +101,14 @@ SQL：entries 按真实 category account_id 聚合
 
 ```dart
 TransactionListQuery(
-  categoryId: categoryId,
+  category: CategorySelection.withDescendants(categoryId),
   settlementAccountId: settlementAccountId,
   occurredFrom: from,
   occurredUntil: until,
 )
 ```
 
-- `categoryId`：用户选择的活跃分类。一级分类在应用层展开为自身与全部二级分类；二级分类展开为自身。
+- `category`：一个用户选择的活跃分类及其匹配范围。常规一级分类在应用层展开为自身与全部二级分类；二级分类展开为自身；“未细分”使用 `CategorySelection.ownOnly` 只匹配一级自身。
 - `settlementAccountId`：用户选择的结算账户，不表达“任意账户 ID”。
 - 两个维度同时存在时取交集；同一维度后续需要多选时，内部可以自然扩展为集合，但当前 UI 与外部接口不提前支持多选。
 

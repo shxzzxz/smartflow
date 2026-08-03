@@ -210,8 +210,7 @@ StatisticsContentState statisticsContent(Ref ref, DateTime visibleMonth) {
 @riverpod
 Stream<List<TransactionListReadModel>> statisticsTransactions(
   Ref ref, {
-  required String? categoryId,
-  required bool categoryOwnOnly,
+  required CategorySelection? category,
   required String? settlementAccountId,
   required DateTime? occurredFrom,
   required DateTime occurredUntil,
@@ -221,12 +220,10 @@ Stream<List<TransactionListReadModel>> statisticsTransactions(
       .watch(transactionQueryServiceProvider)
       .watchTransactions(
         TransactionListQuery(
-          categoryId: categoryId,
-          categoryOwnOnly: categoryOwnOnly,
+          category: category,
           settlementAccountId: settlementAccountId,
           occurredFrom: occurredFrom,
           occurredUntil: occurredUntil,
-          topLevelOnly: false,
           scope:
               scope == StatisticsDrilldownScope.cashflow
                   ? TransactionScopeFilter.stats
@@ -239,8 +236,7 @@ Stream<List<TransactionListReadModel>> statisticsTransactions(
 @riverpod
 StatisticsTransactionsContentState statisticsTransactionsContent(
   Ref ref, {
-  required String? categoryId,
-  required bool categoryOwnOnly,
+  required CategorySelection? category,
   required String? settlementAccountId,
   required DateTime? occurredFrom,
   required DateTime occurredUntil,
@@ -248,8 +244,7 @@ StatisticsTransactionsContentState statisticsTransactionsContent(
 }) {
   final transactions = ref.watch(
     statisticsTransactionsProvider(
-      categoryId: categoryId,
-      categoryOwnOnly: categoryOwnOnly,
+      category: category,
       settlementAccountId: settlementAccountId,
       occurredFrom: occurredFrom,
       occurredUntil: occurredUntil,

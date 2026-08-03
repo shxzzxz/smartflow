@@ -3,14 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
+import '../../../application/ledger/ledger_query_api.dart';
 import '../../../widget/business/transaction/transaction_feed.dart';
 import '../view_model/statistics_view_model.dart';
 
 class StatisticsTransactionsPage extends ConsumerWidget {
   const StatisticsTransactionsPage({
     required this.title,
-    required this.categoryId,
-    required this.categoryOwnOnly,
+    required this.category,
     required this.settlementAccountId,
     required this.occurredFrom,
     required this.occurredUntil,
@@ -19,8 +19,7 @@ class StatisticsTransactionsPage extends ConsumerWidget {
   });
 
   final String title;
-  final String? categoryId;
-  final bool categoryOwnOnly;
+  final CategorySelection? category;
   final String? settlementAccountId;
   final DateTime? occurredFrom;
   final DateTime occurredUntil;
@@ -31,8 +30,7 @@ class StatisticsTransactionsPage extends ConsumerWidget {
     final cutoffDate = occurredUntil.subtract(const Duration(microseconds: 1));
     final content = ref.watch(
       statisticsTransactionsContentProvider(
-        categoryId: categoryId,
-        categoryOwnOnly: categoryOwnOnly,
+        category: category,
         settlementAccountId: settlementAccountId,
         occurredFrom: occurredFrom,
         occurredUntil: occurredUntil,

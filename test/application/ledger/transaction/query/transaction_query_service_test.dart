@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_port_api.dart';
@@ -196,7 +198,9 @@ void main() {
     );
 
     await service.findTransactions(
-      const TransactionListQuery(categoryId: 'food'),
+      const TransactionListQuery(
+        category: CategorySelection.withDescendants('food'),
+      ),
     );
 
     expect(transactionRead.lastPageQuery?.categoryAccountIds, {
@@ -217,28 +221,33 @@ void main() {
     );
 
     await service.findTransactions(
-      const TransactionListQuery(categoryId: 'dining'),
+      const TransactionListQuery(
+        category: CategorySelection.withDescendants('dining'),
+      ),
     );
 
     expect(transactionRead.lastPageQuery?.categoryAccountIds, {'dining'});
   });
 
-  test('categoryOwnOnly keeps the first-level category unexpanded', () async {
-    final transactionRead = _FakeTransactionReadRepository(transactions: {});
-    final service = _service(
-      transactionRead: transactionRead,
-      accounts: [
-        _account('food', AccountType.expense),
-        _account('dining', AccountType.expense, parentId: 'food'),
-      ],
-    );
+  test(
+    'own-only category selection keeps the first-level category unexpanded',
+    () async {
+      final transactionRead = _FakeTransactionReadRepository(transactions: {});
+      final service = _service(
+        transactionRead: transactionRead,
+        accounts: [
+          _account('food', AccountType.expense),
+          _account('dining', AccountType.expense, parentId: 'food'),
+        ],
+      );
 
-    await service.findTransactions(
-      const TransactionListQuery(categoryId: 'food', categoryOwnOnly: true),
-    );
+      await service.findTransactions(
+        const TransactionListQuery(category: CategorySelection.ownOnly('food')),
+      );
 
-    expect(transactionRead.lastPageQuery?.categoryAccountIds, {'food'});
-  });
+      expect(transactionRead.lastPageQuery?.categoryAccountIds, {'food'});
+    },
+  );
 
   test(
     'returns empty list when the filtered category no longer exists',
@@ -255,7 +264,9 @@ void main() {
       final service = _service(transactionRead: transactionRead);
 
       final items = await service.findTransactions(
-        const TransactionListQuery(categoryId: 'missing'),
+        const TransactionListQuery(
+          category: CategorySelection.withDescendants('missing'),
+        ),
       );
 
       expect(items, isEmpty);
@@ -274,6 +285,86 @@ void main() {
     expect(transactionRead.lastPageQuery?.settlementAccountIds, {'cash'});
     expect(transactionRead.lastPageQuery?.categoryAccountIds, isNull);
   });
+
+  test(
+    'reprojects category snapshots and re-expands a subscribed filter',
+    () async {
+      final changes = StreamController<void>();
+      addTearDown(changes.close);
+      final transactionRead = _FakeTransactionReadRepository(
+        transactions: {
+          'expense': _transaction(
+            id: 'expense',
+            purpose: BusinessPurpose.dailyExpense,
+            amount: 1000,
+          ),
+        },
+        changes: changes.stream,
+      );
+      final accounts = [
+        _account('food', AccountType.expense, name: '餐饮'),
+        _account(
+          'dining',
+          AccountType.expense,
+          name: '聚餐',
+          iconKey: 'bowl',
+          parentId: 'food',
+        ),
+        _account('cash', AccountType.asset, name: '现金'),
+      ];
+      final service = _service(
+        transactionRead: transactionRead,
+        accounts: accounts,
+        entryRead: _FakeEntryReadRepository({
+          'expense': [
+            _entry('category', 'expense', 'dining', EntryDirection.debit, 1000),
+            _entry('cash', 'expense', 'cash', EntryDirection.credit, 1000),
+          ],
+        }),
+      );
+      final first = Completer<TransactionListReadModel>();
+      final second = Completer<TransactionListReadModel>();
+      final third = Completer<void>();
+      var emissionCount = 0;
+      final subscription = service
+          .watchTransactions(
+            const TransactionListQuery(
+              category: CategorySelection.withDescendants('food'),
+            ),
+          )
+          .listen((items) {
+            emissionCount += 1;
+            if (emissionCount == 1) first.complete(items.single);
+            if (emissionCount == 2) second.complete(items.single);
+            if (emissionCount == 3) third.complete();
+          });
+      addTearDown(subscription.cancel);
+
+      changes.add(null);
+      expect((await first.future).category?.name, '聚餐');
+      expect(transactionRead.lastPageQuery?.categoryAccountIds, {
+        'food',
+        'dining',
+      });
+
+      accounts[1] = _account(
+        'dining',
+        AccountType.expense,
+        name: '外食',
+        iconKey: 'fork',
+        parentId: 'food',
+      );
+      changes.add(null);
+      final renamed = await second.future;
+      expect(renamed.category?.name, '外食');
+      expect(renamed.category?.iconKey, 'fork');
+
+      accounts[1] = _account('dining', AccountType.expense, name: '外食');
+      changes.add(null);
+      await third.future;
+      expect(transactionRead.lastPageQuery?.categoryAccountIds, {'food'});
+    },
+  );
 }
 
 Transaction _transaction({
@@ -360,10 +451,12 @@ class _FakeTransactionReadRepository implements TransactionReadRepository {
   _FakeTransactionReadRepository({
     required this.transactions,
     this.reimbursementAggregate = const {},
+    this.changes,
   });
 
   final Map<String, Transaction> transactions;
   final Map<BusinessPurpose, TransactionChildAggregate> reimbursementAggregate;
+  final Stream<void>? changes;
   TransactionPageQuery? lastPageQuery;
 
   @override
@@ -458,7 +551,7 @@ class _FakeTransactionReadRepository implements TransactionReadRepository {
   ) async => const [];
 
   @override
-  Stream<void> watchChanges() => Stream.value(null);
+  Stream<void> watchChanges() => changes ?? Stream.value(null);
 }
 
 class _FakeEntryReadRepository implements EntryReadRepository {

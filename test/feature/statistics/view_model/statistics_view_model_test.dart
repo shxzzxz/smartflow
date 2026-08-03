@@ -181,24 +181,21 @@ void main() {
     final until = DateTime(2026, 1, 16);
 
     final cashflowProvider = statisticsTransactionsProvider(
-      categoryId: 'dining',
-      categoryOwnOnly: false,
+      category: const CategorySelection.withDescendants('dining'),
       settlementAccountId: null,
       occurredFrom: from,
       occurredUntil: until,
       scope: StatisticsDrilldownScope.cashflow,
     );
     final unsubdividedProvider = statisticsTransactionsProvider(
-      categoryId: 'food',
-      categoryOwnOnly: true,
+      category: const CategorySelection.ownOnly('food'),
       settlementAccountId: null,
       occurredFrom: from,
       occurredUntil: until,
       scope: StatisticsDrilldownScope.cashflow,
     );
     final balanceProvider = statisticsTransactionsProvider(
-      categoryId: null,
-      categoryOwnOnly: false,
+      category: null,
       settlementAccountId: 'cash',
       occurredFrom: null,
       occurredUntil: until,
@@ -215,23 +212,21 @@ void main() {
     await container.read(balanceProvider.future);
 
     final cashflow = service.queries[0];
-    expect(cashflow.categoryId, 'dining');
-    expect(cashflow.categoryOwnOnly, isFalse);
+    expect(cashflow.category, const CategorySelection.withDescendants('dining'));
     expect(cashflow.settlementAccountId, isNull);
     expect(cashflow.occurredFrom, from);
     expect(cashflow.occurredUntil, until);
     expect(cashflow.scope, same(TransactionScopeFilter.stats));
-    expect(cashflow.topLevelOnly, isFalse);
+    expect(cashflow.topLevelOnly, isTrue);
     expect(cashflow.limit, isNull);
 
     final unsubdivided = service.queries[1];
-    expect(unsubdivided.categoryId, 'food');
-    expect(unsubdivided.categoryOwnOnly, isTrue);
+    expect(unsubdivided.category, const CategorySelection.ownOnly('food'));
     expect(unsubdivided.scope, same(TransactionScopeFilter.stats));
 
     final balance = service.queries[2];
     expect(balance.settlementAccountId, 'cash');
-    expect(balance.categoryId, isNull);
+    expect(balance.category, isNull);
     expect(balance.occurredFrom, isNull);
     expect(balance.occurredUntil, until);
     expect(balance.scope, same(TransactionScopeFilter.assetLiability));

@@ -128,13 +128,13 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     TransactionListQuery query,
     Map<String, Account> accountsById,
   ) {
-    final categoryId = query.categoryId;
-    if (categoryId == null) return null;
-    final category = accountsById[categoryId];
+    final selection = query.category;
+    if (selection == null) return null;
+    final category = accountsById[selection.id];
     if (category == null || !category.type.isCategory || category.isArchived) {
       return const {};
     }
-    if (query.categoryOwnOnly || category.parentId != null) {
+    if (selection.matchOwnOnly || category.parentId != null) {
       return {category.id};
     }
     return {

@@ -109,7 +109,64 @@ void main() {
     );
     expect(balances, isEmpty);
   });
+
+  test(
+    'intersects independent category and settlement-entry filters',
+    () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      await database.batch((batch) {
+        batch.insertAll(database.transactions, [
+          _transactionCompanion('matches-both'),
+          _transactionCompanion('matches-category'),
+          _transactionCompanion('matches-settlement'),
+        ]);
+        batch.insertAll(database.entries, [
+          _entryCompanion('both-food', 'matches-both', 'food'),
+          _entryCompanion('both-cash', 'matches-both', 'cash'),
+          _entryCompanion('category-food', 'matches-category', 'food'),
+          _entryCompanion('category-bank', 'matches-category', 'bank'),
+          _entryCompanion('settlement-travel', 'matches-settlement', 'travel'),
+          _entryCompanion('settlement-cash', 'matches-settlement', 'cash'),
+        ]);
+      });
+
+      final page =
+          await DriftTransactionReadRepository(database)
+              .watchPage(
+                const TransactionPageQuery(
+                  categoryAccountIds: {'food'},
+                  settlementAccountIds: {'cash'},
+                ),
+              )
+              .first;
+
+      expect(page.map((transaction) => transaction.id), ['matches-both']);
+    },
+  );
 }
+
+TransactionsCompanion _transactionCompanion(String id) =>
+    TransactionsCompanion.insert(
+      id: id,
+      businessPurpose: BusinessPurpose.dailyExpense,
+      occurredAt: DateTime(2026, 4, 1),
+      postedAt: DateTime(2026, 4, 1),
+      primaryAmountMinor: 100,
+      sourceKind: SourceKind.manual,
+    );
+
+EntriesCompanion _entryCompanion(
+  String id,
+  String transactionId,
+  String accountId,
+) => EntriesCompanion.insert(
+  id: id,
+  transactionId: transactionId,
+  accountId: accountId,
+  direction: EntryDirection.debit,
+  amountMinor: 100,
+);
 
 Future<void> _insertAccounts(AppDatabase database) async {
   await database.batch((batch) {

@@ -71,6 +71,12 @@ final appRouter = GoRouter(
               _ => StatisticsDrilldownScope.cashflow,
             };
             final categoryId = query['categoryId'];
+            final category =
+                categoryId == null
+                    ? null
+                    : query['categoryScope'] == 'own'
+                    ? CategorySelection.ownOnly(categoryId)
+                    : CategorySelection.withDescendants(categoryId);
             final settlementAccountId = query['accountId'];
             if (until == null ||
                 (categoryId == null && settlementAccountId == null)) {
@@ -78,8 +84,7 @@ final appRouter = GoRouter(
             }
             return StatisticsTransactionsPage(
               title: query['title'] ?? '统计流水',
-              categoryId: categoryId,
-              categoryOwnOnly: query['categoryOwnOnly'] == 'true',
+              category: category,
               settlementAccountId: settlementAccountId,
               occurredFrom: from,
               occurredUntil: until,
