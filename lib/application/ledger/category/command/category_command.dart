@@ -36,60 +36,45 @@ class EditCategoryCommand {
   final Patch<String>? note;
 }
 
-/// 有引用或有挂载时 [mergeTargetId] 必填，指定交易统计的承接分类。
+/// 删除只处理无交易引用且无子分类的单个分类；不满足条件时拒绝。
 class DeleteCategoryCommand {
-  const DeleteCategoryCommand({required this.id, this.mergeTargetId});
+  const DeleteCategoryCommand({required this.id});
 
   final String id;
-  final String? mergeTargetId;
 }
 
-enum CategoryDeletionDisposition {
-  /// 无分录引用，物理删除。
-  physicalDelete,
-
-  /// 有分录引用，归档并把统计归属并入承接分类。
-  archiveMerge,
-}
-
-class CategoryDeletionPlanNode {
-  const CategoryDeletionPlanNode({required this.category, required this.entryCount});
+/// 删除预演：给确认弹窗判断当前分类能否删除，以及不能删除的原因。
+class CategoryDeletionPreview {
+  const CategoryDeletionPreview({
+    required this.category,
+    required this.childCount,
+    required this.transactionRefCount,
+  });
 
   final Account category;
-  final int entryCount;
 
-  CategoryDeletionDisposition get disposition =>
-      entryCount > 0
-          ? CategoryDeletionDisposition.archiveMerge
-          : CategoryDeletionDisposition.physicalDelete;
+  /// active 子分类数量；一级分类须先处理或删除其二级分类。
+  final int childCount;
+
+  /// 交易引用数量：分类分录引用 + 报销垫付支出分类引用。
+  final int transactionRefCount;
+
+  bool get canDelete => childCount == 0 && transactionRefCount == 0;
 }
 
-/// 删除预演：整树处置明细，供确认弹窗展示与承接分类选择。
-class CategoryDeletionPreview {
-  CategoryDeletionPreview({
-    required this.root,
-    required List<CategoryDeletionPlanNode> children,
-    required List<Account> mounts,
-  }) : children = List.unmodifiable(children),
-       mounts = List.unmodifiable(mounts);
+class CategoryTransactionMigrationCommand {
+  const CategoryTransactionMigrationCommand({
+    required this.sourceCategoryId,
+    required this.targetCategoryId,
+  });
 
-  final CategoryDeletionPlanNode root;
-  final List<CategoryDeletionPlanNode> children;
+  final String sourceCategoryId;
+  final String targetCategoryId;
+}
 
-  /// 挂在被删子树上的归档节点，删除时随承接目标重挂。
-  final List<Account> mounts;
+class CategoryTransactionMigrationResult {
+  const CategoryTransactionMigrationResult({required this.migratedGroupCount});
 
-  List<CategoryDeletionPlanNode> get nodes => [root, ...children];
-
-  int get totalEntryCount =>
-      nodes.fold(0, (sum, node) => sum + node.entryCount);
-
-  bool get requiresMergeTarget =>
-      mounts.isNotEmpty ||
-      nodes.any(
-        (node) => node.disposition == CategoryDeletionDisposition.archiveMerge,
-      );
-
-  /// 承接分类不可选自身或被删子树内节点。
-  Set<String> get excludedTargetIds => {for (final node in nodes) node.category.id};
+  /// 本次迁移重写的顶层交易组数量。
+  final int migratedGroupCount;
 }

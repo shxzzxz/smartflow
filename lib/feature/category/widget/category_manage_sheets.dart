@@ -13,7 +13,7 @@ import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/categories_view_model.dart';
 
-/// 分类行操作菜单：编辑 / 新增子分类 / 移动到… / 删除。
+/// 分类行操作菜单：编辑 / 新增子分类 / 移动到… / 迁移交易 / 删除。
 Future<void> showCategoryActionSheet(
   BuildContext context,
   WidgetRef ref, {
@@ -63,6 +63,14 @@ Future<void> showCategoryActionSheet(
                         Navigator.of(sheetContext).pop(_CategoryAction.move),
               ),
             ListTile(
+              leading: const Icon(RemixIcons.swap_line),
+              title: const Text('迁移交易'),
+              subtitle: const Text('把该分类的全部交易改到另一个分类'),
+              onTap:
+                  () =>
+                      Navigator.of(sheetContext).pop(_CategoryAction.migrate),
+            ),
+            ListTile(
               leading: Icon(RemixIcons.delete_bin_line, color: colors.error),
               title: Text('删除', style: TextStyle(color: colors.error)),
               onTap:
@@ -89,12 +97,14 @@ Future<void> showCategoryActionSheet(
       context.push(uri.toString());
     case _CategoryAction.move:
       await showCategoryMoveSheet(context, ref, category: category, tree: tree);
+    case _CategoryAction.migrate:
+      await runCategoryMigrationFlow(context, ref, category: category);
     case _CategoryAction.delete:
       await runCategoryDeleteFlow(context, ref, category: category);
   }
 }
 
-enum _CategoryAction { edit, addChild, move, delete }
+enum _CategoryAction { edit, addChild, move, migrate, delete }
 
 /// 快捷移动：改父分类（active 二层树内），复用 editCategory 链路。
 Future<void> showCategoryMoveSheet(
@@ -173,8 +183,62 @@ Future<void> showCategoryMoveSheet(
   }
 }
 
-/// 删除流程：预演 → 无引用无挂载直接确认物理删除；
-/// 否则选承接分类，归档并把统计归属并入承接。
+/// 迁移流程：选同类型活跃目标分类，把命中源分类的全部交易组改到目标分类。
+/// 迁移与删除不捆绑，迁移完成后由用户自行再次发起删除。
+Future<void> runCategoryMigrationFlow(
+  BuildContext context,
+  WidgetRef ref, {
+  required Account category,
+}) async {
+  final targetId = await showModalBottomSheet<String>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (sheetContext) => _MigrationTargetSheet(source: category),
+  );
+  if (targetId == null || !context.mounted) return;
+
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: Text('迁移"${category.name}"的交易？'),
+        content: const Text('该分类的全部交易将改到所选分类，历史统计随之变化；任何一笔失败都会整体回滚。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('迁移'),
+          ),
+        ],
+      );
+    },
+  );
+  if (confirmed != true || !context.mounted) return;
+
+  final outcome = await ref
+      .read(categoriesViewModelProvider.notifier)
+      .migrateTransactions(
+        sourceCategoryId: category.id,
+        targetCategoryId: targetId,
+      );
+  if (!context.mounted) return;
+  final message = switch (outcome) {
+    UiActionSuccess(:final value) =>
+      value.migratedGroupCount == 0
+          ? '该分类没有需要迁移的交易'
+          : '已迁移 ${value.migratedGroupCount} 笔交易',
+    UiActionFailure(:final error) => error.message,
+  };
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(message)));
+}
+
+/// 删除流程：预演 → 有子分类或有交易引用则拒绝并提示；否则确认后物理删除。
 Future<void> runCategoryDeleteFlow(
   BuildContext context,
   WidgetRef ref, {
@@ -196,58 +260,51 @@ Future<void> runCategoryDeleteFlow(
       preview = value;
   }
 
-  if (!preview.requiresMergeTarget) {
-    final childCount = preview.children.length;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        final colors = Theme.of(dialogContext).colorScheme;
-        return AlertDialog(
-          title: Text('删除"${category.name}"？'),
-          content: Text(
-            childCount == 0
-                ? '该分类没有交易记录，将被彻底删除。'
-                : '该分类及其 $childCount 个子分类均没有交易记录，将被一并彻底删除。',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: TextButton.styleFrom(foregroundColor: colors.error),
-              child: const Text('删除'),
-            ),
-          ],
-        );
-      },
+  if (preview.childCount > 0) {
+    await _showDeleteBlockedDialog(
+      context,
+      title: '无法删除"${category.name}"',
+      message: '该分类还有 ${preview.childCount} 个子分类。请先迁移或删除全部子分类，再删除一级分类。',
     );
-    if (confirmed != true || !context.mounted) return;
-    final outcome = await ref
-        .read(categoriesViewModelProvider.notifier)
-        .deleteCategory(category.id);
-    if (!context.mounted) return;
-    _showDeleteOutcome(context, outcome);
+    return;
+  }
+  if (preview.transactionRefCount > 0) {
+    await _showDeleteBlockedDialog(
+      context,
+      title: '无法删除"${category.name}"',
+      message:
+          '该分类被 ${preview.transactionRefCount} 处交易引用。'
+          '请先使用"迁移交易"把交易改到其它分类，再删除该分类。',
+    );
     return;
   }
 
-  final mergeTargetId = await showModalBottomSheet<String>(
+  final confirmed = await showDialog<bool>(
     context: context,
-    showDragHandle: true,
-    isScrollControlled: true,
-    builder:
-        (sheetContext) => _MergeTargetSheet(preview: preview),
+    builder: (dialogContext) {
+      final colors = Theme.of(dialogContext).colorScheme;
+      return AlertDialog(
+        title: Text('删除"${category.name}"？'),
+        content: const Text('该分类没有交易记录，将被彻底删除。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: TextButton.styleFrom(foregroundColor: colors.error),
+            child: const Text('删除'),
+          ),
+        ],
+      );
+    },
   );
-  if (mergeTargetId == null || !context.mounted) return;
+  if (confirmed != true || !context.mounted) return;
   final outcome = await ref
       .read(categoriesViewModelProvider.notifier)
-      .deleteCategory(category.id, mergeTargetId: mergeTargetId);
+      .deleteCategory(category.id);
   if (!context.mounted) return;
-  _showDeleteOutcome(context, outcome);
-}
-
-void _showDeleteOutcome(BuildContext context, UiActionOutcome<void> outcome) {
   final message = switch (outcome) {
     UiActionSuccess() => '分类已删除',
     UiActionFailure(:final error) => error.message,
@@ -257,38 +314,54 @@ void _showDeleteOutcome(BuildContext context, UiActionOutcome<void> outcome) {
   ).showSnackBar(SnackBar(content: Text(message)));
 }
 
-/// 承接分类选择：展示整树处置明细，从同类型 active 树中选归并目标。
-class _MergeTargetSheet extends ConsumerStatefulWidget {
-  const _MergeTargetSheet({required this.preview});
-
-  final CategoryDeletionPreview preview;
-
-  @override
-  ConsumerState<_MergeTargetSheet> createState() => _MergeTargetSheetState();
+Future<void> _showDeleteBlockedDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('知道了'),
+          ),
+        ],
+      );
+    },
+  );
 }
 
-class _MergeTargetSheetState extends ConsumerState<_MergeTargetSheet> {
+/// 迁移目标选择：同类型活跃分类树，一级、二级皆可选，排除源分类自身。
+class _MigrationTargetSheet extends ConsumerStatefulWidget {
+  const _MigrationTargetSheet({required this.source});
+
+  final Account source;
+
+  @override
+  ConsumerState<_MigrationTargetSheet> createState() =>
+      _MigrationTargetSheetState();
+}
+
+class _MigrationTargetSheetState extends ConsumerState<_MigrationTargetSheet> {
   String? _selectedId;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textStyles = context.appTextStyles;
-    final preview = widget.preview;
-    final root = preview.root.category;
-    final treeAsync = ref.watch(categoryTreeProvider(root.type));
+    final source = widget.source;
+    final treeAsync = ref.watch(categoryTreeProvider(source.type));
     final candidates = <(Account, bool)>[
-      for (final node in treeAsync.value ?? const <CategoryNode>[])
-        if (!preview.excludedTargetIds.contains(node.account.id)) ...[
-          (node.account, false),
-          for (final child in node.children)
-            if (!preview.excludedTargetIds.contains(child.id)) (child, true),
-        ],
-    ];
-    final archivedNames = [
-      for (final node in preview.nodes)
-        if (node.disposition == CategoryDeletionDisposition.archiveMerge)
-          node.category.name,
+      for (final node in treeAsync.value ?? const <CategoryNode>[]) ...[
+        if (node.account.id != source.id) (node.account, false),
+        for (final child in node.children)
+          if (child.id != source.id) (child, true),
+      ],
     ];
 
     return SafeArea(
@@ -309,16 +382,17 @@ class _MergeTargetSheetState extends ConsumerState<_MergeTargetSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('删除"${root.name}"', style: textStyles.sectionTitleStrong),
+                  Text(
+                    '迁移"${source.name}"的交易到',
+                    style: textStyles.sectionTitleStrong,
+                  ),
                   const SizedBox(height: AppSpacing.space8),
                   Text(
-                    _buildSummary(preview, archivedNames),
+                    '所有引用该分类的交易将改为所选分类。',
                     style: textStyles.listSupporting.copyWith(
                       color: colors.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.space8),
-                  Text('选择承接分类', style: textStyles.formValue),
                 ],
               ),
             ),
@@ -330,7 +404,7 @@ class _MergeTargetSheetState extends ConsumerState<_MergeTargetSheet> {
                     Padding(
                       padding: const EdgeInsets.all(AppSpacing.space20),
                       child: Text(
-                        '没有可用的承接分类，请先新建一个同类型分类。',
+                        '没有可用的目标分类，请先新建一个同类型分类。',
                         style: textStyles.listSupporting.copyWith(
                           color: colors.onSurfaceVariant,
                         ),
@@ -382,11 +456,7 @@ class _MergeTargetSheetState extends ConsumerState<_MergeTargetSheet> {
                       _selectedId == null
                           ? null
                           : () => Navigator.of(context).pop(_selectedId),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: colors.error,
-                    foregroundColor: colors.onError,
-                  ),
-                  child: const Text('删除并归并'),
+                  child: const Text('迁移交易'),
                 ),
               ),
             ),
@@ -395,26 +465,4 @@ class _MergeTargetSheetState extends ConsumerState<_MergeTargetSheet> {
       ),
     );
   }
-}
-
-String _buildSummary(
-  CategoryDeletionPreview preview,
-  List<String> archivedNames,
-) {
-  final buffer = StringBuffer()
-    ..write('共 ${preview.totalEntryCount} 笔交易。删除后历史交易保留，')
-    ..write('${archivedNames.join('、')}将归档并把统计并入承接分类');
-  final deleted = [
-    for (final node in preview.nodes)
-      if (node.disposition == CategoryDeletionDisposition.physicalDelete)
-        node.category.name,
-  ];
-  if (deleted.isNotEmpty) {
-    buffer.write('；${deleted.join('、')}没有交易，将被彻底删除');
-  }
-  if (preview.mounts.isNotEmpty) {
-    buffer.write('；另有 ${preview.mounts.length} 个已归档分类将随之转移');
-  }
-  buffer.write('。');
-  return buffer.toString();
 }

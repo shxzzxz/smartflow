@@ -14,6 +14,7 @@ export 'account/command/account_group_app_service.dart';
 export 'account/command/account_group_command.dart';
 export 'category/command/category_app_service.dart';
 export 'category/command/category_command.dart';
+export 'category/command/category_transaction_migration_app_service.dart';
 export 'transaction/command/transaction_command.dart';
 export 'transaction/command/transaction_cleanup_app_service.dart';
 export 'transaction/command/transaction_edit_app_service.dart';

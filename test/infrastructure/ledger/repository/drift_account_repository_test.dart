@@ -48,55 +48,14 @@ void main() {
 
       expect(await repository.findById('account-1'), isNull);
     });
-
-    test(
-      'findArchivedMountsOf returns only archived children of given ids',
-      () async {
-        final database = createTestDatabase();
-        addTearDown(database.close);
-        final repository = DriftAccountRepository(database);
-        await repository.create(
-          _account('root', type: AccountType.expense),
-        );
-        await repository.create(
-          _account('active-child', type: AccountType.expense, parentId: 'root'),
-        );
-        // create 不落 archivedAt（新账户不会生而归档），归档态通过 save 写入。
-        final mount = _account('mount', type: AccountType.expense);
-        await repository.create(mount);
-        mount
-          ..parentId = 'root'
-          ..archivedAt = DateTime(2026);
-        await repository.save(mount);
-        final otherMount = _account('other-mount', type: AccountType.expense);
-        await repository.create(otherMount);
-        otherMount
-          ..parentId = 'elsewhere'
-          ..archivedAt = DateTime(2026);
-        await repository.save(otherMount);
-
-        final mounts = await repository.findArchivedMountsOf({'root'});
-
-        expect(mounts.map((account) => account.id), ['mount']);
-        expect(
-          (await repository.findChildrenOf('root')).map((a) => a.id),
-          ['active-child'],
-        );
-      },
-    );
   });
 }
 
-Account _account(
-  String id, {
-  AccountType type = AccountType.asset,
-  String? parentId,
-}) {
+Account _account(String id) {
   return Account(
     id: id,
     name: id,
-    type: type,
-    parentId: parentId,
+    type: AccountType.asset,
     balance: const Money(minorUnits: 0),
   );
 }

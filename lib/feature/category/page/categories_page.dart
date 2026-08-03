@@ -102,17 +102,12 @@ class _CategoryManageTabState extends ConsumerState<_CategoryManageTab> {
   @override
   Widget build(BuildContext context) {
     final treeAsync = ref.watch(categoryTreeProvider(widget.type));
-    final archived =
-        ref.watch(archivedCategoriesProvider(widget.type)).value ??
-        const <Account>[];
-    final accountsById =
-        ref.watch(accountsByIdProvider).value ?? const <String, Account>{};
 
     return treeAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stackTrace) => _CategoryErrorView(error: error),
       data: (nodes) {
-        if (nodes.isEmpty && archived.isEmpty) {
+        if (nodes.isEmpty) {
           return _EmptyCategories(type: widget.type);
         }
 
@@ -124,51 +119,46 @@ class _CategoryManageTabState extends ConsumerState<_CategoryManageTab> {
             AppSpacing.space48,
           ),
           children: [
-            if (nodes.isNotEmpty)
-              AppSurface(
-                child: Column(
-                  children: [
-                    for (var i = 0; i < nodes.length; i++) ...[
-                      _RootCategoryRow(
-                        node: nodes[i],
-                        expanded: _expandedIds.contains(nodes[i].account.id),
-                        onToggleExpanded:
-                            () => setState(() {
-                              final id = nodes[i].account.id;
-                              _expandedIds.contains(id)
-                                  ? _expandedIds.remove(id)
-                                  : _expandedIds.add(id);
-                            }),
-                        onMore: () => _openActionSheet(nodes[i].account, nodes),
+            AppSurface(
+              child: Column(
+                children: [
+                  for (var i = 0; i < nodes.length; i++) ...[
+                    _RootCategoryRow(
+                      node: nodes[i],
+                      expanded: _expandedIds.contains(nodes[i].account.id),
+                      onToggleExpanded:
+                          () => setState(() {
+                            final id = nodes[i].account.id;
+                            _expandedIds.contains(id)
+                                ? _expandedIds.remove(id)
+                                : _expandedIds.add(id);
+                          }),
+                      onMore: () => _openActionSheet(nodes[i].account, nodes),
+                    ),
+                    if (_expandedIds.contains(nodes[i].account.id)) ...[
+                      for (final child in nodes[i].children)
+                        _ChildCategoryRow(
+                          category: child,
+                          onTap:
+                              () => context.push('/category/${child.id}/edit'),
+                          onMore: () => _openActionSheet(child, nodes),
+                        ),
+                      _AddChildRow(
+                        onTap: () => _openChildForm(nodes[i].account.id),
                       ),
-                      if (_expandedIds.contains(nodes[i].account.id)) ...[
-                        for (final child in nodes[i].children)
-                          _ChildCategoryRow(
-                            category: child,
-                            onTap:
-                                () => context.push('/category/${child.id}/edit'),
-                            onMore: () => _openActionSheet(child, nodes),
-                          ),
-                        _AddChildRow(
-                          onTap: () => _openChildForm(nodes[i].account.id),
-                        ),
-                      ],
-                      if (i < nodes.length - 1)
-                        const Padding(
-                          padding: EdgeInsets.only(
-                            left: AppSpacing.space48 + AppSpacing.space14,
-                            right: AppSpacing.space16,
-                          ),
-                          child: Divider(height: 1),
-                        ),
                     ],
+                    if (i < nodes.length - 1)
+                      const Padding(
+                        padding: EdgeInsets.only(
+                          left: AppSpacing.space48 + AppSpacing.space14,
+                          right: AppSpacing.space16,
+                        ),
+                        child: Divider(height: 1),
+                      ),
                   ],
-                ),
+                ],
               ),
-            if (archived.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.space24),
-              _ArchivedSection(archived: archived, accountsById: accountsById),
-            ],
+            ),
           ],
         );
       },
@@ -371,99 +361,6 @@ class _MoreButton extends StatelessWidget {
       ),
       visualDensity: VisualDensity.compact,
       tooltip: '更多操作',
-    );
-  }
-}
-
-/// 归档区只读展示；parentId 指向归并目标（统计并入该分类）。
-class _ArchivedSection extends StatelessWidget {
-  const _ArchivedSection({required this.archived, required this.accountsById});
-
-  final List<Account> archived;
-  final Map<String, Account> accountsById;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textStyles = context.appTextStyles;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.space4),
-          child: Row(
-            children: [
-              Icon(
-                RemixIcons.archive_line,
-                size: 16,
-                color: colors.onSurfaceVariant,
-              ),
-              const SizedBox(width: AppSpacing.space6),
-              Text(
-                '已归档',
-                style: textStyles.groupTitle.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.space12),
-        AppSurface(
-          child: Column(
-            children: [
-              for (var i = 0; i < archived.length; i++) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space16,
-                    vertical: AppSpacing.space10,
-                  ),
-                  child: Row(
-                    children: [
-                      Opacity(
-                        opacity: 0.55,
-                        child: BusinessIconBubble(
-                          size: AppSpacing.space28,
-                          child: BusinessIcon(
-                            iconKey: archived[i].iconKey,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.space12),
-                      Expanded(
-                        child: Text(
-                          archived[i].name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textStyles.inputText.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        '并入 ${accountsById[archived[i].parentId]?.name ?? '—'}',
-                        style: textStyles.listSupporting.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (i < archived.length - 1)
-                  const Padding(
-                    padding: EdgeInsets.only(
-                      left: AppSpacing.space48 + AppSpacing.space8,
-                      right: AppSpacing.space16,
-                    ),
-                    child: Divider(height: 1),
-                  ),
-              ],
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

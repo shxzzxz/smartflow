@@ -42,7 +42,7 @@ final class CategoriesViewModelProvider
 }
 
 String _$categoriesViewModelHash() =>
-    r'923f9ba250f12690e67082cd364e924f29d2fc65';
+    r'bf2007ef9f6d24f9c90d30aa407f7cf03fb8e6de';
 
 abstract class _$CategoriesViewModel extends $Notifier<void> {
   void build();

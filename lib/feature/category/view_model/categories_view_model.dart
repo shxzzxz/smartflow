@@ -26,15 +26,27 @@ class CategoriesViewModel extends _$CategoriesViewModel {
     });
   }
 
-  Future<UiActionOutcome<void>> deleteCategory(
-    String categoryId, {
-    String? mergeTargetId,
-  }) {
+  Future<UiActionOutcome<void>> deleteCategory(String categoryId) {
     return guardUiAction(_logger, 'Category delete', () {
       return ref
           .read(categoryAppServiceProvider)
-          .deleteCategory(
-            DeleteCategoryCommand(id: categoryId, mergeTargetId: mergeTargetId),
+          .deleteCategory(DeleteCategoryCommand(id: categoryId));
+    });
+  }
+
+  Future<UiActionOutcome<CategoryTransactionMigrationResult>>
+  migrateTransactions({
+    required String sourceCategoryId,
+    required String targetCategoryId,
+  }) {
+    return guardUiAction(_logger, 'Category transaction migration', () {
+      return ref
+          .read(categoryTransactionMigrationAppServiceProvider)
+          .migrate(
+            CategoryTransactionMigrationCommand(
+              sourceCategoryId: sourceCategoryId,
+              targetCategoryId: targetCategoryId,
+            ),
           );
     });
   }

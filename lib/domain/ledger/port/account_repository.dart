@@ -34,10 +34,6 @@ abstract interface class AccountRepository {
 
   Future<void> saveAll(Iterable<Account> accounts);
 
-  /// active 子分类（findChildrenOf 已排除归档节点）之外，
-  /// 查挂在 [categoryIds] 上的归档挂载节点（archived 且 parentId 指向其一）。
-  Future<List<Account>> findArchivedMountsOf(Set<String> categoryIds);
-
-  /// 物理删除。仅用于无分录引用且无归档挂载的分类，调用方负责前置校验。
+  /// 物理删除。仅用于无分录引用且无子分类的分类，调用方负责前置校验。
   Future<void> delete(String id);
 }

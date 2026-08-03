@@ -35,6 +35,10 @@ enum LedgerErrorCode implements AppErrorCode {
     code: 'ledger.category.unavailable',
     defaultMessage: '分类当前不可用。',
   ),
+  categoryInUse(
+    code: 'ledger.category.in_use',
+    defaultMessage: '分类已被交易引用。',
+  ),
   categoryInvalidCommand(
     code: 'ledger.category.invalid_command',
     defaultMessage: '分类参数不完整或不合法。',

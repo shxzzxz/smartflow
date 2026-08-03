@@ -226,6 +226,52 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
   }
 
   @override
+  Future<List<CategoryTransactionTarget>> findCategoryTransactionTargets(
+    String categoryId,
+  ) async {
+    final members = _db.alias(_db.transactions, 'group_members');
+    final groupEntryMatch = existsQuery(
+      _db.selectOnly(_db.entries).join([
+          innerJoin(
+            members,
+            members.id.equalsExp(_db.entries.transactionId),
+          ),
+        ])
+        ..addColumns([_db.entries.id])
+        ..where(
+          _db.entries.accountId.equals(categoryId) &
+              (members.id.equalsExp(_db.transactions.id) |
+                  members.parentTransactionId.equalsExp(_db.transactions.id)),
+        ),
+    );
+    final purposeColumn = _db.transactions.businessPurpose;
+    final select =
+        _db.selectOnly(_db.transactions)
+          ..addColumns([_db.transactions.id, purposeColumn])
+          ..where(
+            _db.transactions.parentTransactionId.isNull() &
+                (_db.transactions.reimbursementExpenseAccountId.equals(
+                      categoryId,
+                    ) |
+                    groupEntryMatch),
+          )
+          ..orderBy([
+            OrderingTerm.asc(_db.transactions.occurredAt),
+            OrderingTerm.asc(_db.transactions.id),
+          ]);
+    final rows = await select.get();
+    return [
+      for (final row in rows)
+        if (row.read(_db.transactions.id) case final String transactionId)
+          if (row.read(purposeColumn) case final String purposeName)
+            CategoryTransactionTarget(
+              transactionId: transactionId,
+              businessPurpose: BusinessPurpose.values.byName(purposeName),
+            ),
+    ];
+  }
+
+  @override
   Stream<TransactionCleanupPreview> watchCleanupPreview(
     TransactionCleanupQuery query,
   ) {

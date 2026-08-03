@@ -52,13 +52,17 @@ enum LedgerViolationReason {
     LedgerErrorCode.categoryInvalidCommand,
     'Categories support one child level in this stage.',
   ),
-  categoryMergeTargetInvalid(
+  categoryHasChildren(
     LedgerErrorCode.categoryInvalidCommand,
-    'Merge target category is invalid.',
+    'Category still has child categories.',
   ),
-  categoryMergeTargetRequired(
+  categoryReferencedByTransactions(
+    LedgerErrorCode.categoryInUse,
+    'Category is referenced by transactions.',
+  ),
+  categoryMigrationTargetInvalid(
     LedgerErrorCode.categoryInvalidCommand,
-    'A merge target category is required.',
+    'Migration target category is invalid.',
   ),
   categoryParentArchived(
     LedgerErrorCode.categoryInvalidParent,

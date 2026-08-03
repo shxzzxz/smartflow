@@ -1761,6 +1761,57 @@ final class TransactionCleanupAppServiceProvider
 String _$transactionCleanupAppServiceHash() =>
     r'c8304419df88ce0b1a20a2375de69d7d4e2e214d';
 
+@ProviderFor(categoryTransactionMigrationAppService)
+final categoryTransactionMigrationAppServiceProvider =
+    CategoryTransactionMigrationAppServiceProvider._();
+
+final class CategoryTransactionMigrationAppServiceProvider
+    extends
+        $FunctionalProvider<
+          CategoryTransactionMigrationAppService,
+          CategoryTransactionMigrationAppService,
+          CategoryTransactionMigrationAppService
+        >
+    with $Provider<CategoryTransactionMigrationAppService> {
+  CategoryTransactionMigrationAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'categoryTransactionMigrationAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() =>
+      _$categoryTransactionMigrationAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<CategoryTransactionMigrationAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CategoryTransactionMigrationAppService create(Ref ref) {
+    return categoryTransactionMigrationAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CategoryTransactionMigrationAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride:
+          $SyncValueProvider<CategoryTransactionMigrationAppService>(value),
+    );
+  }
+}
+
+String _$categoryTransactionMigrationAppServiceHash() =>
+    r'0e31a992236633b83b870404c1727f5604df1d19';
+
 @ProviderFor(transactionQueryService)
 final transactionQueryServiceProvider = TransactionQueryServiceProvider._();
 

@@ -33,6 +33,19 @@ class TransactionCleanupTarget {
   final bool owned;
 }
 
+/// 分类迁移条件命中的一个顶层交易组。
+class CategoryTransactionTarget {
+  const CategoryTransactionTarget({
+    required this.transactionId,
+    required this.businessPurpose,
+  });
+
+  /// 顶层交易 ID。
+  final String transactionId;
+
+  final BusinessPurpose businessPurpose;
+}
+
 abstract interface class TransactionReadRepository {
   Future<Transaction?> findById(String id);
 
@@ -67,6 +80,12 @@ abstract interface class TransactionReadRepository {
 
   Future<List<TransactionCleanupTarget>> findCleanupTargets(
     TransactionCleanupQuery query,
+  );
+
+  /// 命中 [categoryId] 的顶层交易组：组内任一分录触达该分类，
+  /// 或顶层交易行 reimbursement_expense_account_id 引用该分类。
+  Future<List<CategoryTransactionTarget>> findCategoryTransactionTargets(
+    String categoryId,
   );
 
   Stream<void> watchChanges();

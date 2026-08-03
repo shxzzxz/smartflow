@@ -61,8 +61,31 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         await migrator.createTable(database.accountGroups);
         await migrator.addColumn(database.accounts, database.accounts.groupId);
       }
+      if (from < 25) {
+        await _reactivateArchivedCategories(database);
+      }
     },
   );
+}
+
+/// v25：分类删除语义从“归档挂载归并”改为“有引用禁止删除”。
+/// 历史库中被分录或报销垫付引用的归档分类节点重新转为活跃分类；
+/// 挂载在二级分类下的节点重挂到其一级分类，维持活跃树恒为两层。
+Future<void> _reactivateArchivedCategories(AppDatabase database) async {
+  await database.customStatement('''
+UPDATE accounts
+SET parent_id = (
+  SELECT CASE
+    WHEN parent.parent_id IS NULL THEN parent.id
+    ELSE parent.parent_id
+  END
+  FROM accounts AS parent
+  WHERE parent.id = accounts.parent_id
+),
+    archived_at = NULL
+WHERE archived_at IS NOT NULL
+  AND account_type IN ('income', 'expense')
+''');
 }
 
 Future<void> _createCurrentSchema(

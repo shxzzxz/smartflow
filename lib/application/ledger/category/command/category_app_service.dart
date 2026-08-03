@@ -120,67 +120,26 @@ class CategoryAppServiceImpl implements CategoryAppService {
     String categoryId,
   ) async {
     final category = await _loadDeletableCategory(categoryId);
-    final (activeChildren, mounts) = await _collectDeletionScope(category);
-    final nodes = [category, ...activeChildren];
-    final counts = await _transactionRepository.countEntriesByAccount({
-      for (final node in nodes) node.id,
-    });
+    final children = await _repository.findChildrenOf(category.id);
     return CategoryDeletionPreview(
-      root: CategoryDeletionPlanNode(
-        category: category,
-        entryCount: counts[category.id] ?? 0,
-      ),
-      children: [
-        for (final child in activeChildren)
-          CategoryDeletionPlanNode(
-            category: child,
-            entryCount: counts[child.id] ?? 0,
-          ),
-      ],
-      mounts: mounts,
+      category: category,
+      childCount: children.length,
+      transactionRefCount: await _countTransactionRefs(category.id),
     );
   }
 
   @override
   Future<void> deleteCategory(DeleteCategoryCommand command) async {
     final category = await _loadDeletableCategory(command.id);
-    final (activeChildren, mounts) = await _collectDeletionScope(category);
-    final nodes = [category, ...activeChildren];
-    final counts = await _transactionRepository.countEntriesByAccount({
-      for (final node in nodes) node.id,
-    });
-    final referenced = [
-      for (final node in nodes)
-        if ((counts[node.id] ?? 0) > 0) node,
-    ];
-    final unreferenced = [
-      for (final node in nodes)
-        if ((counts[node.id] ?? 0) == 0) node,
-    ];
-
-    if (referenced.isEmpty && mounts.isEmpty) {
-      await _runner.run<void>(() async {
-        for (final node in [...activeChildren, category]) {
-          await _repository.delete(node.id);
-        }
-      });
-      return;
-    }
-
-    final target = await _resolveMergeTarget(
-      command.mergeTargetId,
-      excludedIds: {for (final node in nodes) node.id},
-    );
-    final now = DateTime.now();
-    final merged = <Account>[
-      for (final node in referenced) node..archiveCategoryMergingTo(target, now),
-      for (final mount in mounts) mount..remountMergedCategoryTo(target),
-    ];
     await _runner.run<void>(() async {
-      await _repository.saveAll(merged);
-      for (final node in unreferenced) {
-        await _repository.delete(node.id);
+      final children = await _repository.findChildrenOf(category.id);
+      if (children.isNotEmpty) {
+        LedgerViolationReason.categoryHasChildren.throwException();
       }
+      if (await _countTransactionRefs(category.id) > 0) {
+        LedgerViolationReason.categoryReferencedByTransactions.throwException();
+      }
+      await _repository.delete(category.id);
     });
   }
 
@@ -195,36 +154,13 @@ class CategoryAppServiceImpl implements CategoryAppService {
     return category;
   }
 
-  /// 收集删除范围：active 子分类，以及挂在被删子树任意节点上的归档节点。
-  Future<(List<Account>, List<Account>)> _collectDeletionScope(
-    Account category,
-  ) async {
-    final activeChildren = await _repository.findChildrenOf(category.id);
-    final mounts = await _repository.findArchivedMountsOf({
-      category.id,
-      for (final child in activeChildren) child.id,
+  Future<int> _countTransactionRefs(String categoryId) async {
+    final entryCounts = await _transactionRepository.countEntriesByAccount({
+      categoryId,
     });
-    return (activeChildren, mounts);
-  }
-
-  Future<Account> _resolveMergeTarget(
-    String? mergeTargetId, {
-    required Set<String> excludedIds,
-  }) async {
-    if (mergeTargetId == null) {
-      LedgerViolationReason.categoryMergeTargetRequired.throwException();
-    }
-    if (excludedIds.contains(mergeTargetId)) {
-      LedgerViolationReason.categoryMergeTargetInvalid.throwException(
-        message: '承接分类不能在被删除的分类范围内。',
-      );
-    }
-    final target = await _repository.findById(mergeTargetId);
-    if (target == null || !target.type.isCategory) {
-      LedgerViolationReason.categoryMergeTargetInvalid.throwException(
-        message: '承接分类不存在。',
-      );
-    }
-    return target;
+    final reimbursementCounts = await _transactionRepository
+        .countReimbursementExpenseRefs({categoryId});
+    return (entryCounts[categoryId] ?? 0) +
+        (reimbursementCounts[categoryId] ?? 0);
   }
 }

@@ -47,45 +47,43 @@ void main() {
   });
 
   group('CategoryAppService.previewCategoryDeletion', () {
-    test('reports dispositions, entry counts and mounts for the tree', () async {
-      final root = _category('root');
-      final child1 = _category('child1', parentId: root.id);
-      final child2 = _category('child2', parentId: root.id);
-      final mount = _category('mount', parentId: child1.id, archived: true);
-      final service = _service(
-        accounts: [root, child1, child2, mount],
-        entryCounts: {root.id: 3, child1.id: 2},
-      );
-
-      final preview = await service.previewCategoryDeletion(root.id);
-
-      expect(preview.requiresMergeTarget, isTrue);
-      expect(preview.totalEntryCount, 5);
-      expect(preview.root.disposition, CategoryDeletionDisposition.archiveMerge);
-      expect(preview.children, hasLength(2));
-      expect(
-        preview.children.singleWhere((n) => n.category.id == child1.id)
-            .disposition,
-        CategoryDeletionDisposition.archiveMerge,
-      );
-      expect(
-        preview.children.singleWhere((n) => n.category.id == child2.id)
-            .disposition,
-        CategoryDeletionDisposition.physicalDelete,
-      );
-      expect(preview.mounts.single.id, mount.id);
-      expect(preview.excludedTargetIds, {root.id, child1.id, child2.id});
-    });
-
-    test('does not require merge target when tree is unreferenced', () async {
+    test('reports child count and transaction reference count', () async {
       final root = _category('root');
       final child = _category('child', parentId: root.id);
-      final service = _service(accounts: [root, child]);
+      final service = _service(
+        accounts: [root, child],
+        entryCounts: {root.id: 3},
+        reimbursementRefCounts: {root.id: 2},
+      );
 
       final preview = await service.previewCategoryDeletion(root.id);
 
-      expect(preview.requiresMergeTarget, isFalse);
-      expect(preview.totalEntryCount, 0);
+      expect(preview.childCount, 1);
+      expect(preview.transactionRefCount, 5);
+      expect(preview.canDelete, isFalse);
+    });
+
+    test('counts reimbursement expense column references alone', () async {
+      final category = _category('advance-only');
+      final service = _service(
+        accounts: [category],
+        reimbursementRefCounts: {category.id: 1},
+      );
+
+      final preview = await service.previewCategoryDeletion(category.id);
+
+      expect(preview.childCount, 0);
+      expect(preview.transactionRefCount, 1);
+      expect(preview.canDelete, isFalse);
+    });
+
+    test('allows deletion for a clean leaf category', () async {
+      final category = _category('clean');
+      final service = _service(accounts: [category]);
+
+      final preview = await service.previewCategoryDeletion(category.id);
+
+      expect(preview.canDelete, isTrue);
     });
 
     test('rejects archived category', () async {
@@ -100,161 +98,75 @@ void main() {
   });
 
   group('CategoryAppService.deleteCategory', () {
-    test('physically deletes an unreferenced tree', () async {
+    test('physically deletes a category without children or references', () async {
+      final category = _category('clean');
+      final repository = _FakeAccountRepository([category]);
+      final service = _service(repository: repository);
+
+      await service.deleteCategory(DeleteCategoryCommand(id: category.id));
+
+      expect(repository.account(category.id), isNull);
+    });
+
+    test('rejects deletion while child categories exist', () async {
       final root = _category('root');
       final child = _category('child', parentId: root.id);
       final repository = _FakeAccountRepository([root, child]);
       final service = _service(repository: repository);
 
-      await service.deleteCategory(DeleteCategoryCommand(id: root.id));
-
-      expect(repository.account(root.id), isNull);
-      expect(repository.account(child.id), isNull);
-    });
-
-    test('requires merge target when tree is referenced', () async {
-      final root = _category('root');
-      final service = _service(
-        accounts: [root],
-        entryCounts: {root.id: 1},
-      );
-
       await expectLater(
         () => service.deleteCategory(DeleteCategoryCommand(id: root.id)),
         throwsA(_hasCode(LedgerErrorCode.categoryInvalidCommand)),
       );
+      expect(repository.account(root.id), isNotNull);
     });
 
-    test('archives referenced node onto merge target', () async {
-      final root = _category('root');
-      final target = _category('target');
-      final repository = _FakeAccountRepository([root, target]);
+    test('rejects deletion while entries reference the category', () async {
+      final category = _category('referenced');
+      final repository = _FakeAccountRepository([category]);
       final service = _service(
         repository: repository,
-        entryCounts: {root.id: 2},
+        entryCounts: {category.id: 1},
       );
 
-      await service.deleteCategory(
-        DeleteCategoryCommand(id: root.id, mergeTargetId: target.id),
+      await expectLater(
+        () => service.deleteCategory(DeleteCategoryCommand(id: category.id)),
+        throwsA(_hasCode(LedgerErrorCode.categoryInUse)),
       );
-
-      final archived = repository.account(root.id)!;
-      expect(archived.isArchived, isTrue);
-      expect(archived.parentId, target.id);
+      expect(repository.account(category.id), isNotNull);
     });
 
     test(
-      'cascades: archives referenced nodes, deletes unreferenced ones',
+      'rejects deletion while reimbursement advances reference the category',
       () async {
-        final root = _category('root');
-        final referencedChild = _category('referenced', parentId: root.id);
-        final unreferencedChild = _category('unreferenced', parentId: root.id);
-        final target = _category('target');
-        final repository = _FakeAccountRepository([
-          root,
-          referencedChild,
-          unreferencedChild,
-          target,
-        ]);
+        final category = _category('advance-referenced');
+        final repository = _FakeAccountRepository([category]);
         final service = _service(
           repository: repository,
-          entryCounts: {referencedChild.id: 4},
+          reimbursementRefCounts: {category.id: 1},
         );
-
-        await service.deleteCategory(
-          DeleteCategoryCommand(id: root.id, mergeTargetId: target.id),
-        );
-
-        expect(repository.account(root.id), isNull);
-        expect(repository.account(unreferencedChild.id), isNull);
-        final archived = repository.account(referencedChild.id)!;
-        expect(archived.isArchived, isTrue);
-        expect(archived.parentId, target.id);
-      },
-    );
-
-    test('remounts archived mounts onto the new merge target', () async {
-      final root = _category('root');
-      final mount = _category('mount', parentId: root.id, archived: true);
-      final target = _category('target');
-      final repository = _FakeAccountRepository([root, mount, target]);
-      final service = _service(
-        repository: repository,
-        entryCounts: {root.id: 1},
-      );
-
-      await service.deleteCategory(
-        DeleteCategoryCommand(id: root.id, mergeTargetId: target.id),
-      );
-
-      final remounted = repository.account(mount.id)!;
-      expect(remounted.isArchived, isTrue);
-      expect(remounted.parentId, target.id);
-    });
-
-    test(
-      'requires merge target when tree only carries archived mounts',
-      () async {
-        final root = _category('root');
-        final mount = _category('mount', parentId: root.id, archived: true);
-        final service = _service(accounts: [root, mount]);
 
         await expectLater(
-          () => service.deleteCategory(DeleteCategoryCommand(id: root.id)),
-          throwsA(_hasCode(LedgerErrorCode.categoryInvalidCommand)),
+          () => service.deleteCategory(DeleteCategoryCommand(id: category.id)),
+          throwsA(_hasCode(LedgerErrorCode.categoryInUse)),
         );
+        expect(repository.account(category.id), isNotNull);
       },
     );
 
-    test('rejects merge target inside the deleted subtree', () async {
+    test('deletes a child category independently of its parent', () async {
       final root = _category('root');
       final child = _category('child', parentId: root.id);
+      final repository = _FakeAccountRepository([root, child]);
       final service = _service(
-        accounts: [root, child],
-        entryCounts: {root.id: 1},
+        repository: repository,
+        entryCounts: {root.id: 5},
       );
 
-      await expectLater(
-        () => service.deleteCategory(
-          DeleteCategoryCommand(id: root.id, mergeTargetId: child.id),
-        ),
-        throwsA(_hasCode(LedgerErrorCode.categoryInvalidCommand)),
-      );
-    });
+      await service.deleteCategory(DeleteCategoryCommand(id: child.id));
 
-    test('rejects merge target of a different category type', () async {
-      final root = _category('root');
-      final incomeTarget = _category('income-target', type: AccountType.income);
-      final service = _service(
-        accounts: [root, incomeTarget],
-        entryCounts: {root.id: 1},
-      );
-
-      await expectLater(
-        () => service.deleteCategory(
-          DeleteCategoryCommand(id: root.id, mergeTargetId: incomeTarget.id),
-        ),
-        throwsA(_hasCode(LedgerErrorCode.categoryInvalidCommand)),
-      );
-    });
-
-    test('rejects archived merge target', () async {
-      final root = _category('root');
-      final archivedTarget = _category('archived-target', archived: true);
-      final service = _service(
-        accounts: [root, archivedTarget],
-        entryCounts: {root.id: 1},
-      );
-
-      await expectLater(
-        () => service.deleteCategory(
-          DeleteCategoryCommand(
-            id: root.id,
-            mergeTargetId: archivedTarget.id,
-          ),
-        ),
-        throwsA(_hasCode(LedgerErrorCode.categoryInvalidCommand)),
-      );
+      expect(repository.account(child.id), isNull);
+      expect(repository.account(root.id), isNotNull);
     });
   });
 }
@@ -287,10 +199,14 @@ CategoryAppServiceImpl _service({
   _FakeAccountRepository? repository,
   Iterable<Account> accounts = const [],
   Map<String, int> entryCounts = const {},
+  Map<String, int> reimbursementRefCounts = const {},
 }) {
   return CategoryAppServiceImpl(
     repository: repository ?? _FakeAccountRepository(accounts),
-    transactionRepository: _FakeTransactionRepository(entryCounts),
+    transactionRepository: _FakeTransactionRepository(
+      entryCounts: entryCounts,
+      reimbursementRefCounts: reimbursementRefCounts,
+    ),
     transactionRunner: _PassthroughTransactionRunner(),
     idGenerator: SequentialIdGenerator(),
   );
@@ -335,15 +251,6 @@ class _FakeAccountRepository implements AccountRepository {
   ];
 
   @override
-  Future<List<Account>> findArchivedMountsOf(Set<String> categoryIds) async {
-    return [
-      for (final account in _accounts.values)
-        if (account.isArchived && categoryIds.contains(account.parentId))
-          account,
-    ];
-  }
-
-  @override
   Future<void> save(Account account) async {
     _accounts[account.id] = account;
   }
@@ -362,15 +269,31 @@ class _FakeAccountRepository implements AccountRepository {
 }
 
 class _FakeTransactionRepository implements TransactionRepository {
-  _FakeTransactionRepository(this._entryCounts);
+  _FakeTransactionRepository({
+    required Map<String, int> entryCounts,
+    required Map<String, int> reimbursementRefCounts,
+  }) : _entryCounts = entryCounts,
+       _reimbursementRefCounts = reimbursementRefCounts;
 
   final Map<String, int> _entryCounts;
+  final Map<String, int> _reimbursementRefCounts;
 
   @override
   Future<Map<String, int>> countEntriesByAccount(Set<String> accountIds) async {
     return {
       for (final id in accountIds)
         if (_entryCounts[id] case final int count when count > 0) id: count,
+    };
+  }
+
+  @override
+  Future<Map<String, int>> countReimbursementExpenseRefs(
+    Set<String> accountIds,
+  ) async {
+    return {
+      for (final id in accountIds)
+        if (_reimbursementRefCounts[id] case final int count when count > 0)
+          id: count,
     };
   }
 

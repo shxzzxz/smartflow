@@ -11,4 +11,8 @@ abstract interface class TransactionRepository {
 
   /// 统计各账户被分录引用的条数，未被引用的账户不出现在结果中。
   Future<Map<String, int>> countEntriesByAccount(Set<String> accountIds);
+
+  /// 统计各分类被交易行 reimbursement_expense_account_id 引用的条数。
+  /// 未结束的报销垫付只以该列引用支出分类，不产生分类分录。
+  Future<Map<String, int>> countReimbursementExpenseRefs(Set<String> accountIds);
 }
