@@ -10,6 +10,4 @@ abstract interface class AccountQueryRepository {
   Stream<List<Account>> watchAllAccounts();
 
   Stream<List<Account>> watchCategories(AccountType type);
-
-  Stream<List<Account>> watchArchivedCategories(AccountType type);
 }

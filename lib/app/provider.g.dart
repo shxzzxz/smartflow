@@ -1906,7 +1906,7 @@ final class FinancialMetricsServiceProvider
 }
 
 String _$financialMetricsServiceHash() =>
-    r'44877ea3eb815867d3503298409cca723c9077ad';
+    r'19982f2fe15329b1f861821bdf5ed681769bb4cf';
 
 @ProviderFor(creditAccountRepository)
 final creditAccountRepositoryProvider = CreditAccountRepositoryProvider._();

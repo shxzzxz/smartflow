@@ -63,21 +63,4 @@ class DriftAccountQueryRepository implements AccountQueryRepository {
 
     return query.watch().map((rows) => rows.map(mapAccount).toList());
   }
-
-  @override
-  Stream<List<Account>> watchArchivedCategories(AccountType type) {
-    final query =
-        _database.select(_database.accounts)
-          ..where(
-            (account) =>
-                account.archivedAt.isNotNull() &
-                account.accountType.equalsValue(type),
-          )
-          ..orderBy([
-            (account) => OrderingTerm.asc(account.sortOrder),
-            (account) => OrderingTerm.asc(account.name),
-          ]);
-
-    return query.watch().map((rows) => rows.map(mapAccount).toList());
-  }
 }

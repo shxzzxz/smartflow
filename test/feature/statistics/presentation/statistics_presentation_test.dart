@@ -23,7 +23,6 @@ void main() {
         categories: const [],
         balanceTrend: const [],
       ),
-      accountsById: const {},
     );
 
     expect(presentation.dailySummaries.map((item) => item.date), [
@@ -229,7 +228,6 @@ void main() {
     const food = StatisticsBreakdownItem(
       id: 'food',
       title: '餐饮',
-      accountIds: {'dining', 'snack'},
       accountType: AccountType.expense,
       amount: Money(minorUnits: 1000),
       progress: 1,
@@ -237,7 +235,6 @@ void main() {
         StatisticsBreakdownItem(
           id: 'dining',
           title: '聚餐',
-          accountIds: {'dining'},
           accountType: AccountType.expense,
           amount: Money(minorUnits: 750),
           progress: 1,
@@ -245,7 +242,6 @@ void main() {
         StatisticsBreakdownItem(
           id: 'snack',
           title: '零食',
-          accountIds: {'snack'},
           accountType: AccountType.expense,
           amount: Money(minorUnits: 250),
           progress: .33,
@@ -263,7 +259,6 @@ void main() {
     const refunded = StatisticsBreakdownItem(
       id: 'refund',
       title: '退款后分类',
-      accountIds: {'refund'},
       accountType: AccountType.expense,
       amount: Money(minorUnits: -200),
       progress: 0,
@@ -271,7 +266,6 @@ void main() {
     const food = StatisticsBreakdownItem(
       id: 'food',
       title: '餐饮',
-      accountIds: {'food'},
       accountType: AccountType.expense,
       amount: Money(minorUnits: 800),
       progress: 1,
@@ -287,7 +281,6 @@ void main() {
       return StatisticsBreakdownItem(
         id: id,
         title: id,
-        accountIds: {id},
         accountType: AccountType.expense,
         amount: Money(
           minorUnits: children.fold(0, (sum, c) => sum + c.amount.minorUnits),
@@ -301,7 +294,6 @@ void main() {
       return StatisticsBreakdownItem(
         id: id,
         title: id,
-        accountIds: {id},
         accountType: AccountType.expense,
         amount: Money(minorUnits: minor),
         progress: progress,
@@ -324,7 +316,6 @@ void main() {
         StatisticsBreakdownItem(
           id: 'c$i',
           title: '分类$i',
-          accountIds: {'c$i'},
           accountType: AccountType.expense,
           amount: Money(minorUnits: 1000 - i * 10),
           progress: 0,
@@ -346,7 +337,6 @@ void main() {
         StatisticsBreakdownItem(
           id: 'c$i',
           title: '分类$i',
-          accountIds: {'c$i'},
           accountType: AccountType.expense,
           amount: Money(minorUnits: 100),
           progress: 0,

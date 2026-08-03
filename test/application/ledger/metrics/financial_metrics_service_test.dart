@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_port_api.dart';
+import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/time/month_key.dart';
 
 void main() {
@@ -14,7 +15,7 @@ void main() {
         },
       },
     );
-    final service = FinancialMetricsServiceImpl(aggregate);
+    final service = _service(aggregate);
 
     final summaries =
         await service
@@ -56,7 +57,7 @@ void main() {
           ),
         ],
       );
-      final service = FinancialMetricsServiceImpl(aggregate);
+      final service = _service(aggregate, categories: [_category('food')]);
 
       final report =
           await service
@@ -72,7 +73,11 @@ void main() {
       expect(report.dailySummaries.map((item) => item.date), [
         DateTime(2026, 1, 2),
       ]);
-      expect(report.categories.single.accountId, 'food');
+      final group = report.categories.single;
+      expect(group.id, 'food');
+      expect(group.totalMinor, 1200);
+      expect(group.items.single.id, 'food');
+      expect(group.items.single.isUnsubdivided, isTrue);
       expect(report.balanceTrend.map((point) => point.assets.minorUnits), [
         10000,
         10000,
@@ -113,7 +118,6 @@ void main() {
         byAccountResult: const [
           AccountAggregate(
             accountId: 'dining',
-            parentAccountId: 'food',
             accountType: AccountType.expense,
             amountMinor: 700,
           ),
@@ -124,7 +128,14 @@ void main() {
           ),
         ],
       );
-      final service = FinancialMetricsServiceImpl(aggregate);
+      final service = _service(
+        aggregate,
+        categories: [
+          _category('food'),
+          _category('dining', parentId: 'food'),
+          _category('salary', type: AccountType.income),
+        ],
+      );
 
       final report =
           await service
@@ -147,15 +158,73 @@ void main() {
             .minorUnits,
         -300,
       );
-      expect(
-        report.categories.singleWhere((item) => item.accountId == 'dining'),
-        const AccountMetric(
-          accountId: 'dining',
-          parentAccountId: 'food',
-          accountType: AccountType.expense,
-          amountMinor: 700,
-        ),
+
+      // 一级 food 无直接金额：total 归并二级 dining，且不产生"未细分"项。
+      final expenseGroup = report.categories.singleWhere(
+        (group) => group.accountType == AccountType.expense,
       );
+      expect(expenseGroup.id, 'food');
+      expect(expenseGroup.totalMinor, 700);
+      expect(expenseGroup.items.single.id, 'dining');
+      expect(expenseGroup.items.single.isUnsubdivided, isFalse);
+      final incomeGroup = report.categories.singleWhere(
+        (group) => group.accountType == AccountType.income,
+      );
+      expect(incomeGroup.id, 'salary');
+      expect(incomeGroup.totalMinor, 2000);
+    },
+  );
+
+  test(
+    'assembles first-level totals with an unsubdivided own-amount item',
+    () async {
+      final aggregate = _FakeLedgerMetricsSource(
+        accountTypeResults: const [
+          {AccountType.expense: 1000},
+          {AccountType.expense: 0},
+          {AccountType.expense: 0},
+        ],
+        byAccountResult: const [
+          AccountAggregate(
+            accountId: 'food',
+            accountType: AccountType.expense,
+            amountMinor: 300,
+          ),
+          AccountAggregate(
+            accountId: 'dining',
+            accountType: AccountType.expense,
+            amountMinor: 700,
+          ),
+        ],
+      );
+      final service = _service(
+        aggregate,
+        categories: [
+          _category('food'),
+          _category('dining', parentId: 'food'),
+          _category('travel'),
+        ],
+      );
+
+      final report =
+          await service
+              .watchCashflowReport(
+                CashflowReportQuery(month: MonthKey(year: 2026, month: 1)),
+              )
+              .first;
+
+      final group = report.categories.single;
+      expect(group.id, 'food');
+      expect(group.totalMinor, 1000);
+      expect(group.items, hasLength(2));
+      expect(group.items.first.id, 'dining');
+      expect(group.items.first.amountMinor, 700);
+      final unsubdivided = group.items.last;
+      expect(unsubdivided.id, 'food');
+      expect(unsubdivided.isUnsubdivided, isTrue);
+      expect(unsubdivided.amountMinor, 300);
+      // 零金额分类（travel）不返回统计读模型。
+      expect(report.categories.map((item) => item.id), isNot(contains('travel')));
     },
   );
 
@@ -185,7 +254,7 @@ void main() {
         january: const {AccountType.asset: 1000},
       },
     );
-    final service = FinancialMetricsServiceImpl(aggregate);
+    final service = _service(aggregate);
 
     final report =
         await service
@@ -206,6 +275,46 @@ void main() {
     ]);
     expect(report.accounts.map((item) => item.accountId), ['cash', 'card']);
   });
+}
+
+FinancialMetricsServiceImpl _service(
+  LedgerMetricsSource aggregate, {
+  List<Account> categories = const [],
+}) {
+  return FinancialMetricsServiceImpl(
+    metricsSource: aggregate,
+    accountQuery: _FakeAccountQueryService(categories),
+  );
+}
+
+Account _category(
+  String id, {
+  String? parentId,
+  AccountType type = AccountType.expense,
+}) {
+  return Account(
+    id: id,
+    name: id,
+    type: type,
+    parentId: parentId,
+    balance: const Money(minorUnits: 0),
+  );
+}
+
+class _FakeAccountQueryService implements AccountQueryService {
+  _FakeAccountQueryService(this._categories);
+
+  final List<Account> _categories;
+
+  @override
+  Future<List<Account>> findAccounts(Set<AccountType> types) async => [
+    for (final account in _categories)
+      if (types.contains(account.type)) account,
+  ];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 class _FakeLedgerMetricsSource implements LedgerMetricsSource {

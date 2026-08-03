@@ -442,7 +442,6 @@ StatisticsPresentation _presentation({
       StatisticsBreakdownItem(
         id: 'salary',
         title: '工资',
-        accountIds: {'salary'},
         accountType: AccountType.income,
         amount: Money(minorUnits: 2000),
         progress: 1,
@@ -450,7 +449,6 @@ StatisticsPresentation _presentation({
           StatisticsBreakdownItem(
             id: 'base-salary',
             title: '基本工资',
-            accountIds: {'salary'},
             accountType: AccountType.income,
             amount: Money(minorUnits: 2000),
             progress: 1,
@@ -462,7 +460,6 @@ StatisticsPresentation _presentation({
       StatisticsBreakdownItem(
         id: 'food',
         title: '餐饮',
-        accountIds: {'dining'},
         accountType: AccountType.expense,
         amount: Money(minorUnits: 700),
         progress: 1,
@@ -483,7 +480,6 @@ StatisticsPresentation _presentation({
       StatisticsBreakdownItem(
         id: 'cash',
         title: '现金',
-        accountIds: {'cash'},
         accountType: AccountType.asset,
         amount: Money(minorUnits: 10000),
         progress: 1,

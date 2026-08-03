@@ -79,12 +79,6 @@ Stream<List<CategoryNode>> categoryTree(Ref ref, AccountType type) {
   return ref.watch(categoryQueryServiceProvider).watchCategoryTree(type);
 }
 
-/// 归档分类（管理页归档区只读展示，parentId 指向归并目标）。
-@Riverpod(keepAlive: true)
-Stream<List<Account>> archivedCategories(Ref ref, AccountType type) {
-  return ref.watch(accountQueryServiceProvider).watchArchivedCategories(type);
-}
-
 @riverpod
 Stream<List<TransactionListReadModel>> transactionList(
   Ref ref, {

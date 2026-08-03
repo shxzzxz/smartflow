@@ -353,7 +353,10 @@ TransactionQueryService transactionQueryService(Ref ref) {
 
 @Riverpod(keepAlive: true)
 FinancialMetricsService financialMetricsService(Ref ref) {
-  return FinancialMetricsServiceImpl(ref.watch(ledgerMetricsSourceProvider));
+  return FinancialMetricsServiceImpl(
+    metricsSource: ref.watch(ledgerMetricsSourceProvider),
+    accountQuery: ref.watch(accountQueryServiceProvider),
+  );
 }
 
 @Riverpod(keepAlive: true)

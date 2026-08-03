@@ -125,21 +125,15 @@ StatisticsContentState statisticsRangeContent(
   final report = ref.watch(
     statisticsRangeReportProvider(from, until, balancePointIntervalDays),
   );
-  final accounts = ref.watch(accountsByIdProvider);
   if (report case AsyncError(:final error)) {
     return StatisticsContentState.error(message: '加载失败：$error');
   }
-  if (accounts case AsyncError(:final error)) {
-    return StatisticsContentState.error(message: '加载失败：$error');
-  }
-  if (report.value == null || accounts.value == null) {
+  final reportValue = report.value;
+  if (reportValue == null) {
     return const StatisticsContentState.loading();
   }
   return StatisticsContentState.loaded(
-    presentation: buildRangeStatisticsPresentation(
-      report: report.value!,
-      accountsById: accounts.value!,
-    ),
+    presentation: buildRangeStatisticsPresentation(report: reportValue),
   );
 }
 

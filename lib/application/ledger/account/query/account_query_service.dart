@@ -18,8 +18,6 @@ abstract interface class AccountQueryService {
   Stream<List<Account>> watchAccountsForUsage(AccountUsage usage);
 
   Stream<List<Account>> watchCategories(AccountType type);
-
-  Stream<List<Account>> watchArchivedCategories(AccountType type);
 }
 
 class AccountQueryServiceImpl implements AccountQueryService {
@@ -70,10 +68,5 @@ class AccountQueryServiceImpl implements AccountQueryService {
   @override
   Stream<List<Account>> watchCategories(AccountType type) {
     return _accounts.watchCategories(type);
-  }
-
-  @override
-  Stream<List<Account>> watchArchivedCategories(AccountType type) {
-    return _accounts.watchArchivedCategories(type);
   }
 }

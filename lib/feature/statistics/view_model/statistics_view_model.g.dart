@@ -263,7 +263,7 @@ final class StatisticsRangeContentProvider
 }
 
 String _$statisticsRangeContentHash() =>
-    r'460e11e7aab41716bb6f155d086f38556a8b9561';
+    r'ae91415ede01cfb37dd59b82f1f743e986cdb676';
 
 final class StatisticsRangeContentFamily extends $Family
     with

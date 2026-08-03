@@ -1,7 +1,9 @@
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/time/month_key.dart';
+import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
+import '../../account/query/account_query_service.dart';
 import '../../transaction/query/transaction_read_models.dart';
 import '../../transaction/query/transaction_scope.dart';
 import 'financial_metrics_queries.dart';
@@ -33,9 +35,14 @@ abstract interface class FinancialMetricsService {
 }
 
 class FinancialMetricsServiceImpl implements FinancialMetricsService {
-  const FinancialMetricsServiceImpl(this._aggregate);
+  const FinancialMetricsServiceImpl({
+    required LedgerMetricsSource metricsSource,
+    required AccountQueryService accountQuery,
+  }) : _aggregate = metricsSource,
+       _accountQuery = accountQuery;
 
   final LedgerMetricsSource _aggregate;
+  final AccountQueryService _accountQuery;
 
   static const Set<AccountType> _cashflowTypes = {
     AccountType.income,
@@ -60,11 +67,7 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
           window: window,
         ),
         _loadDailyCashflowSummaries(window),
-        _aggregate.aggregateByAccount(
-          accountTypes: _cashflowTypes,
-          scope: TransactionScopeFilter.stats,
-          window: window,
-        ),
+        _loadCategoryGroups(window),
         _loadBalanceTrend(query),
       ]);
       return StatisticsRangeReport(
@@ -72,7 +75,7 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
         until: query.until,
         cashflow: _toCashflowSummary(results[0] as Map<AccountType, int>),
         dailySummaries: results[1] as List<DailyCashflowSummary>,
-        categories: _toAccountMetrics(results[2] as List<AccountAggregate>),
+        categories: results[2] as List<CategoryMetricGroup>,
         balanceTrend: results[3] as List<BalanceTrendPoint>,
       );
     });
@@ -142,16 +145,12 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
       final results = await Future.wait([
         _loadCashflowComparisonForPeriods(periods),
         _loadDailyCashflowSummaries(periods.current),
-        _aggregate.aggregateByAccount(
-          accountTypes: _cashflowTypes,
-          scope: TransactionScopeFilter.stats,
-          window: periods.current,
-        ),
+        _loadCategoryGroups(periods.current),
       ]);
       return CashflowReport(
         comparison: results[0] as CashflowComparison,
         dailySummaries: results[1] as List<DailyCashflowSummary>,
-        categories: _toAccountMetrics(results[2] as List<AccountAggregate>),
+        categories: results[2] as List<CategoryMetricGroup>,
       );
     });
   }
@@ -379,12 +378,93 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
     );
   }
 
+  /// 分类统计读模型：SQL 按物理分类聚合后，沿活跃二层分类树组装
+  /// 一级 total 与二级 own 金额；一级自身直接金额呈现为"未细分"项。
+  Future<List<CategoryMetricGroup>> _loadCategoryGroups(
+    DateTimeWindow window,
+  ) async {
+    final results = await Future.wait<Object>([
+      _aggregate.aggregateByAccount(
+        accountTypes: _cashflowTypes,
+        scope: TransactionScopeFilter.stats,
+        window: window,
+      ),
+      _accountQuery.findAccounts(_cashflowTypes),
+    ]);
+    return _buildCategoryGroups(
+      aggregates: results[0] as List<AccountAggregate>,
+      categories: results[1] as List<Account>,
+    );
+  }
+
+  List<CategoryMetricGroup> _buildCategoryGroups({
+    required List<AccountAggregate> aggregates,
+    required List<Account> categories,
+  }) {
+    final amountByCategoryId = {
+      for (final aggregate in aggregates)
+        aggregate.accountId: aggregate.amountMinor,
+    };
+    final roots = <Account>[];
+    final childrenByParent = <String, List<Account>>{};
+    for (final category in categories) {
+      final parentId = category.parentId;
+      if (parentId == null) {
+        roots.add(category);
+      } else {
+        childrenByParent.putIfAbsent(parentId, () => []).add(category);
+      }
+    }
+
+    final groups = <CategoryMetricGroup>[];
+    for (final root in roots) {
+      final own = amountByCategoryId[root.id] ?? 0;
+      final items = <CategoryMetricItem>[
+        for (final child in childrenByParent[root.id] ?? const <Account>[])
+          if ((amountByCategoryId[child.id] ?? 0) != 0)
+            CategoryMetricItem(
+              id: child.id,
+              name: child.name,
+              iconKey: child.iconKey,
+              isUnsubdivided: false,
+              amountMinor: amountByCategoryId[child.id]!,
+            ),
+        if (own != 0)
+          CategoryMetricItem(
+            id: root.id,
+            name: root.name,
+            iconKey: root.iconKey,
+            isUnsubdivided: true,
+            amountMinor: own,
+          ),
+      ];
+      if (items.isEmpty) continue;
+      items.sort(
+        (left, right) =>
+            right.amountMinor.abs().compareTo(left.amountMinor.abs()),
+      );
+      groups.add(
+        CategoryMetricGroup(
+          id: root.id,
+          name: root.name,
+          iconKey: root.iconKey,
+          accountType: root.type,
+          totalMinor: items.fold(0, (sum, item) => sum + item.amountMinor),
+          items: items,
+        ),
+      );
+    }
+    groups.sort(
+      (left, right) => right.totalMinor.abs().compareTo(left.totalMinor.abs()),
+    );
+    return groups;
+  }
+
   List<AccountMetric> _toAccountMetrics(List<AccountAggregate> aggregates) {
     return [
       for (final item in aggregates)
         AccountMetric(
           accountId: item.accountId,
-          parentAccountId: item.parentAccountId,
           accountType: item.accountType,
           amountMinor: item.amountMinor,
         ),

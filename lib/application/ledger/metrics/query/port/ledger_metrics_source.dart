@@ -15,11 +15,9 @@ class AccountAggregate {
     required this.accountId,
     required this.accountType,
     required this.amountMinor,
-    this.parentAccountId,
   });
 
   final String accountId;
-  final String? parentAccountId;
   final AccountType accountType;
   final int amountMinor;
 
@@ -27,14 +25,12 @@ class AccountAggregate {
   bool operator ==(Object other) {
     return other is AccountAggregate &&
         other.accountId == accountId &&
-        other.parentAccountId == parentAccountId &&
         other.accountType == accountType &&
         other.amountMinor == amountMinor;
   }
 
   @override
-  int get hashCode =>
-      Object.hash(accountId, parentAccountId, accountType, amountMinor);
+  int get hashCode => Object.hash(accountId, accountType, amountMinor);
 }
 
 /// 账务指标事实源(entries × account × transaction)。
@@ -49,7 +45,7 @@ abstract interface class LedgerMetricsSource {
     DateTimeWindow window = const DateTimeWindow(),
   });
 
-  /// 按实际分录账户累计余额变化，并返回当前分类父级身份。
+  /// 按实际分录账户（物理分类粒度）累计余额变化；归档账户不参与统计。
   Future<List<AccountAggregate>> aggregateByAccount({
     required Set<AccountType> accountTypes,
     required TransactionScopeFilter scope,

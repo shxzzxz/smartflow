@@ -33,7 +33,6 @@ void main() {
         rows.singleWhere((row) => row.accountId == 'dining'),
         const AccountAggregate(
           accountId: 'dining',
-          parentAccountId: 'food',
           accountType: AccountType.expense,
           amountMinor: 700,
         ),
@@ -122,6 +121,12 @@ void main() {
           archivedAt: Value(DateTime(2026, 2)),
         ),
         AccountsCompanion.insert(
+          id: 'archived-food',
+          name: '已归档餐饮',
+          accountType: AccountType.expense,
+          archivedAt: Value(DateTime(2026, 2)),
+        ),
+        AccountsCompanion.insert(
           id: 'opening-equity',
           name: '期初权益',
           accountType: AccountType.equity,
@@ -146,6 +151,21 @@ void main() {
       entries: const [
         ('archived-asset', 'archived-cash', EntryDirection.debit, 300),
         ('archived-equity', 'opening-equity', EntryDirection.credit, 300),
+      ],
+    );
+    await _insertTransaction(
+      database,
+      id: 'archived-expense',
+      purpose: BusinessPurpose.dailyExpense,
+      occurredAt: DateTime(2026, 1, 3),
+      entries: const [
+        (
+          'archived-expense-category',
+          'archived-food',
+          EntryDirection.debit,
+          200,
+        ),
+        ('archived-expense-cash', 'archived-cash', EntryDirection.credit, 200),
       ],
     );
 
@@ -192,6 +212,19 @@ void main() {
     expect(byMonth, {
       MonthKey(year: 2026, month: 1): {AccountType.asset: 1000},
     });
+
+    final expenseByAccount = await repository.aggregateByAccount(
+      accountTypes: const {AccountType.expense},
+      scope: TransactionScopeFilter.stats,
+      window: window,
+    );
+    final expenseByType = await repository.aggregateByAccountType(
+      accountTypes: const {AccountType.expense},
+      scope: TransactionScopeFilter.stats,
+      window: window,
+    );
+    expect(expenseByAccount, isEmpty);
+    expect(expenseByType, isEmpty);
   });
 }
 

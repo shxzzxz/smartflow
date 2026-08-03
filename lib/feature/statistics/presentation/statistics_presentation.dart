@@ -39,9 +39,7 @@ class StatisticsPresentation {
 
 StatisticsPresentation buildRangeStatisticsPresentation({
   required StatisticsRangeReport report,
-  required Map<String, Account> accountsById,
 }) {
-  final categoryGroups = _buildCategoryGroups(report.categories, accountsById);
   final firstBalance =
       report.balanceTrend.isEmpty
           ? const Money(minorUnits: 0)
@@ -67,14 +65,14 @@ StatisticsPresentation buildRangeStatisticsPresentation({
       from: report.from,
       until: report.until,
     ),
-    incomeCategories:
-        categoryGroups
-            .where((item) => item.accountType == AccountType.income)
-            .toList(),
-    expenseCategories:
-        categoryGroups
-            .where((item) => item.accountType == AccountType.expense)
-            .toList(),
+    incomeCategories: _toCategoryBreakdownItems(
+      report.categories,
+      AccountType.income,
+    ),
+    expenseCategories: _toCategoryBreakdownItems(
+      report.categories,
+      AccountType.expense,
+    ),
     balanceComparison: BalanceSheetComparison(
       current: BalanceSheetSnapshot(
         assets: lastBalance,
@@ -104,20 +102,24 @@ class StatisticsBreakdownItem {
   const StatisticsBreakdownItem({
     required this.id,
     required this.title,
-    required this.accountIds,
     required this.accountType,
     required this.amount,
     required this.progress,
     this.children = const [],
+    this.isUnsubdivided = false,
   });
 
+  /// 分类统计项对应活跃分类 ID（"未细分"项使用一级分类的真实 ID）；
+  /// 资产负债明细项对应结算账户 ID。
   final String id;
   final String title;
-  final Set<String> accountIds;
   final AccountType accountType;
   final Money amount;
   final double progress;
   final List<StatisticsBreakdownItem> children;
+
+  /// 一级分类自身直接金额的"未细分"项；钻取只命中该分类自身，不展开二级。
+  final bool isUnsubdivided;
 
   StatisticsBreakdownItem copyWith({
     double? progress,
@@ -126,11 +128,11 @@ class StatisticsBreakdownItem {
     return StatisticsBreakdownItem(
       id: id,
       title: title,
-      accountIds: accountIds,
       accountType: accountType,
       amount: amount,
       progress: progress ?? this.progress,
       children: children ?? this.children,
+      isUnsubdivided: isUnsubdivided,
     );
   }
 }
@@ -460,16 +462,11 @@ StatisticsPresentation buildStatisticsPresentation({
   required DateTime cashflowUntil,
   required DateTime balanceUntil,
 }) {
-  final categoryGroups = _buildCategoryGroups(
-    cashflow.categories,
-    accountsById,
-  );
   final balanceAccounts = [
     for (final metric in balance.accounts)
       StatisticsBreakdownItem(
         id: metric.accountId,
         title: accountsById[metric.accountId]?.name ?? '已归档账户',
-        accountIds: {metric.accountId},
         accountType: metric.accountType,
         amount: metric.amount,
         progress: 0,
@@ -483,14 +480,14 @@ StatisticsPresentation buildStatisticsPresentation({
       from: cashflowFrom,
       until: cashflowUntil,
     ),
-    incomeCategories:
-        categoryGroups
-            .where((item) => item.accountType == AccountType.income)
-            .toList(),
-    expenseCategories:
-        categoryGroups
-            .where((item) => item.accountType == AccountType.expense)
-            .toList(),
+    incomeCategories: _toCategoryBreakdownItems(
+      cashflow.categories,
+      AccountType.income,
+    ),
+    expenseCategories: _toCategoryBreakdownItems(
+      cashflow.categories,
+      AccountType.expense,
+    ),
     balanceComparison: balance.comparison,
     netAssetTrend: balance.trend,
     balanceAccounts: normalizedBalanceAccounts,
@@ -503,65 +500,37 @@ StatisticsPresentation buildStatisticsPresentation({
   );
 }
 
-List<StatisticsBreakdownItem> _buildCategoryGroups(
-  List<AccountMetric> metrics,
-  Map<String, Account> accountsById,
+/// 分类统计读模型已由应用查询层组装为两层结构，这里只做展示映射与
+/// progress 归一，不再解析 parentId 或账户快照拼树。
+List<StatisticsBreakdownItem> _toCategoryBreakdownItems(
+  List<CategoryMetricGroup> groups,
+  AccountType type,
 ) {
-  final groups = <String, _MutableBreakdown>{};
-  for (final metric in metrics) {
-    final rootId = _resolveCategoryRootId(metric, accountsById);
-    final rootAccount = accountsById[rootId];
-    final group = groups.putIfAbsent(
-      rootId,
-      () => _MutableBreakdown(
-        id: rootId,
-        title: rootAccount?.name ?? '已归档分类',
-        accountType: metric.accountType,
-      ),
-    );
-    group.amountMinor += metric.amountMinor;
-    group.accountIds.add(metric.accountId);
-    group.children.add(
-      StatisticsBreakdownItem(
-        id: metric.accountId,
-        title: accountsById[metric.accountId]?.name ?? '已归档分类',
-        accountIds: {metric.accountId},
-        accountType: metric.accountType,
-        amount: metric.amount,
-        progress: 0,
-      ),
-    );
-  }
   final result = [
-    for (final group in groups.values)
-      StatisticsBreakdownItem(
-        id: group.id,
-        title: group.title,
-        accountIds: Set.unmodifiable(group.accountIds),
-        accountType: group.accountType,
-        amount: Money(minorUnits: group.amountMinor),
-        progress: 0,
-        children: List.unmodifiable(
-          _withProgress(group.children..sort(_compareBreakdown)),
+    for (final group in groups)
+      if (group.accountType == type)
+        StatisticsBreakdownItem(
+          id: group.id,
+          title: group.name,
+          accountType: group.accountType,
+          amount: group.total,
+          progress: 0,
+          children: List.unmodifiable(
+            _withProgress([
+              for (final item in group.items)
+                StatisticsBreakdownItem(
+                  id: item.id,
+                  title: item.isUnsubdivided ? '未细分' : item.name,
+                  accountType: group.accountType,
+                  amount: item.amount,
+                  progress: 0,
+                  isUnsubdivided: item.isUnsubdivided,
+                ),
+            ]),
+          ),
         ),
-      ),
-  ]..sort(_compareBreakdown);
+  ];
   return _withProgress(result);
-}
-
-/// 沿 parentId 链解析到一级分类。归档分类挂载在承接分类下（可能是二级），
-/// 链最多三层（归档叶子 → 二级 → 一级）；上限防御异常数据成环。
-String _resolveCategoryRootId(
-  AccountMetric metric,
-  Map<String, Account> accountsById,
-) {
-  var currentId = metric.accountId;
-  var parentId = metric.parentAccountId;
-  for (var depth = 0; parentId != null && depth < 4; depth++) {
-    currentId = parentId;
-    parentId = accountsById[currentId]?.parentId;
-  }
-  return currentId;
 }
 
 List<StatisticsBreakdownItem> _withProgress(
@@ -589,19 +558,4 @@ int _compareBreakdown(
   StatisticsBreakdownItem right,
 ) {
   return right.amount.minorUnits.abs().compareTo(left.amount.minorUnits.abs());
-}
-
-class _MutableBreakdown {
-  _MutableBreakdown({
-    required this.id,
-    required this.title,
-    required this.accountType,
-  });
-
-  final String id;
-  final String title;
-  final AccountType accountType;
-  final Set<String> accountIds = {};
-  final List<StatisticsBreakdownItem> children = [];
-  int amountMinor = 0;
 }

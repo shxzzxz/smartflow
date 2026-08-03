@@ -158,10 +158,16 @@ void main() {
     final content = container.read(statisticsContentProvider(visibleMonth));
     expect(content, isA<StatisticsContentLoaded>());
     final loaded = content as StatisticsContentLoaded;
-    expect(loaded.presentation.expenseCategories.single.title, '餐饮');
-    expect(loaded.presentation.expenseCategories.single.amount.minorUnits, 700);
-    expect(loaded.presentation.expenseCategories.single.accountIds, {'dining'});
-    expect(loaded.presentation.incomeCategories.single.title, '工资');
+    final expense = loaded.presentation.expenseCategories.single;
+    expect(expense.title, '餐饮');
+    expect(expense.amount.minorUnits, 700);
+    expect(expense.id, 'food');
+    expect(expense.children.single.title, '聚餐');
+    expect(expense.children.single.id, 'dining');
+    final income = loaded.presentation.incomeCategories.single;
+    expect(income.title, '工资');
+    expect(income.children.single.title, '未细分');
+    expect(income.children.single.isUnsubdivided, isTrue);
     expect(loaded.presentation.balanceAccounts.single.title, '现金');
   });
 
@@ -261,17 +267,38 @@ CashflowReport _cashflowReport() {
         expense: const Money(minorUnits: 700),
       ),
     ],
-    categories: const [
-      AccountMetric(
-        accountId: 'dining',
-        parentAccountId: 'food',
+    categories: [
+      CategoryMetricGroup(
+        id: 'food',
+        name: '餐饮',
+        iconKey: null,
         accountType: AccountType.expense,
-        amountMinor: 700,
+        totalMinor: 700,
+        items: const [
+          CategoryMetricItem(
+            id: 'dining',
+            name: '聚餐',
+            iconKey: null,
+            isUnsubdivided: false,
+            amountMinor: 700,
+          ),
+        ],
       ),
-      AccountMetric(
-        accountId: 'salary',
+      CategoryMetricGroup(
+        id: 'salary',
+        name: '工资',
+        iconKey: null,
         accountType: AccountType.income,
-        amountMinor: 2000,
+        totalMinor: 2000,
+        items: const [
+          CategoryMetricItem(
+            id: 'salary',
+            name: '工资',
+            iconKey: null,
+            isUnsubdivided: true,
+            amountMinor: 2000,
+          ),
+        ],
       ),
     ],
   );

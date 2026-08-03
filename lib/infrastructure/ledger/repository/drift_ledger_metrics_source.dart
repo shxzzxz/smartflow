@@ -11,14 +11,10 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
 
   final AppDatabase _db;
 
-  /// 归档账户不参与统计；分类（income/expense）例外——归档分类的历史分录
-  /// 仍计入统计，由上层沿 parentId 归并到承接分类。
+  /// 归档账户不参与任何统计口径；有交易引用的分类不可删除，
+  /// 因此分录只会指向活跃分类。
   Expression<bool> _statisticalAccountFilter() {
-    return _db.accounts.archivedAt.isNull() |
-        _db.accounts.accountType.isInValues(const [
-          AccountType.income,
-          AccountType.expense,
-        ]);
+    return _db.accounts.archivedAt.isNull();
   }
 
   @override
@@ -30,7 +26,6 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
     if (accountTypes.isEmpty) return const [];
 
     final accountIdCol = _db.accounts.id;
-    final parentIdCol = _db.accounts.parentId;
     final typeCol = _db.accounts.accountType;
     final sumExpr =
         balanceDeltaExpr(entries: _db.entries, accounts: _db.accounts).sum();
@@ -45,13 +40,13 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
               _db.accounts.id.equalsExp(_db.entries.accountId),
             ),
           ])
-          ..addColumns([accountIdCol, parentIdCol, typeCol, sumExpr])
+          ..addColumns([accountIdCol, typeCol, sumExpr])
           ..where(
             applyTransactionScope(transactions: _db.transactions, scope: scope),
           )
           ..where(_statisticalAccountFilter())
           ..where(_db.accounts.accountType.isInValues(accountTypes))
-          ..groupBy([accountIdCol, parentIdCol, typeCol]);
+          ..groupBy([accountIdCol, typeCol]);
 
     if (window.from != null) {
       select.where(
@@ -70,7 +65,6 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
           if (row.read(typeCol) case final String typeName)
             AccountAggregate(
               accountId: accountId,
-              parentAccountId: row.read(parentIdCol),
               accountType: AccountType.values.byName(typeName),
               amountMinor: row.read(sumExpr) ?? 0,
             ),

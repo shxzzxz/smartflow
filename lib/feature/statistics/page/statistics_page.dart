@@ -801,12 +801,16 @@ void _openTransactions(
   DateTime from,
   DateTime until,
 ) {
-  final ids = (item.accountIds.toList()..sort()).join(',');
+  final ids = <String>{
+    item.id,
+    for (final child in item.children) child.id,
+  }.toList()
+    ..sort();
   context.push(
     Uri(
       path: '/statistics/transactions',
       queryParameters: {
-        'accountIds': ids,
+        'accountIds': ids.join(','),
         'from': from.toIso8601String(),
         'until': until.toIso8601String(),
         'title': item.title,

@@ -9,11 +9,9 @@ class AccountMetric {
     required this.accountId,
     required this.accountType,
     required this.amountMinor,
-    this.parentAccountId,
   });
 
   final String accountId;
-  final String? parentAccountId;
   final AccountType accountType;
   final int amountMinor;
 
@@ -23,14 +21,58 @@ class AccountMetric {
   bool operator ==(Object other) {
     return other is AccountMetric &&
         other.accountId == accountId &&
-        other.parentAccountId == parentAccountId &&
         other.accountType == accountType &&
         other.amountMinor == amountMinor;
   }
 
   @override
-  int get hashCode =>
-      Object.hash(accountId, parentAccountId, accountType, amountMinor);
+  int get hashCode => Object.hash(accountId, accountType, amountMinor);
+}
+
+/// 一级分类统计：total 为自身直接金额与全部二级统计项之和。
+///
+/// 一级分类自身的直接金额以"未细分"二级统计项呈现（使用一级分类的真实 ID），
+/// 因此 [items] 金额之和恒等于 [totalMinor]；统计只包含非零节点。
+class CategoryMetricGroup {
+  CategoryMetricGroup({
+    required this.id,
+    required this.name,
+    required this.iconKey,
+    required this.accountType,
+    required this.totalMinor,
+    required List<CategoryMetricItem> items,
+  }) : items = List.unmodifiable(items);
+
+  final String id;
+  final String name;
+  final String? iconKey;
+  final AccountType accountType;
+  final int totalMinor;
+  final List<CategoryMetricItem> items;
+
+  Money get total => Money(minorUnits: totalMinor);
+}
+
+/// 二级分类统计项：只承载该分类自身的直接金额。
+class CategoryMetricItem {
+  const CategoryMetricItem({
+    required this.id,
+    required this.name,
+    required this.iconKey,
+    required this.isUnsubdivided,
+    required this.amountMinor,
+  });
+
+  final String id;
+  final String name;
+  final String? iconKey;
+
+  /// 一级分类自身直接金额的"未细分"项；[id] 为一级分类的真实分类 ID。
+  final bool isUnsubdivided;
+
+  final int amountMinor;
+
+  Money get amount => Money(minorUnits: amountMinor);
 }
 
 class CashflowReport {
@@ -42,7 +84,7 @@ class CashflowReport {
 
   final CashflowComparison comparison;
   final List<DailyCashflowSummary> dailySummaries;
-  final List<AccountMetric> categories;
+  final List<CategoryMetricGroup> categories;
 }
 
 class BalanceReport {
@@ -71,7 +113,7 @@ class StatisticsRangeReport {
   final DateTime until;
   final CashflowSummary cashflow;
   final List<DailyCashflowSummary> dailySummaries;
-  final List<AccountMetric> categories;
+  final List<CategoryMetricGroup> categories;
   final List<BalanceTrendPoint> balanceTrend;
 }
 
