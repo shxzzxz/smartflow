@@ -65,7 +65,6 @@ Future<void> showCategoryActionSheet(
             ListTile(
               leading: const Icon(RemixIcons.swap_line),
               title: const Text('迁移交易'),
-              subtitle: const Text('把该分类的全部交易改到另一个分类'),
               onTap:
                   () =>
                       Navigator.of(sheetContext).pop(_CategoryAction.migrate),
