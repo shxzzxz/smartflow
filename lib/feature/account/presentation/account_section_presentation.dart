@@ -3,11 +3,11 @@ import '../../../core/money/money.dart';
 import '../view_model/account_view.dart';
 
 class AccountSectionPresentation {
-  const AccountSectionPresentation({
+  AccountSectionPresentation({
     required this.id,
     required this.title,
-    required this.accounts,
-  });
+    required List<AccountView> accounts,
+  }) : accounts = List.unmodifiable(accounts);
 
   final String id;
   final String title;

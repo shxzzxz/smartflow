@@ -52,7 +52,7 @@ sealed class ArchivedAccountsPageState {
   const factory ArchivedAccountsPageState.error(UiError error) =
       ArchivedAccountsPageError;
 
-  const factory ArchivedAccountsPageState.loaded(
+  factory ArchivedAccountsPageState.loaded(
     List<AccountSectionPresentation> sections,
   ) = ArchivedAccountsPageLoaded;
 }
@@ -68,7 +68,8 @@ final class ArchivedAccountsPageError extends ArchivedAccountsPageState {
 }
 
 final class ArchivedAccountsPageLoaded extends ArchivedAccountsPageState {
-  const ArchivedAccountsPageLoaded(this.sections);
+  ArchivedAccountsPageLoaded(List<AccountSectionPresentation> sections)
+    : sections = List.unmodifiable(sections);
 
   final List<AccountSectionPresentation> sections;
 }
