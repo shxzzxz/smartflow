@@ -26,7 +26,7 @@ void main() {
     expect(find.text('出账日 1   还款日 15'), findsOneWidget);
     expect(find.text('不计入资产与负债统计'), findsNothing);
     expect(find.text('不计入资产和负债统计'), findsNothing);
-    expect(find.byTooltip('恢复账户'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, '恢复'), findsOneWidget);
 
     final amount = tester.widget<Text>(find.text('50.00'));
     expect(amount.style?.color, AppTheme.light().colorScheme.onSurface);
@@ -39,7 +39,7 @@ void main() {
     await tester.pumpWidget(_buildArchivedAccountsPage(service: service));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('恢复账户'));
+    await tester.tap(find.widgetWithText(TextButton, '恢复'));
     await tester.pump();
 
     expect(service.restoredAccountId, 'archived-credit-1');
@@ -61,6 +61,24 @@ void main() {
 
     expect(find.text('已归档账户加载失败，请稍后重试'), findsOneWidget);
     expect(find.textContaining('database connection details'), findsNothing);
+  });
+
+  testWidgets('collapses and expands an archived account group', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_buildArchivedAccountsPage());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('信用'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('信用'), findsOneWidget);
+    expect(find.text('已归档招行信用卡'), findsNothing);
+
+    await tester.tap(find.text('信用'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('已归档招行信用卡'), findsOneWidget);
   });
 }
 

@@ -8,6 +8,7 @@ import '../../../core/money/money_formatter.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_popup_menu_button.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
@@ -266,27 +267,41 @@ class _AssetsHeader extends StatelessWidget {
             tooltip: allCollapsed ? '展开全部分组' : '折叠全部分组',
           ),
         IconButton(
-          onPressed: onManageGroups,
-          icon: Icon(RemixIcons.folder_settings_line, color: colors.onSurface),
-          tooltip: '管理分组',
-        ),
-        IconButton(
           onPressed: () => context.push('/account/new'),
           icon: Icon(RemixIcons.add_line, color: colors.onSurface),
           tooltip: '新建账户',
         ),
-        IconButton(
-          onPressed: onToggleHide,
-          icon: Icon(
-            hideBalances ? RemixIcons.eye_off_line : RemixIcons.eye_line,
-            color: colors.onSurfaceVariant,
-          ),
-          tooltip: hideBalances ? '显示余额' : '隐藏余额',
+        AppPopupMenuButton<_AssetsHeaderAction>(
+          tooltip: '更多操作',
+          icon: RemixIcons.more_2_fill,
+          options: [
+            const AppPopupMenuOption(
+              value: _AssetsHeaderAction.manageGroups,
+              label: '管理分组',
+              icon: RemixIcons.folder_settings_line,
+            ),
+            AppPopupMenuOption(
+              value: _AssetsHeaderAction.toggleBalanceVisibility,
+              label: hideBalances ? '显示余额' : '隐藏余额',
+              icon:
+                  hideBalances ? RemixIcons.eye_line : RemixIcons.eye_off_line,
+            ),
+          ],
+          onSelected: (action) {
+            switch (action) {
+              case _AssetsHeaderAction.manageGroups:
+                onManageGroups();
+              case _AssetsHeaderAction.toggleBalanceVisibility:
+                onToggleHide();
+            }
+          },
         ),
       ],
     );
   }
 }
+
+enum _AssetsHeaderAction { manageGroups, toggleBalanceVisibility }
 
 class _NetAssetCard extends StatelessWidget {
   const _NetAssetCard({required this.comparison, required this.hideBalances});
@@ -547,7 +562,7 @@ class _AccountSection extends StatelessWidget {
                     context,
                     candidateData,
                     child,
-                  ) => LongPressDraggable<AccountSectionPresentation>(
+                  ) => Draggable<AccountSectionPresentation>(
                     data: section,
                     feedback: Material(
                       color: Colors.transparent,

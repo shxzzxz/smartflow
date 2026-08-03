@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../design_system/theme/app_text_styles.dart';
+import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/finance/money_text.dart';
@@ -26,6 +27,7 @@ class ArchivedAccountsPage extends ConsumerStatefulWidget {
 
 class _ArchivedAccountsPageState extends ConsumerState<ArchivedAccountsPage> {
   late bool _hideBalances;
+  final Set<String> _collapsedGroupIds = {};
 
   @override
   void initState() {
@@ -54,6 +56,13 @@ class _ArchivedAccountsPageState extends ConsumerState<ArchivedAccountsPage> {
         ArchivedAccountsPageLoaded(:final sections) => _ArchivedAccountsContent(
           sections: sections,
           hideBalances: _hideBalances,
+          collapsedGroupIds: _collapsedGroupIds,
+          onToggleGroup:
+              (groupId) => setState(() {
+                _collapsedGroupIds.contains(groupId)
+                    ? _collapsedGroupIds.remove(groupId)
+                    : _collapsedGroupIds.add(groupId);
+              }),
         ),
         ArchivedAccountsPageError(:final error) => _ArchivedAccountsError(
           message: error.message,
@@ -70,10 +79,14 @@ class _ArchivedAccountsContent extends ConsumerWidget {
   const _ArchivedAccountsContent({
     required this.sections,
     required this.hideBalances,
+    required this.collapsedGroupIds,
+    required this.onToggleGroup,
   });
 
   final List<AccountSectionPresentation> sections;
   final bool hideBalances;
+  final Set<String> collapsedGroupIds;
+  final ValueChanged<String> onToggleGroup;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -93,6 +106,8 @@ class _ArchivedAccountsContent extends ConsumerWidget {
           _ArchivedAccountGroup(
             section: sections[index],
             hideBalances: hideBalances,
+            collapsed: collapsedGroupIds.contains(sections[index].id),
+            onToggleCollapsed: () => onToggleGroup(sections[index].id),
             onRestore: (account) => _restoreAccount(context, ref, account.id),
           ),
         ],
@@ -123,16 +138,19 @@ class _ArchivedAccountGroup extends StatelessWidget {
   const _ArchivedAccountGroup({
     required this.section,
     required this.hideBalances,
+    required this.collapsed,
+    required this.onToggleCollapsed,
     required this.onRestore,
   });
 
   final AccountSectionPresentation section;
   final bool hideBalances;
+  final bool collapsed;
+  final VoidCallback onToggleCollapsed;
   final ValueChanged<AccountView> onRestore;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     return AppSurface(
       child: Padding(
         padding: const EdgeInsets.symmetric(
@@ -141,42 +159,63 @@ class _ArchivedAccountGroup extends StatelessWidget {
         ),
         child: Column(
           children: [
-            ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: AppSpacing.space48),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      section.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.appTextStyles.groupTitle,
-                    ),
+            Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+                onTap: onToggleCollapsed,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minHeight: AppSpacing.space48,
                   ),
-                  const SizedBox(width: AppSpacing.space12),
-                  Text(
-                    '${section.accounts.length} 个账户',
-                    style: context.appTextStyles.listSupporting,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          section.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.appTextStyles.groupTitle,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.space12),
+                      Text(
+                        '${section.accounts.length} 个账户',
+                        style: context.appTextStyles.listSupporting,
+                      ),
+                      const SizedBox(width: AppSpacing.space4),
+                      SizedBox.square(
+                        dimension: AppSpacing.space24,
+                        child: AnimatedRotation(
+                          turns: collapsed ? -0.25 : 0,
+                          duration: const Duration(milliseconds: 150),
+                          child: Icon(
+                            RemixIcons.arrow_down_s_line,
+                            size: AppSpacing.space18,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space4),
-            for (final account in section.accounts)
-              AccountListRow(
-                account: account,
-                amountSemantic: MoneySemantic.neutral,
-                hideBalance: hideBalances,
-                onTap: () => context.push('/account/${account.id}'),
-                trailing: IconButton(
-                  onPressed: () => onRestore(account),
-                  icon: Icon(
-                    RemixIcons.inbox_unarchive_line,
-                    color: colors.onSurfaceVariant,
-                  ),
-                  tooltip: '恢复账户',
                 ),
               ),
+            ),
+            if (!collapsed) ...[
+              const SizedBox(height: AppSpacing.space4),
+              for (final account in section.accounts)
+                AccountListRow(
+                  account: account,
+                  amountSemantic: MoneySemantic.neutral,
+                  hideBalance: hideBalances,
+                  onTap: () => context.push('/account/${account.id}'),
+                  trailing: TextButton(
+                    onPressed: () => onRestore(account),
+                    child: const Text('恢复'),
+                  ),
+                ),
+            ],
           ],
         ),
       ),

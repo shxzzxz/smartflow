@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
+import 'package:smartflow/application/ledger/account/command/account_group_app_service.dart';
+import 'package:smartflow/application/ledger/account/command/account_group_command.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/asset_section_collapse_store.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -114,10 +116,12 @@ void main() {
 
   testWidgets('shows archived accounts as a compact entry', (tester) async {
     await tester.pumpWidget(
-      _buildAccountsPageApp(archivedAccounts: [_archivedCreditAccount()]),
+      _buildAccountsPageApp(
+        archivedAccounts: [_archivedCreditAccount()],
+        groups: const [],
+      ),
     );
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('已归档账户'), 400);
 
     expect(find.text('已归档账户'), findsOneWidget);
     expect(find.text('1'), findsOneWidget);
@@ -159,7 +163,9 @@ void main() {
     await tester.pumpWidget(_buildAccountsPageApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('隐藏余额'));
+    await tester.tap(find.byTooltip('更多操作'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('隐藏余额'));
     await tester.pump();
 
     expect(
@@ -253,6 +259,46 @@ void main() {
     expect(find.text('资金'), findsOneWidget);
     expect(find.text('招行储蓄卡'), findsNothing);
   });
+
+  testWidgets('keeps collapse, add, and more actions in that order', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_buildAccountsPageApp());
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getCenter(find.byTooltip('折叠全部分组')).dx,
+      lessThan(tester.getCenter(find.byTooltip('新建账户')).dx),
+    );
+    expect(
+      tester.getCenter(find.byTooltip('新建账户')).dx,
+      lessThan(tester.getCenter(find.byTooltip('更多操作')).dx),
+    );
+
+    await tester.tap(find.byTooltip('更多操作'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('管理分组'), findsOneWidget);
+    expect(find.text('隐藏余额'), findsOneWidget);
+  });
+
+  testWidgets('starts group sorting with a direct drag', (tester) async {
+    final groupService = _FakeAccountGroupAppService();
+    await tester.pumpWidget(_buildAccountsPageApp(groupService: groupService));
+    await tester.pumpAndSettle();
+
+    final from = tester.getCenter(find.text('贷款'));
+    final to = tester.getCenter(find.text('资金'));
+    await tester.drag(find.text('贷款'), to - from);
+    await tester.pumpAndSettle();
+
+    expect(groupService.reorderedGroupIds, [
+      'loan',
+      'fund',
+      'credit',
+      'reimbursement',
+    ]);
+  });
 }
 
 class _InMemoryAssetSectionCollapseStore implements AssetSectionCollapseStore {
@@ -322,7 +368,9 @@ AccountView _archivedCreditAccount() {
 Widget _buildAccountsPageApp({
   List<AccountView> accounts = const [],
   List<AccountView> archivedAccounts = const [],
+  List<AccountGroup>? groups,
   AssetSectionCollapseStore? collapseStore,
+  AccountGroupAppService? groupService,
 }) {
   return ProviderScope(
     overrides: [
@@ -331,16 +379,21 @@ Widget _buildAccountsPageApp({
         (ref) => AsyncValue.data(archivedAccounts),
       ),
       accountGroupsProvider.overrideWith(
-        (ref) => Stream.value([
-          AccountGroup(id: 'fund', name: '资金'),
-          AccountGroup(id: 'credit', name: '信用'),
-          AccountGroup(id: 'loan', name: '贷款'),
-          AccountGroup(id: 'reimbursement', name: '报销'),
-        ]),
+        (ref) => Stream.value(
+          groups ??
+              [
+                AccountGroup(id: 'fund', name: '资金'),
+                AccountGroup(id: 'credit', name: '信用'),
+                AccountGroup(id: 'loan', name: '贷款'),
+                AccountGroup(id: 'reimbursement', name: '报销'),
+              ],
+        ),
       ),
       assetSectionCollapseStoreProvider.overrideWith(
         (ref) => collapseStore ?? _InMemoryAssetSectionCollapseStore(),
       ),
+      if (groupService != null)
+        accountGroupAppServiceProvider.overrideWithValue(groupService),
       balanceSheetComparisonProvider.overrideWith(
         (ref) => Stream.value(
           const BalanceSheetComparison(
@@ -358,4 +411,16 @@ Widget _buildAccountsPageApp({
     ],
     child: MaterialApp(theme: AppTheme.light(), home: const AccountsPage()),
   );
+}
+
+class _FakeAccountGroupAppService implements AccountGroupAppService {
+  List<String>? reorderedGroupIds;
+
+  @override
+  Future<void> reorderGroups(ReorderAccountGroupsCommand command) async {
+    reorderedGroupIds = command.orderedIds;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
