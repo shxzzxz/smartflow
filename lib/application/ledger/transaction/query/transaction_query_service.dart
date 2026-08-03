@@ -96,7 +96,9 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     final accountsById = await _accountQuery.findAccountsById();
     final pageQuery = _normalizeQuery(query, accountsById);
     final categoryAccountIds = pageQuery.categoryAccountIds;
-    if (categoryAccountIds != null && categoryAccountIds.isEmpty) {
+    final settlementAccountIds = pageQuery.settlementAccountIds;
+    if ((categoryAccountIds != null && categoryAccountIds.isEmpty) ||
+        (settlementAccountIds != null && settlementAccountIds.isEmpty)) {
       return const [];
     }
     final page = await _txRead.watchPage(pageQuery).first;
@@ -107,11 +109,12 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     TransactionListQuery query,
     Map<String, Account> accountsById,
   ) {
-    final settlementAccountId = query.settlementAccountId;
     return TransactionPageQuery(
       categoryAccountIds: _expandCategoryFilter(query, accountsById),
-      settlementAccountIds:
-          settlementAccountId == null ? null : {settlementAccountId},
+      settlementAccountIds: _validateSettlementAccountFilter(
+        query.settlementAccountId,
+        accountsById,
+      ),
       occurredFrom: query.occurredFrom,
       occurredUntil: query.occurredUntil,
       topLevelOnly: query.topLevelOnly,
@@ -120,6 +123,20 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
       before: query.before,
       scope: query.scope,
     );
+  }
+
+  /// 结算账户只能是当前活跃的 asset / liability 用户账户。
+  /// 不存在、归档或系统账户返回空集合，表达“无可匹配项”。
+  Set<String>? _validateSettlementAccountFilter(
+    String? accountId,
+    Map<String, Account> accountsById,
+  ) {
+    if (accountId == null) return null;
+    final account = accountsById[accountId];
+    if (account == null || !account.type.isUserAccount || account.isArchived) {
+      return const {};
+    }
+    return {account.id};
   }
 
   /// 一级分类展开为自身与全部活跃二级分类，二级分类展开为自身；
@@ -229,6 +246,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
             accountsById,
           ),
           settlementEntries: _settlementRefs(
+            transaction,
             entriesByTransaction[transaction.id] ?? const [],
             accountsById,
           ),
@@ -286,16 +304,21 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     return null;
   }
 
-  /// 结算分录 = asset / liability 账户上的分录；分类与权益系统账户
-  /// （期初余额、幽灵账户、利费优等）不属于结算投影。
+  /// 一般交易只投影 asset / liability 结算账户；期初余额与余额调整
+  /// 额外投影系统期初余额账户，使列表能表达完整资金流向。
   List<TransactionSettlementEntryRef> _settlementRefs(
+    Transaction transaction,
     List<Entry> entries,
     Map<String, Account> accountsById,
   ) {
     final refs = <TransactionSettlementEntryRef>[];
     for (final entry in entries) {
       final account = accountsById[entry.accountId];
-      if (account == null || !account.type.isUserAccount) continue;
+      if (account == null ||
+          (!account.type.isUserAccount &&
+              !_isOpeningBalanceCounterpart(transaction, account))) {
+        continue;
+      }
       refs.add(
         TransactionSettlementEntryRef(
           accountId: entry.accountId,
@@ -307,6 +330,12 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
       );
     }
     return List.unmodifiable(refs);
+  }
+
+  bool _isOpeningBalanceCounterpart(Transaction transaction, Account account) {
+    return (transaction.businessPurpose == BusinessPurpose.openingBalance ||
+            transaction.businessPurpose == BusinessPurpose.balanceAdjustment) &&
+        account.systemKey == SystemKey.openingBalance;
   }
 
   List<TransactionAdjustment> _adjustments({

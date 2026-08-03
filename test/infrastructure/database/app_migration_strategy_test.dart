@@ -380,6 +380,83 @@ void main() {
       );
     },
   );
+
+  test('opening a v24 database migrates archived category facts', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'smartflow-category-migration-test-',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File(
+      '${directory.path}${Platform.pathSeparator}smartflow.sqlite',
+    );
+
+    final staleDatabase = _openDatabase(file);
+    await staleDatabase.customStatement(
+      "INSERT INTO accounts "
+      "(id, name, account_type, balance_minor) VALUES "
+      "('food', '餐饮', 'expense', 0), "
+      "('cash', '现金', 'asset', 0)",
+    );
+    await staleDatabase.customStatement(
+      "INSERT INTO accounts "
+      "(id, name, account_type, parent_id, balance_minor, archived_at) "
+      "VALUES ('old-dining', '旧聚餐', 'expense', 'food', 0, 1)",
+    );
+    await staleDatabase.customStatement(
+      "INSERT INTO transactions "
+      "(id, business_purpose, occurred_at, posted_at, "
+      "primary_amount_minor, reimbursement_expense_account_id, source_kind) "
+      "VALUES ('advance', 'reimbursementAdvance', 1, 1, 1000, "
+      "'old-dining', 'manual')",
+    );
+    await staleDatabase.customStatement(
+      "INSERT INTO entries "
+      "(id, transaction_id, account_id, direction, amount_minor) VALUES "
+      "('category-entry', 'advance', 'old-dining', 'debit', 1000), "
+      "('cash-entry', 'advance', 'cash', 'credit', 1000)",
+    );
+    await staleDatabase.customStatement(
+      "INSERT INTO import_entity_mappings "
+      "(id, source, entity_kind, source_entity_key, target_account_id) "
+      "VALUES ('mapping', 'yimu', 'category', '旧聚餐', 'old-dining')",
+    );
+    await staleDatabase.customStatement('PRAGMA user_version = 24');
+    await staleDatabase.close();
+
+    final upgradedDatabase = _openDatabase(file);
+    addTearDown(upgradedDatabase.close);
+    final entry =
+        await upgradedDatabase
+            .customSelect(
+              "SELECT account_id FROM entries WHERE id = 'category-entry'",
+            )
+            .getSingle();
+    expect(entry.read<String>('account_id'), 'food');
+    final transaction =
+        await upgradedDatabase
+            .customSelect(
+              'SELECT reimbursement_expense_account_id FROM transactions '
+              "WHERE id = 'advance'",
+            )
+            .getSingle();
+    expect(
+      transaction.read<String>('reimbursement_expense_account_id'),
+      'food',
+    );
+    final archived =
+        await upgradedDatabase
+            .customSelect("SELECT id FROM accounts WHERE id = 'old-dining'")
+            .get();
+    expect(archived, isEmpty);
+    final mapping =
+        await upgradedDatabase
+            .customSelect(
+              "SELECT target_account_id FROM import_entity_mappings "
+              "WHERE id = 'mapping'",
+            )
+            .getSingle();
+    expect(mapping.read<String>('target_account_id'), 'food');
+  });
 }
 
 AppDatabase _openDatabase(File file) {

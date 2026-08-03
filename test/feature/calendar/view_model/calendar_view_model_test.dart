@@ -8,7 +8,6 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/calendar/view_model/calendar_view_model.dart';
 import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
-import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 
 void main() {
   group('CalendarViewModel', () {

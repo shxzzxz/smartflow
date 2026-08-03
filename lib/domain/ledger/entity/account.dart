@@ -156,9 +156,6 @@ class Account {
     parentId = parent?.id;
   }
 
-  /// 分类归档并把统计归属并入 [target]，分录不改写。
-  /// 归档后 parentId 表示"归并目标"而非层级父：active 树维持二层，
-  /// 归档节点恒为挂载叶子（归并目标必是 active 分类，链不叠加）。
   void changeCategoryProfile(CategoryProfilePatch patch) {
     _ensureCategoryEditable();
     if (!type.isCategory) {

@@ -88,11 +88,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
     Set<String>? accountIds,
   ) {
     if (accountIds == null) return;
-    final subquery =
-        _db.selectOnly(_db.entries, distinct: true)
-          ..addColumns([_db.entries.transactionId])
-          ..where(_db.entries.accountId.isIn(accountIds));
-    select.where((table) => table.id.isInQuery(subquery));
+    select.where((_) => _entryAccountMatch(accountIds));
   }
 
   @override
@@ -315,11 +311,15 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
     Set<String>? accountIds,
   ) {
     if (accountIds == null) return expression;
+    return expression & _entryAccountMatch(accountIds);
+  }
+
+  Expression<bool> _entryAccountMatch(Set<String> accountIds) {
     final subquery =
         _db.selectOnly(_db.entries, distinct: true)
           ..addColumns([_db.entries.transactionId])
           ..where(_db.entries.accountId.isIn(accountIds));
-    return expression & _db.transactions.id.isInQuery(subquery);
+    return _db.transactions.id.isInQuery(subquery);
   }
 
   Expression<bool> _cleanupGroupOwnedExpression() {

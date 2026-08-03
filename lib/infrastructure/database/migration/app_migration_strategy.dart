@@ -67,7 +67,7 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         }
       }
       if (from < 25) {
-        await _reactivateArchivedCategories(database);
+        await _migrateArchivedCategories(database);
       }
     },
   );
@@ -84,24 +84,64 @@ Future<bool> _hasColumn(
   return columns.any((row) => row.read<String>('name') == columnName);
 }
 
-/// v25：分类删除语义从“归档挂载归并”改为“有引用禁止删除”。
-/// 历史库中被分录或报销垫付引用的归档分类节点重新转为活跃分类；
-/// 挂载在二级分类下的节点重挂到其一级分类，维持活跃树恒为两层。
-Future<void> _reactivateArchivedCategories(AppDatabase database) async {
+/// v25：旧归档分类的 parent_id 是其活跃归并目标。将历史分类事实改写为
+/// 目标分类后删除旧节点，使升级数据与“先迁移交易、再删除分类”语义一致。
+Future<void> _migrateArchivedCategories(AppDatabase database) async {
   await database.customStatement('''
-UPDATE accounts
-SET parent_id = (
-  SELECT CASE
-    WHEN parent.parent_id IS NULL THEN parent.id
-    ELSE parent.parent_id
-  END
-  FROM accounts AS parent
-  WHERE parent.id = accounts.parent_id
-),
-    archived_at = NULL
-WHERE archived_at IS NOT NULL
-  AND account_type IN ('income', 'expense')
+CREATE TEMP TABLE archived_category_migrations (
+  source_id TEXT NOT NULL PRIMARY KEY,
+  target_id TEXT NOT NULL
+)
 ''');
+  await database.customStatement('''
+INSERT INTO archived_category_migrations (source_id, target_id)
+SELECT archived.id, target.id
+FROM accounts AS archived
+JOIN accounts AS target ON target.id = archived.parent_id
+WHERE archived.archived_at IS NOT NULL
+  AND archived.account_type IN ('income', 'expense')
+  AND target.archived_at IS NULL
+  AND target.account_type = archived.account_type
+''');
+  await database.customStatement('''
+UPDATE entries
+SET account_id = (
+  SELECT migration.target_id
+  FROM archived_category_migrations AS migration
+  WHERE migration.source_id = entries.account_id
+)
+WHERE account_id IN (
+  SELECT source_id FROM archived_category_migrations
+)
+''');
+  await database.customStatement('''
+UPDATE transactions
+SET reimbursement_expense_account_id = (
+  SELECT migration.target_id
+  FROM archived_category_migrations AS migration
+  WHERE migration.source_id = transactions.reimbursement_expense_account_id
+)
+WHERE reimbursement_expense_account_id IN (
+  SELECT source_id FROM archived_category_migrations
+)
+''');
+  await database.customStatement('''
+UPDATE import_entity_mappings
+SET target_account_id = (
+  SELECT migration.target_id
+  FROM archived_category_migrations AS migration
+  WHERE migration.source_id = import_entity_mappings.target_account_id
+)
+WHERE entity_kind = 'category'
+  AND target_account_id IN (
+    SELECT source_id FROM archived_category_migrations
+  )
+''');
+  await database.customStatement('''
+DELETE FROM accounts
+WHERE id IN (SELECT source_id FROM archived_category_migrations)
+''');
+  await database.customStatement('DROP TABLE archived_category_migrations');
 }
 
 Future<void> _createCurrentSchema(

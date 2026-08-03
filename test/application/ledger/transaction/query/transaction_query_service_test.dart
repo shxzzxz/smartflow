@@ -276,7 +276,10 @@ void main() {
 
   test('passes the settlement account filter through unchanged', () async {
     final transactionRead = _FakeTransactionReadRepository(transactions: {});
-    final service = _service(transactionRead: transactionRead);
+    final service = _service(
+      transactionRead: transactionRead,
+      accounts: [_account('cash', AccountType.asset)],
+    );
 
     await service.findTransactions(
       const TransactionListQuery(settlementAccountId: 'cash'),
@@ -284,6 +287,81 @@ void main() {
 
     expect(transactionRead.lastPageQuery?.settlementAccountIds, {'cash'});
     expect(transactionRead.lastPageQuery?.categoryAccountIds, isNull);
+  });
+
+  test('rejects non-user and archived settlement account filters', () async {
+    final accounts = [
+      _account('food', AccountType.expense),
+      _account(
+        'archived-cash',
+        AccountType.asset,
+        archivedAt: DateTime(2026, 1),
+      ),
+    ];
+    for (final accountId in ['missing', 'food', 'archived-cash']) {
+      final transactionRead = _FakeTransactionReadRepository(
+        transactions: {
+          'expense': _transaction(
+            id: 'expense',
+            purpose: BusinessPurpose.dailyExpense,
+            amount: 1000,
+          ),
+        },
+      );
+      final service = _service(
+        transactionRead: transactionRead,
+        accounts: accounts,
+      );
+
+      final items = await service.findTransactions(
+        TransactionListQuery(settlementAccountId: accountId),
+      );
+
+      expect(items, isEmpty);
+      expect(transactionRead.lastPageQuery, isNull);
+    }
+  });
+
+  test('projects the system counterpart for opening balance flows', () async {
+    final opening = _transaction(
+      id: 'opening',
+      purpose: BusinessPurpose.openingBalance,
+      amount: 1000,
+    );
+    final service = _service(
+      transactionRead: _FakeTransactionReadRepository(
+        transactions: {'opening': opening},
+      ),
+      entryRead: _FakeEntryReadRepository({
+        'opening': [
+          _entry('cash', 'opening', 'cash', EntryDirection.debit, 1000),
+          _entry(
+            'equity',
+            'opening',
+            'opening-equity',
+            EntryDirection.credit,
+            1000,
+          ),
+        ],
+      }),
+      accounts: [
+        _account('cash', AccountType.asset, name: '现金'),
+        _account(
+          'opening-equity',
+          AccountType.equity,
+          name: '系统期初余额',
+          systemKey: SystemKey.openingBalance,
+        ),
+      ],
+    );
+
+    final item =
+        (await service.findTransactions(const TransactionListQuery())).single;
+
+    expect(item.settlementEntries.map((entry) => entry.accountId), [
+      'cash',
+      'opening-equity',
+    ]);
   });
 
   test(
@@ -407,6 +485,8 @@ Account _account(
   String? name,
   String? parentId,
   String? iconKey,
+  DateTime? archivedAt,
+  SystemKey? systemKey,
 }) {
   return Account(
     id: id,
@@ -414,6 +494,8 @@ Account _account(
     type: type,
     parentId: parentId,
     iconKey: iconKey,
+    archivedAt: archivedAt,
+    systemKey: systemKey,
     balance: const Money(minorUnits: 0),
   );
 }
