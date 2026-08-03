@@ -8,6 +8,7 @@ import '../feature/account/page/account_detail_page.dart';
 import '../feature/account/page/account_bills_page.dart';
 import '../feature/account/page/account_form_page.dart';
 import '../feature/account/page/accounts_page.dart';
+import '../feature/account/page/archived_accounts_page.dart';
 import '../feature/category/page/categories_page.dart';
 import '../feature/category/page/category_form_page.dart';
 import '../feature/calendar/page/calendar_page.dart';
@@ -211,6 +212,12 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/account/new',
       builder: (context, state) => const AccountFormPage(),
+    ),
+    GoRoute(
+      path: '/account/archived',
+      builder:
+          (context, state) =>
+              ArchivedAccountsPage(initiallyHideBalances: state.extra == true),
     ),
     GoRoute(
       path: '/account/:id',

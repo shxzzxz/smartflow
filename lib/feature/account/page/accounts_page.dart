@@ -11,14 +11,13 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
-import 'package:smartflow/widget/business/icon/business_icon.dart';
-import 'package:smartflow/widget/business/icon/business_icon_bubble.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../view_model/account_view.dart';
 import '../view_model/account_organization_view_model.dart';
 import '../view_model/account_views_provider.dart';
 import '../view_model/asset_section_collapse_view_model.dart';
+import '../widget/account_list_row.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 
 class AccountsPage extends ConsumerStatefulWidget {
@@ -138,22 +137,24 @@ class _AccountsContent extends ConsumerWidget {
           const SizedBox(height: AppSpacing.space24),
           const _EmptyAccountsHint(),
         ],
-        for (final section in sections) ...[
-          const SizedBox(height: AppSpacing.space24),
+        for (var index = 0; index < sections.length; index++) ...[
+          SizedBox(
+            height: index == 0 ? AppSpacing.space28 : AppSpacing.space20,
+          ),
           _AccountSection(
-            section: section,
+            section: sections[index],
             hideBalances: hideBalances,
-            collapsed: collapsedKeys.contains(section.id),
+            collapsed: collapsedKeys.contains(sections[index].id),
             onToggleCollapsed:
                 () => ref
                     .read(assetSectionCollapseViewModelProvider.notifier)
-                    .toggle(section.id),
+                    .toggle(sections[index].id),
             onAccountDropped:
                 (account, insertAt) => _moveAccount(
                   context,
                   ref,
                   account: account,
-                  section: section,
+                  section: sections[index],
                   insertAt: insertAt,
                 ),
             onGroupDropped:
@@ -162,13 +163,16 @@ class _AccountsContent extends ConsumerWidget {
                   ref,
                   groups: groups,
                   draggedSection: draggedSection,
-                  targetSection: section,
+                  targetSection: sections[index],
                 ),
           ),
         ],
         if (archivedAccounts.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.space24),
-          _ArchivedAccountSection(accounts: archivedAccounts),
+          const SizedBox(height: AppSpacing.space20),
+          _ArchivedAccountsEntry(
+            count: archivedAccounts.length,
+            onTap: () => context.push('/account/archived', extra: hideBalances),
+          ),
         ],
       ],
     );
@@ -194,6 +198,9 @@ class _SectionSpec {
       }),
     );
   }
+
+  Money get netTotal =>
+      totalFor(AccountType.asset) - totalFor(AccountType.liability);
 }
 
 List<_SectionSpec> _buildSections(
@@ -570,192 +577,178 @@ class _AccountSection extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final textStyles = context.appTextStyles;
     final accounts = section.accounts;
-    return Column(
-      children: [
-        DragTarget<_SectionSpec>(
-          onWillAcceptWithDetails:
-              (details) =>
-                  section.id != 'ungrouped' &&
-                  details.data.id != 'ungrouped' &&
-                  details.data.id != section.id,
-          onAcceptWithDetails: (details) => onGroupDropped(details.data),
-          builder:
-              (
-                context,
-                candidateData,
-                child,
-              ) => LongPressDraggable<_SectionSpec>(
-                data: section,
-                feedback: Material(
-                  color: Colors.transparent,
-                  child: Opacity(
-                    opacity: 0.88,
-                    child: Text(section.title, style: textStyles.groupTitle),
-                  ),
-                ),
-                child: InkWell(
-                  onTap: onToggleCollapsed,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.space4,
+    return AppSurface(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space16,
+          vertical: AppSpacing.space4,
+        ),
+        child: Column(
+          children: [
+            DragTarget<_SectionSpec>(
+              onWillAcceptWithDetails:
+                  (details) =>
+                      section.id != 'ungrouped' &&
+                      details.data.id != 'ungrouped' &&
+                      details.data.id != section.id,
+              onAcceptWithDetails: (details) => onGroupDropped(details.data),
+              builder:
+                  (
+                    context,
+                    candidateData,
+                    child,
+                  ) => LongPressDraggable<_SectionSpec>(
+                    data: section,
+                    feedback: Material(
+                      color: Colors.transparent,
+                      child: Opacity(
+                        opacity: 0.88,
+                        child: Text(
+                          section.title,
+                          style: textStyles.groupTitle,
+                        ),
+                      ),
                     ),
-                    child: Column(
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+                        onTap: onToggleCollapsed,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            minHeight: AppSpacing.space48,
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (candidateData.isNotEmpty)
+                                Container(
+                                  height: 3,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      section.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: textStyles.groupTitle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.space12),
+                                  AccountAmountText(
+                                    money: section.netTotal,
+                                    semantic: MoneySemantic.neutral,
+                                    hidden: hideBalances,
+                                    showSign: true,
+                                  ),
+                                  const SizedBox(width: AppSpacing.space4),
+                                  SizedBox.square(
+                                    dimension: AppSpacing.space24,
+                                    child: AnimatedRotation(
+                                      turns: collapsed ? -0.25 : 0,
+                                      duration: const Duration(
+                                        milliseconds: 150,
+                                      ),
+                                      child: Icon(
+                                        RemixIcons.arrow_down_s_line,
+                                        size: 18,
+                                        color: colors.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+            ),
+            if (!collapsed) ...[
+              const SizedBox(height: AppSpacing.space4),
+              DragTarget<AccountView>(
+                onWillAcceptWithDetails: (_) => true,
+                onAcceptWithDetails:
+                    (details) =>
+                        onAccountDropped(details.data, accounts.length),
+                builder:
+                    (context, candidateData, child) => Column(
                       children: [
                         if (candidateData.isNotEmpty)
                           Container(
                             height: 3,
                             color: Theme.of(context).colorScheme.primary,
                           ),
-                        Row(
-                          children: [
-                            Text(section.title, style: textStyles.groupTitle),
-                            const Spacer(),
-                            _SectionTotal(
-                              label: '资产',
-                              money: section.totalFor(AccountType.asset),
-                              semantic: MoneySemantic.asset,
-                              hidden: hideBalances,
-                            ),
-                            const SizedBox(width: AppSpacing.space10),
-                            _SectionTotal(
-                              label: '负债',
-                              money: section.totalFor(AccountType.liability),
-                              semantic: MoneySemantic.liability,
-                              hidden: hideBalances,
-                            ),
-                            const SizedBox(width: AppSpacing.space6),
-                            AnimatedRotation(
-                              turns: collapsed ? -0.25 : 0,
-                              duration: const Duration(milliseconds: 150),
-                              child: Icon(
-                                RemixIcons.arrow_down_s_line,
-                                size: 18,
-                                color: colors.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-        ),
-        if (!collapsed) ...[
-          const SizedBox(height: AppSpacing.space12),
-          DragTarget<AccountView>(
-            onWillAcceptWithDetails: (_) => true,
-            onAcceptWithDetails:
-                (details) => onAccountDropped(details.data, accounts.length),
-            builder:
-                (context, candidateData, child) => AppSurface(
-                  child: Column(
-                    children: [
-                      if (candidateData.isNotEmpty)
-                        Container(
-                          height: 3,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      for (var i = 0; i < accounts.length; i++) ...[
-                        DragTarget<AccountView>(
-                          onWillAcceptWithDetails: (_) => true,
-                          onAcceptWithDetails:
-                              (details) => onAccountDropped(details.data, i),
-                          builder:
-                              (context, candidateData, child) => Column(
-                                children: [
-                                  if (candidateData.isNotEmpty)
-                                    Container(
-                                      height: 3,
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
-                                    ),
-                                  _AccountRow(
-                                    model: accounts[i],
-                                    hideBalance: hideBalances,
-                                  ),
-                                ],
-                              ),
-                        ),
-                        if (i < accounts.length - 1)
-                          const Padding(
-                            padding: EdgeInsets.only(
-                              left: AppSpacing.space48 + AppSpacing.space24,
-                              right: AppSpacing.space16,
-                            ),
-                            child: Divider(height: 1),
-                          ),
-                      ],
-                      if (accounts.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(AppSpacing.space16),
-                          child: Text('长按并拖动账户到这里'),
-                        ),
-                      if (accounts.isNotEmpty)
-                        DragTarget<AccountView>(
-                          onWillAcceptWithDetails: (_) => true,
-                          onAcceptWithDetails:
-                              (details) => onAccountDropped(
-                                details.data,
-                                accounts.length,
-                              ),
-                          builder:
-                              (context, candidateData, child) =>
-                                  candidateData.isEmpty
-                                      ? const SizedBox(
-                                        height: AppSpacing.space4,
-                                      )
-                                      : Container(
+                        for (var i = 0; i < accounts.length; i++)
+                          DragTarget<AccountView>(
+                            onWillAcceptWithDetails: (_) => true,
+                            onAcceptWithDetails:
+                                (details) => onAccountDropped(details.data, i),
+                            builder:
+                                (context, candidateData, child) => Column(
+                                  children: [
+                                    if (candidateData.isNotEmpty)
+                                      Container(
                                         height: 3,
                                         color:
                                             Theme.of(
                                               context,
                                             ).colorScheme.primary,
                                       ),
-                        ),
-                    ],
-                  ),
-                ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _SectionTotal extends StatelessWidget {
-  const _SectionTotal({
-    required this.label,
-    required this.money,
-    required this.semantic,
-    required this.hidden,
-  });
-
-  final String label;
-  final Money money;
-  final MoneySemantic semantic;
-  final bool hidden;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(
-          label,
-          style: context.appTextStyles.detailLabel.copyWith(
-            color: colors.onSurfaceVariant,
-          ),
+                                    _AccountRow(
+                                      model: accounts[i],
+                                      hideBalance: hideBalances,
+                                    ),
+                                  ],
+                                ),
+                          ),
+                        if (accounts.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              left: AppSpacing.space8,
+                              top: AppSpacing.space16,
+                              bottom: AppSpacing.space16,
+                            ),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                '长按并拖动账户到这里',
+                                style: textStyles.listSupporting,
+                              ),
+                            ),
+                          ),
+                        if (accounts.isNotEmpty)
+                          DragTarget<AccountView>(
+                            onWillAcceptWithDetails: (_) => true,
+                            onAcceptWithDetails:
+                                (details) => onAccountDropped(
+                                  details.data,
+                                  accounts.length,
+                                ),
+                            builder:
+                                (context, candidateData, child) =>
+                                    candidateData.isEmpty
+                                        ? const SizedBox(
+                                          height: AppSpacing.space4,
+                                        )
+                                        : Container(
+                                          height: 3,
+                                          color:
+                                              Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
+                                        ),
+                          ),
+                      ],
+                    ),
+              ),
+            ],
+          ],
         ),
-        hidden
-            ? const _HiddenMoneyText()
-            : MoneyText(
-              money: money,
-              semantic: semantic,
-              style: context.appTextStyles.amountList,
-            ),
-      ],
+      ),
     );
   }
 }
@@ -769,63 +762,22 @@ class _AccountRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final textStyles = context.appTextStyles;
     final semantic =
         model.accountType == AccountType.asset
             ? MoneySemantic.asset
             : MoneySemantic.liability;
 
-    final row = InkWell(
+    final row = AccountListRow(
+      account: model,
+      amountSemantic: semantic,
+      hideBalance: hideBalance,
       onTap: () => context.push('/account/${model.id}'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space16,
-          vertical: AppSpacing.space12,
-        ),
-        child: Row(
-          children: [
-            BusinessIconBubble(
-              size: AppSpacing.space32,
-              child: BusinessIcon(
-                iconKey: model.iconKey,
-                size: AppSpacing.space28,
-                usage: BusinessIconUsage.account,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.space14),
-            Expanded(
-              child: Text(
-                model.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: textStyles.formValue,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.space12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                hideBalance
-                    ? const _HiddenMoneyText()
-                    : MoneyText(
-                      money: model.balance,
-                      semantic: semantic,
-                      style: textStyles.amountList,
-                    ),
-                if (model.isLiability &&
-                    (model.billingDay != null ||
-                        model.repaymentDay != null)) ...[
-                  const SizedBox(height: AppSpacing.space4),
-                  Text(
-                    _liabilityDateText(model),
-                    style: textStyles.listSupporting.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
+      trailing: SizedBox.square(
+        dimension: AppSpacing.space24,
+        child: Icon(
+          RemixIcons.arrow_right_s_line,
+          size: 18,
+          color: colors.onSurfaceVariant,
         ),
       ),
     );
@@ -841,56 +793,59 @@ class _AccountRow extends StatelessWidget {
   }
 }
 
-class _ArchivedAccountSection extends ConsumerWidget {
-  const _ArchivedAccountSection({required this.accounts});
+class _ArchivedAccountsEntry extends StatelessWidget {
+  const _ArchivedAccountsEntry({required this.count, required this.onTap});
 
-  final List<AccountView> accounts;
+  final int count;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('已归档', style: context.appTextStyles.groupTitle),
-        const SizedBox(height: AppSpacing.space12),
-        AppSurface(
-          child: Column(
-            children: [
-              for (var index = 0; index < accounts.length; index++) ...[
-                ListTile(
-                  title: Text(accounts[index].name),
-                  subtitle: const Text('不计入资产和负债统计'),
-                  onTap: () => context.push('/account/${accounts[index].id}'),
-                  trailing: TextButton(
-                    onPressed: () => _restore(context, ref, accounts[index]),
-                    child: const Text('恢复'),
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return AppSurface(
+      child: InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minHeight: AppSpacing.space48 + AppSpacing.space8,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space16,
+              vertical: AppSpacing.space8,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: AppSpacing.space32,
+                  height: AppSpacing.space32,
+                  decoration: BoxDecoration(
+                    color: colors.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+                  ),
+                  child: Icon(
+                    RemixIcons.archive_line,
+                    size: AppSpacing.space20,
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
-                if (index < accounts.length - 1) const Divider(height: 1),
+                const SizedBox(width: AppSpacing.space12),
+                Expanded(
+                  child: Text('已归档账户', style: context.appTextStyles.formValue),
+                ),
+                Text('$count', style: context.appTextStyles.detailLabel),
+                const SizedBox(width: AppSpacing.space8),
+                Icon(
+                  RemixIcons.arrow_right_s_line,
+                  size: AppSpacing.space20,
+                  color: colors.onSurfaceVariant,
+                ),
               ],
-            ],
+            ),
           ),
         ),
-      ],
+      ),
     );
-  }
-
-  Future<void> _restore(
-    BuildContext context,
-    WidgetRef ref,
-    AccountView account,
-  ) async {
-    final outcome = await ref
-        .read(accountOrganizationViewModelProvider.notifier)
-        .restoreAccount(account.id);
-    if (!context.mounted) return;
-    final message = switch (outcome) {
-      UiActionSuccess() => '账户已恢复到原分组',
-      UiActionFailure(:final error) => error.message,
-    };
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -1122,15 +1077,6 @@ void _showGroupOutcome(
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
-class _HiddenMoneyText extends StatelessWidget {
-  const _HiddenMoneyText();
-
-  @override
-  Widget build(BuildContext context) {
-    return Text('¥ ****', style: context.appTextStyles.amountList);
-  }
-}
-
 class _EmptyAccountsHint extends StatelessWidget {
   const _EmptyAccountsHint();
 
@@ -1191,15 +1137,4 @@ String _formatNetAssetComparison(PeriodChange change) {
   }
   final sign = ratio >= 0 ? '+' : '-';
   return '较上月 $delta ($sign${(ratio.abs() * 100).toStringAsFixed(2)}%)';
-}
-
-String _liabilityDateText(AccountView account) {
-  final parts = <String>[];
-  if (account.billingDay != null) {
-    parts.add('出账日 ${account.billingDay}');
-  }
-  if (account.repaymentDay != null) {
-    parts.add('还款日 ${account.repaymentDay}');
-  }
-  return parts.join('   ');
 }

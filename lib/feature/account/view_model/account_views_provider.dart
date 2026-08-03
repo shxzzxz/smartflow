@@ -34,8 +34,8 @@ AsyncValue<List<AccountView>> accountViews(Ref ref) {
   }
 }
 
-/// 已归档的资产/负债账户只用于资产页的恢复区域；它们不参与日常账户
-/// 选择和资产统计。
+/// 已归档的资产/负债账户只用于资产页归档入口及归档账户页；它们不参与
+/// 日常账户选择和资产统计。
 @riverpod
 AsyncValue<List<AccountView>> archivedAccountViews(Ref ref) {
   final accountsById = ref.watch(accountsByIdProvider);
