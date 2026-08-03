@@ -53,12 +53,12 @@ void main() {
 
       final firstPage =
           await transactions
-              .watchPage(const TransactionListQuery(limit: 2))
+              .watchPage(const TransactionPageQuery(limit: 2))
               .first;
       final nextPage =
           await transactions
               .watchPage(
-                TransactionListQuery(
+                TransactionPageQuery(
                   limit: 2,
                   before: TransactionListCursor(
                     occurredAt: firstPage.last.occurredAt,
@@ -89,7 +89,7 @@ void main() {
     final page =
         await transactions
             .watchPage(
-              TransactionListQuery(
+              TransactionPageQuery(
                 occurredFrom: DateTime(2026, 4, 1),
                 occurredUntil: DateTime(2026, 5, 1),
               ),

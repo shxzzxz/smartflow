@@ -4,8 +4,6 @@ import 'package:smartflow/core/money/money_formatter.dart';
 import 'package:smartflow/widget/business/finance/finance_labels.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
-import 'account_lookup.dart';
-
 const _noAccountLabel = '无账户';
 
 class TransactionDayGroup {
@@ -107,9 +105,8 @@ class CashflowSummaryMetricPresentation {
 
 List<TransactionDayGroup> groupTransactionsByDay({
   required List<TransactionListReadModel> items,
-  required AccountLookup accountLookup,
   List<DailyCashflowSummary> dailySummaries = const [],
-  String? viewAccountId,
+  Account? viewAccount,
 }) {
   final groups = <DateTime, List<TransactionRowPresentation>>{};
   for (final item in items) {
@@ -117,11 +114,7 @@ List<TransactionDayGroup> groupTransactionsByDay({
     groups
         .putIfAbsent(date, () => [])
         .add(
-          buildTransactionRowPresentation(
-            item: item,
-            accountLookup: accountLookup,
-            viewAccountId: viewAccountId,
-          ),
+          buildTransactionRowPresentation(item: item, viewAccount: viewAccount),
         );
   }
 
@@ -141,9 +134,8 @@ List<TransactionDayGroup> groupTransactionsByDay({
 TransactionDayGroup transactionGroupForDate({
   required DateTime date,
   required List<TransactionListReadModel> transactions,
-  required AccountLookup accountLookup,
   required List<DailyCashflowSummary> dailySummaries,
-  String? viewAccountId,
+  Account? viewAccount,
 }) {
   final normalized = normalizeDate(date);
   final items = [
@@ -155,11 +147,7 @@ TransactionDayGroup transactionGroupForDate({
     date: normalized,
     rows: [
       for (final item in items)
-        buildTransactionRowPresentation(
-          item: item,
-          accountLookup: accountLookup,
-          viewAccountId: viewAccountId,
-        ),
+        buildTransactionRowPresentation(item: item, viewAccount: viewAccount),
     ],
     incomeMinor: summary?.income.minorUnits ?? 0,
     expenseMinor: summary?.expense.minorUnits ?? 0,
@@ -168,22 +156,18 @@ TransactionDayGroup transactionGroupForDate({
 
 TransactionRowPresentation buildTransactionRowPresentation({
   required TransactionListReadModel item,
-  required AccountLookup accountLookup,
-  String? viewAccountId,
+  Account? viewAccount,
 }) {
   final balanceDelta =
-      viewAccountId == null
+      viewAccount == null
           ? null
-          : accountLookup.balanceDeltaForAccount(
-            accountId: viewAccountId,
-            entries: item.entries,
-          );
+          : settlementBalanceDelta(item: item, viewAccount: viewAccount);
   final comparison =
       balanceDelta == null ? transactionAmountComparison(item) : null;
   return TransactionRowPresentation(
     transactionId: item.id,
-    iconKey: resolveCategoryIconKey(item, accountLookup),
-    title: transactionPrimaryLabel(item, accountLookup),
+    iconKey: resolveCategoryIconKey(item),
+    title: transactionPrimaryLabel(item),
     subtitle: formatTime(item.occurredAt),
     amountText:
         balanceDelta == null
@@ -221,27 +205,40 @@ TransactionRowPresentation buildTransactionRowPresentation({
         balanceDelta == null
             ? amountTone(item.businessPurpose)
             : FinanceTone.neutral,
-    accountFlow: resolveAccountFlow(item, accountLookup),
+    accountFlow: resolveAccountFlow(item),
     badges: buildTransactionBadges(item),
     canQuickEdit: canQuickEditTransaction(item),
   );
 }
 
+TransactionSettlementEntryRef? firstSettlementEntry(
+  TransactionListReadModel item, {
+  required EntryDirection direction,
+}) {
+  for (final entry in item.settlementEntries) {
+    if (entry.direction == direction) return entry;
+  }
+  return null;
+}
+
 TransactionAccountFlowPresentation resolveAccountFlow(
   TransactionListReadModel item,
-  AccountLookup accountLookup,
 ) {
-  AccountEndpointPresentation? endpointOf(Account? account) {
-    if (account == null) return null;
+  AccountEndpointPresentation? endpointOf(TransactionSettlementEntryRef? ref) {
+    if (ref == null) return null;
     return AccountEndpointPresentation(
-      label: account.name,
-      iconKey: account.iconKey,
+      label: ref.accountName,
+      iconKey: ref.accountIconKey,
     );
   }
 
-  final out = endpointOf(flowOutAccount(item, accountLookup));
-  final in_ = endpointOf(flowInAccount(item, accountLookup));
-  final fallbackText = transactionAccountLabel(item, accountLookup);
+  final out = endpointOf(
+    firstSettlementEntry(item, direction: EntryDirection.credit),
+  );
+  final in_ = endpointOf(
+    firstSettlementEntry(item, direction: EntryDirection.debit),
+  );
+  final fallbackText = transactionAccountLabel(item);
   final fallbackLabel = fallbackText.isEmpty ? _noAccountLabel : fallbackText;
 
   return switch (item.businessPurpose) {
@@ -267,71 +264,19 @@ TransactionAccountFlowPresentation resolveAccountFlow(
   };
 }
 
+/// 调整摘要的展示顺序与语义色固定由 kind 决定，金额恒为正。
 List<TransactionBadgePresentation> buildTransactionBadges(
   TransactionListReadModel item,
 ) {
-  final badges = <TransactionBadgePresentation>[];
-
-  if (item.refundedTotal != null) {
-    badges.add(
+  final badges = <TransactionBadgePresentation>[
+    for (final adjustment in item.adjustments)
       TransactionBadgePresentation(
-        label: '退 ${formatCompactMoney(item.refundedTotal!)}',
-        tone: FinanceTone.income,
+        label:
+            '${_adjustmentLabel(adjustment.kind)} '
+            '${formatCompactMoney(adjustment.amount)}',
+        tone: _adjustmentTone(adjustment.kind),
       ),
-    );
-  }
-  if (item.reimbursementReceivedTotal != null) {
-    badges.add(
-      TransactionBadgePresentation(
-        label: '报 ${formatCompactMoney(item.reimbursementReceivedTotal!)}',
-        tone: FinanceTone.info,
-      ),
-    );
-  }
-
-  void addDetailBadge(
-    TransactionDetailType type,
-    String label,
-    FinanceTone tone,
-  ) {
-    final amount = detailAmount(item, type);
-    if (amount == null) return;
-    badges.add(
-      TransactionBadgePresentation(
-        label: '$label ${formatCompactMoney(amount)}',
-        tone: tone,
-      ),
-    );
-  }
-
-  addDetailBadge(
-    TransactionDetailType.repaymentInterest,
-    '利',
-    FinanceTone.expense,
-  );
-  addDetailBadge(TransactionDetailType.repaymentFee, '费', FinanceTone.expense);
-  addDetailBadge(
-    TransactionDetailType.repaymentDiscount,
-    '优',
-    FinanceTone.income,
-  );
-
-  if (item.reimbursementGapIncome != null) {
-    badges.add(
-      TransactionBadgePresentation(
-        label: '差收 ${formatCompactMoney(item.reimbursementGapIncome!)}',
-        tone: FinanceTone.income,
-      ),
-    );
-  }
-  if (item.reimbursementGapExpense != null) {
-    badges.add(
-      TransactionBadgePresentation(
-        label: '差支 ${formatCompactMoney(item.reimbursementGapExpense!)}',
-        tone: FinanceTone.expense,
-      ),
-    );
-  }
+  ];
 
   if (item.isExcludedFromStats) {
     badges.add(
@@ -351,6 +296,30 @@ List<TransactionBadgePresentation> buildTransactionBadges(
   }
 
   return badges;
+}
+
+String _adjustmentLabel(TransactionAdjustmentKind kind) {
+  return switch (kind) {
+    TransactionAdjustmentKind.refund => '退',
+    TransactionAdjustmentKind.reimbursementReceived => '报',
+    TransactionAdjustmentKind.repaymentInterest => '利',
+    TransactionAdjustmentKind.repaymentFee => '费',
+    TransactionAdjustmentKind.repaymentDiscount => '优',
+    TransactionAdjustmentKind.reimbursementGapIncome => '差收',
+    TransactionAdjustmentKind.reimbursementGapExpense => '差支',
+  };
+}
+
+FinanceTone _adjustmentTone(TransactionAdjustmentKind kind) {
+  return switch (kind) {
+    TransactionAdjustmentKind.refund ||
+    TransactionAdjustmentKind.repaymentDiscount ||
+    TransactionAdjustmentKind.reimbursementGapIncome => FinanceTone.income,
+    TransactionAdjustmentKind.reimbursementReceived => FinanceTone.info,
+    TransactionAdjustmentKind.repaymentInterest ||
+    TransactionAdjustmentKind.repaymentFee ||
+    TransactionAdjustmentKind.reimbursementGapExpense => FinanceTone.expense,
+  };
 }
 
 CashflowSummaryPresentation buildMonthlySummaryPresentation(
@@ -385,61 +354,11 @@ CashflowSummaryPresentation buildMonthlySummaryPresentation(
   );
 }
 
-Account? categoryAccount(
-  TransactionListReadModel item,
-  AccountLookup accountLookup,
-) {
-  Account? byType(AccountType accountType) {
-    final entry = accountLookup.firstEntryByType(
-      item.entries,
-      accountType: accountType,
-    );
-    return entry == null ? null : accountLookup.accountOf(entry);
-  }
-
-  return switch (item.businessPurpose) {
-    BusinessPurpose.dailyExpense ||
-    BusinessPurpose.refund => byType(AccountType.expense),
-    BusinessPurpose.dailyIncome => byType(AccountType.income),
-    BusinessPurpose.reimbursementAdvance =>
-      item.reimbursementExpenseAccountId == null
-          ? null
-          : accountLookup.find(item.reimbursementExpenseAccountId!),
-    _ => null,
-  };
-}
-
-Account? flowOutAccount(
-  TransactionListReadModel item,
-  AccountLookup accountLookup,
-) {
-  final entry = accountLookup.firstSettlementEntry(
-    item.entries,
-    direction: EntryDirection.credit,
-  );
-  return entry == null ? null : accountLookup.accountOf(entry);
-}
-
-Account? flowInAccount(
-  TransactionListReadModel item,
-  AccountLookup accountLookup,
-) {
-  final entry = accountLookup.firstSettlementEntry(
-    item.entries,
-    direction: EntryDirection.debit,
-  );
-  return entry == null ? null : accountLookup.accountOf(entry);
-}
-
-String? resolveCategoryIconKey(
-  TransactionListReadModel item,
-  AccountLookup accountLookup,
-) {
+String? resolveCategoryIconKey(TransactionListReadModel item) {
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense ||
     BusinessPurpose.dailyIncome ||
-    BusinessPurpose
-        .reimbursementAdvance => categoryAccount(item, accountLookup)?.iconKey,
+    BusinessPurpose.reimbursementAdvance => item.category?.iconKey,
     BusinessPurpose.transfer => 'transfer',
     BusinessPurpose.debtRepayment => 'loan',
     BusinessPurpose.borrowing => 'hand-coin-line',
@@ -451,39 +370,36 @@ String? resolveCategoryIconKey(
   };
 }
 
-String transactionPrimaryLabel(
-  TransactionListReadModel item,
-  AccountLookup accountLookup,
-) {
+String transactionPrimaryLabel(TransactionListReadModel item) {
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense || BusinessPurpose.dailyIncome =>
-      _cleanText(categoryAccount(item, accountLookup)?.name) ??
+      _cleanText(item.category?.name) ??
           transactionPurposeLabel(item.businessPurpose),
     BusinessPurpose.reimbursementAdvance =>
-      _cleanText(categoryAccount(item, accountLookup)?.name) ?? '支出',
+      _cleanText(item.category?.name) ?? '支出',
     _ => transactionPurposeLabel(item.businessPurpose),
   };
 }
 
-String transactionAccountLabel(
-  TransactionListReadModel item,
-  AccountLookup accountLookup,
-) {
+String transactionAccountLabel(TransactionListReadModel item) {
+  String? nameOf(EntryDirection direction) =>
+      _cleanText(firstSettlementEntry(item, direction: direction)?.accountName);
+
   return switch (item.businessPurpose) {
-    BusinessPurpose.dailyExpense || BusinessPurpose.reimbursementAdvance =>
-      _cleanText(flowOutAccount(item, accountLookup)?.name) ?? '',
-    BusinessPurpose.dailyIncome =>
-      _cleanText(flowInAccount(item, accountLookup)?.name) ?? '',
-    _ => _flowAccountLabel(item, accountLookup),
+    BusinessPurpose.dailyExpense ||
+    BusinessPurpose.reimbursementAdvance => nameOf(EntryDirection.credit) ?? '',
+    BusinessPurpose.dailyIncome => nameOf(EntryDirection.debit) ?? '',
+    _ => _flowAccountLabel(item),
   };
 }
 
-String _flowAccountLabel(
-  TransactionListReadModel item,
-  AccountLookup accountLookup,
-) {
-  final out = _cleanText(flowOutAccount(item, accountLookup)?.name);
-  final in_ = _cleanText(flowInAccount(item, accountLookup)?.name);
+String _flowAccountLabel(TransactionListReadModel item) {
+  final out = _cleanText(
+    firstSettlementEntry(item, direction: EntryDirection.credit)?.accountName,
+  );
+  final in_ = _cleanText(
+    firstSettlementEntry(item, direction: EntryDirection.debit)?.accountName,
+  );
   if (out != null && in_ != null) {
     return '$out -> $in_';
   }
@@ -528,8 +444,8 @@ String formatTransactionAmount(
 ({Money original, Money actual})? transactionAmountComparison(
   TransactionListReadModel item,
 ) {
-  final refunded = item.refundedTotal;
-  if (refunded != null && refunded.minorUnits > 0) {
+  final refunded = adjustmentAmount(item, TransactionAdjustmentKind.refund);
+  if (refunded != null) {
     final actualMinor = item.primaryAmount.minorUnits - refunded.minorUnits;
     if (actualMinor >= 0) {
       return (
@@ -539,7 +455,10 @@ String formatTransactionAmount(
     }
   }
 
-  final discount = detailAmount(item, TransactionDetailType.repaymentDiscount);
+  final discount = adjustmentAmount(
+    item,
+    TransactionAdjustmentKind.repaymentDiscount,
+  );
   if (discount != null) {
     return (
       original: Money(
@@ -549,6 +468,27 @@ String formatTransactionAmount(
     );
   }
   return null;
+}
+
+/// 从当前账户视角计算该交易带来的余额变动（±delta）。
+/// 与 `balance_expressions.dart` 的 SQL 公式一致：asset 借增贷减，liability 贷增借减。
+Money? settlementBalanceDelta({
+  required TransactionListReadModel item,
+  required Account viewAccount,
+}) {
+  var deltaMinor = 0;
+  var matched = false;
+  for (final entry in item.settlementEntries) {
+    if (entry.accountId != viewAccount.id) continue;
+    matched = true;
+    final increasesOnDebit = viewAccount.type == AccountType.asset;
+    final isPositive =
+        increasesOnDebit == (entry.direction == EntryDirection.debit);
+    deltaMinor +=
+        isPositive ? entry.amount.minorUnits : -entry.amount.minorUnits;
+  }
+  if (!matched) return null;
+  return Money(minorUnits: deltaMinor);
 }
 
 String formatAccountDelta(
@@ -576,11 +516,12 @@ bool canQuickEditTransaction(TransactionListReadModel item) {
   };
 }
 
-Money? detailAmount(TransactionListReadModel item, TransactionDetailType type) {
-  for (final line in item.details) {
-    if (line.type == type && line.amount.minorUnits > 0) {
-      return line.amount;
-    }
+Money? adjustmentAmount(
+  TransactionListReadModel item,
+  TransactionAdjustmentKind kind,
+) {
+  for (final adjustment in item.adjustments) {
+    if (adjustment.kind == kind) return adjustment.amount;
   }
   return null;
 }

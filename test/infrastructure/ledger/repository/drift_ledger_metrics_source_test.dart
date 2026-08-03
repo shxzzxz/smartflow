@@ -60,8 +60,8 @@ void main() {
       final rows =
           await repository
               .watchPage(
-                TransactionListQuery(
-                  accountIds: const {'dining'},
+                TransactionPageQuery(
+                  categoryAccountIds: const {'dining'},
                   occurredFrom: DateTime(2026, 1),
                   occurredUntil: DateTime(2026, 2),
                   topLevelOnly: false,

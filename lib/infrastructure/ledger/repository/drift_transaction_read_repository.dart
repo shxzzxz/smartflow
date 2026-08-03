@@ -40,7 +40,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
   }
 
   @override
-  Stream<List<Transaction>> watchPage(TransactionListQuery query) {
+  Stream<List<Transaction>> watchPage(TransactionPageQuery query) {
     final select = _db.select(_db.transactions)..where(
       (table) => applyTransactionScope(
         transactions: _db.transactions,
@@ -69,16 +69,8 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
                 table.id.isSmallerThanValue(before.id)),
       );
     }
-    final accountIds =
-        query.accountIds ??
-        (query.accountId == null ? null : <String>{query.accountId!});
-    if (accountIds != null) {
-      final subquery =
-          _db.selectOnly(_db.entries, distinct: true)
-            ..addColumns([_db.entries.transactionId])
-            ..where(_db.entries.accountId.isIn(accountIds));
-      select.where((table) => table.id.isInQuery(subquery));
-    }
+    _andEntryMatch(select, query.categoryAccountIds);
+    _andEntryMatch(select, query.settlementAccountIds);
     select.orderBy([
       (table) => OrderingTerm.desc(table.occurredAt),
       (table) => OrderingTerm.desc(table.id),
@@ -88,6 +80,19 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
       select.limit(limit, offset: query.offset);
     }
     return select.watch().map((rows) => rows.map(mapTransaction).toList());
+  }
+
+  /// 每个筛选维度一个独立分录子查询；多个维度叠加即分录条件取交集。
+  void _andEntryMatch(
+    SimpleSelectStatement<$TransactionsTable, TransactionRow> select,
+    Set<String>? accountIds,
+  ) {
+    if (accountIds == null) return;
+    final subquery =
+        _db.selectOnly(_db.entries, distinct: true)
+          ..addColumns([_db.entries.transactionId])
+          ..where(_db.entries.accountId.isIn(accountIds));
+    select.where((table) => table.id.isInQuery(subquery));
   }
 
   @override
@@ -232,10 +237,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
     final members = _db.alias(_db.transactions, 'group_members');
     final groupEntryMatch = existsQuery(
       _db.selectOnly(_db.entries).join([
-          innerJoin(
-            members,
-            members.id.equalsExp(_db.entries.transactionId),
-          ),
+          innerJoin(members, members.id.equalsExp(_db.entries.transactionId)),
         ])
         ..addColumns([_db.entries.id])
         ..where(
@@ -341,6 +343,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
         _db.transactions,
         _db.entries,
         _db.transactionDetails,
+        _db.accounts,
       ]),
     )) {
       yield null;

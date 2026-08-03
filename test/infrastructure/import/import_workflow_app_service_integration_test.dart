@@ -1229,6 +1229,7 @@ class _Fixture {
       transactionRead: DriftTransactionReadRepository(database),
       entryRead: DriftEntryReadRepository(database),
       detailRead: DriftTransactionDetailReadRepository(database),
+      accountQuery: accountQuery,
       metricsSource: DriftLedgerMetricsSource(database),
     );
     final ledgerPosting = LedgerPostingService(

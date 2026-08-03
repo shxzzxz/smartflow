@@ -1,9 +1,11 @@
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/entity/entry.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/entity/transaction_detail_record.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
+import '../../account/query/account_query_service.dart';
 import '../../metrics/query/port/ledger_metrics_source.dart';
 import 'port/entry_read_repository.dart';
 import 'port/transaction_detail_read_repository.dart';
@@ -13,6 +15,8 @@ import 'transaction_read_models.dart';
 import 'transaction_scope.dart';
 
 abstract interface class TransactionQueryService {
+  /// 交易列表订阅同时响应交易事实与账户快照变化：
+  /// 分类改名、换图标或调整二级归属后重新规范化查询并重新投影。
   Stream<List<TransactionListReadModel>> watchTransactions(
     TransactionListQuery query,
   );
@@ -58,35 +62,94 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     required TransactionReadRepository transactionRead,
     required EntryReadRepository entryRead,
     required TransactionDetailReadRepository detailRead,
+    required AccountQueryService accountQuery,
     required LedgerMetricsSource metricsSource,
   }) : _txRead = transactionRead,
        _entryRead = entryRead,
        _detailRead = detailRead,
+       _accountQuery = accountQuery,
        _metricsSource = metricsSource;
 
   final TransactionReadRepository _txRead;
   final EntryReadRepository _entryRead;
   final TransactionDetailReadRepository _detailRead;
+  final AccountQueryService _accountQuery;
   final LedgerMetricsSource _metricsSource;
 
   @override
   Stream<List<TransactionListReadModel>> watchTransactions(
     TransactionListQuery query,
   ) {
-    return _txRead.watchChanges().asyncMap((_) async {
-      return _projectListItems(await _txRead.watchPage(query).first);
-    });
+    return _txRead.watchChanges().asyncMap((_) => _loadTransactions(query));
   }
 
   @override
   Future<List<TransactionListReadModel>> findTransactions(
     TransactionListQuery query,
+  ) {
+    return _loadTransactions(query);
+  }
+
+  Future<List<TransactionListReadModel>> _loadTransactions(
+    TransactionListQuery query,
   ) async {
-    return _projectListItems(await _txRead.watchPage(query).first);
+    final accountsById = await _accountQuery.findAccountsById();
+    final pageQuery = _normalizeQuery(query, accountsById);
+    final categoryAccountIds = pageQuery.categoryAccountIds;
+    if (categoryAccountIds != null && categoryAccountIds.isEmpty) {
+      return const [];
+    }
+    final page = await _txRead.watchPage(pageQuery).first;
+    return _projectListItems(page, accountsById);
+  }
+
+  TransactionPageQuery _normalizeQuery(
+    TransactionListQuery query,
+    Map<String, Account> accountsById,
+  ) {
+    final settlementAccountId = query.settlementAccountId;
+    return TransactionPageQuery(
+      categoryAccountIds: _expandCategoryFilter(query, accountsById),
+      settlementAccountIds:
+          settlementAccountId == null ? null : {settlementAccountId},
+      occurredFrom: query.occurredFrom,
+      occurredUntil: query.occurredUntil,
+      topLevelOnly: query.topLevelOnly,
+      limit: query.limit,
+      offset: query.offset,
+      before: query.before,
+      scope: query.scope,
+    );
+  }
+
+  /// 一级分类展开为自身与全部活跃二级分类，二级分类展开为自身；
+  /// 分类不存在或不再活跃时返回空集合，表达"无可匹配项"。
+  Set<String>? _expandCategoryFilter(
+    TransactionListQuery query,
+    Map<String, Account> accountsById,
+  ) {
+    final categoryId = query.categoryId;
+    if (categoryId == null) return null;
+    final category = accountsById[categoryId];
+    if (category == null || !category.type.isCategory || category.isArchived) {
+      return const {};
+    }
+    if (query.categoryOwnOnly || category.parentId != null) {
+      return {category.id};
+    }
+    return {
+      category.id,
+      for (final account in accountsById.values)
+        if (account.type == category.type &&
+            !account.isArchived &&
+            account.parentId == category.id)
+          account.id,
+    };
   }
 
   Future<List<TransactionListReadModel>> _projectListItems(
     List<Transaction> page,
+    Map<String, Account> accountsById,
   ) async {
     if (page.isEmpty) return const [];
     final pageIds = page.map((transaction) => transaction.id).toSet();
@@ -112,6 +175,14 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
             )
             .map((transaction) => transaction.id)
             .toSet();
+    final repaymentIds =
+        page
+            .where(
+              (transaction) =>
+                  transaction.businessPurpose == BusinessPurpose.debtRepayment,
+            )
+            .map((transaction) => transaction.id)
+            .toSet();
 
     final results = await Future.wait([
       _txRead.aggregateChildren(
@@ -133,7 +204,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
         },
       ),
       _entryRead.findByTransactionIds(pageIds),
-      _detailRead.findByTransactionIds(pageIds),
+      _detailRead.findByTransactionIds(repaymentIds),
     ]);
     final refundAgg = results[0] as Map<String, TransactionChildAggregate>;
     final reimbursementAgg =
@@ -147,75 +218,171 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
       for (final transaction in page)
         TransactionListReadModel(
           id: transaction.id,
-          parentTransactionId: transaction.parentTransactionId,
           businessPurpose: transaction.businessPurpose,
           occurredAt: transaction.occurredAt,
           primaryAmount: transaction.primaryAmount,
-          counterpartyName: transaction.counterpartyName,
-          note: transaction.note,
           isExcludedFromStats: transaction.isExcludedFromStats,
           isExcludedFromBudget: transaction.isExcludedFromBudget,
-          reimbursementExpenseAccountId:
-              transaction.reimbursementExpenseAccountId,
-          entries: List.unmodifiable(
+          category: _categoryRef(
+            transaction,
             entriesByTransaction[transaction.id] ?? const [],
+            accountsById,
           ),
-          details: List.unmodifiable(
-            detailsByTransaction[transaction.id] ?? const [],
+          settlementEntries: _settlementRefs(
+            entriesByTransaction[transaction.id] ?? const [],
+            accountsById,
           ),
-          refundedTotal: _aggregateMoney(transaction, refundAgg),
-          refundChildCount: _aggregateCount(transaction, refundAgg),
-          reimbursementReceivedTotal: _aggregateMoney(
-            transaction,
-            reimbursementAgg,
-          ),
-          reimbursementChildCount: _aggregateCount(
-            transaction,
-            reimbursementAgg,
-          ),
-          reimbursementGapIncome: _gapMoney(
-            transaction,
-            gapAgg,
-            TransactionDetailType.reimbursementGapIncome,
-          ),
-          reimbursementGapExpense: _gapMoney(
-            transaction,
-            gapAgg,
-            TransactionDetailType.reimbursementGapExpense,
+          adjustments: _adjustments(
+            transaction: transaction,
+            details: detailsByTransaction[transaction.id] ?? const [],
+            refundAgg: refundAgg,
+            reimbursementAgg: reimbursementAgg,
+            gapAgg: gapAgg,
           ),
         ),
     ];
   }
 
-  Money? _aggregateMoney(
+  TransactionCategoryRef? _categoryRef(
     Transaction transaction,
-    Map<String, TransactionChildAggregate> aggregate,
+    List<Entry> entries,
+    Map<String, Account> accountsById,
   ) {
-    if (transaction.parentTransactionId != null) return null;
-    final value = aggregate[transaction.id];
-    if (value == null || value.sumMinor == 0) return null;
-    return Money(minorUnits: value.sumMinor);
+    final reimbursementCategoryId = transaction.reimbursementExpenseAccountId;
+    final category = switch (transaction.businessPurpose) {
+      BusinessPurpose.dailyExpense => _firstAccountOfType(
+        entries,
+        accountsById,
+        AccountType.expense,
+      ),
+      BusinessPurpose.dailyIncome => _firstAccountOfType(
+        entries,
+        accountsById,
+        AccountType.income,
+      ),
+      BusinessPurpose.reimbursementAdvance =>
+        reimbursementCategoryId == null
+            ? null
+            : accountsById[reimbursementCategoryId],
+      _ => null,
+    };
+    if (category == null) return null;
+    return TransactionCategoryRef(
+      id: category.id,
+      name: category.name,
+      iconKey: category.iconKey,
+    );
   }
 
-  int _aggregateCount(
-    Transaction transaction,
-    Map<String, TransactionChildAggregate> aggregate,
+  Account? _firstAccountOfType(
+    List<Entry> entries,
+    Map<String, Account> accountsById,
+    AccountType type,
   ) {
-    if (transaction.parentTransactionId != null) return 0;
-    return aggregate[transaction.id]?.count ?? 0;
+    for (final entry in entries) {
+      final account = accountsById[entry.accountId];
+      if (account?.type == type) return account;
+    }
+    return null;
   }
 
-  Money? _gapMoney(
-    Transaction transaction,
-    Map<String, Map<TransactionDetailType, int>> aggregate,
+  /// 结算分录 = asset / liability 账户上的分录；分类与权益系统账户
+  /// （期初余额、幽灵账户、利费优等）不属于结算投影。
+  List<TransactionSettlementEntryRef> _settlementRefs(
+    List<Entry> entries,
+    Map<String, Account> accountsById,
+  ) {
+    final refs = <TransactionSettlementEntryRef>[];
+    for (final entry in entries) {
+      final account = accountsById[entry.accountId];
+      if (account == null || !account.type.isUserAccount) continue;
+      refs.add(
+        TransactionSettlementEntryRef(
+          accountId: entry.accountId,
+          accountName: account.name,
+          accountIconKey: account.iconKey,
+          direction: entry.direction,
+          amount: entry.amount,
+        ),
+      );
+    }
+    return List.unmodifiable(refs);
+  }
+
+  List<TransactionAdjustment> _adjustments({
+    required Transaction transaction,
+    required List<TransactionDetailRecord> details,
+    required Map<String, TransactionChildAggregate> refundAgg,
+    required Map<String, TransactionChildAggregate> reimbursementAgg,
+    required Map<String, Map<TransactionDetailType, int>> gapAgg,
+  }) {
+    if (transaction.parentTransactionId != null) return const [];
+    final adjustments = <TransactionAdjustment>[];
+    void add(TransactionAdjustmentKind kind, int amountMinor) {
+      if (amountMinor <= 0) return;
+      adjustments.add(
+        TransactionAdjustment(
+          kind: kind,
+          amount: Money(minorUnits: amountMinor),
+        ),
+      );
+    }
+
+    switch (transaction.businessPurpose) {
+      case BusinessPurpose.dailyExpense:
+        add(
+          TransactionAdjustmentKind.refund,
+          refundAgg[transaction.id]?.sumMinor ?? 0,
+        );
+      case BusinessPurpose.reimbursementAdvance:
+        add(
+          TransactionAdjustmentKind.refund,
+          refundAgg[transaction.id]?.sumMinor ?? 0,
+        );
+        add(
+          TransactionAdjustmentKind.reimbursementReceived,
+          reimbursementAgg[transaction.id]?.sumMinor ?? 0,
+        );
+        add(
+          TransactionAdjustmentKind.reimbursementGapIncome,
+          gapAgg[transaction.id]?[TransactionDetailType
+                  .reimbursementGapIncome] ??
+              0,
+        );
+        add(
+          TransactionAdjustmentKind.reimbursementGapExpense,
+          gapAgg[transaction.id]?[TransactionDetailType
+                  .reimbursementGapExpense] ??
+              0,
+        );
+      case BusinessPurpose.debtRepayment:
+        add(
+          TransactionAdjustmentKind.repaymentInterest,
+          _detailAmount(details, TransactionDetailType.repaymentInterest),
+        );
+        add(
+          TransactionAdjustmentKind.repaymentFee,
+          _detailAmount(details, TransactionDetailType.repaymentFee),
+        );
+        add(
+          TransactionAdjustmentKind.repaymentDiscount,
+          _detailAmount(details, TransactionDetailType.repaymentDiscount),
+        );
+      default:
+        break;
+    }
+    return List.unmodifiable(adjustments);
+  }
+
+  int _detailAmount(
+    List<TransactionDetailRecord> details,
     TransactionDetailType type,
   ) {
-    if (transaction.parentTransactionId != null ||
-        transaction.businessPurpose != BusinessPurpose.reimbursementAdvance) {
-      return null;
+    var total = 0;
+    for (final detail in details) {
+      if (detail.type == type) total += detail.amount.minorUnits;
     }
-    final amount = aggregate[transaction.id]?[type] ?? 0;
-    return amount == 0 ? null : Money(minorUnits: amount);
+    return total;
   }
 
   @override
@@ -301,7 +468,13 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
             : const <Transaction>[];
     final createdAt =
         await _txRead.findCreatedAt(transactionId) ?? transaction.occurredAt;
-    final childModels = await _projectListItems(children);
+    final childModels =
+        children.isEmpty
+            ? const <TransactionListReadModel>[]
+            : await _projectListItems(
+              children,
+              await _accountQuery.findAccountsById(),
+            );
     final refundedTotal =
         (transaction.businessPurpose == BusinessPurpose.dailyExpense ||
                 transaction.businessPurpose ==

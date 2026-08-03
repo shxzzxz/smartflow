@@ -219,14 +219,14 @@ TransactionListReadModel _child(
 ) {
   return TransactionListReadModel(
     id: id,
-    parentTransactionId: 'parent',
     businessPurpose: purpose,
     occurredAt: DateTime(2026, 7, 2),
     primaryAmount: Money(minorUnits: amount),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    entries: const [],
-    details: const [],
+    category: null,
+    settlementEntries: const [],
+    adjustments: const [],
   );
 }
 

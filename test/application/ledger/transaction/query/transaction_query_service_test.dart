@@ -23,7 +23,7 @@ void main() {
       purpose: BusinessPurpose.reimbursementReceipt,
       amount: 6000,
     );
-    final service = TransactionQueryServiceImpl(
+    final service = _service(
       transactionRead: _FakeTransactionReadRepository(
         transactions: {'parent': parent, 'refund': refund, 'receipt': receipt},
         reimbursementAggregate: const {
@@ -37,9 +37,6 @@ void main() {
           ),
         },
       ),
-      entryRead: const _FakeEntryReadRepository(),
-      detailRead: const _FakeTransactionDetailReadRepository(),
-      metricsSource: const _UnusedLedgerMetricsSource(),
     );
 
     final detail = await service.findTransactionDetail('parent');
@@ -53,7 +50,7 @@ void main() {
   });
 
   test(
-    'reimbursement advance list item aggregates refunds and receipts separately',
+    'reimbursement advance list item carries refund and receipt adjustments',
     () async {
       final parent = _transaction(
         id: 'parent',
@@ -72,7 +69,7 @@ void main() {
         purpose: BusinessPurpose.reimbursementReceipt,
         amount: 4000,
       );
-      final service = TransactionQueryServiceImpl(
+      final service = _service(
         transactionRead: _FakeTransactionReadRepository(
           transactions: {
             'parent': parent,
@@ -90,19 +87,18 @@ void main() {
             ),
           },
         ),
-        entryRead: const _FakeEntryReadRepository(),
-        detailRead: const _FakeTransactionDetailReadRepository(),
-        metricsSource: const _UnusedLedgerMetricsSource(),
       );
 
       final item =
           (await service.watchTransactions(const TransactionListQuery()).first)
               .single;
 
-      expect(item.refundedTotal, const Money(minorUnits: 2000));
-      expect(item.refundChildCount, 1);
-      expect(item.reimbursementReceivedTotal, const Money(minorUnits: 4000));
-      expect(item.reimbursementChildCount, 1);
+      expect(item.adjustments.map((adjustment) => adjustment.kind), [
+        TransactionAdjustmentKind.refund,
+        TransactionAdjustmentKind.reimbursementReceived,
+      ]);
+      expect(item.adjustments.first.amount, const Money(minorUnits: 2000));
+      expect(item.adjustments.last.amount, const Money(minorUnits: 4000));
     },
   );
 
@@ -118,7 +114,7 @@ void main() {
       purpose: BusinessPurpose.reimbursementReceipt,
       amount: 4000,
     );
-    final service = TransactionQueryServiceImpl(
+    final service = _service(
       transactionRead: _FakeTransactionReadRepository(
         transactions: {'parent': parent, 'receipt': receipt},
         reimbursementAggregate: const {
@@ -132,9 +128,6 @@ void main() {
           ),
         },
       ),
-      entryRead: const _FakeEntryReadRepository(),
-      detailRead: const _FakeTransactionDetailReadRepository(),
-      metricsSource: const _UnusedLedgerMetricsSource(),
     );
 
     final detail = await service.findTransactionDetail('receipt');
@@ -146,6 +139,140 @@ void main() {
       const Money(minorUnits: 10000),
     );
     expect(detail.reimbursementSummary?.outstanding, Money.zero());
+  });
+
+  test(
+    'projects category and settlement refs from account snapshots',
+    () async {
+      final expense = _transaction(
+        id: 'expense',
+        purpose: BusinessPurpose.dailyExpense,
+        amount: 1000,
+      );
+      final transactionRead = _FakeTransactionReadRepository(
+        transactions: {'expense': expense},
+      );
+      final service = _service(
+        transactionRead: transactionRead,
+        entryRead: _FakeEntryReadRepository({
+          'expense': [
+            _entry('e1', 'expense', 'dining', EntryDirection.debit, 1000),
+            _entry('e2', 'expense', 'cash', EntryDirection.credit, 1000),
+          ],
+        }),
+        accounts: [
+          _account('dining', AccountType.expense, name: '餐饮', iconKey: 'bowl'),
+          _account('cash', AccountType.asset, name: '现金'),
+        ],
+      );
+
+      final item =
+          (await service.watchTransactions(const TransactionListQuery()).first)
+              .single;
+
+      expect(item.category?.id, 'dining');
+      expect(item.category?.name, '餐饮');
+      expect(item.category?.iconKey, 'bowl');
+      expect(item.settlementEntries.single.accountId, 'cash');
+      expect(item.settlementEntries.single.accountName, '现金');
+      expect(item.settlementEntries.single.direction, EntryDirection.credit);
+      expect(
+        item.settlementEntries.single.amount,
+        const Money(minorUnits: 1000),
+      );
+    },
+  );
+
+  test('expands a first-level category into itself and its children', () async {
+    final transactionRead = _FakeTransactionReadRepository(transactions: {});
+    final service = _service(
+      transactionRead: transactionRead,
+      accounts: [
+        _account('food', AccountType.expense),
+        _account('dining', AccountType.expense, parentId: 'food'),
+        _account('hotpot', AccountType.expense, parentId: 'food'),
+        _account('travel', AccountType.expense),
+      ],
+    );
+
+    await service.findTransactions(
+      const TransactionListQuery(categoryId: 'food'),
+    );
+
+    expect(transactionRead.lastPageQuery?.categoryAccountIds, {
+      'food',
+      'dining',
+      'hotpot',
+    });
+  });
+
+  test('expands a second-level category into itself only', () async {
+    final transactionRead = _FakeTransactionReadRepository(transactions: {});
+    final service = _service(
+      transactionRead: transactionRead,
+      accounts: [
+        _account('food', AccountType.expense),
+        _account('dining', AccountType.expense, parentId: 'food'),
+      ],
+    );
+
+    await service.findTransactions(
+      const TransactionListQuery(categoryId: 'dining'),
+    );
+
+    expect(transactionRead.lastPageQuery?.categoryAccountIds, {'dining'});
+  });
+
+  test('categoryOwnOnly keeps the first-level category unexpanded', () async {
+    final transactionRead = _FakeTransactionReadRepository(transactions: {});
+    final service = _service(
+      transactionRead: transactionRead,
+      accounts: [
+        _account('food', AccountType.expense),
+        _account('dining', AccountType.expense, parentId: 'food'),
+      ],
+    );
+
+    await service.findTransactions(
+      const TransactionListQuery(categoryId: 'food', categoryOwnOnly: true),
+    );
+
+    expect(transactionRead.lastPageQuery?.categoryAccountIds, {'food'});
+  });
+
+  test(
+    'returns empty list when the filtered category no longer exists',
+    () async {
+      final transactionRead = _FakeTransactionReadRepository(
+        transactions: {
+          'expense': _transaction(
+            id: 'expense',
+            purpose: BusinessPurpose.dailyExpense,
+            amount: 1000,
+          ),
+        },
+      );
+      final service = _service(transactionRead: transactionRead);
+
+      final items = await service.findTransactions(
+        const TransactionListQuery(categoryId: 'missing'),
+      );
+
+      expect(items, isEmpty);
+      expect(transactionRead.lastPageQuery, isNull);
+    },
+  );
+
+  test('passes the settlement account filter through unchanged', () async {
+    final transactionRead = _FakeTransactionReadRepository(transactions: {});
+    final service = _service(transactionRead: transactionRead);
+
+    await service.findTransactions(
+      const TransactionListQuery(settlementAccountId: 'cash'),
+    );
+
+    expect(transactionRead.lastPageQuery?.settlementAccountIds, {'cash'});
+    expect(transactionRead.lastPageQuery?.categoryAccountIds, isNull);
   });
 }
 
@@ -167,14 +294,77 @@ Transaction _transaction({
   );
 }
 
+Entry _entry(
+  String id,
+  String transactionId,
+  String accountId,
+  EntryDirection direction,
+  int amountMinor,
+) {
+  return Entry(
+    id: id,
+    transactionId: transactionId,
+    accountId: accountId,
+    direction: direction,
+    amount: Money(minorUnits: amountMinor),
+  );
+}
+
+Account _account(
+  String id,
+  AccountType type, {
+  String? name,
+  String? parentId,
+  String? iconKey,
+}) {
+  return Account(
+    id: id,
+    name: name ?? id,
+    type: type,
+    parentId: parentId,
+    iconKey: iconKey,
+    balance: const Money(minorUnits: 0),
+  );
+}
+
+TransactionQueryServiceImpl _service({
+  required _FakeTransactionReadRepository transactionRead,
+  _FakeEntryReadRepository entryRead = const _FakeEntryReadRepository({}),
+  List<Account> accounts = const [],
+}) {
+  return TransactionQueryServiceImpl(
+    transactionRead: transactionRead,
+    entryRead: entryRead,
+    detailRead: const _FakeTransactionDetailReadRepository(),
+    accountQuery: _FakeAccountQueryService(accounts),
+    metricsSource: const _UnusedLedgerMetricsSource(),
+  );
+}
+
+class _FakeAccountQueryService implements AccountQueryService {
+  _FakeAccountQueryService(this._accounts);
+
+  final List<Account> _accounts;
+
+  @override
+  Future<Map<String, Account>> findAccountsById() async => {
+    for (final account in _accounts) account.id: account,
+  };
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
+}
+
 class _FakeTransactionReadRepository implements TransactionReadRepository {
-  const _FakeTransactionReadRepository({
+  _FakeTransactionReadRepository({
     required this.transactions,
-    required this.reimbursementAggregate,
+    this.reimbursementAggregate = const {},
   });
 
   final Map<String, Transaction> transactions;
   final Map<BusinessPurpose, TransactionChildAggregate> reimbursementAggregate;
+  TransactionPageQuery? lastPageQuery;
 
   @override
   Future<Transaction?> findById(String id) async => transactions[id];
@@ -189,12 +379,14 @@ class _FakeTransactionReadRepository implements TransactionReadRepository {
   ];
 
   @override
-  Stream<List<Transaction>> watchPage(TransactionListQuery query) =>
-      Stream.value([
-        for (final transaction in transactions.values)
-          if (!query.topLevelOnly || transaction.parentTransactionId == null)
-            transaction,
-      ]);
+  Stream<List<Transaction>> watchPage(TransactionPageQuery query) {
+    lastPageQuery = query;
+    return Stream.value([
+      for (final transaction in transactions.values)
+        if (!query.topLevelOnly || transaction.parentTransactionId == null)
+          transaction,
+    ]);
+  }
 
   @override
   Future<List<Transaction>> findChildren({required String parentId}) async =>
@@ -261,16 +453,26 @@ class _FakeTransactionReadRepository implements TransactionReadRepository {
   ) async => const [];
 
   @override
+  Future<List<CategoryTransactionTarget>> findCategoryTransactionTargets(
+    String categoryId,
+  ) async => const [];
+
+  @override
   Stream<void> watchChanges() => Stream.value(null);
 }
 
 class _FakeEntryReadRepository implements EntryReadRepository {
-  const _FakeEntryReadRepository();
+  const _FakeEntryReadRepository(this._entriesByTransaction);
+
+  final Map<String, List<Entry>> _entriesByTransaction;
 
   @override
   Future<Map<String, List<Entry>>> findByTransactionIds(
     Set<String> transactionIds,
-  ) async => const {};
+  ) async => {
+    for (final id in transactionIds)
+      if (_entriesByTransaction[id] case final entries?) id: entries,
+  };
 }
 
 class _FakeTransactionDetailReadRepository

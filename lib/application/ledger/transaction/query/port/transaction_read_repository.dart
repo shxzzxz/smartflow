@@ -53,7 +53,7 @@ abstract interface class TransactionReadRepository {
 
   Future<List<Transaction>> findByIds(Set<String> ids);
 
-  Stream<List<Transaction>> watchPage(TransactionListQuery query);
+  Stream<List<Transaction>> watchPage(TransactionPageQuery query);
 
   Future<List<Transaction>> findChildren({required String parentId});
 
@@ -88,5 +88,7 @@ abstract interface class TransactionReadRepository {
     String categoryId,
   );
 
+  /// 响应 transactions / entries / transaction_details / accounts 表变化；
+  /// 账户与分类快照变化需要触发列表重新投影。
   Stream<void> watchChanges();
 }

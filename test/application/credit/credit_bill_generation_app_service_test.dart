@@ -825,6 +825,7 @@ class _Fixture {
         transactionRead: DriftTransactionReadRepository(database),
         entryRead: DriftEntryReadRepository(database),
         detailRead: DriftTransactionDetailReadRepository(database),
+        accountQuery: accountQueryService,
         metricsSource: DriftLedgerMetricsSource(database),
       );
   late final CreditAccountAppService creditAccountAppService;

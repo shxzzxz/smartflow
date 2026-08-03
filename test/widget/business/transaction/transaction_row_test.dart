@@ -4,7 +4,6 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
-import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/category/category_avatar.dart';
 import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
@@ -17,10 +16,7 @@ void main() {
     tester,
   ) async {
     var tapped = false;
-    final presentation = buildTransactionRowPresentation(
-      item: _item(),
-      accountLookup: AccountLookup(_accounts),
-    );
+    final presentation = buildTransactionRowPresentation(item: _item());
 
     await tester.pumpWidget(
       MaterialApp(
@@ -353,10 +349,7 @@ void main() {
 
   testWidgets('calls quick edit callback from swipe action', (tester) async {
     var quickEdited = false;
-    final presentation = buildTransactionRowPresentation(
-      item: _item(),
-      accountLookup: AccountLookup(_accounts),
-    );
+    final presentation = buildTransactionRowPresentation(item: _item());
 
     await tester.pumpWidget(
       MaterialApp(
@@ -444,51 +437,28 @@ TransactionRowPresentation _presentationWithBadgeLabels(
   );
 }
 
-final _accounts = <String, Account>{
-  'cash': _account('cash', '现金', iconKey: 'cash'),
-  'food': _account('food', '餐饮', type: AccountType.expense, iconKey: 'meal'),
-};
-
 TransactionListReadModel _item() {
   return TransactionListReadModel(
     id: 'tx-1',
     businessPurpose: BusinessPurpose.dailyExpense,
     occurredAt: DateTime(2026, 1, 1, 8, 30),
     primaryAmount: const Money(minorUnits: 1234),
-    note: ' 午餐 ',
     isExcludedFromStats: true,
     isExcludedFromBudget: false,
-    entries: const [
-      Entry(
-        id: 'entry-cash',
-        transactionId: 'tx-1',
+    category: const TransactionCategoryRef(
+      id: 'food',
+      name: '餐饮',
+      iconKey: 'meal',
+    ),
+    settlementEntries: const [
+      TransactionSettlementEntryRef(
         accountId: 'cash',
+        accountName: '现金',
+        accountIconKey: 'cash',
         direction: EntryDirection.credit,
         amount: Money(minorUnits: 1234),
       ),
-      Entry(
-        id: 'entry-food',
-        transactionId: 'tx-1',
-        accountId: 'food',
-        direction: EntryDirection.debit,
-        amount: Money(minorUnits: 1234),
-      ),
     ],
-    details: const [],
-  );
-}
-
-Account _account(
-  String id,
-  String name, {
-  AccountType type = AccountType.asset,
-  String? iconKey,
-}) {
-  return Account(
-    id: id,
-    name: name,
-    type: type,
-    iconKey: iconKey,
-    balance: const Money(minorUnits: 0),
+    adjustments: const [],
   );
 }

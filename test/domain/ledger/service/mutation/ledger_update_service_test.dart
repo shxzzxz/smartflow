@@ -123,4 +123,9 @@ class _MemoryTransactionRepository
   @override
   Future<Map<String, int>> countEntriesByAccount(Set<String> accountIds) =>
       throw UnimplementedError();
+
+  @override
+  Future<Map<String, int>> countReimbursementExpenseRefs(
+    Set<String> accountIds,
+  ) async => const {};
 }

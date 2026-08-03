@@ -134,7 +134,7 @@ class UnattributedRepaymentFormViewModel
   void _invalidateAfterSubmit(String accountId) {
     ref.invalidate(creditAccountOverviewProvider(accountId));
     ref.invalidate(accountsByIdProvider);
-    ref.invalidate(transactionListProvider(accountId: accountId));
+    ref.invalidate(transactionListProvider(settlementAccountId: accountId));
     ref.invalidate(
       accountsForSelectionPurposeProvider(
         AccountSelectionPurpose.repaymentSource,

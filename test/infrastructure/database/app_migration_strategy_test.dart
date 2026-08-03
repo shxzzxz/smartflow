@@ -33,7 +33,7 @@ void main() {
           await upgradedDatabase
               .customSelect('PRAGMA user_version')
               .getSingle();
-      expect(version.read<int>('user_version'), 22);
+      expect(version.read<int>('user_version'), 25);
       await _insertNoTransactionContract(upgradedDatabase);
     },
   );
@@ -71,7 +71,7 @@ void main() {
           await upgradedDatabase
               .customSelect('PRAGMA user_version')
               .getSingle();
-      expect(version.read<int>('user_version'), 22);
+      expect(version.read<int>('user_version'), 25);
 
       final row =
           await upgradedDatabase
@@ -179,7 +179,7 @@ void main() {
           await upgradedDatabase
               .customSelect('PRAGMA user_version')
               .getSingle();
-      expect(version.read<int>('user_version'), 22);
+      expect(version.read<int>('user_version'), 25);
 
       final transactions =
           await upgradedDatabase
@@ -349,7 +349,7 @@ void main() {
           await upgradedDatabase
               .customSelect('PRAGMA user_version')
               .getSingle();
-      expect(version.read<int>('user_version'), 22);
+      expect(version.read<int>('user_version'), 25);
 
       for (final table in [
         'import_entity_mappings',

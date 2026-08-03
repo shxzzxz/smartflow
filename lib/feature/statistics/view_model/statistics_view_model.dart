@@ -5,7 +5,6 @@ import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/time/month_key.dart';
 import '../../shared/provider/current_date_time_provider.dart';
 import '../../shared/provider/ledger_query_providers.dart';
-import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../presentation/statistics_presentation.dart';
 
@@ -211,18 +210,20 @@ StatisticsContentState statisticsContent(Ref ref, DateTime visibleMonth) {
 @riverpod
 Stream<List<TransactionListReadModel>> statisticsTransactions(
   Ref ref, {
-  required String accountIdsKey,
+  required String? categoryId,
+  required bool categoryOwnOnly,
+  required String? settlementAccountId,
   required DateTime? occurredFrom,
   required DateTime occurredUntil,
   required StatisticsDrilldownScope scope,
 }) {
-  final accountIds =
-      accountIdsKey.split(',').where((id) => id.isNotEmpty).toSet();
   return ref
       .watch(transactionQueryServiceProvider)
       .watchTransactions(
         TransactionListQuery(
-          accountIds: accountIds,
+          categoryId: categoryId,
+          categoryOwnOnly: categoryOwnOnly,
+          settlementAccountId: settlementAccountId,
           occurredFrom: occurredFrom,
           occurredUntil: occurredUntil,
           topLevelOnly: false,
@@ -238,36 +239,32 @@ Stream<List<TransactionListReadModel>> statisticsTransactions(
 @riverpod
 StatisticsTransactionsContentState statisticsTransactionsContent(
   Ref ref, {
-  required String accountIdsKey,
+  required String? categoryId,
+  required bool categoryOwnOnly,
+  required String? settlementAccountId,
   required DateTime? occurredFrom,
   required DateTime occurredUntil,
   required StatisticsDrilldownScope scope,
 }) {
   final transactions = ref.watch(
     statisticsTransactionsProvider(
-      accountIdsKey: accountIdsKey,
+      categoryId: categoryId,
+      categoryOwnOnly: categoryOwnOnly,
+      settlementAccountId: settlementAccountId,
       occurredFrom: occurredFrom,
       occurredUntil: occurredUntil,
       scope: scope,
     ),
   );
-  final accounts = ref.watch(accountsByIdProvider);
   if (transactions case AsyncError(:final error)) {
     return StatisticsTransactionsContentState.error(message: '加载失败：$error');
   }
-  if (accounts case AsyncError(:final error)) {
-    return StatisticsTransactionsContentState.error(message: '加载失败：$error');
-  }
   final transactionValues = transactions.value;
-  final accountValues = accounts.value;
-  if (transactionValues == null || accountValues == null) {
+  if (transactionValues == null) {
     return const StatisticsTransactionsContentState.loading();
   }
   return StatisticsTransactionsContentState.loaded(
-    groups: groupTransactionsByDay(
-      items: transactionValues,
-      accountLookup: AccountLookup(accountValues),
-    ),
+    groups: groupTransactionsByDay(items: transactionValues),
   );
 }
 

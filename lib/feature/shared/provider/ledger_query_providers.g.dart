@@ -475,7 +475,8 @@ final class TransactionListProvider
         $StreamProvider<List<TransactionListReadModel>> {
   TransactionListProvider._({
     required TransactionListFamily super.from,
-    required ({String? accountId, int limit, int offset}) super.argument,
+    required ({String? settlementAccountId, int limit, int offset})
+    super.argument,
   }) : super(
          retry: null,
          name: r'transactionListProvider',
@@ -503,10 +504,10 @@ final class TransactionListProvider
   @override
   Stream<List<TransactionListReadModel>> create(Ref ref) {
     final argument =
-        this.argument as ({String? accountId, int limit, int offset});
+        this.argument as ({String? settlementAccountId, int limit, int offset});
     return transactionList(
       ref,
-      accountId: argument.accountId,
+      settlementAccountId: argument.settlementAccountId,
       limit: argument.limit,
       offset: argument.offset,
     );
@@ -523,13 +524,13 @@ final class TransactionListProvider
   }
 }
 
-String _$transactionListHash() => r'32fc89af16404b454b7e206041e5cf82cf4959ca';
+String _$transactionListHash() => r'8b0c2a046432744c8856447370c4236767f2bb66';
 
 final class TransactionListFamily extends $Family
     with
         $FunctionalFamilyOverride<
           Stream<List<TransactionListReadModel>>,
-          ({String? accountId, int limit, int offset})
+          ({String? settlementAccountId, int limit, int offset})
         > {
   TransactionListFamily._()
     : super(
@@ -541,11 +542,15 @@ final class TransactionListFamily extends $Family
       );
 
   TransactionListProvider call({
-    String? accountId,
+    String? settlementAccountId,
     int limit = 50,
     int offset = 0,
   }) => TransactionListProvider._(
-    argument: (accountId: accountId, limit: limit, offset: offset),
+    argument: (
+      settlementAccountId: settlementAccountId,
+      limit: limit,
+      offset: offset,
+    ),
     from: this,
   );
 

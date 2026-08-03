@@ -56,7 +56,9 @@ class BillDetailViewModel extends _$BillDetailViewModel {
       _invalidateBillDependencies(detail.summary.accountId);
       ref
         ..invalidate(
-          transactionListProvider(accountId: detail.summary.accountId),
+          transactionListProvider(
+            settlementAccountId: detail.summary.accountId,
+          ),
         )
         ..invalidate(accountsByIdProvider);
     });

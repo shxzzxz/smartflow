@@ -2,8 +2,9 @@ import 'transaction_scope.dart';
 
 class TransactionListQuery {
   const TransactionListQuery({
-    this.accountId,
-    this.accountIds,
+    this.categoryId,
+    this.categoryOwnOnly = false,
+    this.settlementAccountId,
     this.occurredFrom,
     this.occurredUntil,
     this.topLevelOnly = true,
@@ -11,12 +12,49 @@ class TransactionListQuery {
     this.offset = 0,
     this.before,
     this.scope = TransactionScopeFilter.assetLiability,
-  }) : assert(accountId == null || accountIds == null),
-       assert(limit != null || offset == 0),
-       assert(before == null || offset == 0);
+  }) : assert(limit != null || offset == 0),
+       assert(before == null || offset == 0),
+       assert(categoryId != null || !categoryOwnOnly);
 
-  final String? accountId;
-  final Set<String>? accountIds;
+  /// 用户选择的活跃分类。一级分类在查询层展开为自身与全部二级分类，
+  /// 二级分类展开为自身；与结算账户维度同时存在时取交集。
+  final String? categoryId;
+
+  /// 仅命中 [categoryId] 自身的物理分录，不展开二级分类。
+  /// 用于统计"未细分"项的钻取。
+  final bool categoryOwnOnly;
+
+  /// 用户选择的结算账户，不表达"任意账户 ID"。
+  final String? settlementAccountId;
+
+  final DateTime? occurredFrom;
+  final DateTime? occurredUntil;
+  final bool topLevelOnly;
+  final int? limit;
+  final int offset;
+  final TransactionListCursor? before;
+  final TransactionScopeFilter scope;
+}
+
+/// 仓储层翻页查询。分类树已由查询层展开为物理分类 ID 集合，仓储不理解分类树。
+///
+/// 两个账户维度各自独立匹配分录后取交集；`null` 表示该维度缺省，
+/// 空集合表示该维度无可匹配项，结果恒为空。
+class TransactionPageQuery {
+  const TransactionPageQuery({
+    this.categoryAccountIds,
+    this.settlementAccountIds,
+    this.occurredFrom,
+    this.occurredUntil,
+    this.topLevelOnly = true,
+    this.limit,
+    this.offset = 0,
+    this.before,
+    this.scope = TransactionScopeFilter.assetLiability,
+  });
+
+  final Set<String>? categoryAccountIds;
+  final Set<String>? settlementAccountIds;
   final DateTime? occurredFrom;
   final DateTime? occurredUntil;
   final bool topLevelOnly;

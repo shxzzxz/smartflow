@@ -2,7 +2,6 @@ import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
 import '../../../core/money/money_formatter.dart';
-import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
@@ -79,7 +78,6 @@ CalendarMonthPresentation buildCalendarMonthPresentation({
   required DateTime visibleMonth,
   required DateTime selectedDate,
   required List<TransactionListReadModel> transactions,
-  required AccountLookup accountLookup,
   required CashflowSummary summary,
   required List<DailyCashflowSummary> dailySummaries,
   List<CreditDueCalendarItemReadModel> creditDueItems = const [],
@@ -104,7 +102,6 @@ CalendarMonthPresentation buildCalendarMonthPresentation({
     selectedGroup: transactionGroupForDate(
       date: selectedDate,
       transactions: transactions,
-      accountLookup: accountLookup,
       dailySummaries: dailySummaries,
     ),
   );

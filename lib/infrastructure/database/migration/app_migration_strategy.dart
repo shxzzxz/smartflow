@@ -59,13 +59,29 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
       }
       if (from < 24) {
         await migrator.createTable(database.accountGroups);
-        await migrator.addColumn(database.accounts, database.accounts.groupId);
+        if (!await _hasColumn(database, 'accounts', 'group_id')) {
+          await migrator.addColumn(
+            database.accounts,
+            database.accounts.groupId,
+          );
+        }
       }
       if (from < 25) {
         await _reactivateArchivedCategories(database);
       }
     },
   );
+}
+
+/// 测试夹具或开发库可能已含 v24 列但仍保留旧 user_version；避免重复加列。
+Future<bool> _hasColumn(
+  AppDatabase database,
+  String tableName,
+  String columnName,
+) async {
+  final columns =
+      await database.customSelect('PRAGMA table_info($tableName)').get();
+  return columns.any((row) => row.read<String>('name') == columnName);
 }
 
 /// v25：分类删除语义从“归档挂载归并”改为“有引用禁止删除”。

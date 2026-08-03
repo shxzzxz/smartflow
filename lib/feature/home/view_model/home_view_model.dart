@@ -3,10 +3,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/time/month_key.dart';
-import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../shared/provider/current_date_time_provider.dart';
-import '../../shared/provider/ledger_query_providers.dart';
 
 part 'home_view_model.g.dart';
 
@@ -214,7 +212,6 @@ HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
   final dailySummaries = ref.watch(
     homeDailyCashflowSummariesProvider(visibleMonth),
   );
-  final accountsById = ref.watch(accountsByIdProvider);
 
   if (comparison case AsyncError(:final error)) {
     return HomeContentState.error(message: '加载失败：$error');
@@ -222,16 +219,10 @@ HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
   if (dailySummaries case AsyncError(:final error)) {
     return HomeContentState.error(message: '加载失败：$error');
   }
-  if (accountsById case AsyncError(:final error)) {
-    return HomeContentState.error(message: '加载失败：$error');
-  }
 
   final comparisonValue = comparison.value;
   final dailySummaryValues = dailySummaries.value;
-  final accountValues = accountsById.value;
-  if (comparisonValue == null ||
-      dailySummaryValues == null ||
-      accountValues == null) {
+  if (comparisonValue == null || dailySummaryValues == null) {
     return const HomeContentState.loading();
   }
 
@@ -247,7 +238,6 @@ HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
     summary: buildMonthlySummaryPresentation(comparisonValue),
     groups: groupTransactionsByDay(
       items: transactionValues.items,
-      accountLookup: AccountLookup(accountValues),
       dailySummaries: dailySummaryValues,
     ),
     hasMore: transactionValues.hasMore,

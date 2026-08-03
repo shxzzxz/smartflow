@@ -19,7 +19,7 @@ void main() {
         accountService,
         overrides: [
           transactionListProvider(
-            accountId: 'cash',
+            settlementAccountId: 'cash',
             limit: accountTransactionPageSize,
           ).overrideWith((ref) => Stream.value([_item('tx-1')])),
         ],
@@ -32,7 +32,7 @@ void main() {
       addTearDown(sub.close);
       await container.read(
         transactionListProvider(
-          accountId: 'cash',
+          settlementAccountId: 'cash',
           limit: accountTransactionPageSize,
         ).future,
       );
@@ -220,23 +220,21 @@ TransactionListReadModel _item(String id, {DateTime? occurredAt}) {
     primaryAmount: const Money(minorUnits: 1234),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    entries: [
-      Entry(
-        id: 'entry-cash-$id',
-        transactionId: id,
+    category: const TransactionCategoryRef(
+      id: 'food',
+      name: '餐饮',
+      iconKey: 'meal',
+    ),
+    settlementEntries: const [
+      TransactionSettlementEntryRef(
         accountId: 'cash',
+        accountName: '现金',
+        accountIconKey: 'cash',
         direction: EntryDirection.credit,
-        amount: const Money(minorUnits: 1234),
-      ),
-      Entry(
-        id: 'entry-food-$id',
-        transactionId: id,
-        accountId: 'food',
-        direction: EntryDirection.debit,
-        amount: const Money(minorUnits: 1234),
+        amount: Money(minorUnits: 1234),
       ),
     ],
-    details: const [],
+    adjustments: const [],
   );
 }
 

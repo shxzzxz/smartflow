@@ -65,7 +65,6 @@ void main() {
         await container.read(
           calendarDailyCashflowSummariesProvider(visibleMonth).future,
         );
-        await container.read(accountsByIdProvider.future);
         await container.pump();
         await _flush();
 
@@ -196,8 +195,9 @@ TransactionListReadModel _item(DateTime occurredAt) {
     primaryAmount: const Money(minorUnits: 10000),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    entries: const [],
-    details: const [],
+    category: null,
+    settlementEntries: const [],
+    adjustments: const [],
   );
 }
 

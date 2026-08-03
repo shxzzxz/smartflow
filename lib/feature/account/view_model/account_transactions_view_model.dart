@@ -1,7 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../application/ledger/ledger_query_api.dart';
-import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 
@@ -26,7 +25,7 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
     final pageCount = ref.watch(accountTransactionPagingProvider(accountId));
     final limit = pageCount * accountTransactionPageSize;
     final transactions = ref.watch(
-      transactionListProvider(accountId: accountId, limit: limit),
+      transactionListProvider(settlementAccountId: accountId, limit: limit),
     );
     final accountsById = ref.watch(accountsByIdProvider);
 
@@ -34,15 +33,15 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
       return const AccountTransactionsState.error(message: '加载失败，请稍后重试');
     }
 
-    final accountValues = accountsById.value;
-    if (accountValues == null) {
+    final viewAccount = accountsById.value?[accountId];
+    if (accountsById.value == null) {
       return const AccountTransactionsState.loading();
     }
 
     if (_previousItems.isNotEmpty && transactions.isLoading) {
       return _loaded(
         items: _previousItems,
-        accountLookup: AccountLookup(accountValues),
+        viewAccount: viewAccount,
         hasMore: true,
         isLoadingMore: true,
       );
@@ -51,7 +50,7 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
     return switch (transactions) {
       AsyncData(:final value) => _loaded(
         items: _previousItems = value,
-        accountLookup: AccountLookup(accountValues),
+        viewAccount: viewAccount,
         hasMore: value.length == limit,
         isLoadingMore: false,
       ),
@@ -60,7 +59,7 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
             ? const AccountTransactionsState.error(message: '加载失败，请稍后重试')
             : _loaded(
               items: _previousItems,
-              accountLookup: AccountLookup(accountValues),
+              viewAccount: viewAccount,
               hasMore: true,
               isLoadingMore: false,
               loadMoreErrorMessage: '加载更多交易失败，请重试',
@@ -70,7 +69,7 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
             ? const AccountTransactionsState.loading()
             : _loaded(
               items: _previousItems,
-              accountLookup: AccountLookup(accountValues),
+              viewAccount: viewAccount,
               hasMore: true,
               isLoadingMore: true,
             ),
@@ -87,7 +86,7 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
         final pageCount = ref.read(accountTransactionPagingProvider(accountId));
         ref.invalidate(
           transactionListProvider(
-            accountId: accountId,
+            settlementAccountId: accountId,
             limit: pageCount * accountTransactionPageSize,
           ),
         );
@@ -99,17 +98,13 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
 
   AccountTransactionsLoaded _loaded({
     required List<TransactionListReadModel> items,
-    required AccountLookup accountLookup,
+    required Account? viewAccount,
     required bool hasMore,
     required bool isLoadingMore,
     String? loadMoreErrorMessage,
   }) {
     return AccountTransactionsLoaded(
-      groups: groupTransactionsByDay(
-        items: items,
-        accountLookup: accountLookup,
-        viewAccountId: accountId,
-      ),
+      groups: groupTransactionsByDay(items: items, viewAccount: viewAccount),
       hasMore: hasMore,
       isLoadingMore: isLoadingMore,
       loadMoreErrorMessage: loadMoreErrorMessage,

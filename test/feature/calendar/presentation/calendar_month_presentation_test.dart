@@ -4,7 +4,6 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/calendar/presentation/calendar_month_presentation.dart';
 import 'package:smartflow/feature/calendar/presentation/lunar_label_resolver.dart';
-import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 
 void main() {
   group('calendar month presentation', () {
@@ -14,7 +13,6 @@ void main() {
         selectedDate: DateTime(2026, 2, 14),
         today: DateTime(2026, 2, 1),
         transactions: [_item(occurredAt: DateTime(2026, 2, 14, 8))],
-        accountLookup: const AccountLookup(<String, Account>{}),
         summary: const CashflowSummary(
           income: Money(minorUnits: 5000),
           expense: Money(minorUnits: 1200),
@@ -136,7 +134,8 @@ TransactionListReadModel _item({required DateTime occurredAt}) {
     primaryAmount: const Money(minorUnits: 5000),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    entries: const [],
-    details: const [],
+    category: null,
+    settlementEntries: const [],
+    adjustments: const [],
   );
 }

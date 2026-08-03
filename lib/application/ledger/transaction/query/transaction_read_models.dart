@@ -33,6 +33,62 @@ class TransactionCleanupPreview {
   int get deletableGroupCount => matchedGroupCount - ownedGroupCount;
 }
 
+/// 交易的主收支分类投影。
+///
+/// 只有日常支出、日常收入与报销垫付有主收支分类，其余交易用途为 `null`。
+/// 分类筛选不依赖该字段，始终按物理分录和查询层的分类树展开执行。
+class TransactionCategoryRef {
+  const TransactionCategoryRef({
+    required this.id,
+    required this.name,
+    required this.iconKey,
+  });
+
+  final String id;
+  final String name;
+  final String? iconKey;
+}
+
+/// 非分类结算分录的列表展示投影。
+///
+/// 页面可根据 businessPurpose 与 direction 组织付款、收款、负债或应收流向；
+/// 账户详情页可用 direction + amount 计算该账户的余额变化。
+class TransactionSettlementEntryRef {
+  const TransactionSettlementEntryRef({
+    required this.accountId,
+    required this.accountName,
+    required this.accountIconKey,
+    required this.direction,
+    required this.amount,
+  });
+
+  final String accountId;
+  final String accountName;
+  final String? accountIconKey;
+  final EntryDirection direction;
+  final Money amount;
+}
+
+enum TransactionAdjustmentKind {
+  refund,
+  reimbursementReceived,
+  repaymentInterest,
+  repaymentFee,
+  repaymentDiscount,
+  reimbursementGapIncome,
+  reimbursementGapExpense,
+}
+
+/// 交易组的调整摘要：退款、报销到账、利/费/优与报销差额。
+class TransactionAdjustment {
+  const TransactionAdjustment({required this.kind, required this.amount});
+
+  final TransactionAdjustmentKind kind;
+
+  /// 恒为正；文案、正负色由 [kind] 决定。
+  final Money amount;
+}
+
 class TransactionListReadModel {
   const TransactionListReadModel({
     required this.id,
@@ -41,38 +97,20 @@ class TransactionListReadModel {
     required this.primaryAmount,
     required this.isExcludedFromStats,
     required this.isExcludedFromBudget,
-    required this.entries,
-    required this.details,
-    this.parentTransactionId,
-    this.reimbursementExpenseAccountId,
-    this.counterpartyName,
-    this.note,
-    this.refundedTotal,
-    this.refundChildCount = 0,
-    this.reimbursementReceivedTotal,
-    this.reimbursementChildCount = 0,
-    this.reimbursementGapIncome,
-    this.reimbursementGapExpense,
+    required this.category,
+    required this.settlementEntries,
+    required this.adjustments,
   });
 
   final String id;
-  final String? parentTransactionId;
   final BusinessPurpose businessPurpose;
   final DateTime occurredAt;
   final Money primaryAmount;
-  final String? counterpartyName;
-  final String? note;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
-  final String? reimbursementExpenseAccountId;
-  final List<Entry> entries;
-  final List<TransactionDetailRecord> details;
-  final Money? refundedTotal;
-  final int refundChildCount;
-  final Money? reimbursementReceivedTotal;
-  final int reimbursementChildCount;
-  final Money? reimbursementGapIncome;
-  final Money? reimbursementGapExpense;
+  final TransactionCategoryRef? category;
+  final List<TransactionSettlementEntryRef> settlementEntries;
+  final List<TransactionAdjustment> adjustments;
 }
 
 class TransactionDetail {

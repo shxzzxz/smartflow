@@ -70,12 +70,17 @@ final appRouter = GoRouter(
               'balance' => StatisticsDrilldownScope.balance,
               _ => StatisticsDrilldownScope.cashflow,
             };
-            if (until == null) {
+            final categoryId = query['categoryId'];
+            final settlementAccountId = query['accountId'];
+            if (until == null ||
+                (categoryId == null && settlementAccountId == null)) {
               return const PlaceholderPage(title: '统计流水参数无效');
             }
             return StatisticsTransactionsPage(
               title: query['title'] ?? '统计流水',
-              accountIdsKey: query['accountIds'] ?? '',
+              categoryId: categoryId,
+              categoryOwnOnly: query['categoryOwnOnly'] == 'true',
+              settlementAccountId: settlementAccountId,
               occurredFrom: from,
               occurredUntil: until,
               scope: scope,

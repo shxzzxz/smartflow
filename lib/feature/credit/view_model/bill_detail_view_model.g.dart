@@ -51,7 +51,7 @@ final class BillDetailViewModelProvider
 }
 
 String _$billDetailViewModelHash() =>
-    r'c813ec7bce7c4fb5280ba4628c2371aff6bbb6b5';
+    r'a8c1d3b8a68f2ae139aa0e1865a83a4ba84212df';
 
 final class BillDetailViewModelFamily extends $Family
     with

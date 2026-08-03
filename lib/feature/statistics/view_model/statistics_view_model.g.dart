@@ -546,7 +546,9 @@ final class StatisticsTransactionsProvider
   StatisticsTransactionsProvider._({
     required StatisticsTransactionsFamily super.from,
     required ({
-      String accountIdsKey,
+      String? categoryId,
+      bool categoryOwnOnly,
+      String? settlementAccountId,
       DateTime? occurredFrom,
       DateTime occurredUntil,
       StatisticsDrilldownScope scope,
@@ -581,14 +583,18 @@ final class StatisticsTransactionsProvider
     final argument =
         this.argument
             as ({
-              String accountIdsKey,
+              String? categoryId,
+              bool categoryOwnOnly,
+              String? settlementAccountId,
               DateTime? occurredFrom,
               DateTime occurredUntil,
               StatisticsDrilldownScope scope,
             });
     return statisticsTransactions(
       ref,
-      accountIdsKey: argument.accountIdsKey,
+      categoryId: argument.categoryId,
+      categoryOwnOnly: argument.categoryOwnOnly,
+      settlementAccountId: argument.settlementAccountId,
       occurredFrom: argument.occurredFrom,
       occurredUntil: argument.occurredUntil,
       scope: argument.scope,
@@ -608,14 +614,16 @@ final class StatisticsTransactionsProvider
 }
 
 String _$statisticsTransactionsHash() =>
-    r'95834854e4d7635d7cc8f921dcafc28a584906bc';
+    r'91ba655f019138a410251371cd48fa5a7bda7270';
 
 final class StatisticsTransactionsFamily extends $Family
     with
         $FunctionalFamilyOverride<
           Stream<List<TransactionListReadModel>>,
           ({
-            String accountIdsKey,
+            String? categoryId,
+            bool categoryOwnOnly,
+            String? settlementAccountId,
             DateTime? occurredFrom,
             DateTime occurredUntil,
             StatisticsDrilldownScope scope,
@@ -631,13 +639,17 @@ final class StatisticsTransactionsFamily extends $Family
       );
 
   StatisticsTransactionsProvider call({
-    required String accountIdsKey,
+    required String? categoryId,
+    required bool categoryOwnOnly,
+    required String? settlementAccountId,
     required DateTime? occurredFrom,
     required DateTime occurredUntil,
     required StatisticsDrilldownScope scope,
   }) => StatisticsTransactionsProvider._(
     argument: (
-      accountIdsKey: accountIdsKey,
+      categoryId: categoryId,
+      categoryOwnOnly: categoryOwnOnly,
+      settlementAccountId: settlementAccountId,
       occurredFrom: occurredFrom,
       occurredUntil: occurredUntil,
       scope: scope,
@@ -664,7 +676,9 @@ final class StatisticsTransactionsContentProvider
   StatisticsTransactionsContentProvider._({
     required StatisticsTransactionsContentFamily super.from,
     required ({
-      String accountIdsKey,
+      String? categoryId,
+      bool categoryOwnOnly,
+      String? settlementAccountId,
       DateTime? occurredFrom,
       DateTime occurredUntil,
       StatisticsDrilldownScope scope,
@@ -699,14 +713,18 @@ final class StatisticsTransactionsContentProvider
     final argument =
         this.argument
             as ({
-              String accountIdsKey,
+              String? categoryId,
+              bool categoryOwnOnly,
+              String? settlementAccountId,
               DateTime? occurredFrom,
               DateTime occurredUntil,
               StatisticsDrilldownScope scope,
             });
     return statisticsTransactionsContent(
       ref,
-      accountIdsKey: argument.accountIdsKey,
+      categoryId: argument.categoryId,
+      categoryOwnOnly: argument.categoryOwnOnly,
+      settlementAccountId: argument.settlementAccountId,
       occurredFrom: argument.occurredFrom,
       occurredUntil: argument.occurredUntil,
       scope: argument.scope,
@@ -736,14 +754,16 @@ final class StatisticsTransactionsContentProvider
 }
 
 String _$statisticsTransactionsContentHash() =>
-    r'801905112531dea15426a659db5dd01319ba51b9';
+    r'02e253c7d12491c9df96a5185b5e23aff8adb56f';
 
 final class StatisticsTransactionsContentFamily extends $Family
     with
         $FunctionalFamilyOverride<
           StatisticsTransactionsContentState,
           ({
-            String accountIdsKey,
+            String? categoryId,
+            bool categoryOwnOnly,
+            String? settlementAccountId,
             DateTime? occurredFrom,
             DateTime occurredUntil,
             StatisticsDrilldownScope scope,
@@ -759,13 +779,17 @@ final class StatisticsTransactionsContentFamily extends $Family
       );
 
   StatisticsTransactionsContentProvider call({
-    required String accountIdsKey,
+    required String? categoryId,
+    required bool categoryOwnOnly,
+    required String? settlementAccountId,
     required DateTime? occurredFrom,
     required DateTime occurredUntil,
     required StatisticsDrilldownScope scope,
   }) => StatisticsTransactionsContentProvider._(
     argument: (
-      accountIdsKey: accountIdsKey,
+      categoryId: categoryId,
+      categoryOwnOnly: categoryOwnOnly,
+      settlementAccountId: settlementAccountId,
       occurredFrom: occurredFrom,
       occurredUntil: occurredUntil,
       scope: scope,

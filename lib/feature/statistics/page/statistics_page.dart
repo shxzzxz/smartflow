@@ -287,7 +287,10 @@ class _KpiStrip extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: _KpiMetric(label: '日均支出', amount: kpis.dailyAverageExpense),
+              child: _KpiMetric(
+                label: '日均支出',
+                amount: kpis.dailyAverageExpense,
+              ),
             ),
             Expanded(
               child: _KpiMetric(label: '日均收入', amount: kpis.dailyAverageIncome),
@@ -801,16 +804,12 @@ void _openTransactions(
   DateTime from,
   DateTime until,
 ) {
-  final ids = <String>{
-    item.id,
-    for (final child in item.children) child.id,
-  }.toList()
-    ..sort();
   context.push(
     Uri(
       path: '/statistics/transactions',
       queryParameters: {
-        'accountIds': ids.join(','),
+        'categoryId': item.id,
+        if (item.isUnsubdivided) 'categoryOwnOnly': 'true',
         'from': from.toIso8601String(),
         'until': until.toIso8601String(),
         'title': item.title,

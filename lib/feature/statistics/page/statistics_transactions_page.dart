@@ -9,7 +9,9 @@ import '../view_model/statistics_view_model.dart';
 class StatisticsTransactionsPage extends ConsumerWidget {
   const StatisticsTransactionsPage({
     required this.title,
-    required this.accountIdsKey,
+    required this.categoryId,
+    required this.categoryOwnOnly,
+    required this.settlementAccountId,
     required this.occurredFrom,
     required this.occurredUntil,
     required this.scope,
@@ -17,7 +19,9 @@ class StatisticsTransactionsPage extends ConsumerWidget {
   });
 
   final String title;
-  final String accountIdsKey;
+  final String? categoryId;
+  final bool categoryOwnOnly;
+  final String? settlementAccountId;
   final DateTime? occurredFrom;
   final DateTime occurredUntil;
   final StatisticsDrilldownScope scope;
@@ -27,7 +31,9 @@ class StatisticsTransactionsPage extends ConsumerWidget {
     final cutoffDate = occurredUntil.subtract(const Duration(microseconds: 1));
     final content = ref.watch(
       statisticsTransactionsContentProvider(
-        accountIdsKey: accountIdsKey,
+        categoryId: categoryId,
+        categoryOwnOnly: categoryOwnOnly,
+        settlementAccountId: settlementAccountId,
         occurredFrom: occurredFrom,
         occurredUntil: occurredUntil,
         scope: scope,

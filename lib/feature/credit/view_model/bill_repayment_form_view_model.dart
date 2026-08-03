@@ -262,7 +262,7 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
     ref.invalidate(billDetailProvider(state.requireValue.summary!.id));
     ref.invalidate(billSummariesByAccountProvider(accountId));
     ref.invalidate(accountsByIdProvider);
-    ref.invalidate(transactionListProvider(accountId: accountId));
+    ref.invalidate(transactionListProvider(settlementAccountId: accountId));
     ref.invalidate(installmentContractsByAccountProvider(accountId));
     ref.invalidate(creditAccountOverviewProvider(accountId));
     ref.invalidate(

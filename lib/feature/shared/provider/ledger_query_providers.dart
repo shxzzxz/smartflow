@@ -82,7 +82,7 @@ Stream<List<CategoryNode>> categoryTree(Ref ref, AccountType type) {
 @riverpod
 Stream<List<TransactionListReadModel>> transactionList(
   Ref ref, {
-  String? accountId,
+  String? settlementAccountId,
   int limit = 50,
   int offset = 0,
 }) {
@@ -90,8 +90,8 @@ Stream<List<TransactionListReadModel>> transactionList(
       .watch(transactionQueryServiceProvider)
       .watchTransactions(
         TransactionListQuery(
-          accountId: accountId,
-          topLevelOnly: accountId == null,
+          settlementAccountId: settlementAccountId,
+          topLevelOnly: settlementAccountId == null,
           limit: limit,
           offset: offset,
         ),

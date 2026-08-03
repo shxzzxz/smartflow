@@ -347,6 +347,7 @@ TransactionQueryService transactionQueryService(Ref ref) {
     transactionRead: ref.watch(transactionReadRepositoryProvider),
     entryRead: ref.watch(entryReadRepositoryProvider),
     detailRead: ref.watch(transactionDetailReadRepositoryProvider),
+    accountQuery: ref.watch(accountQueryServiceProvider),
     metricsSource: ref.watch(ledgerMetricsSourceProvider),
   );
 }

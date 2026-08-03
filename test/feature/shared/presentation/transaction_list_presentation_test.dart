@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
@@ -16,7 +15,6 @@ void main() {
           _item(id: 'a', occurredAt: jan1),
           _item(id: 'b', occurredAt: jan2),
         ],
-        accountLookup: AccountLookup(_accounts),
         dailySummaries: [
           DailyCashflowSummary(
             date: DateTime(2026, 1, 1),
@@ -38,7 +36,6 @@ void main() {
     test('does not create transaction groups from daily summaries alone', () {
       final groups = groupTransactionsByDay(
         items: const [],
-        accountLookup: AccountLookup(_accounts),
         dailySummaries: [
           DailyCashflowSummary(
             date: DateTime(2026, 1, 1),
@@ -65,7 +62,6 @@ void main() {
           _item(id: 'a', occurredAt: jan1),
           _item(id: 'b', occurredAt: jan2),
         ],
-        accountLookup: AccountLookup(_accounts),
         dailySummaries: [
           DailyCashflowSummary(
             date: DateTime(2026, 1, 1),
@@ -90,10 +86,7 @@ void main() {
         refundedTotal: const Money(minorUnits: 230),
       );
 
-      final row = buildTransactionRowPresentation(
-        item: item,
-        accountLookup: AccountLookup(_accounts),
-      );
+      final row = buildTransactionRowPresentation(item: item);
 
       expect(row.title, '餐饮');
       expect(row.transactionId, 'tx-1');
@@ -117,7 +110,6 @@ void main() {
             refundedTotal: const Money(minorUnits: 2000),
             reimbursementReceivedTotal: const Money(minorUnits: 4000),
           ),
-          accountLookup: AccountLookup(_accounts),
         );
 
         expect(row.badges.map((badge) => badge.label), ['退 20', '报 40']);
@@ -130,8 +122,7 @@ void main() {
     test('uses account balance delta in account ledger mode', () {
       final row = buildTransactionRowPresentation(
         item: _item(),
-        accountLookup: AccountLookup(_accounts),
-        viewAccountId: 'cash',
+        viewAccount: _accounts['cash'],
       );
 
       expect(row.amountText, '-12.34');
@@ -139,11 +130,10 @@ void main() {
     });
 
     test(
-      'uses no account label when the referenced account is unavailable',
+      'uses no account label when the settlement account is unavailable',
       () {
         final row = buildTransactionRowPresentation(
-          item: _item(),
-          accountLookup: AccountLookup({'food': _accounts['food']!}),
+          item: _item(settlementEntries: const []),
         );
 
         expect(row.accountFlow.singleEndpoint.label, '无账户');
@@ -187,36 +177,43 @@ TransactionListReadModel _item({
   bool isExcludedFromStats = false,
   Money? refundedTotal,
   Money? reimbursementReceivedTotal,
+  List<TransactionSettlementEntryRef>? settlementEntries,
 }) {
   return TransactionListReadModel(
     id: id,
     businessPurpose: businessPurpose,
     occurredAt: occurredAt ?? DateTime(2026, 1, 1, 8, 30),
     primaryAmount: primaryAmount,
-    note: ' 午餐 ',
     isExcludedFromStats: isExcludedFromStats,
     isExcludedFromBudget: false,
-    reimbursementExpenseAccountId:
-        businessPurpose == BusinessPurpose.reimbursementAdvance ? 'food' : null,
-    entries: [
-      Entry(
-        id: 'entry-cash',
-        transactionId: id,
-        accountId: 'cash',
-        direction: EntryDirection.credit,
-        amount: primaryAmount,
-      ),
-      Entry(
-        id: 'entry-food',
-        transactionId: id,
-        accountId: 'food',
-        direction: EntryDirection.debit,
-        amount: primaryAmount,
-      ),
+    category: const TransactionCategoryRef(
+      id: 'food',
+      name: '餐饮',
+      iconKey: 'meal',
+    ),
+    settlementEntries:
+        settlementEntries ??
+        [
+          TransactionSettlementEntryRef(
+            accountId: 'cash',
+            accountName: '现金',
+            accountIconKey: 'cash',
+            direction: EntryDirection.credit,
+            amount: primaryAmount,
+          ),
+        ],
+    adjustments: [
+      if (refundedTotal != null)
+        TransactionAdjustment(
+          kind: TransactionAdjustmentKind.refund,
+          amount: refundedTotal,
+        ),
+      if (reimbursementReceivedTotal != null)
+        TransactionAdjustment(
+          kind: TransactionAdjustmentKind.reimbursementReceived,
+          amount: reimbursementReceivedTotal,
+        ),
     ],
-    details: const [],
-    refundedTotal: refundedTotal,
-    reimbursementReceivedTotal: reimbursementReceivedTotal,
   );
 }
 
