@@ -264,29 +264,13 @@ class _MonthlySummaryStrip extends StatelessWidget {
 
     return Row(
       children: [
-        for (var i = 0; i < metrics.length; i++) ...[
-          if (i > 0) const SizedBox(width: AppSpacing.space24),
-          if (i == metrics.length - 1)
-            Expanded(
-              child: _SummaryText(
-                metric: metrics[i],
-                amountColor: financeToneColor(
-                  colors,
-                  financeColors,
-                  metrics[i].tone,
-                ),
-              ),
-            )
-          else
-            _SummaryText(
-              metric: metrics[i],
-              amountColor: financeToneColor(
-                colors,
-                financeColors,
-                metrics[i].tone,
-              ),
+        for (final metric in metrics)
+          Expanded(
+            child: _SummaryText(
+              metric: metric,
+              amountColor: financeToneColor(colors, financeColors, metric.tone),
             ),
-        ],
+          ),
       ],
     );
   }
@@ -302,21 +286,23 @@ class _SummaryText extends StatelessWidget {
   Widget build(BuildContext context) {
     final textStyles = context.appTextStyles;
 
-    return Text.rich(
-      TextSpan(
-        text: '${metric.label} ',
-        style: textStyles.listSupporting,
-        children: [
-          TextSpan(
-            text: metric.amountText,
-            style: textStyles.calendarSummaryAmount.copyWith(
-              color: amountColor,
+    return FittedBox(
+      alignment: Alignment.centerLeft,
+      fit: BoxFit.scaleDown,
+      child: Text.rich(
+        TextSpan(
+          text: '${metric.label} ',
+          style: textStyles.listSupporting,
+          children: [
+            TextSpan(
+              text: metric.amountText,
+              style: textStyles.calendarSummaryAmount.copyWith(
+                color: amountColor,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
     );
   }
 }
