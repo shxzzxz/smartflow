@@ -263,7 +263,7 @@ TransactionRowPresentation buildTransactionRowPresentation({
   );
 }
 
-({String accountId, TransactionAccountImpact impact})? firstFlowImpact(
+String? firstFlowAccountId(
   TransactionListReadModel item, {
   required AccountLookup accountLookup,
   required EntryDirection direction,
@@ -276,7 +276,7 @@ TransactionRowPresentation buildTransactionRowPresentation({
             ? entry.value.debitAmount
             : entry.value.creditAmount;
     if (amount.minorUnits > 0) {
-      return (accountId: entry.key, impact: entry.value);
+      return entry.key;
     }
   }
   return null;
@@ -293,11 +293,9 @@ TransactionAccountFlowPresentation resolveAccountFlow(
   TransactionListReadModel item,
   AccountLookup accountLookup,
 ) {
-  AccountEndpointPresentation? endpointOf(
-    ({String accountId, TransactionAccountImpact impact})? ref,
-  ) {
-    if (ref == null) return null;
-    final account = accountLookup.find(ref.accountId);
+  AccountEndpointPresentation? endpointOf(String? accountId) {
+    if (accountId == null) return null;
+    final account = accountLookup.find(accountId);
     return AccountEndpointPresentation(
       label: account?.name ?? '—',
       iconKey: account?.iconKey,
@@ -305,14 +303,14 @@ TransactionAccountFlowPresentation resolveAccountFlow(
   }
 
   final out = endpointOf(
-    firstFlowImpact(
+    firstFlowAccountId(
       item,
       accountLookup: accountLookup,
       direction: EntryDirection.credit,
     ),
   );
   final in_ = endpointOf(
-    firstFlowImpact(
+    firstFlowAccountId(
       item,
       accountLookup: accountLookup,
       direction: EntryDirection.debit,
@@ -479,13 +477,13 @@ String transactionAccountLabel(
   AccountLookup accountLookup,
 ) {
   String? nameOf(EntryDirection direction) {
-    final ref = firstFlowImpact(
+    final accountId = firstFlowAccountId(
       item,
       accountLookup: accountLookup,
       direction: direction,
     );
     return _cleanText(
-      ref == null ? null : accountLookup.find(ref.accountId)?.name,
+      accountId == null ? null : accountLookup.find(accountId)?.name,
     );
   }
 
@@ -502,13 +500,13 @@ String _flowAccountLabel(
   AccountLookup accountLookup,
 ) {
   String? nameOf(EntryDirection direction) {
-    final ref = firstFlowImpact(
+    final accountId = firstFlowAccountId(
       item,
       accountLookup: accountLookup,
       direction: direction,
     );
     return _cleanText(
-      ref == null ? null : accountLookup.find(ref.accountId)?.name,
+      accountId == null ? null : accountLookup.find(accountId)?.name,
     );
   }
 
