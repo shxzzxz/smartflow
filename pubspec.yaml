@@ -54,6 +54,8 @@ dependencies:
   excel2003:
     path: third_party/excel2003
   file_picker: ^11.0.2
+  csv: ^8.0.0
+  excel_community: ^1.0.10
 
 dev_dependencies:
   flutter_test:

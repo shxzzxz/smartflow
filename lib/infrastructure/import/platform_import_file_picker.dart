@@ -37,7 +37,7 @@ class PlatformImportFilePicker implements ImportFilePicker {
       result = await FilePicker.pickFiles(
         allowMultiple: true,
         type: FileType.custom,
-        allowedExtensions: const ['xls'],
+        allowedExtensions: const ['csv', 'xls', 'xlsx'],
         withData: true,
       );
     } on Exception catch (error, stackTrace) {

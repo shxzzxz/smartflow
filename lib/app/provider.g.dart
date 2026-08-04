@@ -141,53 +141,51 @@ final class ImportFilePickerProvider
 
 String _$importFilePickerHash() => r'95569b885181e28944e6b8019baa8e883a1f2529';
 
-@ProviderFor(yimuWorkbookReader)
-final yimuWorkbookReaderProvider = YimuWorkbookReaderProvider._();
+@ProviderFor(importFileReader)
+final importFileReaderProvider = ImportFileReaderProvider._();
 
-final class YimuWorkbookReaderProvider
+final class ImportFileReaderProvider
     extends
         $FunctionalProvider<
-          YimuWorkbookReader,
-          YimuWorkbookReader,
-          YimuWorkbookReader
+          ImportFileReader,
+          ImportFileReader,
+          ImportFileReader
         >
-    with $Provider<YimuWorkbookReader> {
-  YimuWorkbookReaderProvider._()
+    with $Provider<ImportFileReader> {
+  ImportFileReaderProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'yimuWorkbookReaderProvider',
+        name: r'importFileReaderProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$yimuWorkbookReaderHash();
+  String debugGetCreateSourceHash() => _$importFileReaderHash();
 
   @$internal
   @override
-  $ProviderElement<YimuWorkbookReader> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
+  $ProviderElement<ImportFileReader> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
 
   @override
-  YimuWorkbookReader create(Ref ref) {
-    return yimuWorkbookReader(ref);
+  ImportFileReader create(Ref ref) {
+    return importFileReader(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(YimuWorkbookReader value) {
+  Override overrideWithValue(ImportFileReader value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<YimuWorkbookReader>(value),
+      providerOverride: $SyncValueProvider<ImportFileReader>(value),
     );
   }
 }
 
-String _$yimuWorkbookReaderHash() =>
-    r'8ab437a3740fd314edf80a685db30d4b08d5654e';
+String _$importFileReaderHash() => r'e7a1aa6269dc034fc27ecbccfca7408713fa0cfc';
 
 @ProviderFor(yimuImportParser)
 final yimuImportParserProvider = YimuImportParserProvider._();
@@ -233,7 +231,7 @@ final class YimuImportParserProvider
   }
 }
 
-String _$yimuImportParserHash() => r'40fb47c3740462f76e6f3b32a156403722f668e0';
+String _$yimuImportParserHash() => r'b73e011f5e310d2b8d3097c39fce279af69d1ab1';
 
 @ProviderFor(importPlanAppService)
 final importPlanAppServiceProvider = ImportPlanAppServiceProvider._();

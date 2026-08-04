@@ -1,18 +1,17 @@
 import 'package:excel2003/excel2003.dart';
 
 import '../../domain/import/import_models.dart';
-import '../../domain/import/port/yimu_workbook_reader.dart';
+import '../../domain/import/port/import_file_reader.dart';
 
-/// Infrastructure adapter for the legacy OLE/BIFF reader. No spreadsheet
-/// package types escape this narrow seam.
-class YimuExcel2003WorkbookReader implements YimuWorkbookReader {
-  const YimuExcel2003WorkbookReader();
+/// Adapts legacy OLE/BIFF workbooks to the source-neutral tabular model.
+class XlsFileReader implements ImportFileReader {
+  const XlsFileReader();
 
   @override
-  YimuWorkbook read(ImportFilePayload file) {
+  ImportTabularFile read(ImportFilePayload file) {
     try {
       final reader = XlsReader.fromBytes(file.bytes);
-      final sheets = <YimuSheet>[];
+      final sheets = <ImportTabularSheet>[];
       for (var sheetIndex = 0; sheetIndex < reader.sheetCount; sheetIndex++) {
         final sourceSheet = reader.sheet(sheetIndex);
         final headers = <String>[];
@@ -44,23 +43,16 @@ class YimuExcel2003WorkbookReader implements YimuWorkbookReader {
           rows.add(row);
         }
         sheets.add(
-          YimuSheet(name: sourceSheet.name, rows: rows, headers: headers),
+          ImportTabularSheet(
+            name: sourceSheet.name,
+            rows: rows,
+            headers: headers,
+          ),
         );
       }
-      return YimuWorkbook(sheets: sheets);
+      return ImportTabularFile(sheets: sheets);
     } catch (error, stackTrace) {
-      throw YimuWorkbookReadException(file.name, error, stackTrace);
+      throw ImportFileReadException.decodeFailed(file.name, error, stackTrace);
     }
   }
-}
-
-class YimuWorkbookReadException implements Exception {
-  const YimuWorkbookReadException(this.fileName, this.cause, this.stackTrace);
-
-  final String fileName;
-  final Object cause;
-  final StackTrace stackTrace;
-
-  @override
-  String toString() => 'Unable to decode Yimu workbook "$fileName": $cause';
 }

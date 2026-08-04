@@ -7,7 +7,8 @@ import '../infrastructure/import/ledger_import_port.dart';
 import '../infrastructure/import/platform_import_file_picker.dart';
 import '../infrastructure/import/repository/drift_import_batch_repository.dart';
 import '../infrastructure/import/repository/drift_import_mapping_repository.dart';
-import '../infrastructure/import/yimu_excel2003_workbook_reader.dart';
+import '../infrastructure/import/tabular_file_readers.dart';
+import '../infrastructure/import/xls_file_reader.dart';
 import '../infrastructure/ledger/repository/drift_account_query_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_group_repository.dart';
@@ -46,7 +47,7 @@ import '../domain/ledger/port/account_group_repository.dart';
 import '../domain/import/port/import_batch_repository.dart';
 import '../domain/import/port/import_ledger_port.dart';
 import '../domain/import/port/import_mapping_repository.dart';
-import '../domain/import/port/yimu_workbook_reader.dart';
+import '../domain/import/port/import_file_reader.dart';
 import '../domain/import/service/yimu_import_parser.dart';
 import '../domain/credit/port/bill_repository.dart';
 import '../domain/credit/port/bill_generation_suppression_repository.dart';
@@ -86,13 +87,13 @@ ImportFilePicker importFilePicker(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-YimuWorkbookReader yimuWorkbookReader(Ref ref) {
-  return const YimuExcel2003WorkbookReader();
+ImportFileReader importFileReader(Ref ref) {
+  return ImportFileReaderRegistry(xlsReader: const XlsFileReader());
 }
 
 @Riverpod(keepAlive: true)
 YimuImportParser yimuImportParser(Ref ref) {
-  return YimuImportParser(reader: ref.watch(yimuWorkbookReaderProvider));
+  return YimuImportParser(reader: ref.watch(importFileReaderProvider));
 }
 
 @Riverpod(keepAlive: true)

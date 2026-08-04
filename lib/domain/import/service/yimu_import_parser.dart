@@ -5,7 +5,7 @@ import 'package:crypto/crypto.dart';
 import '../../../core/money/money.dart';
 import '../import_models.dart';
 import '../port/import_source_parser.dart';
-import '../port/yimu_workbook_reader.dart';
+import '../port/import_file_reader.dart';
 import 'source_parsing_models.dart';
 import 'yimu_file_handlers.dart';
 import 'yimu_file_type.dart';
@@ -13,11 +13,11 @@ import 'yimu_file_type.dart';
 const yimuFingerprintVersion = 1;
 
 /// Deterministic, side-effect-free parser for the three files exported by
-/// 一木记账. Spreadsheet decoding is deliberately injected through
-/// [YimuWorkbookReader], keeping BIFF/OLE concerns outside this domain.
+/// 一木记账. Physical file decoding is deliberately injected through
+/// [ImportFileReader], keeping CSV/XLS/XLSX concerns outside this domain.
 class YimuImportParser implements ImportSourceParser {
   YimuImportParser({
-    required YimuWorkbookReader reader,
+    required ImportFileReader reader,
     Iterable<YimuFileHandler> fileHandlers = const [
       YimuBillFileHandler(),
       YimuTransferFileHandler(),
@@ -34,7 +34,7 @@ class YimuImportParser implements ImportSourceParser {
 
   static const fingerprintVersion = yimuFingerprintVersion;
 
-  final YimuWorkbookReader _reader;
+  final ImportFileReader _reader;
   final ImportPlanAssembler _assembler;
   final List<ParseUnit> _additionalParseUnits;
   final Map<YimuFileType, YimuFileHandler> _fileHandlers;
@@ -63,26 +63,31 @@ class YimuImportParser implements ImportSourceParser {
         fileResult.fatalIssues.add(issue);
       }
 
-      final normalizedName = file.name.trim().toLowerCase();
-      if (!normalizedName.endsWith('.xls')) {
+      ImportTabularFile workbook;
+      try {
+        workbook = _reader.read(file);
+      } on ImportFileReadException catch (error) {
+        final isUnsupported =
+            error.failure == ImportFileReadFailure.unsupportedFormat;
         addFileIssue(
           ImportIssue(
-            code: 'unsupported_file_format',
-            message: '一木导入只支持传统 .xls 文件：${file.name}',
+            code:
+                isUnsupported
+                    ? 'unsupported_file_format'
+                    : 'file_decode_failed',
+            message:
+                isUnsupported
+                    ? '无法识别文件 ${file.name} 的格式。支持 CSV、XLS 和 XLSX。'
+                    : '无法读取一木文件 ${file.name}，请重新导出或选择有效文件。',
             severity: ImportIssueSeverity.fatal,
           ),
         );
         continue;
-      }
-
-      YimuWorkbook workbook;
-      try {
-        workbook = _reader.read(file);
       } on Exception {
         addFileIssue(
           ImportIssue(
             code: 'file_decode_failed',
-            message: '无法读取一木文件 ${file.name}，请重新导出或选择有效的 .xls 文件。',
+            message: '无法读取一木文件 ${file.name}，请重新导出或选择有效文件。',
             severity: ImportIssueSeverity.fatal,
           ),
         );
@@ -949,7 +954,7 @@ ImportAccountReference _accountReference(
   );
 }
 
-YimuFileType? _detectRole(String fileName, YimuSheet sheet) {
+YimuFileType? _detectRole(String fileName, ImportTabularSheet sheet) {
   final name = fileName.toLowerCase();
   if (name.contains('账单')) return YimuFileType.bill;
   if (name.contains('转账')) return YimuFileType.transfer;
@@ -966,7 +971,7 @@ YimuFileType? _detectRole(String fileName, YimuSheet sheet) {
   return null;
 }
 
-Set<String> _headers(YimuSheet sheet) {
+Set<String> _headers(ImportTabularSheet sheet) {
   return {...sheet.headers, for (final row in sheet.rows) ...row.keys};
 }
 
