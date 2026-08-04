@@ -188,7 +188,15 @@ void main() {
 
     expect(find.text('选择项目'), findsOneWidget);
     expect(find.text('父级项目'), findsOneWidget);
+    expect(find.text('子级项目'), findsNothing);
+
+    await tester.tap(find.text('父级项目'));
+    await tester.pump();
     expect(find.text('子级项目'), findsOneWidget);
+
+    await tester.tap(find.text('子级项目'));
+    await tester.pump();
+    expect(find.text('孙级项目'), findsOneWidget);
   });
 
   testWidgets('opens the app date picker from the date examples', (

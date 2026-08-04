@@ -39,9 +39,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('选择分类'), findsOneWidget);
-    expect(find.text('支出分类'), findsOneWidget);
-    expect(find.text('收入分类'), findsOneWidget);
+    expect(find.text('支出'), findsOneWidget);
+    expect(find.text('收入'), findsOneWidget);
+    expect(find.text('餐饮'), findsNothing);
+
+    await tester.tap(find.text('支出'));
+    await tester.pump();
     expect(find.text('餐饮'), findsOneWidget);
+    expect(find.text('午餐'), findsNothing);
+
+    await tester.tap(find.text('餐饮'));
+    await tester.pump();
     expect(find.text('午餐'), findsOneWidget);
     expect(find.byType(VerticalDivider), findsNWidgets(2));
     expect(find.byType(BusinessIcon), findsNothing);
