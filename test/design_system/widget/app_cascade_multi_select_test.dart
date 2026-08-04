@@ -4,7 +4,9 @@ import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_cascade_multi_select.dart';
 
 void main() {
-  testWidgets('only shows the current cascade level', (tester) async {
+  testWidgets('shows linked cascade columns for the selected path', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _TestHost(
         onResult: (_) {},
@@ -41,14 +43,9 @@ void main() {
 
     await tester.tap(find.text('子级'));
     await tester.pump();
-    expect(find.text('父级'), findsNothing);
+    expect(find.text('父级'), findsOneWidget);
     expect(find.text('子级'), findsOneWidget);
     expect(find.text('孙级'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('返回上一级'));
-    await tester.pump();
-    expect(find.text('子级'), findsOneWidget);
-    expect(find.text('孙级'), findsNothing);
   });
 
   testWidgets('selecting a parent selects every descendant', (tester) async {

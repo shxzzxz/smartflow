@@ -74,14 +74,13 @@ class _AppCascadeMultiSelectSheetState<T>
   late final Set<T> _selectedValues = widget.initialSelectedValues.intersection(
     _allValues,
   );
-  List<AppCascadeSelectionNode<T>> _path = const [];
+  List<AppCascadeSelectionNode<T>> _path = <AppCascadeSelectionNode<T>>[];
 
   List<AppCascadeSelectionNode<T>> get _rootNodes => [
     for (final section in widget.sections) ...section.nodes,
   ];
 
-  List<AppCascadeSelectionNode<T>> get _currentNodes =>
-      _path.isEmpty ? _rootNodes : _path.last.children;
+  int get _columnCount => _path.length + 1;
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +107,7 @@ class _AppCascadeMultiSelectSheetState<T>
                           ),
                         ),
                       )
-                      : _buildCurrentLevel(context),
+                      : _buildColumns(context),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -139,15 +138,9 @@ class _AppCascadeMultiSelectSheetState<T>
       ),
       child: Row(
         children: [
-          if (_path.isNotEmpty)
-            IconButton(
-              tooltip: '返回上一级',
-              onPressed: () => setState(() => _path.removeLast()),
-              icon: const Icon(RemixIcons.arrow_left_line),
-            ),
           Expanded(
             child: Text(
-              _path.isEmpty ? widget.title : _path.last.label,
+              widget.title,
               style: context.appTextStyles.subsectionTitle,
             ),
           ),
@@ -174,10 +167,23 @@ class _AppCascadeMultiSelectSheetState<T>
     );
   }
 
-  Widget _buildCurrentLevel(BuildContext context) {
-    return ListView(
+  Widget _buildColumns(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_path.isEmpty)
+        for (var depth = 0; depth < _columnCount; depth++) ...[
+          if (depth > 0)
+            const VerticalDivider(width: AppComponentTokens.outlineWidth),
+          Expanded(child: _buildColumn(context, depth)),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildColumn(BuildContext context, int depth) {
+    if (depth == 0) {
+      return ListView(
+        children: [
           for (final section in widget.sections) ...[
             if (section.label case final label?)
               Padding(
@@ -189,23 +195,65 @@ class _AppCascadeMultiSelectSheetState<T>
                 ),
                 child: Text(label, style: context.appTextStyles.groupTitle),
               ),
-            for (final node in section.nodes) _buildNodeRow(context, node),
-          ]
-        else
-          for (final node in _currentNodes) _buildNodeRow(context, node),
+            for (final node in section.nodes)
+              _buildNodeRow(
+                context,
+                node,
+                active: _isActive(depth, node),
+                onTap: () => _activateNode(depth, node),
+              ),
+          ],
+        ],
+      );
+    }
+
+    final List<AppCascadeSelectionNode<T>> nodes =
+        _path.length >= depth
+            ? _path[depth - 1].children
+            : <AppCascadeSelectionNode<T>>[];
+    if (nodes.isEmpty) {
+      return Center(
+        child: Text(
+          '暂无选项',
+          textAlign: TextAlign.center,
+          style: context.appTextStyles.inputText,
+        ),
+      );
+    }
+    return ListView(
+      children: [
+        for (final node in nodes)
+          _buildNodeRow(
+            context,
+            node,
+            active: _isActive(depth, node),
+            onTap: () => _activateNode(depth, node),
+          ),
       ],
     );
   }
 
-  Widget _buildNodeRow(BuildContext context, AppCascadeSelectionNode<T> node) {
+  Widget _buildNodeRow(
+    BuildContext context,
+    AppCascadeSelectionNode<T> node, {
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    final colors = Theme.of(context).colorScheme;
     final values = _valuesOf(node);
     return Material(
+      color: active ? colors.secondaryContainer : null,
       child: ConstrainedBox(
         constraints: const BoxConstraints(
           minHeight: AppComponentTokens.controlMinHeight,
         ),
         child: Row(
           children: [
+            SizedBox(
+              width: AppSpacing.space4,
+              height: AppSpacing.space24,
+              child: active ? ColoredBox(color: colors.primary) : null,
+            ),
             Checkbox(
               value: _selectionValue(node),
               tristate: true,
@@ -213,7 +261,7 @@ class _AppCascadeMultiSelectSheetState<T>
             ),
             Expanded(
               child: InkWell(
-                onTap: node.children.isEmpty ? null : () => _openNode(node),
+                onTap: onTap,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     vertical: AppSpacing.space12,
@@ -241,9 +289,14 @@ class _AppCascadeMultiSelectSheetState<T>
     );
   }
 
-  void _openNode(AppCascadeSelectionNode<T> node) {
+  bool _isActive(int depth, AppCascadeSelectionNode<T> node) =>
+      _path.length > depth && identical(_path[depth], node);
+
+  void _activateNode(int depth, AppCascadeSelectionNode<T> node) {
     if (node.children.isEmpty) return;
-    setState(() => _path = [..._path, node]);
+    final nextPath = _path.take(depth).toList();
+    nextPath.add(node);
+    setState(() => _path = nextPath);
   }
 
   bool? _selectionValue(AppCascadeSelectionNode<T> node) {
