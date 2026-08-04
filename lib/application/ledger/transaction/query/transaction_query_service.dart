@@ -3,6 +3,7 @@ import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/entity/entry.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/entity/transaction_detail_record.dart';
+import 'package:smartflow/domain/ledger/service/posting/posting_rule.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 import '../../account/query/account_query_service.dart';
@@ -112,7 +113,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     return TransactionPageQuery(
       categoryAccountIds: _expandCategoryFilter(query, accountsById),
       settlementAccountIds: _validateSettlementAccountFilter(
-        query.settlementAccountId,
+        query.settlementAccountIds,
         accountsById,
       ),
       occurredFrom: query.occurredFrom,
@@ -128,38 +129,29 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   /// 结算账户只能是当前活跃的 asset / liability 用户账户。
   /// 不存在、归档或系统账户返回空集合，表达“无可匹配项”。
   Set<String>? _validateSettlementAccountFilter(
-    String? accountId,
+    Set<String>? accountIds,
     Map<String, Account> accountsById,
   ) {
-    if (accountId == null) return null;
-    final account = accountsById[accountId];
-    if (account == null || !account.type.isUserAccount || account.isArchived) {
-      return const {};
-    }
-    return {account.id};
+    if (accountIds == null) return null;
+    return {
+      for (final accountId in accountIds)
+        if (accountsById[accountId] case final account?
+            when account.type.isUserAccount && !account.isArchived)
+          account.id,
+    };
   }
 
-  /// 一级分类展开为自身与全部活跃二级分类，二级分类展开为自身；
-  /// 分类不存在或不再活跃时返回空集合，表达"无可匹配项"。
+  /// 只保留当前账户快照中的活跃收入/支出分类。
   Set<String>? _expandCategoryFilter(
     TransactionListQuery query,
     Map<String, Account> accountsById,
   ) {
-    final selection = query.category;
-    if (selection == null) return null;
-    final category = accountsById[selection.id];
-    if (category == null || !category.type.isCategory || category.isArchived) {
-      return const {};
-    }
-    if (selection.matchOwnOnly || category.parentId != null) {
-      return {category.id};
-    }
+    final accountIds = query.categoryAccountIds;
+    if (accountIds == null) return null;
     return {
-      category.id,
-      for (final account in accountsById.values)
-        if (account.type == category.type &&
-            !account.isArchived &&
-            account.parentId == category.id)
+      for (final accountId in accountIds)
+        if (accountsById[accountId] case final account?
+            when account.type.isCategory && !account.isArchived)
           account.id,
     };
   }
@@ -240,13 +232,12 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
           primaryAmount: transaction.primaryAmount,
           isExcludedFromStats: transaction.isExcludedFromStats,
           isExcludedFromBudget: transaction.isExcludedFromBudget,
-          category: _categoryRef(
+          primaryCategoryId: _primaryCategoryId(
             transaction,
             entriesByTransaction[transaction.id] ?? const [],
             accountsById,
           ),
-          settlementEntries: _settlementRefs(
-            transaction,
+          impactsByAccountId: _accountImpacts(
             entriesByTransaction[transaction.id] ?? const [],
             accountsById,
           ),
@@ -261,7 +252,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     ];
   }
 
-  TransactionCategoryRef? _categoryRef(
+  String? _primaryCategoryId(
     Transaction transaction,
     List<Entry> entries,
     Map<String, Account> accountsById,
@@ -288,12 +279,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
             : accountsById[reimbursementCategoryId],
       _ => null,
     };
-    if (category == null) return null;
-    return TransactionCategoryRef(
-      id: category.id,
-      name: category.name,
-      iconKey: category.iconKey,
-    );
+    return category?.id;
   }
 
   Account? _uniqueRoleAccount(
@@ -317,38 +303,44 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     return candidate;
   }
 
-  /// 一般交易只投影 asset / liability 结算账户；期初余额与余额调整
-  /// 额外投影系统期初余额账户，使列表能表达完整资金流向。
-  List<TransactionSettlementEntryRef> _settlementRefs(
-    Transaction transaction,
+  Map<String, TransactionAccountImpact> _accountImpacts(
     List<Entry> entries,
     Map<String, Account> accountsById,
   ) {
-    final refs = <TransactionSettlementEntryRef>[];
+    final debitByAccountId = <String, int>{};
+    final creditByAccountId = <String, int>{};
     for (final entry in entries) {
       final account = accountsById[entry.accountId];
-      if (account == null ||
-          (!account.type.isUserAccount &&
-              !_isOpeningBalanceCounterpart(transaction, account))) {
-        continue;
-      }
-      refs.add(
-        TransactionSettlementEntryRef(
-          accountId: entry.accountId,
-          accountName: account.name,
-          accountIconKey: account.iconKey,
-          direction: entry.direction,
-          amount: entry.amount,
-        ),
-      );
+      if (account == null) continue;
+      final amounts =
+          entry.direction == EntryDirection.debit
+              ? debitByAccountId
+              : creditByAccountId;
+      amounts[entry.accountId] =
+          (amounts[entry.accountId] ?? 0) + entry.amount.minorUnits;
     }
-    return List.unmodifiable(refs);
-  }
-
-  bool _isOpeningBalanceCounterpart(Transaction transaction, Account account) {
-    return (transaction.businessPurpose == BusinessPurpose.openingBalance ||
-            transaction.businessPurpose == BusinessPurpose.balanceAdjustment) &&
-        account.systemKey == SystemKey.openingBalance;
+    final accountIds = {...debitByAccountId.keys, ...creditByAccountId.keys};
+    return Map.unmodifiable({
+      for (final accountId in accountIds)
+        if (accountsById[accountId] case final account?)
+          accountId: TransactionAccountImpact(
+            debitAmount: Money(minorUnits: debitByAccountId[accountId] ?? 0),
+            creditAmount: Money(minorUnits: creditByAccountId[accountId] ?? 0),
+            netChange: Money(
+              minorUnits:
+                  balanceDeltaMinor(
+                    accountType: account.type,
+                    direction: EntryDirection.debit,
+                    amountMinor: debitByAccountId[accountId] ?? 0,
+                  ) +
+                  balanceDeltaMinor(
+                    accountType: account.type,
+                    direction: EntryDirection.credit,
+                    amountMinor: creditByAccountId[accountId] ?? 0,
+                  ),
+            ),
+          ),
+    });
   }
 
   List<TransactionAdjustment> _adjustments({

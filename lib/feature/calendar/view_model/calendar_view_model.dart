@@ -6,6 +6,7 @@ import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/time/month_key.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../shared/provider/current_date_time_provider.dart';
+import '../../shared/provider/ledger_query_providers.dart';
 import '../presentation/calendar_month_presentation.dart';
 
 part 'calendar_view_model.g.dart';
@@ -150,6 +151,7 @@ CalendarContentState calendarContent(
   final monthlyBillSummaries = ref.watch(
     calendarMonthlyBillSummariesProvider(visibleMonth),
   );
+  final accountLookup = ref.watch(accountLookupProvider);
 
   if (transactions case AsyncError(:final error)) {
     return CalendarContentState.error(message: '加载失败：$error');
@@ -166,17 +168,22 @@ CalendarContentState calendarContent(
   if (monthlyBillSummaries case AsyncError(:final error)) {
     return CalendarContentState.error(message: '加载失败：$error');
   }
+  if (accountLookup case AsyncError(:final error)) {
+    return CalendarContentState.error(message: '加载失败：$error');
+  }
 
   final transactionValues = transactions.value;
   final comparisonValue = comparison.value;
   final dailySummaryValues = dailySummaries.value;
   final creditDueItemValues = creditDueItems.value;
   final monthlyBillSummaryValues = monthlyBillSummaries.value;
+  final lookup = accountLookup.value;
   if (transactionValues == null ||
       comparisonValue == null ||
       dailySummaryValues == null ||
       creditDueItemValues == null ||
-      monthlyBillSummaryValues == null) {
+      monthlyBillSummaryValues == null ||
+      lookup == null) {
     return const CalendarContentState.loading();
   }
 
@@ -185,6 +192,7 @@ CalendarContentState calendarContent(
       visibleMonth: visibleMonth,
       selectedDate: selectedDate,
       transactions: transactionValues,
+      accountLookup: lookup,
       summary: comparisonValue.current,
       dailySummaries: dailySummaryValues,
       creditDueItems: creditDueItemValues,

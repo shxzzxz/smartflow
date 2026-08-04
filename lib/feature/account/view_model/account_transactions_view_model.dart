@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../application/ledger/ledger_query_api.dart';
+import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 
@@ -27,21 +28,21 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
     final transactions = ref.watch(
       transactionListProvider(settlementAccountId: accountId, limit: limit),
     );
-    final accountsById = ref.watch(accountsByIdProvider);
+    final accountLookup = ref.watch(accountLookupProvider);
 
-    if (accountsById case AsyncError()) {
+    if (accountLookup case AsyncError()) {
       return const AccountTransactionsState.error(message: '加载失败，请稍后重试');
     }
 
-    final viewAccount = accountsById.value?[accountId];
-    if (accountsById.value == null) {
+    final lookup = accountLookup.value;
+    if (lookup == null) {
       return const AccountTransactionsState.loading();
     }
 
     if (_previousItems.isNotEmpty && transactions.isLoading) {
       return _loaded(
         items: _previousItems,
-        viewAccount: viewAccount,
+        accountLookup: lookup,
         hasMore: true,
         isLoadingMore: true,
       );
@@ -50,7 +51,7 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
     return switch (transactions) {
       AsyncData(:final value) => _loaded(
         items: _previousItems = value,
-        viewAccount: viewAccount,
+        accountLookup: lookup,
         hasMore: value.length == limit,
         isLoadingMore: false,
       ),
@@ -59,7 +60,7 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
             ? const AccountTransactionsState.error(message: '加载失败，请稍后重试')
             : _loaded(
               items: _previousItems,
-              viewAccount: viewAccount,
+              accountLookup: lookup,
               hasMore: true,
               isLoadingMore: false,
               loadMoreErrorMessage: '加载更多交易失败，请重试',
@@ -69,7 +70,7 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
             ? const AccountTransactionsState.loading()
             : _loaded(
               items: _previousItems,
-              viewAccount: viewAccount,
+              accountLookup: lookup,
               hasMore: true,
               isLoadingMore: true,
             ),
@@ -98,13 +99,17 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
 
   AccountTransactionsLoaded _loaded({
     required List<TransactionListReadModel> items,
-    required Account? viewAccount,
+    required AccountLookup accountLookup,
     required bool hasMore,
     required bool isLoadingMore,
     String? loadMoreErrorMessage,
   }) {
     return AccountTransactionsLoaded(
-      groups: groupTransactionsByDay(items: items, viewAccount: viewAccount),
+      groups: groupTransactionsByDay(
+        items: items,
+        accountLookup: accountLookup,
+        amountSource: TransactionAccountImpactAmountSource(accountId),
+      ),
       hasMore: hasMore,
       isLoadingMore: isLoadingMore,
       loadMoreErrorMessage: loadMoreErrorMessage,

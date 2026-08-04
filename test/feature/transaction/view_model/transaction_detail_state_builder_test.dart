@@ -207,8 +207,8 @@ TransactionListReadModel _child({
     primaryAmount: Money(minorUnits: amountMinor),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    category: null,
-    settlementEntries: const [],
+    primaryCategoryId: null,
+    impactsByAccountId: const {},
     adjustments: const [],
   );
 }

@@ -611,7 +611,7 @@ final class StatisticsTransactionsProvider
 }
 
 String _$statisticsTransactionsHash() =>
-    r'4080841aeef6043d785887ea67d0e6fb9ada391e';
+    r'7e372a8b789effc81a1aa402aa4f8d6c6667e474';
 
 final class StatisticsTransactionsFamily extends $Family
     with
@@ -745,7 +745,7 @@ final class StatisticsTransactionsContentProvider
 }
 
 String _$statisticsTransactionsContentHash() =>
-    r'e1e718ff67893ad17b29cef5cffc604984166456';
+    r'dfd1a009b73d63d38ce378db1cf2dbd4556f2fe5';
 
 final class StatisticsTransactionsContentFamily extends $Family
     with

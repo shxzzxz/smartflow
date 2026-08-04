@@ -4,6 +4,7 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
+import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/category/category_avatar.dart';
 import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
@@ -16,7 +17,10 @@ void main() {
     tester,
   ) async {
     var tapped = false;
-    final presentation = buildTransactionRowPresentation(item: _item());
+    final presentation = buildTransactionRowPresentation(
+      item: _item(),
+      accountLookup: _lookup,
+    );
 
     await tester.pumpWidget(
       MaterialApp(
@@ -349,7 +353,10 @@ void main() {
 
   testWidgets('calls quick edit callback from swipe action', (tester) async {
     var quickEdited = false;
-    final presentation = buildTransactionRowPresentation(item: _item());
+    final presentation = buildTransactionRowPresentation(
+      item: _item(),
+      accountLookup: _lookup,
+    );
 
     await tester.pumpWidget(
       MaterialApp(
@@ -445,20 +452,36 @@ TransactionListReadModel _item() {
     primaryAmount: const Money(minorUnits: 1234),
     isExcludedFromStats: true,
     isExcludedFromBudget: false,
-    category: const TransactionCategoryRef(
-      id: 'food',
-      name: '餐饮',
-      iconKey: 'meal',
-    ),
-    settlementEntries: const [
-      TransactionSettlementEntryRef(
-        accountId: 'cash',
-        accountName: '现金',
-        accountIconKey: 'cash',
-        direction: EntryDirection.credit,
-        amount: Money(minorUnits: 1234),
+    primaryCategoryId: 'food',
+    impactsByAccountId: const {
+      'food': TransactionAccountImpact(
+        debitAmount: Money(minorUnits: 1234),
+        creditAmount: Money(minorUnits: 0),
+        netChange: Money(minorUnits: 1234),
       ),
-    ],
+      'cash': TransactionAccountImpact(
+        debitAmount: Money(minorUnits: 0),
+        creditAmount: Money(minorUnits: 1234),
+        netChange: Money(minorUnits: -1234),
+      ),
+    },
     adjustments: const [],
   );
 }
+
+final _lookup = AccountLookup({
+  'food': Account(
+    id: 'food',
+    name: '餐饮',
+    type: AccountType.expense,
+    iconKey: 'meal',
+    balance: Money.zero(),
+  ),
+  'cash': Account(
+    id: 'cash',
+    name: '现金',
+    type: AccountType.asset,
+    iconKey: 'cash',
+    balance: Money.zero(),
+  ),
+});

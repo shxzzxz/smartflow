@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/calendar/presentation/calendar_month_presentation.dart';
 import 'package:smartflow/feature/calendar/presentation/lunar_label_resolver.dart';
 
@@ -9,6 +10,7 @@ void main() {
   group('calendar month presentation', () {
     test('builds calendar grid and selected day group', () {
       final presentation = buildCalendarMonthPresentation(
+        accountLookup: const AccountLookup({}),
         visibleMonth: DateTime(2026, 2),
         selectedDate: DateTime(2026, 2, 14),
         today: DateTime(2026, 2, 1),
@@ -134,8 +136,8 @@ TransactionListReadModel _item({required DateTime occurredAt}) {
     primaryAmount: const Money(minorUnits: 5000),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    category: null,
-    settlementEntries: const [],
+    primaryCategoryId: null,
+    impactsByAccountId: const {},
     adjustments: const [],
   );
 }

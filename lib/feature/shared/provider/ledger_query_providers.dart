@@ -90,7 +90,8 @@ Stream<List<TransactionListReadModel>> transactionList(
       .watch(transactionQueryServiceProvider)
       .watchTransactions(
         TransactionListQuery(
-          settlementAccountId: settlementAccountId,
+          settlementAccountIds:
+              settlementAccountId == null ? null : {settlementAccountId},
           topLevelOnly: settlementAccountId == null,
           limit: limit,
           offset: offset,

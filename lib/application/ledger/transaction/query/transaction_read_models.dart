@@ -33,40 +33,16 @@ class TransactionCleanupPreview {
   int get deletableGroupCount => matchedGroupCount - ownedGroupCount;
 }
 
-/// 交易的主收支分类投影。
-///
-/// 只有日常支出、日常收入与报销垫付有主收支分类，其余交易用途为 `null`。
-/// 分类筛选不依赖该字段，始终按物理分录和查询层的分类树展开执行。
-class TransactionCategoryRef {
-  const TransactionCategoryRef({
-    required this.id,
-    required this.name,
-    required this.iconKey,
+class TransactionAccountImpact {
+  const TransactionAccountImpact({
+    required this.debitAmount,
+    required this.creditAmount,
+    required this.netChange,
   });
 
-  final String id;
-  final String name;
-  final String? iconKey;
-}
-
-/// 非分类结算分录的列表展示投影。
-///
-/// 页面可根据 businessPurpose 与 direction 组织付款、收款、负债或应收流向；
-/// 账户详情页可用 direction + amount 计算该账户的余额变化。
-class TransactionSettlementEntryRef {
-  const TransactionSettlementEntryRef({
-    required this.accountId,
-    required this.accountName,
-    required this.accountIconKey,
-    required this.direction,
-    required this.amount,
-  });
-
-  final String accountId;
-  final String accountName;
-  final String? accountIconKey;
-  final EntryDirection direction;
-  final Money amount;
+  final Money debitAmount;
+  final Money creditAmount;
+  final Money netChange;
 }
 
 enum TransactionAdjustmentKind {
@@ -97,8 +73,8 @@ class TransactionListReadModel {
     required this.primaryAmount,
     required this.isExcludedFromStats,
     required this.isExcludedFromBudget,
-    required this.category,
-    required this.settlementEntries,
+    required this.primaryCategoryId,
+    required this.impactsByAccountId,
     required this.adjustments,
   });
 
@@ -108,8 +84,14 @@ class TransactionListReadModel {
   final Money primaryAmount;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
-  final TransactionCategoryRef? category;
-  final List<TransactionSettlementEntryRef> settlementEntries;
+
+  /// 日常收支和报销垫付的角色分类 ID，不等同于全部分类影响。
+  final String? primaryCategoryId;
+
+  /// 当前交易自身的全部账户影响，不包含子交易影响。
+  final Map<String, TransactionAccountImpact> impactsByAccountId;
+
+  /// 顶层交易可包含交易组调整摘要；子交易恒为空列表。
   final List<TransactionAdjustment> adjustments;
 }
 

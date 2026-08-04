@@ -224,8 +224,8 @@ TransactionListReadModel _child(
     primaryAmount: Money(minorUnits: amount),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    category: null,
-    settlementEntries: const [],
+    primaryCategoryId: null,
+    impactsByAccountId: const {},
     adjustments: const [],
   );
 }

@@ -1,3 +1,6 @@
+import 'package:smartflow/domain/ledger/entity/account.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
+
 import 'transaction_scope.dart';
 
 /// 用户选择的单个活跃分类及其匹配范围。
@@ -23,10 +26,37 @@ class CategorySelection {
   int get hashCode => Object.hash(id, matchOwnOnly);
 }
 
+/// 将语义分类选择解析为当前账户快照中的物理分类账户 ID。
+Set<String> resolveCategoryAccountIds(
+  Iterable<CategorySelection> selections,
+  Map<String, Account> accountsById,
+) {
+  final resolved = <String>{};
+  for (final selection in selections) {
+    final category = accountsById[selection.id];
+    if (category == null ||
+        (category.type != AccountType.income &&
+            category.type != AccountType.expense) ||
+        category.isArchived) {
+      continue;
+    }
+    resolved.add(category.id);
+    if (selection.matchOwnOnly || category.parentId != null) continue;
+    for (final account in accountsById.values) {
+      if (account.type == category.type &&
+          !account.isArchived &&
+          account.parentId == category.id) {
+        resolved.add(account.id);
+      }
+    }
+  }
+  return resolved;
+}
+
 class TransactionListQuery {
   const TransactionListQuery({
-    this.category,
-    this.settlementAccountId,
+    this.categoryAccountIds,
+    this.settlementAccountIds,
     this.occurredFrom,
     this.occurredUntil,
     this.topLevelOnly = true,
@@ -37,12 +67,11 @@ class TransactionListQuery {
   }) : assert(limit != null || offset == 0),
        assert(before == null || offset == 0);
 
-  /// 用户选择的活跃分类。一级分类在查询层展开为自身与全部二级分类，
-  /// 二级分类展开为自身；与结算账户维度同时存在时取交集。
-  final CategorySelection? category;
+  /// `null` 表示不筛选，空集合表示筛选维度已启用但无有效物理账户。
+  final Set<String>? categoryAccountIds;
 
-  /// 用户选择的结算账户，不表达"任意账户 ID"。
-  final String? settlementAccountId;
+  /// `null` 表示不筛选，空集合表示筛选维度已启用但无有效物理账户。
+  final Set<String>? settlementAccountIds;
 
   final DateTime? occurredFrom;
   final DateTime? occurredUntil;

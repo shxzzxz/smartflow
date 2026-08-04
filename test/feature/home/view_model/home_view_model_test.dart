@@ -277,8 +277,8 @@ TransactionListReadModel _item({String id = 'tx-1', DateTime? occurredAt}) {
     primaryAmount: const Money(minorUnits: 10000),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    category: null,
-    settlementEntries: const [],
+    primaryCategoryId: null,
+    impactsByAccountId: const {},
     adjustments: const [],
   );
 }

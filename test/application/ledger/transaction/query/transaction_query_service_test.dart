@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_port_api.dart';
@@ -143,49 +141,54 @@ void main() {
     expect(detail.reimbursementSummary?.outstanding, Money.zero());
   });
 
-  test(
-    'projects category and settlement refs from account snapshots',
-    () async {
-      final expense = _transaction(
-        id: 'expense',
-        purpose: BusinessPurpose.dailyExpense,
-        amount: 1000,
-      );
-      final transactionRead = _FakeTransactionReadRepository(
-        transactions: {'expense': expense},
-      );
-      final service = _service(
-        transactionRead: transactionRead,
-        entryRead: _FakeEntryReadRepository({
-          'expense': [
-            _entry('e1', 'expense', 'dining', EntryDirection.debit, 1000),
-            _entry('e2', 'expense', 'cash', EntryDirection.credit, 1000),
-          ],
-        }),
-        accounts: [
-          _account('dining', AccountType.expense, name: '餐饮', iconKey: 'bowl'),
-          _account('cash', AccountType.asset, name: '现金'),
+  test('projects primary category id and all account impacts', () async {
+    final expense = _transaction(
+      id: 'expense',
+      purpose: BusinessPurpose.dailyExpense,
+      amount: 1000,
+    );
+    final transactionRead = _FakeTransactionReadRepository(
+      transactions: {'expense': expense},
+    );
+    final service = _service(
+      transactionRead: transactionRead,
+      entryRead: _FakeEntryReadRepository({
+        'expense': [
+          _entry('e1', 'expense', 'dining', EntryDirection.debit, 1000),
+          _entry('e2', 'expense', 'cash', EntryDirection.credit, 1000),
         ],
-      );
+      }),
+      accounts: [
+        _account('dining', AccountType.expense, name: '餐饮', iconKey: 'bowl'),
+        _account('cash', AccountType.asset, name: '现金'),
+      ],
+    );
 
-      final item =
-          (await service.watchTransactions(const TransactionListQuery()).first)
-              .single;
+    final item =
+        (await service.watchTransactions(const TransactionListQuery()).first)
+            .single;
 
-      expect(item.category?.id, 'dining');
-      expect(item.category?.name, '餐饮');
-      expect(item.category?.iconKey, 'bowl');
-      expect(item.settlementEntries.single.accountId, 'cash');
-      expect(item.settlementEntries.single.accountName, '现金');
-      expect(item.settlementEntries.single.direction, EntryDirection.credit);
-      expect(
-        item.settlementEntries.single.amount,
-        const Money(minorUnits: 1000),
-      );
-    },
-  );
+    expect(item.primaryCategoryId, 'dining');
+    expect(item.impactsByAccountId.keys, {'dining', 'cash'});
+    expect(
+      item.impactsByAccountId['dining']?.debitAmount,
+      const Money(minorUnits: 1000),
+    );
+    expect(
+      item.impactsByAccountId['dining']?.netChange,
+      const Money(minorUnits: 1000),
+    );
+    expect(
+      item.impactsByAccountId['cash']?.creditAmount,
+      const Money(minorUnits: 1000),
+    );
+    expect(
+      item.impactsByAccountId['cash']?.netChange,
+      const Money(minorUnits: -1000),
+    );
+  });
 
-  test('expands a first-level category into itself and its children', () async {
+  test('passes multiple physical category ids through', () async {
     final transactionRead = _FakeTransactionReadRepository(transactions: {});
     final service = _service(
       transactionRead: transactionRead,
@@ -198,19 +201,16 @@ void main() {
     );
 
     await service.findTransactions(
-      const TransactionListQuery(
-        category: CategorySelection.withDescendants('food'),
-      ),
+      const TransactionListQuery(categoryAccountIds: {'food', 'dining'}),
     );
 
     expect(transactionRead.lastPageQuery?.categoryAccountIds, {
       'food',
       'dining',
-      'hotpot',
     });
   });
 
-  test('expands a second-level category into itself only', () async {
+  test('keeps valid physical category ids and drops invalid ones', () async {
     final transactionRead = _FakeTransactionReadRepository(transactions: {});
     final service = _service(
       transactionRead: transactionRead,
@@ -221,36 +221,14 @@ void main() {
     );
 
     await service.findTransactions(
-      const TransactionListQuery(
-        category: CategorySelection.withDescendants('dining'),
-      ),
+      const TransactionListQuery(categoryAccountIds: {'dining', 'missing'}),
     );
 
     expect(transactionRead.lastPageQuery?.categoryAccountIds, {'dining'});
   });
 
   test(
-    'own-only category selection keeps the first-level category unexpanded',
-    () async {
-      final transactionRead = _FakeTransactionReadRepository(transactions: {});
-      final service = _service(
-        transactionRead: transactionRead,
-        accounts: [
-          _account('food', AccountType.expense),
-          _account('dining', AccountType.expense, parentId: 'food'),
-        ],
-      );
-
-      await service.findTransactions(
-        const TransactionListQuery(category: CategorySelection.ownOnly('food')),
-      );
-
-      expect(transactionRead.lastPageQuery?.categoryAccountIds, {'food'});
-    },
-  );
-
-  test(
-    'returns empty list when the filtered category no longer exists',
+    'returns empty list when a category filter has no valid accounts',
     () async {
       final transactionRead = _FakeTransactionReadRepository(
         transactions: {
@@ -264,9 +242,7 @@ void main() {
       final service = _service(transactionRead: transactionRead);
 
       final items = await service.findTransactions(
-        const TransactionListQuery(
-          category: CategorySelection.withDescendants('missing'),
-        ),
+        const TransactionListQuery(categoryAccountIds: {'missing'}),
       );
 
       expect(items, isEmpty);
@@ -274,18 +250,24 @@ void main() {
     },
   );
 
-  test('passes the settlement account filter through unchanged', () async {
+  test('passes multiple settlement account ids through', () async {
     final transactionRead = _FakeTransactionReadRepository(transactions: {});
     final service = _service(
       transactionRead: transactionRead,
-      accounts: [_account('cash', AccountType.asset)],
+      accounts: [
+        _account('cash', AccountType.asset),
+        _account('card', AccountType.liability),
+      ],
     );
 
     await service.findTransactions(
-      const TransactionListQuery(settlementAccountId: 'cash'),
+      const TransactionListQuery(settlementAccountIds: {'cash', 'card'}),
     );
 
-    expect(transactionRead.lastPageQuery?.settlementAccountIds, {'cash'});
+    expect(transactionRead.lastPageQuery?.settlementAccountIds, {
+      'cash',
+      'card',
+    });
     expect(transactionRead.lastPageQuery?.categoryAccountIds, isNull);
   });
 
@@ -314,7 +296,7 @@ void main() {
       );
 
       final items = await service.findTransactions(
-        TransactionListQuery(settlementAccountId: accountId),
+        TransactionListQuery(settlementAccountIds: {accountId}),
       );
 
       expect(items, isEmpty);
@@ -362,7 +344,7 @@ void main() {
       final item =
           (await service.findTransactions(const TransactionListQuery())).single;
 
-      expect(item.category?.id, 'dining');
+      expect(item.primaryCategoryId, 'dining');
     },
   );
 
@@ -393,7 +375,7 @@ void main() {
     final item =
         (await service.findTransactions(const TransactionListQuery())).single;
 
-    expect(item.category, isNull);
+    expect(item.primaryCategoryId, isNull);
   });
 
   test('projects the system counterpart for opening balance flows', () async {
@@ -432,89 +414,107 @@ void main() {
     final item =
         (await service.findTransactions(const TransactionListQuery())).single;
 
-    expect(item.settlementEntries.map((entry) => entry.accountId), [
-      'cash',
-      'opening-equity',
-    ]);
+    expect(item.impactsByAccountId.keys, {'cash', 'opening-equity'});
+  });
+
+  test('aggregates every account type and keeps zero net activity', () async {
+    final transaction = _transaction(
+      id: 'mixed',
+      purpose: BusinessPurpose.transfer,
+      amount: 1000,
+    );
+    final service = _service(
+      transactionRead: _FakeTransactionReadRepository(
+        transactions: {'mixed': transaction},
+      ),
+      entryRead: _FakeEntryReadRepository({
+        'mixed': [
+          _entry('a1', 'mixed', 'asset', EntryDirection.debit, 100),
+          _entry('a2', 'mixed', 'asset', EntryDirection.credit, 40),
+          _entry('x1', 'mixed', 'expense', EntryDirection.debit, 100),
+          _entry('x2', 'mixed', 'expense', EntryDirection.credit, 100),
+          _entry('l1', 'mixed', 'liability', EntryDirection.credit, 90),
+          _entry('l2', 'mixed', 'liability', EntryDirection.debit, 20),
+          _entry('i1', 'mixed', 'income', EntryDirection.credit, 50),
+          _entry('e1', 'mixed', 'equity', EntryDirection.debit, 30),
+        ],
+      }),
+      accounts: [
+        _account('asset', AccountType.asset),
+        _account('expense', AccountType.expense),
+        _account('liability', AccountType.liability),
+        _account('income', AccountType.income),
+        _account('equity', AccountType.equity),
+      ],
+    );
+
+    final impacts =
+        (await service.findTransactions(
+          const TransactionListQuery(),
+        )).single.impactsByAccountId;
+
+    expect(impacts.keys, {'asset', 'expense', 'liability', 'income', 'equity'});
+    expect(impacts['asset']?.debitAmount.minorUnits, 100);
+    expect(impacts['asset']?.creditAmount.minorUnits, 40);
+    expect(impacts['asset']?.netChange.minorUnits, 60);
+    expect(impacts['expense']?.netChange.minorUnits, 0);
+    expect(impacts['liability']?.netChange.minorUnits, 70);
+    expect(impacts['income']?.netChange.minorUnits, 50);
+    expect(impacts['equity']?.netChange.minorUnits, -30);
   });
 
   test(
-    'reprojects category snapshots and re-expands a subscribed filter',
+    'keeps parent and child impacts separate from group adjustments',
     () async {
-      final changes = StreamController<void>();
-      addTearDown(changes.close);
-      final transactionRead = _FakeTransactionReadRepository(
-        transactions: {
-          'expense': _transaction(
-            id: 'expense',
-            purpose: BusinessPurpose.dailyExpense,
-            amount: 1000,
-          ),
-        },
-        changes: changes.stream,
+      final parent = _transaction(
+        id: 'parent',
+        purpose: BusinessPurpose.dailyExpense,
+        amount: 2000,
       );
-      final accounts = [
-        _account('food', AccountType.expense, name: '餐饮'),
-        _account(
-          'dining',
-          AccountType.expense,
-          name: '聚餐',
-          iconKey: 'bowl',
-          parentId: 'food',
-        ),
-        _account('cash', AccountType.asset, name: '现金'),
-      ];
+      final refund = _transaction(
+        id: 'refund',
+        parentId: 'parent',
+        purpose: BusinessPurpose.refund,
+        amount: 200,
+      );
       final service = _service(
-        transactionRead: transactionRead,
-        accounts: accounts,
+        transactionRead: _FakeTransactionReadRepository(
+          transactions: {'parent': parent, 'refund': refund},
+        ),
         entryRead: _FakeEntryReadRepository({
-          'expense': [
-            _entry('category', 'expense', 'dining', EntryDirection.debit, 1000),
-            _entry('cash', 'expense', 'cash', EntryDirection.credit, 1000),
+          'parent': [
+            _entry('p1', 'parent', 'food', EntryDirection.debit, 2000),
+            _entry('p2', 'parent', 'cash', EntryDirection.credit, 2000),
+          ],
+          'refund': [
+            _entry('r1', 'refund', 'food', EntryDirection.credit, 200),
+            _entry('r2', 'refund', 'cash', EntryDirection.debit, 200),
           ],
         }),
+        accounts: [
+          _account('food', AccountType.expense),
+          _account('cash', AccountType.asset),
+        ],
       );
-      final first = Completer<TransactionListReadModel>();
-      final second = Completer<TransactionListReadModel>();
-      final third = Completer<void>();
-      var emissionCount = 0;
-      final subscription = service
-          .watchTransactions(
-            const TransactionListQuery(
-              category: CategorySelection.withDescendants('food'),
-            ),
-          )
-          .listen((items) {
-            emissionCount += 1;
-            if (emissionCount == 1) first.complete(items.single);
-            if (emissionCount == 2) second.complete(items.single);
-            if (emissionCount == 3) third.complete();
-          });
-      addTearDown(subscription.cancel);
 
-      changes.add(null);
-      expect((await first.future).category?.name, '聚餐');
-      expect(transactionRead.lastPageQuery?.categoryAccountIds, {
-        'food',
-        'dining',
-      });
-
-      accounts[1] = _account(
-        'dining',
-        AccountType.expense,
-        name: '外食',
-        iconKey: 'fork',
-        parentId: 'food',
+      final items = await service.findTransactions(
+        const TransactionListQuery(topLevelOnly: false),
       );
-      changes.add(null);
-      final renamed = await second.future;
-      expect(renamed.category?.name, '外食');
-      expect(renamed.category?.iconKey, 'fork');
+      final parentItem = items.singleWhere((item) => item.id == 'parent');
+      final refundItem = items.singleWhere((item) => item.id == 'refund');
 
-      accounts[1] = _account('dining', AccountType.expense, name: '外食');
-      changes.add(null);
-      await third.future;
-      expect(transactionRead.lastPageQuery?.categoryAccountIds, {'food'});
+      expect(parentItem.impactsByAccountId['food']?.netChange.minorUnits, 2000);
+      expect(
+        parentItem.impactsByAccountId['cash']?.netChange.minorUnits,
+        -2000,
+      );
+      expect(
+        parentItem.adjustments.single.kind,
+        TransactionAdjustmentKind.refund,
+      );
+      expect(refundItem.impactsByAccountId['food']?.netChange.minorUnits, -200);
+      expect(refundItem.impactsByAccountId['cash']?.netChange.minorUnits, 200);
+      expect(refundItem.adjustments, isEmpty);
     },
   );
 }
@@ -607,12 +607,10 @@ class _FakeTransactionReadRepository implements TransactionReadRepository {
   _FakeTransactionReadRepository({
     required this.transactions,
     this.reimbursementAggregate = const {},
-    this.changes,
   });
 
   final Map<String, Transaction> transactions;
   final Map<BusinessPurpose, TransactionChildAggregate> reimbursementAggregate;
-  final Stream<void>? changes;
   TransactionPageQuery? lastPageQuery;
 
   @override
@@ -707,7 +705,7 @@ class _FakeTransactionReadRepository implements TransactionReadRepository {
   ) async => const [];
 
   @override
-  Stream<void> watchChanges() => changes ?? Stream.value(null);
+  Stream<void> watchChanges() => Stream.value(null);
 }
 
 class _FakeEntryReadRepository implements EntryReadRepository {

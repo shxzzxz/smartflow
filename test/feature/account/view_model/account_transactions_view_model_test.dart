@@ -36,7 +36,7 @@ void main() {
           limit: accountTransactionPageSize,
         ).future,
       );
-      await container.read(accountsByIdProvider.future);
+      await container.read(accountLookupProvider.future);
       await container.pump();
       await _flush();
 
@@ -70,7 +70,7 @@ void main() {
           (_, _) {},
         );
         addTearDown(sub.close);
-        await container.read(accountsByIdProvider.future);
+        await container.read(accountLookupProvider.future);
         await container.pump();
         transactionService.emit(firstPage);
         await _flush();
@@ -133,7 +133,7 @@ void main() {
           (_, _) {},
         );
         addTearDown(sub.close);
-        await container.read(accountsByIdProvider.future);
+        await container.read(accountLookupProvider.future);
         await container.pump();
         transactionService.emit(firstPage);
         await _flush();
@@ -220,20 +220,19 @@ TransactionListReadModel _item(String id, {DateTime? occurredAt}) {
     primaryAmount: const Money(minorUnits: 1234),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    category: const TransactionCategoryRef(
-      id: 'food',
-      name: '餐饮',
-      iconKey: 'meal',
-    ),
-    settlementEntries: const [
-      TransactionSettlementEntryRef(
-        accountId: 'cash',
-        accountName: '现金',
-        accountIconKey: 'cash',
-        direction: EntryDirection.credit,
-        amount: Money(minorUnits: 1234),
+    primaryCategoryId: 'food',
+    impactsByAccountId: const {
+      'food': TransactionAccountImpact(
+        debitAmount: Money(minorUnits: 1234),
+        creditAmount: Money(minorUnits: 0),
+        netChange: Money(minorUnits: 1234),
       ),
-    ],
+      'cash': TransactionAccountImpact(
+        debitAmount: Money(minorUnits: 0),
+        creditAmount: Money(minorUnits: 1234),
+        netChange: Money(minorUnits: -1234),
+      ),
+    },
     adjustments: const [],
   );
 }

@@ -215,13 +215,19 @@ Stream<List<TransactionListReadModel>> statisticsTransactions(
   required DateTime? occurredFrom,
   required DateTime occurredUntil,
   required StatisticsDrilldownScope scope,
-}) {
-  return ref
+}) async* {
+  final accountLookup = await ref.watch(accountLookupProvider.future);
+  final categoryAccountIds =
+      category == null
+          ? null
+          : resolveCategoryAccountIds([category], accountLookup.byId);
+  yield* ref
       .watch(transactionQueryServiceProvider)
       .watchTransactions(
         TransactionListQuery(
-          category: category,
-          settlementAccountId: settlementAccountId,
+          categoryAccountIds: categoryAccountIds,
+          settlementAccountIds:
+              settlementAccountId == null ? null : {settlementAccountId},
           occurredFrom: occurredFrom,
           occurredUntil: occurredUntil,
           topLevelOnly: false,
@@ -252,15 +258,32 @@ StatisticsTransactionsContentState statisticsTransactionsContent(
       scope: scope,
     ),
   );
+  final accountLookup = ref.watch(accountLookupProvider);
   if (transactions case AsyncError(:final error)) {
     return StatisticsTransactionsContentState.error(message: '加载失败：$error');
   }
+  if (accountLookup case AsyncError(:final error)) {
+    return StatisticsTransactionsContentState.error(message: '加载失败：$error');
+  }
   final transactionValues = transactions.value;
-  if (transactionValues == null) {
+  final lookup = accountLookup.value;
+  if (transactionValues == null || lookup == null) {
     return const StatisticsTransactionsContentState.loading();
   }
+  final amountSource =
+      category != null
+          ? TransactionCategoryImpactAmountSource(
+            resolveCategoryAccountIds([category], lookup.byId),
+          )
+          : settlementAccountId != null
+          ? TransactionAccountImpactAmountSource(settlementAccountId)
+          : const TransactionGroupAmountSource();
   return StatisticsTransactionsContentState.loaded(
-    groups: groupTransactionsByDay(items: transactionValues),
+    groups: groupTransactionsByDay(
+      items: transactionValues,
+      accountLookup: lookup,
+      amountSource: amountSource,
+    ),
   );
 }
 

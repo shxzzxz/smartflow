@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
@@ -11,6 +12,7 @@ void main() {
       final jan2 = DateTime(2026, 1, 2, 9);
 
       final groups = groupTransactionsByDay(
+        accountLookup: _lookup,
         items: [
           _item(id: 'a', occurredAt: jan1),
           _item(id: 'b', occurredAt: jan2),
@@ -35,6 +37,7 @@ void main() {
 
     test('does not create transaction groups from daily summaries alone', () {
       final groups = groupTransactionsByDay(
+        accountLookup: _lookup,
         items: const [],
         dailySummaries: [
           DailyCashflowSummary(
@@ -58,6 +61,7 @@ void main() {
       final jan2 = DateTime(2026, 1, 2, 9);
 
       final groups = groupTransactionsByDay(
+        accountLookup: _lookup,
         items: [
           _item(id: 'a', occurredAt: jan1),
           _item(id: 'b', occurredAt: jan2),
@@ -86,7 +90,10 @@ void main() {
         refundedTotal: const Money(minorUnits: 230),
       );
 
-      final row = buildTransactionRowPresentation(item: item);
+      final row = buildTransactionRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+      );
 
       expect(row.title, '餐饮');
       expect(row.transactionId, 'tx-1');
@@ -104,6 +111,7 @@ void main() {
       'shows refund and reimbursement badges while refund adjusts advance amount',
       () {
         final row = buildTransactionRowPresentation(
+          accountLookup: _lookup,
           item: _item(
             businessPurpose: BusinessPurpose.reimbursementAdvance,
             primaryAmount: const Money(minorUnits: 10000),
@@ -122,7 +130,8 @@ void main() {
     test('uses account balance delta in account ledger mode', () {
       final row = buildTransactionRowPresentation(
         item: _item(),
-        viewAccount: _accounts['cash'],
+        accountLookup: _lookup,
+        amountSource: const TransactionAccountImpactAmountSource('cash'),
       );
 
       expect(row.amountText, '-12.34');
@@ -133,12 +142,136 @@ void main() {
       'uses no account label when the settlement account is unavailable',
       () {
         final row = buildTransactionRowPresentation(
-          item: _item(settlementEntries: const []),
+          item: _item(impactsByAccountId: const {}),
+          accountLookup: _lookup,
         );
 
         expect(row.accountFlow.singleEndpoint.label, '无账户');
       },
     );
+
+    test('keeps adjustments orthogonal to account and category amounts', () {
+      final parent = _item(
+        id: 'parent',
+        primaryAmount: const Money(minorUnits: 2000),
+        refundedTotal: const Money(minorUnits: 200),
+        impactsByAccountId: const {
+          'food': TransactionAccountImpact(
+            debitAmount: Money(minorUnits: 2000),
+            creditAmount: Money(minorUnits: 0),
+            netChange: Money(minorUnits: 2000),
+          ),
+          'cash': TransactionAccountImpact(
+            debitAmount: Money(minorUnits: 0),
+            creditAmount: Money(minorUnits: 2000),
+            netChange: Money(minorUnits: -2000),
+          ),
+        },
+      );
+      final refund = _item(
+        id: 'refund',
+        businessPurpose: BusinessPurpose.refund,
+        primaryAmount: const Money(minorUnits: 200),
+        impactsByAccountId: const {
+          'food': TransactionAccountImpact(
+            debitAmount: Money(minorUnits: 0),
+            creditAmount: Money(minorUnits: 200),
+            netChange: Money(minorUnits: -200),
+          ),
+          'cash': TransactionAccountImpact(
+            debitAmount: Money(minorUnits: 200),
+            creditAmount: Money(minorUnits: 0),
+            netChange: Money(minorUnits: 200),
+          ),
+        },
+      );
+
+      final groupRow = buildTransactionRowPresentation(
+        item: parent,
+        accountLookup: _lookup,
+      );
+      final accountRows =
+          [parent, refund]
+              .map(
+                (item) => buildTransactionRowPresentation(
+                  item: item,
+                  accountLookup: _lookup,
+                  amountSource: const TransactionAccountImpactAmountSource(
+                    'cash',
+                  ),
+                ),
+              )
+              .toList();
+      final categoryRows =
+          [parent, refund]
+              .map(
+                (item) => buildTransactionRowPresentation(
+                  item: item,
+                  accountLookup: _lookup,
+                  amountSource: const TransactionCategoryImpactAmountSource({
+                    'food',
+                  }),
+                ),
+              )
+              .toList();
+
+      expect(groupRow.amountText, '-18');
+      expect(groupRow.originalAmountText, '-20');
+      expect(accountRows.map((row) => row.amountText), ['-20', '+2']);
+      expect(categoryRows.map((row) => row.amountText), ['-20', '+2']);
+      expect(categoryRows.first.originalAmountText, isNull);
+    });
+
+    test(
+      'resolves transfer flow and category metadata from account lookup',
+      () {
+        final item = _item(
+          businessPurpose: BusinessPurpose.transfer,
+          primaryCategoryId: null,
+          impactsByAccountId: const {
+            'cash': TransactionAccountImpact(
+              debitAmount: Money(minorUnits: 0),
+              creditAmount: Money(minorUnits: 1234),
+              netChange: Money(minorUnits: -1234),
+            ),
+            'card': TransactionAccountImpact(
+              debitAmount: Money(minorUnits: 1234),
+              creditAmount: Money(minorUnits: 0),
+              netChange: Money(minorUnits: 1234),
+            ),
+          },
+        );
+
+        final row = buildTransactionRowPresentation(
+          item: item,
+          accountLookup: _lookup,
+        );
+
+        expect(row.accountFlow.out?.label, '现金');
+        expect(row.accountFlow.in_?.label, '银行卡');
+      },
+    );
+
+    test('reflects account metadata changes without rebuilding read model', () {
+      final item = _item();
+      final renamedLookup = AccountLookup({
+        ..._accounts,
+        'food': _account(
+          'food',
+          '外食',
+          type: AccountType.expense,
+          iconKey: 'fork',
+        ),
+      });
+
+      final row = buildTransactionRowPresentation(
+        item: item,
+        accountLookup: renamedLookup,
+      );
+
+      expect(row.title, '外食');
+      expect(row.iconKey, 'fork');
+    });
 
     test('formats home comparison captions with compact signed deltas', () {
       final presentation = buildMonthlySummaryPresentation(
@@ -166,8 +299,10 @@ void main() {
 
 final _accounts = <String, Account>{
   'cash': _account('cash', '现金', iconKey: 'cash'),
+  'card': _account('card', '银行卡', iconKey: 'card'),
   'food': _account('food', '餐饮', type: AccountType.expense, iconKey: 'meal'),
 };
+final _lookup = AccountLookup(_accounts);
 
 TransactionListReadModel _item({
   String id = 'tx-1',
@@ -177,7 +312,8 @@ TransactionListReadModel _item({
   bool isExcludedFromStats = false,
   Money? refundedTotal,
   Money? reimbursementReceivedTotal,
-  List<TransactionSettlementEntryRef>? settlementEntries,
+  String? primaryCategoryId = 'food',
+  Map<String, TransactionAccountImpact>? impactsByAccountId,
 }) {
   return TransactionListReadModel(
     id: id,
@@ -186,22 +322,21 @@ TransactionListReadModel _item({
     primaryAmount: primaryAmount,
     isExcludedFromStats: isExcludedFromStats,
     isExcludedFromBudget: false,
-    category: const TransactionCategoryRef(
-      id: 'food',
-      name: '餐饮',
-      iconKey: 'meal',
-    ),
-    settlementEntries:
-        settlementEntries ??
-        [
-          TransactionSettlementEntryRef(
-            accountId: 'cash',
-            accountName: '现金',
-            accountIconKey: 'cash',
-            direction: EntryDirection.credit,
-            amount: primaryAmount,
+    primaryCategoryId: primaryCategoryId,
+    impactsByAccountId:
+        impactsByAccountId ??
+        {
+          'food': TransactionAccountImpact(
+            debitAmount: primaryAmount,
+            creditAmount: Money.zero(),
+            netChange: primaryAmount,
           ),
-        ],
+          'cash': TransactionAccountImpact(
+            debitAmount: Money.zero(),
+            creditAmount: primaryAmount,
+            netChange: Money(minorUnits: -primaryAmount.minorUnits),
+          ),
+        },
     adjustments: [
       if (refundedTotal != null)
         TransactionAdjustment(

@@ -144,6 +144,44 @@ void main() {
       expect(page.map((transaction) => transaction.id), ['matches-both']);
     },
   );
+
+  test('applies set OR filters before pagination', () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    await database.batch((batch) {
+      batch.insertAll(database.transactions, [
+        _transactionCompanionAt('newest-unmatched', DateTime(2026, 4, 4)),
+        _transactionCompanionAt('food-cash', DateTime(2026, 4, 3)),
+        _transactionCompanionAt('travel-bank', DateTime(2026, 4, 2)),
+        _transactionCompanionAt('old-unmatched', DateTime(2026, 4, 1)),
+      ]);
+      batch.insertAll(database.entries, [
+        _entryCompanion('newest-other', 'newest-unmatched', 'other'),
+        _entryCompanion('food', 'food-cash', 'food'),
+        _entryCompanion('cash', 'food-cash', 'cash'),
+        _entryCompanion('travel', 'travel-bank', 'travel'),
+        _entryCompanion('bank', 'travel-bank', 'bank'),
+        _entryCompanion('old-food', 'old-unmatched', 'food'),
+        _entryCompanion('old-card', 'old-unmatched', 'card'),
+      ]);
+    });
+
+    final page =
+        await DriftTransactionReadRepository(database)
+            .watchPage(
+              const TransactionPageQuery(
+                categoryAccountIds: {'food', 'travel'},
+                settlementAccountIds: {'cash', 'bank'},
+                limit: 2,
+              ),
+            )
+            .first;
+
+    expect(page.map((transaction) => transaction.id), [
+      'food-cash',
+      'travel-bank',
+    ]);
+  });
 }
 
 TransactionsCompanion _transactionCompanion(String id) =>
@@ -152,6 +190,16 @@ TransactionsCompanion _transactionCompanion(String id) =>
       businessPurpose: BusinessPurpose.dailyExpense,
       occurredAt: DateTime(2026, 4, 1),
       postedAt: DateTime(2026, 4, 1),
+      primaryAmountMinor: 100,
+      sourceKind: SourceKind.manual,
+    );
+
+TransactionsCompanion _transactionCompanionAt(String id, DateTime occurredAt) =>
+    TransactionsCompanion.insert(
+      id: id,
+      businessPurpose: BusinessPurpose.dailyExpense,
+      occurredAt: occurredAt,
+      postedAt: occurredAt,
       primaryAmountMinor: 100,
       sourceKind: SourceKind.manual,
     );

@@ -194,8 +194,8 @@ TransactionListReadModel _item(DateTime occurredAt) {
     primaryAmount: const Money(minorUnits: 10000),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    category: null,
-    settlementEntries: const [],
+    primaryCategoryId: null,
+    impactsByAccountId: const {},
     adjustments: const [],
   );
 }

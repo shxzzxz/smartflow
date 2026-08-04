@@ -547,7 +547,7 @@ final class CalendarContentProvider
   }
 }
 
-String _$calendarContentHash() => r'a3a68bbbf24b5293f3efa18e4d3d800da9cda2d7';
+String _$calendarContentHash() => r'17dd65cc951b3a60232cc29f6c5b37e22cd92013';
 
 final class CalendarContentFamily extends $Family
     with

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
@@ -174,7 +177,23 @@ void main() {
   test('uses report windows and scopes for contribution drilldowns', () async {
     final service = _RecordingTransactionQueryService();
     final container = ProviderContainer(
-      overrides: [transactionQueryServiceProvider.overrideWithValue(service)],
+      overrides: [
+        transactionQueryServiceProvider.overrideWithValue(service),
+        accountLookupProvider.overrideWith(
+          (ref) => Stream.value(
+            AccountLookup({
+              'food': _account('food', '餐饮', AccountType.expense),
+              'dining': _account(
+                'dining',
+                '聚餐',
+                AccountType.expense,
+                parentId: 'food',
+              ),
+              'cash': _account('cash', '现金', AccountType.asset),
+            }),
+          ),
+        ),
+      ],
     );
     addTearDown(container.dispose);
     final from = DateTime(2026, 1);
@@ -212,11 +231,8 @@ void main() {
     await container.read(balanceProvider.future);
 
     final cashflow = service.queries[0];
-    expect(
-      cashflow.category,
-      const CategorySelection.withDescendants('dining'),
-    );
-    expect(cashflow.settlementAccountId, isNull);
+    expect(cashflow.categoryAccountIds, {'dining'});
+    expect(cashflow.settlementAccountIds, isNull);
     expect(cashflow.occurredFrom, from);
     expect(cashflow.occurredUntil, until);
     expect(cashflow.scope, same(TransactionScopeFilter.stats));
@@ -224,17 +240,76 @@ void main() {
     expect(cashflow.limit, isNull);
 
     final unsubdivided = service.queries[1];
-    expect(unsubdivided.category, const CategorySelection.ownOnly('food'));
+    expect(unsubdivided.categoryAccountIds, {'food'});
     expect(unsubdivided.scope, same(TransactionScopeFilter.stats));
 
     final balance = service.queries[2];
-    expect(balance.settlementAccountId, 'cash');
-    expect(balance.category, isNull);
+    expect(balance.settlementAccountIds, {'cash'});
+    expect(balance.categoryAccountIds, isNull);
     expect(balance.occurredFrom, isNull);
     expect(balance.occurredUntil, until);
     expect(balance.scope, same(TransactionScopeFilter.assetLiability));
     expect(balance.limit, isNull);
   });
+
+  test('re-resolves category ids when the account lookup changes', () async {
+    final accountLookups = StreamController<AccountLookup>();
+    addTearDown(accountLookups.close);
+    final service = _RecordingTransactionQueryService();
+    final container = ProviderContainer(
+      overrides: [
+        transactionQueryServiceProvider.overrideWithValue(service),
+        accountLookupProvider.overrideWith((ref) => accountLookups.stream),
+      ],
+    );
+    addTearDown(container.dispose);
+    final provider = statisticsTransactionsProvider(
+      category: const CategorySelection.withDescendants('food'),
+      settlementAccountId: null,
+      occurredFrom: DateTime(2026, 1),
+      occurredUntil: DateTime(2026, 2),
+      scope: StatisticsDrilldownScope.cashflow,
+    );
+    final subscription = container.listen(provider, (_, _) {});
+    addTearDown(subscription.close);
+
+    accountLookups.add(
+      AccountLookup({
+        'food': _account('food', '餐饮', AccountType.expense),
+        'dining': _account(
+          'dining',
+          '聚餐',
+          AccountType.expense,
+          parentId: 'food',
+        ),
+      }),
+    );
+    await _waitFor(() => service.queries.isNotEmpty);
+    expect(service.queries.last.categoryAccountIds, {'food', 'dining'});
+
+    accountLookups.add(
+      AccountLookup({
+        'food': _account('food', '餐饮', AccountType.expense),
+        'dining': _account('dining', '聚餐', AccountType.expense),
+        'hotpot': _account(
+          'hotpot',
+          '火锅',
+          AccountType.expense,
+          parentId: 'food',
+        ),
+      }),
+    );
+    await _waitFor(() => service.queries.length >= 2);
+    expect(service.queries.last.categoryAccountIds, {'food', 'hotpot'});
+  });
+}
+
+Future<void> _waitFor(bool Function() condition) async {
+  for (var attempt = 0; attempt < 50; attempt++) {
+    if (condition()) return;
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+  fail('condition was not met');
 }
 
 StatisticsControlState _control({
