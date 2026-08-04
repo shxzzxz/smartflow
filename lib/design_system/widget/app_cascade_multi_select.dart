@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:remixicon/remixicon.dart';
 
 import '../theme/app_text_styles.dart';
 import '../token/component.dart';
@@ -73,16 +74,14 @@ class _AppCascadeMultiSelectSheetState<T>
   late final Set<T> _selectedValues = widget.initialSelectedValues.intersection(
     _allValues,
   );
-  late List<AppCascadeSelectionNode<T>> _path = _initialPath();
+  List<AppCascadeSelectionNode<T>> _path = const [];
 
   List<AppCascadeSelectionNode<T>> get _rootNodes => [
     for (final section in widget.sections) ...section.nodes,
   ];
 
-  int get _columnCount => _rootNodes.fold<int>(
-    1,
-    (depth, node) => depth > _depthOf(node) ? depth : _depthOf(node),
-  );
+  List<AppCascadeSelectionNode<T>> get _currentNodes =>
+      _path.isEmpty ? _rootNodes : _path.last.children;
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +108,7 @@ class _AppCascadeMultiSelectSheetState<T>
                           ),
                         ),
                       )
-                      : _buildColumns(context),
+                      : _buildCurrentLevel(context),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -140,9 +139,15 @@ class _AppCascadeMultiSelectSheetState<T>
       ),
       child: Row(
         children: [
+          if (_path.isNotEmpty)
+            IconButton(
+              tooltip: '返回上一级',
+              onPressed: () => setState(() => _path.removeLast()),
+              icon: const Icon(RemixIcons.arrow_left_line),
+            ),
           Expanded(
             child: Text(
-              widget.title,
+              _path.isEmpty ? widget.title : _path.last.label,
               style: context.appTextStyles.subsectionTitle,
             ),
           ),
@@ -169,23 +174,10 @@ class _AppCascadeMultiSelectSheetState<T>
     );
   }
 
-  Widget _buildColumns(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget _buildCurrentLevel(BuildContext context) {
+    return ListView(
       children: [
-        for (var depth = 0; depth < _columnCount; depth++) ...[
-          if (depth > 0)
-            const VerticalDivider(width: AppComponentTokens.outlineWidth),
-          Expanded(child: _buildColumn(context, depth)),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildColumn(BuildContext context, int depth) {
-    if (depth == 0) {
-      return ListView(
-        children: [
+        if (_path.isEmpty)
           for (final section in widget.sections) ...[
             if (section.label case final label?)
               Padding(
@@ -197,115 +189,61 @@ class _AppCascadeMultiSelectSheetState<T>
                 ),
                 child: Text(label, style: context.appTextStyles.groupTitle),
               ),
-            for (final node in section.nodes)
-              _buildNodeRow(
-                context,
-                node,
-                active: _isActive(depth, node),
-                onTap: () => _activateNode(depth, node),
-              ),
-          ],
-        ],
-      );
-    }
-
-    final nodes =
-        _path.length >= depth
-            ? _path[depth - 1].children
-            : <AppCascadeSelectionNode<T>>[];
-    if (nodes.isEmpty) {
-      return Center(
-        child: Text(
-          '暂无选项',
-          textAlign: TextAlign.center,
-          style: context.appTextStyles.inputText,
-        ),
-      );
-    }
-    return ListView(
-      children: [
-        for (final node in nodes)
-          _buildNodeRow(
-            context,
-            node,
-            active: _isActive(depth, node),
-            onTap: () => _activateNode(depth, node),
-          ),
+            for (final node in section.nodes) _buildNodeRow(context, node),
+          ]
+        else
+          for (final node in _currentNodes) _buildNodeRow(context, node),
       ],
     );
   }
 
-  Widget _buildNodeRow(
-    BuildContext context,
-    AppCascadeSelectionNode<T> node, {
-    required bool active,
-    required VoidCallback onTap,
-  }) {
-    final colors = Theme.of(context).colorScheme;
+  Widget _buildNodeRow(BuildContext context, AppCascadeSelectionNode<T> node) {
     final values = _valuesOf(node);
     return Material(
-      color: active ? colors.secondaryContainer : null,
-      child: InkWell(
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            minHeight: AppComponentTokens.controlMinHeight,
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: AppSpacing.space4,
-                height: AppSpacing.space24,
-                child: active ? ColoredBox(color: colors.primary) : null,
-              ),
-              Checkbox(
-                value: _selectionValue(node),
-                tristate: true,
-                onChanged: values.isEmpty ? null : (_) => _toggleNode(node),
-              ),
-              Expanded(
-                child: Text(
-                  node.label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.appTextStyles.formPlainValue,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minHeight: AppComponentTokens.controlMinHeight,
+        ),
+        child: Row(
+          children: [
+            Checkbox(
+              value: _selectionValue(node),
+              tristate: true,
+              onChanged: values.isEmpty ? null : (_) => _toggleNode(node),
+            ),
+            Expanded(
+              child: InkWell(
+                onTap: node.children.isEmpty ? null : () => _openNode(node),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.space12,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          node.label,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.appTextStyles.formPlainValue,
+                        ),
+                      ),
+                      if (node.children.isNotEmpty)
+                        const Icon(RemixIcons.arrow_right_s_line),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  List<AppCascadeSelectionNode<T>> _initialPath() {
-    final path = <AppCascadeSelectionNode<T>>[];
-    var nodes = _rootNodes;
-    while (nodes.isNotEmpty) {
-      final node = nodes.first;
-      path.add(node);
-      nodes = node.children;
-    }
-    return path;
-  }
-
-  int _depthOf(AppCascadeSelectionNode<T> node) {
-    if (node.children.isEmpty) return 1;
-    return 1 + node.children.map(_depthOf).reduce((a, b) => a > b ? a : b);
-  }
-
-  bool _isActive(int depth, AppCascadeSelectionNode<T> node) =>
-      _path.length > depth && identical(_path[depth], node);
-
-  void _activateNode(int depth, AppCascadeSelectionNode<T> node) {
-    setState(() {
-      _path = _path.take(depth).toList()..add(node);
-      var current = node;
-      while (current.children.isNotEmpty) {
-        current = current.children.first;
-        _path.add(current);
-      }
-    });
+  void _openNode(AppCascadeSelectionNode<T> node) {
+    if (node.children.isEmpty) return;
+    setState(() => _path = [..._path, node]);
   }
 
   bool? _selectionValue(AppCascadeSelectionNode<T> node) {

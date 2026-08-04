@@ -4,6 +4,53 @@ import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_cascade_multi_select.dart';
 
 void main() {
+  testWidgets('only shows the current cascade level', (tester) async {
+    await tester.pumpWidget(
+      _TestHost(
+        onResult: (_) {},
+        selectedValues: const {},
+        nodes: const [
+          AppCascadeSelectionNode(
+            value: 'parent',
+            label: '父级',
+            children: [
+              AppCascadeSelectionNode(
+                value: 'child',
+                label: '子级',
+                children: [
+                  AppCascadeSelectionNode(value: 'grandchild', label: '孙级'),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    await tester.tap(find.text('打开'));
+    await tester.pumpAndSettle();
+    expect(find.text('父级'), findsOneWidget);
+    expect(find.text('子级'), findsNothing);
+    expect(find.text('孙级'), findsNothing);
+
+    await tester.tap(find.text('父级'));
+    await tester.pump();
+    expect(find.text('父级'), findsOneWidget);
+    expect(find.text('子级'), findsOneWidget);
+    expect(find.text('孙级'), findsNothing);
+
+    await tester.tap(find.text('子级'));
+    await tester.pump();
+    expect(find.text('父级'), findsNothing);
+    expect(find.text('子级'), findsOneWidget);
+    expect(find.text('孙级'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('返回上一级'));
+    await tester.pump();
+    expect(find.text('子级'), findsOneWidget);
+    expect(find.text('孙级'), findsNothing);
+  });
+
   testWidgets('selecting a parent selects every descendant', (tester) async {
     Set<String>? result;
     await tester.pumpWidget(
@@ -145,10 +192,21 @@ void main() {
 }
 
 class _TestHost extends StatelessWidget {
-  const _TestHost({required this.onResult, this.selectedValues = const {}});
+  const _TestHost({
+    required this.onResult,
+    this.selectedValues = const {},
+    this.nodes = const [
+      AppCascadeSelectionNode(
+        value: 'parent',
+        label: '父级',
+        children: [AppCascadeSelectionNode(value: 'child', label: '子级')],
+      ),
+    ],
+  });
 
   final ValueChanged<Set<String>?> onResult;
   final Set<String> selectedValues;
+  final List<AppCascadeSelectionNode<String>> nodes;
 
   @override
   Widget build(BuildContext context) {
@@ -163,22 +221,7 @@ class _TestHost extends StatelessWidget {
                   await showAppCascadeMultiSelectSheet<String>(
                     context: context,
                     title: '选择项目',
-                    sections: const [
-                      AppCascadeSelectionSection(
-                        nodes: [
-                          AppCascadeSelectionNode(
-                            value: 'parent',
-                            label: '父级',
-                            children: [
-                              AppCascadeSelectionNode(
-                                value: 'child',
-                                label: '子级',
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
+                    sections: [AppCascadeSelectionSection(nodes: nodes)],
                     selectedValues: selectedValues,
                   ),
                 );

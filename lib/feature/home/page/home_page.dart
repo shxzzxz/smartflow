@@ -177,7 +177,7 @@ class _HomeFilterButton extends ConsumerWidget {
       icon: Badge(
         isLabelVisible: filter.isActive,
         smallSize: AppSpacing.space8,
-        child: const Icon(RemixIcons.filter_3_line),
+        child: const Icon(RemixIcons.filter_line),
       ),
     );
   }

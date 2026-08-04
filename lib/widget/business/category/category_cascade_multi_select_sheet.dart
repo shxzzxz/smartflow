@@ -16,11 +16,11 @@ Future<Set<String>?> showCategoryCascadeMultiSelectSheet({
       AppCascadeSelectionSection(
         nodes: [
           AppCascadeSelectionNode.group(
-            label: '支出分类',
+            label: '支出',
             children: [for (final node in expenseTree) _categoryNode(node)],
           ),
           AppCascadeSelectionNode.group(
-            label: '收入分类',
+            label: '收入',
             children: [for (final node in incomeTree) _categoryNode(node)],
           ),
         ],
