@@ -6,6 +6,7 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/profile/page/data_cleanup_page.dart';
+import 'package:smartflow/widget/business/icon/business_icon.dart';
 
 void main() {
   Future<void> pumpPage(WidgetTester tester) async {
@@ -22,7 +23,10 @@ void main() {
             (ref) => _FakeAccountQueryService(),
           ),
         ],
-        child: MaterialApp(theme: AppTheme.light(), home: const DataCleanupPage()),
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const DataCleanupPage(),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -35,10 +39,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('选择分类'), findsOneWidget);
+    expect(find.text('支出分类'), findsOneWidget);
+    expect(find.text('收入分类'), findsOneWidget);
     expect(find.text('餐饮'), findsOneWidget);
     expect(find.text('午餐'), findsOneWidget);
+    expect(find.byType(VerticalDivider), findsNWidgets(2));
+    expect(find.byType(BusinessIcon), findsNothing);
 
-    await tester.tap(find.text('餐饮'));
+    await tester.tap(find.byType(Checkbox).first);
     await tester.pump();
     await tester.tap(find.text('确定'));
     await tester.pumpAndSettle();

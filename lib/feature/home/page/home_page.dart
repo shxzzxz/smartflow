@@ -15,6 +15,7 @@ import '../../shared/view_model/app_settings_view_model.dart';
 import '../view_model/home_view_model.dart';
 import '../widget/home_header.dart';
 import '../widget/home_pull_to_create.dart';
+import '../widget/home_transaction_filter_sheet.dart';
 import '../../../widget/business/finance/cashflow_summary_card.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -41,9 +42,15 @@ class _HomePageState extends ConsumerState<HomePage> {
               onMonthPressed: _pickMonth,
               onPreviousMonth: () => _shiftMonth(-1),
               onNextMonth: () => _shiftMonth(1),
-              trailing: _HomeSettingsMenu(
-                showAddTransactionFab: settings.showAddTransactionFab,
-                pullToCreateSensitivity: settings.pullToCreateSensitivity,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _HomeFilterButton(filter: state.transactionFilter),
+                  _HomeSettingsMenu(
+                    showAddTransactionFab: settings.showAddTransactionFab,
+                    pullToCreateSensitivity: settings.pullToCreateSensitivity,
+                  ),
+                ],
               ),
             ),
             Expanded(
@@ -71,6 +78,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       hasPendingRefresh: hasPendingRefresh,
                       isRefreshing: isRefreshing,
                       refreshErrorMessage: refreshErrorMessage,
+                      filterActive: state.transactionFilter.isActive,
                       onLoadMore:
                           () =>
                               ref
@@ -133,6 +141,45 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _shiftMonth(int delta) {
     ref.read(homeViewModelProvider.notifier).shiftMonth(delta);
+  }
+}
+
+class _HomeFilterButton extends ConsumerWidget {
+  const _HomeFilterButton({required this.filter});
+
+  final HomeTransactionFilter filter;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final options = ref.watch(homeFilterOptionsProvider);
+    final loadedOptions = options is HomeFilterOptionsLoaded ? options : null;
+    return IconButton(
+      tooltip: filter.isActive ? '交易筛选（已启用）' : '交易筛选',
+      onPressed:
+          loadedOptions != null
+              ? () async {
+                final selected = await showHomeTransactionFilterSheet(
+                  context: context,
+                  initialFilter: filter,
+                  expenseTree: loadedOptions.expenseTree,
+                  incomeTree: loadedOptions.incomeTree,
+                  accounts: loadedOptions.accounts,
+                );
+                if (selected == null || !context.mounted) return;
+                ref
+                    .read(homeViewModelProvider.notifier)
+                    .applyTransactionFilter(
+                      categoryAccountIds: selected.categoryAccountIds,
+                      settlementAccountIds: selected.settlementAccountIds,
+                    );
+              }
+              : null,
+      icon: Badge(
+        isLabelVisible: filter.isActive,
+        smallSize: AppSpacing.space8,
+        child: const Icon(RemixIcons.filter_3_line),
+      ),
+    );
   }
 }
 
@@ -280,6 +327,7 @@ class _HomeContent extends StatelessWidget {
     required this.hasPendingRefresh,
     required this.isRefreshing,
     required this.refreshErrorMessage,
+    required this.filterActive,
     required this.onLoadMore,
     required this.onRefresh,
   });
@@ -293,6 +341,7 @@ class _HomeContent extends StatelessWidget {
   final bool hasPendingRefresh;
   final bool isRefreshing;
   final String? refreshErrorMessage;
+  final bool filterActive;
   final VoidCallback onLoadMore;
   final VoidCallback onRefresh;
 
@@ -335,7 +384,7 @@ class _HomeContent extends StatelessWidget {
       isLoadingMore: isLoadingMore,
       loadMoreErrorMessage: loadMoreErrorMessage,
       onLoadMore: onLoadMore,
-      emptyMessage: '本月暂无交易记录',
+      emptyMessage: filterActive ? '没有符合筛选条件的交易' : '本月暂无交易记录',
     );
   }
 }

@@ -176,6 +176,21 @@ void main() {
     expect(find.text('色彩语义'), findsNothing);
   });
 
+  testWidgets('opens the cascade multi-select example', (tester) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'AppCascadeMultiSelect');
+    await tester.pumpAndSettle();
+    expect(find.text('级联多选'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(OutlinedButton, '打开'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('选择项目'), findsOneWidget);
+    expect(find.text('父级项目'), findsOneWidget);
+    expect(find.text('子级项目'), findsOneWidget);
+  });
+
   testWidgets('opens the app date picker from the date examples', (
     tester,
   ) async {

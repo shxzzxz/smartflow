@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
@@ -16,7 +17,10 @@ class HomeViewModel extends _$HomeViewModel {
   @override
   HomePageState build() {
     final now = ref.watch(currentDateTimeProvider);
-    return HomePageState(visibleMonth: DateTime(now.year, now.month));
+    return HomePageState(
+      visibleMonth: DateTime(now.year, now.month),
+      transactionFilter: const HomeTransactionFilter.all(),
+    );
   }
 
   void pickMonth(DateTime month) {
@@ -29,6 +33,18 @@ class HomeViewModel extends _$HomeViewModel {
       visibleMonth: DateTime(month.year, month.month + delta),
     );
   }
+
+  void applyTransactionFilter({
+    required Set<String>? categoryAccountIds,
+    required Set<String>? settlementAccountIds,
+  }) {
+    state = state.copyWith(
+      transactionFilter: HomeTransactionFilter(
+        categoryAccountIds: categoryAccountIds,
+        settlementAccountIds: settlementAccountIds,
+      ),
+    );
+  }
 }
 
 @riverpod
@@ -37,10 +53,15 @@ Stream<List<TransactionListReadModel>> homeTransactions(
   DateTime visibleMonth,
 ) {
   final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
+  final filter = ref.watch(
+    homeViewModelProvider.select((state) => state.transactionFilter),
+  );
   return ref
       .watch(transactionQueryServiceProvider)
       .watchTransactions(
         TransactionListQuery(
+          categoryAccountIds: filter.categoryAccountIds,
+          settlementAccountIds: filter.settlementAccountIds,
           topLevelOnly: true,
           occurredFrom: month.start,
           occurredUntil: month.nextMonthStart,
@@ -53,9 +74,19 @@ Stream<List<TransactionListReadModel>> homeTransactions(
 class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
   var _requestGeneration = 0;
   var _refreshRequested = false;
+  HomeTransactionFilter? _activeFilter;
 
   @override
   HomeTransactionFeedState build(DateTime visibleMonth) {
+    final filter = ref.watch(
+      homeViewModelProvider.select((state) => state.transactionFilter),
+    );
+    final activeFilter = _activeFilter;
+    if (activeFilter != null && !identical(activeFilter, filter)) {
+      _requestGeneration += 1;
+      _refreshRequested = false;
+    }
+    _activeFilter = filter;
     final provider = homeTransactionsProvider(visibleMonth);
     final transactions = ref.read(provider);
     ref.listen(provider, (_, next) => _applyFirstPage(next));
@@ -138,10 +169,13 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
         year: visibleMonth.year,
         month: visibleMonth.month,
       );
+      final filter = ref.read(homeViewModelProvider).transactionFilter;
       final nextPage = await ref
           .read(transactionQueryServiceProvider)
           .findTransactions(
             TransactionListQuery(
+              categoryAccountIds: filter.categoryAccountIds,
+              settlementAccountIds: filter.settlementAccountIds,
               topLevelOnly: true,
               occurredFrom: month.start,
               occurredUntil: month.nextMonthStart,
@@ -205,6 +239,34 @@ Stream<List<DailyCashflowSummary>> homeDailyCashflowSummaries(
 }
 
 @riverpod
+HomeFilterOptionsState homeFilterOptions(Ref ref) {
+  final expenseTree = ref.watch(categoryTreeProvider(AccountType.expense));
+  final incomeTree = ref.watch(categoryTreeProvider(AccountType.income));
+  final accounts = ref.watch(accountListProvider);
+
+  if (expenseTree case AsyncError(:final error)) {
+    return HomeFilterOptionsState.error(message: '加载筛选项失败：$error');
+  }
+  if (incomeTree case AsyncError(:final error)) {
+    return HomeFilterOptionsState.error(message: '加载筛选项失败：$error');
+  }
+  if (accounts case AsyncError(:final error)) {
+    return HomeFilterOptionsState.error(message: '加载筛选项失败：$error');
+  }
+  final expenseValues = expenseTree.value;
+  final incomeValues = incomeTree.value;
+  final accountValues = accounts.value;
+  if (expenseValues == null || incomeValues == null || accountValues == null) {
+    return const HomeFilterOptionsState.loading();
+  }
+  return HomeFilterOptionsState.loaded(
+    expenseTree: expenseValues,
+    incomeTree: incomeValues,
+    accounts: accountValues,
+  );
+}
+
+@riverpod
 HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
   final transactions = ref.watch(
     homeTransactionFeedViewModelProvider(visibleMonth),
@@ -257,13 +319,84 @@ HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
 }
 
 class HomePageState {
-  const HomePageState({required this.visibleMonth});
+  const HomePageState({
+    required this.visibleMonth,
+    required this.transactionFilter,
+  });
 
   final DateTime visibleMonth;
+  final HomeTransactionFilter transactionFilter;
 
-  HomePageState copyWith({DateTime? visibleMonth}) {
-    return HomePageState(visibleMonth: visibleMonth ?? this.visibleMonth);
+  HomePageState copyWith({
+    DateTime? visibleMonth,
+    HomeTransactionFilter? transactionFilter,
+  }) {
+    return HomePageState(
+      visibleMonth: visibleMonth ?? this.visibleMonth,
+      transactionFilter: transactionFilter ?? this.transactionFilter,
+    );
   }
+}
+
+class HomeTransactionFilter {
+  HomeTransactionFilter({
+    required Set<String>? categoryAccountIds,
+    required Set<String>? settlementAccountIds,
+  }) : categoryAccountIds =
+           categoryAccountIds == null
+               ? null
+               : Set.unmodifiable(categoryAccountIds),
+       settlementAccountIds =
+           settlementAccountIds == null
+               ? null
+               : Set.unmodifiable(settlementAccountIds);
+
+  const HomeTransactionFilter.all()
+    : categoryAccountIds = null,
+      settlementAccountIds = null;
+
+  final Set<String>? categoryAccountIds;
+  final Set<String>? settlementAccountIds;
+
+  bool get isActive =>
+      categoryAccountIds != null || settlementAccountIds != null;
+}
+
+sealed class HomeFilterOptionsState {
+  const HomeFilterOptionsState();
+
+  const factory HomeFilterOptionsState.loading() = HomeFilterOptionsLoading;
+
+  const factory HomeFilterOptionsState.error({required String message}) =
+      HomeFilterOptionsError;
+
+  const factory HomeFilterOptionsState.loaded({
+    required List<CategoryNode> expenseTree,
+    required List<CategoryNode> incomeTree,
+    required List<Account> accounts,
+  }) = HomeFilterOptionsLoaded;
+}
+
+final class HomeFilterOptionsLoading extends HomeFilterOptionsState {
+  const HomeFilterOptionsLoading();
+}
+
+final class HomeFilterOptionsError extends HomeFilterOptionsState {
+  const HomeFilterOptionsError({required this.message});
+
+  final String message;
+}
+
+final class HomeFilterOptionsLoaded extends HomeFilterOptionsState {
+  const HomeFilterOptionsLoaded({
+    required this.expenseTree,
+    required this.incomeTree,
+    required this.accounts,
+  });
+
+  final List<CategoryNode> expenseTree;
+  final List<CategoryNode> incomeTree;
+  final List<Account> accounts;
 }
 
 sealed class HomeContentState {

@@ -130,6 +130,40 @@ void main() {
     );
 
     test(
+      'applies category and account filters to the transaction query',
+      () async {
+        final transactionService = _FakeTransactionQueryService();
+        final metricsService = _FakeFinancialMetricsService();
+        final accountService = _FakeAccountQueryService();
+        final container = _container(
+          transactionService,
+          metricsService,
+          accountService,
+        );
+        final visibleMonth = DateTime(2026, 1);
+        final contentSub = container.listen(
+          homeContentProvider(visibleMonth),
+          (_, _) {},
+        );
+        addTearDown(contentSub.close);
+
+        container
+            .read(homeViewModelProvider.notifier)
+            .applyTransactionFilter(
+              categoryAccountIds: {'cat-food', 'cat-lunch'},
+              settlementAccountIds: {'acc-cash', 'acc-card'},
+            );
+        await container.pump();
+
+        final query = transactionService.queries.last;
+        expect(query.categoryAccountIds, {'cat-food', 'cat-lunch'});
+        expect(query.settlementAccountIds, {'acc-cash', 'acc-card'});
+        expect(metricsService.comparisonQueries, hasLength(1));
+        expect(metricsService.dailyQueries, hasLength(1));
+      },
+    );
+
+    test(
       'loads the next month page with an exclusive transaction cursor',
       () async {
         final transactionService = _FakeTransactionQueryService();
@@ -143,6 +177,12 @@ void main() {
           accountService,
         );
         final visibleMonth = DateTime(2026, 1);
+        container
+            .read(homeViewModelProvider.notifier)
+            .applyTransactionFilter(
+              categoryAccountIds: {'cat-food'},
+              settlementAccountIds: {'acc-cash'},
+            );
         final sub = container.listen(
           homeTransactionFeedViewModelProvider(visibleMonth),
           (_, _) {},
@@ -172,6 +212,8 @@ void main() {
 
         final query = transactionService.queries.last;
         expect(query.limit, homeTransactionPageSize);
+        expect(query.categoryAccountIds, {'cat-food'});
+        expect(query.settlementAccountIds, {'acc-cash'});
         expect(query.before?.id, firstPage.last.id);
         expect(query.before?.occurredAt, firstPage.last.occurredAt);
         final state = container.read(
@@ -239,6 +281,53 @@ void main() {
         expect(loaded.isRefreshing, isFalse);
       },
     );
+
+    test('ignores an old in-flight page after the filter changes', () async {
+      final transactionService = _FakeTransactionQueryService();
+      final metricsService = _FakeFinancialMetricsService();
+      final accountService = _FakeAccountQueryService(
+        accountsById: const <String, Account>{},
+      );
+      final container = _container(
+        transactionService,
+        metricsService,
+        accountService,
+      );
+      final visibleMonth = DateTime(2026, 1);
+      final sub = container.listen(
+        homeTransactionFeedViewModelProvider(visibleMonth),
+        (_, _) {},
+      );
+      addTearDown(sub.close);
+      transactionService.emit([
+        for (var i = 0; i < homeTransactionPageSize; i++) _item(id: 'old-$i'),
+      ]);
+      await _flush();
+      final oldPage = Completer<List<TransactionListReadModel>>();
+      transactionService.nextPageFuture = oldPage.future;
+
+      final loadMore =
+          container
+              .read(homeTransactionFeedViewModelProvider(visibleMonth).notifier)
+              .loadMore();
+      container
+          .read(homeViewModelProvider.notifier)
+          .applyTransactionFilter(
+            categoryAccountIds: {'cat-food'},
+            settlementAccountIds: null,
+          );
+      await container.pump();
+      oldPage.complete([_item(id: 'old-next')]);
+      await loadMore;
+      transactionService.emit([_item(id: 'new-filter')]);
+      await _flush();
+
+      final state =
+          container.read(homeTransactionFeedViewModelProvider(visibleMonth))
+              as HomeTransactionFeedLoaded;
+      expect(state.items.map((item) => item.id), ['new-filter']);
+      expect(state.hasPendingRefresh, isFalse);
+    });
   });
 }
 
@@ -304,6 +393,7 @@ class _FakeTransactionQueryService implements TransactionQueryService {
   final queries = <TransactionListQuery>[];
   final _streams = <_ReplayStream<List<TransactionListReadModel>>>[];
   List<TransactionListReadModel>? nextPage;
+  Future<List<TransactionListReadModel>>? nextPageFuture;
 
   @override
   Stream<List<TransactionListReadModel>> watchTransactions(
@@ -320,6 +410,7 @@ class _FakeTransactionQueryService implements TransactionQueryService {
     TransactionListQuery query,
   ) async {
     queries.add(query);
+    if (nextPageFuture case final future?) return future;
     return nextPage ?? const [];
   }
 

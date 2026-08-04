@@ -41,7 +41,7 @@ final class HomeViewModelProvider
   }
 }
 
-String _$homeViewModelHash() => r'f7a2c29fc19f34bf8086e2bca8f5f1e62ab7a86d';
+String _$homeViewModelHash() => r'0d0352b1457886376488463b89a3a813a47ce858';
 
 abstract class _$HomeViewModel extends $Notifier<HomePageState> {
   HomePageState build();
@@ -118,7 +118,7 @@ final class HomeTransactionsProvider
   }
 }
 
-String _$homeTransactionsHash() => r'de8f4bb6bfd49cc5a71d0ddc4cbedefb0e2c4c17';
+String _$homeTransactionsHash() => r'29ea8b14e9a6e0285f13a2570198bfabc97be80d';
 
 final class HomeTransactionsFamily extends $Family
     with
@@ -198,7 +198,7 @@ final class HomeTransactionFeedViewModelProvider
 }
 
 String _$homeTransactionFeedViewModelHash() =>
-    r'f5cd9f5d9c2f0858c999aae075e073eb7a0ecbec';
+    r'9ab568952f1fea3889eb0eefdcb3037f2209daca';
 
 final class HomeTransactionFeedViewModelFamily extends $Family
     with
@@ -412,6 +412,53 @@ final class HomeDailyCashflowSummariesFamily extends $Family
   @override
   String toString() => r'homeDailyCashflowSummariesProvider';
 }
+
+@ProviderFor(homeFilterOptions)
+final homeFilterOptionsProvider = HomeFilterOptionsProvider._();
+
+final class HomeFilterOptionsProvider
+    extends
+        $FunctionalProvider<
+          HomeFilterOptionsState,
+          HomeFilterOptionsState,
+          HomeFilterOptionsState
+        >
+    with $Provider<HomeFilterOptionsState> {
+  HomeFilterOptionsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'homeFilterOptionsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$homeFilterOptionsHash();
+
+  @$internal
+  @override
+  $ProviderElement<HomeFilterOptionsState> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  HomeFilterOptionsState create(Ref ref) {
+    return homeFilterOptions(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(HomeFilterOptionsState value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<HomeFilterOptionsState>(value),
+    );
+  }
+}
+
+String _$homeFilterOptionsHash() => r'ccce923b9a044181a8dc7560d382d02bd89d202d';
 
 @ProviderFor(homeContent)
 final homeContentProvider = HomeContentFamily._();

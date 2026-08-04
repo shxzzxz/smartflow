@@ -30,6 +30,7 @@ import '../theme/app_theme_extension.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
 import '../widget/app_datetime_picker.dart';
+import '../widget/app_cascade_multi_select.dart';
 import '../widget/app_date_picker_panel.dart';
 import '../widget/app_dropdown.dart';
 import '../widget/app_form_section.dart';
@@ -78,6 +79,7 @@ enum _ShowcaseExampleKind {
   iconChoiceGrid,
   iconCatalogPicker,
   categoryGridPicker,
+  cascadeMultiSelect,
   submitButton,
   chips,
   progressIndicators,
@@ -231,6 +233,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '分类网格选择',
     componentNames: 'CategoryGridPicker',
     keywords: ['分类', '选择', '网格', '子分类'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.cascadeMultiSelect,
+    category: '表单组件',
+    title: '级联多选',
+    componentNames: 'AppCascadeMultiSelect',
+    keywords: ['级联', '多选', '层级', '全部', '清除'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.submitButton,
@@ -544,6 +553,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   String? _selectedIconKey = 'meal';
   String? _selectedCategoryRootId = 'cat-dining';
   String? _selectedCategoryId = 'cat-breakfast';
+  Set<String> _selectedCascadeValues = {'parent', 'child'};
 
   @override
   void initState() {
@@ -706,6 +716,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.iconChoiceGrid => _iconChoiceGridPreview(),
       _ShowcaseExampleKind.iconCatalogPicker => _iconCatalogPickerPreview(),
       _ShowcaseExampleKind.categoryGridPicker => _categoryGridPickerPreview(),
+      _ShowcaseExampleKind.cascadeMultiSelect => _cascadeMultiSelectPreview(),
       _ShowcaseExampleKind.submitButton => _submitButtonPreview(),
       _ShowcaseExampleKind.chips => _chipsPreview(),
       _ShowcaseExampleKind.progressIndicators => _progressIndicatorsPreview(),
@@ -1155,6 +1166,51 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
     );
   }
 
+  Widget _cascadeMultiSelectPreview() {
+    return Row(
+      children: [
+        Expanded(child: Text('已选 ${_selectedCascadeValues.length} 项')),
+        OutlinedButton.icon(
+          onPressed: () async {
+            final selected = await showAppCascadeMultiSelectSheet<String>(
+              context: context,
+              title: '选择项目',
+              sections: const [
+                AppCascadeSelectionSection(
+                  label: '示例分组',
+                  nodes: [
+                    AppCascadeSelectionNode(
+                      value: 'parent',
+                      label: '父级项目',
+                      children: [
+                        AppCascadeSelectionNode(
+                          value: 'child',
+                          label: '子级项目',
+                          children: [
+                            AppCascadeSelectionNode(
+                              value: 'grandchild',
+                              label: '孙级项目',
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    AppCascadeSelectionNode(value: 'sibling', label: '同级项目'),
+                  ],
+                ),
+              ],
+              selectedValues: _selectedCascadeValues,
+            );
+            if (selected == null || !mounted) return;
+            setState(() => _selectedCascadeValues = selected);
+          },
+          icon: const Icon(RemixIcons.node_tree),
+          label: const Text('打开'),
+        ),
+      ],
+    );
+  }
+
   Widget _submitButtonPreview() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1280,8 +1336,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           granularity: AppDatePickerGranularity.date,
           mode: AppDatePickerMode.range,
           initialValue: _selectedDate,
-          onRangeChanged:
-              (picked, _) => setState(() => _panelRange = picked),
+          onRangeChanged: (picked, _) => setState(() => _panelRange = picked),
         ),
         Text(
           range == null

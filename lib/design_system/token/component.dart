@@ -7,6 +7,7 @@ abstract final class AppComponentTokens {
   static const double outlineWidth = 1;
   static const double focusedOutlineWidth = 1.5;
   static const double adaptiveLayoutTextScaleThreshold = 1.3;
+  static const double selectionSheetMaxHeightFactor = 0.76;
 
   static const double disabledContentOpacity = 0.38;
   static const double disabledContainerOpacity = 0.08;
