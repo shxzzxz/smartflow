@@ -50,9 +50,6 @@ dependencies:
   lunar: 1.7.8
   uuid: ^4.5.3
   fl_chart: ^1.2.0
-  # 本地补丁版：修复 SST 跨 CONTINUE 记录的字符串解码，见 third_party/excel2003
-  excel2003:
-    path: third_party/excel2003
   file_picker: ^11.0.2
   csv: ^8.0.0
   excel_community: ^1.0.10

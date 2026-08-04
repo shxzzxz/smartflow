@@ -2,7 +2,7 @@ import '../import_models.dart';
 
 /// Physical file formats are decoded into this source-neutral representation.
 /// The source parser only sees sheet names, headers, and scalar cell values;
-/// no CSV/XLS/XLSX package types cross this seam.
+/// no CSV/XLSX package types cross this seam.
 class ImportTabularFile {
   ImportTabularFile({required Iterable<ImportTabularSheet> sheets})
     : sheets = List.unmodifiable(sheets);

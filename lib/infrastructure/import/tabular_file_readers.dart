@@ -6,16 +6,14 @@ import 'package:excel_community/excel_community.dart';
 
 import '../../domain/import/import_models.dart';
 import '../../domain/import/port/import_file_reader.dart';
-import 'xls_file_reader.dart';
 
 /// Dispatches physical file formats without exposing decoder packages to the
 /// source parser.
 class ImportFileReaderRegistry implements ImportFileReader {
   ImportFileReaderRegistry({
-    ImportFileReader xlsReader = const XlsFileReader(),
     ImportFileReader csvReader = const CsvFileReader(),
     ImportFileReader xlsxReader = const XlsxFileReader(),
-  }) : _readers = {'.csv': csvReader, '.xls': xlsReader, '.xlsx': xlsxReader};
+  }) : _readers = {'.csv': csvReader, '.xlsx': xlsxReader};
 
   final Map<String, ImportFileReader> _readers;
 

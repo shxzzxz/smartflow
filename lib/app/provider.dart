@@ -8,7 +8,6 @@ import '../infrastructure/import/platform_import_file_picker.dart';
 import '../infrastructure/import/repository/drift_import_batch_repository.dart';
 import '../infrastructure/import/repository/drift_import_mapping_repository.dart';
 import '../infrastructure/import/tabular_file_readers.dart';
-import '../infrastructure/import/xls_file_reader.dart';
 import '../infrastructure/ledger/repository/drift_account_query_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_group_repository.dart';
@@ -88,7 +87,7 @@ ImportFilePicker importFilePicker(Ref ref) {
 
 @Riverpod(keepAlive: true)
 ImportFileReader importFileReader(Ref ref) {
-  return ImportFileReaderRegistry(xlsReader: const XlsFileReader());
+  return ImportFileReaderRegistry();
 }
 
 @Riverpod(keepAlive: true)

@@ -30,6 +30,7 @@ void main() {
     expect(find.widgetWithText(TextButton, '清空'), findsOneWidget);
     expect(find.widgetWithText(TextButton, '添加文件'), findsOneWidget);
     expect(find.widgetWithText(TextButton, '解析'), findsOneWidget);
+    expect(find.textContaining('XLS 文件请先另存为'), findsOneWidget);
     expect(find.text('共 1 个文件 · 已完成'), findsNothing);
     expect(find.text('共 1 个文件 · 待解析'), findsNothing);
 

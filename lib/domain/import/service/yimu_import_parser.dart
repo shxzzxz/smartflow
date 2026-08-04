@@ -14,7 +14,7 @@ const yimuFingerprintVersion = 1;
 
 /// Deterministic, side-effect-free parser for the three files exported by
 /// 一木记账. Physical file decoding is deliberately injected through
-/// [ImportFileReader], keeping CSV/XLS/XLSX concerns outside this domain.
+/// [ImportFileReader], keeping CSV/XLSX concerns outside this domain.
 class YimuImportParser implements ImportSourceParser {
   YimuImportParser({
     required ImportFileReader reader,
@@ -77,7 +77,7 @@ class YimuImportParser implements ImportSourceParser {
                     : 'file_decode_failed',
             message:
                 isUnsupported
-                    ? '无法识别文件 ${file.name} 的格式。支持 CSV、XLS 和 XLSX。'
+                    ? '无法识别文件 ${file.name} 的格式。支持 CSV 和 XLSX；XLS 文件请先另存为这两种格式。'
                     : '无法读取一木文件 ${file.name}，请重新导出或选择有效文件。',
             severity: ImportIssueSeverity.fatal,
           ),

@@ -1299,7 +1299,7 @@ class _ImportFilesSection extends StatelessWidget {
                         ),
                         const SizedBox(height: AppSpacing.space8),
                         Text(
-                          '选择一木导出的账单、转账和债务 .xls 文件',
+                          '选择一木导出的账单、转账和债务 CSV 或 XLSX 文件；XLS 文件请先另存为这两种格式',
                           textAlign: TextAlign.center,
                           style: context.appTextStyles.pageSubtitle,
                         ),

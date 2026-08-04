@@ -185,7 +185,7 @@ final class ImportFileReaderProvider
   }
 }
 
-String _$importFileReaderHash() => r'e7a1aa6269dc034fc27ecbccfca7408713fa0cfc';
+String _$importFileReaderHash() => r'4f7c5ab4c9f51b35e5ff05cb87504bccfc3a24f8';
 
 @ProviderFor(yimuImportParser)
 final yimuImportParserProvider = YimuImportParserProvider._();

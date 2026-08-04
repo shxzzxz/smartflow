@@ -62,19 +62,29 @@ void main() {
     );
   });
 
-  test('registry selects CSV, XLS, and XLSX readers by extension', () {
+  test('registry selects CSV and XLSX readers by extension', () {
     final registry = ImportFileReaderRegistry(
-      xlsReader: const _FakeReader(),
       csvReader: const _FakeReader(),
       xlsxReader: const _FakeReader(),
     );
 
-    for (final name in ['账单.csv', '账单.xls', '账单.xlsx']) {
+    for (final name in ['账单.csv', '账单.xlsx']) {
       expect(
         registry.read(ImportFilePayload(name: name, bytes: Uint8List(0))),
         isA<ImportTabularFile>(),
       );
     }
+    expect(
+      () =>
+          registry.read(ImportFilePayload(name: '账单.xls', bytes: Uint8List(0))),
+      throwsA(
+        isA<ImportFileReadException>().having(
+          (error) => error.failure,
+          'failure',
+          ImportFileReadFailure.unsupportedFormat,
+        ),
+      ),
+    );
     expect(
       () =>
           registry.read(ImportFilePayload(name: '账单.ods', bytes: Uint8List(0))),
@@ -88,10 +98,22 @@ void main() {
     );
   });
 
+  test('Yimu parser explains how to import an XLS file', () {
+    final result = YimuImportParser(reader: ImportFileReaderRegistry()).parse(
+      ImportBundle(
+        files: [ImportFilePayload(name: '账单.xls', bytes: Uint8List(0))],
+      ),
+    );
+
+    final issue = result.fileResults.single.fatalIssues.single;
+    expect(issue.code, 'unsupported_file_format');
+    expect(issue.message, contains('支持 CSV 和 XLSX'));
+    expect(issue.message, contains('另存为'));
+  });
+
   test('Yimu parser consumes CSV through the same source handler path', () {
     final parser = YimuImportParser(
       reader: ImportFileReaderRegistry(
-        xlsReader: const _FakeReader(),
         csvReader: const CsvFileReader(),
         xlsxReader: const _FakeReader(),
       ),

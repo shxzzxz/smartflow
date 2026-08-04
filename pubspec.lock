@@ -289,13 +289,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.1.0"
-  excel2003:
-    dependency: "direct main"
-    description:
-      path: "third_party/excel2003"
-      relative: true
-    source: path
-    version: "1.0.0"
   excel_community:
     dependency: "direct main"
     description:
