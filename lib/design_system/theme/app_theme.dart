@@ -34,8 +34,6 @@ abstract final class AppTheme {
       colorScheme: colors,
       scaffoldBackgroundColor: colors.surface,
       canvasColor: colors.surface,
-      fontFamily: AppTypography.fontFamily,
-      fontFamilyFallback: AppTypography.fontFamilyFallback,
       textTheme: textTheme,
       extensions: [extension],
       appBarTheme: AppBarThemeData(

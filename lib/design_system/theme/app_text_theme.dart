@@ -7,8 +7,6 @@ abstract final class AppTextThemes {
     final base = Typography.material2021().black.apply(
       bodyColor: colors.onSurface,
       displayColor: colors.onSurface,
-      fontFamily: AppTypography.fontFamily,
-      fontFamilyFallback: AppTypography.fontFamilyFallback,
     );
 
     return base.copyWith(

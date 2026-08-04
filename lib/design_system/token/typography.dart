@@ -1,15 +1,6 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppTypography {
-  static const fontFamily = 'HarmonyOS Sans SC';
-
-  static const fontFamilyFallback = <String>[
-    'HarmonyOS Sans',
-    'Roboto',
-    'Noto Sans CJK SC',
-    'Microsoft YaHei',
-  ];
-
   static const double fontSizeXs = 12;
   static const double fontSizeSm = 14;
   static const double fontSizeMd = 15;

@@ -27,4 +27,4 @@ jobs:
         run: fvm flutter analyze
 
       - name: Test
-        run: fvm flutter test --exclude-tags golden
+        run: fvm flutter test
