@@ -268,15 +268,19 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   ) {
     final reimbursementCategoryId = transaction.reimbursementExpenseAccountId;
     final category = switch (transaction.businessPurpose) {
-      BusinessPurpose.dailyExpense => _firstAccountOfType(
+      BusinessPurpose.dailyExpense => _uniqueRoleAccount(
         entries,
         accountsById,
-        AccountType.expense,
+        type: AccountType.expense,
+        direction: EntryDirection.debit,
+        amount: transaction.primaryAmount,
       ),
-      BusinessPurpose.dailyIncome => _firstAccountOfType(
+      BusinessPurpose.dailyIncome => _uniqueRoleAccount(
         entries,
         accountsById,
-        AccountType.income,
+        type: AccountType.income,
+        direction: EntryDirection.credit,
+        amount: transaction.primaryAmount,
       ),
       BusinessPurpose.reimbursementAdvance =>
         reimbursementCategoryId == null
@@ -292,16 +296,25 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     );
   }
 
-  Account? _firstAccountOfType(
+  Account? _uniqueRoleAccount(
     List<Entry> entries,
-    Map<String, Account> accountsById,
-    AccountType type,
-  ) {
+    Map<String, Account> accountsById, {
+    required AccountType type,
+    required EntryDirection direction,
+    required Money amount,
+  }) {
+    Account? candidate;
     for (final entry in entries) {
       final account = accountsById[entry.accountId];
-      if (account?.type == type) return account;
+      if (account?.type != type ||
+          entry.direction != direction ||
+          entry.amount.minorUnits != amount.minorUnits) {
+        continue;
+      }
+      if (candidate != null) return null;
+      candidate = account;
     }
-    return null;
+    return candidate;
   }
 
   /// 一般交易只投影 asset / liability 结算账户；期初余额与余额调整

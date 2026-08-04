@@ -32,14 +32,14 @@ class AccountMetric {
 /// 一级分类统计：total 为自身直接金额与全部二级统计项之和。
 ///
 /// 一级分类自身的直接金额以"未细分"二级统计项呈现（使用一级分类的真实 ID），
-/// 因此 [items] 金额之和恒等于 [totalMinor]；统计只包含非零节点。
+/// 因此 [items] 金额之和恒等于 [total]；存在分录活动的节点即使净额为零也保留。
 class CategoryMetricGroup {
   CategoryMetricGroup({
     required this.id,
     required this.name,
     required this.iconKey,
     required this.accountType,
-    required this.totalMinor,
+    required this.total,
     required List<CategoryMetricItem> items,
   }) : items = List.unmodifiable(items);
 
@@ -47,10 +47,8 @@ class CategoryMetricGroup {
   final String name;
   final String? iconKey;
   final AccountType accountType;
-  final int totalMinor;
+  final Money total;
   final List<CategoryMetricItem> items;
-
-  Money get total => Money(minorUnits: totalMinor);
 }
 
 /// 二级分类统计项：只承载该分类自身的直接金额。
@@ -60,7 +58,7 @@ class CategoryMetricItem {
     required this.name,
     required this.iconKey,
     required this.isUnsubdivided,
-    required this.amountMinor,
+    required this.amount,
   });
 
   final String id;
@@ -70,9 +68,7 @@ class CategoryMetricItem {
   /// 一级分类自身直接金额的"未细分"项；[id] 为一级分类的真实分类 ID。
   final bool isUnsubdivided;
 
-  final int amountMinor;
-
-  Money get amount => Money(minorUnits: amountMinor);
+  final Money amount;
 }
 
 class CashflowReport {

@@ -322,6 +322,80 @@ void main() {
     }
   });
 
+  test(
+    'projects the unique expense role entry instead of the first expense account',
+    () async {
+      final expense = _transaction(
+        id: 'expense',
+        purpose: BusinessPurpose.dailyExpense,
+        amount: 1000,
+      );
+      final service = _service(
+        transactionRead: _FakeTransactionReadRepository(
+          transactions: {'expense': expense},
+        ),
+        entryRead: _FakeEntryReadRepository({
+          'expense': [
+            _entry(
+              'system-fee',
+              'expense',
+              'fee-expense',
+              EntryDirection.debit,
+              200,
+            ),
+            _entry('category', 'expense', 'dining', EntryDirection.debit, 1000),
+            _entry('cash', 'expense', 'cash', EntryDirection.credit, 1200),
+          ],
+        }),
+        accounts: [
+          _account(
+            'fee-expense',
+            AccountType.expense,
+            name: '手续费',
+            systemKey: SystemKey.feeExpense,
+          ),
+          _account('dining', AccountType.expense, name: '餐饮'),
+          _account('cash', AccountType.asset, name: '现金'),
+        ],
+      );
+
+      final item =
+          (await service.findTransactions(const TransactionListQuery())).single;
+
+      expect(item.category?.id, 'dining');
+    },
+  );
+
+  test('returns no income category when role entries are not unique', () async {
+    final income = _transaction(
+      id: 'income',
+      purpose: BusinessPurpose.dailyIncome,
+      amount: 1000,
+    );
+    final service = _service(
+      transactionRead: _FakeTransactionReadRepository(
+        transactions: {'income': income},
+      ),
+      entryRead: _FakeEntryReadRepository({
+        'income': [
+          _entry('salary', 'income', 'salary', EntryDirection.credit, 1000),
+          _entry('bonus', 'income', 'bonus', EntryDirection.credit, 1000),
+          _entry('cash', 'income', 'cash', EntryDirection.debit, 2000),
+        ],
+      }),
+      accounts: [
+        _account('salary', AccountType.income, name: '工资'),
+        _account('bonus', AccountType.income, name: '奖金'),
+        _account('cash', AccountType.asset, name: '现金'),
+      ],
+    );
+
+    final item =
+        (await service.findTransactions(const TransactionListQuery())).single;
+
+    expect(item.category, isNull);
+  });
+
   test('projects the system counterpart for opening balance flows', () async {
     final opening = _transaction(
       id: 'opening',

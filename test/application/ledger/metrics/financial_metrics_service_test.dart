@@ -75,7 +75,7 @@ void main() {
       ]);
       final group = report.categories.single;
       expect(group.id, 'food');
-      expect(group.totalMinor, 1200);
+      expect(group.total.minorUnits, 1200);
       expect(group.items.single.id, 'food');
       expect(group.items.single.isUnsubdivided, isTrue);
       expect(report.balanceTrend.map((point) => point.assets.minorUnits), [
@@ -164,14 +164,14 @@ void main() {
         (group) => group.accountType == AccountType.expense,
       );
       expect(expenseGroup.id, 'food');
-      expect(expenseGroup.totalMinor, 700);
+      expect(expenseGroup.total.minorUnits, 700);
       expect(expenseGroup.items.single.id, 'dining');
       expect(expenseGroup.items.single.isUnsubdivided, isFalse);
       final incomeGroup = report.categories.singleWhere(
         (group) => group.accountType == AccountType.income,
       );
       expect(incomeGroup.id, 'salary');
-      expect(incomeGroup.totalMinor, 2000);
+      expect(incomeGroup.total.minorUnits, 2000);
     },
   );
 
@@ -215,16 +215,72 @@ void main() {
 
       final group = report.categories.single;
       expect(group.id, 'food');
-      expect(group.totalMinor, 1000);
+      expect(group.total.minorUnits, 1000);
       expect(group.items, hasLength(2));
       expect(group.items.first.id, 'dining');
-      expect(group.items.first.amountMinor, 700);
+      expect(group.items.first.amount.minorUnits, 700);
       final unsubdivided = group.items.last;
       expect(unsubdivided.id, 'food');
       expect(unsubdivided.isUnsubdivided, isTrue);
-      expect(unsubdivided.amountMinor, 300);
+      expect(unsubdivided.amount.minorUnits, 300);
       // 零金额分类（travel）不返回统计读模型。
-      expect(report.categories.map((item) => item.id), isNot(contains('travel')));
+      expect(
+        report.categories.map((item) => item.id),
+        isNot(contains('travel')),
+      );
+    },
+  );
+
+  test(
+    'keeps category items with activity when their net amount is zero',
+    () async {
+      final aggregate = _FakeLedgerMetricsSource(
+        accountTypeResults: const [
+          {AccountType.expense: 0},
+          {AccountType.expense: 0},
+          {AccountType.expense: 0},
+        ],
+        byAccountResult: const [
+          AccountAggregate(
+            accountId: 'food',
+            accountType: AccountType.expense,
+            amountMinor: 0,
+          ),
+          AccountAggregate(
+            accountId: 'dining',
+            accountType: AccountType.expense,
+            amountMinor: 0,
+          ),
+        ],
+      );
+      final service = _service(
+        aggregate,
+        categories: [
+          _category('food'),
+          _category('dining', parentId: 'food'),
+          _category('travel'),
+        ],
+      );
+
+      final report =
+          await service
+              .watchCashflowReport(
+                CashflowReportQuery(month: MonthKey(year: 2026, month: 1)),
+              )
+              .first;
+
+      final group = report.categories.single;
+      expect(group.id, 'food');
+      expect(group.total.minorUnits, 0);
+      expect(
+        group.items.map((item) => item.id),
+        containsAll(['food', 'dining']),
+      );
+      expect(group.items.every((item) => item.amount.minorUnits == 0), isTrue);
+      expect(
+        report.categories.map((item) => item.id),
+        isNot(contains('travel')),
+      );
     },
   );
 

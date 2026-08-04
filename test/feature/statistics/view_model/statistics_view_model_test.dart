@@ -212,12 +212,15 @@ void main() {
     await container.read(balanceProvider.future);
 
     final cashflow = service.queries[0];
-    expect(cashflow.category, const CategorySelection.withDescendants('dining'));
+    expect(
+      cashflow.category,
+      const CategorySelection.withDescendants('dining'),
+    );
     expect(cashflow.settlementAccountId, isNull);
     expect(cashflow.occurredFrom, from);
     expect(cashflow.occurredUntil, until);
     expect(cashflow.scope, same(TransactionScopeFilter.stats));
-    expect(cashflow.topLevelOnly, isTrue);
+    expect(cashflow.topLevelOnly, isFalse);
     expect(cashflow.limit, isNull);
 
     final unsubdivided = service.queries[1];
@@ -291,14 +294,14 @@ CashflowReport _cashflowReport() {
         name: '餐饮',
         iconKey: null,
         accountType: AccountType.expense,
-        totalMinor: 700,
+        total: const Money(minorUnits: 700),
         items: const [
           CategoryMetricItem(
             id: 'dining',
             name: '聚餐',
             iconKey: null,
             isUnsubdivided: false,
-            amountMinor: 700,
+            amount: Money(minorUnits: 700),
           ),
         ],
       ),
@@ -307,14 +310,14 @@ CashflowReport _cashflowReport() {
         name: '工资',
         iconKey: null,
         accountType: AccountType.income,
-        totalMinor: 2000,
+        total: const Money(minorUnits: 2000),
         items: const [
           CategoryMetricItem(
             id: 'salary',
             name: '工资',
             iconKey: null,
             isUnsubdivided: true,
-            amountMinor: 2000,
+            amount: Money(minorUnits: 2000),
           ),
         ],
       ),

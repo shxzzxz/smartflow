@@ -224,6 +224,7 @@ Stream<List<TransactionListReadModel>> statisticsTransactions(
           settlementAccountId: settlementAccountId,
           occurredFrom: occurredFrom,
           occurredUntil: occurredUntil,
+          topLevelOnly: false,
           scope:
               scope == StatisticsDrilldownScope.cashflow
                   ? TransactionScopeFilter.stats

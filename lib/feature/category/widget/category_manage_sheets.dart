@@ -59,22 +59,24 @@ Future<void> showCategoryActionSheet(
                 leading: const Icon(RemixIcons.folder_transfer_line),
                 title: const Text('移动到…'),
                 onTap:
-                    () =>
-                        Navigator.of(sheetContext).pop(_CategoryAction.move),
+                    () => Navigator.of(sheetContext).pop(_CategoryAction.move),
               ),
-            ListTile(
-              leading: const Icon(RemixIcons.swap_line),
-              title: const Text('迁移交易'),
-              onTap:
-                  () =>
-                      Navigator.of(sheetContext).pop(_CategoryAction.migrate),
-            ),
-            ListTile(
-              leading: Icon(RemixIcons.delete_bin_line, color: colors.error),
-              title: Text('删除', style: TextStyle(color: colors.error)),
-              onTap:
-                  () => Navigator.of(sheetContext).pop(_CategoryAction.delete),
-            ),
+            if (category.isManageableCategory) ...[
+              ListTile(
+                leading: const Icon(RemixIcons.swap_line),
+                title: const Text('迁移交易'),
+                onTap:
+                    () =>
+                        Navigator.of(sheetContext).pop(_CategoryAction.migrate),
+              ),
+              ListTile(
+                leading: Icon(RemixIcons.delete_bin_line, color: colors.error),
+                title: Text('删除', style: TextStyle(color: colors.error)),
+                onTap:
+                    () =>
+                        Navigator.of(sheetContext).pop(_CategoryAction.delete),
+              ),
+            ],
           ],
         ),
       );
@@ -88,10 +90,7 @@ Future<void> showCategoryActionSheet(
     case _CategoryAction.addChild:
       final uri = Uri(
         path: '/category/new',
-        queryParameters: {
-          'type': category.type.name,
-          'parentId': category.id,
-        },
+        queryParameters: {'type': category.type.name, 'parentId': category.id},
       );
       context.push(uri.toString());
     case _CategoryAction.move:
@@ -232,9 +231,7 @@ Future<void> runCategoryMigrationFlow(
           : '已迁移 ${value.migratedGroupCount} 笔交易',
     UiActionFailure(:final error) => error.message,
   };
-  ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(message)));
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
 /// 删除流程：预演 → 有子分类或有交易引用则拒绝并提示；否则确认后物理删除。
@@ -308,9 +305,7 @@ Future<void> runCategoryDeleteFlow(
     UiActionSuccess() => '分类已删除',
     UiActionFailure(:final error) => error.message,
   };
-  ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(message)));
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
 Future<void> _showDeleteBlockedDialog(
@@ -357,9 +352,11 @@ class _MigrationTargetSheetState extends ConsumerState<_MigrationTargetSheet> {
     final treeAsync = ref.watch(categoryTreeProvider(source.type));
     final candidates = <(Account, bool)>[
       for (final node in treeAsync.value ?? const <CategoryNode>[]) ...[
-        if (node.account.id != source.id) (node.account, false),
+        if (node.account.id != source.id && node.account.isManageableCategory)
+          (node.account, false),
         for (final child in node.children)
-          if (child.id != source.id) (child, true),
+          if (child.id != source.id && child.isManageableCategory)
+            (child, true),
       ],
     ];
 
@@ -412,10 +409,7 @@ class _MigrationTargetSheetState extends ConsumerState<_MigrationTargetSheet> {
                   for (final (candidate, isChild) in candidates)
                     ListTile(
                       contentPadding: EdgeInsets.only(
-                        left:
-                            isChild
-                                ? AppSpacing.space48
-                                : AppSpacing.space16,
+                        left: isChild ? AppSpacing.space48 : AppSpacing.space16,
                         right: AppSpacing.space16,
                       ),
                       leading: BusinessIconBubble(
@@ -435,8 +429,7 @@ class _MigrationTargetSheetState extends ConsumerState<_MigrationTargetSheet> {
                                 ? colors.primary
                                 : colors.onSurfaceVariant,
                       ),
-                      onTap:
-                          () => setState(() => _selectedId = candidate.id),
+                      onTap: () => setState(() => _selectedId = candidate.id),
                     ),
                 ],
               ),

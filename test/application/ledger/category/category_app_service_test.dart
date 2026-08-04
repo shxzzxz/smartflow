@@ -47,6 +47,16 @@ void main() {
   });
 
   group('CategoryAppService.previewCategoryDeletion', () {
+    test('rejects a system category even when it has no references', () async {
+      final category = _category('system-fee', systemKey: SystemKey.feeExpense);
+      final service = _service(accounts: [category]);
+
+      await expectLater(
+        () => service.previewCategoryDeletion(category.id),
+        throwsA(_hasCode(LedgerErrorCode.categoryUnavailable)),
+      );
+    });
+
     test('reports child count and transaction reference count', () async {
       final root = _category('root');
       final child = _category('child', parentId: root.id);
@@ -98,15 +108,30 @@ void main() {
   });
 
   group('CategoryAppService.deleteCategory', () {
-    test('physically deletes a category without children or references', () async {
-      final category = _category('clean');
+    test('rejects deleting an unreferenced system category', () async {
+      final category = _category('system-fee', systemKey: SystemKey.feeExpense);
       final repository = _FakeAccountRepository([category]);
       final service = _service(repository: repository);
 
-      await service.deleteCategory(DeleteCategoryCommand(id: category.id));
-
-      expect(repository.account(category.id), isNull);
+      await expectLater(
+        () => service.deleteCategory(DeleteCategoryCommand(id: category.id)),
+        throwsA(_hasCode(LedgerErrorCode.categoryUnavailable)),
+      );
+      expect(repository.account(category.id), isNotNull);
     });
+
+    test(
+      'physically deletes a category without children or references',
+      () async {
+        final category = _category('clean');
+        final repository = _FakeAccountRepository([category]);
+        final service = _service(repository: repository);
+
+        await service.deleteCategory(DeleteCategoryCommand(id: category.id));
+
+        expect(repository.account(category.id), isNull);
+      },
+    );
 
     test('rejects deletion while child categories exist', () async {
       final root = _category('root');
@@ -184,6 +209,7 @@ Account _category(
   String? parentId,
   AccountType type = AccountType.expense,
   bool archived = false,
+  SystemKey? systemKey,
 }) {
   return Account(
     id: id,
@@ -192,6 +218,7 @@ Account _category(
     parentId: parentId,
     balance: const Money(minorUnits: 0),
     archivedAt: archived ? DateTime(2026) : null,
+    systemKey: systemKey,
   );
 }
 

@@ -77,6 +77,8 @@ class Account {
 
   bool get isArchived => archivedAt != null;
 
+  bool get isManageableCategory => type.isCategory && systemKey == null;
+
   bool get supportsManualBalance => type.supportsManualBalance(subtype);
 
   void archive(DateTime archivedAt) {

@@ -8,42 +8,45 @@ import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 
 void main() {
-  test('migrates each matched group through the purpose-specific edit', () async {
-    final editService = _RecordingEditService();
-    final service = _service(
-      accounts: [_category('source'), _category('target')],
-      targets: const [
-        CategoryTransactionTarget(
-          transactionId: 'expense-1',
-          businessPurpose: BusinessPurpose.dailyExpense,
-        ),
-        CategoryTransactionTarget(
-          transactionId: 'income-1',
-          businessPurpose: BusinessPurpose.dailyIncome,
-        ),
-        CategoryTransactionTarget(
-          transactionId: 'advance-1',
-          businessPurpose: BusinessPurpose.reimbursementAdvance,
-        ),
-      ],
-      editService: editService,
-    );
+  test(
+    'migrates each matched group through the purpose-specific edit',
+    () async {
+      final editService = _RecordingEditService();
+      final service = _service(
+        accounts: [_category('source'), _category('target')],
+        targets: const [
+          CategoryTransactionTarget(
+            transactionId: 'expense-1',
+            businessPurpose: BusinessPurpose.dailyExpense,
+          ),
+          CategoryTransactionTarget(
+            transactionId: 'income-1',
+            businessPurpose: BusinessPurpose.dailyIncome,
+          ),
+          CategoryTransactionTarget(
+            transactionId: 'advance-1',
+            businessPurpose: BusinessPurpose.reimbursementAdvance,
+          ),
+        ],
+        editService: editService,
+      );
 
-    final result = await service.migrate(
-      const CategoryTransactionMigrationCommand(
-        sourceCategoryId: 'source',
-        targetCategoryId: 'target',
-      ),
-    );
+      final result = await service.migrate(
+        const CategoryTransactionMigrationCommand(
+          sourceCategoryId: 'source',
+          targetCategoryId: 'target',
+        ),
+      );
 
-    expect(result.migratedGroupCount, 3);
-    expect(editService.expenseCommands.single.transactionId, 'expense-1');
-    expect(editService.expenseCommands.single.expenseAccountId, 'target');
-    expect(editService.incomeCommands.single.transactionId, 'income-1');
-    expect(editService.incomeCommands.single.incomeAccountId, 'target');
-    expect(editService.advanceCommands.single.transactionId, 'advance-1');
-    expect(editService.advanceCommands.single.expenseCategoryId, 'target');
-  });
+      expect(result.migratedGroupCount, 3);
+      expect(editService.expenseCommands.single.transactionId, 'expense-1');
+      expect(editService.expenseCommands.single.expenseAccountId, 'target');
+      expect(editService.incomeCommands.single.transactionId, 'income-1');
+      expect(editService.incomeCommands.single.incomeAccountId, 'target');
+      expect(editService.advanceCommands.single.transactionId, 'advance-1');
+      expect(editService.advanceCommands.single.expenseCategoryId, 'target');
+    },
+  );
 
   test('succeeds with zero migrated groups when nothing matches', () async {
     final service = _service(
@@ -141,6 +144,66 @@ void main() {
     );
   });
 
+  test('rejects a system source before querying or rewriting groups', () async {
+    final transactionRead = _FakeTransactionReadRepository(const [
+      CategoryTransactionTarget(
+        transactionId: 'system-transaction',
+        businessPurpose: BusinessPurpose.dailyExpense,
+      ),
+    ]);
+    final editService = _RecordingEditService();
+    final service = _service(
+      accounts: [
+        _category('system-source', systemKey: SystemKey.feeExpense),
+        _category('target'),
+      ],
+      transactionRead: transactionRead,
+      editService: editService,
+    );
+
+    await expectLater(
+      () => service.migrate(
+        const CategoryTransactionMigrationCommand(
+          sourceCategoryId: 'system-source',
+          targetCategoryId: 'target',
+        ),
+      ),
+      throwsA(_hasCode(LedgerErrorCode.categoryUnavailable)),
+    );
+    expect(transactionRead.queriedCategoryIds, isEmpty);
+    expect(editService.expenseCommands, isEmpty);
+  });
+
+  test('rejects a system target before querying or rewriting groups', () async {
+    final transactionRead = _FakeTransactionReadRepository(const [
+      CategoryTransactionTarget(
+        transactionId: 'expense-1',
+        businessPurpose: BusinessPurpose.dailyExpense,
+      ),
+    ]);
+    final editService = _RecordingEditService();
+    final service = _service(
+      accounts: [
+        _category('source'),
+        _category('system-target', systemKey: SystemKey.feeExpense),
+      ],
+      transactionRead: transactionRead,
+      editService: editService,
+    );
+
+    await expectLater(
+      () => service.migrate(
+        const CategoryTransactionMigrationCommand(
+          sourceCategoryId: 'source',
+          targetCategoryId: 'system-target',
+        ),
+      ),
+      throwsA(_hasCode(LedgerErrorCode.categoryUnavailable)),
+    );
+    expect(transactionRead.queriedCategoryIds, isEmpty);
+    expect(editService.expenseCommands, isEmpty);
+  });
+
   test('propagates a failed group rewrite without continuing', () async {
     final editService = _RecordingEditService(failOnTransactionId: 'expense-2');
     final service = _service(
@@ -190,6 +253,7 @@ Account _category(
   String id, {
   AccountType type = AccountType.expense,
   bool archived = false,
+  SystemKey? systemKey,
 }) {
   return Account(
     id: id,
@@ -197,17 +261,20 @@ Account _category(
     type: type,
     balance: const Money(minorUnits: 0),
     archivedAt: archived ? DateTime(2026) : null,
+    systemKey: systemKey,
   );
 }
 
 CategoryTransactionMigrationAppServiceImpl _service({
   required Iterable<Account> accounts,
   List<CategoryTransactionTarget> targets = const [],
+  _FakeTransactionReadRepository? transactionRead,
   _RecordingEditService? editService,
 }) {
   return CategoryTransactionMigrationAppServiceImpl(
     accountRepository: _FakeAccountRepository(accounts),
-    transactionReadRepository: _FakeTransactionReadRepository(targets),
+    transactionReadRepository:
+        transactionRead ?? _FakeTransactionReadRepository(targets),
     editService: editService ?? _RecordingEditService(),
     transactionRunner: _PassthroughTransactionRunner(),
   );
@@ -231,11 +298,15 @@ class _FakeTransactionReadRepository implements TransactionReadRepository {
   _FakeTransactionReadRepository(this._targets);
 
   final List<CategoryTransactionTarget> _targets;
+  final queriedCategoryIds = <String>[];
 
   @override
   Future<List<CategoryTransactionTarget>> findCategoryTransactionTargets(
     String categoryId,
-  ) async => _targets;
+  ) async {
+    queriedCategoryIds.add(categoryId);
+    return _targets;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) =>

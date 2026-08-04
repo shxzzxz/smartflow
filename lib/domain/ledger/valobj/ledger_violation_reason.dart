@@ -60,6 +60,10 @@ enum LedgerViolationReason {
     LedgerErrorCode.categoryInUse,
     'Category is referenced by transactions.',
   ),
+  categorySystemManaged(
+    LedgerErrorCode.categoryUnavailable,
+    'System category cannot be managed.',
+  ),
   categoryMigrationTargetInvalid(
     LedgerErrorCode.categoryInvalidCommand,
     'Migration target category is invalid.',

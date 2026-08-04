@@ -148,6 +148,9 @@ class CategoryAppServiceImpl implements CategoryAppService {
     if (category == null || !category.type.isCategory) {
       throw BusinessException(LedgerErrorCode.categoryNotFound);
     }
+    if (!category.isManageableCategory) {
+      LedgerViolationReason.categorySystemManaged.throwException();
+    }
     if (category.isArchived) {
       LedgerViolationReason.categoryArchived.throwException();
     }

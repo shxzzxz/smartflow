@@ -46,13 +46,17 @@ class CategoryTransactionMigrationAppServiceImpl
     CategoryTransactionMigrationCommand command,
   ) async {
     final result = await _transactionRunner.run(() async {
-      final source = await _loadActiveCategory(command.sourceCategoryId);
+      final source = await _loadActiveManageableCategory(
+        command.sourceCategoryId,
+      );
       if (command.targetCategoryId == source.id) {
         LedgerViolationReason.categoryMigrationTargetInvalid.throwException(
           message: '目标分类不能与源分类相同。',
         );
       }
-      final target = await _loadActiveCategory(command.targetCategoryId);
+      final target = await _loadActiveManageableCategory(
+        command.targetCategoryId,
+      );
       if (target.type != source.type) {
         LedgerViolationReason.categoryMigrationTargetInvalid.throwException(
           message: '目标分类类型必须与源分类一致。',
@@ -109,10 +113,13 @@ class CategoryTransactionMigrationAppServiceImpl
     };
   }
 
-  Future<Account> _loadActiveCategory(String categoryId) async {
+  Future<Account> _loadActiveManageableCategory(String categoryId) async {
     final category = await _accountRepository.findById(categoryId);
     if (category == null || !category.type.isCategory) {
       throw BusinessException(LedgerErrorCode.categoryNotFound);
+    }
+    if (!category.isManageableCategory) {
+      LedgerViolationReason.categorySystemManaged.throwException();
     }
     if (category.isArchived) {
       LedgerViolationReason.categoryArchived.throwException();

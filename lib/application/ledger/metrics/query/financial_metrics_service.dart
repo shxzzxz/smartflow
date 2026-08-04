@@ -60,23 +60,21 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
   ) {
     return _aggregate.watchChanges().asyncMap((_) async {
       final window = DateTimeWindow(from: query.from, until: query.until);
-      final results = await Future.wait([
-        _aggregate.aggregateByAccountType(
-          accountTypes: _cashflowTypes,
-          scope: TransactionScopeFilter.stats,
-          window: window,
-        ),
-        _loadDailyCashflowSummaries(window),
-        _loadCategoryGroups(window),
-        _loadBalanceTrend(query),
-      ]);
+      final cashflowFuture = _aggregate.aggregateByAccountType(
+        accountTypes: _cashflowTypes,
+        scope: TransactionScopeFilter.stats,
+        window: window,
+      );
+      final dailySummariesFuture = _loadDailyCashflowSummaries(window);
+      final categoriesFuture = _loadCategoryGroups(window);
+      final balanceTrendFuture = _loadBalanceTrend(query);
       return StatisticsRangeReport(
         from: query.from,
         until: query.until,
-        cashflow: _toCashflowSummary(results[0] as Map<AccountType, int>),
-        dailySummaries: results[1] as List<DailyCashflowSummary>,
-        categories: results[2] as List<CategoryMetricGroup>,
-        balanceTrend: results[3] as List<BalanceTrendPoint>,
+        cashflow: _toCashflowSummary(await cashflowFuture),
+        dailySummaries: await dailySummariesFuture,
+        categories: await categoriesFuture,
+        balanceTrend: await balanceTrendFuture,
       );
     });
   }
@@ -84,22 +82,18 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
   Future<List<BalanceTrendPoint>> _loadBalanceTrend(
     StatisticsRangeReportQuery query,
   ) async {
-    final results = await Future.wait([
-      _aggregate.aggregateByAccountType(
-        accountTypes: _balanceTypes,
-        scope: TransactionScopeFilter.assetLiability,
-        window: DateTimeWindow(until: query.from),
-      ),
-      _aggregate.aggregateByAccountTypeByDay(
-        accountTypes: _balanceTypes,
-        scope: TransactionScopeFilter.assetLiability,
-        window: DateTimeWindow(from: query.from, until: query.until),
-      ),
-    ]);
-    final running = Map<AccountType, int>.from(
-      results[0] as Map<AccountType, int>,
+    final openingFuture = _aggregate.aggregateByAccountType(
+      accountTypes: _balanceTypes,
+      scope: TransactionScopeFilter.assetLiability,
+      window: DateTimeWindow(until: query.from),
     );
-    final byDay = results[1] as Map<DateTime, Map<AccountType, int>>;
+    final byDayFuture = _aggregate.aggregateByAccountTypeByDay(
+      accountTypes: _balanceTypes,
+      scope: TransactionScopeFilter.assetLiability,
+      window: DateTimeWindow(from: query.from, until: query.until),
+    );
+    final running = Map<AccountType, int>.from(await openingFuture);
+    final byDay = await byDayFuture;
     final points = <BalanceTrendPoint>[
       BalanceTrendPoint(
         date: query.from,
@@ -142,15 +136,13 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
       final periods = _cashflowPeriods(
         CashflowComparisonQuery(month: query.month, asOfDate: query.asOfDate),
       );
-      final results = await Future.wait([
-        _loadCashflowComparisonForPeriods(periods),
-        _loadDailyCashflowSummaries(periods.current),
-        _loadCategoryGroups(periods.current),
-      ]);
+      final comparisonFuture = _loadCashflowComparisonForPeriods(periods);
+      final dailySummariesFuture = _loadDailyCashflowSummaries(periods.current);
+      final categoriesFuture = _loadCategoryGroups(periods.current);
       return CashflowReport(
-        comparison: results[0] as CashflowComparison,
-        dailySummaries: results[1] as List<DailyCashflowSummary>,
-        categories: results[2] as List<CategoryMetricGroup>,
+        comparison: await comparisonFuture,
+        dailySummaries: await dailySummariesFuture,
+        categories: await categoriesFuture,
       );
     });
   }
@@ -164,24 +156,22 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
         months: query.trendMonths,
         currentAsOfExclusive: currentCutoff,
       );
-      final results = await Future.wait([
-        _loadBalanceSheetComparison(
-          BalanceSheetComparisonQuery(
-            month: query.month,
-            asOfExclusive: currentCutoff,
-          ),
+      final comparisonFuture = _loadBalanceSheetComparison(
+        BalanceSheetComparisonQuery(
+          month: query.month,
+          asOfExclusive: currentCutoff,
         ),
-        _aggregate.aggregateByAccount(
-          accountTypes: _balanceTypes,
-          scope: TransactionScopeFilter.assetLiability,
-          window: DateTimeWindow(until: currentCutoff),
-        ),
-        _loadNetAssetTrend(trendQuery),
-      ]);
+      );
+      final accountsFuture = _aggregate.aggregateByAccount(
+        accountTypes: _balanceTypes,
+        scope: TransactionScopeFilter.assetLiability,
+        window: DateTimeWindow(until: currentCutoff),
+      );
+      final trendFuture = _loadNetAssetTrend(trendQuery);
       return BalanceReport(
-        comparison: results[0] as BalanceSheetComparison,
-        accounts: _toAccountMetrics(results[1] as List<AccountAggregate>),
-        trend: results[2] as List<NetAssetTrendPoint>,
+        comparison: await comparisonFuture,
+        accounts: _toAccountMetrics(await accountsFuture),
+        trend: await trendFuture,
       );
     });
   }
@@ -233,27 +223,25 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
   Future<CashflowComparison> _loadCashflowComparisonForPeriods(
     _CashflowPeriods periods,
   ) async {
-    final results = await Future.wait([
-      _aggregate.aggregateByAccountType(
-        accountTypes: _cashflowTypes,
-        scope: TransactionScopeFilter.stats,
-        window: periods.current,
-      ),
-      _aggregate.aggregateByAccountType(
-        accountTypes: _cashflowTypes,
-        scope: TransactionScopeFilter.stats,
-        window: periods.previousSame,
-      ),
-      _aggregate.aggregateByAccountType(
-        accountTypes: _cashflowTypes,
-        scope: TransactionScopeFilter.stats,
-        window: periods.previousFull,
-      ),
-    ]);
+    final currentFuture = _aggregate.aggregateByAccountType(
+      accountTypes: _cashflowTypes,
+      scope: TransactionScopeFilter.stats,
+      window: periods.current,
+    );
+    final previousSameFuture = _aggregate.aggregateByAccountType(
+      accountTypes: _cashflowTypes,
+      scope: TransactionScopeFilter.stats,
+      window: periods.previousSame,
+    );
+    final previousFullFuture = _aggregate.aggregateByAccountType(
+      accountTypes: _cashflowTypes,
+      scope: TransactionScopeFilter.stats,
+      window: periods.previousFull,
+    );
     return CashflowComparison(
-      current: _toCashflowSummary(results[0]),
-      previousSamePeriod: _toCashflowSummary(results[1]),
-      previousFullPeriod: _toCashflowSummary(results[2]),
+      current: _toCashflowSummary(await currentFuture),
+      previousSamePeriod: _toCashflowSummary(await previousSameFuture),
+      previousFullPeriod: _toCashflowSummary(await previousFullFuture),
     );
   }
 
@@ -280,21 +268,19 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
     BalanceSheetComparisonQuery query,
   ) async {
     final currentCutoff = query.asOfExclusive ?? query.month.nextMonthStart;
-    final results = await Future.wait([
-      _aggregate.aggregateByAccountType(
-        accountTypes: _balanceTypes,
-        scope: TransactionScopeFilter.assetLiability,
-        window: DateTimeWindow(until: currentCutoff),
-      ),
-      _aggregate.aggregateByAccountType(
-        accountTypes: _balanceTypes,
-        scope: TransactionScopeFilter.assetLiability,
-        window: DateTimeWindow(until: query.month.start),
-      ),
-    ]);
+    final currentFuture = _aggregate.aggregateByAccountType(
+      accountTypes: _balanceTypes,
+      scope: TransactionScopeFilter.assetLiability,
+      window: DateTimeWindow(until: currentCutoff),
+    );
+    final previousFuture = _aggregate.aggregateByAccountType(
+      accountTypes: _balanceTypes,
+      scope: TransactionScopeFilter.assetLiability,
+      window: DateTimeWindow(until: query.month.start),
+    );
     return BalanceSheetComparison(
-      current: _toBalanceSnapshot(results[0]),
-      previous: _toBalanceSnapshot(results[1]),
+      current: _toBalanceSnapshot(await currentFuture),
+      previous: _toBalanceSnapshot(await previousFuture),
     );
   }
 
@@ -306,22 +292,18 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
     final firstMonth = months.first;
     final currentUntil =
         query.currentAsOfExclusive ?? query.endMonth.nextMonthStart;
-    final results = await Future.wait([
-      _aggregate.aggregateByAccountType(
-        accountTypes: _balanceTypes,
-        scope: TransactionScopeFilter.assetLiability,
-        window: DateTimeWindow(until: firstMonth.start),
-      ),
-      _aggregate.aggregateByAccountTypeByMonth(
-        accountTypes: _balanceTypes,
-        scope: TransactionScopeFilter.assetLiability,
-        window: DateTimeWindow(from: firstMonth.start, until: currentUntil),
-      ),
-    ]);
-    final running = Map<AccountType, int>.from(
-      results[0] as Map<AccountType, int>,
+    final openingFuture = _aggregate.aggregateByAccountType(
+      accountTypes: _balanceTypes,
+      scope: TransactionScopeFilter.assetLiability,
+      window: DateTimeWindow(until: firstMonth.start),
     );
-    final byMonth = results[1] as Map<MonthKey, Map<AccountType, int>>;
+    final byMonthFuture = _aggregate.aggregateByAccountTypeByMonth(
+      accountTypes: _balanceTypes,
+      scope: TransactionScopeFilter.assetLiability,
+      window: DateTimeWindow(from: firstMonth.start, until: currentUntil),
+    );
+    final running = Map<AccountType, int>.from(await openingFuture);
+    final byMonth = await byMonthFuture;
     return [
       for (final month in months)
         NetAssetTrendPoint(
@@ -383,17 +365,15 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
   Future<List<CategoryMetricGroup>> _loadCategoryGroups(
     DateTimeWindow window,
   ) async {
-    final results = await Future.wait<Object>([
-      _aggregate.aggregateByAccount(
-        accountTypes: _cashflowTypes,
-        scope: TransactionScopeFilter.stats,
-        window: window,
-      ),
-      _accountQuery.findAccounts(_cashflowTypes),
-    ]);
+    final aggregatesFuture = _aggregate.aggregateByAccount(
+      accountTypes: _cashflowTypes,
+      scope: TransactionScopeFilter.stats,
+      window: window,
+    );
+    final categoriesFuture = _accountQuery.findAccounts(_cashflowTypes);
     return _buildCategoryGroups(
-      aggregates: results[0] as List<AccountAggregate>,
-      categories: results[1] as List<Account>,
+      aggregates: await aggregatesFuture,
+      categories: await categoriesFuture,
     );
   }
 
@@ -421,27 +401,28 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
       final own = amountByCategoryId[root.id] ?? 0;
       final items = <CategoryMetricItem>[
         for (final child in childrenByParent[root.id] ?? const <Account>[])
-          if ((amountByCategoryId[child.id] ?? 0) != 0)
+          if (amountByCategoryId.containsKey(child.id))
             CategoryMetricItem(
               id: child.id,
               name: child.name,
               iconKey: child.iconKey,
               isUnsubdivided: false,
-              amountMinor: amountByCategoryId[child.id]!,
+              amount: Money(minorUnits: amountByCategoryId[child.id]!),
             ),
-        if (own != 0)
+        if (amountByCategoryId.containsKey(root.id))
           CategoryMetricItem(
             id: root.id,
             name: root.name,
             iconKey: root.iconKey,
             isUnsubdivided: true,
-            amountMinor: own,
+            amount: Money(minorUnits: own),
           ),
       ];
       if (items.isEmpty) continue;
       items.sort(
-        (left, right) =>
-            right.amountMinor.abs().compareTo(left.amountMinor.abs()),
+        (left, right) => right.amount.minorUnits.abs().compareTo(
+          left.amount.minorUnits.abs(),
+        ),
       );
       groups.add(
         CategoryMetricGroup(
@@ -449,13 +430,17 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
           name: root.name,
           iconKey: root.iconKey,
           accountType: root.type,
-          totalMinor: items.fold(0, (sum, item) => sum + item.amountMinor),
+          total: items.fold(
+            const Money(minorUnits: 0),
+            (sum, item) => sum + item.amount,
+          ),
           items: items,
         ),
       );
     }
     groups.sort(
-      (left, right) => right.totalMinor.abs().compareTo(left.totalMinor.abs()),
+      (left, right) =>
+          right.total.minorUnits.abs().compareTo(left.total.minorUnits.abs()),
     );
     return groups;
   }

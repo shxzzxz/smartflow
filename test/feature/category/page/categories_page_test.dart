@@ -114,6 +114,65 @@ void main() {
     expect(find.text('删除'), findsOneWidget);
   });
 
+  testWidgets('hides migration and deletion actions for system categories', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final systemCategory = _category(
+      'fee-expense',
+      name: '手续费',
+      systemKey: SystemKey.feeExpense,
+    );
+
+    await tester.pumpWidget(
+      buildPage(
+        expenseTree: [
+          CategoryNode(account: systemCategory, children: const []),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('更多操作'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('编辑'), findsOneWidget);
+    expect(find.text('迁移交易'), findsNothing);
+    expect(find.text('删除'), findsNothing);
+  });
+
+  testWidgets('filters system categories from migration targets', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final source = _category('food', name: '餐饮');
+    final systemCategory = _category(
+      'fee-expense',
+      name: '手续费',
+      systemKey: SystemKey.feeExpense,
+    );
+
+    await tester.pumpWidget(
+      buildPage(
+        expenseTree: [
+          CategoryNode(account: source, children: const []),
+          CategoryNode(account: systemCategory, children: const []),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('更多操作').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('迁移交易'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('手续费'), findsOneWidget);
+    expect(find.text('没有可用的目标分类，请先新建一个同类型分类。'), findsOneWidget);
+  });
+
   testWidgets('deletes a clean category after the user confirms', (
     tester,
   ) async {
@@ -186,12 +245,18 @@ void main() {
   );
 }
 
-Account _category(String id, {required String name, String? parentId}) {
+Account _category(
+  String id, {
+  required String name,
+  String? parentId,
+  SystemKey? systemKey,
+}) {
   return Account(
     id: id,
     name: name,
     type: AccountType.expense,
     parentId: parentId,
+    systemKey: systemKey,
     balance: const Money(minorUnits: 0),
   );
 }
