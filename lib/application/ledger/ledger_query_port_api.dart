@@ -4,6 +4,7 @@
 library;
 
 export 'account/query/account_query_repository.dart';
+export 'budget/query/port/budget_query_source.dart';
 export 'metrics/query/port/ledger_metrics_source.dart';
 export 'transaction/query/port/entry_read_repository.dart';
 export 'transaction/query/port/transaction_detail_read_repository.dart';

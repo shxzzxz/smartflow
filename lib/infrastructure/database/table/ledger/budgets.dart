@@ -6,6 +6,8 @@ class Budgets extends Table {
   IntColumn get monthKey => integer().named('month_key')();
   TextColumn get accountId => text().named('account_id').nullable()();
   IntColumn get amountMinor => integer().named('amount_minor')();
+  IntColumn get sortOrder =>
+      integer().named('sort_order').withDefault(const Constant(0))();
   DateTimeColumn get createdAt =>
       dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt =>

@@ -80,7 +80,6 @@ infrastructure 实现 port 与 query interfaces，不承载业务决策。
 | :--- | :--- | :--- |
 | `ledger`（账务核心） | Shared Kernel | 账户、交易、分录、过账规则、账务流图原语；查询投影位于 application query side |
 | `credit`（信贷） | 独立业务域 | 分期合同 / 计划 / 还款状态机；调用账务核心完成入账 |
-| `budget`（预算） | 薄业务域 | 预算配置与预算查询，当前不强制完整三层 |
 | `preset`（预设记账） | 独立业务域候选 | 周期记账、模板记账，待业务复杂度明确后落地 |
 | `analytics`（分析） | 薄业务域 / 查询域 | 趋势、洞察、预测、报告投影 |
 
@@ -103,7 +102,7 @@ lib/
 ├── app/                                  # MaterialApp、router、顶层 provider、bootstrap、依赖装配
 ├── core/                                 # 无业务语义、无 UI 的基础能力（money / time / result / errors / patch 等）
 ├── application/                          # 用例编排层
-│   ├── <domain>/                         # ledger / credit / budget ...
+│   ├── <domain>/                         # ledger / credit ...
 │   │   └── <capability>/                # account / category / transaction / metrics ...
 │   │       ├── command/                 # 写用例 + command model；无写侧时可省略
 │   │       └── query/                   # 读用例 + query/read model；读侧 port 放 query/port
@@ -193,6 +192,6 @@ lib/infrastructure/database/table/*
 - `feature/*` 可直接引用稳定的 domain 枚举和值类型；不得直接依赖 domain service / port 或 `infrastructure/*`，业务行为通过 application provider / use case / query 完成。
 - application facade 不 export domain service / port；feature provider 不通过装配层 repository provider 执行领域规则。
 - `shared/*` 可承载跨 feature / application 复用的项目级业务语义；不得依赖 `feature/*`，不得承载账务核心不变量。
-- `domain/ledger` 不依赖 `domain/credit`、`domain/budget` 等兄弟业务域。
+- `domain/ledger` 不依赖 `domain/credit` 等兄弟业务域；轻量预算能力位于 ledger 内部。
 - 兄弟业务域之间如需组合，由消费域 application 编排本域 port；port adapter 位于消费域 infrastructure，并可调用提供域 application facade。
 - 跨聚合状态同步由 application coordinator 加载聚合、调用实体行为并通过 aggregate repository 保存；禁止为局部更新方便在 port 暴露状态 patch。

@@ -80,6 +80,13 @@ Stream<List<CategoryNode>> categoryTree(Ref ref, AccountType type) {
 }
 
 @riverpod
+Stream<MonthlyBudgetReport> monthlyBudgetReport(Ref ref, DateTime month) {
+  return ref
+      .watch(budgetQueryServiceProvider)
+      .watchMonthlyReport(MonthKey.fromDate(month));
+}
+
+@riverpod
 Stream<List<TransactionListReadModel>> transactionList(
   Ref ref, {
   String? settlementAccountId,

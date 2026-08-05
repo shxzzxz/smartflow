@@ -33,7 +33,7 @@ void main() {
           await upgradedDatabase
               .customSelect('PRAGMA user_version')
               .getSingle();
-      expect(version.read<int>('user_version'), 25);
+      expect(version.read<int>('user_version'), 26);
       await _insertNoTransactionContract(upgradedDatabase);
     },
   );
@@ -71,7 +71,7 @@ void main() {
           await upgradedDatabase
               .customSelect('PRAGMA user_version')
               .getSingle();
-      expect(version.read<int>('user_version'), 25);
+      expect(version.read<int>('user_version'), 26);
 
       final row =
           await upgradedDatabase
@@ -179,7 +179,7 @@ void main() {
           await upgradedDatabase
               .customSelect('PRAGMA user_version')
               .getSingle();
-      expect(version.read<int>('user_version'), 25);
+      expect(version.read<int>('user_version'), 26);
 
       final transactions =
           await upgradedDatabase
@@ -349,7 +349,7 @@ void main() {
           await upgradedDatabase
               .customSelect('PRAGMA user_version')
               .getSingle();
-      expect(version.read<int>('user_version'), 25);
+      expect(version.read<int>('user_version'), 26);
 
       for (final table in [
         'import_entity_mappings',
@@ -378,6 +378,41 @@ void main() {
         mappingIndexes.map((row) => row.read<String>('name')),
         contains('import_entity_mapping_unique'),
       );
+    },
+  );
+
+  test(
+    'opening a v25 database preserves budgets and adds sort order',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'smartflow-budget-order-migration-test-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File(
+        '${directory.path}${Platform.pathSeparator}smartflow.sqlite',
+      );
+
+      final staleDatabase = _openDatabase(file);
+      await staleDatabase.customStatement('DROP TABLE budgets');
+      await staleDatabase.customStatement(_v25BudgetsSql);
+      await staleDatabase.customStatement(
+        "INSERT INTO budgets (id, month_key, account_id, amount_minor) "
+        "VALUES ('food-budget', 202608, 'food', 100000)",
+      );
+      await staleDatabase.customStatement('PRAGMA user_version = 25');
+      await staleDatabase.close();
+
+      final upgradedDatabase = _openDatabase(file);
+      addTearDown(upgradedDatabase.close);
+      final row =
+          await upgradedDatabase
+              .customSelect(
+                "SELECT amount_minor, sort_order FROM budgets "
+                "WHERE id = 'food-budget'",
+              )
+              .getSingle();
+      expect(row.read<int>('amount_minor'), 100000);
+      expect(row.read<int>('sort_order'), 0);
     },
   );
 
@@ -420,6 +455,11 @@ void main() {
       "(id, source, entity_kind, source_entity_key, target_account_id) "
       "VALUES ('mapping', 'yimu', 'category', '旧聚餐', 'old-dining')",
     );
+    await staleDatabase.customStatement(
+      "INSERT INTO budgets "
+      "(id, month_key, account_id, amount_minor, sort_order) "
+      "VALUES ('old-dining-budget', 202608, 'old-dining', 50000, 0)",
+    );
     await staleDatabase.customStatement('PRAGMA user_version = 24');
     await staleDatabase.close();
 
@@ -456,6 +496,14 @@ void main() {
             )
             .getSingle();
     expect(mapping.read<String>('target_account_id'), 'food');
+    final budget =
+        await upgradedDatabase
+            .customSelect(
+              "SELECT account_id FROM budgets "
+              "WHERE id = 'old-dining-budget'",
+            )
+            .getSingle();
+    expect(budget.read<String>('account_id'), 'old-dining');
     final target =
         await upgradedDatabase
             .customSelect(
@@ -515,6 +563,17 @@ CREATE TABLE installment_contracts (
       AND disbursement_account_id IS NULL
       AND disbursement_transaction_id IS NULL)
   )
+)
+''';
+
+const _v25BudgetsSql = '''
+CREATE TABLE budgets (
+  id TEXT NOT NULL PRIMARY KEY,
+  month_key INTEGER NOT NULL,
+  account_id TEXT NULL,
+  amount_minor INTEGER NOT NULL CHECK (amount_minor >= 0),
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', CURRENT_TIMESTAMP)),
+  updated_at INTEGER NOT NULL DEFAULT (strftime('%s', CURRENT_TIMESTAMP))
 )
 ''';
 

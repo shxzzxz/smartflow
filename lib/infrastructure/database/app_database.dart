@@ -12,7 +12,7 @@ import 'migration/app_migration_strategy.dart';
 import 'table/ledger/accounts.dart';
 import 'table/ledger/account_groups.dart';
 import 'table/app_metadata.dart';
-import 'table/budget/budgets.dart';
+import 'table/ledger/budgets.dart';
 import 'table/ledger/entries.dart';
 import 'table/credit/credit_liability_accounts.dart';
 import 'table/credit/bill_items.dart';
@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 25;
+  int get schemaVersion => 26;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

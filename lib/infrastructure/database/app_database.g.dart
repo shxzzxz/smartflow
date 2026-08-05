@@ -3964,6 +3964,18 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -3994,6 +4006,7 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     monthKey,
     accountId,
     amountMinor,
+    sortOrder,
     createdAt,
     updatedAt,
   ];
@@ -4039,6 +4052,12 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     } else if (isInserting) {
       context.missing(_amountMinorMeta);
     }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -4079,6 +4098,11 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
             DriftSqlType.int,
             data['${effectivePrefix}amount_minor'],
           )!,
+      sortOrder:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}sort_order'],
+          )!,
       createdAt:
           attachedDatabase.typeMapping.read(
             DriftSqlType.dateTime,
@@ -4103,6 +4127,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
   final int monthKey;
   final String? accountId;
   final int amountMinor;
+  final int sortOrder;
   final DateTime createdAt;
   final DateTime updatedAt;
   const BudgetRow({
@@ -4110,6 +4135,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     required this.monthKey,
     this.accountId,
     required this.amountMinor,
+    required this.sortOrder,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -4122,6 +4148,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       map['account_id'] = Variable<String>(accountId);
     }
     map['amount_minor'] = Variable<int>(amountMinor);
+    map['sort_order'] = Variable<int>(sortOrder);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -4136,6 +4163,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
               ? const Value.absent()
               : Value(accountId),
       amountMinor: Value(amountMinor),
+      sortOrder: Value(sortOrder),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -4151,6 +4179,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       monthKey: serializer.fromJson<int>(json['monthKey']),
       accountId: serializer.fromJson<String?>(json['accountId']),
       amountMinor: serializer.fromJson<int>(json['amountMinor']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -4163,6 +4192,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       'monthKey': serializer.toJson<int>(monthKey),
       'accountId': serializer.toJson<String?>(accountId),
       'amountMinor': serializer.toJson<int>(amountMinor),
+      'sortOrder': serializer.toJson<int>(sortOrder),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -4173,6 +4203,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     int? monthKey,
     Value<String?> accountId = const Value.absent(),
     int? amountMinor,
+    int? sortOrder,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => BudgetRow(
@@ -4180,6 +4211,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     monthKey: monthKey ?? this.monthKey,
     accountId: accountId.present ? accountId.value : this.accountId,
     amountMinor: amountMinor ?? this.amountMinor,
+    sortOrder: sortOrder ?? this.sortOrder,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -4190,6 +4222,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       accountId: data.accountId.present ? data.accountId.value : this.accountId,
       amountMinor:
           data.amountMinor.present ? data.amountMinor.value : this.amountMinor,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -4202,6 +4235,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
           ..write('monthKey: $monthKey, ')
           ..write('accountId: $accountId, ')
           ..write('amountMinor: $amountMinor, ')
+          ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -4209,8 +4243,15 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, monthKey, accountId, amountMinor, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    monthKey,
+    accountId,
+    amountMinor,
+    sortOrder,
+    createdAt,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4219,6 +4260,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
           other.monthKey == this.monthKey &&
           other.accountId == this.accountId &&
           other.amountMinor == this.amountMinor &&
+          other.sortOrder == this.sortOrder &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -4228,6 +4270,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
   final Value<int> monthKey;
   final Value<String?> accountId;
   final Value<int> amountMinor;
+  final Value<int> sortOrder;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -4236,6 +4279,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     this.monthKey = const Value.absent(),
     this.accountId = const Value.absent(),
     this.amountMinor = const Value.absent(),
+    this.sortOrder = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -4245,6 +4289,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     required int monthKey,
     this.accountId = const Value.absent(),
     required int amountMinor,
+    this.sortOrder = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -4256,6 +4301,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     Expression<int>? monthKey,
     Expression<String>? accountId,
     Expression<int>? amountMinor,
+    Expression<int>? sortOrder,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -4265,6 +4311,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
       if (monthKey != null) 'month_key': monthKey,
       if (accountId != null) 'account_id': accountId,
       if (amountMinor != null) 'amount_minor': amountMinor,
+      if (sortOrder != null) 'sort_order': sortOrder,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -4276,6 +4323,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     Value<int>? monthKey,
     Value<String?>? accountId,
     Value<int>? amountMinor,
+    Value<int>? sortOrder,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -4285,6 +4333,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
       monthKey: monthKey ?? this.monthKey,
       accountId: accountId ?? this.accountId,
       amountMinor: amountMinor ?? this.amountMinor,
+      sortOrder: sortOrder ?? this.sortOrder,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -4306,6 +4355,9 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     if (amountMinor.present) {
       map['amount_minor'] = Variable<int>(amountMinor.value);
     }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -4325,6 +4377,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
           ..write('monthKey: $monthKey, ')
           ..write('accountId: $accountId, ')
           ..write('amountMinor: $amountMinor, ')
+          ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -13181,6 +13234,7 @@ typedef $$BudgetsTableCreateCompanionBuilder =
       required int monthKey,
       Value<String?> accountId,
       required int amountMinor,
+      Value<int> sortOrder,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -13191,6 +13245,7 @@ typedef $$BudgetsTableUpdateCompanionBuilder =
       Value<int> monthKey,
       Value<String?> accountId,
       Value<int> amountMinor,
+      Value<int> sortOrder,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -13222,6 +13277,11 @@ class $$BudgetsTableFilterComposer
 
   ColumnFilters<int> get amountMinor => $composableBuilder(
     column: $table.amountMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13265,6 +13325,11 @@ class $$BudgetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -13298,6 +13363,9 @@ class $$BudgetsTableAnnotationComposer
     column: $table.amountMinor,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -13338,6 +13406,7 @@ class $$BudgetsTableTableManager
                 Value<int> monthKey = const Value.absent(),
                 Value<String?> accountId = const Value.absent(),
                 Value<int> amountMinor = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -13346,6 +13415,7 @@ class $$BudgetsTableTableManager
                 monthKey: monthKey,
                 accountId: accountId,
                 amountMinor: amountMinor,
+                sortOrder: sortOrder,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -13356,6 +13426,7 @@ class $$BudgetsTableTableManager
                 required int monthKey,
                 Value<String?> accountId = const Value.absent(),
                 required int amountMinor,
+                Value<int> sortOrder = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -13364,6 +13435,7 @@ class $$BudgetsTableTableManager
                 monthKey: monthKey,
                 accountId: accountId,
                 amountMinor: amountMinor,
+                sortOrder: sortOrder,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

@@ -276,6 +276,7 @@ HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
     homeDailyCashflowSummariesProvider(visibleMonth),
   );
   final accountLookup = ref.watch(accountLookupProvider);
+  final budgetReport = ref.watch(monthlyBudgetReportProvider(visibleMonth));
 
   if (comparison case AsyncError(:final error)) {
     return HomeContentState.error(message: '加载失败：$error');
@@ -286,11 +287,18 @@ HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
   if (accountLookup case AsyncError(:final error)) {
     return HomeContentState.error(message: '加载失败：$error');
   }
+  if (budgetReport case AsyncError(:final error)) {
+    return HomeContentState.error(message: '加载失败：$error');
+  }
 
   final comparisonValue = comparison.value;
   final dailySummaryValues = dailySummaries.value;
   final lookup = accountLookup.value;
-  if (comparisonValue == null || dailySummaryValues == null || lookup == null) {
+  final budgetReportValue = budgetReport.value;
+  if (comparisonValue == null ||
+      dailySummaryValues == null ||
+      lookup == null ||
+      budgetReportValue == null) {
     return const HomeContentState.loading();
   }
 
@@ -303,7 +311,10 @@ HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
   final transactionValues = transactions as HomeTransactionFeedLoaded;
 
   return HomeContentState.loaded(
-    summary: buildMonthlySummaryPresentation(comparisonValue),
+    summary: buildMonthlySummaryPresentation(
+      comparisonValue,
+      totalBudget: budgetReportValue.totalBudget,
+    ),
     groups: groupTransactionsByDay(
       items: transactionValues.items,
       accountLookup: lookup,

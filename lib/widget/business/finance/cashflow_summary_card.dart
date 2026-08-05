@@ -12,11 +12,13 @@ class CashflowSummaryCard extends StatelessWidget {
   const CashflowSummaryCard({
     required this.summary,
     this.showCaptions = true,
+    this.metricActions = const {},
     super.key,
   });
 
   final CashflowSummaryPresentation summary;
   final bool showCaptions;
+  final Map<CashflowSummaryMetricKind, VoidCallback> metricActions;
 
   @override
   Widget build(BuildContext context) {
@@ -43,14 +45,20 @@ class CashflowSummaryCard extends StatelessWidget {
                   for (var i = 0; i < metrics.length; i++) ...[
                     if (i > 0) _SummaryDivider(color: colors.outlineVariant),
                     Expanded(
-                      child: _SummaryMetric(
-                        metric: metrics[i],
-                        showCaption: showCaptions,
-                        amountMaxWidth: metricWidth,
-                        amountColor: financeToneColor(
-                          colors,
-                          financeColors,
-                          metrics[i].tone,
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: InkWell(
+                          onTap: metricActions[metrics[i].kind],
+                          child: _SummaryMetric(
+                            metric: metrics[i],
+                            showCaption: showCaptions,
+                            amountMaxWidth: metricWidth,
+                            amountColor: financeToneColor(
+                              colors,
+                              financeColors,
+                              metrics[i].tone,
+                            ),
+                          ),
                         ),
                       ),
                     ),

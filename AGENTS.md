@@ -11,7 +11,7 @@ SmartFlow 是一款基于**复式记账法**的个人财务管理系统
 - `docs/02. 核心功能.md` - 核心模块与功能说明
 - `docs/domains/ledger/` - 账务核心领域文档
 - `docs/domains/credit/` - 信贷领域文档
-- `docs/domains/budget/` - 预算领域文档
+- `docs/domains/ledger/预算业务设计.md` - 账务核心预算能力文档
 - `docs/05. 设计系统.md` - 设计系统、视觉语义与组件分层规则
 - `docs/06. 工程架构与实现规范.md` - 工程架构、实现规范与工程治理子文档索引
 - `docs/adr/` - 跨模块边界与长期演进方向的架构决策记录

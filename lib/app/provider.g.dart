@@ -655,6 +655,193 @@ final class AccountGroupRepositoryProvider
 String _$accountGroupRepositoryHash() =>
     r'7cc548d126442975801eb97511fff97fce75c00e';
 
+@ProviderFor(budgetRepository)
+final budgetRepositoryProvider = BudgetRepositoryProvider._();
+
+final class BudgetRepositoryProvider
+    extends
+        $FunctionalProvider<
+          BudgetRepository,
+          BudgetRepository,
+          BudgetRepository
+        >
+    with $Provider<BudgetRepository> {
+  BudgetRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'budgetRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$budgetRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<BudgetRepository> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  BudgetRepository create(Ref ref) {
+    return budgetRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BudgetRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BudgetRepository>(value),
+    );
+  }
+}
+
+String _$budgetRepositoryHash() => r'38985ea0be3bf5158581d19df3e54fe0a4d39714';
+
+@ProviderFor(budgetQuerySource)
+final budgetQuerySourceProvider = BudgetQuerySourceProvider._();
+
+final class BudgetQuerySourceProvider
+    extends
+        $FunctionalProvider<
+          BudgetQuerySource,
+          BudgetQuerySource,
+          BudgetQuerySource
+        >
+    with $Provider<BudgetQuerySource> {
+  BudgetQuerySourceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'budgetQuerySourceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$budgetQuerySourceHash();
+
+  @$internal
+  @override
+  $ProviderElement<BudgetQuerySource> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  BudgetQuerySource create(Ref ref) {
+    return budgetQuerySource(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BudgetQuerySource value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BudgetQuerySource>(value),
+    );
+  }
+}
+
+String _$budgetQuerySourceHash() => r'5fb5c01a063b97000567349f7c921510caa3e1f6';
+
+@ProviderFor(budgetAppService)
+final budgetAppServiceProvider = BudgetAppServiceProvider._();
+
+final class BudgetAppServiceProvider
+    extends
+        $FunctionalProvider<
+          BudgetAppService,
+          BudgetAppService,
+          BudgetAppService
+        >
+    with $Provider<BudgetAppService> {
+  BudgetAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'budgetAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$budgetAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<BudgetAppService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  BudgetAppService create(Ref ref) {
+    return budgetAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BudgetAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BudgetAppService>(value),
+    );
+  }
+}
+
+String _$budgetAppServiceHash() => r'b00d454719e1711d2749fbf0643ad17d1ef53445';
+
+@ProviderFor(budgetQueryService)
+final budgetQueryServiceProvider = BudgetQueryServiceProvider._();
+
+final class BudgetQueryServiceProvider
+    extends
+        $FunctionalProvider<
+          BudgetQueryService,
+          BudgetQueryService,
+          BudgetQueryService
+        >
+    with $Provider<BudgetQueryService> {
+  BudgetQueryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'budgetQueryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$budgetQueryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<BudgetQueryService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  BudgetQueryService create(Ref ref) {
+    return budgetQueryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BudgetQueryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BudgetQueryService>(value),
+    );
+  }
+}
+
+String _$budgetQueryServiceHash() =>
+    r'dde1d8b8150ca6f7f01a069c2b7d977dc113657d';
+
 @ProviderFor(accountQueryRepository)
 final accountQueryRepositoryProvider = AccountQueryRepositoryProvider._();
 
@@ -1322,7 +1509,7 @@ final class AccountAppServiceProvider
   }
 }
 
-String _$accountAppServiceHash() => r'9ddf73c0dfea3b487b20fff42bf867cf3cfc93e3';
+String _$accountAppServiceHash() => r'736ee1eac5eca85ba33219f4dec87ad1468dd8c5';
 
 @ProviderFor(accountGroupAppService)
 final accountGroupAppServiceProvider = AccountGroupAppServiceProvider._();
@@ -2142,7 +2329,7 @@ final class CreditAccountAppServiceProvider
 }
 
 String _$creditAccountAppServiceHash() =>
-    r'e358f563657d958bd8c04846ad135ea9f3af90bd';
+    r'cedfc8f9de1e53c196e8311cc8167add59e2744b';
 
 @ProviderFor(creditAccountQueryService)
 final creditAccountQueryServiceProvider = CreditAccountQueryServiceProvider._();
@@ -2334,7 +2521,7 @@ final class CreditAccountLedgerPortProvider
 }
 
 String _$creditAccountLedgerPortHash() =>
-    r'8aac8aa58ac2b0771805f50dc8282e21d1194cbc';
+    r'dba9a51299aada9b39e01d60e0228e561c2ef2b9';
 
 @ProviderFor(creditLedgerPort)
 final creditLedgerPortProvider = CreditLedgerPortProvider._();

@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import 'app_shell.dart';
 import '../application/ledger/ledger_query_api.dart';
+import '../core/time/month_key.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../design_system/showcase/design_system_showcase_page.dart';
 import '../feature/account/page/account_detail_page.dart';
@@ -12,6 +13,7 @@ import '../feature/account/page/archived_accounts_page.dart';
 import '../feature/category/page/categories_page.dart';
 import '../feature/category/page/category_form_page.dart';
 import '../feature/calendar/page/calendar_page.dart';
+import '../feature/budget/page/budget_page.dart';
 import '../feature/home/page/home_page.dart';
 import '../feature/credit/page/installment_contract_edit_page.dart';
 import '../feature/credit/page/bill_conversion_installment_form_page.dart';
@@ -61,6 +63,13 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/statistics',
           builder: (context, state) => const StatisticsPage(),
+        ),
+        GoRoute(
+          path: '/budget',
+          builder:
+              (context, state) => BudgetPage(
+                initialMonth: _monthFromQuery(state.uri.queryParameters),
+              ),
         ),
         GoRoute(
           path: '/statistics/transactions',
@@ -132,6 +141,19 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/dev/logs',
       builder: (context, state) => const LogViewerPage(),
+    ),
+    GoRoute(
+      path: '/budget/:id',
+      builder: (context, state) {
+        final month = _monthFromQuery(state.uri.queryParameters);
+        if (month == null) {
+          return const PlaceholderPage(title: '预算月份参数无效');
+        }
+        return BudgetDetailPage(
+          budgetId: state.pathParameters['id']!,
+          month: month,
+        );
+      },
     ),
     GoRoute(
       path: '/transaction/new',
@@ -370,3 +392,13 @@ final appRouter = GoRouter(
     ),
   ],
 );
+
+DateTime? _monthFromQuery(Map<String, String> query) {
+  final value = query['month'];
+  if (value == null) return null;
+  try {
+    return MonthKey.parse(value).start;
+  } on FormatException {
+    return null;
+  }
+}

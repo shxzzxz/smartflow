@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/feature/home/view_model/home_view_model.dart';
 import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
 
@@ -343,6 +344,9 @@ ProviderContainer _container(
       transactionQueryServiceProvider.overrideWithValue(transactionService),
       financialMetricsServiceProvider.overrideWithValue(metricsService),
       accountQueryServiceProvider.overrideWithValue(accountService),
+      budgetQueryServiceProvider.overrideWithValue(
+        const _FakeBudgetQueryService(),
+      ),
       ...overrides,
     ],
   );
@@ -351,6 +355,17 @@ ProviderContainer _container(
   addTearDown(metricsService.dispose);
   addTearDown(accountService.dispose);
   return container;
+}
+
+class _FakeBudgetQueryService implements BudgetQueryService {
+  const _FakeBudgetQueryService();
+
+  @override
+  Stream<MonthlyBudgetReport> watchMonthlyReport(MonthKey month) {
+    return Stream.value(
+      MonthlyBudgetReport(month: month, categoryGroups: const []),
+    );
+  }
 }
 
 Future<void> _flush() async {

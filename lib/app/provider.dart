@@ -11,6 +11,8 @@ import '../infrastructure/import/tabular_file_readers.dart';
 import '../infrastructure/ledger/repository/drift_account_query_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_group_repository.dart';
+import '../infrastructure/ledger/repository/drift_budget_query_source.dart';
+import '../infrastructure/ledger/repository/drift_budget_repository.dart';
 import '../infrastructure/ledger/repository/drift_ledger_metrics_source.dart';
 import '../infrastructure/ledger/repository/drift_entry_read_repository.dart';
 import '../infrastructure/credit/repository/drift_credit_account_repository.dart';
@@ -43,6 +45,7 @@ import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../application/shared/app_task.dart';
 import '../domain/ledger/port/account_repository.dart';
 import '../domain/ledger/port/account_group_repository.dart';
+import '../domain/ledger/port/budget_repository.dart';
 import '../domain/import/port/import_batch_repository.dart';
 import '../domain/import/port/import_ledger_port.dart';
 import '../domain/import/port/import_mapping_repository.dart';
@@ -155,6 +158,31 @@ AccountRepository accountRepository(Ref ref) {
 @Riverpod(keepAlive: true)
 AccountGroupRepository accountGroupRepository(Ref ref) {
   return DriftAccountGroupRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+BudgetRepository budgetRepository(Ref ref) {
+  return DriftBudgetRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+BudgetQuerySource budgetQuerySource(Ref ref) {
+  return DriftBudgetQuerySource(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+BudgetAppService budgetAppService(Ref ref) {
+  return BudgetAppServiceImpl(
+    budgets: ref.watch(budgetRepositoryProvider),
+    accounts: ref.watch(accountRepositoryProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+BudgetQueryService budgetQueryService(Ref ref) {
+  return BudgetQueryServiceImpl(ref.watch(budgetQuerySourceProvider));
 }
 
 @Riverpod(keepAlive: true)

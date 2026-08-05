@@ -69,6 +69,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     :final refreshErrorMessage,
                   ) =>
                     _HomeContent(
+                      visibleMonth: state.visibleMonth,
                       summary: summary,
                       groups: groups,
                       reserveFabSpace: settings.showAddTransactionFab,
@@ -318,6 +319,7 @@ class _PullToCreateSensitivityMenuItemState
 
 class _HomeContent extends StatelessWidget {
   const _HomeContent({
+    required this.visibleMonth,
     required this.summary,
     required this.groups,
     required this.reserveFabSpace,
@@ -332,6 +334,7 @@ class _HomeContent extends StatelessWidget {
     required this.onRefresh,
   });
 
+  final DateTime visibleMonth;
   final CashflowSummaryPresentation summary;
   final List<TransactionDayGroup> groups;
   final bool reserveFabSpace;
@@ -356,7 +359,22 @@ class _HomeContent extends StatelessWidget {
       ),
       bottomPadding: AppSpacing.space24 + (reserveFabSpace ? 56 : 0), // 留给 FAB
       leading: [
-        CashflowSummaryCard(summary: summary),
+        CashflowSummaryCard(
+          summary: summary,
+          metricActions: {
+            CashflowSummaryMetricKind.budget:
+                () => context.push(
+                  Uri(
+                    path: '/budget',
+                    queryParameters: {
+                      'month':
+                          '${visibleMonth.year}-'
+                          '${visibleMonth.month.toString().padLeft(2, '0')}',
+                    },
+                  ).toString(),
+                ),
+          },
+        ),
         if (hasPendingRefresh || isRefreshing) ...[
           const SizedBox(height: AppSpacing.space12),
           Align(

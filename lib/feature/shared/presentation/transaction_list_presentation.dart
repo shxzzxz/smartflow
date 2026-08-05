@@ -113,18 +113,22 @@ class CashflowSummaryPresentation {
   final List<CashflowSummaryMetricPresentation> metrics;
 }
 
+enum CashflowSummaryMetricKind { income, expense, budget }
+
 class CashflowSummaryMetricPresentation {
   const CashflowSummaryMetricPresentation({
     required this.label,
     required this.amount,
     required this.caption,
     required this.tone,
+    this.kind,
   });
 
   final String label;
   final Money amount;
   final String caption;
   final FinanceTone tone;
+  final CashflowSummaryMetricKind? kind;
 }
 
 List<TransactionDayGroup> groupTransactionsByDay({
@@ -402,10 +406,9 @@ FinanceTone _adjustmentTone(TransactionAdjustmentKind kind) {
 
 CashflowSummaryPresentation buildMonthlySummaryPresentation(
   CashflowComparison comparison, {
-  int monthlyBudgetMinor = 1000000,
+  BudgetProgress? totalBudget,
 }) {
   final summary = comparison.current;
-  final expenseMinor = summary.expense.minorUnits;
   return CashflowSummaryPresentation(
     metrics: [
       CashflowSummaryMetricPresentation(
@@ -413,20 +416,25 @@ CashflowSummaryPresentation buildMonthlySummaryPresentation(
         amount: summary.income,
         caption: formatPeriodChangeMetrics(comparison.incomeChange),
         tone: FinanceTone.income,
+        kind: CashflowSummaryMetricKind.income,
       ),
       CashflowSummaryMetricPresentation(
         label: '本月支出',
         amount: summary.expense,
         caption: formatPeriodChangeMetrics(comparison.expenseChange),
         tone: FinanceTone.expense,
+        kind: CashflowSummaryMetricKind.expense,
       ),
       CashflowSummaryMetricPresentation(
         label: '本月预算',
-        amount: Money(minorUnits: monthlyBudgetMinor),
+        amount: totalBudget?.budget ?? Money.zero(),
         caption:
-            '${formatPercent(expenseMinor / monthlyBudgetMinor)}/'
-            '${formatRoundedMajor(monthlyBudgetMinor)}',
+            totalBudget == null
+                ? '未设置'
+                : '${formatPercent(totalBudget.usedRatio)}/'
+                    '${formatRoundedMajor(totalBudget.budget.minorUnits)}',
         tone: FinanceTone.primary,
+        kind: CashflowSummaryMetricKind.budget,
       ),
     ],
   );

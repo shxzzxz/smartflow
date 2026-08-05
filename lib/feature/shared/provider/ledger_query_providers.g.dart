@@ -460,6 +460,84 @@ final class CategoryTreeFamily extends $Family
   String toString() => r'categoryTreeProvider';
 }
 
+@ProviderFor(monthlyBudgetReport)
+final monthlyBudgetReportProvider = MonthlyBudgetReportFamily._();
+
+final class MonthlyBudgetReportProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<MonthlyBudgetReport>,
+          MonthlyBudgetReport,
+          Stream<MonthlyBudgetReport>
+        >
+    with
+        $FutureModifier<MonthlyBudgetReport>,
+        $StreamProvider<MonthlyBudgetReport> {
+  MonthlyBudgetReportProvider._({
+    required MonthlyBudgetReportFamily super.from,
+    required DateTime super.argument,
+  }) : super(
+         retry: null,
+         name: r'monthlyBudgetReportProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$monthlyBudgetReportHash();
+
+  @override
+  String toString() {
+    return r'monthlyBudgetReportProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<MonthlyBudgetReport> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<MonthlyBudgetReport> create(Ref ref) {
+    final argument = this.argument as DateTime;
+    return monthlyBudgetReport(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is MonthlyBudgetReportProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$monthlyBudgetReportHash() =>
+    r'9474c299c901169c008b4e521fec99f9b8d99ffa';
+
+final class MonthlyBudgetReportFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<MonthlyBudgetReport>, DateTime> {
+  MonthlyBudgetReportFamily._()
+    : super(
+        retry: null,
+        name: r'monthlyBudgetReportProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  MonthlyBudgetReportProvider call(DateTime month) =>
+      MonthlyBudgetReportProvider._(argument: month, from: this);
+
+  @override
+  String toString() => r'monthlyBudgetReportProvider';
+}
+
 @ProviderFor(transactionList)
 final transactionListProvider = TransactionListFamily._();
 

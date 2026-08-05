@@ -69,6 +69,9 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
       if (from < 25) {
         await _migrateArchivedCategories(database);
       }
+      if (from < 26 && !await _hasColumn(database, 'budgets', 'sort_order')) {
+        await migrator.addColumn(database.budgets, database.budgets.sortOrder);
+      }
     },
   );
 }

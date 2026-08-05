@@ -47,6 +47,11 @@ enum LedgerErrorCode implements AppErrorCode {
   categoryInvalidParent(
     code: 'ledger.category.invalid_parent',
     defaultMessage: '父分类不可用。',
+  ),
+  budgetNotFound(code: 'ledger.budget.not_found', defaultMessage: '预算不存在。'),
+  budgetInvalidCommand(
+    code: 'ledger.budget.invalid_command',
+    defaultMessage: '预算参数不完整或不合法。',
   );
 
   const LedgerErrorCode({required this.code, required this.defaultMessage});
