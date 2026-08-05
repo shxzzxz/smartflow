@@ -18,6 +18,7 @@ import '../../../widget/business/finance/money_input.dart';
 import '../../../widget/business/finance/money_text.dart';
 import '../../../widget/business/icon/business_icon.dart';
 import '../../../widget/business/icon/business_icon_bubble.dart';
+import '../../../widget/business/analytics/analysis_section_card.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/budget_view_model.dart';
 import '../widget/budget_trend_chart.dart';
@@ -455,18 +456,10 @@ class _TrendSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppSurface(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('预算趋势', style: context.appTextStyles.sectionTitleStrong),
-            const SizedBox(height: AppSpacing.space16),
-            BudgetTrendChart(month: month, progress: progress),
-          ],
-        ),
-      ),
+    return AnalysisSectionCard(
+      title: '预算趋势',
+      emphasis: AnalysisSectionEmphasis.primary,
+      child: BudgetTrendChart(month: month, progress: progress),
     );
   }
 }

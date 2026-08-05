@@ -6,6 +6,10 @@ import 'package:smartflow/feature/shared/presentation/transaction_list_presentat
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
 import 'package:smartflow/widget/business/account/account_endpoint_view.dart';
 import 'package:smartflow/widget/business/account/account_type_tag.dart';
+import 'package:smartflow/widget/business/analytics/analysis_section_card.dart';
+import 'package:smartflow/widget/business/analytics/chart/app_cartesian_chart.dart';
+import 'package:smartflow/widget/business/analytics/chart/app_chart_empty_state.dart';
+import 'package:smartflow/widget/business/analytics/chart/app_donut_chart.dart';
 import 'package:smartflow/widget/business/category/category_avatar.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
@@ -83,6 +87,7 @@ enum _ShowcaseExampleKind {
   submitButton,
   chips,
   progressIndicators,
+  analyticsCharts,
   datePicker,
   datePickerPanel,
   timePicker,
@@ -261,6 +266,14 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '进度条',
     componentNames: 'LinearProgressIndicator',
     keywords: ['进度', '百分比', '状态'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.analyticsCharts,
+    category: '数据展示',
+    title: '分析图表',
+    componentNames:
+        'AnalysisSectionCard / AppCartesianChart / AppDonutChart / AppChartEmptyState',
+    keywords: ['图表', '折线', '柱状', '环形', '分析', '空状态'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.datePicker,
@@ -720,6 +733,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.submitButton => _submitButtonPreview(),
       _ShowcaseExampleKind.chips => _chipsPreview(),
       _ShowcaseExampleKind.progressIndicators => _progressIndicatorsPreview(),
+      _ShowcaseExampleKind.analyticsCharts => _analyticsChartsPreview(),
       _ShowcaseExampleKind.datePicker => _datePickerPreview(),
       _ShowcaseExampleKind.datePickerPanel => _datePickerPanelPreview(),
       _ShowcaseExampleKind.timePicker => _timePickerPreview(),
@@ -1303,6 +1317,98 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           value: 0.5,
           color: financeColors.danger,
         ),
+      ],
+    );
+  }
+
+  Widget _analyticsChartsPreview() {
+    final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
+    return Column(
+      spacing: AppSpacing.space16,
+      children: [
+        _PreviewBackdrop(
+          child: AnalysisSectionCard(
+            title: '收支趋势',
+            emphasis: AnalysisSectionEmphasis.primary,
+            child: AppCartesianChart(
+              data: AppCartesianChartData(
+                axisPoints: const [
+                  AppChartAxisPoint(x: 0, label: '1日'),
+                  AppChartAxisPoint(x: 1, label: '8日'),
+                  AppChartAxisPoint(x: 2, label: '15日'),
+                  AppChartAxisPoint(x: 3, label: '22日'),
+                ],
+                series: [
+                  AppChartSeries(
+                    label: '收入',
+                    color: financeColors.income,
+                    points: const [
+                      AppChartPoint(
+                        x: 0,
+                        value: 1200,
+                        formattedValue: '1,200.00',
+                      ),
+                      AppChartPoint(
+                        x: 1,
+                        value: 1800,
+                        formattedValue: '1,800.00',
+                      ),
+                      AppChartPoint(
+                        x: 2,
+                        value: 1500,
+                        formattedValue: '1,500.00',
+                      ),
+                      AppChartPoint(
+                        x: 3,
+                        value: 2400,
+                        formattedValue: '2,400.00',
+                      ),
+                    ],
+                  ),
+                  AppChartSeries(
+                    label: '支出',
+                    color: financeColors.expense,
+                    points: const [
+                      AppChartPoint(x: 0, value: 800, formattedValue: '800.00'),
+                      AppChartPoint(
+                        x: 1,
+                        value: 1400,
+                        formattedValue: '1,400.00',
+                      ),
+                      AppChartPoint(x: 2, value: 900, formattedValue: '900.00'),
+                      AppChartPoint(
+                        x: 3,
+                        value: 1600,
+                        formattedValue: '1,600.00',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              form: AppCartesianChartForm.line,
+              showLegend: true,
+            ),
+          ),
+        ),
+        AppDonutChart(
+          slices: [
+            AppDonutSlice(
+              label: '餐饮',
+              value: 60,
+              formattedValue: '600.00',
+              color: financeColors.chart1,
+            ),
+            AppDonutSlice(
+              label: '交通',
+              value: 40,
+              formattedValue: '400.00',
+              color: financeColors.chart2,
+            ),
+          ],
+          centerLabel: '总支出',
+          centerValue: '1,000.00',
+        ),
+        const AppChartEmptyState(message: '区间内暂无数据'),
       ],
     );
   }

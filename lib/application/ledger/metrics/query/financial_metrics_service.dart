@@ -2,6 +2,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
+import 'package:smartflow/shared/analytics/time_series_transform.dart';
 
 import '../../account/query/account_query_service.dart';
 import '../../transaction/query/transaction_read_models.dart';
@@ -94,15 +95,13 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
     );
     final running = Map<AccountType, int>.from(await openingFuture);
     final byDay = await byDayFuture;
-    final points = <BalanceTrendPoint>[
-      BalanceTrendPoint(
-        date: query.from,
-        assets: Money(minorUnits: running[AccountType.asset] ?? 0),
-        liabilities: Money(minorUnits: running[AccountType.liability] ?? 0),
-      ),
-    ];
+    final opening = BalanceTrendPoint(
+      date: query.from,
+      assets: Money(minorUnits: running[AccountType.asset] ?? 0),
+      liabilities: Money(minorUnits: running[AccountType.liability] ?? 0),
+    );
+    final dailyPoints = <BalanceTrendPoint>[];
     var date = DateTime(query.from.year, query.from.month, query.from.day);
-    var index = 0;
     while (date.isBefore(query.until)) {
       final delta = byDay[date];
       if (delta != null) {
@@ -114,20 +113,22 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
           );
         }
       }
-      final isLast = !date.add(const Duration(days: 1)).isBefore(query.until);
-      if (index % query.balancePointIntervalDays == 0 || isLast) {
-        points.add(
-          BalanceTrendPoint(
-            date: date.add(const Duration(days: 1)),
-            assets: Money(minorUnits: running[AccountType.asset] ?? 0),
-            liabilities: Money(minorUnits: running[AccountType.liability] ?? 0),
-          ),
-        );
-      }
+      dailyPoints.add(
+        BalanceTrendPoint(
+          date: date.add(const Duration(days: 1)),
+          assets: Money(minorUnits: running[AccountType.asset] ?? 0),
+          liabilities: Money(minorUnits: running[AccountType.liability] ?? 0),
+        ),
+      );
       date = date.add(const Duration(days: 1));
-      index++;
     }
-    return points;
+    return [
+      opening,
+      ...sampleEveryNthPreservingLast(
+        dailyPoints,
+        step: query.balancePointIntervalDays,
+      ),
+    ];
   }
 
   @override

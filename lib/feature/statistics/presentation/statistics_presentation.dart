@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
+import '../../../shared/analytics/time_series_transform.dart';
 
 class StatisticsPresentation {
   const StatisticsPresentation({
@@ -137,20 +138,15 @@ class StatisticsBreakdownItem {
   }
 }
 
-enum StatisticsTimeGrouping { day, week, month, year }
+typedef StatisticsTimeGrouping = TimeSeriesGranularity;
 
 enum StatisticsCategoryLevel { primary, secondary }
 
+enum _StatisticsSeries { income, expense, assets, liabilities }
+
 extension StatisticsTimeGroupingPresentation on StatisticsTimeGrouping {
   DateTime bucketStart(DateTime date, {required DateTime anchor}) {
-    return switch (this) {
-      StatisticsTimeGrouping.day => date,
-      StatisticsTimeGrouping.week => anchor.add(
-        Duration(days: date.difference(anchor).inDays ~/ 7 * 7),
-      ),
-      StatisticsTimeGrouping.month => DateTime(date.year, date.month),
-      StatisticsTimeGrouping.year => DateTime(date.year),
-    };
+    return timeSeriesBucketStart(date, granularity: this, anchor: anchor);
   }
 
   String labelFor(DateTime start) => switch (this) {
@@ -205,31 +201,27 @@ List<StatisticsCashflowBucket> buildStatisticsCashflowBuckets(
   if (items.isEmpty) {
     return const [];
   }
-  final sorted = [...items]
-    ..sort((left, right) => left.date.compareTo(right.date));
-  final anchor = DateTime(
-    sorted.first.date.year,
-    sorted.first.date.month,
-    sorted.first.date.day,
+  final buckets = aggregateMinorTimeSeries(
+    [
+      for (final item in items)
+        MinorTimeSeriesPoint(
+          date: item.date,
+          values: {
+            _StatisticsSeries.income: item.income.minorUnits,
+            _StatisticsSeries.expense: item.expense.minorUnits,
+          },
+        ),
+    ],
+    granularity: grouping,
+    aggregation: TimeSeriesAggregation.flowSum,
   );
-  final buckets = <DateTime, _CashflowBucketAccumulator>{};
-  for (final item in sorted) {
-    final date = DateTime(item.date.year, item.date.month, item.date.day);
-    final bucketStart = grouping.bucketStart(date, anchor: anchor);
-    final bucket = buckets.putIfAbsent(
-      bucketStart,
-      () => _CashflowBucketAccumulator(date: bucketStart),
-    );
-    bucket.incomeMinor += item.income.minorUnits;
-    bucket.expenseMinor += item.expense.minorUnits;
-  }
   return [
-    for (final bucket in buckets.values)
+    for (final bucket in buckets)
       StatisticsCashflowBucket(
-        date: bucket.date,
-        label: grouping.labelFor(bucket.date),
-        incomeMinor: bucket.incomeMinor,
-        expenseMinor: bucket.expenseMinor,
+        date: bucket.start,
+        label: grouping.labelFor(bucket.start),
+        incomeMinor: bucket.values[_StatisticsSeries.income]!,
+        expenseMinor: bucket.values[_StatisticsSeries.expense]!,
       ),
   ];
 }
@@ -251,21 +243,29 @@ List<StatisticsBalanceTrendBucket> buildStatisticsBalanceTrendBuckets(
     return DateTime(snapshotDate.year, snapshotDate.month, snapshotDate.day);
   }
 
-  final anchor = effectiveDateAt(0);
-  final buckets = <DateTime, BalanceTrendPoint>{};
-  for (var index = 0; index < sorted.length; index++) {
-    final item = sorted[index];
-    final date = effectiveDateAt(index);
-    final bucketStart = grouping.bucketStart(date, anchor: anchor);
-    buckets[bucketStart] = item;
-  }
+  final buckets = aggregateMinorTimeSeries(
+    [
+      for (var index = 0; index < sorted.length; index++)
+        MinorTimeSeriesPoint(
+          date: effectiveDateAt(index),
+          values: {
+            _StatisticsSeries.assets: sorted[index].assets.minorUnits,
+            _StatisticsSeries.liabilities: sorted[index].liabilities.minorUnits,
+          },
+        ),
+    ],
+    granularity: grouping,
+    aggregation: TimeSeriesAggregation.periodEnd,
+  );
   return [
-    for (final entry in buckets.entries)
+    for (final bucket in buckets)
       StatisticsBalanceTrendBucket(
-        date: entry.key,
-        label: grouping.labelFor(entry.key),
-        assets: entry.value.assets,
-        liabilities: entry.value.liabilities,
+        date: bucket.start,
+        label: grouping.labelFor(bucket.start),
+        assets: Money(minorUnits: bucket.values[_StatisticsSeries.assets]!),
+        liabilities: Money(
+          minorUnits: bucket.values[_StatisticsSeries.liabilities]!,
+        ),
       ),
   ];
 }
@@ -293,14 +293,6 @@ List<DailyCashflowSummary> _fillDailyCashflowDates(
     date = DateTime(date.year, date.month, date.day + 1);
   }
   return result;
-}
-
-class _CashflowBucketAccumulator {
-  _CashflowBucketAccumulator({required this.date});
-
-  final DateTime date;
-  int incomeMinor = 0;
-  int expenseMinor = 0;
 }
 
 List<StatisticsBreakdownItem> selectStatisticsCategoryItems(
@@ -357,23 +349,23 @@ class StatisticsDonutSlice {
 List<StatisticsDonutSlice> buildStatisticsDonutSlices(
   List<StatisticsBreakdownItem> items,
 ) {
-  final slices = [
-    for (final item in items)
-      StatisticsDonutSlice(
-        title: item.title,
-        valueMinor: statisticsCategoryMagnitude(item),
-      ),
-  ];
-  if (slices.length <= statisticsSeriesSlotCount) {
-    return slices;
-  }
-  final foldedMinor = slices
-      .skip(statisticsSeriesSlotCount - 1)
-      .fold(0, (sum, slice) => sum + slice.valueMinor);
-  return [
-    ...slices.take(statisticsSeriesSlotCount - 1),
-    StatisticsDonutSlice(title: '其他', valueMinor: foldedMinor, isOther: true),
-  ];
+  return topNWithOther(
+    [
+      for (final item in items)
+        StatisticsDonutSlice(
+          title: item.title,
+          valueMinor: statisticsCategoryMagnitude(item),
+        ),
+    ],
+    maxItems: statisticsSeriesSlotCount,
+    compare: (left, right) => right.valueMinor.compareTo(left.valueMinor),
+    buildOther:
+        (tail) => StatisticsDonutSlice(
+          title: '其他',
+          valueMinor: tail.fold(0, (sum, slice) => sum + slice.valueMinor),
+          isOther: true,
+        ),
+  );
 }
 
 class StatisticsCashflowKpis {
@@ -407,7 +399,9 @@ StatisticsCashflowKpis buildStatisticsCashflowKpis(
     maxExpenseMinor = math.max(maxExpenseMinor, item.expense.minorUnits);
   }
   return StatisticsCashflowKpis(
-    dailyAverageExpense: Money(minorUnits: (expenseMinor / items.length).round()),
+    dailyAverageExpense: Money(
+      minorUnits: (expenseMinor / items.length).round(),
+    ),
     dailyAverageIncome: Money(minorUnits: (incomeMinor / items.length).round()),
     maxDailyExpense: Money(minorUnits: maxExpenseMinor),
   );

@@ -18,11 +18,12 @@ import '../../../feature/shared/presentation/transaction_list_presentation.dart'
 import '../../../widget/business/finance/cashflow_summary_card.dart';
 import '../../../widget/business/finance/finance_tone.dart';
 import '../../../widget/business/finance/money_text.dart';
+import '../../../widget/business/analytics/analysis_section_card.dart';
+import '../../../widget/business/analytics/chart/app_chart_empty_state.dart';
 import '../presentation/statistics_presentation.dart';
 import '../view_model/statistics_view_model.dart';
 import '../widget/statistics_charts.dart';
 import '../widget/statistics_period_sheet.dart';
-import '../widget/statistics_section.dart';
 
 class StatisticsPage extends ConsumerWidget {
   const StatisticsPage({super.key});
@@ -342,7 +343,7 @@ class _CashflowSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(statisticsViewModelProvider.notifier);
-    return StatisticsSectionCard(
+    return AnalysisSectionCard(
       title: '收支统计',
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -397,7 +398,7 @@ class _WeekdaySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StatisticsSectionCard(
+    return AnalysisSectionCard(
       title: '支出习惯',
       subtitle: '按星期 · 日均支出',
       child: StatisticsWeekdayChart(
@@ -415,7 +416,7 @@ class _BalanceSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StatisticsSectionCard(
+    return AnalysisSectionCard(
       title: '资产走势',
       child: StatisticsBalanceTrendChart(
         points: presentation.rangeBalanceTrend,
@@ -450,7 +451,7 @@ class _CategoryAnalysis extends ConsumerWidget {
       0,
       (sum, item) => sum + statisticsCategoryMagnitude(item),
     );
-    return StatisticsSectionCard(
+    return AnalysisSectionCard(
       title: '分类构成',
       trailing: Wrap(
         spacing: AppSpacing.space6,
@@ -481,7 +482,7 @@ class _CategoryAnalysis extends ConsumerWidget {
       ),
       child:
           items.isEmpty
-              ? const StatisticsEmptyState(message: '区间内暂无分类数据')
+              ? const AppChartEmptyState(message: '区间内暂无分类数据')
               : Column(
                 children: [
                   StatisticsDonutChart(
@@ -726,7 +727,7 @@ class _CategoryDetailPage extends StatelessWidget {
                   AppSpacing.space24,
                 ),
                 children: [
-                  StatisticsSectionCard(
+                  AnalysisSectionCard(
                     title: '分类构成',
                     child: Column(
                       children: [

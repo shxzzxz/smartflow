@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/time/month_key.dart';
+import '../../../shared/analytics/time_series_transform.dart';
 import '../../shared/provider/current_date_time_provider.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
@@ -316,12 +317,10 @@ class StatisticsControlState {
 
   int get _spanDays => periodUntil.difference(periodFrom).inDays;
 
-  StatisticsTimeGrouping get trendGrouping => switch (_spanDays) {
-    <= 45 => StatisticsTimeGrouping.day,
-    <= 180 => StatisticsTimeGrouping.week,
-    <= 730 => StatisticsTimeGrouping.month,
-    _ => StatisticsTimeGrouping.year,
-  };
+  TimeSeriesResolution get _resolution =>
+      TimeSeriesResolution.forSpanDays(_spanDays);
+
+  StatisticsTimeGrouping get trendGrouping => _resolution.granularity;
 
   String get periodLabel {
     final last = periodUntil.subtract(const Duration(days: 1));
@@ -333,12 +332,7 @@ class StatisticsControlState {
     return StatisticsDateRange(
       from: periodFrom,
       until: _validUntil(periodFrom, _capAtTomorrow(periodUntil, now)),
-      balancePointIntervalDays: switch (_spanDays) {
-        <= 45 => 1,
-        <= 180 => 7,
-        <= 730 => 1,
-        _ => 30,
-      },
+      balancePointIntervalDays: _resolution.snapshotSampleIntervalDays,
     );
   }
 

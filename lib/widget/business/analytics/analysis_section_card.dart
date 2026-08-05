@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../../design_system/theme/app_text_styles.dart';
-import '../../../design_system/token/chart.dart';
 import '../../../design_system/token/component.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/token/typography.dart';
 import '../../../design_system/widget/app_surface.dart';
 
-enum StatisticsSectionEmphasis { primary, secondary }
+enum AnalysisSectionEmphasis { primary, secondary }
 
-class StatisticsSectionCard extends StatelessWidget {
-  const StatisticsSectionCard({
+class AnalysisSectionCard extends StatelessWidget {
+  const AnalysisSectionCard({
     required this.title,
     required this.child,
     super.key,
@@ -20,7 +19,8 @@ class StatisticsSectionCard extends StatelessWidget {
     this.titleActionIcon,
     this.titleTooltip,
     this.trailing,
-    this.emphasis = StatisticsSectionEmphasis.secondary,
+    this.emphasis = AnalysisSectionEmphasis.secondary,
+    this.border = false,
   });
 
   final String title;
@@ -30,7 +30,8 @@ class StatisticsSectionCard extends StatelessWidget {
   final String? titleTooltip;
   final Widget? trailing;
   final Widget child;
-  final StatisticsSectionEmphasis emphasis;
+  final AnalysisSectionEmphasis emphasis;
+  final bool border;
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +60,7 @@ class StatisticsSectionCard extends StatelessWidget {
         AppComponentTokens.adaptiveLayoutTextScaleThreshold;
 
     return AppSurface(
-      border: emphasis == StatisticsSectionEmphasis.primary,
+      border: border,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space16),
         child: Column(
@@ -101,7 +102,7 @@ class StatisticsSectionCard extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style:
-          emphasis == StatisticsSectionEmphasis.primary
+          emphasis == AnalysisSectionEmphasis.primary
               ? context.appTextStyles.sectionTitleStrong
               : context.appTextStyles.subsectionTitleStrong,
     );
@@ -116,7 +117,7 @@ class StatisticsSectionCard extends StatelessWidget {
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.radiusMd),
           child: InkWell(
-            key: const ValueKey('statistics-section-title-action'),
+            key: const ValueKey('analysis-section-title-action'),
             onTap: onTitleTap,
             borderRadius: BorderRadius.circular(AppRadius.radiusMd),
             child: ConstrainedBox(
@@ -136,28 +137,6 @@ class StatisticsSectionCard extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class StatisticsEmptyState extends StatelessWidget {
-  const StatisticsEmptyState({required this.message, super.key});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return SizedBox(
-      height: AppChartGeometry.emptyStateHeight,
-      child: Center(
-        child: Text(
-          message,
-          style: context.appTextStyles.listSupporting.copyWith(
-            color: colors.onSurfaceVariant,
           ),
         ),
       ),
