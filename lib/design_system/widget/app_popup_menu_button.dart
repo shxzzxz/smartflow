@@ -5,102 +5,188 @@ import '../token/component.dart';
 import '../token/spacing.dart';
 import 'app_switch.dart';
 
-/// 弹出菜单选项；[icon] 为条目前置图标，可省略。
-/// [switchValue] 非空时条目按开关项渲染，右侧展示开关状态，点击条目即切换。
-/// [child] 可提供不触发菜单选择的自定义内容，例如内嵌选择控件。
-class AppPopupMenuOption<T> {
-  const AppPopupMenuOption({
-    required this.value,
+sealed class AppPopupMenuEntry {}
+
+/// 执行一次命令的菜单项。激活后关闭菜单。
+class AppPopupMenuAction extends StatelessWidget implements AppPopupMenuEntry {
+  const AppPopupMenuAction({
     required this.label,
+    required this.onPressed,
     this.icon,
-    this.switchValue,
-    this.child,
-    this.enabled = true,
-  });
-
-  final T value;
-  final String label;
-  final IconData? icon;
-  final bool? switchValue;
-  final Widget? child;
-  final bool enabled;
-}
-
-/// 紧凑图标触发的弹出菜单，容器观感由全局 popupMenuTheme 统一。
-/// 传入 [selected] 时按单选菜单渲染，选中项右侧带对勾；省略则为纯动作菜单。
-class AppPopupMenuButton<T> extends StatelessWidget {
-  const AppPopupMenuButton({
-    required this.options,
-    required this.onSelected,
-    required this.tooltip,
-    required this.icon,
-    this.selected,
     super.key,
   });
 
-  final List<AppPopupMenuOption<T>> options;
-  final ValueChanged<T> onSelected;
-  final String tooltip;
-  final IconData icon;
-  final T? selected;
+  final String label;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return MenuItemButton(
+      leadingIcon: icon == null ? null : Icon(icon),
+      onPressed: onPressed,
+      child: Text(label),
+    );
+  }
+}
+
+/// 受控单选配置项。激活后保持菜单打开。
+class AppPopupMenuChoice extends StatelessWidget implements AppPopupMenuEntry {
+  const AppPopupMenuChoice({
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+    this.icon,
+    super.key,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return PopupMenuButton<T>(
-      tooltip: tooltip,
-      icon: Icon(
-        icon,
-        size: AppSpacing.space20,
-        color: colors.onSurfaceVariant,
-      ),
-      style: const ButtonStyle(
-        fixedSize: WidgetStatePropertyAll(Size.square(AppSpacing.space32)),
-        minimumSize: WidgetStatePropertyAll(Size.square(AppSpacing.space32)),
-        padding: WidgetStatePropertyAll(EdgeInsets.all(AppSpacing.space6)),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      constraints: const BoxConstraints(
-        minWidth: AppComponentTokens.menuMinWidth,
-      ),
-      onSelected: onSelected,
-      itemBuilder:
-          (context) => [
-            for (final option in options)
-              PopupMenuItem(
-                value: option.value,
-                enabled: option.enabled,
-                child:
-                    option.child ??
-                    Row(
-                      children: [
-                        if (option.icon != null) ...[
-                          Icon(
-                            option.icon,
-                            size: AppSpacing.space20,
-                            color: colors.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: AppSpacing.space12),
-                        ],
-                        Expanded(child: Text(option.label)),
-                        if (option.switchValue != null) ...[
-                          const SizedBox(width: AppSpacing.space12),
-                          IgnorePointer(
-                            child: AppSwitch(
-                              value: option.switchValue!,
-                              onChanged: (_) {},
-                            ),
-                          ),
-                        ] else if (selected != null && option.value == selected)
-                          Icon(
-                            RemixIcons.check_line,
-                            size: AppSpacing.space20,
-                            color: colors.primary,
-                          ),
-                      ],
-                    ),
-              ),
+    return MenuItemButton(
+      closeOnActivate: false,
+      leadingIcon: icon == null ? null : Icon(icon),
+      trailingIcon:
+          selected
+              ? Icon(
+                RemixIcons.check_line,
+                size: AppSpacing.space20,
+                color: colors.primary,
+              )
+              : null,
+      onPressed: onPressed,
+      child: Text(label),
+    );
+  }
+}
+
+/// 菜单中的复合配置控件。内部交互不会关闭菜单。
+class AppPopupMenuControl extends StatelessWidget implements AppPopupMenuEntry {
+  const AppPopupMenuControl({
+    required this.label,
+    required this.child,
+    super.key,
+  });
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space12,
+          vertical: AppSpacing.space8,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(height: AppSpacing.space8),
+            child,
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 布尔配置项。点击整行切换值，菜单保持打开。
+class AppPopupMenuToggle extends StatefulWidget implements AppPopupMenuEntry {
+  const AppPopupMenuToggle({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.icon,
+    super.key,
+  });
+
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final IconData? icon;
+
+  @override
+  State<AppPopupMenuToggle> createState() => _AppPopupMenuToggleState();
+}
+
+class _AppPopupMenuToggleState extends State<AppPopupMenuToggle> {
+  late bool _value = widget.value;
+
+  @override
+  void didUpdateWidget(covariant AppPopupMenuToggle oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value) {
+      _value = widget.value;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MenuItemButton(
+      closeOnActivate: false,
+      leadingIcon: widget.icon == null ? null : Icon(widget.icon),
+      trailingIcon: IgnorePointer(
+        child: AppSwitch(value: _value, onChanged: (_) {}),
+      ),
+      onPressed: () {
+        setState(() => _value = !_value);
+        widget.onChanged(_value);
+      },
+      child: Text(widget.label),
+    );
+  }
+}
+
+/// 紧凑图标触发的弹出菜单。
+/// 动作项激活后关闭菜单，配置项在原位更新并保持菜单打开。
+class AppPopupMenuButton extends StatelessWidget {
+  const AppPopupMenuButton({
+    required this.tooltip,
+    required this.icon,
+    required this.items,
+    super.key,
+  });
+
+  final List<AppPopupMenuEntry> items;
+  final String tooltip;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return MenuAnchor(
+      style: const MenuStyle(
+        minimumSize: WidgetStatePropertyAll(
+          Size(AppComponentTokens.menuMinWidth, 0),
+        ),
+      ),
+      menuChildren: items.cast<Widget>(),
+      builder: (context, controller, child) {
+        return IconButton(
+          tooltip: tooltip,
+          onPressed: controller.isOpen ? controller.close : controller.open,
+          icon: Icon(
+            icon,
+            size: AppSpacing.space20,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          style: const ButtonStyle(
+            fixedSize: WidgetStatePropertyAll(Size.square(AppSpacing.space48)),
+            minimumSize: WidgetStatePropertyAll(
+              Size.square(AppSpacing.space48),
+            ),
+            padding: WidgetStatePropertyAll(EdgeInsets.all(AppSpacing.space6)),
+          ),
+        );
+      },
     );
   }
 }

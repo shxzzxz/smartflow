@@ -345,6 +345,56 @@ abstract final class AppTheme {
         iconSize: AppSpacing.space20,
         labelTextStyle: WidgetStatePropertyAll(textTheme.bodyMedium),
       ),
+      menuTheme: MenuThemeData(
+        style: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(
+            colors.surfaceContainerLowest,
+          ),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+          elevation: const WidgetStatePropertyAll(
+            AppComponentTokens.menuElevation,
+          ),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.radiusLg),
+            ),
+          ),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(vertical: AppSpacing.space8),
+          ),
+        ),
+      ),
+      menuButtonTheme: MenuButtonThemeData(
+        style: ButtonStyle(
+          minimumSize: const WidgetStatePropertyAll(
+            Size(
+              AppComponentTokens.menuMinWidth,
+              AppComponentTokens.controlMinHeight,
+            ),
+          ),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: AppSpacing.space12),
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) {
+              return colors.onSurface.withValues(
+                alpha: AppComponentTokens.disabledContentOpacity,
+              );
+            }
+            return colors.onSurface;
+          }),
+          iconColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) {
+              return colors.onSurface.withValues(
+                alpha: AppComponentTokens.disabledContentOpacity,
+              );
+            }
+            return colors.onSurfaceVariant;
+          }),
+          iconSize: const WidgetStatePropertyAll(AppSpacing.space20),
+          textStyle: WidgetStatePropertyAll(textTheme.bodyMedium),
+        ),
+      ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: colors.surfaceContainerLowest,
         modalBackgroundColor: colors.surfaceContainerLowest,

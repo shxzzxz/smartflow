@@ -7,7 +7,6 @@ import '../../../application/shared/app_settings_store.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_month_picker.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
-import '../../../design_system/widget/app_switch.dart';
 import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
 import 'package:smartflow/feature/shared/presentation/pull_to_create_sensitivity_control.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
@@ -196,121 +195,21 @@ class _HomeSettingsMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(appSettingsViewModelProvider.notifier);
-    return AppPopupMenuButton<_HomeSettingOption>(
+    return AppPopupMenuButton(
       tooltip: '页面设置',
       icon: RemixIcons.settings_3_line,
-      onSelected: (_) {},
-      options: [
-        AppPopupMenuOption(
-          value: _HomeSettingOption.addTransactionFab,
+      items: [
+        AppPopupMenuToggle(
           label: '记账悬浮按钮',
-          enabled: false,
-          child: _HomeSwitchMenuItem(
-            label: '记账悬浮按钮',
-            selected: showAddTransactionFab,
-            onChanged: notifier.setShowAddTransactionFab,
-          ),
+          value: showAddTransactionFab,
+          onChanged: notifier.setShowAddTransactionFab,
         ),
-        AppPopupMenuOption(
-          value: _HomeSettingOption.pullToCreate,
+        AppPopupMenuControl(
           label: '下拉新增交易',
-          enabled: false,
-          child: _PullToCreateSensitivityMenuItem(
+          child: PullToCreateSensitivityControl(
             selected: pullToCreateSensitivity,
             onChanged: notifier.setPullToCreateSensitivity,
           ),
-        ),
-      ],
-    );
-  }
-}
-
-enum _HomeSettingOption { addTransactionFab, pullToCreate }
-
-class _PullToCreateSensitivityMenuItem extends StatefulWidget {
-  const _PullToCreateSensitivityMenuItem({
-    required this.selected,
-    required this.onChanged,
-  });
-
-  final PullToCreateSensitivity selected;
-  final ValueChanged<PullToCreateSensitivity> onChanged;
-
-  @override
-  State<_PullToCreateSensitivityMenuItem> createState() =>
-      _PullToCreateSensitivityMenuItemState();
-}
-
-class _HomeSwitchMenuItem extends StatefulWidget {
-  const _HomeSwitchMenuItem({
-    required this.label,
-    required this.selected,
-    required this.onChanged,
-  });
-
-  final String label;
-  final bool selected;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  State<_HomeSwitchMenuItem> createState() => _HomeSwitchMenuItemState();
-}
-
-class _HomeSwitchMenuItemState extends State<_HomeSwitchMenuItem> {
-  late bool _selected = widget.selected;
-
-  @override
-  void didUpdateWidget(covariant _HomeSwitchMenuItem oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.selected != widget.selected) {
-      _selected = widget.selected;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: Text(widget.label)),
-        const SizedBox(width: AppSpacing.space12),
-        AppSwitch(
-          value: _selected,
-          onChanged: (value) {
-            setState(() => _selected = value);
-            widget.onChanged(value);
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class _PullToCreateSensitivityMenuItemState
-    extends State<_PullToCreateSensitivityMenuItem> {
-  late PullToCreateSensitivity _selected = widget.selected;
-
-  @override
-  void didUpdateWidget(covariant _PullToCreateSensitivityMenuItem oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.selected != widget.selected) {
-      _selected = widget.selected;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('下拉新增交易', style: Theme.of(context).textTheme.bodyMedium),
-        const SizedBox(height: AppSpacing.space8),
-        PullToCreateSensitivityControl(
-          selected: _selected,
-          onChanged: (value) {
-            setState(() => _selected = value);
-            widget.onChanged(value);
-          },
         ),
       ],
     );

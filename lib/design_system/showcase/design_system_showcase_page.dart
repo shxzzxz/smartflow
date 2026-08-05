@@ -560,6 +560,8 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   var _selectedSlidingSegment = 0;
   var _selectedMenuOption = 0;
   var _menuSwitchOn = true;
+  var _menuDensity = 0;
+  var _menuActionCount = 0;
   var _selectedCycle = 0;
   var _selectedTermUnit = 0;
   String? _selectedAccountId = 'acc-cash';
@@ -898,22 +900,21 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       children: [
         Row(
           children: [
-            AppPopupMenuButton<int>(
+            AppPopupMenuButton(
               tooltip: '图表设置',
               icon: RemixIcons.settings_3_line,
-              selected: _selectedMenuOption,
-              onSelected:
-                  (value) => setState(() => _selectedMenuOption = value),
-              options: const [
-                AppPopupMenuOption(
-                  value: 0,
+              items: [
+                AppPopupMenuChoice(
                   label: '柱状图',
                   icon: RemixIcons.bar_chart_line,
+                  selected: _selectedMenuOption == 0,
+                  onPressed: () => setState(() => _selectedMenuOption = 0),
                 ),
-                AppPopupMenuOption(
-                  value: 1,
+                AppPopupMenuChoice(
                   label: '曲线',
                   icon: RemixIcons.line_chart_line,
+                  selected: _selectedMenuOption == 1,
+                  onPressed: () => setState(() => _selectedMenuOption = 1),
                 ),
               ],
             ),
@@ -923,21 +924,53 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
         ),
         Row(
           children: [
-            AppPopupMenuButton<int>(
+            AppPopupMenuButton(
               tooltip: '视图设置',
               icon: RemixIcons.settings_3_line,
-              onSelected: (_) => setState(() => _menuSwitchOn = !_menuSwitchOn),
-              options: [
-                AppPopupMenuOption(
-                  value: 0,
+              items: [
+                AppPopupMenuToggle(
                   label: '显示图例',
                   icon: RemixIcons.eye_line,
-                  switchValue: _menuSwitchOn,
+                  value: _menuSwitchOn,
+                  onChanged: (value) => setState(() => _menuSwitchOn = value),
                 ),
               ],
             ),
             const SizedBox(width: AppSpacing.space12),
             Text(_menuSwitchOn ? '图例：显示' : '图例：隐藏'),
+          ],
+        ),
+        Row(
+          children: [
+            AppPopupMenuButton(
+              tooltip: '更多操作',
+              icon: RemixIcons.more_2_fill,
+              items: [
+                AppPopupMenuAction(
+                  label: '刷新数据',
+                  icon: RemixIcons.refresh_line,
+                  onPressed: () => setState(() => _menuActionCount += 1),
+                ),
+                const AppPopupMenuAction(
+                  label: '暂不可用',
+                  icon: RemixIcons.forbid_line,
+                  onPressed: null,
+                ),
+                AppPopupMenuControl(
+                  label: '显示密度',
+                  child: AppSlidingSegmentedControl<int>(
+                    segments: const [
+                      AppSegment(value: 0, label: '紧凑'),
+                      AppSegment(value: 1, label: '舒展'),
+                    ],
+                    selected: _menuDensity,
+                    onChanged: (value) => setState(() => _menuDensity = value),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: AppSpacing.space12),
+            Text('刷新次数：$_menuActionCount'),
           ],
         ),
       ],

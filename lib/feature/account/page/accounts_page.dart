@@ -271,37 +271,27 @@ class _AssetsHeader extends StatelessWidget {
           icon: Icon(RemixIcons.add_line, color: colors.onSurface),
           tooltip: '新建账户',
         ),
-        AppPopupMenuButton<_AssetsHeaderAction>(
+        AppPopupMenuButton(
           tooltip: '更多操作',
           icon: RemixIcons.more_2_fill,
-          options: [
-            const AppPopupMenuOption(
-              value: _AssetsHeaderAction.manageGroups,
+          items: [
+            AppPopupMenuAction(
               label: '管理分组',
               icon: RemixIcons.folder_settings_line,
+              onPressed: onManageGroups,
             ),
-            AppPopupMenuOption(
-              value: _AssetsHeaderAction.toggleBalanceVisibility,
+            AppPopupMenuAction(
               label: hideBalances ? '显示余额' : '隐藏余额',
               icon:
                   hideBalances ? RemixIcons.eye_line : RemixIcons.eye_off_line,
+              onPressed: onToggleHide,
             ),
           ],
-          onSelected: (action) {
-            switch (action) {
-              case _AssetsHeaderAction.manageGroups:
-                onManageGroups();
-              case _AssetsHeaderAction.toggleBalanceVisibility:
-                onToggleHide();
-            }
-          },
         ),
       ],
     );
   }
 }
-
-enum _AssetsHeaderAction { manageGroups, toggleBalanceVisibility }
 
 class _NetAssetCard extends StatelessWidget {
   const _NetAssetCard({required this.comparison, required this.hideBalances});

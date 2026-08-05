@@ -152,20 +152,14 @@ class _CalendarHeader extends StatelessWidget {
               showLunar ? RemixIcons.eye_line : RemixIcons.eye_off_line,
             ),
           ),
-          AppPopupMenuButton<_CalendarMenuAction>(
+          AppPopupMenuButton(
             tooltip: '更多',
             icon: RemixIcons.more_2_line,
-            onSelected: (action) {
-              switch (action) {
-                case _CalendarMenuAction.today:
-                  onTodayPressed();
-              }
-            },
-            options: const [
-              AppPopupMenuOption(
-                value: _CalendarMenuAction.today,
+            items: [
+              AppPopupMenuAction(
                 label: '回到今天',
                 icon: RemixIcons.calendar_check_line,
+                onPressed: onTodayPressed,
               ),
             ],
           ),
@@ -202,8 +196,6 @@ class _HeaderIconButton extends StatelessWidget {
     );
   }
 }
-
-enum _CalendarMenuAction { today }
 
 class _CalendarContent extends StatelessWidget {
   const _CalendarContent({

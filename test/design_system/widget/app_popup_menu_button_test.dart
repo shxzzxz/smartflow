@@ -3,141 +3,57 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/token/component.dart';
+import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/widget/app_popup_menu_button.dart';
 
 void main() {
-  Future<void> pumpMenu(
-    WidgetTester tester, {
-    int? selected,
-    ValueChanged<int>? onSelected,
-  }) async {
+  testWidgets('keeps a 48dp trigger and a content-sized menu', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light(),
         home: Scaffold(
           body: Center(
-            child: AppPopupMenuButton<int>(
-              tooltip: '图表设置',
-              icon: RemixIcons.settings_3_line,
-              selected: selected,
-              onSelected: onSelected ?? (_) {},
-              options: const [
-                AppPopupMenuOption(
-                  value: 0,
-                  label: '柱状图',
-                  icon: RemixIcons.bar_chart_line,
-                ),
-                AppPopupMenuOption(
-                  value: 1,
-                  label: '曲线',
-                  icon: RemixIcons.line_chart_line,
-                ),
-              ],
+            child: AppPopupMenuButton(
+              tooltip: '更多',
+              icon: RemixIcons.more_2_fill,
+              items: [AppPopupMenuAction(label: '调整分类预算顺序', onPressed: () {})],
             ),
           ),
         ),
       ),
     );
-  }
-
-  testWidgets('keeps the trigger compact but the menu content-sized', (
-    tester,
-  ) async {
-    int? tapped;
-    await pumpMenu(tester, selected: 1, onSelected: (value) => tapped = value);
 
     expect(
-      tester.getSize(find.byType(AppPopupMenuButton<int>)).height,
-      lessThanOrEqualTo(40),
+      tester.getSize(find.byType(AppPopupMenuButton)),
+      const Size.square(AppSpacing.space48),
     );
 
-    await tester.tap(find.byType(AppPopupMenuButton<int>));
+    await tester.tap(find.byTooltip('更多'));
     await tester.pumpAndSettle();
 
-    // 菜单宽度由内容与最小宽度决定，不受触发按钮尺寸约束。
     expect(
-      tester.getSize(find.widgetWithText(PopupMenuItem<int>, '柱状图')).width,
+      tester.getSize(find.byType(MenuItemButton)).width,
       greaterThanOrEqualTo(AppComponentTokens.menuMinWidth),
     );
-
-    await tester.tap(find.text('柱状图'));
-    await tester.pumpAndSettle();
-    expect(tapped, 0);
   });
 
-  testWidgets('marks the selected option only in single-select menus', (
+  testWidgets('toggle options update immediately and keep the menu open', (
     tester,
   ) async {
-    await pumpMenu(tester, selected: 1);
-    await tester.tap(find.byType(AppPopupMenuButton<int>));
-    await tester.pumpAndSettle();
-
-    expect(find.byIcon(RemixIcons.check_line), findsOneWidget);
-    final checkX = tester.getCenter(find.byIcon(RemixIcons.check_line)).dx;
-    final labelX = tester.getCenter(find.text('曲线')).dx;
-    expect(checkX, greaterThan(labelX));
-  });
-
-  testWidgets('omits check marks for action menus', (tester) async {
-    await pumpMenu(tester);
-    await tester.tap(find.byType(AppPopupMenuButton<int>));
-    await tester.pumpAndSettle();
-
-    expect(find.text('柱状图'), findsOneWidget);
-    expect(find.byIcon(RemixIcons.check_line), findsNothing);
-  });
-
-  testWidgets('renders toggle options with a trailing switch', (tester) async {
-    int? tapped;
+    bool? changedValue;
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light(),
         home: Scaffold(
           body: Center(
-            child: AppPopupMenuButton<int>(
-              tooltip: '视图设置',
-              icon: RemixIcons.settings_3_line,
-              onSelected: (value) => tapped = value,
-              options: const [
-                AppPopupMenuOption(value: 0, label: '显示图例', switchValue: true),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
-    await tester.tap(find.byType(AppPopupMenuButton<int>));
-    await tester.pumpAndSettle();
-
-    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
-
-    // 开关只展示状态，点击整个条目（含开关区域）都触发选择。
-    await tester.tap(find.byType(Switch), warnIfMissed: false);
-    await tester.pumpAndSettle();
-    expect(tapped, 0);
-  });
-
-  testWidgets('keeps custom disabled menu content interactive', (tester) async {
-    var controlChanged = false;
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light(),
-        home: Scaffold(
-          body: Center(
-            child: AppPopupMenuButton<int>(
+            child: AppPopupMenuButton(
               tooltip: '页面设置',
               icon: RemixIcons.settings_3_line,
-              onSelected: (_) {},
-              options: [
-                AppPopupMenuOption(
-                  value: 0,
-                  label: '下拉新增交易',
-                  enabled: false,
-                  child: TextButton(
-                    onPressed: () => controlChanged = true,
-                    child: const Text('灵敏'),
-                  ),
+              items: [
+                AppPopupMenuToggle(
+                  label: '显示图例',
+                  value: false,
+                  onChanged: (value) => changedValue = value,
                 ),
               ],
             ),
@@ -146,11 +62,159 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byType(AppPopupMenuButton<int>));
+    await tester.tap(find.byType(AppPopupMenuButton));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('灵敏'));
+    await tester.tap(find.text('显示图例'));
     await tester.pumpAndSettle();
 
-    expect(controlChanged, isTrue);
+    expect(changedValue, isTrue);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+    expect(find.text('显示图例'), findsOneWidget);
+  });
+
+  testWidgets('action options invoke their command and close the menu', (
+    tester,
+  ) async {
+    var invocationCount = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Center(
+            child: AppPopupMenuButton(
+              tooltip: '更多',
+              icon: RemixIcons.more_2_fill,
+              items: [
+                AppPopupMenuAction(
+                  label: '调整顺序',
+                  onPressed: () => invocationCount += 1,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('更多'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('调整顺序'));
+    await tester.pumpAndSettle();
+
+    expect(invocationCount, 1);
+    expect(find.text('调整顺序'), findsNothing);
+  });
+
+  testWidgets('action options support a disabled state', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: const Scaffold(
+          body: Center(
+            child: AppPopupMenuButton(
+              tooltip: '更多',
+              icon: RemixIcons.more_2_fill,
+              items: [AppPopupMenuAction(label: '暂不可用', onPressed: null)],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('更多'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<MenuItemButton>(find.byType(MenuItemButton)).enabled,
+      isFalse,
+    );
+  });
+
+  testWidgets('choice options update their selection and keep the menu open', (
+    tester,
+  ) async {
+    var selected = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Center(
+            child: StatefulBuilder(
+              builder: (context, setState) {
+                return AppPopupMenuButton(
+                  tooltip: '图表设置',
+                  icon: RemixIcons.settings_3_line,
+                  items: [
+                    AppPopupMenuChoice(
+                      label: '柱状图',
+                      selected: selected == 0,
+                      onPressed: () => setState(() => selected = 0),
+                    ),
+                    AppPopupMenuChoice(
+                      label: '曲线',
+                      selected: selected == 1,
+                      onPressed: () => setState(() => selected = 1),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('图表设置'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('曲线'));
+    await tester.pumpAndSettle();
+
+    expect(selected, 1);
+    expect(find.text('曲线'), findsOneWidget);
+    expect(find.byIcon(RemixIcons.check_line), findsOneWidget);
+    expect(
+      tester.getCenter(find.byIcon(RemixIcons.check_line)).dy,
+      closeTo(tester.getCenter(find.text('曲线')).dy, 1),
+    );
+  });
+
+  testWidgets('custom controls remain interactive without closing the menu', (
+    tester,
+  ) async {
+    var selected = '低';
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Center(
+            child: StatefulBuilder(
+              builder: (context, setState) {
+                return AppPopupMenuButton(
+                  tooltip: '页面设置',
+                  icon: RemixIcons.settings_3_line,
+                  items: [
+                    AppPopupMenuControl(
+                      label: '下拉新增交易',
+                      child: TextButton(
+                        onPressed: () => setState(() => selected = '高'),
+                        child: Text(selected),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('页面设置'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('低'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('下拉新增交易'), findsOneWidget);
+    expect(find.text('高'), findsOneWidget);
   });
 }

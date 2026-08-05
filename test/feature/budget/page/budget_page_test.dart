@@ -93,6 +93,18 @@ void main() {
     expect(find.text('月度支出目标'), findsNothing);
     expect(find.text('分类预算'), findsNothing);
     expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byTooltip('更多'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+
+    await tester.tap(find.text('复制上月预算'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+    expect(find.text('复制上月预算'), findsOneWidget);
+    expect(find.text('已开启复制上月预算'), findsOneWidget);
   });
 }
 

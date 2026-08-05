@@ -107,34 +107,30 @@ class BudgetPage extends ConsumerWidget {
                                 .shiftMonth(1),
                       ),
                     ),
-                    AppPopupMenuButton<String>(
+                    AppPopupMenuButton(
                       tooltip: '更多',
                       icon: RemixIcons.more_2_fill,
-                      onSelected: (value) {
-                        if (value == 'copy') {
-                          _toggleCopy(context, ref, state.copyEnabled);
-                        } else if (value == 'reorder') {
-                          if (state.content case BudgetContentLoaded(
-                            :final report,
-                          )) {
-                            _reorderCategoryGroups(
-                              context,
-                              ref,
-                              report: report,
-                              provider: viewModelProvider,
-                            );
-                          }
-                        }
-                      },
-                      options: [
-                        AppPopupMenuOption<String>(
-                          value: 'copy',
+                      items: [
+                        AppPopupMenuToggle(
                           label: '复制上月预算',
-                          switchValue: state.copyEnabled,
+                          value: state.copyEnabled,
+                          onChanged:
+                              (value) => _setCopyEnabled(context, ref, value),
                         ),
-                        const AppPopupMenuOption<String>(
-                          value: 'reorder',
+                        AppPopupMenuAction(
                           label: '调整分类预算顺序',
+                          onPressed: () {
+                            if (state.content case BudgetContentLoaded(
+                              :final report,
+                            )) {
+                              _reorderCategoryGroups(
+                                context,
+                                ref,
+                                report: report,
+                                provider: viewModelProvider,
+                              );
+                            }
+                          },
                         ),
                       ],
                     ),
@@ -178,11 +174,11 @@ class BudgetPage extends ConsumerWidget {
         .pickMonth(selected);
   }
 
-  void _toggleCopy(BuildContext context, WidgetRef ref, bool enabled) {
+  void _setCopyEnabled(BuildContext context, WidgetRef ref, bool enabled) {
     ref
         .read(budgetViewModelProvider(initialMonth).notifier)
-        .setCopyEnabled(!enabled);
-    _showMessage(context, !enabled ? '已开启复制上月预算' : '已关闭复制上月预算');
+        .setCopyEnabled(enabled);
+    _showMessage(context, enabled ? '已开启复制上月预算' : '已关闭复制上月预算');
   }
 
   void _showMessage(BuildContext context, String message) {

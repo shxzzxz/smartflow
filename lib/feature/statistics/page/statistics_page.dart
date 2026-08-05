@@ -359,22 +359,24 @@ class _CashflowSection extends ConsumerWidget {
             onChanged: notifier.selectChartMetric,
           ),
           const SizedBox(width: AppSpacing.space4),
-          AppPopupMenuButton<CashflowChartForm>(
+          AppPopupMenuButton(
             key: const ValueKey('statistics-cashflow-settings'),
             tooltip: '图表设置',
             icon: RemixIcons.settings_3_line,
-            selected: control.chartForm,
-            onSelected: notifier.selectChartForm,
-            options: const [
-              AppPopupMenuOption(
-                value: CashflowChartForm.bar,
+            items: [
+              AppPopupMenuChoice(
                 label: '柱状图',
                 icon: RemixIcons.bar_chart_line,
+                selected: control.chartForm == CashflowChartForm.bar,
+                onPressed:
+                    () => notifier.selectChartForm(CashflowChartForm.bar),
               ),
-              AppPopupMenuOption(
-                value: CashflowChartForm.line,
+              AppPopupMenuChoice(
                 label: '曲线',
                 icon: RemixIcons.line_chart_line,
+                selected: control.chartForm == CashflowChartForm.line,
+                onPressed:
+                    () => notifier.selectChartForm(CashflowChartForm.line),
               ),
             ],
           ),

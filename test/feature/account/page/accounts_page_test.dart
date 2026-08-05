@@ -168,7 +168,7 @@ void main() {
     await tester.tap(find.byTooltip('更多操作'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('隐藏余额'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(
       find.descendant(
