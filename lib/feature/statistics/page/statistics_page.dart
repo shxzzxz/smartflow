@@ -5,7 +5,6 @@ import 'package:remixicon/remixicon.dart';
 
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
-import '../../../design_system/token/chart.dart';
 import '../../../design_system/token/component.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
@@ -19,6 +18,7 @@ import '../../../widget/business/finance/cashflow_summary_card.dart';
 import '../../../widget/business/finance/finance_tone.dart';
 import '../../../widget/business/finance/money_text.dart';
 import '../../../widget/business/analytics/analysis_section_card.dart';
+import '../../../widget/business/analytics/category_progress_list_item.dart';
 import '../../../widget/business/analytics/chart/app_chart_empty_state.dart';
 import '../presentation/statistics_presentation.dart';
 import '../view_model/statistics_view_model.dart';
@@ -603,79 +603,12 @@ class _CategoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return InkWell(
+    return CategoryProgressListItem(
+      title: item.title,
+      progress: item.progress,
+      color: color,
+      trailing: trailing,
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.space10),
-        child: Row(
-          children: [
-            Container(
-              width: AppSpacing.space12,
-              height: AppSpacing.space12,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: AppSpacing.space10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    style: context.appTextStyles.listTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: AppSpacing.space6),
-                  _CategoryProgressBar(progress: item.progress, color: color),
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.space8),
-            trailing,
-            const SizedBox(width: AppSpacing.space4),
-            Icon(
-              RemixIcons.arrow_right_s_line,
-              color: colors.onSurfaceVariant,
-              size: AppSpacing.space20,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryProgressBar extends StatelessWidget {
-  const _CategoryProgressBar({required this.progress, required this.color});
-
-  final double progress;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final radius = BorderRadius.circular(
-      AppChartGeometry.categoryProgressHeight,
-    );
-    return SizedBox(
-      height: AppChartGeometry.categoryProgressHeight,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: colors.surfaceContainerHighest,
-          borderRadius: radius,
-        ),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: FractionallySizedBox(
-            widthFactor: progress.clamp(0, 1),
-            heightFactor: 1,
-            child: DecoratedBox(
-              decoration: BoxDecoration(color: color, borderRadius: radius),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

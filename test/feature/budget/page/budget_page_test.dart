@@ -10,7 +10,7 @@ import 'package:smartflow/feature/shared/provider/current_date_time_provider.dar
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 
 void main() {
-  testWidgets('shows total usage trend and grouped parent-child budgets', (
+  testWidgets('shows budget trend and grouped parent-child budgets', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(360, 800);
@@ -89,15 +89,9 @@ void main() {
     expect(find.text('剩余 700.00'), findsOneWidget);
     expect(find.text('剩余 300.00'), findsOneWidget);
     expect(tester.takeException(), isNull);
-
-    await tester.tap(find.byTooltip('编辑总预算'));
-    await tester.pumpAndSettle();
-
-    expect(find.widgetWithText(FilledButton, '保存'), findsOneWidget);
-    expect(
-      tester.widget<EditableText>(find.byType(EditableText)).controller.text,
-      '2000.00',
-    );
+    expect(find.byTooltip('编辑总预算'), findsNothing);
+    expect(find.text('月度支出目标'), findsNothing);
+    expect(find.text('分类预算'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

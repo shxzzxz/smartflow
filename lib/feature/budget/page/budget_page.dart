@@ -10,6 +10,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_month_picker.dart';
 import '../../../design_system/widget/app_page_header.dart';
+import '../../../design_system/widget/app_popup_menu_button.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../feature/shared/presentation/transaction_list_presentation.dart';
 import '../../../widget/business/finance/cashflow_summary_card.dart';
@@ -19,6 +20,8 @@ import '../../../widget/business/finance/money_text.dart';
 import '../../../widget/business/icon/business_icon.dart';
 import '../../../widget/business/icon/business_icon_bubble.dart';
 import '../../../widget/business/analytics/analysis_section_card.dart';
+import '../../../widget/business/analytics/category_progress_list_item.dart';
+import '../../../widget/business/category/tree_select.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/budget_view_model.dart';
 import '../widget/budget_trend_chart.dart';
@@ -43,10 +46,31 @@ class BudgetPage extends ConsumerWidget {
                 AppSpacing.space16,
                 AppSpacing.space4,
               ),
-              child: const AppPageHeader(
+              child: AppPageHeader(
                 title: '预算',
-                subtitle: '月度支出目标',
                 showBackButton: true,
+                actions: [
+                  AppHeaderIconButton(
+                    icon: RemixIcons.add_line,
+                    tooltip: '新增预算',
+                    onPressed:
+                        () => _addCategoryBudget(
+                          context,
+                          ref,
+                          report:
+                              state.content is BudgetContentLoaded
+                                  ? (state.content as BudgetContentLoaded)
+                                      .report
+                                  : null,
+                          categories:
+                              state.content is BudgetContentLoaded
+                                  ? (state.content as BudgetContentLoaded)
+                                      .categories
+                                  : const [],
+                          provider: viewModelProvider,
+                        ),
+                  ),
+                ],
               ),
             ),
             Padding(
@@ -58,18 +82,63 @@ class BudgetPage extends ConsumerWidget {
               ),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: AppMonthSelector(
-                  visibleMonth: state.visibleMonth,
-                  onPreviousMonth:
-                      () => ref
-                          .read(budgetViewModelProvider(initialMonth).notifier)
-                          .shiftMonth(-1),
-                  onMonthPressed:
-                      () => _pickMonth(context, ref, state.visibleMonth),
-                  onNextMonth:
-                      () => ref
-                          .read(budgetViewModelProvider(initialMonth).notifier)
-                          .shiftMonth(1),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: AppMonthSelector(
+                        visibleMonth: state.visibleMonth,
+                        onPreviousMonth:
+                            () => ref
+                                .read(
+                                  budgetViewModelProvider(
+                                    initialMonth,
+                                  ).notifier,
+                                )
+                                .shiftMonth(-1),
+                        onMonthPressed:
+                            () => _pickMonth(context, ref, state.visibleMonth),
+                        onNextMonth:
+                            () => ref
+                                .read(
+                                  budgetViewModelProvider(
+                                    initialMonth,
+                                  ).notifier,
+                                )
+                                .shiftMonth(1),
+                      ),
+                    ),
+                    AppPopupMenuButton<String>(
+                      tooltip: '更多',
+                      icon: RemixIcons.more_2_fill,
+                      onSelected: (value) {
+                        if (value == 'copy') {
+                          _toggleCopy(context, ref, state.copyEnabled);
+                        } else if (value == 'reorder') {
+                          if (state.content case BudgetContentLoaded(
+                            :final report,
+                          )) {
+                            _reorderCategoryGroups(
+                              context,
+                              ref,
+                              report: report,
+                              provider: viewModelProvider,
+                            );
+                          }
+                        }
+                      },
+                      options: [
+                        AppPopupMenuOption<String>(
+                          value: 'copy',
+                          label: '复制上月预算',
+                          switchValue: state.copyEnabled,
+                        ),
+                        const AppPopupMenuOption<String>(
+                          value: 'reorder',
+                          label: '调整分类预算顺序',
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -107,6 +176,69 @@ class BudgetPage extends ConsumerWidget {
     ref
         .read(budgetViewModelProvider(initialMonth).notifier)
         .pickMonth(selected);
+  }
+
+  void _toggleCopy(BuildContext context, WidgetRef ref, bool enabled) {
+    ref
+        .read(budgetViewModelProvider(initialMonth).notifier)
+        .setCopyEnabled(!enabled);
+    _showMessage(context, !enabled ? '已开启复制上月预算' : '已关闭复制上月预算');
+  }
+
+  void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _addCategoryBudget(
+    BuildContext context,
+    WidgetRef ref, {
+    required MonthlyBudgetReport? report,
+    required List<CategoryNode> categories,
+    required BudgetViewModelProvider provider,
+  }) async {
+    if (report == null) return;
+    final Set<String> budgetedIds = {
+      for (final group in report.categoryGroups)
+        for (final budget in group.budgets)
+          if (budget.categoryId != null) budget.categoryId!,
+    };
+    final available =
+        [
+              for (final node in categories)
+                CategoryNode(
+                  account: node.account,
+                  children: [
+                    for (final child in node.children)
+                      if (!budgetedIds.contains(child.id)) child,
+                  ],
+                ),
+            ]
+            .where(
+              (node) =>
+                  !budgetedIds.contains(node.account.id) ||
+                  node.children.isNotEmpty,
+            )
+            .toList();
+    if (available.isEmpty) {
+      _showMessage(context, '所有支出分类都已设置预算');
+      return;
+    }
+    final selected = await showModalBottomSheet<Account>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => TreeSelect(nodes: available, disabledIds: budgetedIds),
+    );
+    if (selected == null || !context.mounted) return;
+    await _editBudget(
+      context,
+      ref,
+      provider: provider,
+      categoryId: selected.id,
+      title: selected.name,
+    );
   }
 }
 
@@ -168,65 +300,17 @@ class _BudgetContent extends ConsumerWidget {
         AppSpacing.space24,
       ),
       children: [
-        _SectionHeader(
-          title: '总预算',
-          actions: [
-            IconButton(
-              tooltip: report.totalBudget == null ? '设置总预算' : '编辑总预算',
-              icon: Icon(
-                report.totalBudget == null
-                    ? RemixIcons.add_line
-                    : RemixIcons.edit_line,
-              ),
-              onPressed:
-                  () => _editBudget(
-                    context,
-                    ref,
-                    provider: viewModelProvider,
-                    existing: report.totalBudget,
-                  ),
-            ),
-          ],
-        ),
         if (report.totalBudget case final total?) ...[
           _BudgetSummary(progress: total),
           const SizedBox(height: AppSpacing.space16),
           _TrendSection(month: report.month, progress: total),
         ] else
           const _EmptyTotalBudget(),
-        const SizedBox(height: AppSpacing.space20),
-        _SectionHeader(
-          title: '分类预算',
-          actions: [
-            if (report.categoryGroups.length > 1)
-              IconButton(
-                tooltip: '调整分类预算顺序',
-                icon: const Icon(RemixIcons.sort_desc),
-                onPressed:
-                    () => _reorderGroups(
-                      context,
-                      ref,
-                      provider: viewModelProvider,
-                    ),
-              ),
-            IconButton(
-              tooltip: '新增分类预算',
-              icon: const Icon(RemixIcons.add_line),
-              onPressed:
-                  categories.isEmpty
-                      ? null
-                      : () => _addCategoryBudget(
-                        context,
-                        ref,
-                        provider: viewModelProvider,
-                      ),
-            ),
-          ],
-        ),
+        const SizedBox(height: AppSpacing.space12),
         if (report.categoryGroups.isEmpty)
           const _BudgetMessage(
             icon: RemixIcons.price_tag_3_line,
-            message: '还没有分类预算',
+            message: '还没有设置预算',
           )
         else
           for (
@@ -243,109 +327,6 @@ class _BudgetContent extends ConsumerWidget {
           ],
       ],
     );
-  }
-
-  Future<void> _addCategoryBudget(
-    BuildContext context,
-    WidgetRef ref, {
-    required BudgetViewModelProvider provider,
-  }) async {
-    final budgetedIds = {
-      for (final group in report.categoryGroups)
-        for (final budget in group.budgets) budget.categoryId,
-    };
-    final available = <(Account, String)>[
-      for (final node in categories) ...[
-        if (!budgetedIds.contains(node.account.id))
-          (node.account, node.account.name),
-        for (final child in node.children)
-          if (!budgetedIds.contains(child.id))
-            (child, '${node.account.name} / ${child.name}'),
-      ],
-    ];
-    if (available.isEmpty) {
-      _showMessage(context, '所有支出分类都已设置预算');
-      return;
-    }
-    final selected = await showModalBottomSheet<(Account, String)>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder:
-          (sheetContext) => SafeArea(
-            child: FractionallySizedBox(
-              heightFactor: .72,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.space20,
-                      0,
-                      AppSpacing.space20,
-                      AppSpacing.space8,
-                    ),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        '选择支出分类',
-                        style: sheetContext.appTextStyles.sectionTitleStrong,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      children: [
-                        for (final item in available)
-                          ListTile(
-                            leading: BusinessIconBubble(
-                              size: AppSpacing.space40,
-                              child: BusinessIcon(
-                                iconKey: item.$1.iconKey,
-                                size: AppSpacing.space24,
-                              ),
-                            ),
-                            title: Text(item.$2),
-                            onTap: () => Navigator.of(sheetContext).pop(item),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-    );
-    if (selected == null || !context.mounted) return;
-    await _editBudget(
-      context,
-      ref,
-      provider: provider,
-      categoryId: selected.$1.id,
-      title: selected.$2,
-    );
-  }
-
-  Future<void> _reorderGroups(
-    BuildContext context,
-    WidgetRef ref, {
-    required BudgetViewModelProvider provider,
-  }) async {
-    final reordered = await showModalBottomSheet<List<BudgetCategoryGroup>>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (_) => _BudgetGroupReorderSheet(groups: report.categoryGroups),
-    );
-    if (reordered == null || !context.mounted) return;
-    final ids = [
-      for (final group in reordered)
-        for (final budget in group.budgets) budget.id,
-    ];
-    final outcome = await ref
-        .read(provider.notifier)
-        .reorderCategoryBudgets(ids);
-    if (!context.mounted) return;
-    _showOutcome(context, outcome, '分类预算顺序已更新');
   }
 }
 
@@ -373,7 +354,6 @@ class _BudgetDetailContent extends ConsumerWidget {
           ),
           child: AppPageHeader(
             title: progress.name,
-            subtitle: '${month.year}年${month.month}月分类预算',
             showBackButton: true,
             actions: [
               AppHeaderIconButton(
@@ -534,6 +514,35 @@ class _BudgetRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    if (progress case final value?) {
+      return CategoryProgressListItem(
+        title: name,
+        progress: value.usedRatio,
+        color: colors.primary,
+        trailing: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            MoneyText(
+              money: value.budget,
+              semantic: MoneySemantic.neutral,
+              style: context.appTextStyles.amountList,
+            ),
+            const SizedBox(height: AppSpacing.space2),
+            Text(
+              value.isOverspent
+                  ? '超支 ${value.remaining.abs().format()}'
+                  : '剩余 ${value.remaining.format()}',
+              style: context.appTextStyles.listSupporting.copyWith(
+                color:
+                    value.isOverspent ? colors.error : colors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+        onTap: onTap ?? () {},
+      );
+    }
     return InkWell(
       onTap: onTap,
       child: ConstrainedBox(
@@ -591,28 +600,6 @@ class _BudgetRow extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title, this.actions = const []});
-
-  final String title;
-  final List<Widget> actions;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: AppSpacing.space48,
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(title, style: context.appTextStyles.sectionTitleStrong),
-          ),
-          ...actions,
-        ],
       ),
     );
   }
@@ -882,6 +869,27 @@ Future<void> _editBudget(
       );
   if (!context.mounted) return;
   _showOutcome(context, outcome, existing == null ? '预算已设置' : '预算已更新');
+}
+
+Future<void> _reorderCategoryGroups(
+  BuildContext context,
+  WidgetRef ref, {
+  required MonthlyBudgetReport report,
+  required BudgetViewModelProvider provider,
+}) async {
+  final reordered = await showModalBottomSheet<List<BudgetCategoryGroup>>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (_) => _BudgetGroupReorderSheet(groups: report.categoryGroups),
+  );
+  if (reordered == null || !context.mounted) return;
+  final ids = [
+    for (final group in reordered)
+      for (final budget in group.budgets) budget.id,
+  ];
+  final outcome = await ref.read(provider.notifier).reorderCategoryBudgets(ids);
+  if (context.mounted) _showOutcome(context, outcome, '分类预算顺序已更新');
 }
 
 void _showOutcome(

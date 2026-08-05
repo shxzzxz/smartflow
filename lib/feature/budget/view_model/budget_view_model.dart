@@ -1,5 +1,6 @@
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'dart:async';
 
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_command_api.dart';
@@ -25,12 +26,36 @@ class BudgetViewModel extends _$BudgetViewModel {
   }
 
   void pickMonth(DateTime month) {
-    state = BudgetControlState(visibleMonth: DateTime(month.year, month.month));
+    state = BudgetControlState(
+      visibleMonth: DateTime(month.year, month.month),
+      copyEnabled: state.copyEnabled,
+    );
+    if (state.copyEnabled) unawaited(copyPreviousMonthBudgets());
   }
 
   void shiftMonth(int delta) {
     final month = state.visibleMonth;
     pickMonth(DateTime(month.year, month.month + delta));
+  }
+
+  void setCopyEnabled(bool enabled) {
+    state = BudgetControlState(
+      visibleMonth: state.visibleMonth,
+      copyEnabled: enabled,
+    );
+    if (enabled) unawaited(copyPreviousMonthBudgets());
+  }
+
+  Future<UiActionOutcome<bool>> copyPreviousMonthBudgets() {
+    return guardUiAction(_logger, 'copy previous month budgets', () {
+      return ref
+          .read(budgetAppServiceProvider)
+          .copyPreviousMonthBudgets(
+            CopyPreviousMonthBudgetsCommand(
+              month: MonthKey.fromDate(state.visibleMonth),
+            ),
+          );
+    });
   }
 
   Future<UiActionOutcome<void>> setBudget({
@@ -83,12 +108,14 @@ BudgetPageState budgetPage(Ref ref, DateTime? initialMonth) {
   if (report case AsyncError()) {
     return BudgetPageState(
       visibleMonth: control.visibleMonth,
+      copyEnabled: control.copyEnabled,
       content: const BudgetContentState.error(message: '预算加载失败，请稍后重试'),
     );
   }
   if (categories case AsyncError()) {
     return BudgetPageState(
       visibleMonth: control.visibleMonth,
+      copyEnabled: control.copyEnabled,
       content: const BudgetContentState.error(message: '支出分类加载失败，请稍后重试'),
     );
   }
@@ -97,11 +124,13 @@ BudgetPageState budgetPage(Ref ref, DateTime? initialMonth) {
   if (reportValue == null || categoryValues == null) {
     return BudgetPageState(
       visibleMonth: control.visibleMonth,
+      copyEnabled: control.copyEnabled,
       content: const BudgetContentState.loading(),
     );
   }
   return BudgetPageState(
     visibleMonth: control.visibleMonth,
+    copyEnabled: control.copyEnabled,
     content: BudgetContentState.loaded(
       report: reportValue,
       categories: categoryValues,
@@ -130,15 +159,24 @@ BudgetDetailPageState budgetDetailPage(
 }
 
 class BudgetControlState {
-  const BudgetControlState({required this.visibleMonth});
+  const BudgetControlState({
+    required this.visibleMonth,
+    this.copyEnabled = false,
+  });
 
   final DateTime visibleMonth;
+  final bool copyEnabled;
 }
 
 class BudgetPageState {
-  const BudgetPageState({required this.visibleMonth, required this.content});
+  const BudgetPageState({
+    required this.visibleMonth,
+    required this.copyEnabled,
+    required this.content,
+  });
 
   final DateTime visibleMonth;
+  final bool copyEnabled;
   final BudgetContentState content;
 }
 

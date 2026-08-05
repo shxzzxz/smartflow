@@ -1,5 +1,6 @@
 import '../../../../core/error/app_exception.dart';
 import '../../../../core/id/id_generator.dart';
+import '../../../../core/time/month_key.dart';
 import '../../../../domain/ledger/entity/budget.dart';
 import '../../../../domain/ledger/port/account_repository.dart';
 import '../../../../domain/ledger/port/budget_repository.dart';
@@ -14,6 +15,10 @@ abstract interface class BudgetAppService {
   Future<void> deleteBudget(DeleteBudgetCommand command);
 
   Future<void> reorderCategoryBudgets(ReorderCategoryBudgetsCommand command);
+
+  Future<bool> copyPreviousMonthBudgets(
+    CopyPreviousMonthBudgetsCommand command,
+  );
 }
 
 class BudgetAppServiceImpl implements BudgetAppService {
@@ -118,6 +123,31 @@ class BudgetAppServiceImpl implements BudgetAppService {
       await _budgets.saveAll([
         for (final id in command.orderedBudgetIds) budgetsById[id]!,
       ]);
+    });
+  }
+
+  @override
+  Future<bool> copyPreviousMonthBudgets(
+    CopyPreviousMonthBudgetsCommand command,
+  ) {
+    return _runner.run(() async {
+      if ((await _budgets.findByMonth(command.month)).isNotEmpty) return false;
+      final previous = MonthKey.fromDate(
+        DateTime(command.month.year, command.month.month - 1),
+      );
+      final source = await _budgets.findByMonth(previous);
+      if (source.isEmpty) return false;
+      await _budgets.saveAll([
+        for (final item in source)
+          Budget(
+            id: _idGenerator.newId(),
+            month: command.month,
+            categoryId: item.categoryId,
+            amount: item.amount,
+            sortOrder: item.sortOrder,
+          ),
+      ]);
+      return true;
     });
   }
 }

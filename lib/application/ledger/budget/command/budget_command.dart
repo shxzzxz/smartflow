@@ -28,3 +28,9 @@ class ReorderCategoryBudgetsCommand {
   final MonthKey month;
   final List<String> orderedBudgetIds;
 }
+
+class CopyPreviousMonthBudgetsCommand {
+  const CopyPreviousMonthBudgetsCommand({required this.month});
+
+  final MonthKey month;
+}
