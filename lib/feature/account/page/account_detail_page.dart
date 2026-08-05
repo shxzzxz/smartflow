@@ -41,18 +41,24 @@ class AccountDetailPage extends ConsumerWidget {
             ),
           if (loadedAccount != null && !loadedAccount.isArchived)
             IconButton(
-              onPressed: () => _confirmDelete(context, ref),
-              color:
-                  Theme.of(context).extension<AppThemeExtension>()?.danger ??
-                  Theme.of(context).colorScheme.error,
-              icon: const Icon(RemixIcons.delete_bin_line),
-              tooltip: '删除账户',
+              onPressed: () => _confirmArchive(context, ref),
+              icon: const Icon(RemixIcons.archive_line),
+              tooltip: '归档账户',
             ),
           if (loadedAccount != null && loadedAccount.isArchived)
             IconButton(
               onPressed: () => _restore(context, ref),
               icon: const Icon(RemixIcons.restart_line),
               tooltip: '恢复账户',
+            ),
+          if (loadedAccount != null && loadedAccount.isArchived)
+            IconButton(
+              onPressed: () => _confirmPermanentDelete(context, ref),
+              color:
+                  Theme.of(context).extension<AppThemeExtension>()?.danger ??
+                  Theme.of(context).colorScheme.error,
+              icon: const Icon(RemixIcons.delete_bin_line),
+              tooltip: '永久删除账户',
             ),
         ],
       ),
@@ -105,16 +111,13 @@ class AccountDetailPage extends ConsumerWidget {
     }
   }
 
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+  Future<void> _confirmArchive(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        final danger =
-            Theme.of(dialogContext).extension<AppThemeExtension>()?.danger ??
-            Theme.of(dialogContext).colorScheme.error;
         return AlertDialog(
-          title: const Text('删除账户？'),
-          content: const Text('删除后账户将不再显示，但历史交易会保留。'),
+          title: const Text('归档账户？'),
+          content: const Text('归档后账户将不再用于新交易，历史数据会保留且可以恢复。'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -122,8 +125,7 @@ class AccountDetailPage extends ConsumerWidget {
             ),
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: TextButton.styleFrom(foregroundColor: danger),
-              child: const Text('删除'),
+              child: const Text('归档'),
             ),
           ],
         );
@@ -134,7 +136,52 @@ class AccountDetailPage extends ConsumerWidget {
     final outcome =
         await ref
             .read(accountDetailViewModelProvider(accountId).notifier)
-            .deleteAccount();
+            .archiveAccount();
+    if (!context.mounted) return;
+
+    switch (outcome) {
+      case UiActionSuccess<void>():
+        context.go('/account');
+      case UiActionFailure<void>(:final error):
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
+  Future<void> _confirmPermanentDelete(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        final danger =
+            Theme.of(dialogContext).extension<AppThemeExtension>()?.danger ??
+            Theme.of(dialogContext).colorScheme.error;
+        return AlertDialog(
+          title: const Text('永久删除账户？'),
+          content: const Text('账户仅在没有任何业务数据时才能删除。永久删除后无法恢复。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: TextButton.styleFrom(foregroundColor: danger),
+              child: const Text('永久删除'),
+            ),
+          ],
+        );
+      },
+    );
+    if (!context.mounted || confirmed != true) return;
+
+    final outcome =
+        await ref
+            .read(accountDetailViewModelProvider(accountId).notifier)
+            .deletePermanently();
     if (!context.mounted) return;
 
     switch (outcome) {

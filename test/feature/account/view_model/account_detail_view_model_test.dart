@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
+import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
@@ -140,14 +141,14 @@ void main() {
       expect(bills.map((bill) => bill.period.month), [7, 6]);
     });
 
-    test('deletes the account through the archive command', () async {
+    test('archives the account through the archive command', () async {
       final commandService = _FakeAccountAppService();
       final container = _deleteContainer(commandService);
 
       final outcome =
           await container
               .read(accountDetailViewModelProvider('cash').notifier)
-              .deleteAccount();
+              .archiveAccount();
 
       expect(outcome, isA<UiActionSuccess<void>>());
       expect(commandService.archiveCommands.single.id, 'cash');
@@ -165,7 +166,7 @@ void main() {
       final outcome =
           await container
               .read(accountDetailViewModelProvider('cash').notifier)
-              .deleteAccount();
+              .archiveAccount();
 
       expect(outcome, isA<UiActionFailure<void>>());
       final failure = outcome as UiActionFailure<void>;
@@ -183,7 +184,7 @@ void main() {
         final outcome =
             await container
                 .read(accountDetailViewModelProvider('cash').notifier)
-                .deleteAccount();
+                .archiveAccount();
 
         expect(outcome, isA<UiActionFailure<void>>());
         final failure = outcome as UiActionFailure<void>;
@@ -191,19 +192,68 @@ void main() {
         expect(failure.error.message, '未知错误，请稍后重试。');
       },
     );
+
+    test('permanently deletes a fund account through ledger', () async {
+      final commandService = _FakeAccountAppService();
+      final container = _deleteContainer(commandService);
+
+      final outcome =
+          await container
+              .read(accountDetailViewModelProvider('cash').notifier)
+              .deletePermanently();
+
+      expect(outcome, isA<UiActionSuccess<void>>());
+      expect(commandService.deleteCommands.single.id, 'cash');
+    });
+
+    test('permanently deletes a credit account through credit', () async {
+      final ledgerService = _FakeAccountAppService();
+      final creditService = _FakeCreditAccountAppService();
+      final creditAccount = Account(
+        id: 'card',
+        name: '信用卡',
+        type: AccountType.liability,
+        profileKey: 'credit.credit',
+        balance: Money.zero(),
+        archivedAt: DateTime(2026),
+      );
+      final container = _deleteContainer(
+        ledgerService,
+        account: creditAccount,
+        creditService: creditService,
+      );
+
+      final outcome =
+          await container
+              .read(accountDetailViewModelProvider('card').notifier)
+              .deletePermanently();
+
+      expect(outcome, isA<UiActionSuccess<void>>());
+      expect(creditService.deleteCommands.single.accountId, 'card');
+      expect(ledgerService.deleteCommands, isEmpty);
+    });
   });
 }
 
-ProviderContainer _deleteContainer(_FakeAccountAppService commandService) {
+ProviderContainer _deleteContainer(
+  _FakeAccountAppService commandService, {
+  Account? account,
+  _FakeCreditAccountAppService? creditService,
+}) {
   final transactionService = _FakeTransactionQueryService();
-  final accountQueryService = _FakeAccountQueryService(accountsById: _accounts);
+  final selectedAccount = account ?? _accounts['cash']!;
+  final accountQueryService = _FakeAccountQueryService(
+    accountsById: {selectedAccount.id: selectedAccount},
+  );
   return _container(
     transactionService,
     accountQueryService,
     overrides: [
       accountAppServiceProvider.overrideWithValue(commandService),
+      if (creditService != null)
+        creditAccountAppServiceProvider.overrideWithValue(creditService),
       accountListProvider.overrideWith(
-        (ref) => Stream.value([_account('cash', '现金')]),
+        (ref) => Stream.value([selectedAccount]),
       ),
       creditLiabilityAccountsByAccountIdProvider.overrideWith(
         (ref) => Stream.value(const {}),
@@ -402,6 +452,7 @@ class _FakeAccountAppService implements AccountAppService {
 
   final Object? exception;
   final archiveCommands = <ArchiveAccountCommand>[];
+  final deleteCommands = <DeleteAccountCommand>[];
 
   @override
   Future<Account> createAccount(CreateAccountCommand command) {
@@ -425,6 +476,27 @@ class _FakeAccountAppService implements AccountAppService {
     final exception = this.exception;
     if (exception != null) throw exception;
   }
+
+  @override
+  Future<void> deleteAccount(DeleteAccountCommand command) async {
+    deleteCommands.add(command);
+    final exception = this.exception;
+    if (exception != null) throw exception;
+  }
+}
+
+class _FakeCreditAccountAppService implements CreditAccountAppService {
+  final deleteCommands = <DeleteCreditLiabilityAccountCommand>[];
+
+  @override
+  Future<void> deleteAccount(
+    DeleteCreditLiabilityAccountCommand command,
+  ) async {
+    deleteCommands.add(command);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _ReplayStream<T> {

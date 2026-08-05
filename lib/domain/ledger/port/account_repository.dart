@@ -34,6 +34,6 @@ abstract interface class AccountRepository {
 
   Future<void> saveAll(Iterable<Account> accounts);
 
-  /// 物理删除。仅用于无分录引用且无子分类的分类，调用方负责前置校验。
+  /// 物理删除。仅用于无业务引用的分类或已归档用户账户，调用方负责前置校验。
   Future<void> delete(String id);
 }

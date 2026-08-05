@@ -1286,6 +1286,11 @@ class _FakeCreditAccountRepository implements CreditAccountRepository {
   }
 
   @override
+  Future<void> delete(String accountId) async {
+    accounts.remove(accountId);
+  }
+
+  @override
   Future<void> update(
     String accountId,
     CreditLiabilityAccountPersistencePatch patch,

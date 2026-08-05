@@ -741,8 +741,15 @@ class _Fixture {
       idGenerator: ids,
     );
     creditAccountAppService = CreditAccountAppServiceImpl(
-      ledger: LedgerCreditAccountPort(accountAppService),
+      ledger: LedgerCreditAccountPort(
+        accountAppService,
+        accountDeletion: accountAppService,
+      ),
       creditAccounts: creditAccountRepository,
+      bills: billRepository,
+      installments: installmentRepository,
+      repayments: repaymentRepository,
+      suppressions: DriftBillGenerationSuppressionRepository(database),
       transactionRunner: runner,
       idGenerator: ids,
     );

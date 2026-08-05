@@ -25,7 +25,11 @@ import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import 'package:smartflow/infrastructure/import/ledger_import_port.dart';
 import 'package:smartflow/infrastructure/credit/adapter/ledger_credit_account_port.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_bill_generation_suppression_repository.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_repository.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repository.dart';
 import 'package:smartflow/infrastructure/import/repository/drift_import_batch_repository.dart';
 import 'package:smartflow/infrastructure/import/repository/drift_import_mapping_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_account_query_repository.dart';
@@ -1261,8 +1265,15 @@ class _Fixture {
       categoryCommands: categoryCommands,
       systemAccounts: systemAccounts,
       creditAccounts: CreditAccountAppServiceImpl(
-        ledger: LedgerCreditAccountPort(accountCommands),
+        ledger: LedgerCreditAccountPort(
+          accountCommands,
+          accountDeletion: accountCommands,
+        ),
         creditAccounts: DriftCreditAccountRepository(database),
+        bills: DriftBillRepository(database),
+        installments: DriftInstallmentRepository(database),
+        repayments: DriftRepaymentRepository(database),
+        suppressions: DriftBillGenerationSuppressionRepository(database),
         transactionRunner: runner,
         idGenerator: ids,
       ),

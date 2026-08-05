@@ -10,6 +10,10 @@ enum CreditErrorCode implements AppErrorCode {
     code: 'credit.account.persistence_conflict',
     defaultMessage: '信贷账户数据已变化，请刷新后重试。',
   ),
+  accountInUse(
+    code: 'credit.account.in_use',
+    defaultMessage: '信贷账户存在业务数据，无法永久删除。',
+  ),
   contractNotFound(code: 'credit.contract.not_found', defaultMessage: '合同不存在。'),
   contractNotActive(
     code: 'credit.contract.not_active',

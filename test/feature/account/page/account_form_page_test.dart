@@ -319,4 +319,7 @@ class _FakeAccountAppService implements AccountAppService {
 
   @override
   Future<void> restoreAccount(RestoreAccountCommand command) async {}
+
+  @override
+  Future<void> deleteAccount(DeleteAccountCommand command) async {}
 }

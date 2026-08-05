@@ -30,15 +30,16 @@ enum LedgerErrorCode implements AppErrorCode {
     code: 'ledger.account.invalid_command',
     defaultMessage: '账户参数不完整或不合法。',
   ),
+  accountInUse(
+    code: 'ledger.account.in_use',
+    defaultMessage: '账户存在业务数据，无法永久删除。',
+  ),
   categoryNotFound(code: 'ledger.category.not_found', defaultMessage: '分类不存在。'),
   categoryUnavailable(
     code: 'ledger.category.unavailable',
     defaultMessage: '分类当前不可用。',
   ),
-  categoryInUse(
-    code: 'ledger.category.in_use',
-    defaultMessage: '分类已被交易引用。',
-  ),
+  categoryInUse(code: 'ledger.category.in_use', defaultMessage: '分类已被交易引用。'),
   categoryInvalidCommand(
     code: 'ledger.category.invalid_command',
     defaultMessage: '分类参数不完整或不合法。',

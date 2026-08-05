@@ -73,29 +73,115 @@ void main() {
       expect(transactionRunner.entered, true);
       expect(repository.account('cash').isArchived, false);
     });
+
+    group('permanent deletion', () {
+      test(
+        'physically deletes an archived account without business data',
+        () async {
+          final account = _account('cash', archived: true);
+          final repository = _FakeAccountRepository([account]);
+          final service = _service(repository);
+
+          await service.deleteAccount(const DeleteAccountCommand(id: 'cash'));
+
+          expect(repository.contains('cash'), isFalse);
+        },
+      );
+
+      test('rejects deleting an active account', () async {
+        final repository = _FakeAccountRepository([_account('cash')]);
+        final service = _service(repository);
+
+        await expectLater(
+          () => service.deleteAccount(const DeleteAccountCommand(id: 'cash')),
+          throwsA(_hasCode(LedgerErrorCode.accountUnavailable)),
+        );
+
+        expect(repository.contains('cash'), isTrue);
+      });
+
+      test('rejects deleting a credit-managed liability account', () async {
+        final repository = _FakeAccountRepository([
+          _account('card', type: AccountType.liability, archived: true),
+        ]);
+        final service = _service(repository);
+
+        await expectLater(
+          () => service.deleteAccount(const DeleteAccountCommand(id: 'card')),
+          throwsA(_hasCode(LedgerErrorCode.accountUnavailable)),
+        );
+
+        expect(repository.contains('card'), isTrue);
+      });
+
+      test('allows the dedicated credit deletion capability', () async {
+        final repository = _FakeAccountRepository([
+          _account('card', type: AccountType.liability, archived: true),
+        ]);
+        final service = _service(repository);
+
+        await service.deleteCreditManagedAccount(
+          const DeleteAccountCommand(id: 'card'),
+        );
+
+        expect(repository.contains('card'), isFalse);
+      });
+
+      test(
+        'rejects deleting an archived account referenced by entries',
+        () async {
+          final repository = _FakeAccountRepository([
+            _account('cash', archived: true),
+          ]);
+          final service = _service(repository, entryCounts: const {'cash': 1});
+
+          await expectLater(
+            () => service.deleteAccount(const DeleteAccountCommand(id: 'cash')),
+            throwsA(_hasCode(LedgerErrorCode.accountInUse)),
+          );
+
+          expect(repository.contains('cash'), isTrue);
+        },
+      );
+    });
   });
 }
 
-AccountAppService _service(
+Matcher _hasCode(LedgerErrorCode code) {
+  return isA<BusinessException>().having(
+    (exception) => exception.code,
+    'code',
+    code.code,
+  );
+}
+
+AccountAppServiceImpl _service(
   AccountRepository repository, {
   TransactionRunner transactionRunner = const _PassthroughTransactionRunner(),
+  Map<String, int> entryCounts = const {},
 }) {
   return AccountAppServiceImpl(
     repository,
     transactionRunner: transactionRunner,
     ledgerPostingService: _UnusedLedgerPostingService(),
-    transactionRepository: _UnusedTransactionRepository(),
+    transactionRepository: _FakeTransactionRepository(entryCounts),
     idGenerator: const _UnusedIdGenerator(),
   );
 }
 
-Account _account(String id, {SystemKey? systemKey}) {
+Account _account(
+  String id, {
+  SystemKey? systemKey,
+  AccountType type = AccountType.asset,
+  bool archived = false,
+}) {
   return Account(
     id: id,
     name: id,
-    type: AccountType.asset,
+    type: type,
     balance: Money.zero(),
     systemKey: systemKey,
+    archivedAt: archived ? DateTime(2026) : null,
   );
 }
 
@@ -106,6 +192,8 @@ class _FakeAccountRepository implements AccountRepository {
   final Map<String, Account> _accounts;
 
   Account account(String id) => _accounts[id]!;
+
+  bool contains(String id) => _accounts.containsKey(id);
 
   @override
   Future<void> create(Account account) async {
@@ -175,7 +263,24 @@ class _UnusedLedgerPostingService implements LedgerPostingService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _UnusedTransactionRepository implements TransactionRepository {
+class _FakeTransactionRepository implements TransactionRepository {
+  _FakeTransactionRepository(this.entryCounts);
+
+  final Map<String, int> entryCounts;
+
+  @override
+  Future<Map<String, int>> countEntriesByAccount(Set<String> accountIds) async {
+    return {
+      for (final id in accountIds)
+        if (entryCounts[id] case final int count when count > 0) id: count,
+    };
+  }
+
+  @override
+  Future<Map<String, int>> countReimbursementExpenseRefs(
+    Set<String> accountIds,
+  ) async => const {};
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -222,6 +222,8 @@ abstract interface class CreditAccountLedgerPort {
   Future<void> editLiabilityAccount(
     CreditLedgerEditLiabilityAccountCommand command,
   );
+
+  Future<void> deleteLiabilityAccount(String accountId);
 }
 
 abstract interface class CreditLedgerPort {

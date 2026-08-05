@@ -387,6 +387,11 @@ class _FakeCreditAccountAppService implements CreditAccountAppService {
   Future<void> editAccount(EditCreditLiabilityAccountCommand command) async {
     editCommands.add(command);
   }
+
+  @override
+  Future<void> deleteAccount(
+    DeleteCreditLiabilityAccountCommand command,
+  ) async {}
 }
 
 Account _account(
@@ -429,6 +434,11 @@ class _FakeAccountAppService implements AccountAppService {
 
   @override
   Future<void> restoreAccount(RestoreAccountCommand command) async {
+    _throwIfNeeded();
+  }
+
+  @override
+  Future<void> deleteAccount(DeleteAccountCommand command) async {
     _throwIfNeeded();
   }
 

@@ -8,6 +8,7 @@ import 'package:smartflow/domain/ledger/port/transaction_repository.dart';
 import 'package:smartflow/domain/ledger/service/account/account_factory.dart';
 import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
 import 'account_command.dart';
@@ -20,9 +21,16 @@ abstract interface class AccountAppService {
   Future<void> archiveAccount(ArchiveAccountCommand command);
 
   Future<void> restoreAccount(RestoreAccountCommand command);
+
+  Future<void> deleteAccount(DeleteAccountCommand command);
 }
 
-class AccountAppServiceImpl implements AccountAppService {
+abstract interface class CreditManagedAccountDeletionService {
+  Future<void> deleteCreditManagedAccount(DeleteAccountCommand command);
+}
+
+class AccountAppServiceImpl
+    implements AccountAppService, CreditManagedAccountDeletionService {
   const AccountAppServiceImpl(
     this._repository, {
     required TransactionRunner transactionRunner,
@@ -151,6 +159,46 @@ class AccountAppServiceImpl implements AccountAppService {
       }
       account.restore();
       await _repository.save(account);
+    });
+  }
+
+  @override
+  Future<void> deleteAccount(DeleteAccountCommand command) async {
+    await _deleteAccount(command, expectedType: AccountType.asset);
+  }
+
+  @override
+  Future<void> deleteCreditManagedAccount(DeleteAccountCommand command) async {
+    await _deleteAccount(command, expectedType: AccountType.liability);
+  }
+
+  Future<void> _deleteAccount(
+    DeleteAccountCommand command, {
+    required AccountType expectedType,
+  }) async {
+    await _runner.run<void>(() async {
+      final account = await _repository.findById(command.id);
+      if (account == null) {
+        throw BusinessException(LedgerErrorCode.accountNotFound);
+      }
+      if (account.type != expectedType ||
+          account.systemKey != null ||
+          !account.isArchived) {
+        throw BusinessException(LedgerErrorCode.accountUnavailable);
+      }
+
+      final entryCounts = await _transactionRepository.countEntriesByAccount({
+        account.id,
+      });
+      final reimbursementRefs = await _transactionRepository
+          .countReimbursementExpenseRefs({account.id});
+      if (account.balance.minorUnits != 0 ||
+          (entryCounts[account.id] ?? 0) > 0 ||
+          (reimbursementRefs[account.id] ?? 0) > 0) {
+        throw BusinessException(LedgerErrorCode.accountInUse);
+      }
+
+      await _repository.delete(account.id);
     });
   }
 }

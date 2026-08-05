@@ -57,3 +57,9 @@ class EditCreditLiabilityAccountCommand {
   final bool? billingDayToNext;
   final Money? targetBalance;
 }
+
+class DeleteCreditLiabilityAccountCommand {
+  const DeleteCreditLiabilityAccountCommand({required this.accountId});
+
+  final String accountId;
+}

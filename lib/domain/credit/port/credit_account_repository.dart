@@ -50,4 +50,6 @@ abstract interface class CreditAccountRepository {
     String accountId,
     CreditLiabilityAccountPersistencePatch patch,
   );
+
+  Future<void> delete(String accountId);
 }

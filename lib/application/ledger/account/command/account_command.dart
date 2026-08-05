@@ -65,3 +65,9 @@ class RestoreAccountCommand {
 
   final String id;
 }
+
+class DeleteAccountCommand {
+  const DeleteAccountCommand({required this.id});
+
+  final String id;
+}

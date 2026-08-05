@@ -5,9 +5,13 @@ import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 class LedgerCreditAccountPort implements CreditAccountLedgerPort {
-  const LedgerCreditAccountPort(this._accountAppService);
+  const LedgerCreditAccountPort(
+    this._accountAppService, {
+    required ledger_command.CreditManagedAccountDeletionService accountDeletion,
+  }) : _accountDeletion = accountDeletion;
 
   final ledger_command.AccountAppService _accountAppService;
+  final ledger_command.CreditManagedAccountDeletionService _accountDeletion;
 
   @override
   Future<CreditLedgerAccountSnapshot> createLiabilityAccount(
@@ -49,6 +53,13 @@ class LedgerCreditAccountPort implements CreditAccountLedgerPort {
         groupId: command.groupId,
         targetBalance: command.targetBalance,
       ),
+    );
+  }
+
+  @override
+  Future<void> deleteLiabilityAccount(String accountId) {
+    return _accountDeletion.deleteCreditManagedAccount(
+      ledger_command.DeleteAccountCommand(id: accountId),
     );
   }
 }

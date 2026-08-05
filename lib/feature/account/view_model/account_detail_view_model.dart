@@ -2,8 +2,10 @@ import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
+import '../../../application/credit/credit_command_api.dart';
 import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_command_api.dart';
+import '../../../shared/account_profile/account_profile_kind.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../../credit/provider/bill_query_providers.dart';
@@ -53,11 +55,33 @@ class AccountDetailViewModel extends _$AccountDetailViewModel {
         .loadMore();
   }
 
-  Future<UiActionOutcome<void>> deleteAccount() async {
+  Future<UiActionOutcome<void>> archiveAccount() async {
     return guardUiAction(_logger, 'Account archive', () async {
       await ref
           .read(accountAppServiceProvider)
           .archiveAccount(ArchiveAccountCommand(id: accountId));
+    });
+  }
+
+  Future<UiActionOutcome<void>> deletePermanently() async {
+    return guardUiAction(_logger, 'Account permanent deletion', () async {
+      final account = await ref
+          .read(accountQueryServiceProvider)
+          .findAccountById(accountId);
+      final kind =
+          account == null ? null : accountProfileKindForAccount(account);
+      if (kind == AccountProfileKind.credit ||
+          kind == AccountProfileKind.loan) {
+        await ref
+            .read(creditAccountAppServiceProvider)
+            .deleteAccount(
+              DeleteCreditLiabilityAccountCommand(accountId: accountId),
+            );
+        return;
+      }
+      await ref
+          .read(accountAppServiceProvider)
+          .deleteAccount(DeleteAccountCommand(id: accountId));
     });
   }
 

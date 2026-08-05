@@ -9,10 +9,7 @@ import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/finance/money_text.dart';
-import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/account_section_presentation.dart';
-import '../view_model/account_organization_view_model.dart';
-import '../view_model/account_view.dart';
 import '../view_model/archived_accounts_view_model.dart';
 import '../widget/account_list_row.dart';
 
@@ -76,7 +73,7 @@ class _ArchivedAccountsPageState extends ConsumerState<ArchivedAccountsPage> {
   }
 }
 
-class _ArchivedAccountsContent extends ConsumerWidget {
+class _ArchivedAccountsContent extends StatelessWidget {
   const _ArchivedAccountsContent({
     required this.sections,
     required this.hideBalances,
@@ -90,7 +87,7 @@ class _ArchivedAccountsContent extends ConsumerWidget {
   final ValueChanged<String> onToggleGroup;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     if (sections.isEmpty) {
       return const Center(child: Text('没有已归档账户'));
     }
@@ -109,28 +106,9 @@ class _ArchivedAccountsContent extends ConsumerWidget {
             hideBalances: hideBalances,
             collapsed: collapsedGroupIds.contains(sections[index].id),
             onToggleCollapsed: () => onToggleGroup(sections[index].id),
-            onRestore: (account) => _restoreAccount(context, ref, account.id),
           ),
         ],
       ],
-    );
-  }
-
-  Future<void> _restoreAccount(
-    BuildContext context,
-    WidgetRef ref,
-    String accountId,
-  ) async {
-    final outcome = await ref
-        .read(accountOrganizationViewModelProvider.notifier)
-        .restoreAccount(accountId);
-    if (!context.mounted) return;
-    final message = switch (outcome) {
-      UiActionSuccess<void>() => '账户已恢复',
-      UiActionFailure<void>(:final error) => error.message,
-    };
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 }
@@ -141,14 +119,12 @@ class _ArchivedAccountGroup extends StatelessWidget {
     required this.hideBalances,
     required this.collapsed,
     required this.onToggleCollapsed,
-    required this.onRestore,
   });
 
   final AccountSectionPresentation section;
   final bool hideBalances;
   final bool collapsed;
   final VoidCallback onToggleCollapsed;
-  final ValueChanged<AccountView> onRestore;
 
   @override
   Widget build(BuildContext context) {
@@ -211,9 +187,9 @@ class _ArchivedAccountGroup extends StatelessWidget {
                   amountSemantic: MoneySemantic.neutral,
                   hideBalance: hideBalances,
                   onTap: () => context.push('/account/${account.id}'),
-                  trailing: TextButton(
-                    onPressed: () => onRestore(account),
-                    child: const Text('恢复'),
+                  trailing: const Icon(
+                    RemixIcons.arrow_right_s_line,
+                    size: AppSpacing.space18,
                   ),
                 ),
             ],

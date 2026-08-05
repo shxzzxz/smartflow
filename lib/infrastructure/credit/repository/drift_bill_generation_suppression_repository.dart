@@ -19,6 +19,12 @@ class DriftBillGenerationSuppressionRepository
   }
 
   @override
+  Future<void> clearAll(String accountId) async {
+    await (_database.delete(_database.billGenerationSuppressions)
+      ..where((row) => row.accountId.equals(accountId))).go();
+  }
+
+  @override
   Future<bool> isSuppressed(String accountId, BillPeriod period) async {
     final row =
         await (_database.select(_database.billGenerationSuppressions)..where(

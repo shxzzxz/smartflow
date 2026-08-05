@@ -33,10 +33,18 @@ void main() {
     expect(find.text('记账'), findsNothing);
     expect(find.text('转账'), findsNothing);
     expect(find.byTooltip('编辑账户'), findsNothing);
-    expect(find.byTooltip('删除账户'), findsNothing);
+    expect(find.byTooltip('归档账户'), findsNothing);
+    expect(find.byTooltip('恢复账户'), findsOneWidget);
+    expect(find.byTooltip('永久删除账户'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('永久删除账户'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('永久删除账户？'), findsOneWidget);
+    expect(find.text('账户仅在没有任何业务数据时才能删除。永久删除后无法恢复。'), findsOneWidget);
   });
 
-  testWidgets('deletes an account after confirmation', (tester) async {
+  testWidgets('archives an account after confirmation', (tester) async {
     final account = _account(kind: AccountProfileKind.fund);
     final detailState = AccountDetailPageState.loaded(
       account: account,
@@ -82,12 +90,12 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byTooltip('删除账户'));
+    await tester.tap(find.byTooltip('归档账户'));
     await tester.pumpAndSettle();
-    expect(find.text('删除账户？'), findsOneWidget);
-    expect(find.text('删除后账户将不再显示，但历史交易会保留。'), findsOneWidget);
+    expect(find.text('归档账户？'), findsOneWidget);
+    expect(find.text('归档后账户将不再用于新交易，历史数据会保留且可以恢复。'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(TextButton, '删除'));
+    await tester.tap(find.widgetWithText(TextButton, '归档'));
     await tester.pumpAndSettle();
 
     expect(commandService.archiveCommands.single.id, account.id);
@@ -352,6 +360,9 @@ class _FakeAccountAppService implements AccountAppService {
 
   @override
   Future<void> restoreAccount(RestoreAccountCommand command) async {}
+
+  @override
+  Future<void> deleteAccount(DeleteAccountCommand command) async {}
 }
 
 BillSummaryReadModel _bill(int year, int month) {

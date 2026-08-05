@@ -3,10 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:smartflow/app/provider.dart';
-import 'package:smartflow/application/ledger/ledger_command_api.dart';
+import 'package:go_router/go_router.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/domain/ledger/entity/account_group.dart';
 import 'package:smartflow/feature/account/page/archived_accounts_page.dart';
 import 'package:smartflow/feature/account/view_model/account_view.dart';
 import 'package:smartflow/feature/account/view_model/account_views_provider.dart';
@@ -26,24 +26,36 @@ void main() {
     expect(find.text('出账日 1   还款日 15'), findsOneWidget);
     expect(find.text('不计入资产与负债统计'), findsNothing);
     expect(find.text('不计入资产和负债统计'), findsNothing);
-    expect(find.widgetWithText(TextButton, '恢复'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, '恢复'), findsNothing);
 
     final amount = tester.widget<Text>(find.text('50.00'));
     expect(amount.style?.color, AppTheme.light().colorScheme.onSurface);
   });
 
-  testWidgets('restores an archived account from its row action', (
-    tester,
-  ) async {
-    final service = _FakeAccountAppService();
-    await tester.pumpWidget(_buildArchivedAccountsPage(service: service));
+  testWidgets('opens archived account details from its row', (tester) async {
+    final router = GoRouter(
+      initialLocation: '/archived-accounts',
+      routes: [
+        GoRoute(
+          path: '/archived-accounts',
+          builder: (context, state) => const ArchivedAccountsPage(),
+        ),
+        GoRoute(
+          path: '/account/:id',
+          builder:
+              (context, state) =>
+                  Scaffold(body: Text('账户详情 ${state.pathParameters['id']}')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(_buildArchivedAccountsPage(router: router));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(TextButton, '恢复'));
-    await tester.pump();
+    await tester.tap(find.text('已归档招行信用卡'));
+    await tester.pumpAndSettle();
 
-    expect(service.restoredAccountId, 'archived-credit-1');
-    expect(find.text('账户已恢复'), findsOneWidget);
+    expect(find.text('账户详情 archived-credit-1'), findsOneWidget);
   });
 
   testWidgets('does not expose technical details when loading fails', (
@@ -83,8 +95,8 @@ void main() {
 }
 
 Widget _buildArchivedAccountsPage({
-  AccountAppService? service,
   AsyncValue<List<AccountView>>? archivedAccounts,
+  GoRouter? router,
 }) {
   final archivedAccountValue =
       archivedAccounts ??
@@ -103,7 +115,6 @@ Widget _buildArchivedAccountsPage({
       ]);
   return ProviderScope(
     overrides: [
-      if (service != null) accountAppServiceProvider.overrideWithValue(service),
       archivedAccountViewsProvider.overrideWith((ref) => archivedAccountValue),
       accountGroupsProvider.overrideWith(
         (ref) => Stream.value([
@@ -112,29 +123,12 @@ Widget _buildArchivedAccountsPage({
         ]),
       ),
     ],
-    child: MaterialApp(
-      theme: AppTheme.light(),
-      home: const ArchivedAccountsPage(),
-    ),
+    child:
+        router == null
+            ? MaterialApp(
+              theme: AppTheme.light(),
+              home: const ArchivedAccountsPage(),
+            )
+            : MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
   );
-}
-
-class _FakeAccountAppService implements AccountAppService {
-  String? restoredAccountId;
-
-  @override
-  Future<Account> createAccount(CreateAccountCommand command) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> editAccount(EditAccountCommand command) async {}
-
-  @override
-  Future<void> archiveAccount(ArchiveAccountCommand command) async {}
-
-  @override
-  Future<void> restoreAccount(RestoreAccountCommand command) async {
-    restoredAccountId = command.id;
-  }
 }

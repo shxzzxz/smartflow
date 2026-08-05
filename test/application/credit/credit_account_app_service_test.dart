@@ -9,7 +9,12 @@ import 'package:smartflow/domain/ledger/service/account/account_role_policy.dart
 import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_repository.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_bill_generation_suppression_repository.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repository.dart';
 import 'package:smartflow/infrastructure/credit/adapter/ledger_credit_account_port.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_account_repository.dart';
@@ -195,7 +200,327 @@ void main() {
         );
       },
     );
+
+    test(
+      'deletes an archived credit account and its empty projections',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        final account = await fixture.service.createAccount(
+          const CreateCreditLiabilityAccountCommand(
+            name: 'Mistaken card',
+            kind: CreditLiabilityAccountKind.credit,
+            billingDay: 5,
+            repaymentDay: 25,
+          ),
+        );
+        final period = BillPeriod(year: 2026, month: 8);
+        await fixture.billRepository.saveBill(
+          Bill(
+            id: 'empty-bill',
+            accountId: account.id,
+            period: period,
+            status: BillStatus.open,
+            items: const [],
+          ),
+        );
+        await fixture.suppressionRepository.suppress(account.id, period);
+        await fixture.accountAppService.archiveAccount(
+          ArchiveAccountCommand(id: account.id),
+        );
+
+        await fixture.service.deleteAccount(
+          DeleteCreditLiabilityAccountCommand(accountId: account.id),
+        );
+
+        expect(await fixture.accountRepository.findById(account.id), isNull);
+        expect(
+          await fixture.creditRepository.findByAccountId(account.id),
+          isNull,
+        );
+        expect(
+          await fixture.billRepository.listBillsByAccount(account.id),
+          isEmpty,
+        );
+        expect(
+          await fixture.suppressionRepository.isSuppressed(account.id, period),
+          isFalse,
+        );
+      },
+    );
+
+    test('rejects deleting a credit account with bill source items', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      final account = await fixture.service.createAccount(
+        const CreateCreditLiabilityAccountCommand(
+          name: 'Used card',
+          kind: CreditLiabilityAccountKind.credit,
+          billingDay: 5,
+          repaymentDay: 25,
+        ),
+      );
+      final bill = await fixture.billRepository.saveBill(
+        Bill(
+          id: 'used-bill',
+          accountId: account.id,
+          period: BillPeriod(year: 2026, month: 8),
+          status: BillStatus.billed,
+          items: const [],
+        ),
+      );
+      await fixture.billRepository.replaceBillItems(bill.id, [
+        BillItem(
+          id: 'consumption',
+          billId: bill.id,
+          itemType: BillItemType.consumption,
+          repaymentDate: DateTime(2026, 8, 25),
+          expectedPrincipal: const Money(minorUnits: 1000),
+          expectedInterest: Money.zero(),
+          expectedFee: Money.zero(),
+          status: BillItemStatus.pending,
+        ),
+      ]);
+      await fixture.accountAppService.archiveAccount(
+        ArchiveAccountCommand(id: account.id),
+      );
+
+      await expectLater(
+        () => fixture.service.deleteAccount(
+          DeleteCreditLiabilityAccountCommand(accountId: account.id),
+        ),
+        throwsA(
+          isA<BusinessException>().having(
+            (exception) => exception.code,
+            'code',
+            CreditErrorCode.accountInUse.code,
+          ),
+        ),
+      );
+
+      expect(await fixture.accountRepository.findById(account.id), isNotNull);
+      expect(
+        await fixture.creditRepository.findByAccountId(account.id),
+        isNotNull,
+      );
+    });
+
+    test('rejects deleting a credit account with a contract', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      final account = await fixture.service.createAccount(
+        const CreateCreditLiabilityAccountCommand(
+          name: 'Card with contract',
+          kind: CreditLiabilityAccountKind.credit,
+          billingDay: 5,
+          repaymentDay: 25,
+        ),
+      );
+      await fixture.installmentRepository.insertAggregate(
+        _contract(account.id),
+        const [],
+      );
+      await fixture.accountAppService.archiveAccount(
+        ArchiveAccountCommand(id: account.id),
+      );
+
+      await expectLater(
+        () => fixture.service.deleteAccount(
+          DeleteCreditLiabilityAccountCommand(accountId: account.id),
+        ),
+        throwsA(
+          isA<BusinessException>().having(
+            (exception) => exception.code,
+            'code',
+            CreditErrorCode.accountInUse.code,
+          ),
+        ),
+      );
+    });
+
+    test('rejects deleting a credit account with account repayment', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      final account = await fixture.service.createAccount(
+        const CreateCreditLiabilityAccountCommand(
+          name: 'Card with repayment',
+          kind: CreditLiabilityAccountKind.credit,
+          billingDay: 5,
+          repaymentDay: 25,
+        ),
+      );
+      await fixture.repaymentRepository.saveRepayment(
+        _repayment(
+          id: 'account-repayment',
+          type: RepaymentType.unattributed,
+          targetType: RepaymentTargetType.account,
+          targetId: account.id,
+          transactionId: 'ledger-transaction',
+        ),
+      );
+      await fixture.accountAppService.archiveAccount(
+        ArchiveAccountCommand(id: account.id),
+      );
+
+      await expectLater(
+        () => fixture.service.deleteAccount(
+          DeleteCreditLiabilityAccountCommand(accountId: account.id),
+        ),
+        throwsA(
+          isA<BusinessException>().having(
+            (exception) => exception.code,
+            'code',
+            CreditErrorCode.accountInUse.code,
+          ),
+        ),
+      );
+    });
+
+    test('rejects deleting a credit account with bill repayment', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      final account = await fixture.service.createAccount(
+        const CreateCreditLiabilityAccountCommand(
+          name: 'Card with bill repayment',
+          kind: CreditLiabilityAccountKind.credit,
+          billingDay: 5,
+          repaymentDay: 25,
+        ),
+      );
+      final bill = await fixture.billRepository.saveBill(
+        Bill(
+          id: 'repaid-bill',
+          accountId: account.id,
+          period: BillPeriod(year: 2026, month: 8),
+          status: BillStatus.billed,
+          items: const [],
+        ),
+      );
+      await fixture.repaymentRepository.saveRepayment(
+        _repayment(
+          id: 'bill-repayment',
+          type: RepaymentType.bill,
+          targetType: RepaymentTargetType.bill,
+          targetId: bill.id,
+          billItemId: 'historical-bill-item',
+        ),
+      );
+      await fixture.accountAppService.archiveAccount(
+        ArchiveAccountCommand(id: account.id),
+      );
+
+      await expectLater(
+        () => fixture.service.deleteAccount(
+          DeleteCreditLiabilityAccountCommand(accountId: account.id),
+        ),
+        throwsA(
+          isA<BusinessException>().having(
+            (exception) => exception.code,
+            'code',
+            CreditErrorCode.accountInUse.code,
+          ),
+        ),
+      );
+    });
+
+    test('rolls back credit cleanup when ledger deletion fails', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      final account = await fixture.service.createAccount(
+        const CreateCreditLiabilityAccountCommand(
+          name: 'Active card',
+          kind: CreditLiabilityAccountKind.credit,
+          billingDay: 5,
+          repaymentDay: 25,
+        ),
+      );
+      final period = BillPeriod(year: 2026, month: 8);
+      await fixture.billRepository.saveBill(
+        Bill(
+          id: 'rollback-bill',
+          accountId: account.id,
+          period: period,
+          status: BillStatus.open,
+          items: const [],
+        ),
+      );
+      await fixture.suppressionRepository.suppress(account.id, period);
+
+      await expectLater(
+        () => fixture.service.deleteAccount(
+          DeleteCreditLiabilityAccountCommand(accountId: account.id),
+        ),
+        throwsA(
+          isA<BusinessException>().having(
+            (exception) => exception.code,
+            'code',
+            LedgerErrorCode.accountUnavailable.code,
+          ),
+        ),
+      );
+
+      expect(
+        await fixture.creditRepository.findByAccountId(account.id),
+        isNotNull,
+      );
+      expect(
+        await fixture.billRepository.listBillsByAccount(account.id),
+        hasLength(1),
+      );
+      expect(
+        await fixture.suppressionRepository.isSuppressed(account.id, period),
+        isTrue,
+      );
+    });
   });
+}
+
+InstallmentContract _contract(String accountId) {
+  return InstallmentContract(
+    id: 'contract',
+    liabilityAccountId: accountId,
+    sourceType: InstallmentSourceType.disbursement,
+    principal: const Money(minorUnits: 1000),
+    totalPeriods: 1,
+    borrowingDate: DateTime(2026, 7, 1),
+    firstRepaymentDate: DateTime(2026, 8, 1),
+    lastRepaymentDate: DateTime(2026, 8, 1),
+    repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+    interestAccrualMethod: InterestAccrualMethod.monthly,
+    totalFeeMinor: 0,
+    status: InstallmentContractStatus.active,
+    createdAt: DateTime(2026, 7, 1),
+  );
+}
+
+Repayment _repayment({
+  required String id,
+  required RepaymentType type,
+  required RepaymentTargetType targetType,
+  required String targetId,
+  String? transactionId,
+  String? billItemId,
+}) {
+  return Repayment(
+    id: id,
+    repaymentType: type,
+    targetType: targetType,
+    targetId: targetId,
+    transactionId: transactionId,
+    items: [
+      RepaymentItem(
+        id: '$id-item',
+        repaymentId: id,
+        billItemId: billItemId,
+        allocated: const RepaymentAmountBreakdown(
+          principal: Money(minorUnits: 1),
+          interest: Money(minorUnits: 0),
+          fee: Money(minorUnits: 0),
+          discount: Money(minorUnits: 0),
+        ),
+      ),
+    ],
+  );
 }
 
 class _Fixture {
@@ -219,6 +544,10 @@ class _Fixture {
     service = CreditAccountAppServiceImpl(
       ledger: ledger,
       creditAccounts: creditRepository,
+      bills: billRepository,
+      installments: installmentRepository,
+      repayments: repaymentRepository,
+      suppressions: suppressionRepository,
       transactionRunner: runner,
       idGenerator: ids,
     );
@@ -232,9 +561,17 @@ class _Fixture {
   );
   late final DriftCreditAccountRepository creditRepository =
       DriftCreditAccountRepository(database);
-  late final AccountAppService accountAppService;
+  late final DriftBillRepository billRepository = DriftBillRepository(database);
+  late final DriftInstallmentRepository installmentRepository =
+      DriftInstallmentRepository(database);
+  late final DriftRepaymentRepository repaymentRepository =
+      DriftRepaymentRepository(database);
+  late final DriftBillGenerationSuppressionRepository suppressionRepository =
+      DriftBillGenerationSuppressionRepository(database);
+  late final AccountAppServiceImpl accountAppService;
   late final LedgerCreditAccountPort ledger = LedgerCreditAccountPort(
     accountAppService,
+    accountDeletion: accountAppService,
   );
   late final CreditAccountAppService service;
 
@@ -244,6 +581,10 @@ class _Fixture {
     return CreditAccountAppServiceImpl(
       ledger: ledger,
       creditAccounts: repository,
+      bills: billRepository,
+      installments: installmentRepository,
+      repayments: repaymentRepository,
+      suppressions: suppressionRepository,
       transactionRunner: runner,
       idGenerator: ids,
     );

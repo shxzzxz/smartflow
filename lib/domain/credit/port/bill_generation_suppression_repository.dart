@@ -7,4 +7,6 @@ abstract interface class BillGenerationSuppressionRepository {
   Future<void> suppress(String accountId, BillPeriod period);
 
   Future<void> clear(String accountId, BillPeriod period);
+
+  Future<void> clearAll(String accountId);
 }

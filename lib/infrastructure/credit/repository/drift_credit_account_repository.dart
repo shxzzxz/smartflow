@@ -92,6 +92,12 @@ class DriftCreditAccountRepository implements CreditAccountRepository {
     }
   }
 
+  @override
+  Future<void> delete(String accountId) async {
+    await (_database.delete(_database.creditLiabilityAccounts)
+      ..where((table) => table.accountId.equals(accountId))).go();
+  }
+
   CreditLiabilityAccount _map(CreditLiabilityAccountRow row) {
     return CreditLiabilityAccount(
       id: row.id,

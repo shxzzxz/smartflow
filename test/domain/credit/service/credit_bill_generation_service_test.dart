@@ -780,6 +780,11 @@ class _FakeBillGenerationSuppressionRepository
   }
 
   @override
+  Future<void> clearAll(String accountId) async {
+    _suppressed.removeWhere((entry) => entry.$1 == accountId);
+  }
+
+  @override
   Future<bool> isSuppressed(String accountId, BillPeriod period) async {
     return _suppressed.contains((accountId, period));
   }
@@ -813,6 +818,11 @@ class _FakeCreditAccountRepository implements CreditAccountRepository {
       repaymentDay: draft.repaymentDay,
       billingDayToNext: draft.billingDayToNext,
     );
+  }
+
+  @override
+  Future<void> delete(String accountId) async {
+    _accounts.remove(accountId);
   }
 
   @override

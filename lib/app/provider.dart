@@ -228,6 +228,10 @@ LogRetentionStore logRetentionStore(Ref ref) {
 
 @Riverpod(keepAlive: true)
 AccountAppService accountAppService(Ref ref) {
+  return _buildAccountAppService(ref);
+}
+
+AccountAppServiceImpl _buildAccountAppService(Ref ref) {
   return AccountAppServiceImpl(
     ref.watch(accountRepositoryProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
@@ -389,6 +393,10 @@ CreditAccountAppService creditAccountAppService(Ref ref) {
   return CreditAccountAppServiceImpl(
     ledger: ref.watch(creditAccountLedgerPortProvider),
     creditAccounts: ref.watch(creditAccountRepositoryProvider),
+    bills: ref.watch(billRepositoryProvider),
+    installments: ref.watch(installmentRepositoryProvider),
+    repayments: ref.watch(repaymentRepositoryProvider),
+    suppressions: ref.watch(billGenerationSuppressionRepositoryProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
     idGenerator: ref.watch(idGeneratorProvider),
   );
@@ -417,7 +425,10 @@ RepaymentRepository repaymentRepository(Ref ref) {
 
 @Riverpod(keepAlive: true)
 CreditAccountLedgerPort creditAccountLedgerPort(Ref ref) {
-  return LedgerCreditAccountPort(ref.watch(accountAppServiceProvider));
+  return LedgerCreditAccountPort(
+    ref.watch(accountAppServiceProvider),
+    accountDeletion: _buildAccountAppService(ref),
+  );
 }
 
 @Riverpod(keepAlive: true)
