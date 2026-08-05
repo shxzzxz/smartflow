@@ -77,21 +77,23 @@ AppChartSeries _budgetSeries({
 }
 
 List<BudgetTrendPoint> _chartPoints(MonthKey month, BudgetProgress progress) {
-  final byDay = <int, BudgetTrendPoint>{
-    1: BudgetTrendPoint(
-      date: month.start,
-      spent: Money.zero(),
-      remaining: progress.budget,
-    ),
+  final lastDay = month.nextMonthStart.subtract(const Duration(days: 1)).day;
+  final trendByDay = {
     for (final point in progress.trend) point.date.day: point,
   };
-  final lastDay = month.nextMonthStart.subtract(const Duration(days: 1)).day;
-  final latest = progress.trend.isEmpty ? byDay[1]! : progress.trend.last;
-  byDay[lastDay] = BudgetTrendPoint(
-    date: DateTime(month.year, month.month, lastDay),
-    spent: latest.spent,
-    remaining: latest.remaining,
+  var latest = BudgetTrendPoint(
+    date: month.start,
+    spent: Money.zero(),
+    remaining: progress.budget,
   );
-  final days = byDay.keys.toList()..sort();
-  return [for (final day in days) byDay[day]!];
+  return [
+    for (var day = 1; day <= lastDay; day++)
+      (latest =
+          trendByDay[day] ??
+          BudgetTrendPoint(
+            date: DateTime(month.year, month.month, day),
+            spent: latest.spent,
+            remaining: latest.remaining,
+          )),
+  ];
 }

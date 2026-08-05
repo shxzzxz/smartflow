@@ -458,7 +458,6 @@ class _TrendSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnalysisSectionCard(
       title: '预算趋势',
-      emphasis: AnalysisSectionEmphasis.primary,
       child: BudgetTrendChart(month: month, progress: progress),
     );
   }
