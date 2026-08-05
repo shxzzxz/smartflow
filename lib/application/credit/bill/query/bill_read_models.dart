@@ -17,6 +17,7 @@ class BillSummaryReadModel {
     required this.expectedInterest,
     required this.expectedFee,
     required this.pendingPrincipal,
+    this.pendingTotal,
     required this.itemCount,
     required this.overdueItemCount,
     this.windowStartDate,
@@ -37,8 +38,18 @@ class BillSummaryReadModel {
   final Money expectedInterest;
   final Money expectedFee;
   final Money pendingPrincipal;
+
+  /// Remaining total for outstanding bill items, including interest and fees.
+  ///
+  /// Nullable for compatibility with callers that construct this read model
+  /// directly; query services populate it for persisted bills.
+  final Money? pendingTotal;
   final int itemCount;
   final int overdueItemCount;
+
+  Money get totalAmount => expectedPrincipal + expectedInterest + expectedFee;
+
+  Money get pendingAmount => pendingTotal ?? pendingPrincipal;
 }
 
 class BillDetailReadModel {
@@ -97,6 +108,7 @@ class BillItemReadModel {
   /// Discounts reduce the amount due even though they are not one of the
   /// expected amount components.
   Money get remainingTotal {
+    if (status == BillItemStatus.paid) return Money.zero();
     final remaining =
         remainingPrincipal.minorUnits +
         remainingInterest.minorUnits +

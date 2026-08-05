@@ -28,11 +28,13 @@ class AccountCreditSummaryPresentation {
     required this.amount,
     required this.supportingItems,
     required this.status,
+    this.amountLabel,
   });
 
   final String id;
   final String title;
   final Money amount;
+  final String? amountLabel;
   final List<AccountCreditSummarySupportingItem> supportingItems;
   final AccountCreditSummaryStatus status;
 }
@@ -44,7 +46,8 @@ AccountCreditSummaryPresentation billAccountCreditSummary(
   return AccountCreditSummaryPresentation(
     id: bill.id,
     title: _billTitle(bill.period),
-    amount: bill.pendingPrincipal,
+    amount: bill.pendingAmount,
+    amountLabel: null,
     supportingItems: [
       if (bill.windowRepaymentDate != null)
         AccountCreditSummarySupportingItem(

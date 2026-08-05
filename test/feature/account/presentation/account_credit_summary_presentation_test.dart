@@ -37,6 +37,20 @@ void main() {
         AccountCreditSummaryTone.success,
       );
     });
+
+    test('uses remaining total for bills', () {
+      final billed = billAccountCreditSummary(
+        _bill(pendingTotal: const Money(minorUnits: 1500)),
+      );
+      final settled = billAccountCreditSummary(
+        _bill(status: BillStatus.settled, pendingTotal: Money.zero()),
+      );
+
+      expect(billed.amount, const Money(minorUnits: 1500));
+      expect(billed.amountLabel, isNull);
+      expect(settled.amount, Money.zero());
+      expect(settled.amountLabel, isNull);
+    });
   });
 
   group('installmentAccountCreditSummary', () {
@@ -73,6 +87,7 @@ void main() {
 BillSummaryReadModel _bill({
   BillStatus status = BillStatus.billed,
   int overdueItemCount = 0,
+  Money? pendingTotal,
 }) {
   return BillSummaryReadModel(
     id: 'bill',
@@ -84,6 +99,7 @@ BillSummaryReadModel _bill({
     expectedInterest: Money.zero(),
     expectedFee: Money.zero(),
     pendingPrincipal: const Money(minorUnits: 320000),
+    pendingTotal: pendingTotal,
     itemCount: 12,
     overdueItemCount: overdueItemCount,
   );

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../application/credit/credit_query_api.dart';
+import '../../../core/money/money.dart';
 import '../../../core/time/date_label.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
@@ -291,16 +292,28 @@ class _SummarySurface extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.space12),
-            Text('待还本金', style: styles.detailLabel),
-            const SizedBox(height: AppSpacing.space4),
-            Text(
-              summary.pendingPrincipal.format(),
-              style: styles.amountPrimary.copyWith(
-                color:
-                    summary.pendingPrincipal.minorUnits > 0
-                        ? colors.error
-                        : colors.onSurface,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _SummaryAmount(
+                    label: '账单总额',
+                    amount: summary.totalAmount,
+                    color: colors.onSurface,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.space16),
+                Expanded(
+                  child: _SummaryAmount(
+                    label: '待还金额',
+                    amount: summary.pendingAmount,
+                    color:
+                        summary.pendingAmount.minorUnits > 0
+                            ? colors.error
+                            : colors.onSurface,
+                  ),
+                ),
+              ],
             ),
             if (summary.overdueItemCount > 0) ...[
               const SizedBox(height: AppSpacing.space10),
@@ -323,6 +336,34 @@ class _SummarySurface extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SummaryAmount extends StatelessWidget {
+  const _SummaryAmount({
+    required this.label,
+    required this.amount,
+    required this.color,
+  });
+
+  final String label;
+  final Money amount;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final styles = context.appTextStyles;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: styles.detailLabel),
+        const SizedBox(height: AppSpacing.space4),
+        Text(
+          amount.format(),
+          style: styles.amountPrimary.copyWith(color: color),
+        ),
+      ],
     );
   }
 }
@@ -571,7 +612,6 @@ class _StatusPill extends StatelessWidget {
 String _periodLabel(BillPeriod period) {
   return '${period.year}年${period.month.toString().padLeft(2, '0')}月账单';
 }
-
 
 String _itemStatusLabel(BillItemReadModel item) {
   if (item.isOverdue) return '已逾期';

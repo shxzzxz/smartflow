@@ -104,11 +104,17 @@ class _AccountCreditSummaryRow extends StatelessWidget {
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerRight,
-                      child: MoneyText(
-                        money: presentation.amount,
-                        style: styles.amountList,
-                        semantic: MoneySemantic.liability,
-                      ),
+                      child:
+                          presentation.amountLabel == null
+                              ? MoneyText(
+                                money: presentation.amount,
+                                style: styles.amountList,
+                                semantic: MoneySemantic.liability,
+                              )
+                              : Text(
+                                presentation.amountLabel!,
+                                style: styles.amountList,
+                              ),
                     ),
                     const SizedBox(height: AppSpacing.space4),
                     _StatusBadge(status: presentation.status),

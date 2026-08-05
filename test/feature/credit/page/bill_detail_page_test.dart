@@ -112,7 +112,9 @@ void main() {
 
     expect(find.text('还款日 2026-07-17'), findsOneWidget);
     expect(find.text('本 2.00 息 2.00 费 2.00'), findsOneWidget);
-    expect(find.text('6.00'), findsOneWidget);
+    expect(find.text('账单总额'), findsOneWidget);
+    expect(find.text('待还金额'), findsOneWidget);
+    expect(find.text('6.00'), findsNWidgets(2));
     expect(find.textContaining('should-not-show'), findsNothing);
     expect(find.byType(AppSwipeAction), findsOneWidget);
   });

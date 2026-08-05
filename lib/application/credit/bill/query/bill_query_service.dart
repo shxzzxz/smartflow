@@ -150,6 +150,7 @@ class BillQueryServiceImpl implements BillQueryService {
       expectedInterest: bill.expectedInterest,
       expectedFee: bill.expectedFee,
       pendingPrincipal: _pendingPrincipalForBill(bill, allocatedByItemId),
+      pendingTotal: _pendingTotalForBill(bill, allocatedByItemId),
       itemCount: bill.items.length,
       overdueItemCount: overdueCount,
     );
@@ -191,6 +192,28 @@ class BillQueryServiceImpl implements BillQueryService {
       final allocatedPrincipal =
           allocatedByItemId[item.id]?.principal.minorUnits ?? 0;
       final remaining = item.expectedPrincipal.minorUnits - allocatedPrincipal;
+      if (remaining > 0) total += remaining;
+    }
+    return Money(minorUnits: total);
+  }
+
+  Money _pendingTotalForBill(
+    Bill bill,
+    Map<String, RepaymentAmountBreakdown> allocatedByItemId,
+  ) {
+    var total = 0;
+    for (final item in bill.items) {
+      if (!_isOutstanding(item.status)) continue;
+      final allocated =
+          allocatedByItemId[item.id] ?? RepaymentAmountBreakdown.zero;
+      final remaining =
+          item.expectedPrincipal.minorUnits -
+          allocated.principal.minorUnits +
+          item.expectedInterest.minorUnits -
+          allocated.interest.minorUnits +
+          item.expectedFee.minorUnits -
+          allocated.fee.minorUnits -
+          allocated.discount.minorUnits;
       if (remaining > 0) total += remaining;
     }
     return Money(minorUnits: total);
