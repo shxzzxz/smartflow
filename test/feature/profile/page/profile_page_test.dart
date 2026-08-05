@@ -69,7 +69,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.descendant(of: sections.at(3), matching: find.text('使用说明')),
+      find.descendant(of: sections.at(3), matching: find.text('使用手册')),
       findsOneWidget,
     );
     expect(

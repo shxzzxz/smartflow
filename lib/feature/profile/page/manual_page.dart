@@ -7,6 +7,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../data/manual_catalog.dart';
 import '../model/manual_article.dart';
+import '../widget/manual_widgets.dart';
 
 class ManualPage extends StatefulWidget {
   const ManualPage({super.key});
@@ -17,35 +18,48 @@ class ManualPage extends StatefulWidget {
 
 class _ManualPageState extends State<ManualPage> {
   String _query = '';
-  String _category = manualCategories.first;
 
-  List<ManualArticle> get _articles =>
-      manualArticles.where((article) {
-        final categoryMatches =
-            _category == '全部' || article.category == _category;
-        return categoryMatches && article.matches(_query);
-      }).toList();
+  List<MapEntry<String, List<ManualArticle>>> get _groups {
+    final groups = <String, List<ManualArticle>>{};
+    for (final category in manualCategories.skip(1)) {
+      final inCategory =
+          manualArticles
+              .where(
+                (article) =>
+                    article.category == category && article.matches(_query),
+              )
+              .toList();
+      if (inCategory.isNotEmpty) {
+        groups[category] = inCategory;
+      }
+    }
+    return groups.entries.toList();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
-    final articles = _articles;
+    final styles = context.appTextStyles;
+    final groups = _groups;
 
     return Scaffold(
       backgroundColor: colors.surface,
       appBar: AppBar(title: const Text('使用手册')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
-          AppSpacing.space16,
+          AppSpacing.space20,
           AppSpacing.space8,
-          AppSpacing.space16,
+          AppSpacing.space20,
           AppSpacing.space32,
         ),
         children: [
-          Text('了解 SmartFlow', style: styles.pageTitle),
-          const SizedBox(height: AppSpacing.space6),
-          Text('从记录第一笔账开始，逐步理解账户、交易和信贷功能。', style: styles.pageSubtitle),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
+            child: Text(
+              '从记录第一笔账开始，逐步理解账户、交易和信贷功能。',
+              style: styles.pageSubtitle,
+            ),
+          ),
           const SizedBox(height: AppSpacing.space16),
           SearchBar(
             leading: const Icon(RemixIcons.search_line),
@@ -60,83 +74,74 @@ class _ManualPageState extends State<ManualPage> {
                 ),
             ],
           ),
-          const SizedBox(height: AppSpacing.space12),
-          SizedBox(
-            height: 40,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: manualCategories.length,
-              separatorBuilder:
-                  (_, _) => const SizedBox(width: AppSpacing.space8),
-              itemBuilder: (context, index) {
-                final category = manualCategories[index];
-                return ChoiceChip(
-                  label: Text(category),
-                  selected: category == _category,
-                  onSelected: (_) => setState(() => _category = category),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: AppSpacing.space16),
-          if (articles.isEmpty)
-            _ManualEmptyState(query: _query)
-          else
-            AppSurface(
-              child: Column(
-                children: [
-                  for (var index = 0; index < articles.length; index++) ...[
-                    _ManualArticleRow(article: articles[index]),
-                    if (index < articles.length - 1)
-                      const Divider(height: 1, indent: 16, endIndent: 16),
-                  ],
-                ],
-              ),
-            ),
+          if (groups.isEmpty) ...[
+            const SizedBox(height: AppSpacing.space24),
+            const _ManualEmptyState(),
+          ] else
+            for (final group in groups) ...[
+              const SizedBox(height: AppSpacing.space24),
+              _ManualSection(category: group.key, articles: group.value),
+            ],
         ],
       ),
     );
   }
 }
 
-class _ManualArticleRow extends StatelessWidget {
-  const _ManualArticleRow({required this.article});
+class _ManualSection extends StatelessWidget {
+  const _ManualSection({required this.category, required this.articles});
 
-  final ManualArticle article;
+  final String category;
+  final List<ManualArticle> articles;
 
   @override
   Widget build(BuildContext context) {
     final styles = context.appTextStyles;
-    final colors = Theme.of(context).colorScheme;
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space16,
-        vertical: AppSpacing.space6,
-      ),
-      title: Text(article.title, style: styles.formValue),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: AppSpacing.space4),
-        child: Text(article.summary, style: styles.listSupporting),
-      ),
-      trailing: Icon(
-        RemixIcons.arrow_right_s_line,
-        color: colors.onSurfaceVariant,
-      ),
-      onTap: () => context.push('/profile/manual/${article.slug}'),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
+          child: Row(
+            children: [
+              Text(category, style: styles.groupTitle),
+              const SizedBox(width: AppSpacing.space8),
+              Text('${articles.length} 篇', style: styles.listSupporting),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space8),
+        AppSurface(
+          child: Column(
+            children: [
+              for (var index = 0; index < articles.length; index++) ...[
+                ManualArticleRow(
+                  article: articles[index],
+                  onTap:
+                      () => context.push(
+                        '/profile/manual/${articles[index].slug}',
+                      ),
+                ),
+                if (index < articles.length - 1)
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _ManualEmptyState extends StatelessWidget {
-  const _ManualEmptyState({required this.query});
-
-  final String query;
+  const _ManualEmptyState();
 
   @override
   Widget build(BuildContext context) {
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
     return AppSurface(
+      border: true,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space24),
         child: Column(
@@ -149,10 +154,7 @@ class _ManualEmptyState extends StatelessWidget {
             const SizedBox(height: AppSpacing.space8),
             Text('没有找到相关内容', style: styles.formValue),
             const SizedBox(height: AppSpacing.space4),
-            Text(
-              '可以换一个关键词${query.isEmpty ? '' : '，或切换分类'}。',
-              style: styles.listSupporting,
-            ),
+            Text('可以换一个关键词试试。', style: styles.listSupporting),
           ],
         ),
       ),
