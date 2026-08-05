@@ -124,9 +124,9 @@ class _ProfilePageState extends State<ProfilePage> {
               actions: [
                 _ProfileActionRow(
                   icon: RemixIcons.book_open_line,
-                  label: '使用说明',
-                  description: '分期方式 / 计息方式 / 关键指标释义',
-                  onTap: () => context.push('/profile/installment-guide'),
+                  label: '使用手册',
+                  description: '了解记账、账单、分期与关键指标',
+                  onTap: () => context.push('/profile/manual'),
                 ),
                 _ProfileActionRow(
                   icon: RemixIcons.download_cloud_2_line,

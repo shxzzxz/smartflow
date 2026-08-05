@@ -27,7 +27,8 @@ import '../feature/placeholder/page/placeholder_page.dart';
 import '../feature/statistics/page/statistics_page.dart';
 import '../feature/statistics/page/statistics_transactions_page.dart';
 import '../feature/statistics/view_model/statistics_view_model.dart';
-import '../feature/profile/page/installment_guide_page.dart';
+import '../feature/profile/page/manual_article_page.dart';
+import '../feature/profile/page/manual_page.dart';
 import '../feature/import/page/import_page.dart';
 import '../feature/import/presentation/import_presentation.dart';
 import '../feature/profile/page/data_cleanup_page.dart';
@@ -332,7 +333,18 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/profile/installment-guide',
-      builder: (context, state) => const InstallmentGuidePage(),
+      builder:
+          (context, state) => const ManualArticlePage(slug: 'credit-metrics'),
+    ),
+    GoRoute(
+      path: '/profile/manual',
+      builder: (context, state) => const ManualPage(),
+    ),
+    GoRoute(
+      path: '/profile/manual/:slug',
+      builder:
+          (context, state) =>
+              ManualArticlePage(slug: state.pathParameters['slug']!),
     ),
     GoRoute(
       path: '/profile/data-cleanup',

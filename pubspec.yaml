@@ -53,6 +53,7 @@ dependencies:
   file_picker: ^11.0.2
   csv: ^8.0.0
   excel_community: ^1.0.10
+  flutter_markdown_plus: ^1.0.5
 
 dev_dependencies:
   flutter_test:
@@ -89,6 +90,7 @@ flutter:
     - assets/branding/
     - assets/icons/account/
     - assets/icons/category/
+    - assets/manual/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
