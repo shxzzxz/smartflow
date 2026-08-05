@@ -863,6 +863,7 @@ class _AccountGroupManagerSheet extends ConsumerWidget {
                       ),
                       title: Text(group.name),
                       trailing: PopupMenuButton<_AccountGroupAction>(
+                        position: PopupMenuPosition.under,
                         onSelected:
                             (action) => _handleAction(
                               context,

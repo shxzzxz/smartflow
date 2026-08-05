@@ -8,7 +8,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_month_picker.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
 import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
-import 'package:smartflow/feature/shared/presentation/pull_to_create_sensitivity_control.dart';
+import 'package:smartflow/feature/shared/presentation/pull_to_create_sensitivity_options.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../shared/view_model/app_settings_view_model.dart';
 import '../view_model/home_view_model.dart';
@@ -200,16 +200,15 @@ class _HomeSettingsMenu extends ConsumerWidget {
       icon: RemixIcons.settings_3_line,
       items: [
         AppPopupMenuToggle(
-          label: '记账悬浮按钮',
+          label: '悬浮按钮',
           value: showAddTransactionFab,
           onChanged: notifier.setShowAddTransactionFab,
         ),
-        AppPopupMenuControl(
-          label: '下拉新增交易',
-          child: PullToCreateSensitivityControl(
-            selected: pullToCreateSensitivity,
-            onChanged: notifier.setPullToCreateSensitivity,
-          ),
+        AppPopupMenuSelect<PullToCreateSensitivity>(
+          label: '下拉灵敏度',
+          value: pullToCreateSensitivity,
+          options: pullToCreateSensitivityOptions,
+          onChanged: notifier.setPullToCreateSensitivity,
         ),
       ],
     );

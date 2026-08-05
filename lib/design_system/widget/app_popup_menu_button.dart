@@ -3,6 +3,7 @@ import 'package:remixicon/remixicon.dart';
 
 import '../token/component.dart';
 import '../token/spacing.dart';
+import 'app_select.dart';
 import 'app_switch.dart';
 
 sealed class AppPopupMenuEntry {}
@@ -95,6 +96,62 @@ class AppPopupMenuControl extends StatelessWidget implements AppPopupMenuEntry {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 弹出菜单中的整行 Select。选择后外层配置菜单保持打开。
+class AppPopupMenuSelect<T> extends StatelessWidget
+    implements AppPopupMenuEntry {
+  const AppPopupMenuSelect({
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    super.key,
+  });
+
+  final String label;
+  final T value;
+  final List<AppSelectOption<T>> options;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return AppSelectMenu<T>(
+      value: value,
+      options: options,
+      onChanged: onChanged,
+      tooltip: '选择$label',
+      behavior: AppSelectMenuBehavior.nested,
+      triggerBuilder:
+          (context, selected) => SizedBox(
+            height: AppComponentTokens.controlMinHeight,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space12,
+              ),
+              child: Row(
+                children: [
+                  Expanded(child: Text(label)),
+                  const SizedBox(width: AppSpacing.space12),
+                  Text(
+                    selected.label,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.space4),
+                  Icon(
+                    RemixIcons.arrow_right_s_line,
+                    size: AppSpacing.space20,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
     );
   }
 }

@@ -487,6 +487,24 @@ void main() {
     expect(find.byType(AppSurface), findsNWidgets(2));
   });
 
+  testWidgets('shows settings rows with a full-row select trigger', (
+    tester,
+  ) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'AppSettingsSelectRow');
+    await tester.pumpAndSettle();
+
+    expect(find.text('设置行'), findsOneWidget);
+    expect(find.text('显示余额'), findsOneWidget);
+    expect(find.text('下拉灵敏度'), findsOneWidget);
+    await tester.tap(find.text('下拉灵敏度'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('稳妥'));
+    await tester.pumpAndSettle();
+    expect(find.text('稳妥'), findsOneWidget);
+  });
+
   testWidgets('shows submit button states with generic labels', (tester) async {
     await pumpShowcase(tester);
 

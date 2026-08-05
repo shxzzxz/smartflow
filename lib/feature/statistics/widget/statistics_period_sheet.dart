@@ -4,6 +4,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_date_picker_panel.dart';
 import '../../../design_system/widget/app_dropdown.dart';
+import '../../../design_system/widget/app_select.dart';
 import '../../../design_system/widget/app_segmented_control.dart';
 import '../../../design_system/widget/app_sliding_segmented_control.dart';
 import '../view_model/statistics_view_model.dart';
@@ -108,15 +109,15 @@ class _StatisticsPeriodSheetState extends State<_StatisticsPeriodSheet> {
                 AppDropdown<StatisticsPeriodGranularity>(
                   tooltip: '选择粒度',
                   options: const [
-                    AppDropdownOption(
+                    AppSelectOption(
                       value: StatisticsPeriodGranularity.year,
                       label: '年',
                     ),
-                    AppDropdownOption(
+                    AppSelectOption(
                       value: StatisticsPeriodGranularity.month,
                       label: '月',
                     ),
-                    AppDropdownOption(
+                    AppSelectOption(
                       value: StatisticsPeriodGranularity.date,
                       label: '日',
                     ),
@@ -216,8 +217,11 @@ class _StatisticsPeriodSheetState extends State<_StatisticsPeriodSheet> {
   DateTime _periodStart(DateTime date) => switch (_granularity) {
     StatisticsPeriodGranularity.year => DateTime(date.year),
     StatisticsPeriodGranularity.month => DateTime(date.year, date.month),
-    StatisticsPeriodGranularity.date =>
-      DateTime(date.year, date.month, date.day),
+    StatisticsPeriodGranularity.date => DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ),
   };
 
   DateTime _periodUntil(DateTime periodStart) => switch (_granularity) {

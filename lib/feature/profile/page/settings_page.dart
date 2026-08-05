@@ -8,8 +8,8 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/list.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
-import '../../../design_system/widget/app_switch.dart';
-import '../../shared/presentation/pull_to_create_sensitivity_control.dart';
+import '../../../design_system/widget/app_settings_row.dart';
+import '../../shared/presentation/pull_to_create_sensitivity_options.dart';
 import '../../shared/view_model/app_settings_view_model.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -47,21 +47,20 @@ class SettingsPage extends ConsumerWidget {
             _SettingsSection(
               title: '界面显示',
               rows: [
-                _SettingsSwitchRow(
+                AppSettingsSwitchRow(
                   label: '记账悬浮按钮',
-                  description: '在首页右下角显示快速记账按钮，关闭后仍可下拉新增交易',
+                  description: '在右下角显示快速记账按钮',
                   value: settings.showAddTransactionFab,
                   onChanged: notifier.setShowAddTransactionFab,
                 ),
-                _SettingsSegmentedControlRow(
-                  label: '下拉新增交易',
-                  description: '调整首页下拉多远后松开即可新增交易',
-                  control: PullToCreateSensitivityControl(
-                    selected: settings.pullToCreateSensitivity,
-                    onChanged: notifier.setPullToCreateSensitivity,
-                  ),
+                AppSettingsSelectRow<PullToCreateSensitivity>(
+                  label: '下拉灵敏度',
+                  description: '调整首页下拉新增交易的距离灵敏度',
+                  value: settings.pullToCreateSensitivity,
+                  options: pullToCreateSensitivityOptions,
+                  onChanged: notifier.setPullToCreateSensitivity,
                 ),
-                _SettingsSwitchRow(
+                AppSettingsSwitchRow(
                   label: '导航栏文字',
                   description: '在底部导航图标下方显示文字标签',
                   value: settings.showBottomNavLabels,
@@ -109,96 +108,6 @@ class _SettingsSection extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _SettingsSegmentedControlRow extends StatelessWidget {
-  const _SettingsSegmentedControlRow({
-    required this.label,
-    required this.description,
-    required this.control,
-  });
-
-  final String label;
-  final String description;
-  final Widget control;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space16,
-        AppSpacing.space10,
-        AppSpacing.space16,
-        AppSpacing.space10,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: context.appTextStyles.formValue),
-          const SizedBox(height: AppSpacing.space4),
-          Text(
-            description,
-            style: context.appTextStyles.listSupporting.copyWith(
-              color: colors.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.space12),
-          control,
-        ],
-      ),
-    );
-  }
-}
-
-class _SettingsSwitchRow extends StatelessWidget {
-  const _SettingsSwitchRow({
-    required this.label,
-    required this.description,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String label;
-  final String description;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space16,
-        AppSpacing.space10,
-        AppSpacing.space12,
-        AppSpacing.space10,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: context.appTextStyles.formValue),
-                const SizedBox(height: AppSpacing.space4),
-                Text(
-                  description,
-                  style: context.appTextStyles.listSupporting.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.space12),
-          AppSwitch(value: value, onChanged: onChanged),
-        ],
-      ),
     );
   }
 }

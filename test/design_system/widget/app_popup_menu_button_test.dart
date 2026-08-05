@@ -194,7 +194,7 @@ void main() {
                   icon: RemixIcons.settings_3_line,
                   items: [
                     AppPopupMenuControl(
-                      label: '下拉新增交易',
+                      label: '下拉灵敏度',
                       child: TextButton(
                         onPressed: () => setState(() => selected = '高'),
                         child: Text(selected),
@@ -214,7 +214,7 @@ void main() {
     await tester.tap(find.text('低'));
     await tester.pumpAndSettle();
 
-    expect(find.text('下拉新增交易'), findsOneWidget);
+    expect(find.text('下拉灵敏度'), findsOneWidget);
     expect(find.text('高'), findsOneWidget);
   });
 }

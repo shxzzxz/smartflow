@@ -32,6 +32,7 @@ import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_theme_extension.dart';
 import '../token/radius.dart';
+import '../token/list.dart';
 import '../token/spacing.dart';
 import '../widget/app_datetime_picker.dart';
 import '../widget/app_cascade_multi_select.dart';
@@ -43,6 +44,8 @@ import '../widget/app_page_header.dart';
 import '../widget/app_plain_form_field.dart';
 import '../widget/app_plain_form_row.dart';
 import '../widget/app_popup_menu_button.dart';
+import '../widget/app_select.dart';
+import '../widget/app_settings_row.dart';
 import '../widget/app_segmented_control.dart';
 import '../widget/app_sliding_segmented_control.dart';
 import '../widget/app_status_banner.dart';
@@ -73,6 +76,7 @@ enum _ShowcaseExampleKind {
   segmentedControl,
   popupMenu,
   dropdown,
+  settingsRows,
   surface,
   textFormRow,
   selectFormRow,
@@ -166,6 +170,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '下拉选择',
     componentNames: 'AppDropdown',
     keywords: ['下拉', '选择', '菜单'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.settingsRows,
+    category: '基础组件',
+    title: '设置行',
+    componentNames: 'AppSettingsSwitchRow / AppSettingsSelectRow',
+    keywords: ['设置', '开关', '选择', '整行', '说明'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.surface,
@@ -554,6 +565,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   var _dropdownValue = '月';
   DateTimeRange? _panelRange;
   var _selectedOption = '选项一';
+  var _settingsSelectValue = 0;
   var _switchValue = true;
   var _describedSwitchValue = false;
   var _selectedSegment = 0;
@@ -720,6 +732,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.segmentedControl => _segmentedControlPreview(),
       _ShowcaseExampleKind.popupMenu => _popupMenuPreview(),
       _ShowcaseExampleKind.dropdown => _dropdownPreview(),
+      _ShowcaseExampleKind.settingsRows => _settingsRowsPreview(),
       _ShowcaseExampleKind.surface => _surfacePreview(),
       _ShowcaseExampleKind.textFormRow => _textFormRowPreview(),
       _ShowcaseExampleKind.selectFormRow => _selectFormRowPreview(),
@@ -1452,15 +1465,39 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
         AppDropdown<String>(
           tooltip: '选择粒度',
           options: const [
-            AppDropdownOption(value: '年', label: '年'),
-            AppDropdownOption(value: '月', label: '月'),
-            AppDropdownOption(value: '日', label: '日'),
+            AppSelectOption(value: '年', label: '年'),
+            AppSelectOption(value: '月', label: '月'),
+            AppSelectOption(value: '日', label: '日'),
           ],
           value: _dropdownValue,
           onChanged: (value) => setState(() => _dropdownValue = value),
         ),
         const SizedBox(width: AppSpacing.space12),
         Text('当前：$_dropdownValue', style: context.appTextStyles.formValue),
+      ],
+    );
+  }
+
+  Widget _settingsRowsPreview() {
+    return Column(
+      children: [
+        AppSettingsSwitchRow(
+          label: '显示余额',
+          description: '在账户列表中显示余额',
+          value: _switchValue,
+          onChanged: (value) => setState(() => _switchValue = value),
+        ),
+        const Divider(height: AppListTokens.dividerThickness),
+        AppSettingsSelectRow<int>(
+          label: '下拉灵敏度',
+          description: '选择下拉触发所需的距离',
+          value: _settingsSelectValue,
+          options: const [
+            AppSelectOption(value: 0, label: '灵敏'),
+            AppSelectOption(value: 1, label: '稳妥'),
+          ],
+          onChanged: (value) => setState(() => _settingsSelectValue = value),
+        ),
       ],
     );
   }
