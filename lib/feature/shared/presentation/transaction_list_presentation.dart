@@ -426,8 +426,8 @@ CashflowSummaryPresentation buildMonthlySummaryPresentation(
         kind: CashflowSummaryMetricKind.expense,
       ),
       CashflowSummaryMetricPresentation(
-        label: '本月预算',
-        amount: totalBudget?.budget ?? Money.zero(),
+        label: '剩余预算',
+        amount: totalBudget?.remaining ?? Money.zero(),
         caption:
             totalBudget == null
                 ? '未设置'

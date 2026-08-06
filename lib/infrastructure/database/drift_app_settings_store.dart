@@ -10,6 +10,8 @@ class DriftAppSettingsStore implements AppSettingsStore {
   static const _showBottomNavLabelsKey = 'settings.show_bottom_nav_labels';
   static const _pullToCreateSensitivityKey =
       'settings.pull_to_create_sensitivity';
+  static const _copyPreviousMonthBudgetsKey =
+      'settings.copy_previous_month_budgets';
 
   final AppDatabase _database;
 
@@ -21,6 +23,7 @@ class DriftAppSettingsStore implements AppSettingsStore {
             _showAddTransactionFabKey,
             _showBottomNavLabelsKey,
             _pullToCreateSensitivityKey,
+            _copyPreviousMonthBudgetsKey,
           ]),
         )).get();
     final values = {for (final row in rows) row.key: row.value};
@@ -37,6 +40,9 @@ class DriftAppSettingsStore implements AppSettingsStore {
             values[_pullToCreateSensitivityKey],
           ) ??
           defaults.pullToCreateSensitivity,
+      copyPreviousMonthBudgetsOnOpen:
+          _parseBool(values[_copyPreviousMonthBudgetsKey]) ??
+          defaults.copyPreviousMonthBudgetsOnOpen,
     );
   }
 
@@ -49,6 +55,10 @@ class DriftAppSettingsStore implements AppSettingsStore {
         _entry(
           _pullToCreateSensitivityKey,
           settings.pullToCreateSensitivity.storageValue,
+        ),
+        _entry(
+          _copyPreviousMonthBudgetsKey,
+          settings.copyPreviousMonthBudgetsOnOpen,
         ),
       ]);
     });

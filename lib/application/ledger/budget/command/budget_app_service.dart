@@ -14,6 +14,8 @@ abstract interface class BudgetAppService {
 
   Future<void> deleteBudget(DeleteBudgetCommand command);
 
+  Future<void> clearMonthBudgets(ClearMonthBudgetsCommand command);
+
   Future<void> reorderCategoryBudgets(ReorderCategoryBudgetsCommand command);
 
   Future<bool> copyPreviousMonthBudgets(
@@ -99,6 +101,11 @@ class BudgetAppServiceImpl implements BudgetAppService {
       }
       await _budgets.delete(command.id);
     });
+  }
+
+  @override
+  Future<void> clearMonthBudgets(ClearMonthBudgetsCommand command) {
+    return _runner.run(() => _budgets.deleteByMonth(command.month));
   }
 
   @override

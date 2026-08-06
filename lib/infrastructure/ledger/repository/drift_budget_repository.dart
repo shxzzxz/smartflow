@@ -64,6 +64,12 @@ class DriftBudgetRepository implements BudgetRepository {
   Future<void> delete(String id) async {
     await (_db.delete(_db.budgets)..where((row) => row.id.equals(id))).go();
   }
+
+  @override
+  Future<void> deleteByMonth(MonthKey month) async {
+    await (_db.delete(_db.budgets)
+      ..where((row) => row.monthKey.equals(_encodeMonth(month)))).go();
+  }
 }
 
 extension on BudgetRow {

@@ -58,7 +58,7 @@ final class BudgetViewModelProvider
   }
 }
 
-String _$budgetViewModelHash() => r'14bba9f2536a7f12d7acc42de436a98eeea2b36e';
+String _$budgetViewModelHash() => r'7580cea1a526d38a5ecf06045404bb7fa495e553';
 
 final class BudgetViewModelFamily extends $Family
     with
@@ -164,7 +164,7 @@ final class BudgetPageProvider
   }
 }
 
-String _$budgetPageHash() => r'1fb14752d07a0a6eafcf5f0019c69f419340e302';
+String _$budgetPageHash() => r'5cd65449af0f426946f38805a2c495683b95c385';
 
 final class BudgetPageFamily extends $Family
     with $FunctionalFamilyOverride<BudgetPageState, DateTime?> {
@@ -182,6 +182,92 @@ final class BudgetPageFamily extends $Family
 
   @override
   String toString() => r'budgetPageProvider';
+}
+
+@ProviderFor(budgetCategoryTransactions)
+final budgetCategoryTransactionsProvider = BudgetCategoryTransactionsFamily._();
+
+final class BudgetCategoryTransactionsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<TransactionListReadModel>>,
+          List<TransactionListReadModel>,
+          Stream<List<TransactionListReadModel>>
+        >
+    with
+        $FutureModifier<List<TransactionListReadModel>>,
+        $StreamProvider<List<TransactionListReadModel>> {
+  BudgetCategoryTransactionsProvider._({
+    required BudgetCategoryTransactionsFamily super.from,
+    required (String, DateTime) super.argument,
+  }) : super(
+         retry: null,
+         name: r'budgetCategoryTransactionsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$budgetCategoryTransactionsHash();
+
+  @override
+  String toString() {
+    return r'budgetCategoryTransactionsProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<TransactionListReadModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<TransactionListReadModel>> create(Ref ref) {
+    final argument = this.argument as (String, DateTime);
+    return budgetCategoryTransactions(ref, argument.$1, argument.$2);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is BudgetCategoryTransactionsProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$budgetCategoryTransactionsHash() =>
+    r'dd44ce048ab5ea3d32b102cd0606da0579e2e2d2';
+
+final class BudgetCategoryTransactionsFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          Stream<List<TransactionListReadModel>>,
+          (String, DateTime)
+        > {
+  BudgetCategoryTransactionsFamily._()
+    : super(
+        retry: null,
+        name: r'budgetCategoryTransactionsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  BudgetCategoryTransactionsProvider call(String categoryId, DateTime month) =>
+      BudgetCategoryTransactionsProvider._(
+        argument: (categoryId, month),
+        from: this,
+      );
+
+  @override
+  String toString() => r'budgetCategoryTransactionsProvider';
 }
 
 @ProviderFor(budgetDetailPage)
@@ -247,7 +333,7 @@ final class BudgetDetailPageProvider
   }
 }
 
-String _$budgetDetailPageHash() => r'd58bed9d181b0d1ca4d6a91a9f0e7f3f2c73d77e';
+String _$budgetDetailPageHash() => r'e37b00d2eb7d1a7f51ee2c62dbb1357f79c38877';
 
 final class BudgetDetailPageFamily extends $Family
     with $FunctionalFamilyOverride<BudgetDetailPageState, (String, DateTime)> {

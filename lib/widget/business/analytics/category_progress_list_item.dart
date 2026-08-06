@@ -12,6 +12,7 @@ class CategoryProgressListItem extends StatelessWidget {
     required this.color,
     required this.trailing,
     required this.onTap,
+    this.leading,
     super.key,
   });
 
@@ -20,6 +21,7 @@ class CategoryProgressListItem extends StatelessWidget {
   final Color color;
   final Widget trailing;
   final VoidCallback onTap;
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
@@ -33,12 +35,18 @@ class CategoryProgressListItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.space10),
         child: Row(
           children: [
-            Container(
-              width: AppSpacing.space12,
-              height: AppSpacing.space12,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            leading ??
+                Container(
+                  width: AppSpacing.space12,
+                  height: AppSpacing.space12,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+            SizedBox(
+              width: leading == null ? AppSpacing.space10 : AppSpacing.space8,
             ),
-            const SizedBox(width: AppSpacing.space10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

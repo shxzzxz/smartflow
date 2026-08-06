@@ -1,9 +1,14 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/shared/app_settings_store.dart';
+import 'action_guard.dart';
+import 'ui_action_outcome.dart';
 
 part 'app_settings_view_model.g.dart';
+
+final _logger = Logger('feature.shared.app_settings');
 
 @Riverpod(keepAlive: true)
 class AppSettingsViewModel extends _$AppSettingsViewModel {
@@ -26,9 +31,23 @@ class AppSettingsViewModel extends _$AppSettingsViewModel {
     );
   }
 
+  Future<UiActionOutcome<void>> setCopyPreviousMonthBudgetsOnOpen(bool value) {
+    return guardUiAction(_logger, 'set copy previous month budgets', () {
+      return _save(
+        (settings) => settings.copyWith(copyPreviousMonthBudgetsOnOpen: value),
+      );
+    });
+  }
+
   Future<void> _save(AppSettings Function(AppSettings settings) change) async {
-    final next = change(state.value ?? const AppSettings());
+    final previous = state.value ?? const AppSettings();
+    final next = change(previous);
     state = AsyncData(next);
-    await ref.read(appSettingsStoreProvider).save(next);
+    try {
+      await ref.read(appSettingsStoreProvider).save(next);
+    } catch (_) {
+      state = AsyncData(previous);
+      rethrow;
+    }
   }
 }

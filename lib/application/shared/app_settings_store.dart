@@ -26,16 +26,19 @@ class AppSettings {
     this.showAddTransactionFab = true,
     this.showBottomNavLabels = true,
     this.pullToCreateSensitivity = PullToCreateSensitivity.standard,
+    this.copyPreviousMonthBudgetsOnOpen = false,
   });
 
   final bool showAddTransactionFab;
   final bool showBottomNavLabels;
   final PullToCreateSensitivity pullToCreateSensitivity;
+  final bool copyPreviousMonthBudgetsOnOpen;
 
   AppSettings copyWith({
     bool? showAddTransactionFab,
     bool? showBottomNavLabels,
     PullToCreateSensitivity? pullToCreateSensitivity,
+    bool? copyPreviousMonthBudgetsOnOpen,
   }) {
     return AppSettings(
       showAddTransactionFab:
@@ -43,6 +46,8 @@ class AppSettings {
       showBottomNavLabels: showBottomNavLabels ?? this.showBottomNavLabels,
       pullToCreateSensitivity:
           pullToCreateSensitivity ?? this.pullToCreateSensitivity,
+      copyPreviousMonthBudgetsOnOpen:
+          copyPreviousMonthBudgetsOnOpen ?? this.copyPreviousMonthBudgetsOnOpen,
     );
   }
 }

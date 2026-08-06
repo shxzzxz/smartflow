@@ -19,6 +19,12 @@ class DeleteBudgetCommand {
   final String id;
 }
 
+class ClearMonthBudgetsCommand {
+  const ClearMonthBudgetsCommand(this.month);
+
+  final MonthKey month;
+}
+
 class ReorderCategoryBudgetsCommand {
   ReorderCategoryBudgetsCommand({
     required this.month,

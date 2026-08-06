@@ -34,13 +34,13 @@ class BudgetTrendChart extends StatelessWidget {
         ],
         series: [
           _budgetSeries(
-            label: '剩余预算',
+            label: '余',
             color: financeColors.chart1,
             points: points,
             value: (point) => point.remaining,
           ),
           _budgetSeries(
-            label: '预算支出',
+            label: '支',
             color: financeColors.chart2,
             points: points,
             value: (point) => point.spent,

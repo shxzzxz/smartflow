@@ -13,4 +13,6 @@ abstract interface class BudgetRepository {
   Future<void> saveAll(Iterable<Budget> budgets);
 
   Future<void> delete(String id);
+
+  Future<void> deleteByMonth(MonthKey month);
 }

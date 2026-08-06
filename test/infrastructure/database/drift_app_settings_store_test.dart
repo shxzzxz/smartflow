@@ -19,6 +19,7 @@ void main() {
           settings.pullToCreateSensitivity,
           PullToCreateSensitivity.standard,
         );
+        expect(settings.copyPreviousMonthBudgetsOnOpen, isFalse);
       },
     );
 
@@ -38,6 +39,17 @@ void main() {
         settings.pullToCreateSensitivity,
         PullToCreateSensitivity.sensitive,
       );
+    });
+
+    test('save then read round-trips copy previous month budgets', () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      final store = DriftAppSettingsStore(database);
+
+      await store.save(const AppSettings(copyPreviousMonthBudgetsOnOpen: true));
+
+      final settings = await store.read();
+      expect(settings.copyPreviousMonthBudgetsOnOpen, isTrue);
     });
   });
 }

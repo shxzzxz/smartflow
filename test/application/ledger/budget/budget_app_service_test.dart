@@ -176,6 +176,39 @@ void main() {
       7,
     );
   });
+
+  test('清空指定月份的全部预算且不影响其他月份', () async {
+    final budgets = _MemoryBudgetRepository();
+    final service = BudgetAppServiceImpl(
+      budgets: budgets,
+      accounts: _MemoryAccountRepository([_expenseCategory('food', '餐饮')]),
+      transactionRunner: const _DirectTransactionRunner(),
+      idGenerator: _SequenceIdGenerator(),
+    );
+    await service.setBudget(
+      SetBudgetCommand(month: month, amount: const Money(minorUnits: 80000)),
+    );
+    await service.setBudget(
+      SetBudgetCommand(
+        month: month,
+        categoryId: 'food',
+        amount: const Money(minorUnits: 50000),
+      ),
+    );
+    final nextMonth = MonthKey(year: 2026, month: 9);
+    await service.setBudget(
+      SetBudgetCommand(
+        month: nextMonth,
+        categoryId: 'food',
+        amount: const Money(minorUnits: 60000),
+      ),
+    );
+
+    await service.clearMonthBudgets(ClearMonthBudgetsCommand(month));
+
+    expect(await budgets.findByMonth(month), isEmpty);
+    expect(await budgets.findByMonth(nextMonth), hasLength(1));
+  });
 }
 
 Account _expenseCategory(String id, String name, {String? parentId}) {
@@ -193,6 +226,11 @@ class _MemoryBudgetRepository implements BudgetRepository {
 
   @override
   Future<void> delete(String id) async => _items.remove(id);
+
+  @override
+  Future<void> deleteByMonth(MonthKey month) async {
+    _items.removeWhere((_, budget) => budget.month == month);
+  }
 
   @override
   Future<Budget?> findById(String id) async => _items[id];

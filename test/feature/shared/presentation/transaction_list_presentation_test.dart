@@ -1,12 +1,25 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/feature/budget/presentation/budget_transaction_presentation.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
 void main() {
   group('transaction list presentation', () {
+    test('builds budget transaction rows from category impact amounts', () {
+      final groups = budgetTransactionGroups(
+        transactions: [_item()],
+        accountLookup: _lookup,
+        categoryId: 'food',
+      );
+
+      expect(groups, hasLength(1));
+      expect(groups.single.rows.single.transactionId, 'tx-1');
+      expect(groups.single.rows.single.amountText, '-12.34');
+    });
+
     test('groups transactions with daily summaries by descending date', () {
       final jan1 = DateTime(2026, 1, 1, 8);
       final jan2 = DateTime(2026, 1, 2, 9);
@@ -293,6 +306,38 @@ void main() {
 
       expect(presentation.metrics[0].caption, '+1.24万/--%/200%');
       expect(presentation.metrics[1].caption, '0/--%/--%');
+    });
+
+    test('shows signed remaining budget and used percentage', () {
+      final presentation = buildMonthlySummaryPresentation(
+        const CashflowComparison(
+          current: CashflowSummary(
+            income: Money(minorUnits: 0),
+            expense: Money(minorUnits: 0),
+          ),
+          previousSamePeriod: CashflowSummary(
+            income: Money(minorUnits: 0),
+            expense: Money(minorUnits: 0),
+          ),
+          previousFullPeriod: CashflowSummary(
+            income: Money(minorUnits: 0),
+            expense: Money(minorUnits: 0),
+          ),
+        ),
+        totalBudget: BudgetProgress(
+          id: 'total',
+          name: '总预算',
+          budget: const Money(minorUnits: 100000),
+          spent: const Money(minorUnits: 120000),
+          sortOrder: 0,
+          trend: const [],
+        ),
+      );
+
+      final budget = presentation.metrics[2];
+      expect(budget.label, '剩余预算');
+      expect(budget.amount, const Money(minorUnits: -20000));
+      expect(budget.caption, '120%/1000');
     });
   });
 }
