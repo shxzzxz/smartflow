@@ -94,7 +94,7 @@ const businessIconSpecs = <BusinessIconSpec>[
     iconKey: 'home',
     icon: RemixIcons.home_5_line,
     color: AppColors.categoryHome,
-    label: '家里-1',
+    label: '家-1',
   ),
   BusinessIconSpec.remix(
     iconKey: 'home-office-line',
@@ -241,7 +241,7 @@ const businessIconSpecs = <BusinessIconSpec>[
     iconKey: 'home-illustration',
     assetPath: 'assets/icons/category/home.svg',
     color: AppColors.categoryHome,
-    label: '家里-2',
+    label: '家-2',
     usage: BusinessIconUsage.expenseCategory,
   ),
   BusinessIconSpec.svg(
@@ -269,7 +269,7 @@ const businessIconSpecs = <BusinessIconSpec>[
     iconKey: 'internet',
     assetPath: 'assets/icons/category/internet.svg',
     color: AppColors.categoryTransfer,
-    label: '网络代理',
+    label: '网络',
     usage: BusinessIconUsage.expenseCategory,
   ),
   BusinessIconSpec.svg(
@@ -297,7 +297,7 @@ const businessIconSpecs = <BusinessIconSpec>[
     iconKey: 'ai-tools',
     assetPath: 'assets/icons/category/ai_tools.svg',
     color: AppColors.categoryGenericNeutral,
-    label: 'AI 工具箱',
+    label: 'AI工具',
     usage: BusinessIconUsage.expenseCategory,
   ),
   BusinessIconSpec.svg(
@@ -808,14 +808,14 @@ const businessIconSpecs = <BusinessIconSpec>[
     iconKey: 'refund-income',
     icon: RemixIcons.refund_2_line,
     color: AppColors.categoryGenericIncome,
-    label: '退款收入',
+    label: '退款',
     usage: BusinessIconUsage.incomeCategory,
   ),
   BusinessIconSpec.remix(
     iconKey: 'red-packet-income',
     icon: RemixIcons.red_packet_line,
     color: AppColors.categoryGift,
-    label: '红包收入',
+    label: '红包',
     usage: BusinessIconUsage.incomeCategory,
   ),
   BusinessIconSpec.remix(
@@ -829,21 +829,21 @@ const businessIconSpecs = <BusinessIconSpec>[
     iconKey: 'rental-income',
     icon: RemixIcons.building_4_line,
     color: AppColors.categoryGenericIncome,
-    label: '租金收入',
+    label: '租金',
     usage: BusinessIconUsage.incomeCategory,
   ),
   BusinessIconSpec.remix(
     iconKey: 'sale-income',
     icon: RemixIcons.shopping_cart_2_line,
     color: AppColors.categoryGenericIncome,
-    label: '销售收入',
+    label: '销售',
     usage: BusinessIconUsage.incomeCategory,
   ),
   BusinessIconSpec.remix(
     iconKey: 'interest-income',
     icon: RemixIcons.money_cny_box_line,
     color: AppColors.categoryGenericIncome,
-    label: '利息收入',
+    label: '利息',
     usage: BusinessIconUsage.incomeCategory,
   ),
   BusinessIconSpec.remix(
