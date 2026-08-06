@@ -232,7 +232,6 @@ class AppPopupMenuButton extends StatelessWidget {
           onPressed: controller.isOpen ? controller.close : controller.open,
           icon: Icon(
             icon,
-            size: AppSpacing.space20,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
           style: const ButtonStyle(
