@@ -1,14 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/design_system/widget/app_form_section.dart';
+import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/feature/credit/page/installment_form_page.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {
+  testWidgets('groups the workflow and uses design-system choice controls', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final container = ProviderContainer(
+      overrides: [
+        accountsForSelectionPurposeProvider.overrideWith(
+          (ref, purpose) => Stream.value(switch (purpose) {
+            AccountSelectionPurpose.repaymentTarget => [_loanAccount()],
+            AccountSelectionPurpose.fund => [_fundAccount()],
+            _ => const <Account>[],
+          }),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: InstallmentFormPage(liabilityAccountId: 'loan'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AppFormSection), findsNWidgets(4));
+    expect(find.text('分期设置'), findsNothing);
+    expect(find.text('还款规则'), findsOneWidget);
+    expect(
+      find.byType(AppPlainSelectMenuFormRow<InstallmentRepaymentMethod>),
+      findsOneWidget,
+    );
+    expect(
+      find.byType(AppPlainSegmentedFormRow<InterestAccrualMethod>),
+      findsOneWidget,
+    );
+    expect(
+      find.byType(DropdownButton<InstallmentRepaymentMethod>),
+      findsNothing,
+    );
+    expect(find.text('%'), findsOneWidget);
+    expect(find.text('按期数和首期还款日生成'), findsOneWidget);
+
+    expect(tester.getTopLeft(find.byType(AppFormSection).first).dx, 16);
+  });
+
   testWidgets(
     'can choose to create contract without disbursement transaction',
     (tester) async {

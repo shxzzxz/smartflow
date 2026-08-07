@@ -1,42 +1,32 @@
-import 'package:flutter/material.dart';
-
 import 'package:smartflow/application/credit/credit_query_api.dart';
+import 'package:smartflow/design_system/widget/app_segmented_control.dart';
+import 'package:smartflow/design_system/widget/app_select.dart';
 
-const List<DropdownMenuItem<InstallmentRepaymentMethod>>
-installmentRepaymentMethodItems = [
-  DropdownMenuItem(
+const List<AppSegment<InterestRatePeriod>> interestRatePeriodSegments = [
+  AppSegment(value: InterestRatePeriod.annual, label: '年'),
+  AppSegment(value: InterestRatePeriod.monthly, label: '月'),
+  AppSegment(value: InterestRatePeriod.daily, label: '日'),
+];
+
+const List<AppSelectOption<InstallmentRepaymentMethod>>
+installmentRepaymentMethodOptions = [
+  AppSelectOption(
     value: InstallmentRepaymentMethod.equalInstallment,
-    child: Text('等额本息'),
+    label: '等额本息',
   ),
-  DropdownMenuItem(
+  AppSelectOption(
     value: InstallmentRepaymentMethod.equalPrincipal,
-    child: Text('等额本金'),
+    label: '等额本金',
   ),
-  DropdownMenuItem(
+  AppSelectOption(
     value: InstallmentRepaymentMethod.interestFirst,
-    child: Text('先息后本'),
+    label: '先息后本',
   ),
-  DropdownMenuItem(
-    value: InstallmentRepaymentMethod.flatFee,
-    child: Text('一次性手续费'),
-  ),
-  DropdownMenuItem(
-    value: InstallmentRepaymentMethod.custom,
-    child: Text('自定义'),
-  ),
+  AppSelectOption(value: InstallmentRepaymentMethod.flatFee, label: '一次性手续费'),
+  AppSelectOption(value: InstallmentRepaymentMethod.custom, label: '自定义'),
 ];
 
-const List<DropdownMenuItem<InterestRatePeriod>> interestRatePeriodItems = [
-  DropdownMenuItem(value: InterestRatePeriod.annual, child: Text('年')),
-  DropdownMenuItem(value: InterestRatePeriod.monthly, child: Text('月')),
-  DropdownMenuItem(value: InterestRatePeriod.daily, child: Text('日')),
+const List<AppSegment<InterestAccrualMethod>> interestAccrualMethodSegments = [
+  AppSegment(value: InterestAccrualMethod.daily, label: '按日计息'),
+  AppSegment(value: InterestAccrualMethod.monthly, label: '按月计息'),
 ];
-
-const List<DropdownMenuItem<InterestAccrualMethod>> interestAccrualMethodItems =
-    [
-      DropdownMenuItem(value: InterestAccrualMethod.daily, child: Text('按日计息')),
-      DropdownMenuItem(
-        value: InterestAccrualMethod.monthly,
-        child: Text('按月计息'),
-      ),
-    ];

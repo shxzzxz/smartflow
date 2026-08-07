@@ -14,6 +14,7 @@ import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
+import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/icon_catalog_picker.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -220,24 +221,21 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
                             validator: validateOptionalNonNegativeMoneyText,
                           ),
                           if (formState.kind == AccountProfileKind.credit) ...[
-                            AppPlainFormRow(
-                              label: '出账还款日',
-                              child: _BillingRepaymentFields(
-                                billingDay: formState.billingDay,
-                                repaymentDay: formState.repaymentDay,
-                                onSelectBillingDay:
-                                    () => _pickMonthlyDay(
-                                      title: '选择出账日',
-                                      selectedDay: formState.billingDay,
-                                      onChanged: notifier.setBillingDay,
-                                    ),
-                                onSelectRepaymentDay:
-                                    () => _pickMonthlyDay(
-                                      title: '选择还款日',
-                                      selectedDay: formState.repaymentDay,
-                                      onChanged: notifier.setRepaymentDay,
-                                    ),
-                              ),
+                            BillingRepaymentDayPlainFields(
+                              billingDay: formState.billingDay,
+                              repaymentDay: formState.repaymentDay,
+                              onSelectBillingDay:
+                                  () => _pickMonthlyDay(
+                                    title: '选择出账日',
+                                    selectedDay: formState.billingDay,
+                                    onChanged: notifier.setBillingDay,
+                                  ),
+                              onSelectRepaymentDay:
+                                  () => _pickMonthlyDay(
+                                    title: '选择还款日',
+                                    selectedDay: formState.repaymentDay,
+                                    onChanged: notifier.setRepaymentDay,
+                                  ),
                             ),
                             AppPlainSwitchRow(
                               label: '出账日计入下期',
@@ -477,64 +475,6 @@ class _AccountKindTab extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _BillingRepaymentFields extends StatelessWidget {
-  const _BillingRepaymentFields({
-    required this.billingDay,
-    required this.repaymentDay,
-    required this.onSelectBillingDay,
-    required this.onSelectRepaymentDay,
-  });
-
-  final int? billingDay;
-  final int? repaymentDay;
-  final VoidCallback onSelectBillingDay;
-  final VoidCallback onSelectRepaymentDay;
-
-  @override
-  Widget build(BuildContext context) {
-    final textStyle = context.appTextStyles.formPlainValue;
-    return Row(
-      children: [
-        Expanded(
-          child: _MonthlyDayField(
-            day: billingDay,
-            placeholder: '出账日',
-            onTap: onSelectBillingDay,
-          ),
-        ),
-        Text('/', style: textStyle),
-        Expanded(
-          child: _MonthlyDayField(
-            day: repaymentDay,
-            placeholder: '还款日',
-            onTap: onSelectRepaymentDay,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MonthlyDayField extends StatelessWidget {
-  const _MonthlyDayField({
-    required this.day,
-    required this.placeholder,
-    required this.onTap,
-  });
-
-  final int? day;
-  final String placeholder;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: AppPlainValueText(text: day == null ? placeholder : '$day 日'),
     );
   }
 }

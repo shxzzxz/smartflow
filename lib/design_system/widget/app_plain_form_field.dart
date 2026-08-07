@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:remixicon/remixicon.dart';
 
 import '../theme/app_text_styles.dart';
 import '../token/form.dart';
 import '../token/spacing.dart';
 import 'app_form_field.dart';
 import 'app_plain_form_row.dart';
+import 'app_segmented_control.dart';
+import 'app_select.dart';
 
 class AppPlainTextFormRow extends FormField<String> {
   AppPlainTextFormRow({
@@ -189,7 +192,7 @@ class AppPlainSelectFormRow<T> extends StatelessWidget {
     this.requiredIndicator = false,
     this.enabled = true,
     this.showChevron = true,
-    this.valueAlignment = AppPlainRowValueAlignment.end,
+    this.valueAlignment = AppPlainRowValueAlignment.start,
     this.labelWidth = AppFormTokens.labelWidth,
     this.minHeight = AppFormTokens.rowMinHeight,
     this.autovalidateMode = AutovalidateMode.disabled,
@@ -257,6 +260,157 @@ class AppPlainSelectFormRow<T> extends StatelessWidget {
                 ),
               ],
             ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class AppPlainSelectMenuFormRow<T> extends StatelessWidget {
+  const AppPlainSelectMenuFormRow({
+    required this.label,
+    required this.value,
+    required this.options,
+    super.key,
+    this.onChanged,
+    this.tooltip,
+    this.supportingText,
+    this.validator,
+    this.requiredIndicator = false,
+    this.enabled = true,
+    this.autovalidateMode = AutovalidateMode.disabled,
+    this.labelWidth = AppFormTokens.labelWidth,
+    this.minHeight = AppFormTokens.rowMinHeight,
+  });
+
+  final String label;
+  final T value;
+  final List<AppSelectOption<T>> options;
+  final ValueChanged<T>? onChanged;
+  final String? tooltip;
+  final String? supportingText;
+  final FormFieldValidator<T>? validator;
+  final bool requiredIndicator;
+  final bool enabled;
+  final AutovalidateMode autovalidateMode;
+  final double labelWidth;
+  final double minHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final interactive = enabled && onChanged != null;
+    return AppControlledFormField<T>(
+      value: value,
+      enabled: interactive,
+      onChanged: (nextValue) {
+        if (nextValue != null) onChanged?.call(nextValue);
+      },
+      validator: validator,
+      autovalidateMode: autovalidateMode,
+      builder: (context, fieldValue, errorText, fieldChanged) {
+        final selected = options.firstWhere(
+          (option) => option.value == (fieldValue ?? value),
+          orElse: () => options.first,
+        );
+        final trigger = AppPlainFormRow(
+          label: label,
+          requiredIndicator: requiredIndicator,
+          supportingText: supportingText,
+          errorText: errorText,
+          enabled: interactive,
+          labelWidth: labelWidth,
+          minHeight: minHeight,
+          child: Row(
+            children: [
+              Expanded(
+                child: AppPlainValueText(
+                  text: selected.label,
+                  textAlign: TextAlign.left,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.space6),
+              Icon(
+                RemixIcons.arrow_down_s_line,
+                size: AppSpacing.space20,
+                color: colors.onSurfaceVariant,
+              ),
+            ],
+          ),
+        );
+        if (!interactive) return trigger;
+        return AppSelectMenu<T>(
+          options: options,
+          value: selected.value,
+          onChanged: (nextValue) => fieldChanged(nextValue),
+          tooltip: tooltip ?? '选择$label',
+          triggerBuilder: (context, _) => trigger,
+        );
+      },
+    );
+  }
+}
+
+class AppPlainSegmentedFormRow<T> extends StatelessWidget {
+  const AppPlainSegmentedFormRow({
+    required this.label,
+    required this.value,
+    required this.segments,
+    super.key,
+    this.onChanged,
+    this.supportingText,
+    this.validator,
+    this.requiredIndicator = false,
+    this.enabled = true,
+    this.autovalidateMode = AutovalidateMode.disabled,
+    this.labelWidth = AppFormTokens.labelWidth,
+    this.minHeight = AppFormTokens.rowMinHeight,
+  });
+
+  final String label;
+  final T value;
+  final List<AppSegment<T>> segments;
+  final ValueChanged<T>? onChanged;
+  final String? supportingText;
+  final FormFieldValidator<T>? validator;
+  final bool requiredIndicator;
+  final bool enabled;
+  final AutovalidateMode autovalidateMode;
+  final double labelWidth;
+  final double minHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final interactive = enabled && onChanged != null;
+    return AppControlledFormField<T>(
+      value: value,
+      enabled: interactive,
+      onChanged: (nextValue) {
+        if (nextValue != null) onChanged?.call(nextValue);
+      },
+      validator: validator,
+      autovalidateMode: autovalidateMode,
+      builder: (context, fieldValue, errorText, fieldChanged) {
+        return AppPlainFormRow(
+          label: label,
+          enabled: interactive,
+          requiredIndicator: requiredIndicator,
+          supportingText: supportingText,
+          errorText: errorText,
+          labelWidth: labelWidth,
+          minHeight: minHeight,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: AppSegmentedControl<T>(
+              segments: segments,
+              selected: fieldValue ?? value,
+              onChanged:
+                  interactive ? (nextValue) => fieldChanged(nextValue) : (_) {},
+              size: AppSegmentedControlSize.small,
+              tone: AppSegmentedControlTone.neutral,
+              textStyle: context.appTextStyles.formPlainValue,
+            ),
           ),
         );
       },

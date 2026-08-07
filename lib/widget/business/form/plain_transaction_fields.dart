@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/token/form.dart';
+import 'package:smartflow/design_system/token/radius.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/widget/app_form_field.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_row.dart';
+import 'package:smartflow/design_system/widget/app_segmented_control.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 
 import '../icon/business_icon.dart';
@@ -72,6 +74,7 @@ class DateTimePlainFormRow extends StatelessWidget {
     super.key,
     this.showChevron = false,
     this.valueAlignment = AppPlainRowValueAlignment.start,
+    this.supportingText,
     this.minHeight = AppFormTokens.rowMinHeight,
   });
 
@@ -82,6 +85,7 @@ class DateTimePlainFormRow extends StatelessWidget {
   final ValueChanged<DateTime?> onChanged;
   final bool showChevron;
   final AppPlainRowValueAlignment valueAlignment;
+  final String? supportingText;
   final double minHeight;
 
   @override
@@ -95,7 +99,101 @@ class DateTimePlainFormRow extends StatelessWidget {
       onChanged: onChanged,
       showChevron: showChevron,
       valueAlignment: valueAlignment,
+      supportingText: supportingText,
       minHeight: minHeight,
+    );
+  }
+}
+
+class BillingRepaymentDayPlainFields extends StatelessWidget {
+  const BillingRepaymentDayPlainFields({
+    required this.billingDay,
+    required this.repaymentDay,
+    required this.onSelectBillingDay,
+    required this.onSelectRepaymentDay,
+    super.key,
+  });
+
+  final int? billingDay;
+  final int? repaymentDay;
+  final VoidCallback onSelectBillingDay;
+  final VoidCallback onSelectRepaymentDay;
+
+  @override
+  Widget build(BuildContext context) {
+    final fields = [
+      _MonthlyDayPlainField(
+        day: billingDay,
+        label: '出账日',
+        onTap: onSelectBillingDay,
+      ),
+      _MonthlyDayPlainField(
+        day: repaymentDay,
+        label: '还款日',
+        onTap: onSelectRepaymentDay,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final largeText =
+            MediaQuery.textScalerOf(context).scale(14) >= AppSpacing.space18;
+        final stackFields = constraints.maxWidth < 340 || largeText;
+        if (stackFields) {
+          return Column(
+            children: [
+              fields.first,
+              const SizedBox(height: AppSpacing.space4),
+              fields.last,
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: fields.first),
+            const SizedBox(width: AppSpacing.space12),
+            Expanded(child: fields.last),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MonthlyDayPlainField extends StatelessWidget {
+  const _MonthlyDayPlainField({
+    required this.day,
+    required this.label,
+    required this.onTap,
+  });
+
+  final int? day;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minHeight: AppFormTokens.rowMinHeight + AppSpacing.space16,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.space4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(label, style: context.appTextStyles.formLabel),
+              const SizedBox(height: AppSpacing.space4),
+              AppPlainValueText(text: day == null ? '请选择' : '每月 $day 日'),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -164,10 +262,11 @@ class ValueWithUnitPlainFormRow<T> extends StatelessWidget {
     required this.label,
     required this.controller,
     required this.unit,
-    required this.unitItems,
+    required this.unitSegments,
     required this.onUnitChanged,
     super.key,
     this.hintText,
+    this.suffixText,
     this.keyboardType,
     this.inputFormatters,
     this.validator,
@@ -177,9 +276,10 @@ class ValueWithUnitPlainFormRow<T> extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final T unit;
-  final List<DropdownMenuItem<T>> unitItems;
+  final List<AppSegment<T>> unitSegments;
   final ValueChanged<T> onUnitChanged;
   final String? hintText;
+  final String? suffixText;
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final FormFieldValidator<String>? validator;
@@ -187,10 +287,7 @@ class ValueWithUnitPlainFormRow<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final valueStyle = context.appTextStyles.formPlainValue.copyWith(
-      color: colors.onSurface,
-    );
+    final valueStyle = context.appTextStyles.formPlainValue;
     return AppControlledFormField<T>(
       value: unit,
       onChanged: (nextUnit) {
@@ -203,30 +300,27 @@ class ValueWithUnitPlainFormRow<T> extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: TextFormField(
+                child: AppPlainTextFormField(
                   controller: controller,
                   keyboardType: keyboardType,
                   inputFormatters: inputFormatters,
                   style: valueStyle,
                   validator: validator,
-                  decoration: InputDecoration(
-                    hintText: hintText,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
-                    border: InputBorder.none,
-                  ),
+                  hintText: hintText,
                 ),
               ),
+              if (suffixText != null) ...[
+                const SizedBox(width: AppSpacing.space4),
+                Text(suffixText!, style: valueStyle),
+              ],
               const SizedBox(width: AppSpacing.space8),
-              DropdownButton<T>(
-                value: fieldUnit,
-                isDense: true,
-                style: valueStyle,
-                underline: const SizedBox.shrink(),
-                items: unitItems,
-                onChanged: (nextUnit) {
-                  if (nextUnit != null) fieldChanged(nextUnit);
-                },
+              AppSegmentedControl<T>(
+                segments: unitSegments,
+                selected: fieldUnit ?? unit,
+                onChanged: fieldChanged,
+                size: AppSegmentedControlSize.small,
+                tone: AppSegmentedControlTone.neutral,
+                textStyle: valueStyle,
               ),
             ],
           ),

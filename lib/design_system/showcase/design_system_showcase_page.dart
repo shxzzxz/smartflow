@@ -88,6 +88,7 @@ enum _ShowcaseExampleKind {
   surface,
   textFormRow,
   selectFormRow,
+  choiceFormRows,
   switchRow,
   moneyFormRow,
   businessFormRows,
@@ -233,6 +234,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     keywords: ['选择', '选项', '占位', '禁用'],
   ),
   _ShowcaseExample(
+    kind: _ShowcaseExampleKind.choiceFormRows,
+    category: '表单与输入',
+    title: '菜单与分段表单行',
+    componentNames: 'AppPlainSelectMenuFormRow / AppPlainSegmentedFormRow',
+    keywords: ['选择', '菜单', '分段', '校验', '禁用'],
+  ),
+  _ShowcaseExample(
     kind: _ShowcaseExampleKind.switchRow,
     category: '表单与输入',
     title: '开关行',
@@ -251,7 +259,7 @@ const _showcaseExamples = <_ShowcaseExample>[
     category: '表单与输入',
     title: '业务字段行',
     componentNames:
-        'AccountPlainFormRow / DropdownPlainFormRow / '
+        'AccountPlainFormRow / AppPlainSelectMenuFormRow / '
         'ValueWithUnitPlainFormRow / showAccountPickerSheet',
     keywords: ['账户', '下拉', '单位', '选择', '底部弹层'],
   ),
@@ -793,6 +801,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.surface => _surfacePreview(),
       _ShowcaseExampleKind.textFormRow => _textFormRowPreview(),
       _ShowcaseExampleKind.selectFormRow => _selectFormRowPreview(),
+      _ShowcaseExampleKind.choiceFormRows => _choiceFormRowsPreview(),
       _ShowcaseExampleKind.switchRow => _switchRowPreview(),
       _ShowcaseExampleKind.moneyFormRow => _moneyFormRowPreview(),
       _ShowcaseExampleKind.businessFormRows => _businessFormRowsPreview(),
@@ -1219,6 +1228,61 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
     );
   }
 
+  Widget _choiceFormRowsPreview() {
+    return AppPlainFormSection(
+      children: [
+        AppPlainSelectMenuFormRow<int>(
+          label: '默认选择',
+          value: _selectedCycle,
+          options: const [
+            AppSelectOption(value: 0, label: '每月'),
+            AppSelectOption(value: 1, label: '每周'),
+          ],
+          onChanged: (value) => setState(() => _selectedCycle = value),
+        ),
+        AppPlainSelectMenuFormRow<int>(
+          label: '错误状态',
+          value: _selectedCycle,
+          options: const [
+            AppSelectOption(value: 0, label: '每月'),
+            AppSelectOption(value: 1, label: '每周'),
+          ],
+          requiredIndicator: true,
+          validator: (_) => '请选择账期',
+          autovalidateMode: AutovalidateMode.always,
+          onChanged: (value) => setState(() => _selectedCycle = value),
+        ),
+        const AppPlainSelectMenuFormRow<int>(
+          label: '禁用状态',
+          value: 0,
+          options: [
+            AppSelectOption(value: 0, label: '每月'),
+            AppSelectOption(value: 1, label: '每周'),
+          ],
+          enabled: false,
+        ),
+        AppPlainSegmentedFormRow<int>(
+          label: '默认分段',
+          value: _selectedTermUnit,
+          segments: const [
+            AppSegment(value: 0, label: '期'),
+            AppSegment(value: 1, label: '月'),
+          ],
+          onChanged: (value) => setState(() => _selectedTermUnit = value),
+        ),
+        const AppPlainSegmentedFormRow<int>(
+          label: '禁用分段',
+          value: 0,
+          segments: [
+            AppSegment(value: 0, label: '期'),
+            AppSegment(value: 1, label: '月'),
+          ],
+          onChanged: null,
+        ),
+      ],
+    );
+  }
+
   Widget _switchRowPreview() {
     return AppPlainFormSection(
       children: [
@@ -1285,12 +1349,12 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
             setState(() => _selectedAccountId = value);
           },
         ),
-        DropdownPlainFormRow<int>(
-          label: '下拉选择',
+        AppPlainSelectMenuFormRow<int>(
+          label: '菜单选择',
           value: _selectedCycle,
-          items: const [
-            DropdownMenuItem(value: 0, child: Text('每月')),
-            DropdownMenuItem(value: 1, child: Text('每周')),
+          options: const [
+            AppSelectOption(value: 0, label: '每月'),
+            AppSelectOption(value: 1, label: '每周'),
           ],
           onChanged: (value) => setState(() => _selectedCycle = value),
         ),
@@ -1298,9 +1362,9 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           label: '数值单位',
           controller: _termValueController,
           unit: _selectedTermUnit,
-          unitItems: const [
-            DropdownMenuItem(value: 0, child: Text('期')),
-            DropdownMenuItem(value: 1, child: Text('月')),
+          unitSegments: const [
+            AppSegment(value: 0, label: '期'),
+            AppSegment(value: 1, label: '月'),
           ],
           onUnitChanged: (value) => setState(() => _selectedTermUnit = value),
           hintText: '请输入数值',

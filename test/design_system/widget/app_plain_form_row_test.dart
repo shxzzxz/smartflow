@@ -3,6 +3,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_row.dart';
 
 void main() {
+  testWidgets('keeps form labels close in size to field values', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: AppPlainFormRow(
+            label: '本金',
+            child: AppPlainValueText(text: '10000.00'),
+          ),
+        ),
+      ),
+    );
+
+    final label = tester.widget<Text>(find.text('本金'));
+    final value = tester.widget<Text>(find.text('10000.00'));
+
+    expect(label.style!.fontSize, 14);
+    expect(value.style!.fontSize, 15);
+  });
+
   testWidgets('uses compact touch-safe height for a plain row', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -97,6 +118,16 @@ void main() {
     expect(find.byType(Opacity), findsOneWidget);
     await tester.tap(find.text('现金'), warnIfMissed: false);
     expect(taps, 0);
+  });
+
+  testWidgets('read-only value rows keep values right aligned', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: AppPlainValueRow(label: '账户', value: '现金')),
+      ),
+    );
+
+    expect(tester.widget<Text>(find.text('现金')).textAlign, TextAlign.right);
   });
 
   testWidgets('switch row shows optional description with weaker hierarchy', (

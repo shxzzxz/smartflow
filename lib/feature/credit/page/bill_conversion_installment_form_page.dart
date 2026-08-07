@@ -156,31 +156,32 @@ class _BillConversionInstallmentFormPageState
                   }
                 },
               ),
-              DropdownPlainFormRow<InstallmentRepaymentMethod>(
+              AppPlainSelectMenuFormRow<InstallmentRepaymentMethod>(
                 label: '分期方式',
                 value: state.method,
-                items: installmentRepaymentMethodItems,
+                options: installmentRepaymentMethodOptions,
                 onChanged: notifier.setMethod,
               ),
               if (state.method != InstallmentRepaymentMethod.flatFee &&
                   state.method != InstallmentRepaymentMethod.custom)
-                DropdownPlainFormRow<InterestAccrualMethod>(
+                AppPlainSegmentedFormRow<InterestAccrualMethod>(
                   label: '计息方式',
                   value: state.accrualMethod,
-                  items: interestAccrualMethodItems,
+                  segments: interestAccrualMethodSegments,
                   onChanged: notifier.setAccrualMethod,
                 ),
               if (state.method != InstallmentRepaymentMethod.flatFee &&
                   state.method != InstallmentRepaymentMethod.custom)
                 ValueWithUnitPlainFormRow<InterestRatePeriod>(
-                  label: '利率(%)',
+                  label: '利率',
                   controller: _rateController,
                   hintText: '例：7.2',
+                  suffixText: '%',
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
                   unit: state.ratePeriod,
-                  unitItems: interestRatePeriodItems,
+                  unitSegments: interestRatePeriodSegments,
                   onUnitChanged: notifier.setRatePeriod,
                 ),
               if (state.method == InstallmentRepaymentMethod.equalInstallment)
@@ -299,4 +300,3 @@ billRepaymentAllocationModeItems = [
 String _periodLabel(BillPeriod period) {
   return '${period.year}年${period.month.toString().padLeft(2, '0')}月账单';
 }
-

@@ -66,7 +66,7 @@ class AppTextStyles {
 
   TextStyle get formLabel => _labelMedium.copyWith(
     color: _colors.onSurfaceVariant,
-    fontSize: AppTypography.fontSizeXs,
+    fontSize: AppTypography.fontSizeSm,
     fontWeight: AppTypography.emphasisWeight,
   );
 
@@ -78,6 +78,7 @@ class AppTextStyles {
 
   TextStyle get formPlainValue => _bodyLarge.copyWith(
     color: _colors.onSurface,
+    fontSize: AppTypography.fontSizeMd,
     fontWeight: AppTypography.bodyWeight,
   );
 

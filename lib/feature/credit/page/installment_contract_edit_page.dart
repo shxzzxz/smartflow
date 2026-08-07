@@ -399,31 +399,32 @@ class _ConfigSection extends StatelessWidget {
           onChanged: onLastDateChanged,
           minHeight: _rowMinHeight,
         ),
-        DropdownPlainFormRow<InstallmentRepaymentMethod>(
+        AppPlainSelectMenuFormRow<InstallmentRepaymentMethod>(
           label: '分期方式',
           value: method,
-          items: installmentRepaymentMethodItems,
+          options: installmentRepaymentMethodOptions,
           onChanged: onMethodChanged,
           minHeight: _rowMinHeight,
         ),
         if (method != InstallmentRepaymentMethod.flatFee &&
             method != InstallmentRepaymentMethod.custom)
-          DropdownPlainFormRow<InterestAccrualMethod>(
+          AppPlainSegmentedFormRow<InterestAccrualMethod>(
             label: '计息方式',
             value: accrualMethod,
-            items: interestAccrualMethodItems,
+            segments: interestAccrualMethodSegments,
             onChanged: onAccrualMethodChanged,
             minHeight: _rowMinHeight,
           ),
         if (method != InstallmentRepaymentMethod.flatFee &&
             method != InstallmentRepaymentMethod.custom)
           ValueWithUnitPlainFormRow<InterestRatePeriod>(
-            label: '利率(%)',
+            label: '利率',
             controller: rateController,
             hintText: '例：7.2',
+            suffixText: '%',
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             unit: ratePeriod,
-            unitItems: interestRatePeriodItems,
+            unitSegments: interestRatePeriodSegments,
             onUnitChanged: onRatePeriodChanged,
             minHeight: _rowMinHeight,
           ),
@@ -1001,7 +1002,6 @@ class _MetricCell extends StatelessWidget {
     );
   }
 }
-
 
 String _formatDateShort(DateTime date) {
   return '${date.month.toString().padLeft(2, '0')}-'

@@ -23,6 +23,7 @@ class AppSegmentedControl<T> extends StatelessWidget {
     super.key,
     this.size = AppSegmentedControlSize.medium,
     this.tone = AppSegmentedControlTone.primary,
+    this.textStyle,
   });
 
   final List<AppSegment<T>> segments;
@@ -30,6 +31,7 @@ class AppSegmentedControl<T> extends StatelessWidget {
   final ValueChanged<T> onChanged;
   final AppSegmentedControlSize size;
   final AppSegmentedControlTone tone;
+  final TextStyle? textStyle;
 
   @override
   Widget build(BuildContext context) {
@@ -73,9 +75,11 @@ class AppSegmentedControl<T> extends StatelessWidget {
                   : colors.onSurfaceVariant,
         ),
         textStyle: WidgetStateProperty.resolveWith(
-          (states) => context.appTextStyles.quickActionLabel(
-            selected: states.contains(WidgetState.selected),
-          ),
+          (states) =>
+              textStyle ??
+              context.appTextStyles.quickActionLabel(
+                selected: states.contains(WidgetState.selected),
+              ),
         ),
       ),
     );

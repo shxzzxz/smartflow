@@ -17,6 +17,11 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/installment_form_view_model.dart';
 import '../widget/installment_field_options.dart';
 
+const _installmentSectionPadding = EdgeInsets.symmetric(
+  horizontal: AppSpacing.space16,
+  vertical: AppSpacing.space8,
+);
+
 class InstallmentFormPage extends ConsumerStatefulWidget {
   const InstallmentFormPage({
     required this.liabilityAccountId,
@@ -88,14 +93,14 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
       key: _formKey,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(
-          AppSpacing.space28,
-          AppSpacing.space18,
-          AppSpacing.space28,
+          AppSpacing.space16,
+          AppSpacing.space12,
+          AppSpacing.space16,
           AppSpacing.space24,
         ),
         children: [
           AppFormSection(
-            title: '分期设置',
+            padding: _installmentSectionPadding,
             children: [
               AppPlainFormRow(
                 label: '负债账户',
@@ -103,6 +108,23 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                   account: state.liability,
                   placeholder: '',
                 ),
+              ),
+              MoneyPlainFormRow(
+                label: '本金',
+                controller: _principalController,
+                hintText: '请输入分期本金',
+                validator: validatePositiveMoneyText,
+              ),
+              DateTimePlainFormRow(
+                label: '借款日期',
+                dateTime: state.borrowingDate,
+                value: formatDateLabel(state.borrowingDate),
+                onTap:
+                    (onSelected) =>
+                        _pickBorrowingDate(state.borrowingDate, onSelected),
+                onChanged: (value) {
+                  if (value != null) notifier.setBorrowingDate(value);
+                },
               ),
               if (isDisbursement)
                 AppPlainSwitchRow(
@@ -131,28 +153,17 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                           ),
                   onChanged: notifier.setDisbursementAccountId,
                 ),
-              MoneyPlainFormRow(
-                label: '本金',
-                controller: _principalController,
-                hintText: '请输入分期本金',
-                validator: validatePositiveMoneyText,
-              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          AppFormSection(
+            padding: _installmentSectionPadding,
+            children: [
               AppPlainIntegerFormRow(
                 label: '期数',
                 controller: _totalPeriodsController,
                 hintText: '总期数',
                 validator: _validatePositiveInt,
-              ),
-              DateTimePlainFormRow(
-                label: '借款日期',
-                dateTime: state.borrowingDate,
-                value: formatDateLabel(state.borrowingDate),
-                onTap:
-                    (onSelected) =>
-                        _pickBorrowingDate(state.borrowingDate, onSelected),
-                onChanged: (value) {
-                  if (value != null) notifier.setBorrowingDate(value);
-                },
               ),
               DateTimePlainFormRow(
                 label: '首期还款日',
@@ -172,8 +183,10 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                 dateTime: state.lastRepaymentDate,
                 value:
                     state.lastRepaymentDate == null
-                        ? '按期数自动计算'
+                        ? '自动计算'
                         : formatDateLabel(state.lastRepaymentDate!),
+                supportingText:
+                    state.lastRepaymentDate == null ? '按期数和首期还款日生成' : null,
                 onTap:
                     (onSelected) => _pickLastRepaymentDate(
                       state.lastRepaymentDate ?? state.firstRepaymentDate,
@@ -181,31 +194,39 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                     ),
                 onChanged: notifier.setLastRepaymentDate,
               ),
-              DropdownPlainFormRow<InstallmentRepaymentMethod>(
+            ],
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          AppFormSection(
+            title: '还款规则',
+            padding: _installmentSectionPadding,
+            children: [
+              AppPlainSelectMenuFormRow<InstallmentRepaymentMethod>(
                 label: '分期方式',
                 value: state.method,
-                items: installmentRepaymentMethodItems,
+                options: installmentRepaymentMethodOptions,
                 onChanged: notifier.setMethod,
               ),
               if (state.method != InstallmentRepaymentMethod.flatFee &&
                   state.method != InstallmentRepaymentMethod.custom)
-                DropdownPlainFormRow<InterestAccrualMethod>(
+                AppPlainSegmentedFormRow<InterestAccrualMethod>(
                   label: '计息方式',
                   value: state.accrualMethod,
-                  items: interestAccrualMethodItems,
+                  segments: interestAccrualMethodSegments,
                   onChanged: notifier.setAccrualMethod,
                 ),
               if (state.method != InstallmentRepaymentMethod.flatFee &&
                   state.method != InstallmentRepaymentMethod.custom)
                 ValueWithUnitPlainFormRow<InterestRatePeriod>(
-                  label: '利率(%)',
+                  label: '利率',
                   controller: _rateController,
                   hintText: '例：7.2',
+                  suffixText: '%',
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
                   unit: state.ratePeriod,
-                  unitItems: interestRatePeriodItems,
+                  unitSegments: interestRatePeriodSegments,
                   onUnitChanged: notifier.setRatePeriod,
                 ),
               if (state.method == InstallmentRepaymentMethod.equalInstallment)
@@ -222,8 +243,12 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                   hintText: '所有期次手续费合计（可选）',
                   validator: validateOptionalNonNegativeMoneyText,
                 ),
-              NotePlainFormRow(controller: _noteController),
             ],
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          AppFormSection(
+            padding: _installmentSectionPadding,
+            children: [NotePlainFormRow(controller: _noteController)],
           ),
           const SizedBox(height: AppSpacing.space24),
           AppSubmitButton(
@@ -333,4 +358,3 @@ Account? _findAccount(List<Account> accounts, String? id) {
   }
   return null;
 }
-

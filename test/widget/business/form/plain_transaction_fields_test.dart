@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/design_system/widget/app_segmented_control.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 
@@ -241,6 +242,56 @@ void main() {
     expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
   });
 
+  testWidgets('billing and repayment fields stack on narrow screens', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 300,
+            child: BillingRepaymentDayPlainFields(
+              billingDay: null,
+              repaymentDay: null,
+              onSelectBillingDay: _noop,
+              onSelectRepaymentDay: _noop,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.getTopLeft(find.text('还款日')).dy,
+      greaterThan(tester.getTopLeft(find.text('出账日')).dy),
+    );
+  });
+
+  testWidgets('billing and repayment fields stack for large text', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(textScaler: TextScaler.linear(1.4)),
+        child: const MaterialApp(
+          home: Scaffold(
+            body: BillingRepaymentDayPlainFields(
+              billingDay: null,
+              repaymentDay: null,
+              onSelectBillingDay: _noop,
+              onSelectRepaymentDay: _noop,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.getTopLeft(find.text('还款日')).dy,
+      greaterThan(tester.getTopLeft(find.text('出账日')).dy),
+    );
+  });
+
   testWidgets('value-with-unit row restores its unit on Form reset', (
     tester,
   ) async {
@@ -260,15 +311,10 @@ void main() {
                   label: '利率',
                   controller: controller,
                   unit: unit,
-                  unitItems: const [
-                    DropdownMenuItem(
-                      value: _TestChoice.first,
-                      child: Text('月'),
-                    ),
-                    DropdownMenuItem(
-                      value: _TestChoice.second,
-                      child: Text('年'),
-                    ),
+                  suffixText: '%',
+                  unitSegments: const [
+                    AppSegment(value: _TestChoice.first, label: '月'),
+                    AppSegment(value: _TestChoice.second, label: '年'),
                   ],
                   onUnitChanged: (next) => setState(() => unit = next),
                 ),
@@ -279,10 +325,12 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('月'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('年').last);
-    await tester.pumpAndSettle();
+    expect(find.text('%'), findsOneWidget);
+    expect(find.byType(DropdownButton<_TestChoice>), findsNothing);
+    expect(find.byType(AppSegmentedControl<_TestChoice>), findsOneWidget);
+
+    await tester.tap(find.text('年'));
+    await tester.pump();
     expect(unit, _TestChoice.second);
 
     formKey.currentState!.reset();
@@ -292,6 +340,8 @@ void main() {
     expect(find.text('月'), findsOneWidget);
   });
 }
+
+void _noop() {}
 
 enum _TestChoice { first, second }
 

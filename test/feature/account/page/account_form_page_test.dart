@@ -54,6 +54,37 @@ void main() {
     expect(find.byType(Divider), findsNothing);
   });
 
+  testWidgets('shows billing and repayment days as paired subfields', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          accountAppServiceProvider.overrideWith(
+            (ref) => _FakeAccountAppService(),
+          ),
+          _accountGroupsOverride(),
+        ],
+        child: const MaterialApp(home: AccountFormPage()),
+      ),
+    );
+
+    await tester.tap(find.text('信用'));
+    await tester.pump();
+
+    expect(find.text('出账还款日'), findsNothing);
+    expect(find.text('出账日'), findsOneWidget);
+    expect(find.text('还款日'), findsOneWidget);
+    expect(find.text('请选择'), findsNWidgets(2));
+    expect(tester.widget<Text>(find.text('出账日')).style!.fontSize, 14);
+    expect(
+      tester.getTopLeft(find.text('出账日')).dy,
+      tester.getTopLeft(find.text('还款日')).dy,
+    );
+  });
+
   testWidgets('saves an account immediately after edit data loads', (
     tester,
   ) async {
