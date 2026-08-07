@@ -27,15 +27,16 @@ import 'package:smartflow/widget/business/transaction/empty_transaction_card.dar
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 
 const _showcaseCategoryLabels = [
-  '基础规范',
-  '基础组件',
-  '表单组件',
+  '设计基础',
+  '基础控件',
+  '表单与输入',
+  '选择器与弹层',
+  '反馈与状态',
+  '布局与容器',
   '数据展示',
-  '日期组件',
-  '操作与反馈',
   '财务表达',
+  '业务图标',
   '交易与列表',
-  '布局组件',
 ];
 
 void main() {
@@ -77,8 +78,8 @@ void main() {
       final categoryTab = find.text(category);
       await tester.ensureVisible(categoryTab);
       await tester.tap(categoryTab);
-      await tester.pumpAndSettle();
-      if (category == '基础组件') {
+      await tester.pump(const Duration(milliseconds: 500));
+      if (category == '基础控件') {
         expect(
           find.text('FilledButton / OutlinedButton / TextButton'),
           findsOneWidget,
@@ -120,6 +121,25 @@ void main() {
 
     expect(find.text('金额文本'), findsOneWidget);
     expect(find.text('色彩语义'), findsNothing);
+  });
+
+  testWidgets('registers the newly covered component modules', (tester) async {
+    await pumpShowcase(tester);
+
+    const examples = <String, String>{
+      'AppTextFormField': '表单字段',
+      'AppPlainFormRow': '基础表单行',
+      'AppSelectMenu': '选择菜单',
+      'CategoryProgressListItem': '分类进度项',
+      'TreeSelect': '树形选择',
+      'TransactionFeedScrollView': '交易 Feed',
+    };
+
+    for (final entry in examples.entries) {
+      await tester.enterText(find.byType(SearchBar), entry.key);
+      await tester.pump();
+      expect(find.text(entry.value), findsOneWidget, reason: entry.key);
+    }
   });
 
   testWidgets('keeps spacing and radius tokens separate', (tester) async {
@@ -204,9 +224,7 @@ void main() {
   ) async {
     await pumpShowcase(tester);
 
-    final dateCategory = find.text('日期组件');
-    await tester.ensureVisible(dateCategory);
-    await tester.tap(dateCategory);
+    await tester.enterText(find.byType(SearchBar), 'AppDatePicker');
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(OutlinedButton, '选择日期'));
     await tester.pumpAndSettle();
@@ -355,7 +373,7 @@ void main() {
     await tester.enterText(find.byType(SearchBar), 'BusinessIconBubble');
     await tester.pumpAndSettle();
 
-    expect(find.text('业务图标'), findsOneWidget);
+    expect(find.text('图标展示'), findsOneWidget);
     expect(find.byType(BusinessIcon), findsWidgets);
     expect(find.byType(IconChoiceGrid), findsNothing);
 
@@ -364,7 +382,7 @@ void main() {
 
     expect(find.text('图标选择网格'), findsOneWidget);
     expect(find.byType(IconChoiceGrid), findsOneWidget);
-    expect(find.text('业务图标'), findsNothing);
+    expect(find.text('图标展示'), findsNothing);
 
     await tester.enterText(find.byType(SearchBar), 'IconCatalogPicker');
     await tester.pumpAndSettle();
@@ -461,7 +479,7 @@ void main() {
     expect(find.byType(TabBar), findsOneWidget);
     expect(find.byType(ChoiceChip), findsNothing);
 
-    await tester.tap(find.text('基础组件'));
+    await tester.tap(find.text('基础控件'));
     await tester.pump();
 
     expect(find.text('按钮'), findsOneWidget);

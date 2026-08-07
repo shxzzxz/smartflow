@@ -41,9 +41,14 @@ class IconChoiceGrid extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final effectiveTileMainExtent =
+        MediaQuery.textScalerOf(context)
+            .scale(tileMainExtent)
+            .clamp(tileMainExtent, tileMainExtent * 2)
+            .toDouble();
     final rowCount = (choices.length / crossAxisCount).ceil();
     final height =
-        maxVisibleRows * tileMainExtent +
+        maxVisibleRows * effectiveTileMainExtent +
         (maxVisibleRows - 1) * mainAxisSpacing;
 
     return SizedBox(
@@ -58,7 +63,7 @@ class IconChoiceGrid extends StatelessWidget {
                 : const NeverScrollableScrollPhysics(),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: crossAxisCount,
-          mainAxisExtent: tileMainExtent,
+          mainAxisExtent: effectiveTileMainExtent,
           mainAxisSpacing: mainAxisSpacing,
           crossAxisSpacing: crossAxisSpacing,
         ),
@@ -69,7 +74,7 @@ class IconChoiceGrid extends StatelessWidget {
             selected: choice.iconKey == selectedKey,
             iconSize: iconSize,
             bubbleSize: bubbleSize,
-            tileMainExtent: tileMainExtent,
+            tileMainExtent: effectiveTileMainExtent,
             bubbleColor: bubbleColor,
             selectedBubbleColor: selectedBubbleColor,
             onTap: () => onChanged(choice.iconKey),

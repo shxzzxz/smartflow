@@ -9,6 +9,7 @@ import 'package:smartflow/widget/business/account/account_type_tag.dart';
 import 'package:smartflow/widget/business/analytics/analysis_section_card.dart';
 import 'package:smartflow/widget/business/analytics/chart/app_cartesian_chart.dart';
 import 'package:smartflow/widget/business/analytics/chart/app_chart_empty_state.dart';
+import 'package:smartflow/widget/business/analytics/category_progress_list_item.dart';
 import 'package:smartflow/widget/business/analytics/chart/app_donut_chart.dart';
 import 'package:smartflow/widget/business/category/category_avatar.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
@@ -25,6 +26,7 @@ import 'package:smartflow/widget/business/icon/icon_choice_grid.dart';
 import 'package:smartflow/widget/business/transaction/empty_transaction_card.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
 import 'package:smartflow/widget/business/transaction/transaction_day_card.dart';
+import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
 import 'package:smartflow/widget/business/transaction/transaction_progress_badges.dart';
 import 'package:smartflow/widget/business/transaction/transaction_purpose_badge.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
@@ -38,6 +40,7 @@ import '../widget/app_datetime_picker.dart';
 import '../widget/app_cascade_multi_select.dart';
 import '../widget/app_date_picker_panel.dart';
 import '../widget/app_dropdown.dart';
+import '../widget/app_form_field.dart';
 import '../widget/app_form_section.dart';
 import '../widget/app_month_picker.dart';
 import '../widget/app_page_header.dart';
@@ -52,17 +55,19 @@ import '../widget/app_status_banner.dart';
 import '../widget/app_submit_button.dart';
 import '../widget/app_surface.dart';
 import '../widget/app_swipe_action.dart';
+import '../../widget/business/category/tree_select.dart';
 
 const _showcaseCategories = <String>[
-  '基础规范',
-  '基础组件',
-  '表单组件',
+  '设计基础',
+  '基础控件',
+  '表单与输入',
+  '选择器与弹层',
+  '反馈与状态',
+  '布局与容器',
   '数据展示',
-  '日期组件',
-  '操作与反馈',
   '财务表达',
+  '业务图标',
   '交易与列表',
-  '布局组件',
 ];
 
 void _ignoreSwitchChange(bool _) {}
@@ -72,9 +77,12 @@ enum _ShowcaseExampleKind {
   typography,
   spacing,
   radius,
+  formFields,
+  plainRows,
   buttons,
   segmentedControl,
   popupMenu,
+  selectMenu,
   dropdown,
   settingsRows,
   surface,
@@ -91,11 +99,13 @@ enum _ShowcaseExampleKind {
   submitButton,
   chips,
   progressIndicators,
+  categoryProgress,
   analyticsCharts,
   datePicker,
   datePickerPanel,
   timePicker,
   monthPicker,
+  treeSelect,
   swipeAction,
   statusFeedback,
   snackBar,
@@ -109,6 +119,7 @@ enum _ShowcaseExampleKind {
   transactionRows,
   transactionProgressBadges,
   transactionDayCard,
+  transactionFeed,
   emptyTransaction,
   pageHeader,
   formSection,
@@ -117,105 +128,127 @@ enum _ShowcaseExampleKind {
 const _showcaseExamples = <_ShowcaseExample>[
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.colorSemantics,
-    category: '基础规范',
+    category: '设计基础',
     title: '色彩语义',
     componentNames: 'ColorScheme / AppThemeExtension',
     keywords: ['颜色', '主题', '状态色'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.typography,
-    category: '基础规范',
+    category: '设计基础',
     title: '字体层级',
     componentNames: 'AppTextStyles',
     keywords: ['字体', '标题', '正文'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.spacing,
-    category: '基础规范',
+    category: '设计基础',
     title: '间距',
     componentNames: 'AppSpacing',
     keywords: ['间距', '尺寸'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.radius,
-    category: '基础规范',
+    category: '设计基础',
     title: '圆角',
     componentNames: 'AppRadius',
     keywords: ['圆角', '尺寸'],
   ),
   _ShowcaseExample(
+    kind: _ShowcaseExampleKind.formFields,
+    category: '表单与输入',
+    title: '表单字段',
+    componentNames:
+        'AppTextFormField / AppDropdownFormField / AppPlainTextFormField',
+    keywords: ['表单', '输入框', '下拉', '校验', '无装饰'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.plainRows,
+    category: '表单与输入',
+    title: '基础表单行',
+    componentNames: 'AppPlainFormRow / AppPlainValueRow / AppPlainValueText',
+    keywords: ['表单行', '只读', '值', '布局'],
+  ),
+  _ShowcaseExample(
     kind: _ShowcaseExampleKind.buttons,
-    category: '基础组件',
+    category: '基础控件',
     title: '按钮',
     componentNames: 'FilledButton / OutlinedButton / TextButton',
     keywords: ['按钮', '主要', '次要', '禁用'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.segmentedControl,
-    category: '基础组件',
+    category: '基础控件',
     title: '分段控件',
     componentNames: 'AppSegmentedControl / AppSlidingSegmentedControl',
     keywords: ['分段', '切换', '选中', '滑动'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.popupMenu,
-    category: '基础组件',
+    category: '基础控件',
     title: '弹出菜单',
     componentNames: 'AppPopupMenuButton',
     keywords: ['菜单', '弹出', '更多', '设置', '开关'],
   ),
   _ShowcaseExample(
+    kind: _ShowcaseExampleKind.selectMenu,
+    category: '基础控件',
+    title: '选择菜单',
+    componentNames: 'AppSelectMenu / AppSelectOption',
+    keywords: ['选择', '菜单', '图标', '定位'],
+  ),
+  _ShowcaseExample(
     kind: _ShowcaseExampleKind.dropdown,
-    category: '基础组件',
+    category: '基础控件',
     title: '下拉选择',
     componentNames: 'AppDropdown',
     keywords: ['下拉', '选择', '菜单'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.settingsRows,
-    category: '基础组件',
+    category: '基础控件',
     title: '设置行',
     componentNames: 'AppSettingsSwitchRow / AppSettingsSelectRow',
     keywords: ['设置', '开关', '选择', '整行', '说明'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.surface,
-    category: '基础组件',
+    category: '布局与容器',
     title: '卡片',
     componentNames: 'AppSurface',
     keywords: ['卡片', '容器', '表面'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.textFormRow,
-    category: '表单组件',
+    category: '表单与输入',
     title: '文本输入行',
     componentNames: 'AppPlainTextFormRow',
     keywords: ['输入', '文本框', '必填', '只读', '错误', '禁用'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.selectFormRow,
-    category: '表单组件',
+    category: '表单与输入',
     title: '选择行',
     componentNames: 'AppPlainSelectFormRow',
     keywords: ['选择', '选项', '占位', '禁用'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.switchRow,
-    category: '表单组件',
+    category: '表单与输入',
     title: '开关行',
     componentNames: 'AppSwitch / AppPlainSwitchRow',
     keywords: ['开关', '开启', '关闭', '描述', '禁用'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.moneyFormRow,
-    category: '表单组件',
+    category: '表单与输入',
     title: '金额输入行',
     componentNames: 'MoneyPlainFormRow',
     keywords: ['金额', '输入', '小数', '必填'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.businessFormRows,
-    category: '表单组件',
+    category: '表单与输入',
     title: '业务字段行',
     componentNames:
         'AccountPlainFormRow / DropdownPlainFormRow / '
@@ -224,42 +257,42 @@ const _showcaseExamples = <_ShowcaseExample>[
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.transactionAmountPanel,
-    category: '表单组件',
+    category: '表单与输入',
     title: '交易金额面板',
     componentNames: 'TransactionAmountInput',
     keywords: ['金额', '备注', '面板', '支出'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.iconChoiceGrid,
-    category: '表单组件',
+    category: '选择器与弹层',
     title: '图标选择网格',
     componentNames: 'IconChoiceGrid',
     keywords: ['图标', '选择', '网格'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.iconCatalogPicker,
-    category: '表单组件',
+    category: '选择器与弹层',
     title: '图标目录选择',
     componentNames: 'IconCatalogPicker',
     keywords: ['图标', '搜索', '分类', '账户'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.categoryGridPicker,
-    category: '表单组件',
+    category: '选择器与弹层',
     title: '分类网格选择',
     componentNames: 'CategoryGridPicker',
     keywords: ['分类', '选择', '网格', '子分类'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.cascadeMultiSelect,
-    category: '表单组件',
+    category: '选择器与弹层',
     title: '级联多选',
     componentNames: 'AppCascadeMultiSelect',
     keywords: ['级联', '多选', '层级', '全部', '清除'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.submitButton,
-    category: '表单组件',
+    category: '反馈与状态',
     title: '提交按钮',
     componentNames: 'AppSubmitButton',
     keywords: ['按钮', '提交', '加载', '禁用'],
@@ -273,10 +306,17 @@ const _showcaseExamples = <_ShowcaseExample>[
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.progressIndicators,
-    category: '数据展示',
+    category: '反馈与状态',
     title: '进度条',
     componentNames: 'LinearProgressIndicator',
     keywords: ['进度', '百分比', '状态'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.categoryProgress,
+    category: '数据展示',
+    title: '分类进度项',
+    componentNames: 'CategoryProgressListItem',
+    keywords: ['分类', '进度', '列表', '分析'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.analyticsCharts,
@@ -288,49 +328,56 @@ const _showcaseExamples = <_ShowcaseExample>[
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.datePicker,
-    category: '日期组件',
+    category: '选择器与弹层',
     title: '日期选择器',
     componentNames: 'AppDatePicker / showAppDatePicker',
     keywords: ['日期', '选择器'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.datePickerPanel,
-    category: '日期组件',
+    category: '选择器与弹层',
     title: '日期面板',
     componentNames: 'AppDatePickerPanel',
     keywords: ['日期', '面板', '范围', '月份', '年份', '宫格'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.timePicker,
-    category: '日期组件',
+    category: '选择器与弹层',
     title: '时间选择器',
     componentNames: 'AppTimePicker / showAppTimePicker',
     keywords: ['时间', '选择器'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.monthPicker,
-    category: '日期组件',
+    category: '选择器与弹层',
     title: '月份选择器',
     componentNames: 'AppMonthSelector / showAppMonthPicker',
     keywords: ['月份', '选择器'],
   ),
   _ShowcaseExample(
+    kind: _ShowcaseExampleKind.treeSelect,
+    category: '选择器与弹层',
+    title: '树形选择',
+    componentNames: 'TreeSelect',
+    keywords: ['树形', '分类', '选择', '子项'],
+  ),
+  _ShowcaseExample(
     kind: _ShowcaseExampleKind.swipeAction,
-    category: '操作与反馈',
+    category: '基础控件',
     title: '滑动操作',
     componentNames: 'AppSwipeAction',
     keywords: ['滑动', '快捷操作'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.statusFeedback,
-    category: '操作与反馈',
+    category: '反馈与状态',
     title: '状态提示',
     componentNames: 'AppStatusBanner',
     keywords: ['成功', '注意', '失败', '信息', '提示'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.snackBar,
-    category: '操作与反馈',
+    category: '反馈与状态',
     title: '消息提示',
     componentNames: 'SnackBar',
     keywords: ['成功', '失败', '消息', '提示'],
@@ -351,8 +398,8 @@ const _showcaseExamples = <_ShowcaseExample>[
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.businessIcons,
-    category: '财务表达',
-    title: '业务图标',
+    category: '业务图标',
+    title: '图标展示',
     componentNames: 'BusinessIcon / BusinessIconBubble / CategoryAvatar',
     keywords: ['图标', '气泡', '分类', '账户'],
   ),
@@ -406,6 +453,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     keywords: ['交易', '日分组', '汇总', '列表'],
   ),
   _ShowcaseExample(
+    kind: _ShowcaseExampleKind.transactionFeed,
+    category: '交易与列表',
+    title: '交易 Feed',
+    componentNames: 'TransactionFeedScrollView',
+    keywords: ['交易', '滚动', '分页', '加载', '错误'],
+  ),
+  _ShowcaseExample(
     kind: _ShowcaseExampleKind.emptyTransaction,
     category: '交易与列表',
     title: '空状态',
@@ -414,14 +468,14 @@ const _showcaseExamples = <_ShowcaseExample>[
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.pageHeader,
-    category: '布局组件',
+    category: '布局与容器',
     title: '页面标题',
     componentNames: 'AppPageHeader',
     keywords: ['布局', '标题', '操作'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.formSection,
-    category: '布局组件',
+    category: '布局与容器',
     title: '表单分组',
     componentNames: 'AppFormSection',
     keywords: ['布局', '表单', '分组', '说明'],
@@ -728,9 +782,12 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.typography => _typographyPreview(),
       _ShowcaseExampleKind.spacing => _spacingPreview(),
       _ShowcaseExampleKind.radius => _radiusPreview(),
+      _ShowcaseExampleKind.formFields => _formFieldsPreview(),
+      _ShowcaseExampleKind.plainRows => _plainRowsPreview(),
       _ShowcaseExampleKind.buttons => _buttonsPreview(),
       _ShowcaseExampleKind.segmentedControl => _segmentedControlPreview(),
       _ShowcaseExampleKind.popupMenu => _popupMenuPreview(),
+      _ShowcaseExampleKind.selectMenu => _selectMenuPreview(),
       _ShowcaseExampleKind.dropdown => _dropdownPreview(),
       _ShowcaseExampleKind.settingsRows => _settingsRowsPreview(),
       _ShowcaseExampleKind.surface => _surfacePreview(),
@@ -748,11 +805,13 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.submitButton => _submitButtonPreview(),
       _ShowcaseExampleKind.chips => _chipsPreview(),
       _ShowcaseExampleKind.progressIndicators => _progressIndicatorsPreview(),
+      _ShowcaseExampleKind.categoryProgress => _categoryProgressPreview(),
       _ShowcaseExampleKind.analyticsCharts => _analyticsChartsPreview(),
       _ShowcaseExampleKind.datePicker => _datePickerPreview(),
       _ShowcaseExampleKind.datePickerPanel => _datePickerPanelPreview(),
       _ShowcaseExampleKind.timePicker => _timePickerPreview(),
       _ShowcaseExampleKind.monthPicker => _monthPickerPreview(),
+      _ShowcaseExampleKind.treeSelect => _treeSelectPreview(),
       _ShowcaseExampleKind.swipeAction => _swipeActionPreview(),
       _ShowcaseExampleKind.statusFeedback => _statusFeedbackPreview(),
       _ShowcaseExampleKind.snackBar => _snackBarPreview(),
@@ -768,6 +827,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.transactionProgressBadges =>
         _transactionProgressBadgesPreview(),
       _ShowcaseExampleKind.transactionDayCard => _transactionDayCardPreview(),
+      _ShowcaseExampleKind.transactionFeed => _transactionFeedPreview(),
       _ShowcaseExampleKind.emptyTransaction => _emptyTransactionPreview(),
       _ShowcaseExampleKind.pageHeader => _pageHeaderPreview(),
       _ShowcaseExampleKind.formSection => _formSectionPreview(),
@@ -852,6 +912,52 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           label: 'radiusLg',
           size: AppSpacing.space8,
           radius: AppRadius.radiusLg,
+        ),
+      ],
+    );
+  }
+
+  Widget _formFieldsPreview() {
+    return AppPlainFormSection(
+      children: [
+        AppTextFormField(
+          controller: _inputController,
+          labelText: '标准字段',
+          hintText: '支持标签和主题输入装饰',
+        ),
+        AppDropdownFormField<String>(
+          value: _selectedOption,
+          labelText: '下拉字段',
+          items: const [
+            DropdownMenuItem(value: '选项一', child: Text('选项一')),
+            DropdownMenuItem(value: '选项二', child: Text('选项二')),
+          ],
+          onChanged: (value) {
+            if (value != null) setState(() => _selectedOption = value);
+          },
+        ),
+        AppPlainTextFormField(
+          controller: _readOnlyInputController,
+          hintText: '无装饰字段',
+          readOnly: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _plainRowsPreview() {
+    return AppPlainFormSection(
+      children: [
+        AppPlainFormRow(
+          label: '自定义内容',
+          supportingText: '基础行只负责标签、状态和内容布局',
+          child: const Text('组件内容'),
+        ),
+        const AppPlainValueRow(label: '只读值', value: '示例值'),
+        const AppPlainValueRow(
+          label: '左对齐值',
+          value: '可选内容',
+          valueAlignment: AppPlainRowValueAlignment.start,
         ),
       ],
     );
@@ -986,6 +1092,49 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
             Text('刷新次数：$_menuActionCount'),
           ],
         ),
+      ],
+    );
+  }
+
+  Widget _selectMenuPreview() {
+    return Row(
+      children: [
+        AppSelectMenu<int>(
+          options: const [
+            AppSelectOption(value: 0, label: '按月', icon: Icons.calendar_month),
+            AppSelectOption(value: 1, label: '按年', icon: Icons.date_range),
+          ],
+          value: _settingsSelectValue,
+          tooltip: '选择周期',
+          onChanged: (value) => setState(() => _settingsSelectValue = value),
+          triggerBuilder:
+              (context, selected) => DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                  borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space12,
+                    vertical: AppSpacing.space8,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (selected.icon != null) ...[
+                        Icon(selected.icon, size: AppSpacing.space20),
+                        const SizedBox(width: AppSpacing.space6),
+                      ],
+                      Text(selected.label),
+                    ],
+                  ),
+                ),
+              ),
+        ),
+        const SizedBox(width: AppSpacing.space12),
+        Text('当前：${_settingsSelectValue == 0 ? '按月' : '按年'}'),
       ],
     );
   }
@@ -1193,7 +1342,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       selectedKey: _selectedIconKey,
       onChanged: (value) => setState(() => _selectedIconKey = value),
       maxVisibleRows: 2,
-      tileMainExtent: 104,
+      tileMainExtent: 132,
     );
   }
 
@@ -1362,6 +1511,27 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           label: '危险 50%',
           value: 0.5,
           color: financeColors.danger,
+        ),
+      ],
+    );
+  }
+
+  Widget _categoryProgressPreview() {
+    return Column(
+      children: [
+        CategoryProgressListItem(
+          title: '餐饮',
+          progress: .68,
+          color: Theme.of(context).extension<AppThemeExtension>()!.expense,
+          trailing: const Text('68%'),
+          onTap: () => _showMessage('打开餐饮分类'),
+        ),
+        CategoryProgressListItem(
+          title: '交通',
+          progress: .32,
+          color: Theme.of(context).extension<AppThemeExtension>()!.income,
+          trailing: const Text('32%'),
+          onTap: () => _showMessage('打开交通分类'),
         ),
       ],
     );
@@ -1603,6 +1773,21 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
                   _visibleMonth.month + 1,
                 ),
           ),
+    );
+  }
+
+  Widget _treeSelectPreview() {
+    return OutlinedButton.icon(
+      onPressed: () async {
+        final selected = await showModalBottomSheet<Account>(
+          context: context,
+          isScrollControlled: true,
+          builder: (context) => TreeSelect(nodes: _sampleCategoryNodes),
+        );
+        if (selected != null && mounted) _showMessage('已选择 ${selected.name}');
+      },
+      icon: const Icon(Icons.account_tree_outlined),
+      label: const Text('打开树形选择'),
     );
   }
 
@@ -1948,6 +2133,24 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
         ),
         onRowTap: (_) => _showMessage('打开交易详情'),
         onRowQuickEdit: (_) => _showMessage('打开快捷编辑'),
+      ),
+    );
+  }
+
+  Widget _transactionFeedPreview() {
+    return SizedBox(
+      height: 360,
+      child: TransactionFeedScrollView(
+        groups: [
+          TransactionDayGroup(
+            date: DateTime(2026, 5, 20),
+            rows: _sampleTransactionRows,
+            incomeMinor: 800000,
+            expenseMinor: 6800,
+          ),
+        ],
+        hasMore: true,
+        onLoadMore: () => _showMessage('已请求加载更多'),
       ),
     );
   }

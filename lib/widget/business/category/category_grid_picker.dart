@@ -226,10 +226,14 @@ class _CategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tileExtent =
+        MediaQuery.textScalerOf(
+          context,
+        ).scale(64).clamp(64.0, 128.0).toDouble();
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
       child: BusinessIconTile(
-        extent: 64,
+        extent: tileExtent,
         borderRadius: AppRadius.radiusMd,
         onTap: onTap,
         onLongPress: onLongPress,
@@ -252,11 +256,15 @@ class _AddCategoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final tileExtent =
+        MediaQuery.textScalerOf(
+          context,
+        ).scale(64).clamp(64.0, 128.0).toDouble();
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
       child: BusinessIconTile(
-        extent: 64,
+        extent: tileExtent,
         borderRadius: AppRadius.radiusMd,
         onTap: onTap,
         child: BusinessIconBubble(
