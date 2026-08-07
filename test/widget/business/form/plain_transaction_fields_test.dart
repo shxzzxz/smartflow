@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/design_system/widget/app_segmented_control.dart';
+import 'package:smartflow/design_system/widget/app_select.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 
@@ -242,14 +242,12 @@ void main() {
     expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
   });
 
-  testWidgets('billing and repayment fields stack on narrow screens', (
-    tester,
-  ) async {
+  testWidgets('billing and repayment fields always stack', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
           body: SizedBox(
-            width: 300,
+            width: 480,
             child: BillingRepaymentDayPlainFields(
               billingDay: null,
               repaymentDay: null,
@@ -312,9 +310,9 @@ void main() {
                   controller: controller,
                   unit: unit,
                   suffixText: '%',
-                  unitSegments: const [
-                    AppSegment(value: _TestChoice.first, label: '月'),
-                    AppSegment(value: _TestChoice.second, label: '年'),
+                  unitOptions: const [
+                    AppSelectOption(value: _TestChoice.first, label: '月'),
+                    AppSelectOption(value: _TestChoice.second, label: '年'),
                   ],
                   onUnitChanged: (next) => setState(() => unit = next),
                 ),
@@ -327,10 +325,12 @@ void main() {
 
     expect(find.text('%'), findsOneWidget);
     expect(find.byType(DropdownButton<_TestChoice>), findsNothing);
-    expect(find.byType(AppSegmentedControl<_TestChoice>), findsOneWidget);
+    expect(find.byType(AppSelectMenu<_TestChoice>), findsOneWidget);
 
-    await tester.tap(find.text('年'));
-    await tester.pump();
+    await tester.tap(find.text('月'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('年').last);
+    await tester.pumpAndSettle();
     expect(unit, _TestChoice.second);
 
     formKey.currentState!.reset();

@@ -164,10 +164,10 @@ class _BillConversionInstallmentFormPageState
               ),
               if (state.method != InstallmentRepaymentMethod.flatFee &&
                   state.method != InstallmentRepaymentMethod.custom)
-                AppPlainSegmentedFormRow<InterestAccrualMethod>(
+                AppPlainSelectMenuFormRow<InterestAccrualMethod>(
                   label: '计息方式',
                   value: state.accrualMethod,
-                  segments: interestAccrualMethodSegments,
+                  options: interestAccrualMethodOptions,
                   onChanged: notifier.setAccrualMethod,
                 ),
               if (state.method != InstallmentRepaymentMethod.flatFee &&
@@ -181,7 +181,7 @@ class _BillConversionInstallmentFormPageState
                     decimal: true,
                   ),
                   unit: state.ratePeriod,
-                  unitSegments: interestRatePeriodSegments,
+                  unitOptions: interestRatePeriodOptions,
                   onUnitChanged: notifier.setRatePeriod,
                 ),
               if (state.method == InstallmentRepaymentMethod.equalInstallment)

@@ -1,11 +1,10 @@
 import 'package:smartflow/application/credit/credit_query_api.dart';
-import 'package:smartflow/design_system/widget/app_segmented_control.dart';
 import 'package:smartflow/design_system/widget/app_select.dart';
 
-const List<AppSegment<InterestRatePeriod>> interestRatePeriodSegments = [
-  AppSegment(value: InterestRatePeriod.annual, label: '年'),
-  AppSegment(value: InterestRatePeriod.monthly, label: '月'),
-  AppSegment(value: InterestRatePeriod.daily, label: '日'),
+const List<AppSelectOption<InterestRatePeriod>> interestRatePeriodOptions = [
+  AppSelectOption(value: InterestRatePeriod.annual, label: '年'),
+  AppSelectOption(value: InterestRatePeriod.monthly, label: '月'),
+  AppSelectOption(value: InterestRatePeriod.daily, label: '日'),
 ];
 
 const List<AppSelectOption<InstallmentRepaymentMethod>>
@@ -26,7 +25,8 @@ installmentRepaymentMethodOptions = [
   AppSelectOption(value: InstallmentRepaymentMethod.custom, label: '自定义'),
 ];
 
-const List<AppSegment<InterestAccrualMethod>> interestAccrualMethodSegments = [
-  AppSegment(value: InterestAccrualMethod.daily, label: '按日计息'),
-  AppSegment(value: InterestAccrualMethod.monthly, label: '按月计息'),
+const List<AppSelectOption<InterestAccrualMethod>>
+interestAccrualMethodOptions = [
+  AppSelectOption(value: InterestAccrualMethod.daily, label: '按日计息'),
+  AppSelectOption(value: InterestAccrualMethod.monthly, label: '按月计息'),
 ];

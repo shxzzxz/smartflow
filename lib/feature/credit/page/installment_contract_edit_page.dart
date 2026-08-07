@@ -408,10 +408,10 @@ class _ConfigSection extends StatelessWidget {
         ),
         if (method != InstallmentRepaymentMethod.flatFee &&
             method != InstallmentRepaymentMethod.custom)
-          AppPlainSegmentedFormRow<InterestAccrualMethod>(
+          AppPlainSelectMenuFormRow<InterestAccrualMethod>(
             label: '计息方式',
             value: accrualMethod,
-            segments: interestAccrualMethodSegments,
+            options: interestAccrualMethodOptions,
             onChanged: onAccrualMethodChanged,
             minHeight: _rowMinHeight,
           ),
@@ -424,7 +424,7 @@ class _ConfigSection extends StatelessWidget {
             suffixText: '%',
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             unit: ratePeriod,
-            unitSegments: interestRatePeriodSegments,
+            unitOptions: interestRatePeriodOptions,
             onUnitChanged: onRatePeriodChanged,
             minHeight: _rowMinHeight,
           ),

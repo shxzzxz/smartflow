@@ -3,12 +3,11 @@ import 'package:flutter/services.dart';
 
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/token/form.dart';
-import 'package:smartflow/design_system/token/radius.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/widget/app_form_field.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_row.dart';
-import 'package:smartflow/design_system/widget/app_segmented_control.dart';
+import 'package:smartflow/design_system/widget/app_select.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 
 import '../icon/business_icon.dart';
@@ -121,42 +120,20 @@ class BillingRepaymentDayPlainFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fields = [
-      _MonthlyDayPlainField(
-        day: billingDay,
-        label: '出账日',
-        onTap: onSelectBillingDay,
-      ),
-      _MonthlyDayPlainField(
-        day: repaymentDay,
-        label: '还款日',
-        onTap: onSelectRepaymentDay,
-      ),
-    ];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final largeText =
-            MediaQuery.textScalerOf(context).scale(14) >= AppSpacing.space18;
-        final stackFields = constraints.maxWidth < 340 || largeText;
-        if (stackFields) {
-          return Column(
-            children: [
-              fields.first,
-              const SizedBox(height: AppSpacing.space4),
-              fields.last,
-            ],
-          );
-        }
-
-        return Row(
-          children: [
-            Expanded(child: fields.first),
-            const SizedBox(width: AppSpacing.space12),
-            Expanded(child: fields.last),
-          ],
-        );
-      },
+    return Column(
+      children: [
+        _MonthlyDayPlainField(
+          day: billingDay,
+          label: '出账日',
+          onTap: onSelectBillingDay,
+        ),
+        const SizedBox(height: AppSpacing.space4),
+        _MonthlyDayPlainField(
+          day: repaymentDay,
+          label: '还款日',
+          onTap: onSelectRepaymentDay,
+        ),
+      ],
     );
   }
 }
@@ -174,26 +151,12 @@ class _MonthlyDayPlainField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    final colors = Theme.of(context).colorScheme;
+    return AppPlainValueRow(
+      label: label,
+      value: day == null ? '请选择' : '每月 $day 日',
+      valueColor: day == null ? colors.onSurfaceVariant : null,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          minHeight: AppFormTokens.rowMinHeight + AppSpacing.space16,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.space4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(label, style: context.appTextStyles.formLabel),
-              const SizedBox(height: AppSpacing.space4),
-              AppPlainValueText(text: day == null ? '请选择' : '每月 $day 日'),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -262,7 +225,7 @@ class ValueWithUnitPlainFormRow<T> extends StatelessWidget {
     required this.label,
     required this.controller,
     required this.unit,
-    required this.unitSegments,
+    required this.unitOptions,
     required this.onUnitChanged,
     super.key,
     this.hintText,
@@ -276,7 +239,7 @@ class ValueWithUnitPlainFormRow<T> extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final T unit;
-  final List<AppSegment<T>> unitSegments;
+  final List<AppSelectOption<T>> unitOptions;
   final ValueChanged<T> onUnitChanged;
   final String? hintText;
   final String? suffixText;
@@ -314,13 +277,28 @@ class ValueWithUnitPlainFormRow<T> extends StatelessWidget {
                 Text(suffixText!, style: valueStyle),
               ],
               const SizedBox(width: AppSpacing.space8),
-              AppSegmentedControl<T>(
-                segments: unitSegments,
-                selected: fieldUnit ?? unit,
-                onChanged: fieldChanged,
-                size: AppSegmentedControlSize.small,
-                tone: AppSegmentedControlTone.neutral,
-                textStyle: valueStyle,
+              SizedBox(
+                width: 52,
+                child: AppSelectMenu<T>(
+                  options: unitOptions,
+                  value: fieldUnit ?? unit,
+                  onChanged: (nextValue) => fieldChanged(nextValue),
+                  alignment: AppSelectMenuAlignment.end,
+                  triggerBuilder:
+                      (context, selected) => Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(selected.label, style: valueStyle),
+                          const SizedBox(width: AppSpacing.space2),
+                          Icon(
+                            Icons.arrow_drop_down,
+                            size: AppSpacing.space20,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ],
+                      ),
+                ),
               ),
             ],
           ),

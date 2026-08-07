@@ -1362,9 +1362,9 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           label: '数值单位',
           controller: _termValueController,
           unit: _selectedTermUnit,
-          unitSegments: const [
-            AppSegment(value: 0, label: '期'),
-            AppSegment(value: 1, label: '月'),
+          unitOptions: const [
+            AppSelectOption(value: 0, label: '期'),
+            AppSelectOption(value: 1, label: '月'),
           ],
           onUnitChanged: (value) => setState(() => _selectedTermUnit = value),
           hintText: '请输入数值',

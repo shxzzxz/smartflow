@@ -327,7 +327,7 @@ class AppPlainSelectMenuFormRow<T> extends StatelessWidget {
               Expanded(
                 child: AppPlainValueText(
                   text: selected.label,
-                  textAlign: TextAlign.left,
+                  textAlign: TextAlign.right,
                 ),
               ),
               const SizedBox(width: AppSpacing.space6),
@@ -345,6 +345,7 @@ class AppPlainSelectMenuFormRow<T> extends StatelessWidget {
           value: selected.value,
           onChanged: (nextValue) => fieldChanged(nextValue),
           tooltip: tooltip ?? '选择$label',
+          alignment: AppSelectMenuAlignment.end,
           triggerBuilder: (context, _) => trigger,
         );
       },

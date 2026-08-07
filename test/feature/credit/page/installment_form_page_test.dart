@@ -48,7 +48,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byType(AppPlainSegmentedFormRow<InterestAccrualMethod>),
+      find.byType(AppPlainSelectMenuFormRow<InterestAccrualMethod>),
       findsOneWidget,
     );
     expect(
@@ -56,7 +56,7 @@ void main() {
       findsNothing,
     );
     expect(find.text('%'), findsOneWidget);
-    expect(find.text('按期数和首期还款日生成'), findsOneWidget);
+    expect(find.text('按期数和首期还款日自动生成'), findsOneWidget);
 
     expect(tester.getTopLeft(find.byType(AppFormSection).first).dx, 16);
   });

@@ -102,12 +102,11 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
           AppFormSection(
             padding: _installmentSectionPadding,
             children: [
-              AppPlainFormRow(
+              AccountPlainFormRow(
                 label: '负债账户',
-                child: AccountPlainValue(
-                  account: state.liability,
-                  placeholder: '',
-                ),
+                account: state.liability,
+                selectedId: state.liability.id,
+                placeholder: '',
               ),
               MoneyPlainFormRow(
                 label: '本金',
@@ -183,10 +182,8 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                 dateTime: state.lastRepaymentDate,
                 value:
                     state.lastRepaymentDate == null
-                        ? '自动计算'
+                        ? '按期数和首期还款日自动生成'
                         : formatDateLabel(state.lastRepaymentDate!),
-                supportingText:
-                    state.lastRepaymentDate == null ? '按期数和首期还款日生成' : null,
                 onTap:
                     (onSelected) => _pickLastRepaymentDate(
                       state.lastRepaymentDate ?? state.firstRepaymentDate,
@@ -209,10 +206,10 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
               ),
               if (state.method != InstallmentRepaymentMethod.flatFee &&
                   state.method != InstallmentRepaymentMethod.custom)
-                AppPlainSegmentedFormRow<InterestAccrualMethod>(
+                AppPlainSelectMenuFormRow<InterestAccrualMethod>(
                   label: '计息方式',
                   value: state.accrualMethod,
-                  segments: interestAccrualMethodSegments,
+                  options: interestAccrualMethodOptions,
                   onChanged: notifier.setAccrualMethod,
                 ),
               if (state.method != InstallmentRepaymentMethod.flatFee &&
@@ -226,7 +223,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                     decimal: true,
                   ),
                   unit: state.ratePeriod,
-                  unitSegments: interestRatePeriodSegments,
+                  unitOptions: interestRatePeriodOptions,
                   onUnitChanged: notifier.setRatePeriod,
                 ),
               if (state.method == InstallmentRepaymentMethod.equalInstallment)
