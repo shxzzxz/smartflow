@@ -23,6 +23,7 @@ final _logger = Logger('feature.transaction.form');
 class TransactionFormViewModel extends _$TransactionFormViewModel {
   TransactionFormState? _initializedState;
   String? _editTransactionId;
+  int _defaultAccountRequestRevision = 0;
 
   @override
   AsyncValue<TransactionFormState?> build({
@@ -165,33 +166,83 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     _update((current) => current.copyWith(occurredAt: value));
   }
 
-  void setExpenseCategory({
+  Future<void> setExpenseCategory({
     required String? rootId,
     required String? categoryId,
-  }) {
+  }) async {
+    final requestRevision = ++_defaultAccountRequestRevision;
     _update(
       (current) => current.copyWith(
         expenseRootId: rootId,
         expenseCategoryId: categoryId,
       ),
     );
+    await _applyLastUsedSettlementAccount(
+      categoryId: categoryId,
+      requestRevision: requestRevision,
+      selectedCategoryId: (current) => current.expenseCategoryId,
+      selectAccount:
+          (current, accountId) => current.copyWith(fromAccountId: accountId),
+    );
   }
 
-  void setIncomeCategory({
+  Future<void> setIncomeCategory({
     required String? rootId,
     required String? categoryId,
-  }) {
+  }) async {
+    final requestRevision = ++_defaultAccountRequestRevision;
     _update(
       (current) =>
           current.copyWith(incomeRootId: rootId, incomeCategoryId: categoryId),
     );
+    await _applyLastUsedSettlementAccount(
+      categoryId: categoryId,
+      requestRevision: requestRevision,
+      selectedCategoryId: (current) => current.incomeCategoryId,
+      selectAccount:
+          (current, accountId) => current.copyWith(toAccountId: accountId),
+    );
+  }
+
+  Future<void> _applyLastUsedSettlementAccount({
+    required String? categoryId,
+    required int requestRevision,
+    required String? Function(TransactionFormState) selectedCategoryId,
+    required TransactionFormState Function(TransactionFormState, String)
+    selectAccount,
+  }) async {
+    if (_editTransactionId != null || categoryId == null) return;
+    try {
+      final accountId = await ref
+          .read(transactionQueryServiceProvider)
+          .findLastUsedSettlementAccountId(categoryId);
+      final current = state.asData?.value;
+      if (accountId == null ||
+          current == null ||
+          requestRevision != _defaultAccountRequestRevision ||
+          selectedCategoryId(current) != categoryId ||
+          !current.settlementAccounts.any(
+            (account) => account.id == accountId,
+          )) {
+        return;
+      }
+      _update((current) => selectAccount(current, accountId));
+    } on Exception catch (error, stackTrace) {
+      _logger.warning(
+        'Failed to load the last settlement account for category',
+        error,
+        stackTrace,
+      );
+    }
   }
 
   void setFromAccountId(String? value) {
+    _defaultAccountRequestRevision += 1;
     _update((current) => current.copyWith(fromAccountId: value));
   }
 
   void setToAccountId(String? value) {
+    _defaultAccountRequestRevision += 1;
     _update((current) => current.copyWith(toAccountId: value));
   }
 

@@ -188,6 +188,48 @@ void main() {
     );
   });
 
+  test(
+    'finds the unique usable settlement account last used by category',
+    () async {
+      final latestTransaction = _transaction(
+        id: 'latest',
+        purpose: BusinessPurpose.reimbursementAdvance,
+        amount: 1000,
+      );
+      final transactionRead = _FakeTransactionReadRepository(
+        transactions: {'latest': latestTransaction},
+        latestCategoryTransaction: latestTransaction,
+      );
+      final service = _service(
+        transactionRead: transactionRead,
+        entryRead: _FakeEntryReadRepository({
+          'latest': [
+            _entry('company', 'latest', 'company', EntryDirection.debit, 1000),
+            _entry('card', 'latest', 'card', EntryDirection.credit, 1000),
+          ],
+        }),
+        accounts: [
+          _account('food', AccountType.expense),
+          _account(
+            'company',
+            AccountType.asset,
+            subtype: AccountSubtype.reimbursement,
+          ),
+          _account('card', AccountType.liability),
+        ],
+      );
+
+      final accountId = await service.findLastUsedSettlementAccountId('food');
+
+      expect(accountId, 'card');
+      expect(transactionRead.lastCategoryQuery?.categoryId, 'food');
+      expect(
+        transactionRead.lastCategoryQuery?.hierarchy,
+        TransactionHierarchyFilter.topLevel,
+      );
+    },
+  );
+
   test('passes multiple physical category ids through', () async {
     final transactionRead = _FakeTransactionReadRepository(transactions: {});
     final service = _service(
@@ -561,6 +603,7 @@ Account _account(
   String? iconKey,
   DateTime? archivedAt,
   SystemKey? systemKey,
+  AccountSubtype? subtype,
 }) {
   return Account(
     id: id,
@@ -570,6 +613,7 @@ Account _account(
     iconKey: iconKey,
     archivedAt: archivedAt,
     systemKey: systemKey,
+    subtype: subtype,
     balance: const Money(minorUnits: 0),
   );
 }
@@ -607,11 +651,14 @@ class _FakeTransactionReadRepository implements TransactionReadRepository {
   _FakeTransactionReadRepository({
     required this.transactions,
     this.reimbursementAggregate = const {},
+    this.latestCategoryTransaction,
   });
 
   final Map<String, Transaction> transactions;
   final Map<BusinessPurpose, TransactionChildAggregate> reimbursementAggregate;
+  final Transaction? latestCategoryTransaction;
   TransactionPageQuery? lastPageQuery;
+  CategoryTransactionQuery? lastCategoryQuery;
 
   @override
   Future<Transaction?> findById(String id) async => transactions[id];
@@ -703,6 +750,14 @@ class _FakeTransactionReadRepository implements TransactionReadRepository {
   Future<List<CategoryTransactionTarget>> findCategoryTransactionTargets(
     String categoryId,
   ) async => const [];
+
+  @override
+  Future<Transaction?> findLatestByCategory(
+    CategoryTransactionQuery query,
+  ) async {
+    lastCategoryQuery = query;
+    return latestCategoryTransaction;
+  }
 
   @override
   Stream<void> watchChanges() => Stream.value(null);

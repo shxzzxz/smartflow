@@ -270,6 +270,42 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
   }
 
   @override
+  Future<Transaction?> findLatestByCategory(
+    CategoryTransactionQuery query,
+  ) async {
+    final categoryEntryMatch = existsQuery(
+      _db.selectOnly(_db.entries)
+        ..addColumns([_db.entries.id])
+        ..where(
+          _db.entries.transactionId.equalsExp(_db.transactions.id) &
+              _db.entries.accountId.equals(query.categoryId),
+        ),
+    );
+    final row =
+        await (_db.select(_db.transactions)
+              ..where(
+                (table) =>
+                    switch (query.hierarchy) {
+                      TransactionHierarchyFilter.topLevel =>
+                        table.parentTransactionId.isNull(),
+                      TransactionHierarchyFilter.child =>
+                        table.parentTransactionId.isNotNull(),
+                    } &
+                    (categoryEntryMatch |
+                        _db.transactions.reimbursementExpenseAccountId.equals(
+                          query.categoryId,
+                        )),
+              )
+              ..orderBy([
+                (table) => OrderingTerm.desc(table.occurredAt),
+                (table) => OrderingTerm.desc(table.id),
+              ])
+              ..limit(1))
+            .getSingleOrNull();
+    return row == null ? null : mapTransaction(row);
+  }
+
+  @override
   Stream<TransactionCleanupPreview> watchCleanupPreview(
     TransactionCleanupQuery query,
   ) {

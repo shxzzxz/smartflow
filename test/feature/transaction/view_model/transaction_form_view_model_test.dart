@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
@@ -163,6 +165,99 @@ void main() {
     });
 
     test(
+      'defaults expense account from the selected category history',
+      () async {
+        final transactionQuery = _FakeTransactionQueryService({
+          'lunch': 'bank',
+        });
+        final container = _container(
+          transactionQueryService: transactionQuery,
+          settlementAccounts: [_account('cash'), _account('bank')],
+        );
+        final viewModel = container.read(_provider().notifier);
+        viewModel.setFromAccountId('cash');
+
+        await viewModel.setExpenseCategory(rootId: 'food', categoryId: 'lunch');
+
+        expect(transactionQuery.categoryIds, ['lunch']);
+        expect(container.read(_provider()).requireValue!.fromAccountId, 'bank');
+      },
+    );
+
+    test('does not replace an account selected while history loads', () async {
+      final historyResult = Completer<String?>();
+      final transactionQuery = _FakeTransactionQueryService.withLookup(
+        (_) => historyResult.future,
+      );
+      final container = _container(
+        transactionQueryService: transactionQuery,
+        settlementAccounts: [_account('cash'), _account('bank')],
+      );
+      final viewModel = container.read(_provider().notifier);
+
+      final defaultLookup = viewModel.setExpenseCategory(
+        rootId: 'food',
+        categoryId: 'lunch',
+      );
+      viewModel.setFromAccountId('cash');
+      historyResult.complete('bank');
+      await defaultLookup;
+
+      expect(container.read(_provider()).requireValue!.fromAccountId, 'cash');
+    });
+
+    test('preserves the current account without usable history', () async {
+      for (final historicalAccountId in <String?>[null, 'unavailable']) {
+        final container = _container(
+          transactionQueryService: _FakeTransactionQueryService({
+            'lunch': historicalAccountId,
+          }),
+          settlementAccounts: [_account('cash')],
+        );
+        final viewModel = container.read(_provider().notifier);
+        viewModel.setFromAccountId('cash');
+
+        await viewModel.setExpenseCategory(rootId: 'food', categoryId: 'lunch');
+
+        expect(container.read(_provider()).requireValue!.fromAccountId, 'cash');
+      }
+    });
+
+    test('ignores a stale category history response', () async {
+      final lunchResult = Completer<String?>();
+      final travelResult = Completer<String?>();
+      final transactionQuery = _FakeTransactionQueryService.withLookup(
+        (categoryId) => switch (categoryId) {
+          'lunch' => lunchResult.future,
+          'travel' => travelResult.future,
+          _ => Future<String?>.value(),
+        },
+      );
+      final container = _container(
+        transactionQueryService: transactionQuery,
+        settlementAccounts: [_account('cash'), _account('bank')],
+      );
+      final viewModel = container.read(_provider().notifier);
+
+      final lunchLookup = viewModel.setExpenseCategory(
+        rootId: 'food',
+        categoryId: 'lunch',
+      );
+      final travelLookup = viewModel.setExpenseCategory(
+        rootId: 'travel',
+        categoryId: 'travel',
+      );
+      travelResult.complete('bank');
+      await travelLookup;
+      lunchResult.complete('cash');
+      await lunchLookup;
+
+      final state = container.read(_provider()).requireValue!;
+      expect(state.expenseCategoryId, 'travel');
+      expect(state.fromAccountId, 'bank');
+    });
+
+    test(
       'creates reimbursement advance command when account is selected',
       () async {
         final posting = _FakeTransactionPostingAppService();
@@ -212,6 +307,31 @@ void main() {
       expect(command.incomeAccountId, 'salary');
       expect(command.isExcludedFromStats, true);
     });
+
+    test(
+      'defaults income account from the selected category history',
+      () async {
+        final transactionQuery = _FakeTransactionQueryService({
+          'salary': 'bank',
+        });
+        final container = _container(
+          transactionQueryService: transactionQuery,
+          settlementAccounts: [_account('cash'), _account('bank')],
+        );
+        final viewModel = container.read(_provider().notifier);
+        viewModel
+          ..setMode(TransactionFormMode.income)
+          ..setToAccountId('cash');
+
+        await viewModel.setIncomeCategory(
+          rootId: 'salary',
+          categoryId: 'salary',
+        );
+
+        expect(transactionQuery.categoryIds, ['salary']);
+        expect(container.read(_provider()).requireValue!.toAccountId, 'bank');
+      },
+    );
 
     test('creates transfer command', () async {
       final posting = _FakeTransactionPostingAppService();
@@ -346,6 +466,34 @@ void main() {
       expect(state.toAccountId, 'cash');
     });
 
+    test('does not load a category account default while editing', () async {
+      final transactionQuery = _FakeTransactionQueryService({'food': 'bank'});
+      final container = _container(
+        transactionQueryService: transactionQuery,
+        editTransactionId: 'tx-1',
+        editDetail: _transactionDetail(),
+        accountsById: {
+          'cash': _account('cash'),
+          'food': _account('food', type: AccountType.expense),
+        },
+        settlementAccounts: [_account('cash'), _account('bank')],
+      );
+      final viewModel = container.read(
+        _provider(editTransactionId: 'tx-1').notifier,
+      );
+
+      await viewModel.setExpenseCategory(rootId: 'food', categoryId: 'food');
+
+      expect(transactionQuery.categoryIds, isEmpty);
+      expect(
+        container
+            .read(_provider(editTransactionId: 'tx-1'))
+            .requireValue!
+            .fromAccountId,
+        'cash',
+      );
+    });
+
     test('submits reimbursement advance edit for edited advance', () async {
       final editService = _FakeTransactionEditAppService();
       final container = _container(
@@ -430,6 +578,7 @@ TransactionFormViewModelProvider _provider({String? editTransactionId}) {
 ProviderContainer _container({
   TransactionPostingAppService? postingService,
   TransactionEditAppService? editService,
+  TransactionQueryService? transactionQueryService,
   String? editTransactionId,
   TransactionDetail? editDetail,
   Map<String, Account> accountsById = const {},
@@ -445,6 +594,9 @@ ProviderContainer _container({
       ),
       transactionEditAppServiceProvider.overrideWith(
         (ref) => editService ?? _FakeTransactionEditAppService(),
+      ),
+      transactionQueryServiceProvider.overrideWithValue(
+        transactionQueryService ?? _FakeTransactionQueryService(),
       ),
       accountsForSelectionPurposeProvider(
         AccountSelectionPurpose.settlement,
@@ -521,6 +673,30 @@ Entry _entry(String accountId, EntryDirection direction) {
     direction: direction,
     amount: const Money(minorUnits: 1234),
   );
+}
+
+class _FakeTransactionQueryService implements TransactionQueryService {
+  _FakeTransactionQueryService([
+    this._accountIdByCategory = const <String, String?>{},
+  ]) : lookup = null;
+
+  _FakeTransactionQueryService.withLookup(this.lookup)
+    : _accountIdByCategory = const <String, String?>{};
+
+  final Map<String, String?> _accountIdByCategory;
+  final Future<String?> Function(String categoryId)? lookup;
+  final categoryIds = <String>[];
+
+  @override
+  Future<String?> findLastUsedSettlementAccountId(String categoryId) async {
+    categoryIds.add(categoryId);
+    if (lookup case final lookup?) return lookup(categoryId);
+    return _accountIdByCategory[categoryId];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 class _FakeTransactionPostingAppService

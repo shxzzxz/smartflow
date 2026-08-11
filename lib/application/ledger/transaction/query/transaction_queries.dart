@@ -3,6 +3,19 @@ import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 import 'transaction_scope.dart';
 
+enum TransactionHierarchyFilter { topLevel, child }
+
+/// 按分类查找交易时限定顶层或子交易。
+class CategoryTransactionQuery {
+  const CategoryTransactionQuery({
+    required this.categoryId,
+    this.hierarchy = TransactionHierarchyFilter.topLevel,
+  });
+
+  final String categoryId;
+  final TransactionHierarchyFilter hierarchy;
+}
+
 /// 用户选择的单个活跃分类及其匹配范围。
 ///
 /// 这是分类筛选这一维度的语义，不是可与 [TransactionListQuery]

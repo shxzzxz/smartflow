@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_port_api.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
@@ -79,20 +80,136 @@ void main() {
       'travel-bank',
     ]);
   });
+
+  test('finds the latest top-level transaction for a category', () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    await database.batch((batch) {
+      batch.insertAll(database.transactions, [
+        _transactionCompanionAt(
+          'newest-child',
+          DateTime(2026, 4, 5),
+          parentTransactionId: 'old-expense',
+        ),
+        _transactionCompanionAt(
+          'latest-reimbursement',
+          DateTime(2026, 4, 4),
+          businessPurpose: BusinessPurpose.reimbursementAdvance,
+          reimbursementExpenseAccountId: 'food',
+        ),
+        _transactionCompanionAt('newer-unrelated', DateTime(2026, 4, 3)),
+        _transactionCompanionAt('old-expense', DateTime(2026, 4, 2)),
+      ]);
+      batch.insertAll(database.entries, [
+        _entryCompanion('child-food', 'newest-child', 'food'),
+        _entryCompanion('child-bank', 'newest-child', 'bank'),
+        _entryCompanion(
+          'latest-receivable',
+          'latest-reimbursement',
+          'company-receivable',
+        ),
+        _entryCompanion('latest-card', 'latest-reimbursement', 'credit-card'),
+        _entryCompanion('unrelated-travel', 'newer-unrelated', 'travel'),
+        _entryCompanion('unrelated-cash', 'newer-unrelated', 'cash'),
+        _entryCompanion('old-food', 'old-expense', 'food'),
+        _entryCompanion('old-cash', 'old-expense', 'cash'),
+      ]);
+    });
+
+    final transaction = await DriftTransactionReadRepository(
+      database,
+    ).findLatestByCategory(
+      const CategoryTransactionQuery(
+        categoryId: 'food',
+        hierarchy: TransactionHierarchyFilter.topLevel,
+      ),
+    );
+
+    expect(transaction?.id, 'latest-reimbursement');
+  });
+
+  test('finds the latest child transaction for a category', () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    await database.batch((batch) {
+      batch.insertAll(database.transactions, [
+        _transactionCompanionAt('parent', DateTime(2026, 4, 3)),
+        _transactionCompanionAt(
+          'new-refund',
+          DateTime(2026, 4, 5),
+          businessPurpose: BusinessPurpose.refund,
+          parentTransactionId: 'parent',
+        ),
+        _transactionCompanionAt(
+          'old-refund',
+          DateTime(2026, 4, 4),
+          businessPurpose: BusinessPurpose.refund,
+          parentTransactionId: 'parent',
+        ),
+      ]);
+      batch.insertAll(database.entries, [
+        _entryCompanion('parent-food', 'parent', 'food'),
+        _entryCompanion('new-food', 'new-refund', 'food'),
+        _entryCompanion('old-food', 'old-refund', 'food'),
+      ]);
+    });
+
+    final transaction = await DriftTransactionReadRepository(
+      database,
+    ).findLatestByCategory(
+      const CategoryTransactionQuery(
+        categoryId: 'food',
+        hierarchy: TransactionHierarchyFilter.child,
+      ),
+    );
+
+    expect(transaction?.id, 'new-refund');
+  });
+
+  test('uses descending id to break equal occurred-at ties', () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    final occurredAt = DateTime(2026, 4, 5);
+    await database.batch((batch) {
+      batch.insertAll(database.transactions, [
+        _transactionCompanionAt('same-time-a', occurredAt),
+        _transactionCompanionAt('same-time-z', occurredAt),
+      ]);
+      batch.insertAll(database.entries, [
+        _entryCompanion('same-time-a-food', 'same-time-a', 'food'),
+        _entryCompanion('same-time-z-food', 'same-time-z', 'food'),
+      ]);
+    });
+
+    final transaction = await DriftTransactionReadRepository(
+      database,
+    ).findLatestByCategory(
+      const CategoryTransactionQuery(categoryId: 'food'),
+    );
+
+    expect(transaction?.id, 'same-time-z');
+  });
 }
 
 TransactionsCompanion _transactionCompanion(String id) =>
     _transactionCompanionAt(id, DateTime(2026, 4, 1));
 
-TransactionsCompanion _transactionCompanionAt(String id, DateTime occurredAt) =>
-    TransactionsCompanion.insert(
-      id: id,
-      businessPurpose: BusinessPurpose.dailyExpense,
-      occurredAt: occurredAt,
-      postedAt: occurredAt,
-      primaryAmountMinor: 100,
-      sourceKind: SourceKind.manual,
-    );
+TransactionsCompanion _transactionCompanionAt(
+  String id,
+  DateTime occurredAt, {
+  BusinessPurpose businessPurpose = BusinessPurpose.dailyExpense,
+  String? parentTransactionId,
+  String? reimbursementExpenseAccountId,
+}) => TransactionsCompanion.insert(
+  id: id,
+  businessPurpose: businessPurpose,
+  occurredAt: occurredAt,
+  postedAt: occurredAt,
+  primaryAmountMinor: 100,
+  sourceKind: SourceKind.manual,
+  parentTransactionId: Value(parentTransactionId),
+  reimbursementExpenseAccountId: Value(reimbursementExpenseAccountId),
+);
 
 EntriesCompanion _entryCompanion(
   String id,

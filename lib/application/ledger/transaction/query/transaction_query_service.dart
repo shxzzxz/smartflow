@@ -4,6 +4,7 @@ import 'package:smartflow/domain/ledger/entity/entry.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/entity/transaction_detail_record.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_rule.dart';
+import 'package:smartflow/domain/ledger/valobj/account_usage.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 import '../../account/query/account_query_service.dart';
@@ -41,6 +42,9 @@ abstract interface class TransactionQueryService {
   );
 
   Future<Transaction?> findTransactionById(String transactionId);
+
+  /// 查询该收支分类最近一笔交易使用的唯一有效结算账户。
+  Future<String?> findLastUsedSettlementAccountId(String categoryId);
 
   Future<Money> getRefundedTotal(String parentTransactionId);
 
@@ -548,6 +552,38 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   @override
   Future<Transaction?> findTransactionById(String transactionId) {
     return _txRead.findById(transactionId);
+  }
+
+  @override
+  Future<String?> findLastUsedSettlementAccountId(String categoryId) async {
+    final accountsById = await _accountQuery.findAccountsById();
+    final category = accountsById[categoryId];
+    if (category == null || !category.type.isCategory || category.isArchived) {
+      return null;
+    }
+    final transaction = await _txRead.findLatestByCategory(
+      CategoryTransactionQuery(
+        categoryId: categoryId,
+        hierarchy: TransactionHierarchyFilter.topLevel,
+      ),
+    );
+    if (transaction == null) return null;
+    final entriesByTransaction = await _entryRead.findByTransactionIds({
+      transaction.id,
+    });
+    final accountIds =
+        entriesByTransaction[transaction.id]
+            ?.map((entry) => entry.accountId)
+            .toSet() ??
+        const <String>{};
+    final candidates = {
+      for (final accountId in accountIds)
+        if (accountsById[accountId] case final account?
+            when account.type.isUserAccount &&
+                accountMatchesUsage(account, AccountUsage.settlement))
+          account.id,
+    };
+    return candidates.length == 1 ? candidates.single : null;
   }
 
   @override
