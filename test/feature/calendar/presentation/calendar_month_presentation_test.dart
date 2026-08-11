@@ -2,19 +2,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/calendar/presentation/calendar_month_presentation.dart';
 import 'package:smartflow/feature/calendar/presentation/lunar_label_resolver.dart';
 
 void main() {
   group('calendar month presentation', () {
-    test('builds calendar grid and selected day group', () {
+    test('builds calendar grid', () {
       final presentation = buildCalendarMonthPresentation(
-        accountLookup: const AccountLookup({}),
         visibleMonth: DateTime(2026, 2),
         selectedDate: DateTime(2026, 2, 14),
         today: DateTime(2026, 2, 1),
-        transactions: [_item(occurredAt: DateTime(2026, 2, 14, 8))],
         summary: const CashflowSummary(
           income: Money(minorUnits: 5000),
           expense: Money(minorUnits: 1200),
@@ -40,8 +37,6 @@ void main() {
       expect(selected.lunarLabel, 'L14');
       expect(selected.markerLabel, '班');
 
-      expect(presentation.selectedGroup.date, DateTime(2026, 2, 14));
-      expect(presentation.selectedGroup.rows.single.transactionId, 'tx-1');
       expect(presentation.summary.metrics.map((metric) => metric.amountText), [
         '50',
         '12',
@@ -126,18 +121,4 @@ class _FakeLunarResolver implements CalendarLunarLabelResolver {
   CalendarLunarLabel labelFor(DateTime date) {
     return CalendarLunarLabel(text: 'L${date.day}', marker: '班');
   }
-}
-
-TransactionListReadModel _item({required DateTime occurredAt}) {
-  return TransactionListReadModel(
-    id: 'tx-1',
-    businessPurpose: BusinessPurpose.dailyIncome,
-    occurredAt: occurredAt,
-    primaryAmount: const Money(minorUnits: 5000),
-    isExcludedFromStats: false,
-    isExcludedFromBudget: false,
-    primaryCategoryId: null,
-    impactsByAccountId: const {},
-    adjustments: const [],
-  );
 }

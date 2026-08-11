@@ -119,7 +119,7 @@ final class CalendarTransactionsProvider
 }
 
 String _$calendarTransactionsHash() =>
-    r'4c219dbac0416fb8a3e539adc5f25871dba3ecfa';
+    r'2f460caecf89f589b913f50659b23f8550eceb02';
 
 final class CalendarTransactionsFamily extends $Family
     with
@@ -136,11 +136,141 @@ final class CalendarTransactionsFamily extends $Family
         isAutoDispose: true,
       );
 
-  CalendarTransactionsProvider call(DateTime visibleMonth) =>
-      CalendarTransactionsProvider._(argument: visibleMonth, from: this);
+  CalendarTransactionsProvider call(DateTime selectedDate) =>
+      CalendarTransactionsProvider._(argument: selectedDate, from: this);
 
   @override
   String toString() => r'calendarTransactionsProvider';
+}
+
+/// 选中日的交易分页。首页数据由 [calendarTransactions] 订阅推送，
+/// 后续页按游标补拉；任何交易变更都会把列表重置回第一页。
+
+@ProviderFor(CalendarTransactionFeedViewModel)
+final calendarTransactionFeedViewModelProvider =
+    CalendarTransactionFeedViewModelFamily._();
+
+/// 选中日的交易分页。首页数据由 [calendarTransactions] 订阅推送，
+/// 后续页按游标补拉；任何交易变更都会把列表重置回第一页。
+final class CalendarTransactionFeedViewModelProvider
+    extends
+        $NotifierProvider<
+          CalendarTransactionFeedViewModel,
+          CalendarTransactionFeedState
+        > {
+  /// 选中日的交易分页。首页数据由 [calendarTransactions] 订阅推送，
+  /// 后续页按游标补拉；任何交易变更都会把列表重置回第一页。
+  CalendarTransactionFeedViewModelProvider._({
+    required CalendarTransactionFeedViewModelFamily super.from,
+    required DateTime super.argument,
+  }) : super(
+         retry: null,
+         name: r'calendarTransactionFeedViewModelProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$calendarTransactionFeedViewModelHash();
+
+  @override
+  String toString() {
+    return r'calendarTransactionFeedViewModelProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  CalendarTransactionFeedViewModel create() =>
+      CalendarTransactionFeedViewModel();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CalendarTransactionFeedState value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CalendarTransactionFeedState>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CalendarTransactionFeedViewModelProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$calendarTransactionFeedViewModelHash() =>
+    r'8a604defc6a7410f057f8dde8c22c79980624868';
+
+/// 选中日的交易分页。首页数据由 [calendarTransactions] 订阅推送，
+/// 后续页按游标补拉；任何交易变更都会把列表重置回第一页。
+
+final class CalendarTransactionFeedViewModelFamily extends $Family
+    with
+        $ClassFamilyOverride<
+          CalendarTransactionFeedViewModel,
+          CalendarTransactionFeedState,
+          CalendarTransactionFeedState,
+          CalendarTransactionFeedState,
+          DateTime
+        > {
+  CalendarTransactionFeedViewModelFamily._()
+    : super(
+        retry: null,
+        name: r'calendarTransactionFeedViewModelProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// 选中日的交易分页。首页数据由 [calendarTransactions] 订阅推送，
+  /// 后续页按游标补拉；任何交易变更都会把列表重置回第一页。
+
+  CalendarTransactionFeedViewModelProvider call(DateTime selectedDate) =>
+      CalendarTransactionFeedViewModelProvider._(
+        argument: selectedDate,
+        from: this,
+      );
+
+  @override
+  String toString() => r'calendarTransactionFeedViewModelProvider';
+}
+
+/// 选中日的交易分页。首页数据由 [calendarTransactions] 订阅推送，
+/// 后续页按游标补拉；任何交易变更都会把列表重置回第一页。
+
+abstract class _$CalendarTransactionFeedViewModel
+    extends $Notifier<CalendarTransactionFeedState> {
+  late final _$args = ref.$arg as DateTime;
+  DateTime get selectedDate => _$args;
+
+  CalendarTransactionFeedState build(DateTime selectedDate);
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref =
+        this.ref
+            as $Ref<CalendarTransactionFeedState, CalendarTransactionFeedState>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<
+                CalendarTransactionFeedState,
+                CalendarTransactionFeedState
+              >,
+              CalendarTransactionFeedState,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, () => build(_$args));
+  }
 }
 
 @ProviderFor(calendarCashflowComparison)
@@ -547,7 +677,7 @@ final class CalendarContentProvider
   }
 }
 
-String _$calendarContentHash() => r'17dd65cc951b3a60232cc29f6c5b37e22cd92013';
+String _$calendarContentHash() => r'28a8cabb3de236acde359b08e77c50ac98dffc4e';
 
 final class CalendarContentFamily extends $Family
     with

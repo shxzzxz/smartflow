@@ -10,7 +10,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_month_picker.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
 import 'package:smartflow/widget/business/finance/finance_tone_color.dart';
-import 'package:smartflow/widget/business/transaction/transaction_day_card.dart';
+import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
 import '../presentation/calendar_month_presentation.dart';
 import '../view_model/calendar_view_model.dart';
 
@@ -51,12 +51,23 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
             ),
             Expanded(
               child: switch (content) {
-                CalendarContentLoaded(:final month) => _CalendarContent(
-                  month: month,
-                  showLunar: state.showLunar,
-                  onDateSelected: _selectDate,
-                  onMonthSwipe: _shiftMonth,
-                ),
+                CalendarContentLoaded(:final month, :final day) =>
+                  _CalendarContent(
+                    month: month,
+                    day: day,
+                    showLunar: state.showLunar,
+                    onDateSelected: _selectDate,
+                    onMonthSwipe: _shiftMonth,
+                    onLoadMore:
+                        () =>
+                            ref
+                                .read(
+                                  calendarTransactionFeedViewModelProvider(
+                                    state.selectedDate,
+                                  ).notifier,
+                                )
+                                .loadMore(),
+                  ),
                 CalendarContentError(:final message) => Center(
                   child: Text(message),
                 ),
@@ -200,29 +211,26 @@ class _HeaderIconButton extends StatelessWidget {
 class _CalendarContent extends StatelessWidget {
   const _CalendarContent({
     required this.month,
+    required this.day,
     required this.showLunar,
     required this.onDateSelected,
     required this.onMonthSwipe,
+    required this.onLoadMore,
   });
 
   final CalendarMonthPresentation month;
+  final CalendarDaySectionPresentation day;
   final bool showLunar;
   final ValueChanged<DateTime> onDateSelected;
   final ValueChanged<int> onMonthSwipe;
+  final VoidCallback onLoadMore;
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(
-        parent: BouncingScrollPhysics(),
-      ),
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space16,
-        0,
-        AppSpacing.space16,
-        AppSpacing.space24,
-      ),
-      children: [
+    return TransactionFeedScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
+      bottomPadding: AppSpacing.space24,
+      leading: [
         _MonthlySummaryStrip(summary: month.summary),
         const SizedBox(height: AppSpacing.space10),
         const _WeekdayHeader(),
@@ -234,11 +242,14 @@ class _CalendarContent extends StatelessWidget {
           onMonthSwipe: onMonthSwipe,
         ),
         const SizedBox(height: AppSpacing.space10),
-        TransactionDayCard(
-          group: month.selectedGroup,
-          emptyMessage: '当天暂无交易记录',
-        ),
       ],
+      // 当日首页加载期间不渲染分组，避免闪现“暂无交易”后再跳成列表。
+      groups: day.isLoading ? const [] : [day.group],
+      groupEmptyMessage: '当天暂无交易记录',
+      hasMore: day.hasMore,
+      isLoadingMore: day.isLoading || day.isLoadingMore,
+      loadMoreErrorMessage: day.loadMoreErrorMessage,
+      onLoadMore: onLoadMore,
     );
   }
 }

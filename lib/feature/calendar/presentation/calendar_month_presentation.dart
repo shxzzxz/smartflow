@@ -3,21 +3,33 @@ import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
 import '../../../core/money/money_formatter.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
-import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
 import 'lunar_label_resolver.dart';
 
 class CalendarMonthPresentation {
-  const CalendarMonthPresentation({
-    required this.summary,
-    required this.days,
-    required this.selectedGroup,
-  });
+  const CalendarMonthPresentation({required this.summary, required this.days});
 
   final CalendarMonthlySummaryPresentation summary;
   final List<CalendarDayPresentation> days;
-  final TransactionDayGroup selectedGroup;
+}
+
+/// 选中日的交易分页独立于月度网格：网格与日汇总来自整月聚合，
+/// 交易明细按单日分页拉取，两者的加载状态互不阻塞。
+class CalendarDaySectionPresentation {
+  const CalendarDaySectionPresentation({
+    required this.group,
+    required this.isLoading,
+    required this.hasMore,
+    required this.isLoadingMore,
+    this.loadMoreErrorMessage,
+  });
+
+  final TransactionDayGroup group;
+  final bool isLoading;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final String? loadMoreErrorMessage;
 }
 
 class CalendarMonthlySummaryPresentation {
@@ -78,8 +90,6 @@ String _formatCompactMinorAmount(int minorUnits) {
 CalendarMonthPresentation buildCalendarMonthPresentation({
   required DateTime visibleMonth,
   required DateTime selectedDate,
-  required List<TransactionListReadModel> transactions,
-  required AccountLookup accountLookup,
   required CashflowSummary summary,
   required List<DailyCashflowSummary> dailySummaries,
   List<CreditDueCalendarItemReadModel> creditDueItems = const [],
@@ -100,12 +110,6 @@ CalendarMonthPresentation buildCalendarMonthPresentation({
       creditDueItems: creditDueItems,
       today: today,
       lunarLabelResolver: lunarLabelResolver,
-    ),
-    selectedGroup: transactionGroupForDate(
-      date: selectedDate,
-      transactions: transactions,
-      dailySummaries: dailySummaries,
-      accountLookup: accountLookup,
     ),
   );
 }

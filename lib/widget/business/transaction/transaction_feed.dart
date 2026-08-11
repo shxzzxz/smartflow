@@ -17,6 +17,7 @@ class TransactionFeedScrollView extends StatefulWidget {
     this.bottomPadding = 0,
     this.emptyMessage = '暂无交易记录',
     this.emptyState,
+    this.groupEmptyMessage,
     this.showDailyTotals = true,
     this.hasMore = false,
     this.isLoadingMore = false,
@@ -33,6 +34,9 @@ class TransactionFeedScrollView extends StatefulWidget {
   final double bottomPadding;
   final String emptyMessage;
   final Widget? emptyState;
+
+  /// 分组固定存在但当天没有交易时的空态文案（日历页按日分页时使用）。
+  final String? groupEmptyMessage;
   final bool showDailyTotals;
   final bool hasMore;
   final bool isLoadingMore;
@@ -95,6 +99,7 @@ class _TransactionFeedScrollViewState extends State<TransactionFeedScrollView> {
               emptyState:
                   widget.emptyState ??
                   EmptyTransactionCard(message: widget.emptyMessage),
+              groupEmptyMessage: widget.groupEmptyMessage,
               showDailyTotals: widget.showDailyTotals,
               isLoadingMore: widget.isLoadingMore,
               loadMoreErrorMessage: widget.loadMoreErrorMessage,
@@ -116,6 +121,7 @@ class _TransactionFeedSliver extends StatelessWidget {
   const _TransactionFeedSliver({
     required this.groups,
     required this.emptyState,
+    required this.groupEmptyMessage,
     required this.showDailyTotals,
     required this.isLoadingMore,
     required this.loadMoreErrorMessage,
@@ -124,6 +130,7 @@ class _TransactionFeedSliver extends StatelessWidget {
 
   final List<TransactionDayGroup> groups;
   final Widget emptyState;
+  final String? groupEmptyMessage;
   final bool showDailyTotals;
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
@@ -171,6 +178,7 @@ class _TransactionFeedSliver extends StatelessWidget {
           ),
           child: TransactionDayCard(
             group: groups[index],
+            emptyMessage: groupEmptyMessage,
             showDailyTotals: showDailyTotals,
           ),
         );

@@ -11,6 +11,8 @@ import '../presentation/calendar_month_presentation.dart';
 
 part 'calendar_view_model.g.dart';
 
+const calendarTransactionPageSize = 50;
+
 @riverpod
 class CalendarViewModel extends _$CalendarViewModel {
   @override
@@ -66,18 +68,98 @@ class CalendarViewModel extends _$CalendarViewModel {
 @riverpod
 Stream<List<TransactionListReadModel>> calendarTransactions(
   Ref ref,
-  DateTime visibleMonth,
+  DateTime selectedDate,
 ) {
-  final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
   return ref
       .watch(transactionQueryServiceProvider)
-      .watchTransactions(
-        TransactionListQuery(
-          topLevelOnly: true,
-          occurredFrom: month.start,
-          occurredUntil: month.nextMonthStart,
-        ),
+      .watchTransactions(_dayQuery(selectedDate));
+}
+
+TransactionListQuery _dayQuery(
+  DateTime selectedDate, {
+  TransactionListCursor? before,
+}) {
+  final day = normalizeDate(selectedDate);
+  return TransactionListQuery(
+    topLevelOnly: true,
+    occurredFrom: day,
+    occurredUntil: DateTime(day.year, day.month, day.day + 1),
+    limit: calendarTransactionPageSize,
+    before: before,
+  );
+}
+
+/// 选中日的交易分页。首页数据由 [calendarTransactions] 订阅推送，
+/// 后续页按游标补拉；任何交易变更都会把列表重置回第一页。
+@riverpod
+class CalendarTransactionFeedViewModel
+    extends _$CalendarTransactionFeedViewModel {
+  var _requestGeneration = 0;
+
+  @override
+  CalendarTransactionFeedState build(DateTime selectedDate) {
+    final provider = calendarTransactionsProvider(selectedDate);
+    ref.listen(provider, (_, next) => _applyFirstPage(next));
+    return _firstPageState(ref.read(provider));
+  }
+
+  CalendarTransactionFeedState _firstPageState(
+    AsyncValue<List<TransactionListReadModel>> value,
+  ) {
+    return switch (value) {
+      AsyncData(:final value) => CalendarTransactionFeedState.loaded(
+        items: value,
+        hasMore: value.length == calendarTransactionPageSize,
+      ),
+      AsyncError() => const CalendarTransactionFeedState.error(
+        message: '加载失败，请稍后重试',
+      ),
+      AsyncLoading() => const CalendarTransactionFeedState.loading(),
+    };
+  }
+
+  void _applyFirstPage(AsyncValue<List<TransactionListReadModel>> next) {
+    if (next is AsyncLoading && state is CalendarTransactionFeedLoaded) return;
+    _requestGeneration += 1;
+    state = _firstPageState(next);
+  }
+
+  Future<void> loadMore() async {
+    final current = state;
+    if (current is! CalendarTransactionFeedLoaded ||
+        !current.hasMore ||
+        current.isLoadingMore) {
+      return;
+    }
+    final cursorItem = current.items.last;
+    final requestGeneration = _requestGeneration;
+    state = current.copyWith(isLoadingMore: true);
+    try {
+      final nextPage = await ref
+          .read(transactionQueryServiceProvider)
+          .findTransactions(
+            _dayQuery(
+              selectedDate,
+              before: TransactionListCursor(
+                occurredAt: cursorItem.occurredAt,
+                id: cursorItem.id,
+              ),
+            ),
+          );
+      if (!ref.mounted || requestGeneration != _requestGeneration) return;
+      state = current.copyWith(
+        items: [...current.items, ...nextPage],
+        hasMore: nextPage.length == calendarTransactionPageSize,
+        isLoadingMore: false,
       );
+    } catch (_) {
+      if (!ref.mounted || requestGeneration != _requestGeneration) return;
+      state = current.copyWith(
+        isLoadingMore: false,
+        loadMoreErrorMessage: '加载更多交易失败，请重试',
+      );
+    }
+  }
 }
 
 @riverpod
@@ -138,7 +220,6 @@ CalendarContentState calendarContent(
   required DateTime selectedDate,
 }) {
   final now = ref.watch(currentDateTimeProvider);
-  final transactions = ref.watch(calendarTransactionsProvider(visibleMonth));
   final comparison = ref.watch(
     calendarCashflowComparisonProvider(visibleMonth),
   );
@@ -152,10 +233,10 @@ CalendarContentState calendarContent(
     calendarMonthlyBillSummariesProvider(visibleMonth),
   );
   final accountLookup = ref.watch(accountLookupProvider);
+  final feed = ref.watch(
+    calendarTransactionFeedViewModelProvider(selectedDate),
+  );
 
-  if (transactions case AsyncError(:final error)) {
-    return CalendarContentState.error(message: '加载失败：$error');
-  }
   if (comparison case AsyncError(:final error)) {
     return CalendarContentState.error(message: '加载失败：$error');
   }
@@ -171,15 +252,16 @@ CalendarContentState calendarContent(
   if (accountLookup case AsyncError(:final error)) {
     return CalendarContentState.error(message: '加载失败：$error');
   }
+  if (feed case CalendarTransactionFeedError(:final message)) {
+    return CalendarContentState.error(message: message);
+  }
 
-  final transactionValues = transactions.value;
   final comparisonValue = comparison.value;
   final dailySummaryValues = dailySummaries.value;
   final creditDueItemValues = creditDueItems.value;
   final monthlyBillSummaryValues = monthlyBillSummaries.value;
   final lookup = accountLookup.value;
-  if (transactionValues == null ||
-      comparisonValue == null ||
+  if (comparisonValue == null ||
       dailySummaryValues == null ||
       creditDueItemValues == null ||
       monthlyBillSummaryValues == null ||
@@ -187,17 +269,28 @@ CalendarContentState calendarContent(
     return const CalendarContentState.loading();
   }
 
+  final loadedFeed = feed is CalendarTransactionFeedLoaded ? feed : null;
   return CalendarContentState.loaded(
     month: buildCalendarMonthPresentation(
       visibleMonth: visibleMonth,
       selectedDate: selectedDate,
-      transactions: transactionValues,
-      accountLookup: lookup,
       summary: comparisonValue.current,
       dailySummaries: dailySummaryValues,
       creditDueItems: creditDueItemValues,
       monthlyBillSummaries: monthlyBillSummaryValues,
       today: now,
+    ),
+    day: CalendarDaySectionPresentation(
+      group: transactionGroupForDate(
+        date: selectedDate,
+        transactions: loadedFeed?.items ?? const [],
+        dailySummaries: dailySummaryValues,
+        accountLookup: lookup,
+      ),
+      isLoading: loadedFeed == null,
+      hasMore: loadedFeed?.hasMore ?? false,
+      isLoadingMore: loadedFeed?.isLoadingMore ?? false,
+      loadMoreErrorMessage: loadedFeed?.loadMoreErrorMessage,
     ),
   );
 }
@@ -236,6 +329,7 @@ sealed class CalendarContentState {
 
   const factory CalendarContentState.loaded({
     required CalendarMonthPresentation month,
+    required CalendarDaySectionPresentation day,
   }) = CalendarContentLoaded;
 }
 
@@ -250,7 +344,64 @@ final class CalendarContentError extends CalendarContentState {
 }
 
 final class CalendarContentLoaded extends CalendarContentState {
-  const CalendarContentLoaded({required this.month});
+  const CalendarContentLoaded({required this.month, required this.day});
 
   final CalendarMonthPresentation month;
+  final CalendarDaySectionPresentation day;
+}
+
+sealed class CalendarTransactionFeedState {
+  const CalendarTransactionFeedState();
+
+  const factory CalendarTransactionFeedState.loading() =
+      CalendarTransactionFeedLoading;
+
+  const factory CalendarTransactionFeedState.error({required String message}) =
+      CalendarTransactionFeedError;
+
+  const factory CalendarTransactionFeedState.loaded({
+    required List<TransactionListReadModel> items,
+    required bool hasMore,
+    bool isLoadingMore,
+    String? loadMoreErrorMessage,
+  }) = CalendarTransactionFeedLoaded;
+}
+
+final class CalendarTransactionFeedLoading
+    extends CalendarTransactionFeedState {
+  const CalendarTransactionFeedLoading();
+}
+
+final class CalendarTransactionFeedError extends CalendarTransactionFeedState {
+  const CalendarTransactionFeedError({required this.message});
+
+  final String message;
+}
+
+final class CalendarTransactionFeedLoaded extends CalendarTransactionFeedState {
+  const CalendarTransactionFeedLoaded({
+    required this.items,
+    required this.hasMore,
+    this.isLoadingMore = false,
+    this.loadMoreErrorMessage,
+  });
+
+  final List<TransactionListReadModel> items;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final String? loadMoreErrorMessage;
+
+  CalendarTransactionFeedLoaded copyWith({
+    List<TransactionListReadModel>? items,
+    bool? hasMore,
+    bool? isLoadingMore,
+    String? loadMoreErrorMessage,
+  }) {
+    return CalendarTransactionFeedLoaded(
+      items: items ?? this.items,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      loadMoreErrorMessage: loadMoreErrorMessage,
+    );
+  }
 }

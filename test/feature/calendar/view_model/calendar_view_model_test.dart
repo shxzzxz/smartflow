@@ -20,12 +20,13 @@ void main() {
           accountsById: const <String, Account>{},
         );
         final visibleMonth = DateTime(2026, 1);
+        final selectedDate = DateTime(2026, 1, 2);
         final container = _container(
           transactionService,
           metricsService,
           accountService,
           overrides: [
-            calendarTransactionsProvider(visibleMonth).overrideWith(
+            calendarTransactionsProvider(selectedDate).overrideWith(
               (ref) => Stream.value([_item(DateTime(2026, 1, 2, 8))]),
             ),
             calendarCashflowComparisonProvider(
@@ -48,16 +49,19 @@ void main() {
           (_, _) {},
         );
         addTearDown(viewModelSub.close);
-        final initialState = container.read(calendarViewModelProvider);
+        container
+            .read(calendarViewModelProvider.notifier)
+            .selectDate(selectedDate);
+        final state = container.read(calendarViewModelProvider);
         final contentSub = container.listen(
           calendarContentProvider(
-            visibleMonth: initialState.visibleMonth,
-            selectedDate: initialState.selectedDate,
+            visibleMonth: state.visibleMonth,
+            selectedDate: state.selectedDate,
           ),
           (_, _) {},
         );
         addTearDown(contentSub.close);
-        await container.read(calendarTransactionsProvider(visibleMonth).future);
+        await container.read(calendarTransactionsProvider(selectedDate).future);
         await container.read(
           calendarCashflowComparisonProvider(visibleMonth).future,
         );
@@ -67,13 +71,8 @@ void main() {
         await container.pump();
         await _flush();
 
-        container
-            .read(calendarViewModelProvider.notifier)
-            .selectDate(DateTime(2026, 1, 2));
-
-        final state = container.read(calendarViewModelProvider);
         expect(state.visibleMonth, DateTime(2026, 1));
-        expect(state.selectedDate, DateTime(2026, 1, 2));
+        expect(state.selectedDate, selectedDate);
         final loaded =
             container.read(
                   calendarContentProvider(
@@ -82,10 +81,137 @@ void main() {
                   ),
                 )
                 as CalendarContentLoaded;
-        expect(loaded.month.selectedGroup.date, DateTime(2026, 1, 2));
-        expect(loaded.month.selectedGroup.rows.single.transactionId, 'tx-1');
+        expect(loaded.day.group.date, selectedDate);
+        expect(loaded.day.group.rows.single.transactionId, 'tx-1');
+        expect(loaded.day.isLoading, false);
+        expect(loaded.day.hasMore, false);
       },
     );
+
+    test('queries only the selected day and keeps the page limit', () {
+      final transactionService = _FakeTransactionQueryService();
+      final metricsService = _FakeFinancialMetricsService();
+      final accountService = _FakeAccountQueryService();
+      final container = _container(
+        transactionService,
+        metricsService,
+        accountService,
+      );
+
+      final viewModelSub = container.listen(
+        calendarViewModelProvider,
+        (_, _) {},
+      );
+      addTearDown(viewModelSub.close);
+      container
+          .read(calendarViewModelProvider.notifier)
+          .selectDate(DateTime(2026, 1, 14));
+      final state = container.read(calendarViewModelProvider);
+      final contentSub = container.listen(
+        calendarContentProvider(
+          visibleMonth: state.visibleMonth,
+          selectedDate: state.selectedDate,
+        ),
+        (_, _) {},
+      );
+      addTearDown(contentSub.close);
+
+      final query = transactionService.queries.last;
+      expect(query.occurredFrom, DateTime(2026, 1, 14));
+      expect(query.occurredUntil, DateTime(2026, 1, 15));
+      expect(query.limit, calendarTransactionPageSize);
+    });
+
+    test('keeps the month grid visible while the day feed loads', () async {
+      final transactionService = _FakeTransactionQueryService();
+      final metricsService = _FakeFinancialMetricsService();
+      final accountService = _FakeAccountQueryService(
+        accountsById: const <String, Account>{},
+      );
+      final visibleMonth = DateTime(2026, 1);
+      final container = _container(
+        transactionService,
+        metricsService,
+        accountService,
+        overrides: [
+          calendarCashflowComparisonProvider(
+            visibleMonth,
+          ).overrideWith((ref) => Stream.value(_comparison())),
+          calendarDailyCashflowSummariesProvider(
+            visibleMonth,
+          ).overrideWith((ref) => Stream.value(const [])),
+        ],
+      );
+
+      final viewModelSub = container.listen(
+        calendarViewModelProvider,
+        (_, _) {},
+      );
+      addTearDown(viewModelSub.close);
+      final state = container.read(calendarViewModelProvider);
+      final content = calendarContentProvider(
+        visibleMonth: state.visibleMonth,
+        selectedDate: state.selectedDate,
+      );
+      final contentSub = container.listen(content, (_, _) {});
+      addTearDown(contentSub.close);
+      await container.read(calendarCreditDueItemsProvider(visibleMonth).future);
+      await container.read(
+        calendarMonthlyBillSummariesProvider(visibleMonth).future,
+      );
+      await container.pump();
+      await _flush();
+
+      // 当日交易流始终未推送，月度数据已就绪：网格应照常渲染。
+      final loaded = container.read(content) as CalendarContentLoaded;
+      expect(loaded.month.days, isNotEmpty);
+      expect(loaded.day.isLoading, true);
+      expect(loaded.day.group.rows, isEmpty);
+    });
+
+    test('appends the next page from the last loaded cursor', () async {
+      final transactionService = _FakeTransactionQueryService(
+        nextPage: [_item(DateTime(2026, 1, 15, 6), id: 'tx-older')],
+      );
+      final metricsService = _FakeFinancialMetricsService();
+      final accountService = _FakeAccountQueryService();
+      final selectedDate = DateTime(2026, 1, 15);
+      final firstPage = [
+        for (var index = 0; index < calendarTransactionPageSize; index++)
+          _item(DateTime(2026, 1, 15, 9), id: 'tx-$index'),
+      ];
+      final container = _container(
+        transactionService,
+        metricsService,
+        accountService,
+        overrides: [
+          calendarTransactionsProvider(
+            selectedDate,
+          ).overrideWith((ref) => Stream.value(firstPage)),
+        ],
+      );
+
+      final feed = calendarTransactionFeedViewModelProvider(selectedDate);
+      final feedSub = container.listen(feed, (_, _) {});
+      addTearDown(feedSub.close);
+      await container.read(calendarTransactionsProvider(selectedDate).future);
+      await container.pump();
+      await _flush();
+
+      expect(
+        (container.read(feed) as CalendarTransactionFeedLoaded).hasMore,
+        true,
+      );
+      await container.read(feed.notifier).loadMore();
+
+      final loaded = container.read(feed) as CalendarTransactionFeedLoaded;
+      expect(loaded.items, hasLength(calendarTransactionPageSize + 1));
+      expect(loaded.hasMore, false);
+      expect(loaded.isLoadingMore, false);
+      final cursor = transactionService.queries.last.before;
+      expect(cursor?.id, 'tx-${calendarTransactionPageSize - 1}');
+      expect(cursor?.occurredAt, DateTime(2026, 1, 15, 9));
+    });
 
     test('shifts month and clamps selected date', () {
       final transactionService = _FakeTransactionQueryService();
@@ -117,8 +243,10 @@ void main() {
         ),
         isA<CalendarContentLoading>(),
       );
-      expect(transactionService.queries.last.occurredFrom, DateTime(2026, 2));
-      expect(transactionService.queries.last.occurredUntil, DateTime(2026, 3));
+      expect(
+        metricsService.dailyQueries.last.month.month,
+        DateTime(2026, 2).month,
+      );
     });
 
     test('toggle lunar does not restart month queries', () {
@@ -186,9 +314,9 @@ Future<void> _flush() async {
   await Future<void>.delayed(Duration.zero);
 }
 
-TransactionListReadModel _item(DateTime occurredAt) {
+TransactionListReadModel _item(DateTime occurredAt, {String id = 'tx-1'}) {
   return TransactionListReadModel(
-    id: 'tx-1',
+    id: id,
     businessPurpose: BusinessPurpose.dailyIncome,
     occurredAt: occurredAt,
     primaryAmount: const Money(minorUnits: 10000),
@@ -218,6 +346,11 @@ CashflowComparison _comparison() {
 }
 
 class _FakeTransactionQueryService implements TransactionQueryService {
+  _FakeTransactionQueryService({
+    List<TransactionListReadModel> nextPage = const [],
+  }) : _nextPage = nextPage;
+
+  final List<TransactionListReadModel> _nextPage;
   final queries = <TransactionListQuery>[];
   final _streams = <_ReplayStream<List<TransactionListReadModel>>>[];
 
@@ -229,6 +362,14 @@ class _FakeTransactionQueryService implements TransactionQueryService {
     final stream = _ReplayStream<List<TransactionListReadModel>>();
     _streams.add(stream);
     return stream.watch();
+  }
+
+  @override
+  Future<List<TransactionListReadModel>> findTransactions(
+    TransactionListQuery query,
+  ) async {
+    queries.add(query);
+    return _nextPage;
   }
 
   void emit(List<TransactionListReadModel> items) {
