@@ -12,6 +12,7 @@ import 'package:smartflow/feature/account/view_model/account_view.dart';
 import 'package:smartflow/feature/account/view_model/account_views_provider.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
+import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 
 void main() {
   testWidgets('name validator blocks account submit', (tester) async {
@@ -54,7 +55,7 @@ void main() {
     expect(find.byType(Divider), findsNothing);
   });
 
-  testWidgets('shows billing and repayment days as paired subfields', (
+  testWidgets('shows billing and repayment days as separate credit fields', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(480, 1400));
@@ -71,17 +72,21 @@ void main() {
       ),
     );
 
+    expect(find.byType(BillingRepaymentDayPlainFields), findsNothing);
+
     await tester.tap(find.text('信用'));
     await tester.pump();
 
+    expect(find.byType(BillingRepaymentDayPlainFields), findsOneWidget);
     expect(find.text('出账还款日'), findsNothing);
     expect(find.text('出账日'), findsOneWidget);
     expect(find.text('还款日'), findsOneWidget);
-    expect(find.text('请选择'), findsNWidgets(2));
-    expect(tester.widget<Text>(find.text('出账日')).style!.fontSize, 14);
     expect(
-      tester.getTopLeft(find.text('出账日')).dy,
-      tester.getTopLeft(find.text('还款日')).dy,
+      find.descendant(
+        of: find.byType(BillingRepaymentDayPlainFields),
+        matching: find.text('请选择'),
+      ),
+      findsNWidgets(2),
     );
   });
 
