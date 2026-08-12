@@ -213,16 +213,31 @@ void main() {
       find.descendant(of: cashflowChart, matching: find.byType(BarChart)),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const ValueKey('statistics-cashflow-metric')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: cashflowChart, matching: find.text('收入')),
+      findsOneWidget,
+    );
     await tester.tap(
       find.descendant(
-        of: find.byKey(const ValueKey('statistics-cashflow-metric')),
-        matching: find.text('对比'),
+        of: cashflowChart,
+        matching: find.byKey(const ValueKey('chart-legend-支出')),
       ),
     );
     await tester.pumpAndSettle();
     expect(
-      find.descendant(of: cashflowChart, matching: find.text('收入')),
-      findsOneWidget,
+      tester
+          .widget<BarChart>(
+            find.descendant(of: cashflowChart, matching: find.byType(BarChart)),
+          )
+          .data
+          .barGroups
+          .single
+          .barRods,
+      hasLength(1),
     );
 
     await tester.tap(
@@ -236,6 +251,14 @@ void main() {
       find.descendant(of: cashflowChart, matching: find.byType(LineChart)),
       findsOneWidget,
     );
+
+    await tester.tap(find.byTooltip('横屏查看收支统计'));
+    await tester.pumpAndSettle();
+    expect(find.text('收支统计'), findsOneWidget);
+    expect(find.byTooltip('返回'), findsOneWidget);
+    expect(find.byType(LineChart), findsOneWidget);
+    await tester.tap(find.byTooltip('返回'));
+    await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
       find.text('分类构成'),

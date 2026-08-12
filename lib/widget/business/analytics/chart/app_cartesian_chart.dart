@@ -62,7 +62,7 @@ class AppCartesianChartData {
       series.every((item) => item.points.isEmpty);
 }
 
-class AppCartesianChart extends StatelessWidget {
+class AppCartesianChart extends StatefulWidget {
   const AppCartesianChart({
     required this.data,
     required this.form,
@@ -85,17 +85,65 @@ class AppCartesianChart extends StatelessWidget {
   final String emptyMessage;
 
   @override
-  Widget build(BuildContext context) {
-    if (data.isEmpty) return AppChartEmptyState(message: emptyMessage);
+  State<AppCartesianChart> createState() => _AppCartesianChartState();
+}
 
-    final chart = SizedBox(
-      height: height,
-      child: switch (form) {
-        AppCartesianChartForm.line => _buildLineChart(context),
-        AppCartesianChartForm.bar => _buildBarChart(context),
-      },
+class _AppCartesianChartState extends State<AppCartesianChart> {
+  late Set<String> _visibleSeries = {
+    for (final series in widget.data.series) series.label,
+  };
+
+  @override
+  void didUpdateWidget(covariant AppCartesianChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.data.series != widget.data.series) {
+      final labels = widget.data.series.map((series) => series.label).toSet();
+      _visibleSeries = _visibleSeries.intersection(labels);
+      if (_visibleSeries.isEmpty &&
+          labels.isNotEmpty &&
+          !_sameLabels(
+            oldWidget.data.series.map((series) => series.label),
+            labels,
+          )) {
+        _visibleSeries = labels;
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.data.isEmpty) {
+      return AppChartEmptyState(message: widget.emptyMessage);
+    }
+
+    final visibleData = AppCartesianChartData(
+      axisPoints: widget.data.axisPoints,
+      series: [
+        for (final series in widget.data.series)
+          if (_visibleSeries.contains(series.label)) series,
+      ],
     );
-    if (!showLegend) return chart;
+
+    final chart =
+        visibleData.series.isEmpty
+            ? SizedBox(
+              height: widget.height,
+              child: const AppChartEmptyState(message: '未选择数据系列'),
+            )
+            : SizedBox(
+              height: widget.height,
+              child: switch (widget.form) {
+                AppCartesianChartForm.line => _buildLineChart(
+                  context,
+                  visibleData,
+                ),
+                AppCartesianChartForm.bar => _buildBarChart(
+                  context,
+                  visibleData,
+                ),
+              },
+            );
+    if (!widget.showLegend) return chart;
     return Column(
       children: [
         chart,
@@ -105,17 +153,30 @@ class AppCartesianChart extends StatelessWidget {
           spacing: AppSpacing.space16,
           runSpacing: AppSpacing.space8,
           children: [
-            for (final series in data.series)
-              _AppChartLegendItem(label: series.label, color: series.color),
+            for (final series in widget.data.series)
+              _AppChartLegendItem(
+                key: ValueKey('chart-legend-${series.label}'),
+                label: series.label,
+                color: series.color,
+                selected: _visibleSeries.contains(series.label),
+                onTap:
+                    () => setState(() {
+                      if (_visibleSeries.contains(series.label)) {
+                        _visibleSeries.remove(series.label);
+                      } else {
+                        _visibleSeries.add(series.label);
+                      }
+                    }),
+              ),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildLineChart(BuildContext context) {
+  Widget _buildLineChart(BuildContext context, AppCartesianChartData data) {
     final colors = Theme.of(context).colorScheme;
-    final scale = _scale();
+    final scale = _scale(data);
     return LineChart(
       duration: AppChartMotion.switchDuration,
       LineChartData(
@@ -125,13 +186,13 @@ class AppCartesianChart extends StatelessWidget {
         maxY: scale.max,
         borderData: FlBorderData(show: false),
         gridData: _gridData(context, scale),
-        titlesData: _titlesData(context, scale),
+        titlesData: _titlesData(context, scale, data: data),
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
             fitInsideHorizontally: true,
             fitInsideVertically: true,
             getTooltipColor: (_) => colors.inverseSurface,
-            getTooltipItems: (spots) => _lineTooltipItems(context, spots),
+            getTooltipItems: (spots) => _lineTooltipItems(context, spots, data),
           ),
         ),
         lineBarsData: [
@@ -166,7 +227,7 @@ class AppCartesianChart extends StatelessWidget {
     );
   }
 
-  Widget _buildBarChart(BuildContext context) {
+  Widget _buildBarChart(BuildContext context, AppCartesianChartData data) {
     if (data.series.any(
       (series) => series.points.length != data.axisPoints.length,
     )) {
@@ -175,7 +236,7 @@ class AppCartesianChart extends StatelessWidget {
       );
     }
     final colors = Theme.of(context).colorScheme;
-    final scale = _scale();
+    final scale = _scale(data);
     return LayoutBuilder(
       builder: (context, constraints) {
         final barWidth = _barWidth(
@@ -187,11 +248,16 @@ class AppCartesianChart extends StatelessWidget {
           BarChartData(
             minY: scale.min,
             maxY: scale.max,
-            baselineY: includeZero ? 0 : null,
+            baselineY: widget.includeZero ? 0 : null,
             alignment: BarChartAlignment.spaceAround,
             borderData: FlBorderData(show: false),
             gridData: _gridData(context, scale),
-            titlesData: _titlesData(context, scale, useAxisIndex: true),
+            titlesData: _titlesData(
+              context,
+              scale,
+              data: data,
+              useAxisIndex: true,
+            ),
             barTouchData: BarTouchData(
               touchTooltipData: BarTouchTooltipData(
                 fitInsideHorizontally: true,
@@ -200,6 +266,7 @@ class AppCartesianChart extends StatelessWidget {
                 getTooltipItem: (group, groupIndex, rod, rodIndex) {
                   return _barTooltipItem(
                     context,
+                    data: data,
                     axisLabel: data.axisPoints[group.x].label,
                     pointIndex: group.x,
                   );
@@ -228,39 +295,47 @@ class AppCartesianChart extends StatelessWidget {
     );
   }
 
-  AppChartScale _scale() {
+  AppChartScale _scale(AppCartesianChartData data) {
     return AppChartScale.fromValues([
       for (final series in data.series)
         for (final point in series.points) point.value,
-    ], includeZero: includeZero);
+    ], includeZero: widget.includeZero);
   }
 
   List<LineTooltipItem> _lineTooltipItems(
     BuildContext context,
     List<LineBarSpot> spots,
+    AppCartesianChartData data,
   ) {
     final colors = Theme.of(context).colorScheme;
     return [
       for (var index = 0; index < spots.length; index++)
-        _lineTooltipItem(colors, spot: spots[index], showAxisLabel: index == 0),
+        _lineTooltipItem(
+          colors,
+          data: data,
+          spot: spots[index],
+          showAxisLabel: index == 0,
+        ),
     ];
   }
 
   LineTooltipItem _lineTooltipItem(
     ColorScheme colors, {
+    required AppCartesianChartData data,
     required LineBarSpot spot,
     required bool showAxisLabel,
   }) {
     final series = data.series[spot.barIndex];
     final point = series.points[spot.spotIndex];
-    final axisLabel = _axisLabelForX(point.x);
-    final seriesLabel = showSeriesLabelInTooltip ? '${series.label} ' : '';
+    final axisLabel = _axisLabelForX(data, point.x);
+    final seriesLabel =
+        widget.showSeriesLabelInTooltip ? '${series.label} ' : '';
     return LineTooltipItem(
       showAxisLabel ? '$axisLabel\n' : '',
       TextStyle(color: colors.onInverseSurface),
       textAlign: TextAlign.left,
       children: [
-        if (showSeriesLabelInTooltip)
+        if (widget.showSeriesLabelInTooltip)
           TextSpan(text: '● ', style: TextStyle(color: series.color)),
         TextSpan(text: '$seriesLabel${point.formattedValue}'),
       ],
@@ -269,6 +344,7 @@ class AppCartesianChart extends StatelessWidget {
 
   BarTooltipItem _barTooltipItem(
     BuildContext context, {
+    required AppCartesianChartData data,
     required String axisLabel,
     required int pointIndex,
   }) {
@@ -279,14 +355,14 @@ class AppCartesianChart extends StatelessWidget {
       textAlign: TextAlign.left,
       children: [
         for (var index = 0; index < data.series.length; index++) ...[
-          if (showSeriesLabelInTooltip)
+          if (widget.showSeriesLabelInTooltip)
             TextSpan(
               text: '● ',
               style: TextStyle(color: data.series[index].color),
             ),
           TextSpan(
             text:
-                '${showSeriesLabelInTooltip ? '${data.series[index].label} ' : ''}'
+                '${widget.showSeriesLabelInTooltip ? '${data.series[index].label} ' : ''}'
                 '${data.series[index].points[pointIndex].formattedValue}'
                 '${index == data.series.length - 1 ? '' : '\n'}',
           ),
@@ -295,7 +371,7 @@ class AppCartesianChart extends StatelessWidget {
     );
   }
 
-  String _axisLabelForX(double x) {
+  String _axisLabelForX(AppCartesianChartData data, double x) {
     for (final axisPoint in data.axisPoints) {
       if ((axisPoint.x - x).abs() < .0001) return axisPoint.label;
     }
@@ -323,6 +399,7 @@ class AppCartesianChart extends StatelessWidget {
   FlTitlesData _titlesData(
     BuildContext context,
     AppChartScale scale, {
+    required AppCartesianChartData data,
     bool useAxisIndex = false,
   }) {
     final visibleAxisIndexes = [
@@ -331,7 +408,7 @@ class AppCartesianChart extends StatelessWidget {
     ];
     final labelInterval = math.max(
       1,
-      (visibleAxisIndexes.length / maxAxisLabels).ceil(),
+      (visibleAxisIndexes.length / widget.maxAxisLabels).ceil(),
     );
     final style = Theme.of(context).textTheme.labelSmall?.copyWith(
       color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -400,6 +477,11 @@ class AppCartesianChart extends StatelessWidget {
   }
 }
 
+bool _sameLabels(Iterable<String> oldLabels, Set<String> newLabels) {
+  final oldSet = oldLabels.toSet();
+  return oldSet.length == newLabels.length && oldSet.containsAll(newLabels);
+}
+
 double _barWidth(double maxWidth, int slotCount) =>
     ((maxWidth - AppChartGeometry.leftAxisReservedWidth) /
             slotCount *
@@ -414,27 +496,63 @@ BorderRadius _barRadius(double value) =>
         : const BorderRadius.vertical(top: Radius.circular(AppRadius.radiusSm));
 
 class _AppChartLegendItem extends StatelessWidget {
-  const _AppChartLegendItem({required this.label, required this.color});
+  const _AppChartLegendItem({
+    required this.label,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+    super.key,
+  });
 
   final String label;
   final Color color;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: AppSpacing.space12,
-          height: AppSpacing.space4,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(AppRadius.radiusSm),
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$label${selected ? '，已显示' : '，已隐藏'}',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.radiusSm),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space4,
+            vertical: AppSpacing.space6,
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppSpacing.space48),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: AppSpacing.space12,
+                  height: AppSpacing.space4,
+                  decoration: BoxDecoration(
+                    color: selected ? color : color.withValues(alpha: .35),
+                    borderRadius: BorderRadius.circular(AppRadius.radiusSm),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.space6),
+                Text(
+                  label,
+                  style: context.appTextStyles.listSupporting.copyWith(
+                    color:
+                        selected
+                            ? null
+                            : Theme.of(context).colorScheme.onSurfaceVariant
+                                .withValues(alpha: .55),
+                    decoration: selected ? null : TextDecoration.lineThrough,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        const SizedBox(width: AppSpacing.space6),
-        Text(label, style: context.appTextStyles.listSupporting),
-      ],
+      ),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
@@ -348,15 +349,15 @@ class _CashflowSection extends ConsumerWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AppSlidingSegmentedControl<CashflowChartMetric>(
-            key: const ValueKey('statistics-cashflow-metric'),
-            segments: const [
-              AppSegment(value: CashflowChartMetric.expense, label: '支出'),
-              AppSegment(value: CashflowChartMetric.income, label: '收入'),
-              AppSegment(value: CashflowChartMetric.compare, label: '对比'),
-            ],
-            selected: control.chartMetric,
-            onChanged: notifier.selectChartMetric,
+          _ChartExpandButton(
+            tooltip: '横屏查看收支统计',
+            builder:
+                (height) => StatisticsCashflowChart(
+                  dailySummaries: presentation.dailySummaries,
+                  grouping: control.trendGrouping,
+                  form: control.chartForm,
+                  height: height,
+                ),
           ),
           const SizedBox(width: AppSpacing.space4),
           AppPopupMenuButton(
@@ -386,7 +387,6 @@ class _CashflowSection extends ConsumerWidget {
         key: const ValueKey('statistics-cashflow-chart'),
         dailySummaries: presentation.dailySummaries,
         grouping: control.trendGrouping,
-        metric: control.chartMetric,
         form: control.chartForm,
       ),
     );
@@ -403,6 +403,14 @@ class _WeekdaySection extends StatelessWidget {
     return AnalysisSectionCard(
       title: '支出习惯',
       subtitle: '按星期 · 日均支出',
+      trailing: _ChartExpandButton(
+        tooltip: '横屏查看支出习惯',
+        builder:
+            (height) => StatisticsWeekdayChart(
+              dailySummaries: presentation.dailySummaries,
+              height: height,
+            ),
+      ),
       child: StatisticsWeekdayChart(
         dailySummaries: presentation.dailySummaries,
       ),
@@ -420,9 +428,118 @@ class _BalanceSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnalysisSectionCard(
       title: '资产走势',
+      trailing: _ChartExpandButton(
+        tooltip: '横屏查看资产走势',
+        builder:
+            (height) => StatisticsBalanceTrendChart(
+              points: presentation.rangeBalanceTrend,
+              grouping: control.trendGrouping,
+              height: height,
+            ),
+      ),
       child: StatisticsBalanceTrendChart(
         points: presentation.rangeBalanceTrend,
         grouping: control.trendGrouping,
+      ),
+    );
+  }
+}
+
+class _ChartExpandButton extends StatelessWidget {
+  const _ChartExpandButton({required this.tooltip, required this.builder});
+
+  final String tooltip;
+  final Widget Function(double height) builder;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      key: ValueKey('chart-expand-$tooltip'),
+      tooltip: tooltip,
+      onPressed:
+          () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder:
+                  (_) => _LandscapeChartPage(
+                    title: tooltip.replaceFirst('横屏查看', ''),
+                    chartBuilder: builder,
+                  ),
+            ),
+          ),
+      icon: const Icon(RemixIcons.fullscreen_line),
+    );
+  }
+}
+
+class _LandscapeChartPage extends StatefulWidget {
+  const _LandscapeChartPage({required this.title, required this.chartBuilder});
+
+  final String title;
+  final Widget Function(double height) chartBuilder;
+
+  @override
+  State<_LandscapeChartPage> createState() => _LandscapeChartPageState();
+}
+
+class _LandscapeChartPageState extends State<_LandscapeChartPage> {
+  @override
+  void initState() {
+    super.initState();
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
+
+  @override
+  void dispose() {
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    tooltip: '返回',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(RemixIcons.arrow_left_line),
+                  ),
+                  const SizedBox(width: AppSpacing.space8),
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: context.appTextStyles.sectionTitleStrong,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space16),
+              Expanded(
+                child: LayoutBuilder(
+                  builder:
+                      (context, constraints) => widget.chartBuilder(
+                        (constraints.maxHeight -
+                                AppSpacing.space48 -
+                                AppSpacing.space12 -
+                                AppSpacing.space12)
+                            .clamp(0, constraints.maxHeight)
+                            .toDouble(),
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

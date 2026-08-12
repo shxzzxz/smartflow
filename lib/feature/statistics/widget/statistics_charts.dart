@@ -14,15 +14,15 @@ class StatisticsCashflowChart extends StatelessWidget {
   const StatisticsCashflowChart({
     required this.dailySummaries,
     required this.grouping,
-    required this.metric,
     required this.form,
+    this.height = AppChartGeometry.primaryPlotHeight,
     super.key,
   });
 
   final List<DailyCashflowSummary> dailySummaries;
   final StatisticsTimeGrouping grouping;
-  final CashflowChartMetric metric;
   final CashflowChartForm form;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
@@ -38,35 +38,22 @@ class StatisticsCashflowChart extends StatelessWidget {
     }
 
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
-    final compare = metric == CashflowChartMetric.compare;
-    final series =
-        compare
-            ? [
-              _cashflowSeries(
-                label: '收入',
-                color: financeColors.income,
-                buckets: buckets,
-                valueMinor: (bucket) => bucket.incomeMinor,
-              ),
-              _cashflowSeries(
-                label: '支出',
-                color: financeColors.expense,
-                buckets: buckets,
-                valueMinor: (bucket) => bucket.expenseMinor,
-              ),
-            ]
-            : [
-              _cashflowSeries(
-                label: metric == CashflowChartMetric.income ? '收入' : '支出',
-                color: statisticsCashflowMetricColor(context, metric),
-                buckets: buckets,
-                fillArea: form == CashflowChartForm.line,
-                valueMinor:
-                    metric == CashflowChartMetric.income
-                        ? (bucket) => bucket.incomeMinor
-                        : (bucket) => bucket.expenseMinor,
-              ),
-            ];
+    final series = [
+      _cashflowSeries(
+        label: '收入',
+        color: financeColors.income,
+        buckets: buckets,
+        fillArea: form == CashflowChartForm.line,
+        valueMinor: (bucket) => bucket.incomeMinor,
+      ),
+      _cashflowSeries(
+        label: '支出',
+        color: financeColors.expense,
+        buckets: buckets,
+        fillArea: form == CashflowChartForm.line,
+        valueMinor: (bucket) => bucket.expenseMinor,
+      ),
+    ];
     return AppCartesianChart(
       data: AppCartesianChartData(
         axisPoints: [
@@ -80,8 +67,9 @@ class StatisticsCashflowChart extends StatelessWidget {
               ? AppCartesianChartForm.bar
               : AppCartesianChartForm.line,
       includeZero: true,
-      showLegend: compare,
-      showSeriesLabelInTooltip: compare,
+      height: height,
+      showLegend: true,
+      showSeriesLabelInTooltip: true,
       emptyMessage: '区间内暂无收支数据',
     );
   }
@@ -114,11 +102,13 @@ class StatisticsBalanceTrendChart extends StatelessWidget {
   const StatisticsBalanceTrendChart({
     required this.points,
     required this.grouping,
+    this.height = AppChartGeometry.secondaryPlotHeight,
     super.key,
   });
 
   final List<BalanceTrendPoint> points;
   final StatisticsTimeGrouping grouping;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +149,7 @@ class StatisticsBalanceTrendChart extends StatelessWidget {
         ],
       ),
       form: AppCartesianChartForm.line,
-      height: AppChartGeometry.secondaryPlotHeight,
+      height: height,
       maxAxisLabels: AppChartGeometry.trendAxisLabelLimit,
       showLegend: true,
       emptyMessage: '区间内暂无资产数据',
@@ -190,9 +180,14 @@ AppChartSeries _balanceSeries({
 }
 
 class StatisticsWeekdayChart extends StatelessWidget {
-  const StatisticsWeekdayChart({required this.dailySummaries, super.key});
+  const StatisticsWeekdayChart({
+    required this.dailySummaries,
+    this.height = AppChartGeometry.secondaryPlotHeight,
+    super.key,
+  });
 
   final List<DailyCashflowSummary> dailySummaries;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
@@ -224,9 +219,10 @@ class StatisticsWeekdayChart extends StatelessWidget {
         ],
       ),
       form: AppCartesianChartForm.bar,
-      height: AppChartGeometry.secondaryPlotHeight,
+      height: height,
       maxAxisLabels: AppChartGeometry.weekdayAxisLabelLimit,
       includeZero: true,
+      showLegend: true,
       showSeriesLabelInTooltip: false,
       emptyMessage: '区间内暂无支出数据',
     );
@@ -267,18 +263,6 @@ class StatisticsDonutChart extends StatelessWidget {
       emptyMessage: '区间内暂无分类数据',
     );
   }
-}
-
-Color statisticsCashflowMetricColor(
-  BuildContext context,
-  CashflowChartMetric metric,
-) {
-  final colors = Theme.of(context).extension<AppThemeExtension>()!;
-  return switch (metric) {
-    CashflowChartMetric.expense => colors.expense,
-    CashflowChartMetric.income => colors.income,
-    CashflowChartMetric.compare => colors.equity,
-  };
 }
 
 Color statisticsChartSeriesColor(BuildContext context, int index) {

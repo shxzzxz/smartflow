@@ -17,8 +17,6 @@ enum StatisticsPeriodGranularity { year, month, date }
 
 enum StatisticsPeriodMode { single, range }
 
-enum CashflowChartMetric { expense, income, compare }
-
 enum CashflowChartForm { bar, line }
 
 enum StatisticsCategoryKind { expense, income }
@@ -37,7 +35,6 @@ class StatisticsViewModel extends _$StatisticsViewModel {
       mode: StatisticsPeriodMode.single,
       periodFrom: DateTime(now.year, now.month),
       periodUntil: DateTime(now.year, now.month + 1),
-      chartMetric: CashflowChartMetric.expense,
       chartForm: CashflowChartForm.bar,
       categoryKind: StatisticsCategoryKind.expense,
       categoryLevel: StatisticsCategoryLevel.primary,
@@ -62,9 +59,6 @@ class StatisticsViewModel extends _$StatisticsViewModel {
       visibleMonth: DateTime(from.year, from.month),
     );
   }
-
-  void selectChartMetric(CashflowChartMetric metric) =>
-      state = state.copyWith(chartMetric: metric);
 
   void selectChartForm(CashflowChartForm form) =>
       state = state.copyWith(chartForm: form);
@@ -296,7 +290,6 @@ class StatisticsControlState {
     required this.mode,
     required this.periodFrom,
     required this.periodUntil,
-    required this.chartMetric,
     required this.chartForm,
     required this.categoryKind,
     required this.categoryLevel,
@@ -310,7 +303,6 @@ class StatisticsControlState {
   /// 统计区间 [periodFrom, periodUntil)，periodUntil 为开区间端点。
   final DateTime periodFrom;
   final DateTime periodUntil;
-  final CashflowChartMetric chartMetric;
   final CashflowChartForm chartForm;
   final StatisticsCategoryKind categoryKind;
   final StatisticsCategoryLevel categoryLevel;
@@ -352,7 +344,6 @@ class StatisticsControlState {
     StatisticsPeriodMode? mode,
     DateTime? periodFrom,
     DateTime? periodUntil,
-    CashflowChartMetric? chartMetric,
     CashflowChartForm? chartForm,
     StatisticsCategoryKind? categoryKind,
     StatisticsCategoryLevel? categoryLevel,
@@ -364,7 +355,6 @@ class StatisticsControlState {
       mode: mode ?? this.mode,
       periodFrom: periodFrom ?? this.periodFrom,
       periodUntil: periodUntil ?? this.periodUntil,
-      chartMetric: chartMetric ?? this.chartMetric,
       chartForm: chartForm ?? this.chartForm,
       categoryKind: categoryKind ?? this.categoryKind,
       categoryLevel: categoryLevel ?? this.categoryLevel,

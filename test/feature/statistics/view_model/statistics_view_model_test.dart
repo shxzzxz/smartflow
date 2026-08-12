@@ -27,7 +27,6 @@ void main() {
     expect(state.mode, StatisticsPeriodMode.single);
     expect(state.periodFrom, DateTime(2026, 7));
     expect(state.periodUntil, DateTime(2026, 8));
-    expect(state.chartMetric, CashflowChartMetric.expense);
     expect(state.chartForm, CashflowChartForm.bar);
   });
 
@@ -323,7 +322,6 @@ StatisticsControlState _control({
     mode: StatisticsPeriodMode.range,
     periodFrom: from,
     periodUntil: until,
-    chartMetric: CashflowChartMetric.expense,
     chartForm: CashflowChartForm.bar,
     categoryKind: StatisticsCategoryKind.expense,
     categoryLevel: StatisticsCategoryLevel.primary,
