@@ -532,7 +532,12 @@ class _AppChartLegendItem extends StatelessWidget {
                   width: AppSpacing.space12,
                   height: AppSpacing.space4,
                   decoration: BoxDecoration(
-                    color: selected ? color : color.withValues(alpha: .35),
+                    color:
+                        selected
+                            ? color
+                            : color.withValues(
+                              alpha: AppChartGeometry.hiddenLegendMarkerOpacity,
+                            ),
                     borderRadius: BorderRadius.circular(AppRadius.radiusSm),
                   ),
                 ),
@@ -543,8 +548,11 @@ class _AppChartLegendItem extends StatelessWidget {
                     color:
                         selected
                             ? null
-                            : Theme.of(context).colorScheme.onSurfaceVariant
-                                .withValues(alpha: .55),
+                            : Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant.withValues(
+                              alpha: AppChartGeometry.hiddenLegendLabelOpacity,
+                            ),
                     decoration: selected ? null : TextDecoration.lineThrough,
                   ),
                 ),

@@ -14,6 +14,8 @@ abstract final class AppChartGeometry {
   static const double gridLineOpacity = .45;
   static const double zeroLineOpacity = .9;
   static const double areaFillOpacity = .10;
+  static const double hiddenLegendMarkerOpacity = .35;
+  static const double hiddenLegendLabelOpacity = .55;
   static const double pieCenterRadius = 44;
   static const double pieSectionRadius = 36;
   static const double pieSelectedSectionBump = 4;
