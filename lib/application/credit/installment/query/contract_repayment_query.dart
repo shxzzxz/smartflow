@@ -41,10 +41,7 @@ class ContractRepaymentQueryImpl implements ContractRepaymentQuery {
   Future<List<ContractRepayment>> listContractRepayments(
     String contractId,
   ) async {
-    final repayments = await _repayments.listByTarget(
-      RepaymentTargetType.contract,
-      contractId,
-    );
+    final repayments = await _repayments.listByContract(contractId);
     final result = <ContractRepayment>[];
     for (final repayment in repayments) {
       final transaction =

@@ -1429,6 +1429,17 @@ class _FakeRepaymentRepository implements RepaymentRepository {
   }
 
   @override
+  Future<List<Repayment>> listByContract(String contractId) async {
+    return repayments.values
+        .where(
+          (repayment) =>
+              repayment.targetType == RepaymentTargetType.contract &&
+              repayment.targetId == contractId,
+        )
+        .toList();
+  }
+
+  @override
   Future<List<RepaymentItem>> listItems(String repaymentId) async {
     return [...?items[repaymentId]];
   }
