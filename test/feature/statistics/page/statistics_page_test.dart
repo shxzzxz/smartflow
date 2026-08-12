@@ -11,6 +11,7 @@ import 'package:smartflow/feature/statistics/page/statistics_page.dart';
 import 'package:smartflow/feature/statistics/presentation/statistics_presentation.dart';
 import 'package:smartflow/feature/statistics/view_model/statistics_view_model.dart';
 import 'package:smartflow/feature/statistics/widget/statistics_charts.dart';
+import 'package:smartflow/widget/business/analytics/chart/app_cartesian_chart.dart';
 
 void main() {
   testWidgets('shows a clear statistics hierarchy on a compact phone', (
@@ -126,6 +127,33 @@ void main() {
     expect(find.text('主分类'), findsOneWidget);
     expect(find.text('子分类'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('opens every expanded chart view on a compact phone', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpStatisticsPage(tester);
+
+    for (final tooltip in ['横屏查看收支统计', '横屏查看资产走势', '横屏查看支出习惯']) {
+      await tester.scrollUntilVisible(
+        find.byTooltip(tooltip),
+        200,
+        scrollable: _verticalScrollable().last,
+      );
+      await tester.tap(find.byTooltip(tooltip));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('返回'), findsOneWidget);
+      expect(find.byType(AppCartesianChart), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byTooltip('返回'));
+      await tester.pumpAndSettle();
+    }
   });
 
   testWidgets('selects a custom date range from the period sheet', (

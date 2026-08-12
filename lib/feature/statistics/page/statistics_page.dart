@@ -7,6 +7,7 @@ import 'package:remixicon/remixicon.dart';
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/component.dart';
+import '../../../design_system/token/chart.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
@@ -350,6 +351,7 @@ class _CashflowSection extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _ChartExpandButton(
+            title: '收支统计',
             tooltip: '横屏查看收支统计',
             builder:
                 (height) => StatisticsCashflowChart(
@@ -404,6 +406,7 @@ class _WeekdaySection extends StatelessWidget {
       title: '支出习惯',
       subtitle: '按星期 · 日均支出',
       trailing: _ChartExpandButton(
+        title: '支出习惯',
         tooltip: '横屏查看支出习惯',
         builder:
             (height) => StatisticsWeekdayChart(
@@ -429,6 +432,7 @@ class _BalanceSection extends StatelessWidget {
     return AnalysisSectionCard(
       title: '资产走势',
       trailing: _ChartExpandButton(
+        title: '资产走势',
         tooltip: '横屏查看资产走势',
         builder:
             (height) => StatisticsBalanceTrendChart(
@@ -446,8 +450,13 @@ class _BalanceSection extends StatelessWidget {
 }
 
 class _ChartExpandButton extends StatelessWidget {
-  const _ChartExpandButton({required this.tooltip, required this.builder});
+  const _ChartExpandButton({
+    required this.title,
+    required this.tooltip,
+    required this.builder,
+  });
 
+  final String title;
   final String tooltip;
   final Widget Function(double height) builder;
 
@@ -460,10 +469,8 @@ class _ChartExpandButton extends StatelessWidget {
           () => Navigator.of(context).push(
             MaterialPageRoute<void>(
               builder:
-                  (_) => _LandscapeChartPage(
-                    title: tooltip.replaceFirst('横屏查看', ''),
-                    chartBuilder: builder,
-                  ),
+                  (_) =>
+                      _LandscapeChartPage(title: title, chartBuilder: builder),
             ),
           ),
       icon: const Icon(RemixIcons.fullscreen_line),
@@ -529,9 +536,8 @@ class _LandscapeChartPageState extends State<_LandscapeChartPage> {
                   builder:
                       (context, constraints) => widget.chartBuilder(
                         (constraints.maxHeight -
-                                AppSpacing.space48 -
-                                AppSpacing.space12 -
-                                AppSpacing.space12)
+                                AppChartGeometry
+                                    .interactiveLegendReservedHeight)
                             .clamp(0, constraints.maxHeight)
                             .toDouble(),
                       ),

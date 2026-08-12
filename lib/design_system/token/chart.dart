@@ -20,6 +20,7 @@ abstract final class AppChartGeometry {
   static const double categoryMarkerRadius = 6;
   static const double categoryProgressHeight = 4;
   static const double leftAxisReservedWidth = 44;
+  static const double interactiveLegendReservedHeight = 72;
   static const int cashflowAxisLabelLimit = 5;
   static const int trendAxisLabelLimit = 4;
   static const int weekdayAxisLabelLimit = 7;
