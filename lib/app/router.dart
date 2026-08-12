@@ -65,74 +65,84 @@ final appRouter = GoRouter(
           builder: (context, state) => const StatisticsPage(),
         ),
         GoRoute(
-          path: '/budget',
-          builder:
-              (context, state) => BudgetPage(
-                initialMonth: _monthFromQuery(state.uri.queryParameters),
-              ),
-        ),
-        GoRoute(
-          path: '/statistics/transactions',
-          builder: (context, state) {
-            final query = state.uri.queryParameters;
-            final from = DateTime.tryParse(query['from'] ?? '');
-            final until = DateTime.tryParse(query['until'] ?? '');
-            final scope = switch (query['scope']) {
-              'balance' => StatisticsDrilldownScope.balance,
-              _ => StatisticsDrilldownScope.cashflow,
-            };
-            final categoryId = query['categoryId'];
-            final category =
-                categoryId == null
-                    ? null
-                    : query['categoryScope'] == 'own'
-                    ? CategorySelection.ownOnly(categoryId)
-                    : CategorySelection.withDescendants(categoryId);
-            final settlementAccountId = query['accountId'];
-            if (until == null ||
-                (categoryId == null && settlementAccountId == null)) {
-              return const PlaceholderPage(title: '统计流水参数无效');
-            }
-            return StatisticsTransactionsPage(
-              title: query['title'] ?? '统计流水',
-              category: category,
-              settlementAccountId: settlementAccountId,
-              occurredFrom: from,
-              occurredUntil: until,
-              scope: scope,
-            );
-          },
-        ),
-        GoRoute(
           path: '/profile',
           builder: (context, state) => const ProfilePage(),
         ),
+      ],
+    ),
+    GoRoute(
+      path: '/budget',
+      builder:
+          (context, state) => BudgetPage(
+            initialMonth: _monthFromQuery(state.uri.queryParameters),
+          ),
+      routes: [
         GoRoute(
-          path: '/import',
-          builder: (context, state) => const ImportPage(),
-        ),
-        GoRoute(
-          path: '/import/history',
-          builder: (context, state) => const ImportHistoryPage(),
-        ),
-        GoRoute(
-          path: '/import/process/:source',
-          builder:
-              (context, state) => ImportProcessPage(
-                source: importEntrySourceFromRoute(
-                  state.pathParameters['source'],
-                ),
-              ),
-        ),
-        GoRoute(
-          path: '/profile/import',
-          builder: (context, state) => const ImportPage(),
-        ),
-        GoRoute(
-          path: '/profile/import-history',
-          builder: (context, state) => const ImportHistoryPage(),
+          path: ':id',
+          builder: (context, state) {
+            final month = _monthFromQuery(state.uri.queryParameters);
+            if (month == null) {
+              return const PlaceholderPage(title: '预算月份参数无效');
+            }
+            return BudgetDetailPage(
+              budgetId: state.pathParameters['id']!,
+              month: month,
+            );
+          },
         ),
       ],
+    ),
+    GoRoute(
+      path: '/statistics/transactions',
+      builder: (context, state) {
+        final query = state.uri.queryParameters;
+        final from = DateTime.tryParse(query['from'] ?? '');
+        final until = DateTime.tryParse(query['until'] ?? '');
+        final scope = switch (query['scope']) {
+          'balance' => StatisticsDrilldownScope.balance,
+          _ => StatisticsDrilldownScope.cashflow,
+        };
+        final categoryId = query['categoryId'];
+        final category =
+            categoryId == null
+                ? null
+                : query['categoryScope'] == 'own'
+                ? CategorySelection.ownOnly(categoryId)
+                : CategorySelection.withDescendants(categoryId);
+        final settlementAccountId = query['accountId'];
+        if (until == null ||
+            (categoryId == null && settlementAccountId == null)) {
+          return const PlaceholderPage(title: '统计流水参数无效');
+        }
+        return StatisticsTransactionsPage(
+          title: query['title'] ?? '统计流水',
+          category: category,
+          settlementAccountId: settlementAccountId,
+          occurredFrom: from,
+          occurredUntil: until,
+          scope: scope,
+        );
+      },
+    ),
+    GoRoute(path: '/import', builder: (context, state) => const ImportPage()),
+    GoRoute(
+      path: '/import/history',
+      builder: (context, state) => const ImportHistoryPage(),
+    ),
+    GoRoute(
+      path: '/import/process/:source',
+      builder:
+          (context, state) => ImportProcessPage(
+            source: importEntrySourceFromRoute(state.pathParameters['source']),
+          ),
+    ),
+    GoRoute(
+      path: '/profile/import',
+      builder: (context, state) => const ImportPage(),
+    ),
+    GoRoute(
+      path: '/profile/import-history',
+      builder: (context, state) => const ImportHistoryPage(),
     ),
     GoRoute(
       path: '/dev/design-system',
@@ -141,19 +151,6 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/dev/logs',
       builder: (context, state) => const LogViewerPage(),
-    ),
-    GoRoute(
-      path: '/budget/:id',
-      builder: (context, state) {
-        final month = _monthFromQuery(state.uri.queryParameters);
-        if (month == null) {
-          return const PlaceholderPage(title: '预算月份参数无效');
-        }
-        return BudgetDetailPage(
-          budgetId: state.pathParameters['id']!,
-          month: month,
-        );
-      },
     ),
     GoRoute(
       path: '/transaction/new',

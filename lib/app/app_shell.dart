@@ -14,9 +14,6 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final path = GoRouterState.of(context).uri.path;
-    if (_hidesBottomNavigation(path)) return child;
-
     final colors = Theme.of(context).colorScheme;
     final selectedIndex = _selectedIndex(context);
     final showLabels =
@@ -87,12 +84,6 @@ class AppShell extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  bool _hidesBottomNavigation(String path) {
-    return path == '/import' ||
-        path.startsWith('/import/') ||
-        path.startsWith('/profile/import');
   }
 
   int _selectedIndex(BuildContext context) {
