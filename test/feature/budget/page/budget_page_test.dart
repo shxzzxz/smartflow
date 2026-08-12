@@ -97,6 +97,7 @@ void main() {
 
     expect(find.text('2026年8月预算'), findsOneWidget);
     expect(find.text('预算趋势'), findsOneWidget);
+    expect(find.byTooltip('横屏查看预算趋势'), findsNothing);
     expect(find.text('余'), findsOneWidget);
     expect(find.text('支'), findsOneWidget);
     expect(find.text('餐饮'), findsNWidgets(2));

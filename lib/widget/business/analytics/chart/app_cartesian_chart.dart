@@ -147,7 +147,7 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
     return Column(
       children: [
         chart,
-        const SizedBox(height: AppSpacing.space12),
+        const SizedBox(height: AppSpacing.space4),
         Wrap(
           alignment: WrapAlignment.center,
           spacing: AppSpacing.space16,
@@ -413,13 +413,19 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
     final style = Theme.of(context).textTheme.labelSmall?.copyWith(
       color: Theme.of(context).colorScheme.onSurfaceVariant,
     );
+    final leftAxisReservedWidth = _leftAxisReservedWidth(context, scale, style);
+    final bottomAxisReservedSize = _bottomAxisReservedSize(
+      context,
+      data,
+      style,
+    );
     return FlTitlesData(
       topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
       rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
       leftTitles: AxisTitles(
         sideTitles: SideTitles(
           showTitles: true,
-          reservedSize: AppChartGeometry.leftAxisReservedWidth,
+          reservedSize: leftAxisReservedWidth,
           interval: scale.interval,
           getTitlesWidget:
               (value, meta) => SideTitleWidget(
@@ -437,7 +443,7 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
       bottomTitles: AxisTitles(
         sideTitles: SideTitles(
           showTitles: true,
-          reservedSize: AppSpacing.space28,
+          reservedSize: bottomAxisReservedSize,
           interval: 1,
           minIncluded: true,
           maxIncluded: true,
@@ -463,16 +469,67 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
             return SideTitleWidget(
               meta: meta,
               space: AppSpacing.space8,
-              child: Text(
-                data.axisPoints[index].label,
-                style: style,
-                maxLines: 1,
-                overflow: TextOverflow.clip,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  data.axisPoints[index].label,
+                  style: style,
+                  maxLines: 1,
+                ),
               ),
             );
           },
         ),
       ),
+    );
+  }
+
+  double _leftAxisReservedWidth(
+    BuildContext context,
+    AppChartScale scale,
+    TextStyle? style,
+  ) {
+    final tickCount = ((scale.max - scale.min) / scale.interval).round();
+    var widestLabel = 0.0;
+    for (var index = 0; index <= tickCount; index++) {
+      final painter = TextPainter(
+        text: TextSpan(
+          text: appChartAxisLabel(scale.min + scale.interval * index),
+          style: style,
+        ),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        maxLines: 1,
+      )..layout();
+      widestLabel = math.max(widestLabel, painter.width);
+      painter.dispose();
+    }
+    return (widestLabel + AppChartGeometry.leftAxisLabelGap).clamp(
+      AppChartGeometry.leftAxisMinReservedWidth,
+      AppChartGeometry.leftAxisReservedWidth,
+    );
+  }
+
+  double _bottomAxisReservedSize(
+    BuildContext context,
+    AppCartesianChartData data,
+    TextStyle? style,
+  ) {
+    var tallestLabel = 0.0;
+    for (final axisPoint in data.axisPoints) {
+      if (!axisPoint.showOnAxis) continue;
+      final painter = TextPainter(
+        text: TextSpan(text: axisPoint.label, style: style),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        maxLines: 1,
+      )..layout();
+      tallestLabel = math.max(tallestLabel, painter.height);
+      painter.dispose();
+    }
+    return (tallestLabel + AppSpacing.space8).clamp(
+      AppChartGeometry.bottomAxisBaseReservedHeight,
+      AppSpacing.space48,
     );
   }
 }
@@ -519,12 +576,12 @@ class _AppChartLegendItem extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.radiusSm),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.space4,
-            vertical: AppSpacing.space6,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: AppSpacing.space48),
+            constraints: const BoxConstraints(
+              minHeight: AppChartGeometry.legendItemHeight,
+              maxHeight: AppChartGeometry.legendItemHeight,
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

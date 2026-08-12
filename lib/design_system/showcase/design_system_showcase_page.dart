@@ -6,7 +6,7 @@ import 'package:smartflow/feature/shared/presentation/transaction_list_presentat
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
 import 'package:smartflow/widget/business/account/account_endpoint_view.dart';
 import 'package:smartflow/widget/business/account/account_type_tag.dart';
-import 'package:smartflow/widget/business/analytics/analysis_section_card.dart';
+import 'package:smartflow/widget/business/analytics/analysis_chart_card.dart';
 import 'package:smartflow/widget/business/analytics/chart/app_cartesian_chart.dart';
 import 'package:smartflow/widget/business/analytics/chart/app_chart_empty_state.dart';
 import 'package:smartflow/widget/business/analytics/category_progress_list_item.dart';
@@ -33,6 +33,7 @@ import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 
 import '../theme/app_text_styles.dart';
 import '../theme/app_theme_extension.dart';
+import '../token/chart.dart';
 import '../token/radius.dart';
 import '../token/list.dart';
 import '../token/spacing.dart';
@@ -1607,67 +1608,15 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       spacing: AppSpacing.space16,
       children: [
         _PreviewBackdrop(
-          child: AnalysisSectionCard(
+          child: AnalysisChartCard(
             title: '收支趋势',
-            emphasis: AnalysisSectionEmphasis.primary,
-            child: AppCartesianChart(
-              data: AppCartesianChartData(
-                axisPoints: const [
-                  AppChartAxisPoint(x: 0, label: '1日'),
-                  AppChartAxisPoint(x: 1, label: '8日'),
-                  AppChartAxisPoint(x: 2, label: '15日'),
-                  AppChartAxisPoint(x: 3, label: '22日'),
-                ],
-                series: [
-                  AppChartSeries(
-                    label: '收入',
-                    color: financeColors.income,
-                    points: const [
-                      AppChartPoint(
-                        x: 0,
-                        value: 1200,
-                        formattedValue: '1,200.00',
-                      ),
-                      AppChartPoint(
-                        x: 1,
-                        value: 1800,
-                        formattedValue: '1,800.00',
-                      ),
-                      AppChartPoint(
-                        x: 2,
-                        value: 1500,
-                        formattedValue: '1,500.00',
-                      ),
-                      AppChartPoint(
-                        x: 3,
-                        value: 2400,
-                        formattedValue: '2,400.00',
-                      ),
-                    ],
-                  ),
-                  AppChartSeries(
-                    label: '支出',
-                    color: financeColors.expense,
-                    points: const [
-                      AppChartPoint(x: 0, value: 800, formattedValue: '800.00'),
-                      AppChartPoint(
-                        x: 1,
-                        value: 1400,
-                        formattedValue: '1,400.00',
-                      ),
-                      AppChartPoint(x: 2, value: 900, formattedValue: '900.00'),
-                      AppChartPoint(
-                        x: 3,
-                        value: 1600,
-                        formattedValue: '1,600.00',
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              form: AppCartesianChartForm.line,
-              showLegend: true,
-            ),
+            showExpandIcon: true,
+            expandedReservedHeight:
+                AppChartGeometry.interactiveLegendReservedHeight,
+            chart: _showcaseCartesianChart(financeColors),
+            expandedChartBuilder:
+                (height) =>
+                    _showcaseCartesianChart(financeColors, height: height),
           ),
         ),
         AppDonutChart(
@@ -1690,6 +1639,47 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
         ),
         const AppChartEmptyState(message: '区间内暂无数据'),
       ],
+    );
+  }
+
+  Widget _showcaseCartesianChart(
+    AppThemeExtension financeColors, {
+    double? height,
+  }) {
+    return AppCartesianChart(
+      data: AppCartesianChartData(
+        axisPoints: const [
+          AppChartAxisPoint(x: 0, label: '1日'),
+          AppChartAxisPoint(x: 1, label: '8日'),
+          AppChartAxisPoint(x: 2, label: '15日'),
+          AppChartAxisPoint(x: 3, label: '22日'),
+        ],
+        series: [
+          AppChartSeries(
+            label: '收入',
+            color: financeColors.income,
+            points: const [
+              AppChartPoint(x: 0, value: 1200, formattedValue: '1,200.00'),
+              AppChartPoint(x: 1, value: 1800, formattedValue: '1,800.00'),
+              AppChartPoint(x: 2, value: 1500, formattedValue: '1,500.00'),
+              AppChartPoint(x: 3, value: 2400, formattedValue: '2,400.00'),
+            ],
+          ),
+          AppChartSeries(
+            label: '支出',
+            color: financeColors.expense,
+            points: const [
+              AppChartPoint(x: 0, value: 800, formattedValue: '800.00'),
+              AppChartPoint(x: 1, value: 1400, formattedValue: '1,400.00'),
+              AppChartPoint(x: 2, value: 900, formattedValue: '900.00'),
+              AppChartPoint(x: 3, value: 1600, formattedValue: '1,600.00'),
+            ],
+          ),
+        ],
+      ),
+      form: AppCartesianChartForm.line,
+      showLegend: true,
+      height: height ?? AppChartGeometry.primaryPlotHeight,
     );
   }
 

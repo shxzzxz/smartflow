@@ -27,12 +27,14 @@ class AppDonutChart extends StatefulWidget {
     required this.centerValue,
     super.key,
     this.emptyMessage = '暂无分类数据',
+    this.height = AppChartGeometry.donutPlotHeight,
   });
 
   final List<AppDonutSlice> slices;
   final String centerLabel;
   final String centerValue;
   final String emptyMessage;
+  final double height;
 
   @override
   State<AppDonutChart> createState() => _AppDonutChartState();
@@ -58,6 +60,8 @@ class _AppDonutChartState extends State<AppDonutChart> {
             : null;
     final textTheme = Theme.of(context).textTheme;
     final colors = Theme.of(context).colorScheme;
+    final geometryScale = (widget.height / AppChartGeometry.donutPlotHeight)
+        .clamp(1.0, 1.6);
     final centerLabel =
         selected == null ? widget.centerLabel : widget.slices[selected].label;
     final centerValue =
@@ -65,14 +69,15 @@ class _AppDonutChartState extends State<AppDonutChart> {
             ? widget.centerValue
             : widget.slices[selected].formattedValue;
     return SizedBox(
-      height: AppChartGeometry.donutPlotHeight,
+      height: widget.height,
       child: Stack(
         alignment: Alignment.center,
         children: [
           PieChart(
             duration: AppChartMotion.switchDuration,
             PieChartData(
-              centerSpaceRadius: AppChartGeometry.pieCenterRadius,
+              centerSpaceRadius:
+                  AppChartGeometry.pieCenterRadius * geometryScale,
               sectionsSpace: AppSpacing.space2,
               pieTouchData: PieTouchData(
                 touchCallback: (event, response) {
@@ -92,9 +97,10 @@ class _AppDonutChartState extends State<AppDonutChart> {
                     value: widget.slices[index].value,
                     color: widget.slices[index].color,
                     radius:
-                        AppChartGeometry.pieSectionRadius +
+                        AppChartGeometry.pieSectionRadius * geometryScale +
                         (index == selected
-                            ? AppChartGeometry.pieSelectedSectionBump
+                            ? AppChartGeometry.pieSelectedSectionBump *
+                                geometryScale
                             : 0),
                     showTitle: false,
                   ),

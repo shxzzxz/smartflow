@@ -17,8 +17,21 @@ class AnalysisSectionCard extends StatelessWidget {
     this.subtitle,
     this.onTitleTap,
     this.titleActionIcon,
+    this.titleActionIconSize = AppSpacing.space16,
     this.titleTooltip,
     this.trailing,
+    this.headerPadding = const EdgeInsets.fromLTRB(
+      AppSpacing.space16,
+      AppSpacing.space16,
+      AppSpacing.space16,
+      0,
+    ),
+    this.contentPadding = const EdgeInsets.fromLTRB(
+      AppSpacing.space16,
+      AppSpacing.space16,
+      AppSpacing.space16,
+      AppSpacing.space16,
+    ),
     this.emphasis = AnalysisSectionEmphasis.secondary,
     this.border = false,
   });
@@ -27,8 +40,11 @@ class AnalysisSectionCard extends StatelessWidget {
   final String? subtitle;
   final VoidCallback? onTitleTap;
   final IconData? titleActionIcon;
+  final double titleActionIconSize;
   final String? titleTooltip;
   final Widget? trailing;
+  final EdgeInsetsGeometry headerPadding;
+  final EdgeInsetsGeometry contentPadding;
   final Widget child;
   final AnalysisSectionEmphasis emphasis;
   final bool border;
@@ -61,37 +77,36 @@ class AnalysisSectionCard extends StatelessWidget {
 
     return AppSurface(
       border: border,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (stackHeader)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  titleContent,
-                  if (trailing != null) ...[
-                    const SizedBox(height: AppSpacing.space8),
-                    trailing!,
-                  ],
-                ],
-              )
-            else
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(child: titleContent),
-                  if (trailing != null) ...[
-                    const SizedBox(width: AppSpacing.space8),
-                    trailing!,
-                  ],
-                ],
-              ),
-            const SizedBox(height: AppSpacing.space16),
-            child,
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: headerPadding,
+            child:
+                stackHeader
+                    ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        titleContent,
+                        if (trailing != null) ...[
+                          const SizedBox(height: AppSpacing.space8),
+                          trailing!,
+                        ],
+                      ],
+                    )
+                    : Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(child: titleContent),
+                        if (trailing != null) ...[
+                          const SizedBox(width: AppSpacing.space8),
+                          trailing!,
+                        ],
+                      ],
+                    ),
+          ),
+          Padding(padding: contentPadding, child: child),
+        ],
       ),
     );
   }
@@ -130,7 +145,7 @@ class AnalysisSectionCard extends StatelessWidget {
                     const SizedBox(width: AppSpacing.space4),
                     Icon(
                       titleActionIcon,
-                      size: AppSpacing.space16,
+                      size: titleActionIconSize,
                       color: colors.onSurfaceVariant,
                     ),
                   ],

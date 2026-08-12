@@ -139,7 +139,7 @@ void main() {
 
     await _pumpStatisticsPage(tester);
 
-    for (final tooltip in ['横屏查看收支统计', '横屏查看资产走势', '横屏查看支出习惯']) {
+    for (final tooltip in ['横屏查看收支统计', '横屏查看资产走势']) {
       await tester.scrollUntilVisible(
         find.byTooltip(tooltip),
         200,
@@ -147,11 +147,15 @@ void main() {
       );
       await tester.tap(find.byTooltip(tooltip));
       await tester.pumpAndSettle();
-      expect(find.byTooltip('返回'), findsOneWidget);
-      expect(find.byType(AppCartesianChart), findsOneWidget);
+      expect(find.byTooltip('返回'), findsNothing);
+      expect(
+        find.byType(AppCartesianChart).evaluate().isNotEmpty ||
+            find.byType(StatisticsDonutChart).evaluate().isNotEmpty,
+        isTrue,
+      );
       expect(tester.takeException(), isNull);
 
-      await tester.tap(find.byTooltip('返回'));
+      await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
     }
   });
@@ -268,12 +272,15 @@ void main() {
       hasLength(1),
     );
 
-    await tester.tap(
-      find.byKey(const ValueKey('statistics-cashflow-settings')),
+    final cashflowForm = find.byKey(const ValueKey('statistics-cashflow-form'));
+    expect(cashflowForm, findsOneWidget);
+    expect(
+      find.descendant(of: cashflowForm, matching: find.text('柱状')),
+      findsOneWidget,
     );
-    await tester.pumpAndSettle();
-    expect(find.text('柱状图'), findsOneWidget);
-    await tester.tap(find.text('曲线'));
+    await tester.tap(
+      find.descendant(of: cashflowForm, matching: find.text('曲线')),
+    );
     await tester.pumpAndSettle();
     expect(
       find.descendant(of: cashflowChart, matching: find.byType(LineChart)),
@@ -282,10 +289,10 @@ void main() {
 
     await tester.tap(find.byTooltip('横屏查看收支统计'));
     await tester.pumpAndSettle();
-    expect(find.text('收支统计'), findsOneWidget);
-    expect(find.byTooltip('返回'), findsOneWidget);
+    expect(find.text('收支统计'), findsNothing);
+    expect(find.byTooltip('返回'), findsNothing);
     expect(find.byType(LineChart), findsOneWidget);
-    await tester.tap(find.byTooltip('返回'));
+    await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(

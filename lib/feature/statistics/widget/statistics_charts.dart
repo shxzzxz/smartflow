@@ -222,7 +222,7 @@ class StatisticsWeekdayChart extends StatelessWidget {
       height: height,
       maxAxisLabels: AppChartGeometry.weekdayAxisLabelLimit,
       includeZero: true,
-      showLegend: true,
+      showLegend: false,
       showSeriesLabelInTooltip: false,
       emptyMessage: '区间内暂无支出数据',
     );
@@ -234,12 +234,14 @@ class StatisticsDonutChart extends StatelessWidget {
     required this.items,
     required this.centerLabel,
     required this.centerValue,
+    this.height = AppChartGeometry.donutPlotHeight,
     super.key,
   });
 
   final List<StatisticsBreakdownItem> items;
   final String centerLabel;
   final String centerValue;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
@@ -260,6 +262,7 @@ class StatisticsDonutChart extends StatelessWidget {
       ],
       centerLabel: centerLabel,
       centerValue: centerValue,
+      height: height,
       emptyMessage: '区间内暂无分类数据',
     );
   }

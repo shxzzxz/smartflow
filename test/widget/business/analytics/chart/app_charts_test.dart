@@ -43,6 +43,20 @@ void main() {
     expect(find.byType(LineChart), findsOneWidget);
     expect(find.text('收入'), findsOneWidget);
     expect(find.text('支出'), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('chart-legend-收入'))).height,
+      32,
+    );
+    expect(
+      tester
+          .widget<LineChart>(find.byType(LineChart))
+          .data
+          .titlesData
+          .leftTitles
+          .sideTitles
+          .reservedSize,
+      lessThan(44),
+    );
 
     await tester.tap(find.byKey(const ValueKey('chart-legend-收入')));
     await tester.pumpAndSettle();
@@ -180,6 +194,7 @@ void main() {
     await tester.pumpWidget(
       _host(
         const AppDonutChart(
+          height: 240,
           slices: [
             AppDonutSlice(
               label: '餐饮',
@@ -201,6 +216,7 @@ void main() {
     );
 
     expect(find.byType(PieChart), findsOneWidget);
+    expect(tester.getSize(find.byType(AppDonutChart)).height, 240);
     expect(find.text('总支出'), findsOneWidget);
     expect(find.text('¥100'), findsOneWidget);
   });

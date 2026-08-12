@@ -7,6 +7,7 @@ import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
 import '../../../core/time/month_key.dart';
 import '../../../design_system/theme/app_text_styles.dart';
+import '../../../design_system/token/chart.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
@@ -20,7 +21,7 @@ import '../../../widget/business/finance/money_text.dart';
 import '../../../widget/business/icon/business_icon.dart';
 import '../../../widget/business/icon/business_icon_bubble.dart';
 import '../../../widget/business/transaction/transaction_feed.dart';
-import '../../../widget/business/analytics/analysis_section_card.dart';
+import '../../../widget/business/analytics/analysis_chart_card.dart';
 import '../../../widget/business/analytics/category_progress_list_item.dart';
 import '../../../widget/business/category/tree_select.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -542,9 +543,16 @@ class _TrendSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnalysisSectionCard(
+    return AnalysisChartCard(
       title: '预算趋势',
-      child: BudgetTrendChart(month: month, progress: progress),
+      chart: BudgetTrendChart(month: month, progress: progress),
+      expandedReservedHeight: AppChartGeometry.interactiveLegendReservedHeight,
+      expandedChartBuilder:
+          (height) => BudgetTrendChart(
+            month: month,
+            progress: progress,
+            height: height,
+          ),
     );
   }
 }

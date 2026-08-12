@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
-import '../../../design_system/token/component.dart';
 import '../../../design_system/token/chart.dart';
+import '../../../design_system/token/component.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
-import '../../../design_system/widget/app_popup_menu_button.dart';
 import '../../../design_system/widget/app_segmented_control.dart';
 import '../../../design_system/widget/app_sliding_segmented_control.dart';
 import '../../../design_system/widget/app_surface.dart';
@@ -19,6 +17,7 @@ import '../../../feature/shared/presentation/transaction_list_presentation.dart'
 import '../../../widget/business/finance/cashflow_summary_card.dart';
 import '../../../widget/business/finance/finance_tone.dart';
 import '../../../widget/business/finance/money_text.dart';
+import '../../../widget/business/analytics/analysis_chart_card.dart';
 import '../../../widget/business/analytics/analysis_section_card.dart';
 import '../../../widget/business/analytics/category_progress_list_item.dart';
 import '../../../widget/business/analytics/chart/app_chart_empty_state.dart';
@@ -345,52 +344,32 @@ class _CashflowSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(statisticsViewModelProvider.notifier);
-    return AnalysisSectionCard(
+    return AnalysisChartCard(
       title: '收支统计',
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _ChartExpandButton(
-            title: '收支统计',
-            tooltip: '横屏查看收支统计',
-            builder:
-                (height) => StatisticsCashflowChart(
-                  dailySummaries: presentation.dailySummaries,
-                  grouping: control.trendGrouping,
-                  form: control.chartForm,
-                  height: height,
-                ),
-          ),
-          const SizedBox(width: AppSpacing.space4),
-          AppPopupMenuButton(
-            key: const ValueKey('statistics-cashflow-settings'),
-            tooltip: '图表设置',
-            icon: RemixIcons.settings_3_line,
-            items: [
-              AppPopupMenuChoice(
-                label: '柱状图',
-                icon: RemixIcons.bar_chart_line,
-                selected: control.chartForm == CashflowChartForm.bar,
-                onPressed:
-                    () => notifier.selectChartForm(CashflowChartForm.bar),
-              ),
-              AppPopupMenuChoice(
-                label: '曲线',
-                icon: RemixIcons.line_chart_line,
-                selected: control.chartForm == CashflowChartForm.line,
-                onPressed:
-                    () => notifier.selectChartForm(CashflowChartForm.line),
-              ),
-            ],
-          ),
+      showExpandIcon: true,
+      expandedReservedHeight: AppChartGeometry.interactiveLegendReservedHeight,
+      trailing: AppSlidingSegmentedControl<CashflowChartForm>(
+        key: const ValueKey('statistics-cashflow-form'),
+        segments: const [
+          AppSegment(value: CashflowChartForm.bar, label: '柱状'),
+          AppSegment(value: CashflowChartForm.line, label: '曲线'),
         ],
+        selected: control.chartForm,
+        onChanged: notifier.selectChartForm,
       ),
-      child: StatisticsCashflowChart(
+      chart: StatisticsCashflowChart(
         key: const ValueKey('statistics-cashflow-chart'),
         dailySummaries: presentation.dailySummaries,
         grouping: control.trendGrouping,
         form: control.chartForm,
       ),
+      expandedChartBuilder:
+          (height) => StatisticsCashflowChart(
+            dailySummaries: presentation.dailySummaries,
+            grouping: control.trendGrouping,
+            form: control.chartForm,
+            height: height,
+          ),
     );
   }
 }
@@ -402,21 +381,17 @@ class _WeekdaySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnalysisSectionCard(
+    return AnalysisChartCard(
       title: '支出习惯',
       subtitle: '按星期 · 日均支出',
-      trailing: _ChartExpandButton(
-        title: '支出习惯',
-        tooltip: '横屏查看支出习惯',
-        builder:
-            (height) => StatisticsWeekdayChart(
-              dailySummaries: presentation.dailySummaries,
-              height: height,
-            ),
-      ),
-      child: StatisticsWeekdayChart(
+      chart: StatisticsWeekdayChart(
         dailySummaries: presentation.dailySummaries,
       ),
+      expandedChartBuilder:
+          (height) => StatisticsWeekdayChart(
+            dailySummaries: presentation.dailySummaries,
+            height: height,
+          ),
     );
   }
 }
@@ -429,124 +404,20 @@ class _BalanceSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnalysisSectionCard(
+    return AnalysisChartCard(
       title: '资产走势',
-      trailing: _ChartExpandButton(
-        title: '资产走势',
-        tooltip: '横屏查看资产走势',
-        builder:
-            (height) => StatisticsBalanceTrendChart(
-              points: presentation.rangeBalanceTrend,
-              grouping: control.trendGrouping,
-              height: height,
-            ),
-      ),
-      child: StatisticsBalanceTrendChart(
+      showExpandIcon: true,
+      expandedReservedHeight: AppChartGeometry.interactiveLegendReservedHeight,
+      chart: StatisticsBalanceTrendChart(
         points: presentation.rangeBalanceTrend,
         grouping: control.trendGrouping,
       ),
-    );
-  }
-}
-
-class _ChartExpandButton extends StatelessWidget {
-  const _ChartExpandButton({
-    required this.title,
-    required this.tooltip,
-    required this.builder,
-  });
-
-  final String title;
-  final String tooltip;
-  final Widget Function(double height) builder;
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      key: ValueKey('chart-expand-$tooltip'),
-      tooltip: tooltip,
-      onPressed:
-          () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder:
-                  (_) =>
-                      _LandscapeChartPage(title: title, chartBuilder: builder),
-            ),
+      expandedChartBuilder:
+          (height) => StatisticsBalanceTrendChart(
+            points: presentation.rangeBalanceTrend,
+            grouping: control.trendGrouping,
+            height: height,
           ),
-      icon: const Icon(RemixIcons.fullscreen_line),
-    );
-  }
-}
-
-class _LandscapeChartPage extends StatefulWidget {
-  const _LandscapeChartPage({required this.title, required this.chartBuilder});
-
-  final String title;
-  final Widget Function(double height) chartBuilder;
-
-  @override
-  State<_LandscapeChartPage> createState() => _LandscapeChartPageState();
-}
-
-class _LandscapeChartPageState extends State<_LandscapeChartPage> {
-  @override
-  void initState() {
-    super.initState();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-  }
-
-  @override
-  void dispose() {
-    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.space16),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    tooltip: '返回',
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(RemixIcons.arrow_left_line),
-                  ),
-                  const SizedBox(width: AppSpacing.space8),
-                  Expanded(
-                    child: Text(
-                      widget.title,
-                      style: context.appTextStyles.sectionTitleStrong,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space16),
-              Expanded(
-                child: LayoutBuilder(
-                  builder:
-                      (context, constraints) => widget.chartBuilder(
-                        (constraints.maxHeight -
-                                AppChartGeometry
-                                    .interactiveLegendReservedHeight)
-                            .clamp(0, constraints.maxHeight)
-                            .toDouble(),
-                      ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -576,7 +447,9 @@ class _CategoryAnalysis extends ConsumerWidget {
       0,
       (sum, item) => sum + statisticsCategoryMagnitude(item),
     );
-    return AnalysisSectionCard(
+    final centerLabel = showingExpense ? '总支出' : '总收入';
+    final centerValue = Money(minorUnits: totalMinor).format();
+    return AnalysisChartCard(
       title: '分类构成',
       trailing: Wrap(
         spacing: AppSpacing.space6,
@@ -605,15 +478,15 @@ class _CategoryAnalysis extends ConsumerWidget {
           ),
         ],
       ),
-      child:
+      chart:
           items.isEmpty
               ? const AppChartEmptyState(message: '区间内暂无分类数据')
               : Column(
                 children: [
                   StatisticsDonutChart(
                     items: items,
-                    centerLabel: showingExpense ? '总支出' : '总收入',
-                    centerValue: Money(minorUnits: totalMinor).format(),
+                    centerLabel: centerLabel,
+                    centerValue: centerValue,
                   ),
                   _CategoryList(
                     items: items,
@@ -624,6 +497,13 @@ class _CategoryAnalysis extends ConsumerWidget {
                   ),
                 ],
               ),
+      expandedChartBuilder:
+          (height) => StatisticsDonutChart(
+            items: items,
+            centerLabel: centerLabel,
+            centerValue: centerValue,
+            height: height,
+          ),
     );
   }
 }

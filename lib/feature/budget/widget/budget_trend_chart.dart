@@ -11,11 +11,13 @@ class BudgetTrendChart extends StatelessWidget {
   const BudgetTrendChart({
     required this.month,
     required this.progress,
+    this.height = AppChartGeometry.secondaryPlotHeight,
     super.key,
   });
 
   final MonthKey month;
   final BudgetProgress progress;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +50,7 @@ class BudgetTrendChart extends StatelessWidget {
         ],
       ),
       form: AppCartesianChartForm.line,
-      height: AppChartGeometry.secondaryPlotHeight,
+      height: height,
       maxAxisLabels: 3,
       includeZero: true,
       showLegend: true,
