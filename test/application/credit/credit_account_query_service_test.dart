@@ -84,7 +84,7 @@ void main() {
       expect(overview.buckets.unattributedDebt, const Money(minorUnits: 1000));
     });
 
-    test('lists due calendar items and monthly bill summaries', () async {
+    test('lists due bill items and monthly bill summaries', () async {
       final fixture = _Fixture();
       addTearDown(fixture.close);
       await fixture.seedCreditAccount(balance: 8000);
@@ -105,6 +105,27 @@ void main() {
           _BillItemSeed.consumption(id: 'bill-consumption', principal: 1000),
         ],
       );
+      await fixture.repayments.saveRepayment(
+        Repayment(
+          id: 'repayment-partial',
+          repaymentType: credit.RepaymentType.bill,
+          targetType: credit.RepaymentTargetType.bill,
+          targetId: 'bill-1',
+          items: const [
+            RepaymentItem(
+              id: 'repayment-partial-item',
+              repaymentId: 'repayment-partial',
+              billItemId: 'bill-installment',
+              allocated: credit.RepaymentAmountBreakdown(
+                principal: Money(minorUnits: 500),
+                interest: Money(minorUnits: 0),
+                fee: Money(minorUnits: 0),
+                discount: Money(minorUnits: 0),
+              ),
+            ),
+          ],
+        ),
+      );
 
       final dueItems = await fixture.query.listDueCalendarItems(
         credit.CreditDueCalendarQuery(
@@ -120,14 +141,16 @@ void main() {
         ),
       );
 
-      expect(dueItems.map((item) => item.source), [
-        credit.CreditDueCalendarItemSource.billItem,
-        credit.CreditDueCalendarItemSource.billItem,
-        credit.CreditDueCalendarItemSource.schedule,
-      ]);
-      expect(dueItems.last.scheduleId, schedules.scheduleIds[1]);
+      expect(dueItems, hasLength(2));
+      expect(dueItems.map((item) => item.billId), everyElement('bill-1'));
+      expect(
+        dueItems
+            .singleWhere((item) => item.billItemId == 'bill-installment')
+            .principal,
+        const Money(minorUnits: 1500),
+      );
       expect(summaries, hasLength(1));
-      expect(summaries.single.pendingPrincipal, const Money(minorUnits: 3000));
+      expect(summaries.single.pendingPrincipal, const Money(minorUnits: 2500));
     });
   });
 }

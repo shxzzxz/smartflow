@@ -2,6 +2,8 @@ import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
+import '../../credit/presentation/bill_status_presentation.dart';
+
 enum AccountCreditSummaryTone { neutral, primary, warning, success, danger }
 
 class AccountCreditSummarySupportingItem {
@@ -105,16 +107,16 @@ AccountCreditSummaryStatus _billStatus(BillSummaryReadModel bill) {
     );
   }
   return switch (bill.status) {
-    BillStatus.open => const AccountCreditSummaryStatus(
-      label: '累积中',
+    BillStatus.open => AccountCreditSummaryStatus(
+      label: billStatusLabel(BillStatus.open),
       tone: AccountCreditSummaryTone.primary,
     ),
-    BillStatus.billed => const AccountCreditSummaryStatus(
-      label: '已出账',
+    BillStatus.billed => AccountCreditSummaryStatus(
+      label: billStatusLabel(BillStatus.billed),
       tone: AccountCreditSummaryTone.warning,
     ),
-    BillStatus.settled => const AccountCreditSummaryStatus(
-      label: '已了结',
+    BillStatus.settled => AccountCreditSummaryStatus(
+      label: billStatusLabel(BillStatus.settled),
       tone: AccountCreditSummaryTone.success,
     ),
   };

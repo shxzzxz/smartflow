@@ -9,7 +9,6 @@ import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/service/debt/credit_debt_bucket_service.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
-import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 
 import 'credit_account_queries.dart';
@@ -122,55 +121,50 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
     final result = <CreditDueCalendarItemReadModel>[];
     for (final account in accounts) {
       final bills = await _bills.listBillsByAccount(account.accountId);
-      final billedScheduleIds = <String>{};
-      for (final bill in bills) {
-        for (final item in bill.items) {
-          if ((item.status != BillItemStatus.pending &&
-                  item.status != BillItemStatus.partiallyPaid) ||
-              !_inWindow(item.repaymentDate, query.from, query.until)) {
-            continue;
-          }
-          if (item.scheduleId != null) billedScheduleIds.add(item.scheduleId!);
-          result.add(
-            CreditDueCalendarItemReadModel.billItem(
-              accountId: account.accountId,
-              billId: bill.id,
-              billItemId: item.id,
-              dueDate: item.repaymentDate,
-              itemType: item.itemType,
-              principal: item.expectedPrincipal,
-              interest: item.expectedInterest,
-              fee: item.expectedFee,
-              contractId: item.contractId,
-              scheduleId: item.scheduleId,
-            ),
-          );
-        }
-      }
-
-      final schedules = await _installments.listSchedulesByLiabilityAccount(
-        account.accountId,
+      final dueItems = [
+        for (final bill in bills)
+          for (final item in bill.items)
+            if ((item.status == BillItemStatus.pending ||
+                    item.status == BillItemStatus.partiallyPaid) &&
+                _inWindow(item.repaymentDate, query.from, query.until))
+              (bill: bill, item: item),
+      ];
+      final allocatedByItemId = await _repayments.aggregateItemsByBillItemIds(
+        dueItems.map((entry) => entry.item.id),
       );
-      for (final schedule in schedules) {
-        if ((schedule.status != InstallmentScheduleStatus.pending &&
-                schedule.status != InstallmentScheduleStatus.partiallyPaid) ||
-            billedScheduleIds.contains(schedule.id) ||
-            !_inWindow(
-              schedule.expectedRepaymentDate,
-              query.from,
-              query.until,
-            )) {
-          continue;
-        }
+      for (final (:bill, :item) in dueItems) {
+        final allocated =
+            allocatedByItemId[item.id] ?? RepaymentAmountBreakdown.zero;
+        final remainingPrincipal = _remaining(
+          item.expectedPrincipal.minorUnits,
+          allocated.principal.minorUnits,
+        );
+        final remainingInterest = _remaining(
+          item.expectedInterest.minorUnits,
+          allocated.interest.minorUnits,
+        );
+        final remainingFee = _remaining(
+          item.expectedFee.minorUnits,
+          allocated.fee.minorUnits,
+        );
+        final pendingTotal = _debtBuckets.remainingTotalForBillItem(
+          item,
+          allocated: allocated,
+        );
         result.add(
-          CreditDueCalendarItemReadModel.schedule(
+          CreditDueCalendarItemReadModel.billItem(
             accountId: account.accountId,
-            contractId: schedule.contractId,
-            scheduleId: schedule.id,
-            dueDate: schedule.expectedRepaymentDate,
-            principal: schedule.expectedPrincipal,
-            interest: schedule.expectedInterest,
-            fee: schedule.expectedFee,
+            billId: bill.id,
+            billItemId: item.id,
+            dueDate: item.repaymentDate,
+            itemType: item.itemType,
+            principal: Money(minorUnits: remainingPrincipal),
+            interest: Money(minorUnits: remainingInterest),
+            fee: Money(minorUnits: remainingFee),
+            discount: allocated.discount,
+            pendingTotal: Money(minorUnits: pendingTotal),
+            contractId: item.contractId,
+            scheduleId: item.scheduleId,
           ),
         );
       }
@@ -244,5 +238,10 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
 
   bool _inWindow(DateTime value, DateTime from, DateTime until) {
     return !value.isBefore(from) && value.isBefore(until);
+  }
+
+  int _remaining(int expected, int allocated) {
+    final value = expected - allocated;
+    return value < 0 ? 0 : value;
   }
 }

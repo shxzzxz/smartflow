@@ -15,6 +15,7 @@ import '../../../design_system/widget/app_swipe_action.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/bill_item_presentation.dart';
 import '../presentation/bill_repayment_presentation.dart';
+import '../presentation/bill_status_presentation.dart';
 import '../view_model/bill_detail_view_model.dart';
 
 class BillDetailPage extends ConsumerWidget {
@@ -587,11 +588,12 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final appColors = Theme.of(context).extension<AppThemeExtension>()!;
-    final (label, color) = switch (status) {
-      BillStatus.open => ('累积中', colors.primary),
-      BillStatus.billed => ('已出账', colors.error),
-      BillStatus.settled => ('已了结', appColors.success),
+    final color = switch (status) {
+      BillStatus.open => colors.primary,
+      BillStatus.billed => colors.error,
+      BillStatus.settled => appColors.success,
     };
+    final label = billStatusLabel(status);
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.space8,

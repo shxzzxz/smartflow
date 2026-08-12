@@ -29,19 +29,18 @@ class CreditAccountOverviewReadModel {
   final CreditDebtBucketsReadModel buckets;
 }
 
-enum CreditDueCalendarItemSource { billItem, schedule }
-
 class CreditDueCalendarItemReadModel {
   const CreditDueCalendarItemReadModel._({
-    required this.source,
     required this.accountId,
     required this.dueDate,
     required this.principal,
     required this.interest,
     required this.fee,
-    this.billId,
-    this.billItemId,
-    this.itemType,
+    required this.discount,
+    required this.pendingTotal,
+    required this.billId,
+    required this.billItemId,
+    required this.itemType,
     this.contractId,
     this.scheduleId,
   });
@@ -55,11 +54,12 @@ class CreditDueCalendarItemReadModel {
     required Money principal,
     required Money interest,
     required Money fee,
+    Money discount = const Money(minorUnits: 0),
+    required Money pendingTotal,
     String? contractId,
     String? scheduleId,
   }) {
     return CreditDueCalendarItemReadModel._(
-      source: CreditDueCalendarItemSource.billItem,
       accountId: accountId,
       billId: billId,
       billItemId: billItemId,
@@ -68,43 +68,25 @@ class CreditDueCalendarItemReadModel {
       principal: principal,
       interest: interest,
       fee: fee,
+      discount: discount,
+      pendingTotal: pendingTotal,
       contractId: contractId,
       scheduleId: scheduleId,
     );
   }
 
-  factory CreditDueCalendarItemReadModel.schedule({
-    required String accountId,
-    required String contractId,
-    required String scheduleId,
-    required DateTime dueDate,
-    required Money principal,
-    required Money interest,
-    required Money fee,
-  }) {
-    return CreditDueCalendarItemReadModel._(
-      source: CreditDueCalendarItemSource.schedule,
-      accountId: accountId,
-      dueDate: dueDate,
-      principal: principal,
-      interest: interest,
-      fee: fee,
-      contractId: contractId,
-      scheduleId: scheduleId,
-    );
-  }
-
-  final CreditDueCalendarItemSource source;
   final String accountId;
-  final String? billId;
-  final String? billItemId;
-  final BillItemType? itemType;
+  final String billId;
+  final String billItemId;
+  final BillItemType itemType;
   final String? contractId;
   final String? scheduleId;
   final DateTime dueDate;
   final Money principal;
   final Money interest;
   final Money fee;
+  final Money discount;
+  final Money pendingTotal;
 }
 
 class MonthlyBillSummaryReadModel {

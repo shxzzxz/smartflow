@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
@@ -10,6 +11,7 @@ import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
 import 'package:smartflow/design_system/token/chart.dart';
 import 'package:smartflow/feature/calendar/page/calendar_page.dart';
+import 'package:smartflow/feature/calendar/page/calendar_bills_page.dart';
 import 'package:smartflow/feature/calendar/view_model/calendar_view_model.dart';
 import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
@@ -49,6 +51,57 @@ void main() {
     expect(find.text('收入 '), findsOneWidget);
     expect(find.text('支出 '), findsOneWidget);
     expect(find.text('净收入 '), findsNothing);
+  });
+
+  testWidgets('shows an outstanding bill item prompt for the selected day', (
+    tester,
+  ) async {
+    await _pumpCalendar(
+      tester,
+      dayTransactions: const [],
+      dueItems: [_dueBillItem()],
+    );
+
+    expect(find.text('当日有 1 条账单明细待还'), findsOneWidget);
+  });
+
+  testWidgets('opens the selected day outstanding bill items', (tester) async {
+    await _pumpCalendar(
+      tester,
+      dayTransactions: const [],
+      dueItems: [_dueBillItem()],
+    );
+
+    await tester.tap(find.text('当日有 1 条账单明细待还'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1月15日待还账单'), findsOneWidget);
+    expect(find.text('信用卡'), findsOneWidget);
+    expect(find.text('消费明细'), findsOneWidget);
+    expect(find.text('120.00'), findsOneWidget);
+  });
+
+  testWidgets('opens all bills for the visible month from the more menu', (
+    tester,
+  ) async {
+    await _pumpCalendar(
+      tester,
+      dayTransactions: const [],
+      monthlyBills: [
+        _monthlyBill('bill-due'),
+        _monthlyBill('bill-paid', paid: true),
+      ],
+    );
+
+    await tester.tap(find.byTooltip('更多'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('查看本月账单'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('2026年1月账单'), findsOneWidget);
+    expect(find.text('信用卡'), findsNWidgets(2));
+    expect(find.text('已出账'), findsOneWidget);
+    expect(find.text('已了结'), findsOneWidget);
   });
 
   testWidgets('tints day cells once the heatmap is enabled', (tester) async {
@@ -141,6 +194,8 @@ Future<void> _pumpCalendar(
   required List<TransactionListReadModel> dayTransactions,
   _FakeTransactionQueryService? transactionService,
   AppSettingsStore? settingsStore,
+  List<CreditDueCalendarItemReadModel> dueItems = const [],
+  List<MonthlyBillSummaryReadModel> monthlyBills = const [],
 }) async {
   tester.view.physicalSize = const Size(600, 900);
   tester.view.devicePixelRatio = 1;
@@ -160,7 +215,10 @@ Future<void> _pumpCalendar(
           transactionService ?? _FakeTransactionQueryService(),
         ),
         creditAccountQueryServiceProvider.overrideWithValue(
-          const _FakeCreditAccountQueryService(),
+          _FakeCreditAccountQueryService(
+            dueItems: dueItems,
+            monthlyBills: monthlyBills,
+          ),
         ),
         accountQueryServiceProvider.overrideWithValue(
           _FakeAccountQueryService(),
@@ -186,10 +244,66 @@ Future<void> _pumpCalendar(
           ]),
         ),
       ],
-      child: MaterialApp(theme: AppTheme.light(), home: const CalendarPage()),
+      child: MaterialApp.router(
+        theme: AppTheme.light(),
+        routerConfig: GoRouter(
+          initialLocation: '/calendar',
+          routes: [
+            GoRoute(
+              path: '/calendar',
+              builder: (context, state) => const CalendarPage(),
+            ),
+            GoRoute(
+              path: '/calendar/bills/month',
+              builder:
+                  (context, state) => CalendarMonthBillsPage(
+                    month: DateTime.parse(
+                      '${state.uri.queryParameters['month']!}-01',
+                    ),
+                  ),
+            ),
+            GoRoute(
+              path: '/calendar/bills/day',
+              builder:
+                  (context, state) => CalendarDayBillsPage(
+                    date: DateTime.parse(state.uri.queryParameters['date']!),
+                  ),
+            ),
+          ],
+        ),
+      ),
     ),
   );
   await tester.pumpAndSettle();
+}
+
+CreditDueCalendarItemReadModel _dueBillItem() {
+  return CreditDueCalendarItemReadModel.billItem(
+    accountId: 'card',
+    billId: 'bill-1',
+    billItemId: 'item-1',
+    dueDate: _selectedDate,
+    itemType: BillItemType.consumption,
+    principal: const Money(minorUnits: 12000),
+    interest: Money.zero(),
+    fee: Money.zero(),
+    pendingTotal: const Money(minorUnits: 12000),
+  );
+}
+
+MonthlyBillSummaryReadModel _monthlyBill(String id, {bool paid = false}) {
+  return MonthlyBillSummaryReadModel(
+    accountId: 'card',
+    billId: id,
+    period: BillPeriod(year: 2026, month: 1),
+    status: paid ? BillStatus.settled : BillStatus.billed,
+    expectedPrincipal: const Money(minorUnits: 12000),
+    expectedInterest: Money.zero(),
+    expectedFee: Money.zero(),
+    pendingPrincipal: paid ? Money.zero() : const Money(minorUnits: 12000),
+    pendingTotal: paid ? Money.zero() : const Money(minorUnits: 12000),
+    itemCount: 1,
+  );
 }
 
 Color? _dayCellColor(WidgetTester tester, String dayLabel) {
@@ -286,7 +400,14 @@ class _FakeTransactionQueryService implements TransactionQueryService {
 class _FakeAccountQueryService implements AccountQueryService {
   @override
   Stream<Map<String, Account>> watchAccountsById() {
-    return Stream.value(const {});
+    return Stream.value({
+      'card': Account(
+        id: 'card',
+        name: '信用卡',
+        type: AccountType.liability,
+        balance: Money.zero(),
+      ),
+    });
   }
 
   @override
@@ -294,20 +415,26 @@ class _FakeAccountQueryService implements AccountQueryService {
 }
 
 class _FakeCreditAccountQueryService implements CreditAccountQueryService {
-  const _FakeCreditAccountQueryService();
+  const _FakeCreditAccountQueryService({
+    this.dueItems = const [],
+    this.monthlyBills = const [],
+  });
+
+  final List<CreditDueCalendarItemReadModel> dueItems;
+  final List<MonthlyBillSummaryReadModel> monthlyBills;
 
   @override
   Future<List<CreditDueCalendarItemReadModel>> listDueCalendarItems(
     CreditDueCalendarQuery query,
   ) async {
-    return const [];
+    return dueItems;
   }
 
   @override
   Future<List<MonthlyBillSummaryReadModel>> listMonthlyBillSummaries(
     MonthlyBillSummaryQuery query,
   ) async {
-    return const [];
+    return monthlyBills;
   }
 
   @override

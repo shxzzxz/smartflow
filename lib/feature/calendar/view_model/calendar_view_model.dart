@@ -290,6 +290,10 @@ CalendarContentState calendarContent(
         dailySummaries: dailySummaryValues,
         accountLookup: lookup,
       ),
+      dueBillItems: [
+        for (final item in creditDueItemValues)
+          if (isSameDate(item.dueDate, selectedDate)) item,
+      ],
       isLoading: loadedFeed == null,
       hasMore: loadedFeed?.hasMore ?? false,
       isLoadingMore: loadedFeed?.isLoadingMore ?? false,

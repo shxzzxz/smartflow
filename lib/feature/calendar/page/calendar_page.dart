@@ -11,6 +11,7 @@ import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_month_picker.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
+import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/widget/business/finance/finance_tone_color.dart';
 import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
 import '../../shared/view_model/app_settings_view_model.dart';
@@ -55,6 +56,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
               onPreviousMonth: () => _shiftMonth(-1),
               onNextMonth: () => _shiftMonth(1),
               onTodayPressed: _goToday,
+              onViewMonthlyBills: () => _openMonthlyBills(state.visibleMonth),
               onToggleLunar:
                   () =>
                       ref
@@ -70,6 +72,8 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                     showLunar: state.showLunar,
                     onDateSelected: _selectDate,
                     onMonthSwipe: _shiftMonth,
+                    onDueBillItemsPressed:
+                        () => _openDueBillItems(state.selectedDate),
                     onLoadMore:
                         () =>
                             ref
@@ -124,6 +128,21 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
   void _shiftMonth(int delta) {
     ref.read(calendarViewModelProvider.notifier).shiftMonth(delta);
   }
+
+  void _openDueBillItems(DateTime date) {
+    final value =
+        '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
+    context.push('/calendar/bills/day?date=$value');
+  }
+
+  void _openMonthlyBills(DateTime month) {
+    final value =
+        '${month.year.toString().padLeft(4, '0')}-'
+        '${month.month.toString().padLeft(2, '0')}';
+    context.push('/calendar/bills/month?month=$value');
+  }
 }
 
 class _CalendarHeader extends ConsumerWidget {
@@ -136,6 +155,7 @@ class _CalendarHeader extends ConsumerWidget {
     required this.onPreviousMonth,
     required this.onNextMonth,
     required this.onTodayPressed,
+    required this.onViewMonthlyBills,
     required this.onToggleLunar,
   });
 
@@ -147,6 +167,7 @@ class _CalendarHeader extends ConsumerWidget {
   final VoidCallback onPreviousMonth;
   final VoidCallback onNextMonth;
   final VoidCallback onTodayPressed;
+  final VoidCallback onViewMonthlyBills;
   final VoidCallback onToggleLunar;
 
   @override
@@ -188,6 +209,11 @@ class _CalendarHeader extends ConsumerWidget {
                 label: '回到今天',
                 icon: RemixIcons.calendar_check_line,
                 onPressed: onTodayPressed,
+              ),
+              AppPopupMenuAction(
+                label: '查看本月账单',
+                icon: RemixIcons.bill_line,
+                onPressed: onViewMonthlyBills,
               ),
               AppPopupMenuToggle(
                 label: '热力图',
@@ -245,6 +271,7 @@ class _CalendarContent extends StatelessWidget {
     required this.showLunar,
     required this.onDateSelected,
     required this.onMonthSwipe,
+    required this.onDueBillItemsPressed,
     required this.onLoadMore,
   });
 
@@ -253,6 +280,7 @@ class _CalendarContent extends StatelessWidget {
   final bool showLunar;
   final ValueChanged<DateTime> onDateSelected;
   final ValueChanged<int> onMonthSwipe;
+  final VoidCallback onDueBillItemsPressed;
   final VoidCallback onLoadMore;
 
   @override
@@ -272,6 +300,13 @@ class _CalendarContent extends StatelessWidget {
           onMonthSwipe: onMonthSwipe,
         ),
         const SizedBox(height: AppSpacing.space10),
+        if (day.dueBillItems.isNotEmpty) ...[
+          _DueBillItemsPrompt(
+            count: day.dueBillItems.length,
+            onPressed: onDueBillItemsPressed,
+          ),
+          const SizedBox(height: AppSpacing.space10),
+        ],
       ],
       // 当日首页加载期间不渲染分组，避免闪现“暂无交易”后再跳成列表。
       groups: day.isLoading ? const [] : [day.group],
@@ -280,6 +315,50 @@ class _CalendarContent extends StatelessWidget {
       isLoadingMore: day.isLoading || day.isLoadingMore,
       loadMoreErrorMessage: day.loadMoreErrorMessage,
       onLoadMore: onLoadMore,
+    );
+  }
+}
+
+class _DueBillItemsPrompt extends StatelessWidget {
+  const _DueBillItemsPrompt({required this.count, required this.onPressed});
+
+  final int count;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return AppSurface(
+      border: true,
+      child: InkWell(
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space12,
+            vertical: AppSpacing.space10,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                RemixIcons.bill_line,
+                size: AppSpacing.space20,
+                color: colors.primary,
+              ),
+              const SizedBox(width: AppSpacing.space8),
+              Expanded(
+                child: Text(
+                  '当日有 $count 条账单明细待还',
+                  style: context.appTextStyles.listTitle,
+                ),
+              ),
+              Icon(
+                RemixIcons.arrow_right_s_line,
+                color: colors.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -13,6 +13,7 @@ import '../feature/account/page/archived_accounts_page.dart';
 import '../feature/category/page/categories_page.dart';
 import '../feature/category/page/category_form_page.dart';
 import '../feature/calendar/page/calendar_page.dart';
+import '../feature/calendar/page/calendar_bills_page.dart';
 import '../feature/budget/page/budget_page.dart';
 import '../feature/home/page/home_page.dart';
 import '../feature/credit/page/installment_contract_edit_page.dart';
@@ -125,6 +126,26 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(path: '/import', builder: (context, state) => const ImportPage()),
+    GoRoute(
+      path: '/calendar/bills/day',
+      builder: (context, state) {
+        final date = DateTime.tryParse(state.uri.queryParameters['date'] ?? '');
+        if (date == null) {
+          return const PlaceholderPage(title: '账单日期参数无效');
+        }
+        return CalendarDayBillsPage(date: date);
+      },
+    ),
+    GoRoute(
+      path: '/calendar/bills/month',
+      builder: (context, state) {
+        final month = _monthFromQuery(state.uri.queryParameters);
+        if (month == null) {
+          return const PlaceholderPage(title: '账单月份参数无效');
+        }
+        return CalendarMonthBillsPage(month: month);
+      },
+    ),
     GoRoute(
       path: '/import/history',
       builder: (context, state) => const ImportHistoryPage(),

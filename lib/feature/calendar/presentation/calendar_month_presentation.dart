@@ -20,6 +20,7 @@ class CalendarMonthPresentation {
 class CalendarDaySectionPresentation {
   const CalendarDaySectionPresentation({
     required this.group,
+    required this.dueBillItems,
     required this.isLoading,
     required this.hasMore,
     required this.isLoadingMore,
@@ -27,6 +28,7 @@ class CalendarDaySectionPresentation {
   });
 
   final TransactionDayGroup group;
+  final List<CreditDueCalendarItemReadModel> dueBillItems;
   final bool isLoading;
   final bool hasMore;
   final bool isLoadingMore;
