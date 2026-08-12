@@ -21,24 +21,50 @@ enum PullToCreateSensitivity {
   }
 }
 
+/// 日历热力维度。净收入按收入减支出取值，可正可负。
+enum CalendarHeatMetric {
+  expense(storageValue: 'expense'),
+  income(storageValue: 'income'),
+  net(storageValue: 'net');
+
+  const CalendarHeatMetric({required this.storageValue});
+
+  final String storageValue;
+
+  static CalendarHeatMetric? fromStorageValue(String? value) {
+    return switch (value) {
+      'expense' => CalendarHeatMetric.expense,
+      'income' => CalendarHeatMetric.income,
+      'net' => CalendarHeatMetric.net,
+      _ => null,
+    };
+  }
+}
+
 class AppSettings {
   const AppSettings({
     this.showAddTransactionFab = true,
     this.showBottomNavLabels = true,
     this.pullToCreateSensitivity = PullToCreateSensitivity.standard,
     this.copyPreviousMonthBudgetsOnOpen = false,
+    this.calendarHeatmapEnabled = false,
+    this.calendarHeatMetric = CalendarHeatMetric.expense,
   });
 
   final bool showAddTransactionFab;
   final bool showBottomNavLabels;
   final PullToCreateSensitivity pullToCreateSensitivity;
   final bool copyPreviousMonthBudgetsOnOpen;
+  final bool calendarHeatmapEnabled;
+  final CalendarHeatMetric calendarHeatMetric;
 
   AppSettings copyWith({
     bool? showAddTransactionFab,
     bool? showBottomNavLabels,
     PullToCreateSensitivity? pullToCreateSensitivity,
     bool? copyPreviousMonthBudgetsOnOpen,
+    bool? calendarHeatmapEnabled,
+    CalendarHeatMetric? calendarHeatMetric,
   }) {
     return AppSettings(
       showAddTransactionFab:
@@ -48,6 +74,9 @@ class AppSettings {
           pullToCreateSensitivity ?? this.pullToCreateSensitivity,
       copyPreviousMonthBudgetsOnOpen:
           copyPreviousMonthBudgetsOnOpen ?? this.copyPreviousMonthBudgetsOnOpen,
+      calendarHeatmapEnabled:
+          calendarHeatmapEnabled ?? this.calendarHeatmapEnabled,
+      calendarHeatMetric: calendarHeatMetric ?? this.calendarHeatMetric,
     );
   }
 }

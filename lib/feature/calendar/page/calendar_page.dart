@@ -3,14 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
+import '../../../application/shared/app_settings_store.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
+import '../../../design_system/token/chart.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_month_picker.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
 import 'package:smartflow/widget/business/finance/finance_tone_color.dart';
 import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
+import '../../shared/view_model/app_settings_view_model.dart';
+import '../presentation/calendar_heat_metric_options.dart';
 import '../presentation/calendar_month_presentation.dart';
 import '../view_model/calendar_view_model.dart';
 
@@ -25,10 +29,16 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(calendarViewModelProvider);
+    final settings =
+        ref.watch(appSettingsViewModelProvider).value ?? const AppSettings();
     final content = ref.watch(
       calendarContentProvider(
         visibleMonth: state.visibleMonth,
         selectedDate: state.selectedDate,
+        heatMetric:
+            settings.calendarHeatmapEnabled
+                ? settings.calendarHeatMetric
+                : null,
       ),
     );
 
@@ -39,6 +49,8 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
             _CalendarHeader(
               visibleMonth: state.visibleMonth,
               showLunar: state.showLunar,
+              showHeatmap: settings.calendarHeatmapEnabled,
+              heatMetric: settings.calendarHeatMetric,
               onMonthPressed: _pickMonth,
               onPreviousMonth: () => _shiftMonth(-1),
               onNextMonth: () => _shiftMonth(1),
@@ -114,10 +126,12 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
   }
 }
 
-class _CalendarHeader extends StatelessWidget {
+class _CalendarHeader extends ConsumerWidget {
   const _CalendarHeader({
     required this.visibleMonth,
     required this.showLunar,
+    required this.showHeatmap,
+    required this.heatMetric,
     required this.onMonthPressed,
     required this.onPreviousMonth,
     required this.onNextMonth,
@@ -127,6 +141,8 @@ class _CalendarHeader extends StatelessWidget {
 
   final DateTime visibleMonth;
   final bool showLunar;
+  final bool showHeatmap;
+  final CalendarHeatMetric heatMetric;
   final VoidCallback onMonthPressed;
   final VoidCallback onPreviousMonth;
   final VoidCallback onNextMonth;
@@ -134,7 +150,8 @@ class _CalendarHeader extends StatelessWidget {
   final VoidCallback onToggleLunar;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.read(appSettingsViewModelProvider.notifier);
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.space16,
@@ -172,6 +189,19 @@ class _CalendarHeader extends StatelessWidget {
                 icon: RemixIcons.calendar_check_line,
                 onPressed: onTodayPressed,
               ),
+              AppPopupMenuToggle(
+                label: '热力图',
+                icon: RemixIcons.fire_line,
+                value: showHeatmap,
+                onChanged: settings.setCalendarHeatmapEnabled,
+              ),
+              if (showHeatmap)
+                AppPopupMenuSelect<CalendarHeatMetric>(
+                  label: '热力维度',
+                  value: heatMetric,
+                  options: calendarHeatMetricOptions,
+                  onChanged: settings.setCalendarHeatMetric,
+                ),
             ],
           ),
         ],
@@ -398,11 +428,26 @@ class _CalendarDayCell extends StatelessWidget {
     final textStyles = context.appTextStyles;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
     final foregroundOpacity = day.isInVisibleMonth ? 1.0 : 0.38;
+    final heat = day.heat;
+    final heatColor =
+        heat == null
+            ? null
+            : financeToneColor(
+              colors,
+              financeColors,
+              heat.tone,
+            ).withValues(alpha: AppHeatScale.alphaForIntensity(heat.intensity));
     final selectedColor = colors.primaryContainer.withValues(alpha: 0.42);
-    final borderColor =
-        day.isToday && !day.isSelected
-            ? colors.primary.withValues(alpha: 0.35)
-            : Colors.transparent;
+    // 热力底色占着格子背景时，选中态让出填充改用描边，热力强度才不会被选中盖掉。
+    final border =
+        day.isSelected && heatColor != null
+            ? Border.all(color: colors.primary, width: 2)
+            : Border.all(
+              color:
+                  day.isToday && !day.isSelected
+                      ? colors.primary.withValues(alpha: 0.35)
+                      : Colors.transparent,
+            );
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.space2),
@@ -416,9 +461,11 @@ class _CalendarDayCell extends StatelessWidget {
             duration: const Duration(milliseconds: 160),
             curve: Curves.easeOut,
             decoration: BoxDecoration(
-              color: day.isSelected ? selectedColor : Colors.transparent,
+              color:
+                  heatColor ??
+                  (day.isSelected ? selectedColor : Colors.transparent),
               borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-              border: Border.all(color: borderColor),
+              border: border,
             ),
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.space2,

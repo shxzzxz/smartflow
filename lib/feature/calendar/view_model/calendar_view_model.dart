@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/shared/app_settings_store.dart';
 import '../../../core/time/month_key.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../shared/provider/current_date_time_provider.dart';
@@ -218,6 +219,7 @@ CalendarContentState calendarContent(
   Ref ref, {
   required DateTime visibleMonth,
   required DateTime selectedDate,
+  CalendarHeatMetric? heatMetric,
 }) {
   final now = ref.watch(currentDateTimeProvider);
   final comparison = ref.watch(
@@ -278,6 +280,7 @@ CalendarContentState calendarContent(
       dailySummaries: dailySummaryValues,
       creditDueItems: creditDueItemValues,
       monthlyBillSummaries: monthlyBillSummaryValues,
+      heatMetric: heatMetric,
       today: now,
     ),
     day: CalendarDaySectionPresentation(

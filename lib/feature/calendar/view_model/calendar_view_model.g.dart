@@ -622,7 +622,12 @@ final class CalendarContentProvider
     with $Provider<CalendarContentState> {
   CalendarContentProvider._({
     required CalendarContentFamily super.from,
-    required ({DateTime visibleMonth, DateTime selectedDate}) super.argument,
+    required ({
+      DateTime visibleMonth,
+      DateTime selectedDate,
+      CalendarHeatMetric? heatMetric,
+    })
+    super.argument,
   }) : super(
          retry: null,
          name: r'calendarContentProvider',
@@ -650,11 +655,17 @@ final class CalendarContentProvider
   @override
   CalendarContentState create(Ref ref) {
     final argument =
-        this.argument as ({DateTime visibleMonth, DateTime selectedDate});
+        this.argument
+            as ({
+              DateTime visibleMonth,
+              DateTime selectedDate,
+              CalendarHeatMetric? heatMetric,
+            });
     return calendarContent(
       ref,
       visibleMonth: argument.visibleMonth,
       selectedDate: argument.selectedDate,
+      heatMetric: argument.heatMetric,
     );
   }
 
@@ -677,13 +688,17 @@ final class CalendarContentProvider
   }
 }
 
-String _$calendarContentHash() => r'28a8cabb3de236acde359b08e77c50ac98dffc4e';
+String _$calendarContentHash() => r'3a33091423070d7f8904a0c65ffb932bd7c81de9';
 
 final class CalendarContentFamily extends $Family
     with
         $FunctionalFamilyOverride<
           CalendarContentState,
-          ({DateTime visibleMonth, DateTime selectedDate})
+          ({
+            DateTime visibleMonth,
+            DateTime selectedDate,
+            CalendarHeatMetric? heatMetric,
+          })
         > {
   CalendarContentFamily._()
     : super(
@@ -697,8 +712,13 @@ final class CalendarContentFamily extends $Family
   CalendarContentProvider call({
     required DateTime visibleMonth,
     required DateTime selectedDate,
+    CalendarHeatMetric? heatMetric,
   }) => CalendarContentProvider._(
-    argument: (visibleMonth: visibleMonth, selectedDate: selectedDate),
+    argument: (
+      visibleMonth: visibleMonth,
+      selectedDate: selectedDate,
+      heatMetric: heatMetric,
+    ),
     from: this,
   );
 

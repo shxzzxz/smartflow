@@ -12,6 +12,8 @@ class DriftAppSettingsStore implements AppSettingsStore {
       'settings.pull_to_create_sensitivity';
   static const _copyPreviousMonthBudgetsKey =
       'settings.copy_previous_month_budgets';
+  static const _calendarHeatmapEnabledKey = 'settings.calendar_heatmap_enabled';
+  static const _calendarHeatMetricKey = 'settings.calendar_heat_metric';
 
   final AppDatabase _database;
 
@@ -24,6 +26,8 @@ class DriftAppSettingsStore implements AppSettingsStore {
             _showBottomNavLabelsKey,
             _pullToCreateSensitivityKey,
             _copyPreviousMonthBudgetsKey,
+            _calendarHeatmapEnabledKey,
+            _calendarHeatMetricKey,
           ]),
         )).get();
     final values = {for (final row in rows) row.key: row.value};
@@ -43,6 +47,12 @@ class DriftAppSettingsStore implements AppSettingsStore {
       copyPreviousMonthBudgetsOnOpen:
           _parseBool(values[_copyPreviousMonthBudgetsKey]) ??
           defaults.copyPreviousMonthBudgetsOnOpen,
+      calendarHeatmapEnabled:
+          _parseBool(values[_calendarHeatmapEnabledKey]) ??
+          defaults.calendarHeatmapEnabled,
+      calendarHeatMetric:
+          CalendarHeatMetric.fromStorageValue(values[_calendarHeatMetricKey]) ??
+          defaults.calendarHeatMetric,
     );
   }
 
@@ -59,6 +69,11 @@ class DriftAppSettingsStore implements AppSettingsStore {
         _entry(
           _copyPreviousMonthBudgetsKey,
           settings.copyPreviousMonthBudgetsOnOpen,
+        ),
+        _entry(_calendarHeatmapEnabledKey, settings.calendarHeatmapEnabled),
+        _entry(
+          _calendarHeatMetricKey,
+          settings.calendarHeatMetric.storageValue,
         ),
       ]);
     });

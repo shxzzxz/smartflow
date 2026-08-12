@@ -1,5 +1,6 @@
 import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/shared/app_settings_store.dart';
 import '../../../core/money/money.dart';
 import '../../../core/money/money_formatter.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
@@ -61,6 +62,7 @@ class CalendarDayPresentation {
     required this.dueItemCount,
     required this.lunarLabel,
     required this.markerLabel,
+    this.heat,
   });
 
   final DateTime date;
@@ -73,11 +75,25 @@ class CalendarDayPresentation {
   final String lunarLabel;
   final String? markerLabel;
 
+  /// 热力图关闭、或当日该维度金额为 0 时为空。
+  final CalendarDayHeatPresentation? heat;
+
   bool get hasCashflow => incomeMinor != 0 || expenseMinor != 0;
 
   String get incomeText => _formatCompactMinorAmount(incomeMinor);
 
   String get expenseText => _formatCompactMinorAmount(expenseMinor);
+}
+
+/// 热力强度按当月该维度的最大绝对值归一化，[intensity] 取 (0, 1]。
+class CalendarDayHeatPresentation {
+  const CalendarDayHeatPresentation({
+    required this.intensity,
+    required this.tone,
+  });
+
+  final double intensity;
+  final FinanceTone tone;
 }
 
 String _formatCompactMinorAmount(int minorUnits) {
@@ -94,6 +110,7 @@ CalendarMonthPresentation buildCalendarMonthPresentation({
   required List<DailyCashflowSummary> dailySummaries,
   List<CreditDueCalendarItemReadModel> creditDueItems = const [],
   List<MonthlyBillSummaryReadModel> monthlyBillSummaries = const [],
+  CalendarHeatMetric? heatMetric,
   DateTime? today,
   CalendarLunarLabelResolver lunarLabelResolver =
       const DefaultCalendarLunarLabelResolver(),
@@ -108,6 +125,7 @@ CalendarMonthPresentation buildCalendarMonthPresentation({
       selectedDate: selectedDate,
       dailySummaries: dailySummaries,
       creditDueItems: creditDueItems,
+      heatMetric: heatMetric,
       today: today,
       lunarLabelResolver: lunarLabelResolver,
     ),
@@ -118,9 +136,9 @@ CalendarMonthlySummaryPresentation buildCalendarMonthlySummaryPresentation(
   CashflowSummary summary, {
   List<MonthlyBillSummaryReadModel> monthlyBillSummaries = const [],
 }) {
-  final billDueMinor = monthlyBillSummaries.fold<int>(
+  final billPendingMinor = monthlyBillSummaries.fold<int>(
     0,
-    (sum, bill) => sum + bill.pendingPrincipal.minorUnits,
+    (sum, bill) => sum + bill.pendingTotal.minorUnits,
   );
   final metrics = [
     CalendarMonthlySummaryMetricPresentation(
@@ -133,17 +151,12 @@ CalendarMonthlySummaryPresentation buildCalendarMonthlySummaryPresentation(
       amountText: formatMoney(summary.expense, style: MoneyFormatStyle.compact),
       tone: FinanceTone.expense,
     ),
-    CalendarMonthlySummaryMetricPresentation(
-      label: '净收入',
-      amountText: formatMoney(summary.net, style: MoneyFormatStyle.compact),
-      tone: FinanceTone.neutral,
-    ),
   ];
   if (monthlyBillSummaries.isNotEmpty) {
     metrics.add(
       CalendarMonthlySummaryMetricPresentation(
-        label: '应还',
-        amountText: _formatCompactMinorAmount(billDueMinor),
+        label: '待还',
+        amountText: _formatCompactMinorAmount(billPendingMinor),
         tone: FinanceTone.expense,
       ),
     );
@@ -156,6 +169,7 @@ List<CalendarDayPresentation> buildCalendarDayPresentations({
   required DateTime selectedDate,
   required List<DailyCashflowSummary> dailySummaries,
   required List<CreditDueCalendarItemReadModel> creditDueItems,
+  CalendarHeatMetric? heatMetric,
   DateTime? today,
   CalendarLunarLabelResolver lunarLabelResolver =
       const DefaultCalendarLunarLabelResolver(),
@@ -165,6 +179,8 @@ List<CalendarDayPresentation> buildCalendarDayPresentations({
   final normalizedToday = normalizeDate(today ?? DateTime.now());
   final totalsByDate = _totalsByDate(dailySummaries);
   final duesByDate = _dueCountsByDate(creditDueItems);
+  final heatScale =
+      heatMetric == null ? null : _HeatScale(heatMetric, totalsByDate.values);
 
   return [
     for (final date in calendarGridDates(month))
@@ -176,6 +192,7 @@ List<CalendarDayPresentation> buildCalendarDayPresentations({
         totals: totalsByDate[date],
         dueItemCount: duesByDate[date] ?? 0,
         lunarLabel: lunarLabelResolver.labelFor(date),
+        heat: heatScale?.heatFor(totalsByDate[date]),
       ),
   ];
 }
@@ -188,6 +205,7 @@ CalendarDayPresentation _buildCalendarDay({
   required _DayTotals? totals,
   required int dueItemCount,
   required CalendarLunarLabel lunarLabel,
+  required CalendarDayHeatPresentation? heat,
 }) {
   return CalendarDayPresentation(
     date: date,
@@ -199,7 +217,45 @@ CalendarDayPresentation _buildCalendarDay({
     dueItemCount: dueItemCount,
     lunarLabel: lunarLabel.text,
     markerLabel: dueItemCount > 0 ? '$dueItemCount' : lunarLabel.marker,
+    heat: heat,
   );
+}
+
+/// 按当月该维度的最大绝对值把每日金额归一化为 (0, 1] 的热力强度。
+/// 色调跟随金额方向：与维度同向取 income / expense，反向（退款、净支出）取另一侧。
+class _HeatScale {
+  _HeatScale(this.metric, Iterable<_DayTotals> totals)
+    : _maxAbsMinor = totals.fold<int>(0, (max, item) {
+        final value = _metricMinor(metric, item).abs();
+        return value > max ? value : max;
+      });
+
+  final CalendarHeatMetric metric;
+  final int _maxAbsMinor;
+
+  CalendarDayHeatPresentation? heatFor(_DayTotals? totals) {
+    if (totals == null || _maxAbsMinor == 0) return null;
+    final minorUnits = _metricMinor(metric, totals);
+    if (minorUnits == 0) return null;
+    final isPositive = minorUnits > 0;
+    return CalendarDayHeatPresentation(
+      intensity: minorUnits.abs() / _maxAbsMinor,
+      tone: switch (metric) {
+        CalendarHeatMetric.expense =>
+          isPositive ? FinanceTone.expense : FinanceTone.income,
+        CalendarHeatMetric.income || CalendarHeatMetric.net =>
+          isPositive ? FinanceTone.income : FinanceTone.expense,
+      },
+    );
+  }
+
+  static int _metricMinor(CalendarHeatMetric metric, _DayTotals totals) {
+    return switch (metric) {
+      CalendarHeatMetric.expense => totals.expenseMinor,
+      CalendarHeatMetric.income => totals.incomeMinor,
+      CalendarHeatMetric.net => totals.incomeMinor - totals.expenseMinor,
+    };
+  }
 }
 
 List<DateTime> calendarGridDates(DateTime visibleMonth) {

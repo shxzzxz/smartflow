@@ -39,6 +39,21 @@ class AppSettingsViewModel extends _$AppSettingsViewModel {
     });
   }
 
+  Future<void> setCalendarHeatmapEnabled(bool value) {
+    return _save(
+      (settings) => settings.copyWith(calendarHeatmapEnabled: value),
+    );
+  }
+
+  Future<void> setCalendarHeatMetric(CalendarHeatMetric value) {
+    return _save(
+      (settings) => settings.copyWith(
+        calendarHeatmapEnabled: true,
+        calendarHeatMetric: value,
+      ),
+    );
+  }
+
   Future<void> _save(AppSettings Function(AppSettings settings) change) async {
     final previous = state.value ?? const AppSettings();
     final next = change(previous);

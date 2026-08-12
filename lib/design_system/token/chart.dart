@@ -28,3 +28,14 @@ abstract final class AppChartGeometry {
 abstract final class AppChartMotion {
   static const Duration switchDuration = Duration(milliseconds: 250);
 }
+
+/// 热力底色透明度区间。强度按 0..1 线性映射到 [minAlpha, maxAlpha]。
+/// 上限保持在浅色区间，避免格子铺成实色块压掉格内文字。
+abstract final class AppHeatScale {
+  static const double minAlpha = .08;
+  static const double maxAlpha = .42;
+
+  static double alphaForIntensity(double intensity) {
+    return minAlpha + (maxAlpha - minAlpha) * intensity.clamp(0.0, 1.0);
+  }
+}
