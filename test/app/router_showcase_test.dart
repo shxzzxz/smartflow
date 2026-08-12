@@ -27,7 +27,9 @@ void main() {
         .whereType<GoRoute>()
         .singleWhere((route) => route.path == '/budget');
 
-    expect(budgetRoute.routes.map((route) => route.path), [':id']);
+    expect(budgetRoute.routes.whereType<GoRoute>().map((route) => route.path), [
+      ':id',
+    ]);
   });
 
   testWidgets('opens the design-system showcase route in debug builds', (
