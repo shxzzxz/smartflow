@@ -117,6 +117,7 @@ class MonthlyBillSummaryReadModel {
     required this.expectedInterest,
     required this.expectedFee,
     required this.pendingPrincipal,
+    required this.pendingTotal,
     required this.itemCount,
   });
 
@@ -128,6 +129,9 @@ class MonthlyBillSummaryReadModel {
   final Money expectedInterest;
   final Money expectedFee;
   final Money pendingPrincipal;
+
+  /// 未核销明细的待还总额，含利息、费用并已扣减优惠。
+  final Money pendingTotal;
   final int itemCount;
 }
 

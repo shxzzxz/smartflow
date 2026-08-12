@@ -5,6 +5,7 @@ import '../../port/installment_repository.dart';
 import '../../port/repayment_repository.dart';
 import '../../valobj/bill_enums.dart';
 import '../../valobj/installment_enums.dart';
+import '../../valobj/repayment_amount_breakdown.dart';
 
 class CreditDebtBuckets {
   const CreditDebtBuckets({
@@ -120,6 +121,23 @@ class CreditDebtBucketService {
       expectedPrincipalMinor: item.expectedPrincipal.minorUnits,
       allocatedPrincipalMinor: allocatedPrincipalMinor,
     );
+  }
+
+  /// 明细待还总额：本息费各自剩余之和再扣减优惠，整体下限为 0。
+  int remainingTotalForBillItem(
+    BillItem item, {
+    required RepaymentAmountBreakdown allocated,
+  }) {
+    if (!_isOutstandingItem(item)) return 0;
+    final remaining =
+        item.expectedPrincipal.minorUnits -
+        allocated.principal.minorUnits +
+        item.expectedInterest.minorUnits -
+        allocated.interest.minorUnits +
+        item.expectedFee.minorUnits -
+        allocated.fee.minorUnits -
+        allocated.discount.minorUnits;
+    return remaining < 0 ? 0 : remaining;
   }
 
   bool _isOutstandingItem(BillItem item) {

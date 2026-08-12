@@ -10,6 +10,7 @@ import 'package:smartflow/domain/credit/service/debt/credit_debt_bucket_service.
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 
 import 'credit_account_queries.dart';
 import 'credit_account_read_models.dart';
@@ -199,11 +200,17 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
     final result = <MonthlyBillSummaryReadModel>[];
     for (final (:account, :bill) in accountBills) {
       var pendingPrincipalMinor = 0;
+      var pendingTotalMinor = 0;
       for (final item in bill.items) {
+        final allocated =
+            allocatedByItemId[item.id] ?? RepaymentAmountBreakdown.zero;
         pendingPrincipalMinor += _debtBuckets.remainingPrincipalForBillItem(
           item,
-          allocatedPrincipalMinor:
-              allocatedByItemId[item.id]?.principal.minorUnits ?? 0,
+          allocatedPrincipalMinor: allocated.principal.minorUnits,
+        );
+        pendingTotalMinor += _debtBuckets.remainingTotalForBillItem(
+          item,
+          allocated: allocated,
         );
       }
       result.add(
@@ -216,6 +223,7 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
           expectedInterest: bill.expectedInterest,
           expectedFee: bill.expectedFee,
           pendingPrincipal: Money(minorUnits: pendingPrincipalMinor),
+          pendingTotal: Money(minorUnits: pendingTotalMinor),
           itemCount: bill.items.length,
         ),
       );

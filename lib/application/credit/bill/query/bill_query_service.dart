@@ -7,6 +7,7 @@ import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
+import 'package:smartflow/domain/credit/service/debt/credit_debt_bucket_service.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
@@ -31,12 +32,14 @@ class BillQueryServiceImpl implements BillQueryService {
     required InstallmentRepository installments,
     required RepaymentRepository repayments,
     required CreditLedgerPort ledger,
+    CreditDebtBucketService debtBuckets = const CreditDebtBucketService(),
     DateTime Function()? now,
   }) : _bills = bills,
        _creditAccounts = creditAccounts,
        _installments = installments,
        _repayments = repayments,
        _ledger = ledger,
+       _debtBuckets = debtBuckets,
        _now = now;
 
   final BillRepository _bills;
@@ -44,6 +47,7 @@ class BillQueryServiceImpl implements BillQueryService {
   final InstallmentRepository _installments;
   final RepaymentRepository _repayments;
   final CreditLedgerPort _ledger;
+  final CreditDebtBucketService _debtBuckets;
   final DateTime Function()? _now;
 
   @override
@@ -188,11 +192,11 @@ class BillQueryServiceImpl implements BillQueryService {
   ) {
     var total = 0;
     for (final item in bill.items) {
-      if (!_isOutstanding(item.status)) continue;
-      final allocatedPrincipal =
-          allocatedByItemId[item.id]?.principal.minorUnits ?? 0;
-      final remaining = item.expectedPrincipal.minorUnits - allocatedPrincipal;
-      if (remaining > 0) total += remaining;
+      total += _debtBuckets.remainingPrincipalForBillItem(
+        item,
+        allocatedPrincipalMinor:
+            allocatedByItemId[item.id]?.principal.minorUnits ?? 0,
+      );
     }
     return Money(minorUnits: total);
   }
@@ -203,18 +207,10 @@ class BillQueryServiceImpl implements BillQueryService {
   ) {
     var total = 0;
     for (final item in bill.items) {
-      if (!_isOutstanding(item.status)) continue;
-      final allocated =
-          allocatedByItemId[item.id] ?? RepaymentAmountBreakdown.zero;
-      final remaining =
-          item.expectedPrincipal.minorUnits -
-          allocated.principal.minorUnits +
-          item.expectedInterest.minorUnits -
-          allocated.interest.minorUnits +
-          item.expectedFee.minorUnits -
-          allocated.fee.minorUnits -
-          allocated.discount.minorUnits;
-      if (remaining > 0) total += remaining;
+      total += _debtBuckets.remainingTotalForBillItem(
+        item,
+        allocated: allocatedByItemId[item.id] ?? RepaymentAmountBreakdown.zero,
+      );
     }
     return Money(minorUnits: total);
   }
