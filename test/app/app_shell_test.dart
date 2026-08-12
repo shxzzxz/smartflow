@@ -30,22 +30,19 @@ GoRouter _buildRouter(String initialLocation) {
         builder: (context, state, child) => AppShell(child: child),
         routes: [
           GoRoute(
-            path: '/import',
-            builder: (context, state) => const Text('导入页'),
-          ),
-          GoRoute(
-            path: '/import/process/yimu',
-            builder: (context, state) => const Text('导入处理页'),
-          ),
-          GoRoute(
-            path: '/profile/import/preview',
-            builder: (context, state) => const Text('导入预览页'),
-          ),
-          GoRoute(
             path: '/home',
             builder: (context, state) => const Text('普通页面'),
           ),
         ],
+      ),
+      GoRoute(path: '/import', builder: (context, state) => const Text('导入页')),
+      GoRoute(
+        path: '/import/process/yimu',
+        builder: (context, state) => const Text('导入处理页'),
+      ),
+      GoRoute(
+        path: '/profile/import/preview',
+        builder: (context, state) => const Text('导入预览页'),
       ),
     ],
   );
