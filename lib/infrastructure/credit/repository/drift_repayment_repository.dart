@@ -58,6 +58,55 @@ class DriftRepaymentRepository implements RepaymentRepository {
   }
 
   @override
+  Future<List<Repayment>> listByContract(String contractId) async {
+    final direct = await listByTarget(RepaymentTargetType.contract, contractId);
+    final repaymentRows =
+        await (_database.select(_database.repayments).join([
+                innerJoin(
+                  _database.repaymentItems,
+                  _database.repaymentItems.repaymentId.equalsExp(
+                    _database.repayments.id,
+                  ),
+                ),
+                innerJoin(
+                  _database.billItems,
+                  _database.billItems.id.equalsExp(
+                    _database.repaymentItems.billItemId,
+                  ),
+                ),
+              ])
+              ..where(_database.billItems.contractId.equals(contractId))
+              ..where(
+                _database.repayments.targetType.equals(
+                  RepaymentTargetType.bill.code,
+                ),
+              )
+              ..orderBy([
+                OrderingTerm.desc(_database.repayments.createdAt),
+                OrderingTerm.desc(_database.repayments.id),
+              ]))
+            .get();
+    final billRepaymentIds = {
+      for (final row in repaymentRows) row.readTable(_database.repayments).id,
+    };
+    if (billRepaymentIds.isEmpty) return direct;
+
+    final rows =
+        await (_database.select(_database.repayments)
+              ..where((repayment) => repayment.id.isIn(billRepaymentIds))
+              ..orderBy([
+                (repayment) => OrderingTerm.desc(repayment.createdAt),
+                (repayment) => OrderingTerm.desc(repayment.id),
+              ]))
+            .get();
+    final items = await _listItemsByRepaymentIds(rows.map((row) => row.id));
+    final billRepayments = [
+      for (final row in rows) _mapRepayment(row, items[row.id] ?? const []),
+    ];
+    return [...direct, ...billRepayments];
+  }
+
+  @override
   Future<List<RepaymentItem>> listItems(String repaymentId) async {
     final rows =
         await (_database.select(_database.repaymentItems)

@@ -66,6 +66,9 @@ class _FakeRepaymentRepository implements RepaymentRepository {
   ) async => repayments;
 
   @override
+  Future<List<Repayment>> listByContract(String contractId) async => repayments;
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 

@@ -1,9 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
+import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repository.dart';
+import 'package:smartflow/infrastructure/database/app_database.dart';
 
 import '../../../helper/test_app_database.dart';
 
@@ -123,6 +126,65 @@ void main() {
 
       expect(await repository.findRepayment('repayment-1'), isNull);
       expect(await database.select(database.repaymentItems).get(), isEmpty);
+    });
+
+    test('lists bill repayments allocated to a contract', () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      final repository = DriftRepaymentRepository(database);
+
+      await database
+          .into(database.bills)
+          .insert(
+            BillsCompanion.insert(
+              id: 'bill-1',
+              accountId: 'account-1',
+              period: 202602,
+              status: BillStatus.billed,
+            ),
+          );
+      await database
+          .into(database.billItems)
+          .insert(
+            BillItemsCompanion.insert(
+              id: 'bill-item-1',
+              billId: 'bill-1',
+              itemType: BillItemType.installment,
+              contractId: const Value('contract-1'),
+              scheduleId: const Value('schedule-1'),
+              repaymentDate: DateTime(2026, 2, 1),
+              expectedPrincipalMinor: 1000,
+              expectedInterestMinor: 50,
+              expectedFeeMinor: 10,
+              status: BillItemStatus.paid,
+            ),
+          );
+      await repository.saveRepayment(
+        Repayment(
+          id: 'repayment-1',
+          repaymentType: RepaymentType.installment,
+          targetType: RepaymentTargetType.bill,
+          targetId: 'bill-1',
+          items: [
+            _item(
+              id: 'item-1',
+              repaymentId: 'repayment-1',
+              billItemId: 'bill-item-1',
+              principal: 1000,
+              interest: 50,
+              fee: 10,
+            ),
+          ],
+        ),
+      );
+
+      final result = await repository.listByContract('contract-1');
+
+      expect(result.map((repayment) => repayment.id), ['repayment-1']);
+      expect(
+        result.single.totalAllocated().interest,
+        const Money(minorUnits: 50),
+      );
     });
   });
 }
