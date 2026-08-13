@@ -576,8 +576,8 @@ void main() {
     await tester.enterText(find.byType(SearchBar), 'AppPageHeader');
     await tester.pump();
 
-    expect(find.text('页面标题'), findsOneWidget);
-    expect(find.byType(AppPageHeader), findsOneWidget);
+    expect(find.text('页面头部'), findsOneWidget);
+    expect(find.byType(AppPageHeader), findsWidgets);
     expect(find.byType(AppFormSection), findsNothing);
 
     await tester.enterText(find.byType(SearchBar), 'AppFormSection');
@@ -585,7 +585,7 @@ void main() {
 
     expect(find.text('表单分组'), findsOneWidget);
     expect(find.byType(AppFormSection), findsOneWidget);
-    expect(find.byType(AppPageHeader), findsNothing);
+    expect(find.text('页面头部'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

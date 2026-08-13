@@ -3,6 +3,7 @@ import 'package:remixicon/remixicon.dart';
 
 import '../token/component.dart';
 import '../token/spacing.dart';
+import 'app_page_header.dart';
 import 'app_select.dart';
 import 'app_switch.dart';
 
@@ -234,13 +235,7 @@ class AppPopupMenuButton extends StatelessWidget {
             icon,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
-          style: const ButtonStyle(
-            fixedSize: WidgetStatePropertyAll(Size.square(AppSpacing.space48)),
-            minimumSize: WidgetStatePropertyAll(
-              Size.square(AppSpacing.space48),
-            ),
-            padding: WidgetStatePropertyAll(EdgeInsets.all(AppSpacing.space6)),
-          ),
+          style: appHeaderIconButtonStyle,
         );
       },
     );

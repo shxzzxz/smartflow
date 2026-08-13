@@ -110,82 +110,88 @@ class _ReimbursementEditFormContentState
 
     return Form(
       key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.space16,
-          AppSpacing.space14,
-          AppSpacing.space16,
-          AppSpacing.space24,
-        ),
+      child: Column(
         children: [
-          AppPageHeader(
-            title: isClose ? '编辑结束报销' : '编辑报销到账',
-            showBackButton: true,
-          ),
-          const SizedBox(height: AppSpacing.space14),
-          if (state.outstandingBeforeTransaction != null) ...[
-            AppFormSection(
+          AppPageHeader(title: isClose ? '编辑结束报销' : '编辑报销到账'),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.space16,
+                AppSpacing.space8,
+                AppSpacing.space16,
+                AppSpacing.space24,
+              ),
               children: [
-                Text(
-                  '应收：${formatMoney(state.outstandingBeforeTransaction!, style: MoneyFormatStyle.plain)}',
-                  style: context.appTextStyles.formPlainValue,
+                if (state.outstandingBeforeTransaction != null) ...[
+                  AppFormSection(
+                    children: [
+                      Text(
+                        '应收：${formatMoney(state.outstandingBeforeTransaction!, style: MoneyFormatStyle.plain)}',
+                        style: context.appTextStyles.formPlainValue,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.space14),
+                ],
+                AppFormSection(
+                  title: '到账信息',
+                  children: [
+                    MoneyPlainFormRow(
+                      label: isClose ? '实收金额' : '到账金额',
+                      controller: _amountController,
+                      hintText: isClose ? '请输入实收金额' : '请输入到账金额',
+                      validator:
+                          isClose
+                              ? validateNonNegativeMoneyText
+                              : validatePositiveMoneyText,
+                    ),
+                    AccountPlainFormRow(
+                      label: '到账账户',
+                      account: receiveAccount,
+                      selectedId: state.receiveAccountId,
+                      placeholder: '请选择到账账户',
+                      onTap:
+                          (onSelected) => _pickReceiveAccount(
+                            state.accounts,
+                            selectedId: state.receiveAccountId,
+                            onSelected: onSelected,
+                          ),
+                      onChanged:
+                          ref.read(provider.notifier).setReceiveAccountId,
+                      validator:
+                          (value) => validateReimbursementReceiveAccount(
+                            isClose: isClose,
+                            amountText: _amountController.text,
+                            accountId: value,
+                          ),
+                    ),
+                    DateTimePlainFormRow(
+                      label: isClose ? '结束时间' : '到账时间',
+                      dateTime: state.occurredAt,
+                      value: _formatDateTime(state.occurredAt),
+                      onTap:
+                          (onSelected) => _pickOccurredAt(
+                            state.occurredAt,
+                            onSelected,
+                            isClose,
+                          ),
+                      onChanged: (value) {
+                        if (value != null) {
+                          ref.read(provider.notifier).setOccurredAt(value);
+                        }
+                      },
+                    ),
+                    NotePlainFormRow(controller: _noteController),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.space24),
+                AppSubmitButton(
+                  label: '保存',
+                  loading: state.submitting,
+                  onPressed: () => _submit(provider),
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.space14),
-          ],
-          AppFormSection(
-            title: '到账信息',
-            children: [
-              MoneyPlainFormRow(
-                label: isClose ? '实收金额' : '到账金额',
-                controller: _amountController,
-                hintText: isClose ? '请输入实收金额' : '请输入到账金额',
-                validator:
-                    isClose
-                        ? validateNonNegativeMoneyText
-                        : validatePositiveMoneyText,
-              ),
-              AccountPlainFormRow(
-                label: '到账账户',
-                account: receiveAccount,
-                selectedId: state.receiveAccountId,
-                placeholder: '请选择到账账户',
-                onTap:
-                    (onSelected) => _pickReceiveAccount(
-                      state.accounts,
-                      selectedId: state.receiveAccountId,
-                      onSelected: onSelected,
-                    ),
-                onChanged: ref.read(provider.notifier).setReceiveAccountId,
-                validator:
-                    (value) => validateReimbursementReceiveAccount(
-                      isClose: isClose,
-                      amountText: _amountController.text,
-                      accountId: value,
-                    ),
-              ),
-              DateTimePlainFormRow(
-                label: isClose ? '结束时间' : '到账时间',
-                dateTime: state.occurredAt,
-                value: _formatDateTime(state.occurredAt),
-                onTap:
-                    (onSelected) =>
-                        _pickOccurredAt(state.occurredAt, onSelected, isClose),
-                onChanged: (value) {
-                  if (value != null) {
-                    ref.read(provider.notifier).setOccurredAt(value);
-                  }
-                },
-              ),
-              NotePlainFormRow(controller: _noteController),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space24),
-          AppSubmitButton(
-            label: '保存',
-            loading: state.submitting,
-            onPressed: () => _submit(provider),
           ),
         ],
       ),

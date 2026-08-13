@@ -5,6 +5,7 @@ import 'package:remixicon/remixicon.dart';
 
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../data/manual_catalog.dart';
 import '../model/manual_article.dart';
@@ -132,23 +133,28 @@ class _ManualArticlePageState extends State<ManualArticlePage> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: '文章目录',
-          icon: const Icon(RemixIcons.menu_2_line),
-          onPressed: _openArticleDirectory,
+      body: SafeArea(
+        child: Column(
+          children: [
+            AppPageHeader(
+              title: article.title,
+              actions: [
+                AppHeaderIconButton(
+                  tooltip: '文章目录',
+                  icon: RemixIcons.menu_2_line,
+                  onPressed: _openArticleDirectory,
+                ),
+                AppHeaderIconButton(
+                  tooltip: '本页目录',
+                  icon: RemixIcons.list_ordered_2,
+                  onPressed: _headings.isEmpty ? null : _openArticleToc,
+                ),
+              ],
+            ),
+            Expanded(child: _buildBody(article)),
+          ],
         ),
-        title: Text(article.title),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            tooltip: '本页目录',
-            icon: const Icon(RemixIcons.list_ordered_2),
-            onPressed: _headings.isEmpty ? null : _openArticleToc,
-          ),
-        ],
       ),
-      body: _buildBody(article),
     );
   }
 

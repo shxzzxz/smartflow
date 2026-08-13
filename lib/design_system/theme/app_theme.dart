@@ -36,13 +36,6 @@ abstract final class AppTheme {
       canvasColor: colors.surface,
       textTheme: textTheme,
       extensions: [extension],
-      appBarTheme: AppBarThemeData(
-        backgroundColor: colors.surfaceContainerLowest,
-        foregroundColor: colors.onSurface,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-      ),
       filledButtonTheme: FilledButtonThemeData(
         style: ButtonStyle(
           minimumSize: const WidgetStatePropertyAll(

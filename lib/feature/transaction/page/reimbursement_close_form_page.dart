@@ -84,97 +84,101 @@ class _ReimbursementCloseFormPageState
 
     return Form(
       key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.space16,
-          AppSpacing.space14,
-          AppSpacing.space16,
-          AppSpacing.space24,
-        ),
+      child: Column(
         children: [
-          const AppPageHeader(
-            title: '结束报销',
-            subtitle: '记录最后一笔到账并对账差额',
-            showBackButton: true,
-          ),
-          const SizedBox(height: AppSpacing.space14),
-          if (state.outstanding != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.space8),
-              child: Text('剩余应收：${state.outstanding!.format()}'),
-            ),
-          ValueListenableBuilder<TextEditingValue>(
-            valueListenable: _amountController,
-            builder: (context, value, _) {
-              final actual = Money.tryParse(value.text);
-              final outstanding = state.outstanding;
-              if (actual == null || outstanding == null) {
-                return const SizedBox.shrink();
-              }
-              final gap = actual - outstanding;
-              if (gap.minorUnits == 0) return const SizedBox.shrink();
-              return Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.space12),
-                child: Text(
-                  gap.minorUnits > 0
-                      ? '多收 ${gap.format()}（计入报销差额收入）'
-                      : '少收 ${gap.abs().format()}（计入原报销支出分类）',
+          const AppPageHeader(title: '结束报销', subtitle: '记录最后一笔到账并对账差额'),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.space16,
+                AppSpacing.space8,
+                AppSpacing.space16,
+                AppSpacing.space24,
+              ),
+              children: [
+                if (state.outstanding != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.space8),
+                    child: Text('剩余应收：${state.outstanding!.format()}'),
+                  ),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _amountController,
+                  builder: (context, value, _) {
+                    final actual = Money.tryParse(value.text);
+                    final outstanding = state.outstanding;
+                    if (actual == null || outstanding == null) {
+                      return const SizedBox.shrink();
+                    }
+                    final gap = actual - outstanding;
+                    if (gap.minorUnits == 0) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(
+                        bottom: AppSpacing.space12,
+                      ),
+                      child: Text(
+                        gap.minorUnits > 0
+                            ? '多收 ${gap.format()}（计入报销差额收入）'
+                            : '少收 ${gap.abs().format()}（计入原报销支出分类）',
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
-          AppFormSection(
-            title: '到账信息',
-            children: [
-              MoneyPlainFormRow(
-                label: '实收金额',
-                controller: _amountController,
-                hintText: '请输入实收金额',
-                validator: validateNonNegativeMoneyText,
-              ),
-              AccountPlainFormRow(
-                label: '到账账户',
-                account: receiveAccount,
-                selectedId: state.receiveAccountId,
-                placeholder: '请选择到账账户',
-                onTap:
-                    (onSelected) => _pickReceiveAccount(
-                      state.accounts,
-                      selectedId: state.receiveAccountId,
-                      onSelected: onSelected,
+                AppFormSection(
+                  title: '到账信息',
+                  children: [
+                    MoneyPlainFormRow(
+                      label: '实收金额',
+                      controller: _amountController,
+                      hintText: '请输入实收金额',
+                      validator: validateNonNegativeMoneyText,
                     ),
-                onChanged: ref.read(provider.notifier).setReceiveAccountId,
-                validator: (value) {
-                  final amount = Money.tryParse(_amountController.text);
-                  if (amount != null &&
-                      amount.minorUnits > 0 &&
-                      value == null) {
-                    return '请选择账户';
-                  }
-                  return null;
-                },
-              ),
-              DateTimePlainFormRow(
-                label: '结束时间',
-                dateTime: state.occurredAt,
-                value: _formatDateTime(state.occurredAt),
-                onTap:
-                    (onSelected) =>
-                        _pickOccurredAt(state.occurredAt, onSelected),
-                onChanged: (value) {
-                  if (value != null) {
-                    ref.read(provider.notifier).setOccurredAt(value);
-                  }
-                },
-              ),
-              NotePlainFormRow(controller: _noteController),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space24),
-          AppSubmitButton(
-            label: '保存',
-            loading: state.submitting,
-            onPressed: () => _submit(provider),
+                    AccountPlainFormRow(
+                      label: '到账账户',
+                      account: receiveAccount,
+                      selectedId: state.receiveAccountId,
+                      placeholder: '请选择到账账户',
+                      onTap:
+                          (onSelected) => _pickReceiveAccount(
+                            state.accounts,
+                            selectedId: state.receiveAccountId,
+                            onSelected: onSelected,
+                          ),
+                      onChanged:
+                          ref.read(provider.notifier).setReceiveAccountId,
+                      validator: (value) {
+                        final amount = Money.tryParse(_amountController.text);
+                        if (amount != null &&
+                            amount.minorUnits > 0 &&
+                            value == null) {
+                          return '请选择账户';
+                        }
+                        return null;
+                      },
+                    ),
+                    DateTimePlainFormRow(
+                      label: '结束时间',
+                      dateTime: state.occurredAt,
+                      value: _formatDateTime(state.occurredAt),
+                      onTap:
+                          (onSelected) =>
+                              _pickOccurredAt(state.occurredAt, onSelected),
+                      onChanged: (value) {
+                        if (value != null) {
+                          ref.read(provider.notifier).setOccurredAt(value);
+                        }
+                      },
+                    ),
+                    NotePlainFormRow(controller: _noteController),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.space24),
+                AppSubmitButton(
+                  label: '保存',
+                  loading: state.submitting,
+                  onPressed: () => _submit(provider),
+                ),
+              ],
+            ),
           ),
         ],
       ),

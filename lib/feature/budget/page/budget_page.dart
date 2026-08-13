@@ -67,70 +67,61 @@ class _BudgetPageState extends ConsumerState<BudgetPage> {
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.space8,
-                AppSpacing.space8,
-                AppSpacing.space16,
-                AppSpacing.space4,
-              ),
-              child: AppPageHeader(
-                title:
-                    '${state.visibleMonth.year}年${state.visibleMonth.month}月预算',
-                showBackButton: true,
-                actions: [
-                  AppHeaderIconButton(
-                    icon: RemixIcons.add_line,
-                    tooltip: '新增预算',
-                    onPressed:
-                        () => _addCategoryBudget(
-                          context,
-                          ref,
-                          report: loaded?.report,
-                          categories: loaded?.categories ?? const [],
-                          provider: viewModelProvider,
-                        ),
-                  ),
-                  AppPopupMenuButton(
-                    tooltip: '更多',
-                    icon: RemixIcons.more_2_fill,
-                    items: [
-                      AppPopupMenuAction(
-                        label: '设置总预算',
-                        icon: RemixIcons.edit_line,
-                        onPressed:
-                            loaded == null
-                                ? null
-                                : () => _editBudget(
-                                  context,
-                                  ref,
-                                  provider: viewModelProvider,
-                                  existing: loaded.report.totalBudget,
-                                  title: '设置总预算',
-                                ),
+            AppPageHeader(
+              title:
+                  '${state.visibleMonth.year}年${state.visibleMonth.month}月预算',
+              actions: [
+                AppHeaderIconButton(
+                  icon: RemixIcons.add_line,
+                  tooltip: '新增预算',
+                  onPressed:
+                      () => _addCategoryBudget(
+                        context,
+                        ref,
+                        report: loaded?.report,
+                        categories: loaded?.categories ?? const [],
+                        provider: viewModelProvider,
                       ),
-                      AppPopupMenuAction(
-                        label: '清空本月预算',
-                        icon: RemixIcons.delete_bin_line,
-                        onPressed:
-                            hasBudgets
-                                ? () => _clearMonthBudgets(
-                                  context,
-                                  ref,
-                                  provider: viewModelProvider,
-                                )
-                                : null,
-                      ),
-                      AppPopupMenuToggle(
-                        label: '复制上月预算',
-                        value: state.copyEnabled,
-                        onChanged:
-                            (value) => _setCopyEnabled(context, ref, value),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+                AppPopupMenuButton(
+                  tooltip: '更多',
+                  icon: RemixIcons.more_2_fill,
+                  items: [
+                    AppPopupMenuAction(
+                      label: '设置总预算',
+                      icon: RemixIcons.edit_line,
+                      onPressed:
+                          loaded == null
+                              ? null
+                              : () => _editBudget(
+                                context,
+                                ref,
+                                provider: viewModelProvider,
+                                existing: loaded.report.totalBudget,
+                                title: '设置总预算',
+                              ),
+                    ),
+                    AppPopupMenuAction(
+                      label: '清空本月预算',
+                      icon: RemixIcons.delete_bin_line,
+                      onPressed:
+                          hasBudgets
+                              ? () => _clearMonthBudgets(
+                                context,
+                                ref,
+                                provider: viewModelProvider,
+                              )
+                              : null,
+                    ),
+                    AppPopupMenuToggle(
+                      label: '复制上月预算',
+                      value: state.copyEnabled,
+                      onChanged:
+                          (value) => _setCopyEnabled(context, ref, value),
+                    ),
+                  ],
+                ),
+              ],
             ),
             Expanded(
               child: switch (state.content) {
@@ -445,36 +436,27 @@ class _BudgetDetailContent extends ConsumerWidget {
     );
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.space8,
-            AppSpacing.space8,
-            AppSpacing.space16,
-            AppSpacing.space12,
-          ),
-          child: AppPageHeader(
-            title: progress.name,
-            showBackButton: true,
-            actions: [
-              AppHeaderIconButton(
-                icon: RemixIcons.edit_line,
-                tooltip: '编辑分类预算',
-                onPressed:
-                    () => _editBudget(
-                      context,
-                      ref,
-                      provider: viewModelProvider,
-                      existing: progress,
-                    ),
-              ),
-            ],
-          ),
+        AppPageHeader(
+          title: progress.name,
+          actions: [
+            AppHeaderIconButton(
+              icon: RemixIcons.edit_line,
+              tooltip: '编辑分类预算',
+              onPressed:
+                  () => _editBudget(
+                    context,
+                    ref,
+                    provider: viewModelProvider,
+                    existing: progress,
+                  ),
+            ),
+          ],
         ),
         Expanded(
           child: TransactionFeedScrollView(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.space16,
-              AppSpacing.space4,
+              AppSpacing.space8,
               AppSpacing.space16,
               AppSpacing.space24,
             ),

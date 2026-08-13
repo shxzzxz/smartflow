@@ -8,6 +8,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_form_section.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/icon_catalog_picker.dart';
@@ -66,8 +67,14 @@ class _CategoryFormStatusPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text(message)),
+      body: SafeArea(
+        child: Column(
+          children: [
+            AppPageHeader(title: title),
+            Expanded(child: Center(child: Text(message))),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -313,8 +320,8 @@ class _CategoryFormHeader extends StatelessWidget {
             child: IconButton(
               onPressed: () => context.pop(),
               icon: const Icon(RemixIcons.arrow_left_s_line),
-              iconSize: 32,
               tooltip: '返回',
+              style: appHeaderIconButtonStyle,
             ),
           ),
           Align(

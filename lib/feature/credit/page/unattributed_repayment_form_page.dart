@@ -7,6 +7,7 @@ import '../../../core/money/money.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
@@ -52,12 +53,20 @@ class _UnattributedRepaymentFormPageState
     final asyncState = ref.watch(provider);
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(title: const Text('未归属还款')),
-      body: switch (asyncState) {
-        AsyncData(value: final state) => _buildState(provider, state),
-        AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+      body: SafeArea(
+        child: Column(
+          children: [
+            const AppPageHeader(title: '未归属还款'),
+            Expanded(
+              child: switch (asyncState) {
+                AsyncData(value: final state) => _buildState(provider, state),
+                AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
+                _ => const Center(child: CircularProgressIndicator()),
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 

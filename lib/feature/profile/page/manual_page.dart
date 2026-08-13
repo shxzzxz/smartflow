@@ -4,6 +4,7 @@ import 'package:remixicon/remixicon.dart';
 
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../data/manual_catalog.dart';
 import '../model/manual_article.dart';
@@ -44,45 +45,58 @@ class _ManualPageState extends State<ManualPage> {
 
     return Scaffold(
       backgroundColor: colors.surface,
-      appBar: AppBar(title: const Text('使用手册')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.space20,
-          AppSpacing.space8,
-          AppSpacing.space20,
-          AppSpacing.space32,
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
-            child: Text(
-              '从记录第一笔账开始，逐步理解账户、交易和信贷功能。',
-              style: styles.pageSubtitle,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.space16),
-          SearchBar(
-            leading: const Icon(RemixIcons.search_line),
-            hintText: '搜索手册',
-            onChanged: (value) => setState(() => _query = value),
-            trailing: [
-              if (_query.isNotEmpty)
-                IconButton(
-                  tooltip: '清除搜索',
-                  icon: const Icon(RemixIcons.close_line),
-                  onPressed: () => setState(() => _query = ''),
+      body: SafeArea(
+        child: Column(
+          children: [
+            const AppPageHeader(title: '使用手册'),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.space20,
+                  AppSpacing.space8,
+                  AppSpacing.space20,
+                  AppSpacing.space32,
                 ),
-            ],
-          ),
-          if (groups.isEmpty) ...[
-            const SizedBox(height: AppSpacing.space24),
-            const _ManualEmptyState(),
-          ] else
-            for (final group in groups) ...[
-              const SizedBox(height: AppSpacing.space24),
-              _ManualSection(category: group.key, articles: group.value),
-            ],
-        ],
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space4,
+                    ),
+                    child: Text(
+                      '从记录第一笔账开始，逐步理解账户、交易和信贷功能。',
+                      style: styles.pageSubtitle,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  SearchBar(
+                    leading: const Icon(RemixIcons.search_line),
+                    hintText: '搜索手册',
+                    onChanged: (value) => setState(() => _query = value),
+                    trailing: [
+                      if (_query.isNotEmpty)
+                        IconButton(
+                          tooltip: '清除搜索',
+                          icon: const Icon(RemixIcons.close_line),
+                          onPressed: () => setState(() => _query = ''),
+                        ),
+                    ],
+                  ),
+                  if (groups.isEmpty) ...[
+                    const SizedBox(height: AppSpacing.space24),
+                    const _ManualEmptyState(),
+                  ] else
+                    for (final group in groups) ...[
+                      const SizedBox(height: AppSpacing.space24),
+                      _ManualSection(
+                        category: group.key,
+                        articles: group.value,
+                      ),
+                    ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

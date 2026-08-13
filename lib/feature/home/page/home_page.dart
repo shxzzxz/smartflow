@@ -6,13 +6,13 @@ import 'package:remixicon/remixicon.dart';
 import '../../../application/shared/app_settings_store.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_month_picker.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
 import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
 import 'package:smartflow/feature/shared/presentation/pull_to_create_sensitivity_options.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../shared/view_model/app_settings_view_model.dart';
 import '../view_model/home_view_model.dart';
-import '../widget/home_header.dart';
 import '../widget/home_pull_to_create.dart';
 import '../widget/home_transaction_filter_sheet.dart';
 import '../../../widget/business/finance/cashflow_summary_card.dart';
@@ -36,21 +36,20 @@ class _HomePageState extends ConsumerState<HomePage> {
       body: SafeArea(
         child: Column(
           children: [
-            HomeHeader(
-              visibleMonth: state.visibleMonth,
-              onMonthPressed: _pickMonth,
-              onPreviousMonth: () => _shiftMonth(-1),
-              onNextMonth: () => _shiftMonth(1),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _HomeFilterButton(filter: state.transactionFilter),
-                  _HomeSettingsMenu(
-                    showAddTransactionFab: settings.showAddTransactionFab,
-                    pullToCreateSensitivity: settings.pullToCreateSensitivity,
-                  ),
-                ],
+            AppPageHeader.custom(
+              titleContent: AppMonthSelector(
+                visibleMonth: state.visibleMonth,
+                onPreviousMonth: () => _shiftMonth(-1),
+                onMonthPressed: _pickMonth,
+                onNextMonth: () => _shiftMonth(1),
               ),
+              actions: [
+                _HomeFilterButton(filter: state.transactionFilter),
+                _HomeSettingsMenu(
+                  showAddTransactionFab: settings.showAddTransactionFab,
+                  pullToCreateSensitivity: settings.pullToCreateSensitivity,
+                ),
+              ],
             ),
             Expanded(
               child: HomePullToCreate(

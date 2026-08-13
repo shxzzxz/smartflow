@@ -8,6 +8,7 @@ import '../../../core/time/date_label.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_section.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
@@ -70,18 +71,24 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(title: const Text('新建分期')),
-      body: switch (asyncState) {
-        AsyncData(value: final InstallmentFormLoaded state) => _buildForm(
-          context,
-          state,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const AppPageHeader(title: '新建分期'),
+            Expanded(
+              child: switch (asyncState) {
+                AsyncData(value: final InstallmentFormLoaded state) =>
+                  _buildForm(context, state),
+                AsyncData(value: InstallmentFormNotFound()) => const Center(
+                  child: Text('负债账户不存在'),
+                ),
+                AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
+                _ => const Center(child: CircularProgressIndicator()),
+              },
+            ),
+          ],
         ),
-        AsyncData(value: InstallmentFormNotFound()) => const Center(
-          child: Text('负债账户不存在'),
-        ),
-        AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+      ),
     );
   }
 

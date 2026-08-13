@@ -43,7 +43,6 @@ class LogViewerPage extends ConsumerWidget {
                 children: [
                   AppPageHeader(
                     title: '日志',
-                    showBackButton: true,
                     actions: [
                       AppHeaderIconButton(
                         icon: RemixIcons.refresh_line,

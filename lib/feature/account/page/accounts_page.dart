@@ -8,6 +8,7 @@ import '../../../core/money/money_formatter.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../application/ledger/ledger_query_api.dart';
@@ -107,96 +108,106 @@ class _AccountsContent extends ConsumerWidget {
         sections.isNotEmpty &&
         sections.every((section) => collapsedKeys.contains(section.id));
 
-    return ReorderableListView.builder(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space20,
-        AppSpacing.space24,
-        AppSpacing.space20,
-        AppSpacing.space48 + AppSpacing.space48,
-      ),
-      buildDefaultDragHandles: false,
-      header: Column(
-        children: [
-          _AssetsHeader(
-            hideBalances: hideBalances,
-            onToggleHide: onToggleHide,
-            allCollapsed: sections.isEmpty ? null : allCollapsed,
-            onToggleCollapseAll: () {
-              final viewModel = ref.read(
-                assetSectionCollapseViewModelProvider.notifier,
-              );
-              if (allCollapsed) {
-                viewModel.expandAll();
-              } else {
-                viewModel.collapseAll([
-                  for (final section in sections) section.id,
-                ]);
-              }
-            },
-            onManageGroups: () => _showAccountGroupManagerSheet(context, ref),
-          ),
-          const SizedBox(height: AppSpacing.space18),
-          _NetAssetCard(comparison: balanceSheet, hideBalances: hideBalances),
-          if (sections.isEmpty) ...[
-            const SizedBox(height: AppSpacing.space24),
-            const _EmptyAccountsHint(),
-          ],
-        ],
-      ),
-      footer:
-          archivedAccounts.isNotEmpty
-              ? Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.space20),
-                child: _ArchivedAccountsEntry(
-                  count: archivedAccounts.length,
-                  onTap:
-                      () => context.push(
-                        '/account/archived',
-                        extra: hideBalances,
-                      ),
+    return Column(
+      children: [
+        _AssetsHeader(
+          hideBalances: hideBalances,
+          onToggleHide: onToggleHide,
+          allCollapsed: sections.isEmpty ? null : allCollapsed,
+          onToggleCollapseAll: () {
+            final viewModel = ref.read(
+              assetSectionCollapseViewModelProvider.notifier,
+            );
+            if (allCollapsed) {
+              viewModel.expandAll();
+            } else {
+              viewModel.collapseAll([
+                for (final section in sections) section.id,
+              ]);
+            }
+          },
+          onManageGroups: () => _showAccountGroupManagerSheet(context, ref),
+        ),
+        Expanded(
+          child: ReorderableListView.builder(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space16,
+              AppSpacing.space8,
+              AppSpacing.space16,
+              AppSpacing.space48 + AppSpacing.space48,
+            ),
+            buildDefaultDragHandles: false,
+            header: Column(
+              children: [
+                _NetAssetCard(
+                  comparison: balanceSheet,
+                  hideBalances: hideBalances,
                 ),
-              )
-              : null,
-      itemCount: sections.length,
-      onReorder:
-          (oldIndex, newIndex) => _reorderSections(
-            context,
-            ref,
-            sections: sections,
-            groups: groups,
-            oldIndex: oldIndex,
-            newIndex: newIndex,
-          ),
-      itemBuilder: (context, index) {
-        final section = sections[index];
-        return Padding(
-          key: ValueKey(section.id),
-          padding: EdgeInsets.only(
-            top: index == 0 ? AppSpacing.space28 : AppSpacing.space20,
-          ),
-          child: _AccountSection(
-            section: section,
-            groupIndex: index,
-            reorderEnabled: section.id != 'ungrouped',
-            hideBalances: hideBalances,
-            collapsed: collapsedKeys.contains(section.id),
-            onToggleCollapsed:
-                () => ref
-                    .read(assetSectionCollapseViewModelProvider.notifier)
-                    .toggle(section.id),
-            onAccountReorder: (oldAccountIndex, newAccountIndex) {
-              if (oldAccountIndex < newAccountIndex) newAccountIndex -= 1;
-              _moveAccount(
-                context,
-                ref,
-                account: section.accounts[oldAccountIndex],
-                section: section,
-                insertAt: newAccountIndex,
+                if (sections.isEmpty) ...[
+                  const SizedBox(height: AppSpacing.space24),
+                  const _EmptyAccountsHint(),
+                ],
+              ],
+            ),
+            footer:
+                archivedAccounts.isNotEmpty
+                    ? Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.space20),
+                      child: _ArchivedAccountsEntry(
+                        count: archivedAccounts.length,
+                        onTap:
+                            () => context.push(
+                              '/account/archived',
+                              extra: hideBalances,
+                            ),
+                      ),
+                    )
+                    : null,
+            itemCount: sections.length,
+            onReorder:
+                (oldIndex, newIndex) => _reorderSections(
+                  context,
+                  ref,
+                  sections: sections,
+                  groups: groups,
+                  oldIndex: oldIndex,
+                  newIndex: newIndex,
+                ),
+            itemBuilder: (context, index) {
+              final section = sections[index];
+              return Padding(
+                key: ValueKey(section.id),
+                padding: EdgeInsets.only(
+                  top: index == 0 ? AppSpacing.space28 : AppSpacing.space20,
+                ),
+                child: _AccountSection(
+                  section: section,
+                  groupIndex: index,
+                  reorderEnabled: section.id != 'ungrouped',
+                  hideBalances: hideBalances,
+                  collapsed: collapsedKeys.contains(section.id),
+                  onToggleCollapsed:
+                      () => ref
+                          .read(assetSectionCollapseViewModelProvider.notifier)
+                          .toggle(section.id),
+                  onAccountReorder: (oldAccountIndex, newAccountIndex) {
+                    if (oldAccountIndex < newAccountIndex) {
+                      newAccountIndex -= 1;
+                    }
+                    _moveAccount(
+                      context,
+                      ref,
+                      account: section.accounts[oldAccountIndex],
+                      section: section,
+                      insertAt: newAccountIndex,
+                    );
+                  },
+                ),
               );
             },
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 }
@@ -275,26 +286,22 @@ class _AssetsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final allCollapsed = this.allCollapsed;
-    return Row(
-      children: [
-        Text('资产', style: context.appTextStyles.pageTitle),
-        const Spacer(),
+    return AppPageHeader(
+      title: '资产',
+      actions: [
         if (allCollapsed != null)
-          IconButton(
+          AppHeaderIconButton(
             onPressed: onToggleCollapseAll,
-            icon: Icon(
-              allCollapsed
-                  ? RemixIcons.expand_up_down_line
-                  : RemixIcons.contract_up_down_line,
-              color: colors.onSurfaceVariant,
-            ),
+            icon:
+                allCollapsed
+                    ? RemixIcons.expand_up_down_line
+                    : RemixIcons.contract_up_down_line,
             tooltip: allCollapsed ? '展开全部分组' : '折叠全部分组',
           ),
-        IconButton(
+        AppHeaderIconButton(
           onPressed: () => context.push('/account/new'),
-          icon: Icon(RemixIcons.add_line, color: colors.onSurface),
+          icon: RemixIcons.add_line,
           tooltip: '新建账户',
         ),
         AppPopupMenuButton(

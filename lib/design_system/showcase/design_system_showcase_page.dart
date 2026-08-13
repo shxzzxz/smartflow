@@ -478,9 +478,9 @@ const _showcaseExamples = <_ShowcaseExample>[
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.pageHeader,
     category: '布局与容器',
-    title: '页面标题',
-    componentNames: 'AppPageHeader',
-    keywords: ['布局', '标题', '操作'],
+    title: '页面头部',
+    componentNames: 'AppPageHeader / AppHeaderIconButton',
+    keywords: ['布局', '标题', '页头', '返回', '操作'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.formSection,
@@ -689,12 +689,11 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
 
     return Scaffold(
       backgroundColor: colors.surface,
-      appBar: AppBar(title: const Text('组件示例'), centerTitle: true),
       body: SafeArea(
-        top: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const AppPageHeader(title: '组件示例'),
             ColoredBox(
               color: colors.surfaceContainerLowest,
               child: Column(
@@ -2214,14 +2213,52 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   }
 
   Widget _pageHeaderPreview() {
-    return AppPageHeader(
-      title: '页面标题文案',
-      subtitle: '页面说明文案与操作入口',
-      actions: [
-        AppHeaderIconButton(
-          icon: Icons.more_horiz_rounded,
-          tooltip: '更多操作',
-          onPressed: () => _showMessage('更多操作'),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpacing.space12,
+      children: [
+        _PreviewBackdrop(
+          child: AppPageHeader(
+            title: '一级页标题',
+            showBackButton: false,
+            actions: [
+              AppHeaderIconButton(
+                icon: RemixIcons.add_line,
+                tooltip: '新建',
+                onPressed: () => _showMessage('新建'),
+              ),
+              AppPopupMenuButton(
+                tooltip: '更多操作',
+                icon: RemixIcons.more_2_fill,
+                items: [
+                  AppPopupMenuAction(
+                    label: '页面设置',
+                    icon: RemixIcons.settings_3_line,
+                    onPressed: () => _showMessage('页面设置'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        _PreviewBackdrop(
+          child: AppPageHeader(
+            title: '二级页标题文案很长时会省略',
+            subtitle: '页面说明文案',
+            onBack: () => _showMessage('返回'),
+            actions: [
+              AppHeaderIconButton(
+                icon: RemixIcons.edit_line,
+                tooltip: '编辑',
+                onPressed: () => _showMessage('编辑'),
+              ),
+              const AppHeaderIconButton(
+                icon: RemixIcons.delete_bin_line,
+                tooltip: '暂不可删除',
+                onPressed: null,
+              ),
+            ],
+          ),
         ),
       ],
     );

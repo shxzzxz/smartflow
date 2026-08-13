@@ -41,21 +41,12 @@ class StatisticsTransactionsPage extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.space8,
-                AppSpacing.space8,
-                AppSpacing.space16,
-                AppSpacing.space12,
-              ),
-              child: AppPageHeader(
-                title: title,
-                subtitle:
-                    occurredFrom == null
-                        ? '截至${cutoffDate.year}年${cutoffDate.month}月的贡献流水'
-                        : '${occurredFrom!.year}年${occurredFrom!.month}月贡献流水',
-                showBackButton: true,
-              ),
+            AppPageHeader(
+              title: title,
+              subtitle:
+                  occurredFrom == null
+                      ? '截至${cutoffDate.year}年${cutoffDate.month}月的贡献流水'
+                      : '${occurredFrom!.year}年${occurredFrom!.month}月贡献流水',
             ),
             Expanded(
               child: switch (content) {
@@ -64,7 +55,7 @@ class StatisticsTransactionsPage extends ConsumerWidget {
                     groups: groups,
                     padding: const EdgeInsets.fromLTRB(
                       AppSpacing.space16,
-                      0,
+                      AppSpacing.space8,
                       AppSpacing.space16,
                       AppSpacing.space24,
                     ),

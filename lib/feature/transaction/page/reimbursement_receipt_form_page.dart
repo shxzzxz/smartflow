@@ -74,69 +74,71 @@ class _ReimbursementReceiptFormPageState
 
     return Form(
       key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.space16,
-          AppSpacing.space14,
-          AppSpacing.space16,
-          AppSpacing.space24,
-        ),
+      child: Column(
         children: [
-          const AppPageHeader(
-            title: '记一笔到账',
-            subtitle: '将报销款记入资金账户',
-            showBackButton: true,
-          ),
-          const SizedBox(height: AppSpacing.space14),
-          if (state.outstanding != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.space12),
-              child: Text('剩余应收：${state.outstanding!.format()}'),
-            ),
-          AppFormSection(
-            title: '到账信息',
-            children: [
-              MoneyPlainFormRow(
-                label: '到账金额',
-                controller: _amountController,
-                hintText: '请输入到账金额',
-                validator: validatePositiveMoneyText,
+          const AppPageHeader(title: '记一笔到账', subtitle: '将报销款记入资金账户'),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.space16,
+                AppSpacing.space8,
+                AppSpacing.space16,
+                AppSpacing.space24,
               ),
-              AccountPlainFormRow(
-                label: '到账账户',
-                account: receiveAccount,
-                selectedId: state.receiveAccountId,
-                placeholder: '请选择到账账户',
-                onTap:
-                    (onSelected) => _pickReceiveAccount(
-                      state.accounts,
-                      selectedId: state.receiveAccountId,
-                      onSelected: onSelected,
+              children: [
+                if (state.outstanding != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.space12),
+                    child: Text('剩余应收：${state.outstanding!.format()}'),
+                  ),
+                AppFormSection(
+                  title: '到账信息',
+                  children: [
+                    MoneyPlainFormRow(
+                      label: '到账金额',
+                      controller: _amountController,
+                      hintText: '请输入到账金额',
+                      validator: validatePositiveMoneyText,
                     ),
-                onChanged: ref.read(provider.notifier).setReceiveAccountId,
-                validator: (value) => value == null ? '请选择账户' : null,
-              ),
-              DateTimePlainFormRow(
-                label: '到账时间',
-                dateTime: state.occurredAt,
-                value: _formatDateTime(state.occurredAt),
-                onTap:
-                    (onSelected) =>
-                        _pickOccurredAt(state.occurredAt, onSelected),
-                onChanged: (value) {
-                  if (value != null) {
-                    ref.read(provider.notifier).setOccurredAt(value);
-                  }
-                },
-              ),
-              NotePlainFormRow(controller: _noteController),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space24),
-          AppSubmitButton(
-            label: '保存',
-            loading: state.submitting,
-            onPressed: () => _submit(provider),
+                    AccountPlainFormRow(
+                      label: '到账账户',
+                      account: receiveAccount,
+                      selectedId: state.receiveAccountId,
+                      placeholder: '请选择到账账户',
+                      onTap:
+                          (onSelected) => _pickReceiveAccount(
+                            state.accounts,
+                            selectedId: state.receiveAccountId,
+                            onSelected: onSelected,
+                          ),
+                      onChanged:
+                          ref.read(provider.notifier).setReceiveAccountId,
+                      validator: (value) => value == null ? '请选择账户' : null,
+                    ),
+                    DateTimePlainFormRow(
+                      label: '到账时间',
+                      dateTime: state.occurredAt,
+                      value: _formatDateTime(state.occurredAt),
+                      onTap:
+                          (onSelected) =>
+                              _pickOccurredAt(state.occurredAt, onSelected),
+                      onChanged: (value) {
+                        if (value != null) {
+                          ref.read(provider.notifier).setOccurredAt(value);
+                        }
+                      },
+                    ),
+                    NotePlainFormRow(controller: _noteController),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.space24),
+                AppSubmitButton(
+                  label: '保存',
+                  loading: state.submitting,
+                  onPressed: () => _submit(provider),
+                ),
+              ],
+            ),
           ),
         ],
       ),

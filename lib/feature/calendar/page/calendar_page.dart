@@ -10,6 +10,7 @@ import '../../../design_system/token/chart.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_month_picker.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
 import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/widget/business/finance/finance_tone_color.dart';
@@ -173,93 +174,54 @@ class _CalendarHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.read(appSettingsViewModelProvider.notifier);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space16,
-        AppSpacing.space10,
-        AppSpacing.space8,
-        AppSpacing.space12,
+    return AppPageHeader.custom(
+      titleContent: AppMonthSelector(
+        visibleMonth: visibleMonth,
+        onPreviousMonth: onPreviousMonth,
+        onMonthPressed: onMonthPressed,
+        onNextMonth: onNextMonth,
       ),
-      child: Row(
-        children: [
-          AppMonthSelector(
-            visibleMonth: visibleMonth,
-            onPreviousMonth: onPreviousMonth,
-            onMonthPressed: onMonthPressed,
-            onNextMonth: onNextMonth,
-          ),
-          const Spacer(),
-          _HeaderIconButton(
-            onPressed: onTodayPressed,
-            tooltip: '回到今天',
-            icon: const Icon(RemixIcons.calendar_check_line),
-          ),
-          _HeaderIconButton(
-            onPressed: onToggleLunar,
-            tooltip: showLunar ? '隐藏农历' : '显示农历',
-            icon: Icon(
-              showLunar ? RemixIcons.eye_line : RemixIcons.eye_off_line,
+      actions: [
+        AppHeaderIconButton(
+          onPressed: onTodayPressed,
+          tooltip: '回到今天',
+          icon: RemixIcons.calendar_check_line,
+        ),
+        AppHeaderIconButton(
+          onPressed: onToggleLunar,
+          tooltip: showLunar ? '隐藏农历' : '显示农历',
+          icon: showLunar ? RemixIcons.eye_line : RemixIcons.eye_off_line,
+        ),
+        AppPopupMenuButton(
+          tooltip: '更多',
+          icon: RemixIcons.more_2_line,
+          items: [
+            AppPopupMenuAction(
+              label: '回到今天',
+              icon: RemixIcons.calendar_check_line,
+              onPressed: onTodayPressed,
             ),
-          ),
-          AppPopupMenuButton(
-            tooltip: '更多',
-            icon: RemixIcons.more_2_line,
-            items: [
-              AppPopupMenuAction(
-                label: '回到今天',
-                icon: RemixIcons.calendar_check_line,
-                onPressed: onTodayPressed,
+            AppPopupMenuAction(
+              label: '查看本月账单',
+              icon: RemixIcons.bill_line,
+              onPressed: onViewMonthlyBills,
+            ),
+            AppPopupMenuToggle(
+              label: '热力图',
+              icon: RemixIcons.fire_line,
+              value: showHeatmap,
+              onChanged: settings.setCalendarHeatmapEnabled,
+            ),
+            if (showHeatmap)
+              AppPopupMenuSelect<CalendarHeatMetric>(
+                label: '热力维度',
+                value: heatMetric,
+                options: calendarHeatMetricOptions,
+                onChanged: settings.setCalendarHeatMetric,
               ),
-              AppPopupMenuAction(
-                label: '查看本月账单',
-                icon: RemixIcons.bill_line,
-                onPressed: onViewMonthlyBills,
-              ),
-              AppPopupMenuToggle(
-                label: '热力图',
-                icon: RemixIcons.fire_line,
-                value: showHeatmap,
-                onChanged: settings.setCalendarHeatmapEnabled,
-              ),
-              if (showHeatmap)
-                AppPopupMenuSelect<CalendarHeatMetric>(
-                  label: '热力维度',
-                  value: heatMetric,
-                  options: calendarHeatMetricOptions,
-                  onChanged: settings.setCalendarHeatMetric,
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeaderIconButton extends StatelessWidget {
-  const _HeaderIconButton({
-    required this.onPressed,
-    required this.tooltip,
-    required this.icon,
-  });
-
-  final VoidCallback onPressed;
-  final String tooltip;
-  final Widget icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onPressed,
-      tooltip: tooltip,
-      icon: icon,
-      iconSize: AppSpacing.space20,
-      padding: const EdgeInsets.all(AppSpacing.space6),
-      constraints: const BoxConstraints.tightFor(
-        width: AppSpacing.space32,
-        height: AppSpacing.space32,
-      ),
-      visualDensity: VisualDensity.compact,
+          ],
+        ),
+      ],
     );
   }
 }
