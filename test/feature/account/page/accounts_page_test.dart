@@ -284,14 +284,19 @@ void main() {
     expect(find.text('隐藏余额'), findsOneWidget);
   });
 
-  testWidgets('starts group sorting with a direct drag', (tester) async {
+  testWidgets('starts group sorting after a delayed long press', (
+    tester,
+  ) async {
     final groupService = _FakeAccountGroupAppService();
     await tester.pumpWidget(_buildAccountsPageApp(groupService: groupService));
     await tester.pumpAndSettle();
 
     final from = tester.getCenter(find.text('贷款'));
     final to = tester.getCenter(find.text('资金'));
-    await tester.drag(find.text('贷款'), to - from);
+    final gesture = await tester.startGesture(from);
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.moveTo(to);
+    await gesture.up();
     await tester.pumpAndSettle();
 
     expect(groupService.reorderedGroupIds, [
@@ -299,6 +304,32 @@ void main() {
       'fund',
       'credit',
       'reimbursement',
+    ]);
+  });
+
+  testWidgets('starts account sorting after a delayed long press', (
+    tester,
+  ) async {
+    final groupService = _FakeAccountGroupAppService();
+    await tester.pumpWidget(
+      _buildAccountsPageApp(
+        accounts: [_fundAccount(), _secondFundAccount()],
+        groupService: groupService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final from = tester.getCenter(find.text('招行储蓄卡'));
+    final to = tester.getCenter(find.text('另一张储蓄卡'));
+    final gesture = await tester.startGesture(from);
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.moveTo(to + const Offset(0, 72));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(groupService.movedCommands.single.orderedAccountIds, [
+      'fund-2',
+      'fund-1',
     ]);
   });
 }
@@ -338,6 +369,18 @@ AccountView _creditAccount() {
     groupId: 'credit',
     billingDay: 1,
     repaymentDay: 15,
+  );
+}
+
+AccountView _secondFundAccount() {
+  return const AccountView(
+    id: 'fund-2',
+    name: '另一张储蓄卡',
+    kind: AccountProfileKind.fund,
+    balance: Money(minorUnits: 20000),
+    iconKey: null,
+    isArchived: false,
+    groupId: 'fund',
   );
 }
 
@@ -417,10 +460,16 @@ Widget _buildAccountsPageApp({
 
 class _FakeAccountGroupAppService implements AccountGroupAppService {
   List<String>? reorderedGroupIds;
+  final movedCommands = <MoveAccountToGroupCommand>[];
 
   @override
   Future<void> reorderGroups(ReorderAccountGroupsCommand command) async {
     reorderedGroupIds = command.orderedIds;
+  }
+
+  @override
+  Future<void> moveAccountToGroup(MoveAccountToGroupCommand command) async {
+    movedCommands.add(command);
   }
 
   @override

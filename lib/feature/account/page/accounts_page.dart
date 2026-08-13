@@ -107,76 +107,96 @@ class _AccountsContent extends ConsumerWidget {
         sections.isNotEmpty &&
         sections.every((section) => collapsedKeys.contains(section.id));
 
-    return ListView(
+    return ReorderableListView.builder(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.space20,
         AppSpacing.space24,
         AppSpacing.space20,
         AppSpacing.space48 + AppSpacing.space48,
       ),
-      children: [
-        _AssetsHeader(
-          hideBalances: hideBalances,
-          onToggleHide: onToggleHide,
-          allCollapsed: sections.isEmpty ? null : allCollapsed,
-          onToggleCollapseAll: () {
-            final viewModel = ref.read(
-              assetSectionCollapseViewModelProvider.notifier,
-            );
-            if (allCollapsed) {
-              viewModel.expandAll();
-            } else {
-              viewModel.collapseAll([
-                for (final section in sections) section.id,
-              ]);
-            }
-          },
-          onManageGroups: () => _showAccountGroupManagerSheet(context, ref),
-        ),
-        const SizedBox(height: AppSpacing.space18),
-        _NetAssetCard(comparison: balanceSheet, hideBalances: hideBalances),
-        if (sections.isEmpty) ...[
-          const SizedBox(height: AppSpacing.space24),
-          const _EmptyAccountsHint(),
-        ],
-        for (var index = 0; index < sections.length; index++) ...[
-          SizedBox(
-            height: index == 0 ? AppSpacing.space28 : AppSpacing.space20,
-          ),
-          _AccountSection(
-            section: sections[index],
+      buildDefaultDragHandles: false,
+      header: Column(
+        children: [
+          _AssetsHeader(
             hideBalances: hideBalances,
-            collapsed: collapsedKeys.contains(sections[index].id),
+            onToggleHide: onToggleHide,
+            allCollapsed: sections.isEmpty ? null : allCollapsed,
+            onToggleCollapseAll: () {
+              final viewModel = ref.read(
+                assetSectionCollapseViewModelProvider.notifier,
+              );
+              if (allCollapsed) {
+                viewModel.expandAll();
+              } else {
+                viewModel.collapseAll([
+                  for (final section in sections) section.id,
+                ]);
+              }
+            },
+            onManageGroups: () => _showAccountGroupManagerSheet(context, ref),
+          ),
+          const SizedBox(height: AppSpacing.space18),
+          _NetAssetCard(comparison: balanceSheet, hideBalances: hideBalances),
+          if (sections.isEmpty) ...[
+            const SizedBox(height: AppSpacing.space24),
+            const _EmptyAccountsHint(),
+          ],
+        ],
+      ),
+      footer:
+          archivedAccounts.isNotEmpty
+              ? Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.space20),
+                child: _ArchivedAccountsEntry(
+                  count: archivedAccounts.length,
+                  onTap:
+                      () => context.push(
+                        '/account/archived',
+                        extra: hideBalances,
+                      ),
+                ),
+              )
+              : null,
+      itemCount: sections.length,
+      onReorder:
+          (oldIndex, newIndex) => _reorderSections(
+            context,
+            ref,
+            sections: sections,
+            groups: groups,
+            oldIndex: oldIndex,
+            newIndex: newIndex,
+          ),
+      itemBuilder: (context, index) {
+        final section = sections[index];
+        return Padding(
+          key: ValueKey(section.id),
+          padding: EdgeInsets.only(
+            top: index == 0 ? AppSpacing.space28 : AppSpacing.space20,
+          ),
+          child: _AccountSection(
+            section: section,
+            groupIndex: index,
+            reorderEnabled: section.id != 'ungrouped',
+            hideBalances: hideBalances,
+            collapsed: collapsedKeys.contains(section.id),
             onToggleCollapsed:
                 () => ref
                     .read(assetSectionCollapseViewModelProvider.notifier)
-                    .toggle(sections[index].id),
-            onAccountDropped:
-                (account, insertAt) => _moveAccount(
-                  context,
-                  ref,
-                  account: account,
-                  section: sections[index],
-                  insertAt: insertAt,
-                ),
-            onGroupDropped:
-                (draggedSection) => _reorderSection(
-                  context,
-                  ref,
-                  groups: groups,
-                  draggedSection: draggedSection,
-                  targetSection: sections[index],
-                ),
+                    .toggle(section.id),
+            onAccountReorder: (oldAccountIndex, newAccountIndex) {
+              if (oldAccountIndex < newAccountIndex) newAccountIndex -= 1;
+              _moveAccount(
+                context,
+                ref,
+                account: section.accounts[oldAccountIndex],
+                section: section,
+                insertAt: newAccountIndex,
+              );
+            },
           ),
-        ],
-        if (archivedAccounts.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.space20),
-          _ArchivedAccountsEntry(
-            count: archivedAccounts.length,
-            onTap: () => context.push('/account/archived', extra: hideBalances),
-          ),
-        ],
-      ],
+        );
+      },
     );
   }
 }
@@ -203,23 +223,29 @@ Future<void> _moveAccount(
   ).showSnackBar(SnackBar(content: Text(failure.error.message)));
 }
 
-Future<void> _reorderSection(
+Future<void> _reorderSections(
   BuildContext context,
   WidgetRef ref, {
   required List<AccountGroup> groups,
-  required AccountSectionPresentation draggedSection,
-  required AccountSectionPresentation targetSection,
+  required List<AccountSectionPresentation> sections,
+  required int oldIndex,
+  required int newIndex,
 }) async {
-  if (draggedSection.id == targetSection.id ||
-      draggedSection.id == 'ungrouped' ||
-      targetSection.id == 'ungrouped') {
-    return;
-  }
-  final orderedIds = [for (final group in groups) group.id]
-    ..remove(draggedSection.id);
-  final targetIndex = orderedIds.indexOf(targetSection.id);
-  if (targetIndex < 0) return;
-  orderedIds.insert(targetIndex, draggedSection.id);
+  if (oldIndex < 0 || oldIndex >= sections.length) return;
+  final dragged = sections[oldIndex];
+  if (dragged.id == 'ungrouped') return;
+  final reorderedSections = [...sections]..removeAt(oldIndex);
+  if (oldIndex < newIndex) newIndex -= 1;
+  reorderedSections.insert(
+    newIndex.clamp(0, reorderedSections.length),
+    dragged,
+  );
+  final orderedIds = [
+    for (final section in reorderedSections)
+      if (section.id != 'ungrouped') section.id,
+  ];
+  final knownGroupIds = {for (final group in groups) group.id};
+  if (orderedIds.length != knownGroupIds.length) return;
   final outcome = await ref
       .read(accountOrganizationViewModelProvider.notifier)
       .reorderGroups(orderedIds);
@@ -513,19 +539,21 @@ class _LegendRow extends StatelessWidget {
 class _AccountSection extends StatelessWidget {
   const _AccountSection({
     required this.section,
+    required this.groupIndex,
+    required this.reorderEnabled,
     required this.hideBalances,
     required this.collapsed,
     required this.onToggleCollapsed,
-    required this.onAccountDropped,
-    required this.onGroupDropped,
+    required this.onAccountReorder,
   });
 
   final AccountSectionPresentation section;
+  final int groupIndex;
+  final bool reorderEnabled;
   final bool hideBalances;
   final bool collapsed;
   final VoidCallback onToggleCollapsed;
-  final void Function(AccountView account, int insertAt) onAccountDropped;
-  final ValueChanged<AccountSectionPresentation> onGroupDropped;
+  final ReorderCallback onAccountReorder;
 
   @override
   Widget build(BuildContext context) {
@@ -540,166 +568,91 @@ class _AccountSection extends StatelessWidget {
         ),
         child: Column(
           children: [
-            DragTarget<AccountSectionPresentation>(
-              onWillAcceptWithDetails:
-                  (details) =>
-                      section.id != 'ungrouped' &&
-                      details.data.id != 'ungrouped' &&
-                      details.data.id != section.id,
-              onAcceptWithDetails: (details) => onGroupDropped(details.data),
-              builder:
-                  (
-                    context,
-                    candidateData,
-                    child,
-                  ) => Draggable<AccountSectionPresentation>(
-                    data: section,
-                    feedback: Material(
-                      color: Colors.transparent,
-                      child: Opacity(
-                        opacity: 0.88,
-                        child: Text(
-                          section.title,
-                          style: textStyles.groupTitle,
-                        ),
-                      ),
+            ReorderableDelayedDragStartListener(
+              index: groupIndex,
+              enabled: reorderEnabled,
+              child: Material(
+                type: MaterialType.transparency,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+                  onTap: onToggleCollapsed,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minHeight: AppSpacing.space48,
                     ),
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-                        onTap: onToggleCollapsed,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(
-                            minHeight: AppSpacing.space48,
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              if (candidateData.isNotEmpty)
-                                Container(
-                                  height: 3,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      section.title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: textStyles.groupTitle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSpacing.space12),
-                                  AccountAmountText(
-                                    money: section.netTotal,
-                                    semantic: MoneySemantic.neutral,
-                                    hidden: hideBalances,
-                                    showSign: true,
-                                  ),
-                                  const SizedBox(width: AppSpacing.space4),
-                                  SizedBox.square(
-                                    dimension: AppSpacing.space24,
-                                    child: AnimatedRotation(
-                                      turns: collapsed ? -0.25 : 0,
-                                      duration: const Duration(
-                                        milliseconds: 150,
-                                      ),
-                                      child: Icon(
-                                        RemixIcons.arrow_down_s_line,
-                                        size: AppSpacing.space18,
-                                        color: colors.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            section.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textStyles.groupTitle,
                           ),
                         ),
-                      ),
+                        const SizedBox(width: AppSpacing.space12),
+                        AccountAmountText(
+                          money: section.netTotal,
+                          semantic: MoneySemantic.neutral,
+                          hidden: hideBalances,
+                          showSign: true,
+                        ),
+                        const SizedBox(width: AppSpacing.space4),
+                        SizedBox.square(
+                          dimension: AppSpacing.space24,
+                          child: AnimatedRotation(
+                            turns: collapsed ? -0.25 : 0,
+                            duration: const Duration(milliseconds: 150),
+                            child: Icon(
+                              RemixIcons.arrow_down_s_line,
+                              size: AppSpacing.space18,
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                ),
+              ),
             ),
             if (!collapsed) ...[
               const SizedBox(height: AppSpacing.space4),
-              DragTarget<AccountView>(
-                onWillAcceptWithDetails: (_) => true,
-                onAcceptWithDetails:
-                    (details) =>
-                        onAccountDropped(details.data, accounts.length),
-                builder:
-                    (context, candidateData, child) => Column(
-                      children: [
-                        if (candidateData.isNotEmpty)
-                          Container(
-                            height: 3,
-                            color: Theme.of(context).colorScheme.primary,
+              if (accounts.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: AppSpacing.space8,
+                    top: AppSpacing.space16,
+                    bottom: AppSpacing.space16,
+                  ),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('暂无账户', style: textStyles.listSupporting),
+                  ),
+                )
+              else
+                ReorderableListView.builder(
+                  shrinkWrap: true,
+                  primary: false,
+                  physics: const NeverScrollableScrollPhysics(),
+                  buildDefaultDragHandles: false,
+                  itemCount: accounts.length,
+                  onReorder: onAccountReorder,
+                  itemBuilder:
+                      (context, index) => Padding(
+                        key: ValueKey(accounts[index].id),
+                        padding: const EdgeInsets.only(
+                          bottom: AppSpacing.space4,
+                        ),
+                        child: ReorderableDelayedDragStartListener(
+                          index: index,
+                          child: _AccountRow(
+                            model: accounts[index],
+                            hideBalance: hideBalances,
                           ),
-                        for (var i = 0; i < accounts.length; i++)
-                          DragTarget<AccountView>(
-                            onWillAcceptWithDetails: (_) => true,
-                            onAcceptWithDetails:
-                                (details) => onAccountDropped(details.data, i),
-                            builder:
-                                (context, candidateData, child) => Column(
-                                  children: [
-                                    if (candidateData.isNotEmpty)
-                                      Container(
-                                        height: 3,
-                                        color:
-                                            Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
-                                      ),
-                                    _AccountRow(
-                                      model: accounts[i],
-                                      hideBalance: hideBalances,
-                                    ),
-                                  ],
-                                ),
-                          ),
-                        if (accounts.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              left: AppSpacing.space8,
-                              top: AppSpacing.space16,
-                              bottom: AppSpacing.space16,
-                            ),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                '长按并拖动账户到这里',
-                                style: textStyles.listSupporting,
-                              ),
-                            ),
-                          ),
-                        if (accounts.isNotEmpty)
-                          DragTarget<AccountView>(
-                            onWillAcceptWithDetails: (_) => true,
-                            onAcceptWithDetails:
-                                (details) => onAccountDropped(
-                                  details.data,
-                                  accounts.length,
-                                ),
-                            builder:
-                                (context, candidateData, child) =>
-                                    candidateData.isEmpty
-                                        ? const SizedBox(
-                                          height: AppSpacing.space4,
-                                        )
-                                        : Container(
-                                          height: 3,
-                                          color:
-                                              Theme.of(
-                                                context,
-                                              ).colorScheme.primary,
-                                        ),
-                          ),
-                      ],
-                    ),
-              ),
+                        ),
+                      ),
+                ),
             ],
           ],
         ),
@@ -736,15 +689,7 @@ class _AccountRow extends StatelessWidget {
         ),
       ),
     );
-    return LongPressDraggable<AccountView>(
-      data: model,
-      feedback: Material(
-        color: Colors.transparent,
-        child: SizedBox(width: 280, child: Opacity(opacity: 0.86, child: row)),
-      ),
-      childWhenDragging: Opacity(opacity: 0.35, child: row),
-      child: row,
-    );
+    return row;
   }
 }
 
