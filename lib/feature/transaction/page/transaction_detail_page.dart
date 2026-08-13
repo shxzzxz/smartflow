@@ -6,6 +6,7 @@ import 'package:remixicon/remixicon.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
@@ -32,28 +33,39 @@ class TransactionDetailPage extends ConsumerWidget {
     final loaded = stateAsync.asData?.value;
 
     return Scaffold(
-      appBar: AppBar(
-        scrolledUnderElevation: 0,
-        title: const Text('交易详情'),
-        actions: [
-          if (loaded is TransactionDetailLoaded)
-            IconButton(
-              onPressed:
-                  loaded.submitting ? null : () => _confirmDelete(context, ref),
-              icon: const Icon(RemixIcons.more_2_line),
-              tooltip: '更多',
+      body: SafeArea(
+        child: Column(
+          children: [
+            AppPageHeader(
+              title: '交易详情',
+              actions: [
+                if (loaded is TransactionDetailLoaded)
+                  AppHeaderIconButton(
+                    onPressed:
+                        loaded.submitting
+                            ? null
+                            : () => _confirmDelete(context, ref),
+                    icon: RemixIcons.more_2_line,
+                    tooltip: '更多',
+                  ),
+              ],
             ),
-        ],
-      ),
-      body: stateAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => Center(child: Text('$error')),
-        data: (state) {
-          return switch (state) {
-            TransactionDetailNotFound() => const Center(child: Text('交易不存在')),
-            TransactionDetailLoaded() => _DetailBody(state: state),
-          };
-        },
+            Expanded(
+              child: stateAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, stackTrace) => Center(child: Text('$error')),
+                data: (state) {
+                  return switch (state) {
+                    TransactionDetailNotFound() => const Center(
+                      child: Text('交易不存在'),
+                    ),
+                    TransactionDetailLoaded() => _DetailBody(state: state),
+                  };
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -10,6 +10,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_form_section.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
@@ -62,18 +63,23 @@ class _InstallmentContractEditPageState
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(title: const Text('编辑合同')),
-      body: switch (editAsync) {
-        AsyncData(value: InstallmentContractEditLoaded loaded) => _buildBody(
-          loaded,
-          metricsAsync,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const AppPageHeader(title: '编辑合同'),
+            Expanded(
+              child: switch (editAsync) {
+                AsyncData(value: InstallmentContractEditLoaded loaded) =>
+                  _buildBody(loaded, metricsAsync),
+                AsyncData(value: InstallmentContractEditNotFound()) =>
+                  const Center(child: Text('合同不存在')),
+                AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
+                _ => const Center(child: CircularProgressIndicator()),
+              },
+            ),
+          ],
         ),
-        AsyncData(value: InstallmentContractEditNotFound()) => const Center(
-          child: Text('合同不存在'),
-        ),
-        AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+      ),
     );
   }
 

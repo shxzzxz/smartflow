@@ -114,14 +114,8 @@ class _StatisticsHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(statisticsViewModelProvider.notifier);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space16,
-        AppSpacing.space18,
-        AppSpacing.space16,
-        AppSpacing.space12,
-      ),
-      child: _PeriodPicker(
+    return AppPageHeader.custom(
+      titleContent: _PeriodPicker(
         label: periodLabel,
         onTap: () => _pickPeriod(context, notifier, lastSelectableDate),
       ),
@@ -640,24 +634,12 @@ class _CategoryDetailPage extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.space8,
-                AppSpacing.space8,
-                AppSpacing.space20,
-                AppSpacing.space12,
-              ),
-              child: AppPageHeader(
-                title: item.title,
-                subtitle: '二级分类构成',
-                showBackButton: true,
-              ),
-            ),
+            AppPageHeader(title: item.title, subtitle: '二级分类构成'),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(
                   AppSpacing.space16,
-                  AppSpacing.space4,
+                  AppSpacing.space8,
                   AppSpacing.space16,
                   AppSpacing.space24,
                 ),

@@ -9,6 +9,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/list.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 
 final _logger = Logger('feature.profile');
@@ -61,101 +62,106 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.space20,
-            AppSpacing.space24,
-            AppSpacing.space20,
-            AppSpacing.space24,
-          ),
+        child: Column(
           children: [
-            Text('我的', style: context.appTextStyles.pageTitle),
-            const SizedBox(height: AppSpacing.space20),
-            _ProfileActionSection(
-              title: '账务管理',
-              actions: [
-                _ProfileActionRow(
-                  icon: RemixIcons.apps_2_line,
-                  label: '分类管理',
-                  description: '维护收入与支出分类',
-                  onTap: () => context.push('/category'),
+            const AppPageHeader(title: '我的'),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.space16,
+                  AppSpacing.space8,
+                  AppSpacing.space16,
+                  AppSpacing.space24,
                 ),
-                _ProfileActionRow(
-                  icon: RemixIcons.wallet_3_line,
-                  label: '账户管理',
-                  description: '管理资产与负债账户',
-                  onTap: () => context.go('/account'),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.space16),
-            _ProfileActionSection(
-              title: '数据管理',
-              actions: [
-                _ProfileActionRow(
-                  icon: RemixIcons.file_excel_2_line,
-                  label: '数据导入',
-                  description: '从外部账单或记账应用导入交易',
-                  onTap: () => context.push('/profile/import'),
-                ),
-                _ProfileActionRow(
-                  icon: RemixIcons.delete_bin_6_line,
-                  label: '数据清理',
-                  description: '按分类、账户、时间批量清理交易',
-                  onTap: () => context.push('/profile/data-cleanup'),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.space16),
-            _ProfileActionSection(
-              title: '偏好设置',
-              actions: [
-                _ProfileActionRow(
-                  icon: RemixIcons.settings_3_line,
-                  label: '界面设置',
-                  description: '记账悬浮按钮、导航栏文字显示',
-                  onTap: () => context.push('/profile/settings'),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.space16),
-            _ProfileActionSection(
-              title: '帮助与关于',
-              actions: [
-                _ProfileActionRow(
-                  icon: RemixIcons.book_open_line,
-                  label: '使用手册',
-                  description: '了解记账、账单、分期与关键指标',
-                  onTap: () => context.push('/profile/manual'),
-                ),
-                _ProfileActionRow(
-                  icon: RemixIcons.download_cloud_2_line,
-                  label: '软件版本',
-                  description:
-                      versionInfo == null
-                          ? '正在读取当前版本'
-                          : versionInfo.versionName,
-                  onTap: () => context.push('/profile/software-version'),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.space16),
-            _ProfileActionSection(
-              title: '开发工具',
-              actions: [
-                _ProfileActionRow(
-                  icon: Icons.widgets_outlined,
-                  label: '组件示例',
-                  description: '查看设计规范与组件交互状态',
-                  onTap: () => context.push('/dev/design-system'),
-                ),
-                _ProfileActionRow(
-                  icon: RemixIcons.file_list_3_line,
-                  label: '日志',
-                  description: '浏览与搜索应用运行日志',
-                  onTap: () => context.push('/dev/logs'),
-                ),
-              ],
+                children: [
+                  _ProfileActionSection(
+                    title: '账务管理',
+                    actions: [
+                      _ProfileActionRow(
+                        icon: RemixIcons.apps_2_line,
+                        label: '分类管理',
+                        description: '维护收入与支出分类',
+                        onTap: () => context.push('/category'),
+                      ),
+                      _ProfileActionRow(
+                        icon: RemixIcons.wallet_3_line,
+                        label: '账户管理',
+                        description: '管理资产与负债账户',
+                        onTap: () => context.go('/account'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  _ProfileActionSection(
+                    title: '数据管理',
+                    actions: [
+                      _ProfileActionRow(
+                        icon: RemixIcons.file_excel_2_line,
+                        label: '数据导入',
+                        description: '从外部账单或记账应用导入交易',
+                        onTap: () => context.push('/profile/import'),
+                      ),
+                      _ProfileActionRow(
+                        icon: RemixIcons.delete_bin_6_line,
+                        label: '数据清理',
+                        description: '按分类、账户、时间批量清理交易',
+                        onTap: () => context.push('/profile/data-cleanup'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  _ProfileActionSection(
+                    title: '偏好设置',
+                    actions: [
+                      _ProfileActionRow(
+                        icon: RemixIcons.settings_3_line,
+                        label: '界面设置',
+                        description: '记账悬浮按钮、导航栏文字显示',
+                        onTap: () => context.push('/profile/settings'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  _ProfileActionSection(
+                    title: '帮助与关于',
+                    actions: [
+                      _ProfileActionRow(
+                        icon: RemixIcons.book_open_line,
+                        label: '使用手册',
+                        description: '了解记账、账单、分期与关键指标',
+                        onTap: () => context.push('/profile/manual'),
+                      ),
+                      _ProfileActionRow(
+                        icon: RemixIcons.download_cloud_2_line,
+                        label: '软件版本',
+                        description:
+                            versionInfo == null
+                                ? '正在读取当前版本'
+                                : versionInfo.versionName,
+                        onTap: () => context.push('/profile/software-version'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  _ProfileActionSection(
+                    title: '开发工具',
+                    actions: [
+                      _ProfileActionRow(
+                        icon: Icons.widgets_outlined,
+                        label: '组件示例',
+                        description: '查看设计规范与组件交互状态',
+                        onTap: () => context.push('/dev/design-system'),
+                      ),
+                      _ProfileActionRow(
+                        icon: RemixIcons.file_list_3_line,
+                        label: '日志',
+                        description: '浏览与搜索应用运行日志',
+                        onTap: () => context.push('/dev/logs'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),

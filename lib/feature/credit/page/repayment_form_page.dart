@@ -7,6 +7,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_form_section.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
@@ -54,12 +55,20 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
     final asyncState = ref.watch(provider);
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(title: Text(_pageTitle)),
-      body: switch (asyncState) {
-        AsyncData(value: final state) => _buildLoaded(provider, state),
-        AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+      body: SafeArea(
+        child: Column(
+          children: [
+            AppPageHeader(title: _pageTitle),
+            Expanded(
+              child: switch (asyncState) {
+                AsyncData(value: final state) => _buildLoaded(provider, state),
+                AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
+                _ => const Center(child: CircularProgressIndicator()),
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 

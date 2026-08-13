@@ -8,6 +8,7 @@ import '../../../core/money/money_formatter.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../application/ledger/ledger_query_api.dart';
@@ -107,13 +108,7 @@ class _AccountsContent extends ConsumerWidget {
         sections.isNotEmpty &&
         sections.every((section) => collapsedKeys.contains(section.id));
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space20,
-        AppSpacing.space24,
-        AppSpacing.space20,
-        AppSpacing.space48 + AppSpacing.space48,
-      ),
+    return Column(
       children: [
         _AssetsHeader(
           hideBalances: hideBalances,
@@ -133,49 +128,67 @@ class _AccountsContent extends ConsumerWidget {
           },
           onManageGroups: () => _showAccountGroupManagerSheet(context, ref),
         ),
-        const SizedBox(height: AppSpacing.space18),
-        _NetAssetCard(comparison: balanceSheet, hideBalances: hideBalances),
-        if (sections.isEmpty) ...[
-          const SizedBox(height: AppSpacing.space24),
-          const _EmptyAccountsHint(),
-        ],
-        for (var index = 0; index < sections.length; index++) ...[
-          SizedBox(
-            height: index == 0 ? AppSpacing.space28 : AppSpacing.space20,
-          ),
-          _AccountSection(
-            section: sections[index],
-            hideBalances: hideBalances,
-            collapsed: collapsedKeys.contains(sections[index].id),
-            onToggleCollapsed:
-                () => ref
-                    .read(assetSectionCollapseViewModelProvider.notifier)
-                    .toggle(sections[index].id),
-            onAccountDropped:
-                (account, insertAt) => _moveAccount(
-                  context,
-                  ref,
-                  account: account,
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space16,
+              AppSpacing.space8,
+              AppSpacing.space16,
+              AppSpacing.space48 + AppSpacing.space48,
+            ),
+            children: [
+              _NetAssetCard(
+                comparison: balanceSheet,
+                hideBalances: hideBalances,
+              ),
+              if (sections.isEmpty) ...[
+                const SizedBox(height: AppSpacing.space24),
+                const _EmptyAccountsHint(),
+              ],
+              for (var index = 0; index < sections.length; index++) ...[
+                SizedBox(
+                  height: index == 0 ? AppSpacing.space28 : AppSpacing.space20,
+                ),
+                _AccountSection(
                   section: sections[index],
-                  insertAt: insertAt,
+                  hideBalances: hideBalances,
+                  collapsed: collapsedKeys.contains(sections[index].id),
+                  onToggleCollapsed:
+                      () => ref
+                          .read(assetSectionCollapseViewModelProvider.notifier)
+                          .toggle(sections[index].id),
+                  onAccountDropped:
+                      (account, insertAt) => _moveAccount(
+                        context,
+                        ref,
+                        account: account,
+                        section: sections[index],
+                        insertAt: insertAt,
+                      ),
+                  onGroupDropped:
+                      (draggedSection) => _reorderSection(
+                        context,
+                        ref,
+                        groups: groups,
+                        draggedSection: draggedSection,
+                        targetSection: sections[index],
+                      ),
                 ),
-            onGroupDropped:
-                (draggedSection) => _reorderSection(
-                  context,
-                  ref,
-                  groups: groups,
-                  draggedSection: draggedSection,
-                  targetSection: sections[index],
+              ],
+              if (archivedAccounts.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.space20),
+                _ArchivedAccountsEntry(
+                  count: archivedAccounts.length,
+                  onTap:
+                      () => context.push(
+                        '/account/archived',
+                        extra: hideBalances,
+                      ),
                 ),
+              ],
+            ],
           ),
-        ],
-        if (archivedAccounts.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.space20),
-          _ArchivedAccountsEntry(
-            count: archivedAccounts.length,
-            onTap: () => context.push('/account/archived', extra: hideBalances),
-          ),
-        ],
+        ),
       ],
     );
   }
@@ -249,26 +262,22 @@ class _AssetsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final allCollapsed = this.allCollapsed;
-    return Row(
-      children: [
-        Text('资产', style: context.appTextStyles.pageTitle),
-        const Spacer(),
+    return AppPageHeader(
+      title: '资产',
+      actions: [
         if (allCollapsed != null)
-          IconButton(
+          AppHeaderIconButton(
             onPressed: onToggleCollapseAll,
-            icon: Icon(
-              allCollapsed
-                  ? RemixIcons.expand_up_down_line
-                  : RemixIcons.contract_up_down_line,
-              color: colors.onSurfaceVariant,
-            ),
+            icon:
+                allCollapsed
+                    ? RemixIcons.expand_up_down_line
+                    : RemixIcons.contract_up_down_line,
             tooltip: allCollapsed ? '展开全部分组' : '折叠全部分组',
           ),
-        IconButton(
+        AppHeaderIconButton(
           onPressed: () => context.push('/account/new'),
-          icon: Icon(RemixIcons.add_line, color: colors.onSurface),
+          icon: RemixIcons.add_line,
           tooltip: '新建账户',
         ),
         AppPopupMenuButton(

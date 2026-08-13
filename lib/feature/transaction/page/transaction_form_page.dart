@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:remixicon/remixicon.dart';
 
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/colors.dart';
 import '../../../design_system/token/component.dart';
+import '../../../design_system/token/header.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
@@ -82,8 +85,14 @@ class _TransactionFormStatusPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text(message)),
+      body: SafeArea(
+        child: Column(
+          children: [
+            AppPageHeader(title: title),
+            Expanded(child: Center(child: Text(message))),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -577,8 +586,9 @@ class _TopBar extends StatelessWidget {
         children: [
           IconButton(
             onPressed: onBack,
-            icon: const Icon(Icons.arrow_back_ios_new),
+            icon: const Icon(RemixIcons.arrow_left_s_line),
             tooltip: '返回',
+            style: appHeaderIconButtonStyle,
           ),
           Expanded(
             child:
@@ -594,11 +604,12 @@ class _TopBar extends StatelessWidget {
           if (editing)
             IconButton(
               onPressed: onDelete,
-              icon: const Icon(Icons.delete_outline),
+              icon: const Icon(RemixIcons.delete_bin_line),
               tooltip: '删除',
+              style: appHeaderIconButtonStyle,
             )
           else
-            const SizedBox(width: AppSpacing.space48),
+            const SizedBox(width: AppHeaderTokens.iconButtonSize),
         ],
       ),
     );

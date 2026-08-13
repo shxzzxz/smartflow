@@ -31,48 +31,52 @@ class DataCleanupPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.space20,
-            AppSpacing.space16,
-            AppSpacing.space20,
-            AppSpacing.space24,
-          ),
+        child: Column(
           children: [
             const AppPageHeader(
               title: '数据清理',
               subtitle: '按条件批量删除交易数据',
-              showBackButton: true,
             ),
-            const SizedBox(height: AppSpacing.space20),
-            AppFormSection(
-              title: '清理条件',
-              description: '未设置的条件不做限制',
-              children: [
-                _TimeRangeRow(state: state),
-                _CategoryRow(state: state),
-                _AccountRow(state: state),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.space16),
-            AppFormSection(
-              title: '清理预览',
-              children: [_PreviewContent(preview: preview)],
-            ),
-            const SizedBox(height: AppSpacing.space24),
-            const AppStatusBanner(
-              tone: AppStatusBannerTone.danger,
-              message: '清理会永久删除匹配的交易组及其账务记录，无法恢复。',
-            ),
-            const SizedBox(height: AppSpacing.space12),
-            AppSubmitButton(
-              label: '清理数据',
-              tone: AppSubmitButtonTone.danger,
-              loading: state.submitting,
-              onPressed:
-                  deletableCount > 0
-                      ? () => _confirmCleanup(context, ref, preview.value!)
-                      : null,
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.space16,
+                  AppSpacing.space8,
+                  AppSpacing.space16,
+                  AppSpacing.space24,
+                ),
+                children: [
+                  AppFormSection(
+                    title: '清理条件',
+                    description: '未设置的条件不做限制',
+                    children: [
+                      _TimeRangeRow(state: state),
+                      _CategoryRow(state: state),
+                      _AccountRow(state: state),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  AppFormSection(
+                    title: '清理预览',
+                    children: [_PreviewContent(preview: preview)],
+                  ),
+                  const SizedBox(height: AppSpacing.space24),
+                  const AppStatusBanner(
+                    tone: AppStatusBannerTone.danger,
+                    message: '清理会永久删除匹配的交易组及其账务记录，无法恢复。',
+                  ),
+                  const SizedBox(height: AppSpacing.space12),
+                  AppSubmitButton(
+                    label: '清理数据',
+                    tone: AppSubmitButtonTone.danger,
+                    loading: state.submitting,
+                    onPressed:
+                        deletableCount > 0
+                            ? () => _confirmCleanup(context, ref, preview.value!)
+                            : null,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -117,7 +121,9 @@ class DataCleanupPage extends ConsumerWidget {
       UiActionSuccess(:final value) => cleanupResultMessage(value),
       UiActionFailure(:final error) => error.message,
     };
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -156,10 +162,7 @@ class _TimeRangeRow extends ConsumerWidget {
               tooltip: '恢复全部时间',
             )
           else
-            Icon(
-              RemixIcons.arrow_right_s_line,
-              color: colors.onSurfaceVariant,
-            ),
+            Icon(RemixIcons.arrow_right_s_line, color: colors.onSurfaceVariant),
         ],
       ),
     );

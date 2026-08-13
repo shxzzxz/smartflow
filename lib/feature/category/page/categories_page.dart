@@ -5,6 +5,7 @@ import 'package:remixicon/remixicon.dart';
 
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
@@ -49,40 +50,22 @@ class _CategoryHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final textStyles = context.appTextStyles;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space4,
-        AppSpacing.space10,
-        AppSpacing.space12,
-        0,
+    return AppPageHeader.custom(
+      titleContent: TabBar(
+        indicatorSize: TabBarIndicatorSize.label,
+        dividerColor: Colors.transparent,
+        labelStyle: textStyles.largeTabLabel(selected: true),
+        unselectedLabelStyle: textStyles.largeTabLabel(selected: false),
+        tabs: const [Tab(text: '支出'), Tab(text: '收入')],
       ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => context.pop(),
-            icon: const Icon(RemixIcons.arrow_left_s_line),
-            iconSize: 30,
-            tooltip: '返回',
-          ),
-          Expanded(
-            child: TabBar(
-              indicatorSize: TabBarIndicatorSize.label,
-              dividerColor: Colors.transparent,
-              labelStyle: textStyles.largeTabLabel(selected: true),
-              unselectedLabelStyle: textStyles.largeTabLabel(selected: false),
-              tabs: const [Tab(text: '支出'), Tab(text: '收入')],
-            ),
-          ),
-          IconButton(
-            onPressed: () => context.push('/category/new'),
-            icon: Icon(RemixIcons.add_circle_line, color: colors.onSurface),
-            tooltip: '新建分类',
-          ),
-        ],
-      ),
+      actions: [
+        AppHeaderIconButton(
+          onPressed: () => context.push('/category/new'),
+          icon: RemixIcons.add_circle_line,
+          tooltip: '新建分类',
+        ),
+      ],
     );
   }
 }

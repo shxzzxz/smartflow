@@ -10,6 +10,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_swipe_action.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -26,43 +27,51 @@ class BillDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(billDetailViewModelProvider(billId));
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('账单详情'),
-        actions: switch (detail) {
-          AsyncData(value: final bill?) => [
-            if (bill.summary.windowStartDate != null)
-              IconButton(
-                icon: const Icon(RemixIcons.edit_2_line),
-                tooltip: '编辑区间',
-                onPressed: () => _openEdit(context, ref),
-              ),
-            IconButton(
-              icon: const Icon(RemixIcons.delete_bin_line),
-              tooltip: '删除账单',
-              onPressed:
-                  bill.repayments.isEmpty
-                      ? () => _deleteBill(context, ref)
-                      : null,
+      body: SafeArea(
+        child: Column(
+          children: [
+            AppPageHeader(
+              title: '账单详情',
+              actions: switch (detail) {
+                AsyncData(value: final bill?) => [
+                  if (bill.summary.windowStartDate != null)
+                    AppHeaderIconButton(
+                      icon: RemixIcons.edit_2_line,
+                      tooltip: '编辑区间',
+                      onPressed: () => _openEdit(context, ref),
+                    ),
+                  AppHeaderIconButton(
+                    icon: RemixIcons.delete_bin_line,
+                    tooltip: '删除账单',
+                    onPressed:
+                        bill.repayments.isEmpty
+                            ? () => _deleteBill(context, ref)
+                            : null,
+                  ),
+                ],
+                _ => const [],
+              },
+            ),
+            Expanded(
+              child: switch (detail) {
+                AsyncData(value: final bill?) => _BillDetailContent(
+                  detail: bill,
+                  onRepay: () => _openRepayment(context, ref),
+                  onInstallment: () => _openInstallment(context, ref),
+                  onSync: () => _syncProjection(context, ref),
+                  onDeleteRepayment:
+                      (repayment) => _deleteRepayment(context, ref, repayment),
+                  onEditRepayment:
+                      (repayment) => _editRepayment(context, ref, repayment),
+                ),
+                AsyncData(value: null) => const Center(child: Text('账单不存在')),
+                AsyncError() => const Center(child: Text('账单加载失败，请稍后重试')),
+                _ => const Center(child: CircularProgressIndicator()),
+              },
             ),
           ],
-          _ => const [],
-        },
-      ),
-      body: switch (detail) {
-        AsyncData(value: final bill?) => _BillDetailContent(
-          detail: bill,
-          onRepay: () => _openRepayment(context, ref),
-          onInstallment: () => _openInstallment(context, ref),
-          onSync: () => _syncProjection(context, ref),
-          onDeleteRepayment:
-              (repayment) => _deleteRepayment(context, ref, repayment),
-          onEditRepayment:
-              (repayment) => _editRepayment(context, ref, repayment),
         ),
-        AsyncData(value: null) => const Center(child: Text('账单不存在')),
-        AsyncError() => const Center(child: Text('账单加载失败，请稍后重试')),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+      ),
     );
   }
 

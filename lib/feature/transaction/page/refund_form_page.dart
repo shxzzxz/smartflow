@@ -116,71 +116,74 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
 
     return Form(
       key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.space16,
-          AppSpacing.space14,
-          AppSpacing.space16,
-          AppSpacing.space24,
-        ),
+      child: Column(
         children: [
-          AppPageHeader(
-            title: state.editing ? '编辑退款' : '退款',
-            showBackButton: true,
-          ),
-          const SizedBox(height: AppSpacing.space14),
-          AppFormSection(
-            title: '退款信息',
-            children: [
-              if (state.remaining != null)
-                AppPlainValueRow(
-                  label: '可退余额',
-                  child: MoneyText(
-                    money: state.remaining!,
-                    style: context.appTextStyles.formPlainValue,
-                  ),
-                ),
-              MoneyPlainFormRow(
-                label: '退款金额',
-                controller: _amountController,
-                hintText: '请输入退款金额',
-                validator: validatePositiveMoneyText,
+          AppPageHeader(title: state.editing ? '编辑退款' : '退款'),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.space16,
+                AppSpacing.space8,
+                AppSpacing.space16,
+                AppSpacing.space24,
               ),
-              AccountPlainFormRow(
-                label: '退款账户',
-                account: refundToAccount,
-                selectedId: state.refundToAccountId,
-                placeholder: '请选择退款账户',
-                onTap:
-                    (onSelected) => _pickRefundAccount(
-                      state.accounts,
-                      selectedId: state.refundToAccountId,
-                      onSelected: onSelected,
+              children: [
+                AppFormSection(
+                  title: '退款信息',
+                  children: [
+                    if (state.remaining != null)
+                      AppPlainValueRow(
+                        label: '可退余额',
+                        child: MoneyText(
+                          money: state.remaining!,
+                          style: context.appTextStyles.formPlainValue,
+                        ),
+                      ),
+                    MoneyPlainFormRow(
+                      label: '退款金额',
+                      controller: _amountController,
+                      hintText: '请输入退款金额',
+                      validator: validatePositiveMoneyText,
                     ),
-                onChanged: ref.read(provider.notifier).setRefundToAccountId,
-                validator: (value) => value == null ? '请选择账户' : null,
-              ),
-              DateTimePlainFormRow(
-                label: '退款时间',
-                dateTime: state.occurredAt,
-                value: _formatDateTime(state.occurredAt),
-                onTap:
-                    (onSelected) =>
-                        _pickOccurredAt(state.occurredAt, onSelected),
-                onChanged: (value) {
-                  if (value != null) {
-                    ref.read(provider.notifier).setOccurredAt(value);
-                  }
-                },
-              ),
-              NotePlainFormRow(controller: _noteController),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space24),
-          AppSubmitButton(
-            label: '保存',
-            loading: state.submitting,
-            onPressed: () => _submit(provider),
+                    AccountPlainFormRow(
+                      label: '退款账户',
+                      account: refundToAccount,
+                      selectedId: state.refundToAccountId,
+                      placeholder: '请选择退款账户',
+                      onTap:
+                          (onSelected) => _pickRefundAccount(
+                            state.accounts,
+                            selectedId: state.refundToAccountId,
+                            onSelected: onSelected,
+                          ),
+                      onChanged:
+                          ref.read(provider.notifier).setRefundToAccountId,
+                      validator: (value) => value == null ? '请选择账户' : null,
+                    ),
+                    DateTimePlainFormRow(
+                      label: '退款时间',
+                      dateTime: state.occurredAt,
+                      value: _formatDateTime(state.occurredAt),
+                      onTap:
+                          (onSelected) =>
+                              _pickOccurredAt(state.occurredAt, onSelected),
+                      onChanged: (value) {
+                        if (value != null) {
+                          ref.read(provider.notifier).setOccurredAt(value);
+                        }
+                      },
+                    ),
+                    NotePlainFormRow(controller: _noteController),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.space24),
+                AppSubmitButton(
+                  label: '保存',
+                  loading: state.submitting,
+                  onPressed: () => _submit(provider),
+                ),
+              ],
+            ),
           ),
         ],
       ),

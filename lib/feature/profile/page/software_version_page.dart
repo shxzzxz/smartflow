@@ -2,7 +2,6 @@ import 'package:logging/logging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../app/provider.dart';
@@ -13,6 +12,7 @@ import '../../../core/update/app_update_service.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 
 final _logger = Logger('feature.profile.software_version');
@@ -222,98 +222,96 @@ class _SoftwareVersionPageState extends ConsumerState<SoftwareVersionPage> {
     final textStyles = context.appTextStyles;
 
     return Scaffold(
-      appBar: AppBar(
-        scrolledUnderElevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          onPressed: () => context.pop(),
-          icon: const Icon(RemixIcons.arrow_left_s_line),
-          tooltip: '返回',
-        ),
-        title: const Text('软件版本'),
-      ),
       backgroundColor: colors.surface,
       body: SafeArea(
-        top: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.space20,
-            AppSpacing.space24,
-            AppSpacing.space20,
-            AppSpacing.space28,
-          ),
+        child: Column(
           children: [
-            const SizedBox(height: AppSpacing.space16),
-            Center(
-              child: _UpdateHeroIcon(
-                color: colors.primary,
-                surfaceColor: colors.primaryContainer,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space28),
-            Text(
-              _statusLabel,
-              textAlign: TextAlign.center,
-              style: textStyles.sectionTitleStrong,
-            ),
-            const SizedBox(height: AppSpacing.space8),
-            Text(
-              '$_versionLabel · ${_updateChannel.shortName} 渠道',
-              textAlign: TextAlign.center,
-              style: textStyles.detailValue.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space24),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _isCheckingUpdate ? null : _checkForUpdate,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(AppSpacing.space48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-                  ),
+            const AppPageHeader(title: '软件版本'),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.space20,
+                  AppSpacing.space24,
+                  AppSpacing.space20,
+                  AppSpacing.space28,
                 ),
-                child: Text(_isCheckingUpdate ? '正在检查' : '检查更新'),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space32),
-            Text('更新渠道', style: textStyles.sectionTitleStrong),
-            const SizedBox(height: AppSpacing.space12),
-            AppSurface(
-              border: true,
-              child: Column(
                 children: [
-                  for (final channel in AppUpdateChannel.values) ...[
-                    _UpdateChannelRow(
-                      channel: channel,
-                      selected: channel == _updateChannel,
-                      onSelected: () => _setUpdateChannel(channel),
+                  const SizedBox(height: AppSpacing.space16),
+                  Center(
+                    child: _UpdateHeroIcon(
+                      color: colors.primary,
+                      surfaceColor: colors.primaryContainer,
                     ),
-                    if (channel != AppUpdateChannel.values.last)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppSpacing.space16,
+                  ),
+                  const SizedBox(height: AppSpacing.space28),
+                  Text(
+                    _statusLabel,
+                    textAlign: TextAlign.center,
+                    style: textStyles.sectionTitleStrong,
+                  ),
+                  const SizedBox(height: AppSpacing.space8),
+                  Text(
+                    '$_versionLabel · ${_updateChannel.shortName} 渠道',
+                    textAlign: TextAlign.center,
+                    style: textStyles.detailValue.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _isCheckingUpdate ? null : _checkForUpdate,
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(AppSpacing.space48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            AppRadius.radiusMd,
+                          ),
                         ),
-                        child: Divider(height: 1),
                       ),
-                  ],
+                      child: Text(_isCheckingUpdate ? '正在检查' : '检查更新'),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space32),
+                  Text('更新渠道', style: textStyles.sectionTitleStrong),
+                  const SizedBox(height: AppSpacing.space12),
+                  AppSurface(
+                    border: true,
+                    child: Column(
+                      children: [
+                        for (final channel in AppUpdateChannel.values) ...[
+                          _UpdateChannelRow(
+                            channel: channel,
+                            selected: channel == _updateChannel,
+                            onSelected: () => _setUpdateChannel(channel),
+                          ),
+                          if (channel != AppUpdateChannel.values.last)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: AppSpacing.space16,
+                              ),
+                              child: Divider(height: 1),
+                            ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        RemixIcons.information_line,
+                        size: 18,
+                        color: colors.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: AppSpacing.space8),
+                      Text('切换渠道后需重新检查更新', style: textStyles.detailLabel),
+                    ],
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: AppSpacing.space20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  RemixIcons.information_line,
-                  size: 18,
-                  color: colors.onSurfaceVariant,
-                ),
-                const SizedBox(width: AppSpacing.space8),
-                Text('切换渠道后需重新检查更新', style: textStyles.detailLabel),
-              ],
             ),
           ],
         ),

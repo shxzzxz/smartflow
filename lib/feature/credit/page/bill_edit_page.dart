@@ -7,6 +7,7 @@ import '../../../core/time/date_label.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_section.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -73,13 +74,22 @@ class _BillEditPageState extends ConsumerState<BillEditPage> {
     final asyncState = ref.watch(billEditViewModelProvider(widget.billId));
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(title: const Text('编辑账单')),
-      body: switch (asyncState) {
-        AsyncData(value: final state) when state.loaded => _buildForm(state),
-        AsyncData() => const Center(child: Text('账单不存在或暂不支持调整区间')),
-        AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+      body: SafeArea(
+        child: Column(
+          children: [
+            const AppPageHeader(title: '编辑账单'),
+            Expanded(
+              child: switch (asyncState) {
+                AsyncData(value: final state) when state.loaded =>
+                  _buildForm(state),
+                AsyncData() => const Center(child: Text('账单不存在或暂不支持调整区间')),
+                AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
+                _ => const Center(child: CircularProgressIndicator()),
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -122,7 +132,9 @@ class _BillEditPageState extends ConsumerState<BillEditPage> {
             ),
             AppPlainFormRow(
               label: '还款日',
-              child: AppPlainValueText(text: formatDateLabel(state.repaymentDate!)),
+              child: AppPlainValueText(
+                text: formatDateLabel(state.repaymentDate!),
+              ),
             ),
           ],
         ),
@@ -136,4 +148,3 @@ class _BillEditPageState extends ConsumerState<BillEditPage> {
     );
   }
 }
-

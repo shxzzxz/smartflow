@@ -38,9 +38,9 @@ void main() {
     expect(find.text('2026年07月'), findsOneWidget);
     expect(find.text('2026年06月'), findsOneWidget);
     expect(find.text('2026年05月'), findsOneWidget);
-    expect(find.text('生成历史账单'), findsOneWidget);
+    expect(find.byTooltip('生成历史账单'), findsOneWidget);
 
-    await tester.tap(find.text('生成历史账单'));
+    await tester.tap(find.byTooltip('生成历史账单'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AppMonthPickerDialog), findsOneWidget);

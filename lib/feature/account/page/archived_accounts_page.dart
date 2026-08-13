@@ -7,6 +7,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/motion.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/finance/money_text.dart';
 import '../presentation/account_section_presentation.dart';
@@ -38,37 +39,47 @@ class _ArchivedAccountsPageState extends ConsumerState<ArchivedAccountsPage> {
     final pageState = ref.watch(archivedAccountsViewModelProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('已归档账户'),
-        actions: [
-          IconButton(
-            onPressed: () => setState(() => _hideBalances = !_hideBalances),
-            icon: Icon(
-              _hideBalances ? RemixIcons.eye_off_line : RemixIcons.eye_line,
+      body: SafeArea(
+        child: Column(
+          children: [
+            AppPageHeader(
+              title: '已归档账户',
+              actions: [
+                AppHeaderIconButton(
+                  onPressed:
+                      () => setState(() => _hideBalances = !_hideBalances),
+                  icon:
+                      _hideBalances
+                          ? RemixIcons.eye_off_line
+                          : RemixIcons.eye_line,
+                  tooltip: _hideBalances ? '显示余额' : '隐藏余额',
+                ),
+              ],
             ),
-            tooltip: _hideBalances ? '显示余额' : '隐藏余额',
-          ),
-        ],
+            Expanded(
+              child: switch (pageState) {
+                ArchivedAccountsPageLoaded(:final sections) =>
+                  _ArchivedAccountsContent(
+                    sections: sections,
+                    hideBalances: _hideBalances,
+                    collapsedGroupIds: _collapsedGroupIds,
+                    onToggleGroup:
+                        (groupId) => setState(() {
+                          _collapsedGroupIds.contains(groupId)
+                              ? _collapsedGroupIds.remove(groupId)
+                              : _collapsedGroupIds.add(groupId);
+                        }),
+                  ),
+                ArchivedAccountsPageError(:final error) =>
+                  _ArchivedAccountsError(message: error.message),
+                ArchivedAccountsPageLoading() => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              },
+            ),
+          ],
+        ),
       ),
-      body: switch (pageState) {
-        ArchivedAccountsPageLoaded(:final sections) => _ArchivedAccountsContent(
-          sections: sections,
-          hideBalances: _hideBalances,
-          collapsedGroupIds: _collapsedGroupIds,
-          onToggleGroup:
-              (groupId) => setState(() {
-                _collapsedGroupIds.contains(groupId)
-                    ? _collapsedGroupIds.remove(groupId)
-                    : _collapsedGroupIds.add(groupId);
-              }),
-        ),
-        ArchivedAccountsPageError(:final error) => _ArchivedAccountsError(
-          message: error.message,
-        ),
-        ArchivedAccountsPageLoading() => const Center(
-          child: CircularProgressIndicator(),
-        ),
-      },
     );
   }
 }

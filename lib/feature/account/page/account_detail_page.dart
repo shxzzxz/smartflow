@@ -7,6 +7,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -30,66 +31,75 @@ class AccountDetailPage extends ConsumerWidget {
     final loadedAccount = state is AccountDetailLoaded ? state.account : null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('账户概览'),
-        actions: [
-          if (loadedAccount != null && !loadedAccount.isArchived)
-            IconButton(
-              onPressed: () => context.push('/account/$accountId/edit'),
-              icon: const Icon(RemixIcons.edit_line),
-              tooltip: '编辑账户',
+      body: SafeArea(
+        child: Column(
+          children: [
+            AppPageHeader(
+              title: '账户概览',
+              actions: [
+                if (loadedAccount != null && !loadedAccount.isArchived)
+                  AppHeaderIconButton(
+                    onPressed: () => context.push('/account/$accountId/edit'),
+                    icon: RemixIcons.edit_line,
+                    tooltip: '编辑账户',
+                  ),
+                if (loadedAccount != null && !loadedAccount.isArchived)
+                  AppHeaderIconButton(
+                    onPressed: () => _confirmArchive(context, ref),
+                    icon: RemixIcons.archive_line,
+                    tooltip: '归档账户',
+                  ),
+                if (loadedAccount != null && loadedAccount.isArchived)
+                  AppHeaderIconButton(
+                    onPressed: () => _restore(context, ref),
+                    icon: RemixIcons.restart_line,
+                    tooltip: '恢复账户',
+                  ),
+                if (loadedAccount != null && loadedAccount.isArchived)
+                  AppHeaderIconButton(
+                    onPressed: () => _confirmPermanentDelete(context, ref),
+                    icon: RemixIcons.delete_bin_line,
+                    tooltip: '永久删除账户',
+                  ),
+              ],
             ),
-          if (loadedAccount != null && !loadedAccount.isArchived)
-            IconButton(
-              onPressed: () => _confirmArchive(context, ref),
-              icon: const Icon(RemixIcons.archive_line),
-              tooltip: '归档账户',
+            Expanded(
+              child: switch (state) {
+                AccountDetailLoaded(
+                  :final account,
+                  :final transactions,
+                  :final contracts,
+                  :final bills,
+                  :final creditOverview,
+                ) =>
+                  _AccountDetailContent(
+                    account: account,
+                    transactions: transactions,
+                    contracts: contracts,
+                    bills: bills,
+                    creditOverview: creditOverview,
+                    onLoadMoreTransactions:
+                        () =>
+                            ref
+                                .read(
+                                  accountDetailViewModelProvider(
+                                    accountId,
+                                  ).notifier,
+                                )
+                                .loadMoreTransactions(),
+                  ),
+                AccountDetailNotFound() => const Center(child: Text('账户不存在')),
+                AccountDetailError(:final message) => Center(
+                  child: Text(message),
+                ),
+                AccountDetailLoading() => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              },
             ),
-          if (loadedAccount != null && loadedAccount.isArchived)
-            IconButton(
-              onPressed: () => _restore(context, ref),
-              icon: const Icon(RemixIcons.restart_line),
-              tooltip: '恢复账户',
-            ),
-          if (loadedAccount != null && loadedAccount.isArchived)
-            IconButton(
-              onPressed: () => _confirmPermanentDelete(context, ref),
-              color:
-                  Theme.of(context).extension<AppThemeExtension>()?.danger ??
-                  Theme.of(context).colorScheme.error,
-              icon: const Icon(RemixIcons.delete_bin_line),
-              tooltip: '永久删除账户',
-            ),
-        ],
-      ),
-      body: switch (state) {
-        AccountDetailLoaded(
-          :final account,
-          :final transactions,
-          :final contracts,
-          :final bills,
-          :final creditOverview,
-        ) =>
-          _AccountDetailContent(
-            account: account,
-            transactions: transactions,
-            contracts: contracts,
-            bills: bills,
-            creditOverview: creditOverview,
-            onLoadMoreTransactions:
-                () =>
-                    ref
-                        .read(
-                          accountDetailViewModelProvider(accountId).notifier,
-                        )
-                        .loadMoreTransactions(),
-          ),
-        AccountDetailNotFound() => const Center(child: Text('账户不存在')),
-        AccountDetailError(:final message) => Center(child: Text(message)),
-        AccountDetailLoading() => const Center(
-          child: CircularProgressIndicator(),
+          ],
         ),
-      },
+      ),
     );
   }
 
