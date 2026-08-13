@@ -41,6 +41,26 @@ enum CalendarHeatMetric {
   }
 }
 
+/// 首页汇总卡片中收入/支出金额下方的同期比较展示口径。
+enum CashflowPeriodMetric {
+  periodDelta(storageValue: 'period_delta'),
+  periodRatio(storageValue: 'period_ratio'),
+  previousMonthRatio(storageValue: 'previous_month_ratio');
+
+  const CashflowPeriodMetric({required this.storageValue});
+
+  final String storageValue;
+
+  static CashflowPeriodMetric? fromStorageValue(String? value) {
+    return switch (value) {
+      'period_delta' => CashflowPeriodMetric.periodDelta,
+      'period_ratio' => CashflowPeriodMetric.periodRatio,
+      'previous_month_ratio' => CashflowPeriodMetric.previousMonthRatio,
+      _ => null,
+    };
+  }
+}
+
 class AppSettings {
   const AppSettings({
     this.showAddTransactionFab = true,
@@ -49,6 +69,7 @@ class AppSettings {
     this.copyPreviousMonthBudgetsOnOpen = false,
     this.calendarHeatmapEnabled = false,
     this.calendarHeatMetric = CalendarHeatMetric.expense,
+    this.cashflowPeriodMetric = CashflowPeriodMetric.periodDelta,
   });
 
   final bool showAddTransactionFab;
@@ -57,6 +78,7 @@ class AppSettings {
   final bool copyPreviousMonthBudgetsOnOpen;
   final bool calendarHeatmapEnabled;
   final CalendarHeatMetric calendarHeatMetric;
+  final CashflowPeriodMetric cashflowPeriodMetric;
 
   AppSettings copyWith({
     bool? showAddTransactionFab,
@@ -65,6 +87,7 @@ class AppSettings {
     bool? copyPreviousMonthBudgetsOnOpen,
     bool? calendarHeatmapEnabled,
     CalendarHeatMetric? calendarHeatMetric,
+    CashflowPeriodMetric? cashflowPeriodMetric,
   }) {
     return AppSettings(
       showAddTransactionFab:
@@ -77,6 +100,7 @@ class AppSettings {
       calendarHeatmapEnabled:
           calendarHeatmapEnabled ?? this.calendarHeatmapEnabled,
       calendarHeatMetric: calendarHeatMetric ?? this.calendarHeatMetric,
+      cashflowPeriodMetric: cashflowPeriodMetric ?? this.cashflowPeriodMetric,
     );
   }
 }

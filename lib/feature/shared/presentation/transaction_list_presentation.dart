@@ -1,4 +1,5 @@
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/money/money_formatter.dart';
 import 'package:smartflow/widget/business/finance/finance_labels.dart';
@@ -407,6 +408,7 @@ FinanceTone _adjustmentTone(TransactionAdjustmentKind kind) {
 CashflowSummaryPresentation buildMonthlySummaryPresentation(
   CashflowComparison comparison, {
   BudgetProgress? totalBudget,
+  required CashflowPeriodMetric metric,
 }) {
   final summary = comparison.current;
   return CashflowSummaryPresentation(
@@ -414,14 +416,14 @@ CashflowSummaryPresentation buildMonthlySummaryPresentation(
       CashflowSummaryMetricPresentation(
         label: '本月收入',
         amount: summary.income,
-        caption: formatPeriodChangeMetrics(comparison.incomeChange),
+        caption: formatPeriodChangeCaption(comparison.incomeChange, metric),
         tone: FinanceTone.income,
         kind: CashflowSummaryMetricKind.income,
       ),
       CashflowSummaryMetricPresentation(
         label: '本月支出',
         amount: summary.expense,
-        caption: formatPeriodChangeMetrics(comparison.expenseChange),
+        caption: formatPeriodChangeCaption(comparison.expenseChange, metric),
         tone: FinanceTone.expense,
         kind: CashflowSummaryMetricKind.expense,
       ),
@@ -638,12 +640,21 @@ String formatCompactMoney(Money money) {
   return formatMoney(money.abs(), style: MoneyFormatStyle.compact);
 }
 
-String formatPeriodChangeMetrics(PeriodChange change) {
-  return [
-    formatSignedCompactAmount(change.delta.minorUnits),
-    formatOptionalPercent(change.ratio),
-    formatOptionalPercent(change.fullPeriodRatio),
-  ].join('/');
+/// 按用户选择的展示口径格式化收入/支出的同期比较文案。
+String formatPeriodChangeCaption(
+  PeriodChange change,
+  CashflowPeriodMetric metric,
+) {
+  return switch (metric) {
+    CashflowPeriodMetric.periodDelta =>
+      change.isFlat
+          ? '与上月同期持平'
+          : '较上月同期 ${formatSignedCompactAmount(change.delta.minorUnits)}',
+    CashflowPeriodMetric.periodRatio =>
+      '较上月同期 ${formatSignedOptionalPercent(change.ratio)}',
+    CashflowPeriodMetric.previousMonthRatio =>
+      '已达上月 ${formatOptionalPercent(change.fullPeriodRatio)}',
+  };
 }
 
 String formatSignedCompactAmount(int minorUnits) {
@@ -652,6 +663,15 @@ String formatSignedCompactAmount(int minorUnits) {
     style: MoneyFormatStyle.compact,
   );
   return minorUnits > 0 ? '+$formatted' : formatted;
+}
+
+String formatSignedOptionalPercent(double? ratio) {
+  if (ratio == null) {
+    return '--%';
+  }
+  final percent = (ratio * 100).round();
+  final sign = percent > 0 ? '+' : '';
+  return '$sign$percent%';
 }
 
 String formatOptionalPercent(double? ratio) {

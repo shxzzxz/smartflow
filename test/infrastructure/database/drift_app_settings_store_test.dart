@@ -20,6 +20,7 @@ void main() {
           PullToCreateSensitivity.standard,
         );
         expect(settings.copyPreviousMonthBudgetsOnOpen, isFalse);
+        expect(settings.cashflowPeriodMetric, CashflowPeriodMetric.periodDelta);
       },
     );
 
@@ -50,6 +51,24 @@ void main() {
 
       final settings = await store.read();
       expect(settings.copyPreviousMonthBudgetsOnOpen, isTrue);
+    });
+
+    test('save then read round-trips cashflow period metric', () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      final store = DriftAppSettingsStore(database);
+
+      await store.save(
+        const AppSettings(
+          cashflowPeriodMetric: CashflowPeriodMetric.previousMonthRatio,
+        ),
+      );
+
+      final settings = await store.read();
+      expect(
+        settings.cashflowPeriodMetric,
+        CashflowPeriodMetric.previousMonthRatio,
+      );
     });
   });
 }

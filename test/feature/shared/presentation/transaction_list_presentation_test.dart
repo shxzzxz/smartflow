@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/budget/presentation/budget_transaction_presentation.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
@@ -286,26 +287,60 @@ void main() {
       expect(row.iconKey, 'fork');
     });
 
-    test('formats home comparison captions with compact signed deltas', () {
+    test('formats home comparison captions per selected period metric', () {
+      CashflowSummaryPresentation buildFor(CashflowPeriodMetric metric) {
+        return buildMonthlySummaryPresentation(
+          const CashflowComparison(
+            current: CashflowSummary(
+              income: Money(minorUnits: 12400 * 100),
+              expense: Money(minorUnits: 3000 * 100),
+            ),
+            previousSamePeriod: CashflowSummary(
+              income: Money(minorUnits: 0),
+              expense: Money(minorUnits: 6200 * 100),
+            ),
+            previousFullPeriod: CashflowSummary(
+              income: Money(minorUnits: 6200 * 100),
+              expense: Money(minorUnits: 5000 * 100),
+            ),
+          ),
+          metric: metric,
+        );
+      }
+
+      final delta = buildFor(CashflowPeriodMetric.periodDelta);
+      expect(delta.metrics[0].caption, '较上月同期 +1.24万');
+      expect(delta.metrics[1].caption, '较上月同期 -3200');
+
+      final ratio = buildFor(CashflowPeriodMetric.periodRatio);
+      expect(ratio.metrics[0].caption, '较上月同期 --%');
+      expect(ratio.metrics[1].caption, '较上月同期 -52%');
+
+      final previousMonth = buildFor(CashflowPeriodMetric.previousMonthRatio);
+      expect(previousMonth.metrics[0].caption, '已达上月 200%');
+      expect(previousMonth.metrics[1].caption, '已达上月 60%');
+    });
+
+    test('shows flat caption for unchanged same-period amount', () {
       final presentation = buildMonthlySummaryPresentation(
         const CashflowComparison(
           current: CashflowSummary(
-            income: Money(minorUnits: 12400 * 100),
+            income: Money(minorUnits: 1000 * 100),
             expense: Money(minorUnits: 0),
           ),
           previousSamePeriod: CashflowSummary(
-            income: Money(minorUnits: 0),
+            income: Money(minorUnits: 1000 * 100),
             expense: Money(minorUnits: 0),
           ),
           previousFullPeriod: CashflowSummary(
-            income: Money(minorUnits: 6200 * 100),
+            income: Money(minorUnits: 1000 * 100),
             expense: Money(minorUnits: 0),
           ),
         ),
+        metric: CashflowPeriodMetric.periodDelta,
       );
 
-      expect(presentation.metrics[0].caption, '+1.24万/--%/200%');
-      expect(presentation.metrics[1].caption, '0/--%/--%');
+      expect(presentation.metrics[0].caption, '与上月同期持平');
     });
 
     test('shows signed remaining budget and used percentage', () {
@@ -332,6 +367,7 @@ void main() {
           sortOrder: 0,
           trend: const [],
         ),
+        metric: CashflowPeriodMetric.periodDelta,
       );
 
       final budget = presentation.metrics[2];

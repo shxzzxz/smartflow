@@ -9,6 +9,7 @@ import '../../../design_system/widget/app_month_picker.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
 import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
+import 'package:smartflow/feature/shared/presentation/cashflow_period_metric_options.dart';
 import 'package:smartflow/feature/shared/presentation/pull_to_create_sensitivity_options.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../shared/view_model/app_settings_view_model.dart';
@@ -48,6 +49,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 _HomeSettingsMenu(
                   showAddTransactionFab: settings.showAddTransactionFab,
                   pullToCreateSensitivity: settings.pullToCreateSensitivity,
+                  cashflowPeriodMetric: settings.cashflowPeriodMetric,
                 ),
               ],
             ),
@@ -186,10 +188,12 @@ class _HomeSettingsMenu extends ConsumerWidget {
   const _HomeSettingsMenu({
     required this.showAddTransactionFab,
     required this.pullToCreateSensitivity,
+    required this.cashflowPeriodMetric,
   });
 
   final bool showAddTransactionFab;
   final PullToCreateSensitivity pullToCreateSensitivity;
+  final CashflowPeriodMetric cashflowPeriodMetric;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -208,6 +212,12 @@ class _HomeSettingsMenu extends ConsumerWidget {
           value: pullToCreateSensitivity,
           options: pullToCreateSensitivityOptions,
           onChanged: notifier.setPullToCreateSensitivity,
+        ),
+        AppPopupMenuSelect<CashflowPeriodMetric>(
+          label: '收支指标',
+          value: cashflowPeriodMetric,
+          options: cashflowPeriodMetricOptions,
+          onChanged: notifier.setCashflowPeriodMetric,
         ),
       ],
     );

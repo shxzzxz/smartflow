@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/feature/home/view_model/home_view_model.dart';
@@ -66,6 +67,61 @@ void main() {
       );
       expect(loaded.groups.single.incomeMinor, 10000);
       expect(loaded.groups.single.rows.single.transactionId, 'tx-1');
+    });
+
+    test('captions income and expense by the selected period metric', () async {
+      final transactionService = _FakeTransactionQueryService();
+      final metricsService = _FakeFinancialMetricsService();
+      final accountService = _FakeAccountQueryService(
+        accountsById: const <String, Account>{},
+      );
+      final visibleMonth = DateTime(2026, 1);
+      final container = _container(
+        transactionService,
+        metricsService,
+        accountService,
+        settingsStore: _MemorySettingsStore(
+          const AppSettings(
+            cashflowPeriodMetric: CashflowPeriodMetric.previousMonthRatio,
+          ),
+        ),
+        overrides: [
+          homeTransactionsProvider(
+            visibleMonth,
+          ).overrideWith((ref) => Stream.value([_item()])),
+          homeCashflowComparisonProvider(
+            visibleMonth,
+          ).overrideWith((ref) => Stream.value(_comparison())),
+          homeDailyCashflowSummariesProvider(visibleMonth).overrideWith(
+            (ref) => Stream.value([
+              DailyCashflowSummary(
+                date: DateTime(2026, 1, 1),
+                income: const Money(minorUnits: 10000),
+                expense: const Money(minorUnits: 2500),
+              ),
+            ]),
+          ),
+        ],
+      );
+
+      final contentSub = container.listen(
+        homeContentProvider(visibleMonth),
+        (_, _) {},
+      );
+      addTearDown(contentSub.close);
+      await container.read(homeTransactionsProvider(visibleMonth).future);
+      await container.read(homeCashflowComparisonProvider(visibleMonth).future);
+      await container.read(
+        homeDailyCashflowSummariesProvider(visibleMonth).future,
+      );
+      await container.pump();
+      await _flush();
+
+      final loaded =
+          container.read(homeContentProvider(visibleMonth))
+              as HomeContentLoaded;
+      expect(loaded.summary.metrics.first.caption, '已达上月 100%');
+      expect(loaded.summary.metrics[1].caption, '已达上月 63%');
     });
 
     test('restarts queries when shifting month', () {
@@ -337,6 +393,7 @@ ProviderContainer _container(
   _FakeFinancialMetricsService metricsService,
   _FakeAccountQueryService accountService, {
   List<dynamic> overrides = const [],
+  AppSettingsStore? settingsStore,
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -347,6 +404,9 @@ ProviderContainer _container(
       budgetQueryServiceProvider.overrideWithValue(
         const _FakeBudgetQueryService(),
       ),
+      appSettingsStoreProvider.overrideWithValue(
+        settingsStore ?? _MemorySettingsStore(),
+      ),
       ...overrides,
     ],
   );
@@ -355,6 +415,20 @@ ProviderContainer _container(
   addTearDown(metricsService.dispose);
   addTearDown(accountService.dispose);
   return container;
+}
+
+class _MemorySettingsStore implements AppSettingsStore {
+  _MemorySettingsStore([this.settings = const AppSettings()]);
+
+  AppSettings settings;
+
+  @override
+  Future<AppSettings> read() async => settings;
+
+  @override
+  Future<void> save(AppSettings settings) async {
+    this.settings = settings;
+  }
 }
 
 class _FakeBudgetQueryService implements BudgetQueryService {

@@ -54,6 +54,10 @@ class AppSettingsViewModel extends _$AppSettingsViewModel {
     );
   }
 
+  Future<void> setCashflowPeriodMetric(CashflowPeriodMetric value) {
+    return _save((settings) => settings.copyWith(cashflowPeriodMetric: value));
+  }
+
   Future<void> _save(AppSettings Function(AppSettings settings) change) async {
     final previous = state.value ?? const AppSettings();
     final next = change(previous);
