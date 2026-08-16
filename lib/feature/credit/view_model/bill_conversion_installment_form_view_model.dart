@@ -130,30 +130,35 @@ class BillConversionInstallmentFormViewModel
 
     _setLoaded(current.copyWith(submitting: true));
     try {
-      return await guardUiAction(_logger, 'Bill installment conversion submit', () async {
-        final result = await ref
-            .read(repaymentAppServiceProvider)
-            .createBillConversionInstallmentRepayment(
-              credit.CreateBillConversionInstallmentRepaymentCommand(
-                billId: billId,
-                allocations: billRepaymentCommandAllocations(
-                  review.allocations,
+      return await guardUiAction(
+        _logger,
+        'Bill installment conversion submit',
+        () async {
+          final result = await ref
+              .read(repaymentAppServiceProvider)
+              .createBillConversionInstallmentRepayment(
+                credit.CreateBillConversionInstallmentRepaymentCommand(
+                  billId: billId,
+                  allocations: billRepaymentCommandAllocations(
+                    review.allocations,
+                  ),
+                  totalPeriods: totalPeriods,
+                  borrowingDate: current.borrowingDate,
+                  firstRepaymentDate: current.firstRepaymentDate,
+                  repaymentMethod: current.method,
+                  interestRatePeriod:
+                      ratePpm == null ? null : current.ratePeriod,
+                  interestRatePpm: ratePpm,
+                  interestAccrualMethod: current.accrualMethod,
+                  totalFeeMinor: totalFee.minorUnits,
+                  equalInstallmentOverrideMinor: overrideMinor,
+                  note: trimToNull(noteText),
                 ),
-                totalPeriods: totalPeriods,
-                borrowingDate: current.borrowingDate,
-                firstRepaymentDate: current.firstRepaymentDate,
-                repaymentMethod: current.method,
-                interestRatePeriod: ratePpm == null ? null : current.ratePeriod,
-                interestRatePpm: ratePpm,
-                interestAccrualMethod: current.accrualMethod,
-                totalFeeMinor: totalFee.minorUnits,
-                equalInstallmentOverrideMinor: overrideMinor,
-                note: trimToNull(noteText),
-              ),
-            );
-        _invalidateAfterSubmit(accountId: current.summary.accountId);
-        return result.contractId!;
-      });
+              );
+          _invalidateAfterSubmit(accountId: current.summary.accountId);
+          return result.contractId!;
+        },
+      );
     } finally {
       final latest = _loadedOrNull();
       if (latest != null) {

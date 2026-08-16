@@ -179,6 +179,7 @@ class CreateLiabilityRepaymentCommand {
     required this.amount,
     required this.occurredAt,
     this.note,
+    this.tagIds = const {},
   });
 
   final String liabilityAccountId;
@@ -186,6 +187,9 @@ class CreateLiabilityRepaymentCommand {
   final RepaymentAmountDto amount;
   final DateTime occurredAt;
   final String? note;
+
+  /// 交易携带的标签 ID；随入账一并写入。
+  final Set<String> tagIds;
 }
 
 class EditLiabilityRepaymentCommand {
@@ -196,6 +200,7 @@ class EditLiabilityRepaymentCommand {
     required this.amount,
     required this.occurredAt,
     this.note,
+    this.tagIds,
   });
 
   final String transactionId;
@@ -204,6 +209,9 @@ class EditLiabilityRepaymentCommand {
   final RepaymentAmountDto amount;
   final DateTime occurredAt;
   final String? note;
+
+  /// `null` 表示不改标签；非空集合表示整体替换。
+  final Set<String>? tagIds;
 }
 
 /// 普通还款编辑视图。把交易 detail / entries 反解出的结构化字段提供给 UI，

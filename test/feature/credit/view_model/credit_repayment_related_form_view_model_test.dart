@@ -25,6 +25,7 @@ import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/view_model/refund_form_view_model.dart';
 import 'package:smartflow/feature/transaction/view_model/reimbursement_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
+import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 
 void main() {
   test('repayment form creates repayment command', () async {
@@ -637,6 +638,10 @@ ProviderContainer _container({
       accountsByIdProvider.overrideWith(
         (ref) =>
             Stream.value({for (final account in accounts) account.id: account}),
+      ),
+      tagListProvider.overrideWithValue(const AsyncData(<TagView>[])),
+      transactionTagIdsProvider.overrideWith(
+        (ref, id) => Stream.value(const <String>{}),
       ),
       transactionDetailProvider.overrideWith(
         (ref, id) => Stream.value(_detail()),

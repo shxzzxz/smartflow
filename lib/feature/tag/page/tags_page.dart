@@ -8,6 +8,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../widget/business/tag/tag_name_dialog.dart';
 import '../../shared/provider/tag_providers.dart';
 
 /// 标签词表管理：新建、重命名、合并、排序与删除。
@@ -38,8 +39,8 @@ class TagsPage extends ConsumerWidget {
             Expanded(
               child: tagsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stackTrace) =>
-                    Center(child: Text('标签加载失败：$error')),
+                error:
+                    (error, stackTrace) => Center(child: Text('标签加载失败：$error')),
                 data: (tags) {
                   if (tags.isEmpty) {
                     return Center(
@@ -53,7 +54,10 @@ class TagsPage extends ConsumerWidget {
                               color: colors.onSurfaceVariant,
                             ),
                             const SizedBox(height: AppSpacing.space12),
-                            Text('暂无标签', style: context.appTextStyles.inputText),
+                            Text(
+                              '暂无标签',
+                              style: context.appTextStyles.inputText,
+                            ),
                             const SizedBox(height: AppSpacing.space12),
                             FilledButton.icon(
                               onPressed: () => _createTag(context, ref),
@@ -92,7 +96,8 @@ class TagsPage extends ConsumerWidget {
                                 onRename:
                                     () => _renameTag(context, ref, tags[i]),
                                 onMerge:
-                                    () => _mergeTag(context, ref, tags[i], tags),
+                                    () =>
+                                        _mergeTag(context, ref, tags[i], tags),
                                 onDelete:
                                     () => _deleteTag(context, ref, tags[i]),
                               ),
@@ -120,7 +125,7 @@ class TagsPage extends ConsumerWidget {
   }
 
   Future<void> _createTag(BuildContext context, WidgetRef ref) async {
-    final name = await _promptTagName(context, title: '新建标签');
+    final name = await promptTagName(context, title: '新建标签');
     if (name == null || name.trim().isEmpty) return;
     await ref.read(tagApplicationServiceProvider).createTag(name);
   }
@@ -130,7 +135,7 @@ class TagsPage extends ConsumerWidget {
     WidgetRef ref,
     TagView tag,
   ) async {
-    final name = await _promptTagName(
+    final name = await promptTagName(
       context,
       title: '重命名标签',
       initialText: tag.name,
@@ -160,39 +165,40 @@ class TagsPage extends ConsumerWidget {
     final target = await showModalBottomSheet<TagView>(
       context: context,
       showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.space16,
-                0,
-                AppSpacing.space16,
-                AppSpacing.space8,
-              ),
-              child: Text(
-                '把「${tag.name}」合并到',
-                style: context.appTextStyles.subsectionTitle,
-              ),
+      builder:
+          (context) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.space16,
+                    0,
+                    AppSpacing.space16,
+                    AppSpacing.space8,
+                  ),
+                  child: Text(
+                    '把「${tag.name}」合并到',
+                    style: context.appTextStyles.subsectionTitle,
+                  ),
+                ),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      for (final other in others)
+                        ListTile(
+                          title: Text(other.name),
+                          subtitle: Text('${other.usageCount} 笔交易'),
+                          onTap: () => Navigator.of(context).pop(other),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                children: [
-                  for (final other in others)
-                    ListTile(
-                      title: Text(other.name),
-                      subtitle: Text('${other.usageCount} 笔交易'),
-                      onTap: () => Navigator.of(context).pop(other),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
     );
     if (target == null || !context.mounted) return;
     final confirmed = await showDialog<bool>(
@@ -235,7 +241,7 @@ class TagsPage extends ConsumerWidget {
             content: Text(
               tag.usageCount > 0
                   ? '「${tag.name}」正在 ${tag.usageCount} 笔交易上使用，'
-                        '删除后这些交易将不再携带该标签。'
+                      '删除后这些交易将不再携带该标签。'
                   : '「${tag.name}」没有被任何交易使用。',
             ),
             actions: [
@@ -254,39 +260,10 @@ class TagsPage extends ConsumerWidget {
     await ref.read(tagApplicationServiceProvider).deleteTag(tag.id);
   }
 
-  Future<String?> _promptTagName(
-    BuildContext context, {
-    required String title,
-    String initialText = '',
-  }) {
-    final controller = TextEditingController(text: initialText);
-    return showDialog<String>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text(title),
-            content: TextField(
-              controller: controller,
-              autofocus: true,
-              maxLength: 20,
-              decoration: const InputDecoration(hintText: '标签名称'),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(controller.text),
-                child: const Text('确定'),
-              ),
-            ],
-          ),
-    );
-  }
-
   void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 

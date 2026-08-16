@@ -126,36 +126,40 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
 
     _setLoaded(current.copyWith(submitting: true));
     try {
-      return await guardUiAction(_logger, 'Installment form submission', () async {
-        final service = ref.read(installmentAppServiceProvider);
-        final note = trimToNull(noteText);
-        final result = await service.createDisbursementContract(
-          CreateDisbursementContractCommand(
-            liabilityAccountId: current.liability.id,
-            disbursementAccountId:
-                current.createDisbursementTransaction
-                    ? current.disbursementAccountId
-                    : null,
-            principal: principal,
-            totalPeriods: totalPeriods,
-            borrowingDate: current.borrowingDate,
-            firstRepaymentDate: current.firstRepaymentDate,
-            lastRepaymentDate: current.lastRepaymentDate,
-            repaymentMethod: current.method,
-            interestRatePeriod: ratePpm == null ? null : current.ratePeriod,
-            interestRatePpm: ratePpm,
-            interestAccrualMethod: current.accrualMethod,
-            totalFeeMinor: totalFee.minorUnits,
-            equalInstallmentOverrideMinor: overrideMinor,
-            note: note,
-          ),
-        );
-        ref.invalidate(
-          installmentContractsByAccountProvider(current.liability.id),
-        );
-        ref.invalidate(creditAccountOverviewProvider(current.liability.id));
-        return result.contractId;
-      });
+      return await guardUiAction(
+        _logger,
+        'Installment form submission',
+        () async {
+          final service = ref.read(installmentAppServiceProvider);
+          final note = trimToNull(noteText);
+          final result = await service.createDisbursementContract(
+            CreateDisbursementContractCommand(
+              liabilityAccountId: current.liability.id,
+              disbursementAccountId:
+                  current.createDisbursementTransaction
+                      ? current.disbursementAccountId
+                      : null,
+              principal: principal,
+              totalPeriods: totalPeriods,
+              borrowingDate: current.borrowingDate,
+              firstRepaymentDate: current.firstRepaymentDate,
+              lastRepaymentDate: current.lastRepaymentDate,
+              repaymentMethod: current.method,
+              interestRatePeriod: ratePpm == null ? null : current.ratePeriod,
+              interestRatePpm: ratePpm,
+              interestAccrualMethod: current.accrualMethod,
+              totalFeeMinor: totalFee.minorUnits,
+              equalInstallmentOverrideMinor: overrideMinor,
+              note: note,
+            ),
+          );
+          ref.invalidate(
+            installmentContractsByAccountProvider(current.liability.id),
+          );
+          ref.invalidate(creditAccountOverviewProvider(current.liability.id));
+          return result.contractId;
+        },
+      );
     } finally {
       final latest = _loadedOrNull();
       if (latest != null) {

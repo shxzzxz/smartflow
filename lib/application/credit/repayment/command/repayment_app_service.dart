@@ -131,6 +131,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         occurredAt: command.occurredAt,
         amount: _domainAmount(command.amount),
         note: command.note,
+        tagIds: command.tagIds,
       ),
     );
   }
@@ -173,6 +174,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
             command.note == null
                 ? const Patch<String?>.clear()
                 : Patch<String?>.set(command.note),
+        tagIds: command.tagIds,
       ),
     );
   }

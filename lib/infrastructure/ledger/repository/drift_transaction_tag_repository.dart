@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 
-import '../../../application/ledger/tag/tag_read_models.dart';
-import '../../../application/ledger/tag/tag_repository.dart';
+import '../../../application/ledger/tag/query/tag_read_models.dart';
+import '../../../application/ledger/tag/query/port/tag_repository.dart';
 import '../../database/app_database.dart';
 
 class DriftTransactionTagRepository implements TransactionTagRepository {

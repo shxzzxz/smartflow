@@ -1,7 +1,7 @@
 import 'package:smartflow/core/id/id_generator.dart';
 
-import 'tag_read_models.dart';
-import 'tag_repository.dart';
+import '../query/port/tag_repository.dart';
+import '../query/tag_read_models.dart';
 
 /// 标签词表的应用服务：创建（含查重复用）、重命名、合并、排序与删除。
 ///

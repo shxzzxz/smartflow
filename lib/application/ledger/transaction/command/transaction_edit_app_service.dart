@@ -262,6 +262,7 @@ class TransactionEditAppServiceImpl implements TransactionEditAppService {
           ),
         ),
       ),
+      tagIds: cmd.tagIds,
     );
   }
 

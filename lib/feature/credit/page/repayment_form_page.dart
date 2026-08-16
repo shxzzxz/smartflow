@@ -7,10 +7,12 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_form_section.dart';
+import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
+import 'package:smartflow/widget/business/tag/tag_multi_select_sheet.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/repayment_form_view_model.dart';
 
@@ -178,6 +180,14 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
                 validator: (value) => value == null ? '请选择还款账户' : null,
               ),
               NotePlainFormRow(controller: _noteController),
+              AppPlainValueRow(
+                label: '标签',
+                value:
+                    state.selectedTagIds.isEmpty
+                        ? '不限'
+                        : _selectedTagNames(state),
+                onTap: () => _selectTags(provider, state),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.space24),
@@ -202,6 +212,28 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
     );
     if (picked == null || !mounted) return;
     onSelected(picked);
+  }
+
+  Future<void> _selectTags(
+    RepaymentFormViewModelProvider provider,
+    RepaymentFormState state,
+  ) async {
+    final result = await showTagMultiSelectSheet(
+      context: context,
+      tags: state.tags,
+      selectedIds: state.selectedTagIds,
+      allowCreate: true,
+    );
+    if (!mounted || result == null) return;
+    ref.read(provider.notifier).setTagIds(result.selectedTagIds);
+  }
+
+  String _selectedTagNames(RepaymentFormState state) {
+    final nameById = {for (final tag in state.tags) tag.id: tag.name};
+    return [
+      for (final id in state.selectedTagIds)
+        if (nameById.containsKey(id)) nameById[id]!,
+    ].join('、');
   }
 
   Future<void> _pickAccount({

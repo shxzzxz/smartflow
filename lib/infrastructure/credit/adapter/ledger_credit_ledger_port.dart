@@ -52,6 +52,7 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
         counterpartyName: command.counterpartyName,
         note: command.note,
         ownership: _ownership(command.ownership),
+        tagIds: command.tagIds,
       ),
     );
     return _posted(result);
@@ -100,6 +101,7 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
         paidFromAccountId: command.paidFromAccountId,
         occurredAt: command.occurredAt,
         note: command.note,
+        tagIds: command.tagIds,
       ),
     );
     return _posted(result);

@@ -80,8 +80,9 @@ class _BillEditPageState extends ConsumerState<BillEditPage> {
             const AppPageHeader(title: '编辑账单'),
             Expanded(
               child: switch (asyncState) {
-                AsyncData(value: final state) when state.loaded =>
-                  _buildForm(state),
+                AsyncData(value: final state) when state.loaded => _buildForm(
+                  state,
+                ),
                 AsyncData() => const Center(child: Text('账单不存在或暂不支持调整区间')),
                 AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
                 _ => const Center(child: CircularProgressIndicator()),

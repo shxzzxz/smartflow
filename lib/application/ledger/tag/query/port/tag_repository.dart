@@ -1,4 +1,4 @@
-import 'tag_read_models.dart';
+import '../tag_read_models.dart';
 
 /// 标签词表与交易-标签关联的存储端口。
 ///
@@ -16,10 +16,7 @@ abstract interface class TransactionTagRepository {
   Future<void> renameTag({required String id, required String name});
 
   /// 把 source 标签的全部交易引用改指向 target，然后删除 source。
-  Future<void> mergeTags({
-    required String sourceId,
-    required String targetId,
-  });
+  Future<void> mergeTags({required String sourceId, required String targetId});
 
   /// 删除标签及其全部交易引用。
   Future<void> deleteTag(String id);

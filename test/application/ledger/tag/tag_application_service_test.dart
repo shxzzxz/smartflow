@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:smartflow/application/ledger/tag/tag_application_service.dart';
+import 'package:smartflow/application/ledger/tag/command/tag_application_service.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 
 import '../../../helper/fake_transaction_tag_repository.dart';

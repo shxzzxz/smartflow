@@ -9,6 +9,7 @@ import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import '../../shared/provider/tag_providers.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
@@ -32,6 +33,13 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
         AccountSelectionPurpose.repaymentSource,
       ).future,
     );
+    final tags = await ref.watch(tagListProvider.future);
+    final editTagIds =
+        args.editTransactionId == null
+            ? const <String>{}
+            : await ref.watch(
+              transactionTagIdsProvider(args.editTransactionId!).future,
+            );
 
     final editTransactionId = args.editTransactionId;
     if (editTransactionId == null) {
@@ -80,6 +88,8 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
       noteText: view.note ?? '',
       liabilityAccountId: view.liabilityAccountId,
       paidFromAccountId: view.paidFromAccountId,
+      tags: tags,
+      selectedTagIds: editTagIds,
       occurredAt: view.occurredAt,
     );
   }
@@ -103,6 +113,10 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
 
   void setPaidFromAccountId(String? value) =>
       _update((state) => state.copyWith(paidFromAccountId: value));
+
+  void setTagIds(Set<String> value) {
+    _update((state) => state.copyWith(selectedTagIds: value));
+  }
 
   Future<SubmitOutcome> submit({
     required String principalText,
@@ -166,6 +180,7 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
                       amount: amount,
                       occurredAt: current.occurredAt,
                       note: note,
+                      tagIds: current.selectedTagIds,
                     ),
                   )
                   : await service.editLiabilityRepayment(
@@ -176,6 +191,7 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
                       amount: amount,
                       occurredAt: current.occurredAt,
                       note: note,
+                      tagIds: current.selectedTagIds,
                     ),
                   );
           _invalidateAfterSubmit(
@@ -263,6 +279,8 @@ class RepaymentFormState {
     required this.submitting,
     this.liabilityAccountId,
     this.paidFromAccountId,
+    this.tags = const [],
+    this.selectedTagIds = const {},
   });
 
   factory RepaymentFormState.loaded({
@@ -276,6 +294,8 @@ class RepaymentFormState {
     String noteText = '',
     String? liabilityAccountId,
     String? paidFromAccountId,
+    List<TagView> tags = const [],
+    Set<String> selectedTagIds = const {},
   }) {
     return RepaymentFormState(
       status: RepaymentFormLoadStatus.loaded,
@@ -290,6 +310,8 @@ class RepaymentFormState {
       submitting: false,
       liabilityAccountId: liabilityAccountId,
       paidFromAccountId: paidFromAccountId,
+      tags: tags,
+      selectedTagIds: selectedTagIds,
     );
   }
 
@@ -327,6 +349,8 @@ class RepaymentFormState {
   final String? liabilityAccountId;
   final String? paidFromAccountId;
   final bool submitting;
+  final List<TagView> tags;
+  final Set<String> selectedTagIds;
 
   bool get isLoaded => status == RepaymentFormLoadStatus.loaded;
 
@@ -345,6 +369,8 @@ class RepaymentFormState {
     Object? liabilityAccountId = _sentinel,
     Object? paidFromAccountId = _sentinel,
     bool? submitting,
+    List<TagView>? tags,
+    Set<String>? selectedTagIds,
   }) {
     return RepaymentFormState(
       status: status ?? this.status,
@@ -365,6 +391,8 @@ class RepaymentFormState {
               ? this.paidFromAccountId
               : paidFromAccountId as String?,
       submitting: submitting ?? this.submitting,
+      tags: tags ?? this.tags,
+      selectedTagIds: selectedTagIds ?? this.selectedTagIds,
     );
   }
 }

@@ -141,6 +141,7 @@ class CreditLedgerPostRepaymentCommand {
     this.counterpartyName,
     this.note,
     this.ownership,
+    this.tagIds = const {},
   });
 
   final String liabilityAccountId;
@@ -149,6 +150,7 @@ class CreditLedgerPostRepaymentCommand {
   final RepaymentAmountBreakdown amount;
   final String? counterpartyName;
   final String? note;
+  final Set<String> tagIds;
   final CreditLedgerOwnership? ownership;
 }
 
@@ -180,6 +182,7 @@ class CreditLedgerEditRepaymentCommand {
     this.occurredAt,
     this.amount,
     this.note,
+    this.tagIds,
   });
 
   final String transactionId;
@@ -188,6 +191,9 @@ class CreditLedgerEditRepaymentCommand {
   final DateTime? occurredAt;
   final RepaymentAmountBreakdown? amount;
   final Patch<String?>? note;
+
+  /// `null` 表示不改标签；非空集合表示整体替换。
+  final Set<String>? tagIds;
 }
 
 class CreditLedgerEditBorrowingCommand {

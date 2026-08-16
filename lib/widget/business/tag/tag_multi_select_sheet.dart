@@ -7,6 +7,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/component.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_submit_button.dart';
+import 'tag_name_dialog.dart';
 
 class TagMultiSelectResult {
   const TagMultiSelectResult({
@@ -65,9 +66,9 @@ class _TagMultiSelectSheet extends ConsumerStatefulWidget {
 }
 
 class _TagMultiSelectSheetState extends ConsumerState<_TagMultiSelectSheet> {
-  late final Set<String> _selectedIds = widget.initialSelectedIds.intersection(
-    {for (final tag in widget.tags) tag.id},
-  );
+  late final Set<String> _selectedIds = widget.initialSelectedIds.intersection({
+    for (final tag in widget.tags) tag.id,
+  });
   late bool _untaggedOnly = widget.initialUntaggedOnly && widget.allowUntagged;
   List<TagView> _createdTags = const [];
 
@@ -136,10 +137,11 @@ class _TagMultiSelectSheetState extends ConsumerState<_TagMultiSelectSheet> {
                         '未打标签',
                         style: context.appTextStyles.formPlainValue,
                       ),
-                      onChanged: (_) => setState(() {
-                        _untaggedOnly = !_untaggedOnly;
-                        if (_untaggedOnly) _selectedIds.clear();
-                      }),
+                      onChanged:
+                          (_) => setState(() {
+                            _untaggedOnly = !_untaggedOnly;
+                            if (_untaggedOnly) _selectedIds.clear();
+                          }),
                     ),
                   for (final tag in _visibleTags)
                     CheckboxListTile(
@@ -202,7 +204,7 @@ class _TagMultiSelectSheetState extends ConsumerState<_TagMultiSelectSheet> {
   }
 
   Future<void> _createTag() async {
-    final name = await _promptTagName();
+    final name = await promptTagName(context, title: '新建标签');
     if (name == null || name.trim().isEmpty) return;
     final service = ref.read(tagApplicationServiceProvider);
     final id = await service.createTag(name);
@@ -220,32 +222,5 @@ class _TagMultiSelectSheetState extends ConsumerState<_TagMultiSelectSheet> {
       }
       _selectedIds.add(id);
     });
-  }
-
-  Future<String?> _promptTagName() {
-    final controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('新建标签'),
-            content: TextField(
-              controller: controller,
-              autofocus: true,
-              maxLength: 20,
-              decoration: const InputDecoration(hintText: '标签名称'),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(controller.text),
-                child: const Text('创建'),
-              ),
-            ],
-          ),
-    );
   }
 }

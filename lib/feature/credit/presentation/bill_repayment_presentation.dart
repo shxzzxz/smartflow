@@ -93,7 +93,6 @@ String billRepaymentBreakdownText(BillRepaymentReadModel repayment) {
       '费 ${amount.fee.format()}';
 }
 
-
 bool _hasPositiveAmount(RepaymentAmountBreakdown amount) {
   return amount.principal.minorUnits > 0 ||
       amount.interest.minorUnits > 0 ||

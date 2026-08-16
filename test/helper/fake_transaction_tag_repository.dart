@@ -1,5 +1,5 @@
-import 'package:smartflow/application/ledger/tag/tag_read_models.dart';
-import 'package:smartflow/application/ledger/tag/tag_repository.dart';
+import 'package:smartflow/application/ledger/tag/query/tag_read_models.dart';
+import 'package:smartflow/application/ledger/tag/query/port/tag_repository.dart';
 
 /// 测试用内存标签仓储：记录写入调用，供 writer 事务性断言使用。
 class FakeTransactionTagRepository implements TransactionTagRepository {

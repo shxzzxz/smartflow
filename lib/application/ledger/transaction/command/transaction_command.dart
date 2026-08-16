@@ -195,6 +195,7 @@ class CreateRepaymentCommand {
     this.note,
     this.ownership,
     this.sourceKind = SourceKind.manual,
+    this.tagIds = const {},
   });
 
   final Money principal;
@@ -209,6 +210,9 @@ class CreateRepaymentCommand {
   final String? note;
   final TransactionOwnership? ownership;
   final SourceKind sourceKind;
+
+  /// 交易携带的标签 ID；随入账一并写入。
+  final Set<String> tagIds;
 }
 
 class CreateBorrowingCommand {
@@ -477,6 +481,7 @@ class EditRepaymentCommand {
     this.discount,
     this.counterpartyName,
     this.note,
+    this.tagIds,
   });
 
   final String transactionId;
@@ -489,6 +494,9 @@ class EditRepaymentCommand {
   final DateTime? occurredAt;
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;
+
+  /// `null` 表示不改标签；非空集合表示用该集合整体替换交易标签。
+  final Set<String>? tagIds;
 }
 
 class DeleteTransactionCommand {

@@ -6,7 +6,7 @@ import 'package:smartflow/domain/ledger/service/mutation/transaction_deletion_re
 import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_result.dart';
 import 'package:smartflow/domain/ledger/service/mutation/transaction_update_result.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_result.dart';
-import 'package:smartflow/application/ledger/tag/tag_repository.dart';
+import 'package:smartflow/application/ledger/tag/query/port/tag_repository.dart';
 
 import 'transaction_command.dart';
 
@@ -29,6 +29,8 @@ class TransactionLedgerWriter {
   final AccountRepository _accountRepository;
   final TransactionTagRepository _transactionTagRepository;
 
+  /// [tagIds] 为 null 表示本次重写不改标签；非 null 集合表示用该集合
+  /// 整体替换交易标签（空集合即清空）。
   Future<PostedTransactionResult> planAndPersistRewrite(
     Future<TransactionGroupRewriteResult> Function() plan, {
     Set<String>? tagIds,
@@ -53,6 +55,7 @@ class TransactionLedgerWriter {
     });
   }
 
+  /// [tagIds] 非空时随新交易一并写入；空集合跳过写入（新交易本无标签可清）。
   Future<PostedTransactionResult> persistPosting(
     PostingResult posting, {
     Set<String> tagIds = const {},

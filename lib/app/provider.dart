@@ -28,7 +28,7 @@ import '../infrastructure/ledger/repository/drift_system_account_resolver.dart';
 import '../infrastructure/ledger/repository/drift_transaction_detail_read_repository.dart';
 import '../infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 import '../infrastructure/ledger/repository/drift_transaction_tag_repository.dart';
-import '../application/ledger/tag/tag_repository.dart';
+import '../application/ledger/tag/query/port/tag_repository.dart';
 import '../infrastructure/database/drift_app_settings_store.dart';
 import '../infrastructure/database/drift_asset_section_collapse_store.dart';
 import '../infrastructure/database/drift_log_retention_store.dart';
