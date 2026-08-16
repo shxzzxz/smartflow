@@ -4,6 +4,7 @@
 .codex/
 .superpowers/
 .worktrees/
+.zcode/
 
 # ===== 临时文件 =====
 demo/
