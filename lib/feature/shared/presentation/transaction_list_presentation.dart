@@ -59,6 +59,9 @@ class TransactionRowPresentation {
     this.compactAmountText,
     this.originalAmountText,
     this.originalCompactAmountText,
+    this.selectable = false,
+    this.selected = false,
+    this.dimmed = false,
   });
 
   final String transactionId;
@@ -73,6 +76,11 @@ class TransactionRowPresentation {
   final TransactionAccountFlowPresentation accountFlow;
   final List<TransactionBadgePresentation> badges;
   final bool canQuickEdit;
+  final bool selectable;
+  final bool selected;
+
+  /// 行不会参与导入/展示时置灰，保持可交互。
+  final bool dimmed;
 
   bool get hasBadges => badges.isNotEmpty;
 }

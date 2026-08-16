@@ -55,7 +55,11 @@ String formatImportTaskName(ImportBatch batch) {
   return '${importSourceLabel(batch.source)}_${_taskNameFormat.format(batch.importedAt)}';
 }
 
-List<TransactionDayGroup> buildImportPreviewGroups(ImportPlanReview review) {
+List<TransactionDayGroup> buildImportPreviewGroups(
+  ImportPlanReview review, {
+  Set<int> selectedGroupIndexes = const {},
+  bool showSelectionControls = false,
+}) {
   final rowsByDate = <DateTime, List<TransactionRowPresentation>>{};
   final incomeByDate = <DateTime, int>{};
   final expenseByDate = <DateTime, int>{};
@@ -67,9 +71,14 @@ List<TransactionDayGroup> buildImportPreviewGroups(ImportPlanReview review) {
       draft.occurredAt.month,
       draft.occurredAt.day,
     );
-    rowsByDate
-        .putIfAbsent(date, () => [])
-        .add(_buildImportPreviewRow(review, groupReview));
+    rowsByDate.putIfAbsent(date, () => []).add(
+      _buildImportPreviewRow(
+        review,
+        groupReview,
+        selectedGroupIndexes,
+        showSelectionControls: showSelectionControls,
+      ),
+    );
     if (_isIncomeDraft(draft)) {
       incomeByDate.update(
         date,
@@ -219,13 +228,7 @@ String importPreviewAnalysisDescription(ImportPreviewAnalysisSummary summary) {
     return '有 ${summary.pending} 条交易需要确认后才能导入。';
   }
   if (summary.skipped > 0) {
-    if (summary.filtered == summary.skipped) {
-      return '有 ${summary.filtered} 条来源记录已按规则跳过，可查看全部导入预览。';
-    }
-    if (summary.filtered > 0) {
-      return '有 ${summary.skipped} 条记录已跳过，可查看全部导入预览。';
-    }
-    return '有 ${summary.skipped} 条重复交易已自动跳过，可查看全部交易预览。';
+    return '有 ${summary.skipped} 条来源记录已按规则跳过，可查看全部导入预览。';
   }
   if (summary.total == 0) return '资料包没有产生可预览的交易。';
   return '解析结果已准备，可查看全部交易预览。';
@@ -233,6 +236,7 @@ String importPreviewAnalysisDescription(ImportPreviewAnalysisSummary summary) {
 
 ImportPreviewAnalysisSummary summarizeImportPreview(
   ImportPlanReview review, {
+  Set<int> confirmedExactDuplicateIndexes = const {},
   Set<int> confirmedSuspectedDuplicateIndexes = const {},
   Set<int> confirmedWarningIndexes = const {},
 }) {
@@ -240,12 +244,15 @@ ImportPreviewAnalysisSummary summarizeImportPreview(
   var pending = 0;
   var unparsed = 0;
   final filtered = review.plan.filteredRecords.length;
-  var skipped = filtered;
   for (final group in review.groups) {
-    if (group.isExactDuplicate) {
-      skipped++;
-    } else if (group.isBlocked) {
+    if (group.isBlocked) {
       unparsed++;
+    } else if (group.isExactDuplicate) {
+      if (confirmedExactDuplicateIndexes.contains(group.index)) {
+        parsed++;
+      } else {
+        pending++;
+      }
     } else if (group.isSuspectedDuplicate) {
       if (confirmedSuspectedDuplicateIndexes.contains(group.index)) {
         parsed++;
@@ -266,40 +273,9 @@ ImportPreviewAnalysisSummary summarizeImportPreview(
     parsed: parsed,
     pending: pending,
     unparsed: unparsed,
-    skipped: skipped,
+    skipped: filtered,
     filtered: filtered,
   );
-}
-
-class ImportPreviewConfirmationPresentation {
-  const ImportPreviewConfirmationPresentation({
-    required this.groupIndex,
-    required this.title,
-    required this.reason,
-  });
-
-  final int groupIndex;
-  final String title;
-  final String reason;
-}
-
-List<ImportPreviewConfirmationPresentation> buildImportPreviewConfirmations(
-  ImportPlanReview review,
-) {
-  return [
-    for (final group in review.groups)
-      if (group.canSelect && group.hasWarnings)
-        ImportPreviewConfirmationPresentation(
-          groupIndex: group.index,
-          title:
-              '${importOperationLabel(group.group.topLevel.operationKind)} · '
-              '${formatImportDateTime(group.group.topLevel.occurredAt)}',
-          reason:
-              group.isSuspectedDuplicate
-                  ? '发现疑似重复交易'
-                  : group.issues.firstOrNull?.message ?? '解析结果包含警告',
-        ),
-  ];
 }
 
 List<ImportSourceEntity> importGroupEntities(
@@ -340,7 +316,9 @@ final DateFormat _taskNameFormat = DateFormat('yyyyMMddHHmmss');
 TransactionRowPresentation _buildImportPreviewRow(
   ImportPlanReview review,
   ImportGroupReview groupReview,
-) {
+  Set<int> selectedGroupIndexes, {
+  bool showSelectionControls = false,
+}) {
   final draft = groupReview.group.topLevel;
   final amountPrefix =
       _isIncomeDraft(draft)
@@ -383,13 +361,23 @@ TransactionRowPresentation _buildImportPreviewRow(
           label: '需处理',
           tone: FinanceTone.equity,
         ),
-      if (groupReview.hasWarnings && !groupReview.isBlocked)
+      if (groupReview.isSuspectedDuplicate && !groupReview.isBlocked)
+        const TransactionBadgePresentation(
+          label: '疑似重复',
+          tone: FinanceTone.equity,
+        ),
+      if (groupReview.hasWarnings &&
+          !groupReview.isSuspectedDuplicate &&
+          !groupReview.isBlocked)
         const TransactionBadgePresentation(
           label: '需确认',
           tone: FinanceTone.equity,
         ),
     ],
     canQuickEdit: false,
+    selectable: showSelectionControls && groupReview.canSelect,
+    selected: selectedGroupIndexes.contains(groupReview.index),
+    dimmed: !selectedGroupIndexes.contains(groupReview.index),
   );
 }
 

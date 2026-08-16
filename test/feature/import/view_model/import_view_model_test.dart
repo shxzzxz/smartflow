@@ -586,6 +586,86 @@ void main() {
       },
     );
 
+    test(
+      'confirms an exact duplicate for import and drops it after commit',
+      () async {
+        final plan = _plan(groupCount: 1);
+        final workflow = _FakeImportWorkflowAppService(
+          reviewBuilder:
+              (reviewPlan, temporaryMappings, plannedCreations, groupOverrides) =>
+                  _review(
+                    reviewPlan,
+                    temporaryMappings: temporaryMappings,
+                    effectiveMappings: {_mappingKey: 'cash', ...temporaryMappings},
+                    plannedCreations: plannedCreations,
+                    groups: [
+                      ImportGroupReview(
+                        index: 0,
+                        group: reviewPlan.groups.single,
+                        issues: const [],
+                        isExactDuplicate: true,
+                        isSuspectedDuplicate: false,
+                      ),
+                    ],
+                  ),
+          commitResult: ImportCommitResult(
+            batch: ImportBatch(
+              id: 'batch-exact',
+              source: ImportSource.yimu,
+              status: ImportBatchStatus.imported,
+              importedGroupCount: 1,
+              createdTransactionCount: 1,
+              skippedGroupCount: 0,
+              importedAt: DateTime(2026, 7, 22),
+            ),
+            skippedGroupCount: 0,
+          ),
+        );
+        final container = _container(
+          planService: _FakeImportPlanAppService(plan),
+          workflow: workflow,
+          picker: _FakeImportFilePicker(_bundle()),
+        );
+        final viewModel = container.read(importViewModelProvider.notifier);
+        await viewModel.pickFiles();
+        await viewModel.parseSelectedFiles();
+
+        expect(
+          container.read(importViewModelProvider).selectedGroupIndexes,
+          isEmpty,
+        );
+        viewModel.setExactDuplicateConfirmed(0, true);
+        expect(
+          container.read(importViewModelProvider).selectedGroupIndexes,
+          {0},
+        );
+        expect(
+          viewModel.confirmMappingConfiguration(),
+          isA<ImportActionSuccess<void>>(),
+        );
+        final outcome = await viewModel.commitSelectedGroups();
+
+        expect(outcome, isA<ImportActionSuccess<ImportCommitResult>>());
+        final command = workflow.commitCommands.single;
+        expect(command.selectedGroupIndexes, {0});
+        expect(command.confirmedExactDuplicateIndexes, {0});
+        expect(
+          container.read(importViewModelProvider).lastCommit?.batch?.id,
+          'batch-exact',
+        );
+        expect(
+          container.read(importViewModelProvider).selectedGroupIndexes,
+          isEmpty,
+        );
+        expect(
+          container
+              .read(importViewModelProvider)
+              .confirmedExactDuplicateIndexes,
+          isEmpty,
+        );
+      },
+    );
+
     test('edits review-safe draft fields and keeps source identity', () async {
       final plan = _plan(groupCount: 1);
       final originalGroup = plan.groups.single;

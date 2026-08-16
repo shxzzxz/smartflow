@@ -13,7 +13,7 @@ import 'package:smartflow/feature/import/page/import_page.dart';
 import 'package:smartflow/feature/import/presentation/import_presentation.dart';
 
 void main() {
-  testWidgets('shows five workflow steps and keeps package actions visible', (
+  testWidgets('upload dropzone picks files and keeps package actions visible', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -24,26 +24,26 @@ void main() {
     );
     await tester.pump();
 
-    for (final label in const ['上传文件', '解析数据', '配置映射', '数据预览', '导入完成']) {
-      expect(find.text(label), findsOneWidget);
-    }
-    expect(find.widgetWithText(TextButton, '清空'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, '添加文件'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, '解析'), findsOneWidget);
+    expect(find.text('点击选择文件'), findsOneWidget);
     expect(find.textContaining('XLS 文件请先另存为'), findsOneWidget);
-    expect(find.text('共 1 个文件 · 已完成'), findsNothing);
-    expect(find.text('共 1 个文件 · 待解析'), findsNothing);
+    expect(find.byTooltip('清空'), findsNothing);
+    expect(find.byTooltip('添加文件'), findsNothing);
+    expect(find.text('解析文件'), findsNothing);
+    expect(find.text('共 1 个文件'), findsNothing);
 
-    await tester.tap(find.text('添加文件'));
+    await tester.tap(find.text('点击选择文件'));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(TextButton, '清空'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, '添加文件'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, '解析'), findsOneWidget);
+    expect(find.byTooltip('清空'), findsOneWidget);
+    expect(find.byTooltip('添加文件'), findsOneWidget);
+    expect(find.text('解析文件'), findsOneWidget);
     expect(find.text('共 1 个文件'), findsOneWidget);
-    expect(find.text('共 1 个文件 · 待解析'), findsNothing);
-    expect(find.text('共 1 个文件 · 已完成'), findsNothing);
     expect(find.byTooltip('移除文件'), findsNothing);
+
+    await tester.tap(find.byTooltip('添加文件'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('共 2 个文件'), findsOneWidget);
   });
 
   testWidgets('shows import sources and recent history entry points', (
@@ -225,9 +225,9 @@ void main() {
     await tester.tap(find.text('查看全部').first);
     await tester.pumpAndSettle();
 
-    expect(find.text('全部账户与分类映射'), findsOneWidget);
-    expect(find.text('来源账户6'), findsWidgets);
     expect(find.text('账户与分类映射'), findsOneWidget);
+    expect(find.text('来源账户6'), findsWidgets);
+    expect(find.text('映射概览'), findsOneWidget);
 
     await tester.tap(find.byTooltip('返回'));
     await tester.pumpAndSettle();
@@ -264,16 +264,16 @@ void main() {
     await tester.tap(find.text('查看全部').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('全部导入预览'), findsOneWidget);
     expect(find.text('导入预览'), findsOneWidget);
+    expect(find.text('解析概览'), findsOneWidget);
     expect(find.text('餐饮'), findsWidgets);
     expect(find.byType(DraggableScrollableSheet), findsNothing);
     await tester.tap(find.byTooltip('返回'));
     await tester.pumpAndSettle();
-    expect(find.text('全部导入预览'), findsNothing);
+    expect(find.text('解析概览'), findsNothing);
   });
 
-  testWidgets('confirms warning groups from the all-preview page', (
+  testWidgets('confirms warning groups from the row details sheet', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(480, 1400));
@@ -291,19 +291,65 @@ void main() {
     await tester.tap(find.text('查看全部').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('待确认交易'), findsOneWidget);
     expect(find.text('有 1 条交易需要确认后才能导入。'), findsOneWidget);
-    expect(find.byType(CheckboxListTile), findsOneWidget);
+    expect(find.text('需确认'), findsOneWidget);
+    expect(find.byType(Checkbox), findsNothing);
+    expect(find.text('已选 0 笔'), findsOneWidget);
 
-    await tester.tap(find.byType(CheckboxListTile));
-    await tester.pump();
+    await tester.tap(find.text('餐饮'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('需要确认的原因'), findsOneWidget);
+    expect(find.text('请确认这条交易的来源提示。'), findsOneWidget);
+
+    await tester.tap(find.text('确认导入'));
+    await tester.pumpAndSettle();
 
     expect(find.text('解析结果已准备，可查看全部交易预览。'), findsOneWidget);
     expect(find.text('有 1 条交易需要确认后才能导入。'), findsNothing);
+    expect(find.text('已选 1 笔'), findsOneWidget);
+    expect(find.byType(Checkbox), findsNothing);
+  });
+
+  testWidgets('excludes transactions in batch selection mode', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final plan = _plan();
+    await tester.pumpWidget(
+      _app(
+        planService: _FakePlanService(plan),
+        picker: _FakePicker(_bundle()),
+        workflow: _FakeWorkflow(_review(plan)),
+      ),
+    );
+    await _selectAndParse(tester);
+
+    await tester.tap(find.text('查看全部').last);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Checkbox), findsNothing);
+    expect(find.text('已选 1 笔'), findsOneWidget);
+
+    await tester.tap(find.text('排除交易'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Checkbox), findsOneWidget);
+    expect(find.text('全选'), findsOneWidget);
+    expect(find.text('清除'), findsOneWidget);
+
+    await tester.tap(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isFalse);
+
+    await tester.tap(find.text('完成'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Checkbox), findsNothing);
+    expect(find.text('已选 0 笔'), findsOneWidget);
   });
 
   testWidgets(
-    'shows parsing problems and skipped reasons on the all-preview page',
+    'shows parsing problems and skipped reasons on the issues page',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(480, 1400));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -335,8 +381,21 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('解析详情'), findsOneWidget);
+      expect(find.text('无法解析 1 · 已跳过 1'), findsOneWidget);
+      expect(find.textContaining('来源账户缺失，无法生成交易。'), findsNothing);
+
+      await tester.tap(find.text('解析详情'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('无法解析 (1)'), findsOneWidget);
       expect(find.textContaining('来源账户缺失，无法生成交易。'), findsOneWidget);
-      expect(find.textContaining('账单文件 · 第 8 行：空白记录'), findsOneWidget);
+      expect(find.text('已跳过记录 (1)'), findsOneWidget);
+      expect(find.text('账单文件 · 第 8 行'), findsOneWidget);
+      expect(find.text('空白记录'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('返回'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('来源账户缺失，无法生成交易。'), findsNothing);
     },
   );
 
@@ -542,9 +601,9 @@ Widget _app({
 
 Future<void> _selectAndParse(WidgetTester tester) async {
   await tester.pump();
-  await tester.tap(find.text('添加文件'));
+  await tester.tap(find.text('点击选择文件'));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('解析'));
+  await tester.tap(find.text('解析文件'));
   await tester.pumpAndSettle();
 }
 

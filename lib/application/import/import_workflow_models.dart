@@ -310,7 +310,8 @@ class ImportGroupReview {
   bool get hasWarnings =>
       isSuspectedDuplicate || issues.any((issue) => issue.isWarning);
   bool get requiresWarningConfirmation => hasWarnings;
-  bool get canSelect => !isExactDuplicate && !isBlocked;
+  bool get requiresConfirmation => isExactDuplicate || hasWarnings;
+  bool get canSelect => !isBlocked;
 }
 
 class ImportPlanReview {
@@ -373,6 +374,7 @@ class ImportCommitCommand {
     required Map<ImportMappingKey, String> mappings,
     Map<ImportMappingKey, ImportMappingCreation> plannedCreations = const {},
     required Set<int> selectedGroupIndexes,
+    Set<int> confirmedExactDuplicateIndexes = const {},
     Set<int> confirmedSuspectedDuplicateIndexes = const {},
     Set<int> confirmedWarningIndexes = const {},
     Map<int, Map<ImportMappingKey, String>> groupMappingOverrides = const {},
@@ -381,6 +383,9 @@ class ImportCommitCommand {
   }) : mappings = Map.unmodifiable(mappings),
        plannedCreations = Map.unmodifiable(plannedCreations),
        selectedGroupIndexes = Set.unmodifiable(selectedGroupIndexes),
+       confirmedExactDuplicateIndexes = Set.unmodifiable(
+         confirmedExactDuplicateIndexes,
+       ),
        confirmedSuspectedDuplicateIndexes = Set.unmodifiable(
          confirmedSuspectedDuplicateIndexes,
        ),
@@ -397,6 +402,7 @@ class ImportCommitCommand {
   final Map<ImportMappingKey, String> mappings;
   final Map<ImportMappingKey, ImportMappingCreation> plannedCreations;
   final Set<int> selectedGroupIndexes;
+  final Set<int> confirmedExactDuplicateIndexes;
   final Set<int> confirmedSuspectedDuplicateIndexes;
   final Set<int> confirmedWarningIndexes;
   final Map<int, Map<ImportMappingKey, String>> groupMappingOverrides;

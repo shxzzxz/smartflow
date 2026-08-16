@@ -687,6 +687,47 @@ void main() {
   );
 
   test(
+    'commits a confirmed exact duplicate when explicitly confirmed',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.database.close);
+      final plan = _expenseRefundAndNoAccountIncomePlan();
+      await fixture.saveMappings(plan.sourceEntities);
+
+      final review = await fixture.service.review(plan);
+      final first = await fixture.service.commit(
+        ImportCommitCommand(
+          plan: plan,
+          mappings: review.effectiveMappings,
+          selectedGroupIndexes: {0},
+          importedAt: DateTime(2026, 4, 7),
+        ),
+      );
+      expect(first.batch?.importedGroupCount, 1);
+
+      final reReviewed = await fixture.service.review(plan);
+      expect(reReviewed.groups.first.isExactDuplicate, isTrue);
+
+      final forced = await fixture.service.commit(
+        ImportCommitCommand(
+          plan: plan,
+          mappings: reReviewed.effectiveMappings,
+          selectedGroupIndexes: {0},
+          confirmedExactDuplicateIndexes: const {0},
+          importedAt: DateTime(2026, 4, 9),
+        ),
+      );
+      expect(forced.batch, isNotNull);
+      expect(forced.batch?.importedGroupCount, 1);
+      expect(forced.batch?.skippedGroupCount, 1);
+      expect(
+        await fixture.database.select(fixture.database.transactions).get(),
+        hasLength(4),
+      );
+    },
+  );
+
+  test(
     'a later ledger failure rolls back earlier groups and batch rows',
     () async {
       final fixture = await _Fixture.create();

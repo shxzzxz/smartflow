@@ -114,7 +114,7 @@ void main() {
     );
   });
 
-  test('updates preview summary after warning confirmation', () {
+  test('updates preview summary after confirmation', () {
     final base = _previewReview();
     final pending = summarizeImportPreview(base);
     final confirmed = summarizeImportPreview(
@@ -126,7 +126,6 @@ void main() {
       suspected,
       confirmedSuspectedDuplicateIndexes: {0},
     );
-    final confirmations = buildImportPreviewConfirmations(base);
 
     expect(pending.pending, 1);
     expect(pending.parsed, 0);
@@ -136,14 +135,27 @@ void main() {
     expect(summarizeImportPreview(suspected).pending, 1);
     expect(suspectedConfirmed.pending, 0);
     expect(suspectedConfirmed.parsed, 1);
-    expect(confirmations.single.groupIndex, 0);
-    expect(confirmations.single.title, '转账 · 2026-07-22 09:30');
-    expect(confirmations.single.reason, '来源记录需要确认。');
 
-    final exactDuplicate = _previewReview(exactDuplicate: true, blocking: true);
+    final exactDuplicate = _previewReview(exactDuplicate: true);
     final exactDuplicateSummary = summarizeImportPreview(exactDuplicate);
-    expect(exactDuplicateSummary.skipped, 1);
-    expect(exactDuplicateSummary.unparsed, 0);
+    final exactDuplicateConfirmed = summarizeImportPreview(
+      exactDuplicate,
+      confirmedExactDuplicateIndexes: {0},
+    );
+    expect(exactDuplicateSummary.pending, 1);
+    expect(exactDuplicateSummary.skipped, 0);
+    expect(exactDuplicateConfirmed.pending, 0);
+    expect(exactDuplicateConfirmed.parsed, 1);
+
+    final blockedExactDuplicate = _previewReview(
+      exactDuplicate: true,
+      blocking: true,
+    );
+    final blockedExactDuplicateSummary = summarizeImportPreview(
+      blockedExactDuplicate,
+    );
+    expect(blockedExactDuplicateSummary.unparsed, 1);
+    expect(blockedExactDuplicateSummary.pending, 0);
 
     final filtered = _previewReview(
       includeWarning: false,
@@ -167,6 +179,52 @@ void main() {
       importPreviewAnalysisDescription(filteredSummary),
       '有 1 条来源记录已按规则跳过，可查看全部导入预览。',
     );
+  });
+
+  test('distinguishes duplicate badges and row selection state', () {
+    final exactDuplicate = buildImportPreviewGroups(
+      _previewReview(exactDuplicate: true, includeWarning: false),
+    );
+    expect(exactDuplicate.single.rows.single.badges.map((b) => b.label), [
+      '已导入',
+    ]);
+    expect(exactDuplicate.single.rows.single.selectable, isFalse);
+    expect(exactDuplicate.single.rows.single.selected, isFalse);
+    expect(exactDuplicate.single.rows.single.dimmed, isTrue);
+
+    final exactDuplicateSelectable = buildImportPreviewGroups(
+      _previewReview(exactDuplicate: true, includeWarning: false),
+      selectedGroupIndexes: const {0},
+      showSelectionControls: true,
+    );
+    final selectableRow = exactDuplicateSelectable.single.rows.single;
+    expect(selectableRow.selectable, isTrue);
+    expect(selectableRow.selected, isTrue);
+    expect(selectableRow.dimmed, isFalse);
+
+    final unselectedSelectable = buildImportPreviewGroups(
+      _previewReview(exactDuplicate: true, includeWarning: false),
+      showSelectionControls: true,
+    );
+    expect(unselectedSelectable.single.rows.single.selectable, isTrue);
+    expect(unselectedSelectable.single.rows.single.selected, isFalse);
+    expect(unselectedSelectable.single.rows.single.dimmed, isTrue);
+
+    final suspected = buildImportPreviewGroups(
+      _previewReview(suspectedDuplicate: true),
+    );
+    expect(suspected.single.rows.single.badges.map((b) => b.label), [
+      '疑似重复',
+    ]);
+
+    final warning = buildImportPreviewGroups(_previewReview());
+    expect(warning.single.rows.single.badges.map((b) => b.label), ['需确认']);
+
+    final blocked = buildImportPreviewGroups(
+      _previewReview(blocking: true, includeWarning: true),
+    );
+    expect(blocked.single.rows.single.badges.map((b) => b.label), ['需处理']);
+    expect(blocked.single.rows.single.selectable, isFalse);
   });
 
   test('counts a ghost placeholder as a handled mapping', () {

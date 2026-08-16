@@ -39,6 +39,7 @@ class ImportPageState {
     Map<ImportMappingKey, ImportMappingCreation> plannedCreations = const {},
     required Map<int, Map<ImportMappingKey, String>> groupMappingOverrides,
     required Set<int> selectedGroupIndexes,
+    required Set<int> confirmedExactDuplicateIndexes,
     required Set<int> confirmedSuspectedDuplicateIndexes,
     required Set<int> confirmedWarningIndexes,
     required List<ImportBatch> batches,
@@ -62,6 +63,9 @@ class ImportPageState {
                ),
            }),
        selectedGroupIndexes = Set.unmodifiable(selectedGroupIndexes),
+       confirmedExactDuplicateIndexes = Set.unmodifiable(
+         confirmedExactDuplicateIndexes,
+       ),
        confirmedSuspectedDuplicateIndexes = Set.unmodifiable(
          confirmedSuspectedDuplicateIndexes,
        ),
@@ -76,6 +80,7 @@ class ImportPageState {
       plannedCreations: const {},
       groupMappingOverrides: const {},
       selectedGroupIndexes: const {},
+      confirmedExactDuplicateIndexes: const {},
       confirmedSuspectedDuplicateIndexes: const {},
       confirmedWarningIndexes: const {},
       batches: const [],
@@ -94,6 +99,7 @@ class ImportPageState {
   final Map<ImportMappingKey, ImportMappingCreation> plannedCreations;
   final Map<int, Map<ImportMappingKey, String>> groupMappingOverrides;
   final Set<int> selectedGroupIndexes;
+  final Set<int> confirmedExactDuplicateIndexes;
   final Set<int> confirmedSuspectedDuplicateIndexes;
   final Set<int> confirmedWarningIndexes;
   final List<ImportBatch> batches;
@@ -157,7 +163,7 @@ class ImportPageState {
 
   bool get allDirectlyImportableSelected {
     final directlyImportable = review?.groups.where(
-      (group) => group.canSelect && !group.requiresWarningConfirmation,
+      (group) => group.canSelect && !group.requiresConfirmation,
     );
     return directlyImportable != null &&
         directlyImportable.isNotEmpty &&
@@ -176,6 +182,7 @@ class ImportPageState {
     Map<ImportMappingKey, ImportMappingCreation>? plannedCreations,
     Map<int, Map<ImportMappingKey, String>>? groupMappingOverrides,
     Set<int>? selectedGroupIndexes,
+    Set<int>? confirmedExactDuplicateIndexes,
     Set<int>? confirmedSuspectedDuplicateIndexes,
     Set<int>? confirmedWarningIndexes,
     List<ImportBatch>? batches,
@@ -200,6 +207,9 @@ class ImportPageState {
       groupMappingOverrides:
           groupMappingOverrides ?? this.groupMappingOverrides,
       selectedGroupIndexes: selectedGroupIndexes ?? this.selectedGroupIndexes,
+      confirmedExactDuplicateIndexes:
+          confirmedExactDuplicateIndexes ??
+          this.confirmedExactDuplicateIndexes,
       confirmedSuspectedDuplicateIndexes:
           confirmedSuspectedDuplicateIndexes ??
           this.confirmedSuspectedDuplicateIndexes,
@@ -534,17 +544,22 @@ class ImportViewModel extends Notifier<ImportPageState> {
     final group = _group(index);
     if (group == null || !group.canSelect) return;
     final selectedIndexes = Set<int>.of(state.selectedGroupIndexes);
+    final exactConfirmations = Set<int>.of(
+      state.confirmedExactDuplicateIndexes,
+    );
     final confirmations = Set<int>.of(state.confirmedSuspectedDuplicateIndexes);
     final warningConfirmations = Set<int>.of(state.confirmedWarningIndexes);
     if (selected) {
       selectedIndexes.add(index);
     } else {
       selectedIndexes.remove(index);
+      exactConfirmations.remove(index);
       confirmations.remove(index);
       warningConfirmations.remove(index);
     }
     state = state.copyWith(
       selectedGroupIndexes: selectedIndexes,
+      confirmedExactDuplicateIndexes: exactConfirmations,
       confirmedSuspectedDuplicateIndexes: confirmations,
       confirmedWarningIndexes: warningConfirmations,
       lastCommit: null,
@@ -554,7 +569,9 @@ class ImportViewModel extends Notifier<ImportPageState> {
   void setGroupSelection(int index, bool selected) {
     final group = _group(index);
     if (group == null) return;
-    if (group.isSuspectedDuplicate) {
+    if (group.isExactDuplicate) {
+      setExactDuplicateConfirmed(index, selected);
+    } else if (group.isSuspectedDuplicate) {
       setSuspectedDuplicateConfirmed(index, selected);
     } else if (group.hasWarnings) {
       setWarningConfirmed(index, selected);
@@ -570,12 +587,15 @@ class ImportViewModel extends Notifier<ImportPageState> {
         selected
             ? {
               for (final group in review.groups)
-                if (group.canSelect && !group.requiresWarningConfirmation)
-                  group.index,
+                if (group.canSelect && !group.requiresConfirmation) group.index,
             }
             : <int>{};
     state = state.copyWith(
       selectedGroupIndexes: indexes,
+      confirmedExactDuplicateIndexes:
+          selected
+              ? state.confirmedExactDuplicateIndexes.intersection(indexes)
+              : const {},
       confirmedSuspectedDuplicateIndexes:
           selected
               ? state.confirmedSuspectedDuplicateIndexes.intersection(indexes)
@@ -584,6 +604,27 @@ class ImportViewModel extends Notifier<ImportPageState> {
           selected
               ? state.confirmedWarningIndexes.intersection(indexes)
               : const {},
+      lastCommit: null,
+    );
+  }
+
+  void setExactDuplicateConfirmed(int index, bool confirmed) {
+    final group = _group(index);
+    if (group == null || !group.isExactDuplicate || !group.canSelect) {
+      return;
+    }
+    final confirmations = Set<int>.of(state.confirmedExactDuplicateIndexes);
+    final selected = Set<int>.of(state.selectedGroupIndexes);
+    if (confirmed) {
+      confirmations.add(index);
+      selected.add(index);
+    } else {
+      confirmations.remove(index);
+      selected.remove(index);
+    }
+    state = state.copyWith(
+      selectedGroupIndexes: selected,
+      confirmedExactDuplicateIndexes: confirmations,
       lastCommit: null,
     );
   }
@@ -649,6 +690,8 @@ class ImportViewModel extends Notifier<ImportPageState> {
           mappings: review.effectiveMappings,
           plannedCreations: state.plannedCreations,
           selectedGroupIndexes: state.selectedGroupIndexes,
+          confirmedExactDuplicateIndexes:
+              state.confirmedExactDuplicateIndexes,
           confirmedSuspectedDuplicateIndexes:
               state.confirmedSuspectedDuplicateIndexes,
           confirmedWarningIndexes: state.confirmedWarningIndexes,
@@ -906,18 +949,22 @@ class ImportViewModel extends Notifier<ImportPageState> {
     List<ImportBatch>? batches,
     UiError? error,
   }) {
+    // Exact duplicates are excluded from retained selection: after a commit,
+    // the groups that became exact duplicates are the ones just imported.
     final importable = {
       for (final group in review.groups)
-        if (group.canSelect) group.index,
+        if (group.canSelect && !group.isExactDuplicate) group.index,
     };
     final selected =
         selectAllImportable
             ? {
               for (final group in review.groups)
-                if (group.canSelect && !group.requiresWarningConfirmation)
+                if (group.canSelect && !group.requiresConfirmation)
                   group.index,
             }
             : state.selectedGroupIndexes.intersection(importable);
+    final confirmedExactDuplicates = state.confirmedExactDuplicateIndexes
+        .intersection(selected);
     final confirmed = state.confirmedSuspectedDuplicateIndexes.intersection(
       selected,
     );
@@ -932,6 +979,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
       plannedCreations: plannedCreations,
       groupMappingOverrides: groupMappingOverrides,
       selectedGroupIndexes: selected,
+      confirmedExactDuplicateIndexes: confirmedExactDuplicates,
       confirmedSuspectedDuplicateIndexes: confirmed,
       confirmedWarningIndexes: confirmedWarnings,
       lastCommit: lastCommit,

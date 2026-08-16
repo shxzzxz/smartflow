@@ -7,12 +7,15 @@ import 'package:remixicon/remixicon.dart';
 import '../../../application/import/import_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
+import '../../../design_system/token/component.dart';
 import '../../../design_system/token/list.dart';
 import '../../../design_system/token/progress_indicator.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/transaction/transaction_day_card.dart';
+import '../../shared/presentation/transaction_list_presentation.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/import_presentation.dart';
 import '../view_model/import_view_model.dart';
@@ -63,13 +66,13 @@ class ImportMappingPage extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            const _ImportHeader(title: '全部账户与分类映射'),
+            const AppPageHeader(title: '账户与分类映射'),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.all(AppSpacing.space20),
+                padding: const EdgeInsets.all(AppSpacing.space16),
                 children: [
                   ImportAnalysisCard(
-                    title: '账户与分类映射',
+                    title: '映射概览',
                     icon: RemixIcons.git_merge_line,
                     metrics: [
                       ImportAnalysisMetric(
@@ -104,43 +107,61 @@ class ImportMappingPage extends ConsumerWidget {
   }
 }
 
-class ImportPreviewPage extends ConsumerWidget {
+class ImportPreviewPage extends ConsumerStatefulWidget {
   const ImportPreviewPage({required this.review, super.key});
 
   final ImportPlanReview review;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ImportPreviewPage> createState() => _ImportPreviewPageState();
+}
+
+class _ImportPreviewPageState extends ConsumerState<ImportPreviewPage> {
+  bool _selecting = false;
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(importViewModelProvider);
-    final currentReview = state.review ?? review;
-    final groups = buildImportPreviewGroups(currentReview);
+    final currentReview = state.review ?? widget.review;
+    final groups = buildImportPreviewGroups(
+      currentReview,
+      selectedGroupIndexes: state.selectedGroupIndexes,
+      showSelectionControls: _selecting,
+    );
     final summary = summarizeImportPreview(
       currentReview,
+      confirmedExactDuplicateIndexes: state.confirmedExactDuplicateIndexes,
       confirmedSuspectedDuplicateIndexes:
           state.confirmedSuspectedDuplicateIndexes,
       confirmedWarningIndexes: state.confirmedWarningIndexes,
     );
-    final confirmations = buildImportPreviewConfirmations(currentReview);
     final blockedGroups = currentReview.groups
-        .where((group) => group.isBlocked && !group.isExactDuplicate)
+        .where((group) => group.isBlocked)
         .toList(growable: false);
     final filteredRecords = currentReview.plan.filteredRecords;
+    final selectableGroups = currentReview.groups
+        .where((group) => group.canSelect)
+        .toList(growable: false);
+    final rowsById = {
+      for (final dayGroup in groups)
+        for (final row in dayGroup.rows) row.transactionId: row,
+    };
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            const _ImportHeader(title: '全部导入预览'),
+            const AppPageHeader(title: '导入预览'),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.space20,
+                  AppSpacing.space16,
                   AppSpacing.space12,
-                  AppSpacing.space20,
+                  AppSpacing.space16,
                   AppSpacing.space24,
                 ),
                 children: [
                   ImportAnalysisCard(
-                    title: '导入预览',
+                    title: '解析概览',
                     icon: RemixIcons.list_check_3,
                     metrics: [
                       ImportAnalysisMetric(
@@ -164,30 +185,63 @@ class ImportPreviewPage extends ConsumerWidget {
                     showViewAll: false,
                   ),
                   const SizedBox(height: AppSpacing.space16),
-                  if (confirmations.isNotEmpty) ...[
-                    _ImportPreviewConfirmationSection(
-                      items: confirmations,
-                      state: state,
-                      onChanged:
-                          ref
-                              .read(importViewModelProvider.notifier)
-                              .setGroupSelection,
+                  if (blockedGroups.isNotEmpty ||
+                      filteredRecords.isNotEmpty) ...[
+                    _ImportPreviewDetailsEntry(
+                      blockedCount: blockedGroups.length,
+                      skippedCount: filteredRecords.length,
+                      onTap: () =>
+                          _openIssuesPage(blockedGroups, filteredRecords),
                     ),
                     const SizedBox(height: AppSpacing.space16),
                   ],
-                  if (blockedGroups.isNotEmpty ||
-                      filteredRecords.isNotEmpty) ...[
-                    _ImportPreviewDetailsSection(
-                      blockedGroups: blockedGroups,
-                      filteredRecords: filteredRecords,
+                  if (selectableGroups.isNotEmpty) ...[
+                    _ImportPreviewSelectionToolbar(
+                      selecting: _selecting,
+                      selectedCount: state.selectedGroupIndexes.length,
+                      enabled: !state.isBusy,
+                      onEnterSelection: () =>
+                          setState(() => _selecting = true),
+                      onExitSelection: () =>
+                          setState(() => _selecting = false),
+                      onSelectAll: () =>
+                          _setGroupsSelected(selectableGroups, true),
+                      onClearAll: () =>
+                          _setGroupsSelected(selectableGroups, false),
                     ),
-                    const SizedBox(height: AppSpacing.space16),
+                    const SizedBox(height: AppSpacing.space8),
                   ],
                   for (var index = 0; index < groups.length; index++) ...[
                     TransactionDayCard(
                       group: groups[index],
-                      enableRowTap: false,
+                      enableRowTap: !state.isBusy,
                       showDailyTotals: false,
+                      onRowTap:
+                          (transactionId) => _handleRowTap(
+                            state,
+                            currentReview,
+                            transactionId,
+                            rowsById[transactionId],
+                          ),
+                      onRowLongPress:
+                          state.isBusy
+                              ? null
+                              : (_) {
+                                if (!_selecting) {
+                                  setState(() => _selecting = true);
+                                }
+                              },
+                      onRowSelectionChanged:
+                          state.isBusy
+                              ? null
+                              : (transactionId, selected) {
+                                final groupIndex =
+                                    _importGroupIndexFromRowId(transactionId);
+                                if (groupIndex == null) return;
+                                ref
+                                    .read(importViewModelProvider.notifier)
+                                    .setGroupSelection(groupIndex, selected);
+                              },
                     ),
                     if (index < groups.length - 1)
                       const SizedBox(height: AppSpacing.space10),
@@ -200,12 +254,297 @@ class ImportPreviewPage extends ConsumerWidget {
       ),
     );
   }
+
+  void _openIssuesPage(
+    List<ImportGroupReview> blockedGroups,
+    List<ImportFilteredRecord> filteredRecords,
+  ) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => ImportIssuesPage(
+              blockedGroups: blockedGroups,
+              filteredRecords: filteredRecords,
+            ),
+      ),
+    );
+  }
+
+  void _setGroupsSelected(List<ImportGroupReview> groups, bool selected) {
+    final notifier = ref.read(importViewModelProvider.notifier);
+    for (final group in groups) {
+      notifier.setGroupSelection(group.index, selected);
+    }
+  }
+
+  void _handleRowTap(
+    ImportPageState state,
+    ImportPlanReview review,
+    String transactionId,
+    TransactionRowPresentation? row,
+  ) {
+    final groupIndex = _importGroupIndexFromRowId(transactionId);
+    if (groupIndex == null) return;
+    final group = review.groups[groupIndex];
+    if (_selecting) {
+      ref
+          .read(importViewModelProvider.notifier)
+          .setGroupSelection(
+            groupIndex,
+            !state.selectedGroupIndexes.contains(groupIndex),
+          );
+      return;
+    }
+    if (!group.canSelect || state.selectedGroupIndexes.contains(groupIndex)) {
+      return;
+    }
+    if (row == null) return;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder:
+          (context) => _ImportRowDetailsSheet(
+            groupReview: group,
+            row: row,
+            onConfirm: () {
+              ref
+                  .read(importViewModelProvider.notifier)
+                  .setGroupSelection(groupIndex, true);
+            },
+          ),
+    );
+  }
 }
 
-class _ImportPreviewDetailsSection extends StatelessWidget {
-  const _ImportPreviewDetailsSection({
+int? _importGroupIndexFromRowId(String transactionId) {
+  const prefix = 'import-group-';
+  if (!transactionId.startsWith(prefix)) return null;
+  return int.tryParse(transactionId.substring(prefix.length));
+}
+
+class _ImportPreviewSelectionToolbar extends StatelessWidget {
+  const _ImportPreviewSelectionToolbar({
+    required this.selecting,
+    required this.selectedCount,
+    required this.enabled,
+    required this.onEnterSelection,
+    required this.onExitSelection,
+    required this.onSelectAll,
+    required this.onClearAll,
+  });
+
+  final bool selecting;
+  final int selectedCount;
+  final bool enabled;
+  final VoidCallback onEnterSelection;
+  final VoidCallback onExitSelection;
+  final VoidCallback onSelectAll;
+  final VoidCallback onClearAll;
+
+  @override
+  Widget build(BuildContext context) {
+    if (selecting) {
+      return Row(
+        children: [
+          TextButton(
+            onPressed: enabled ? onSelectAll : null,
+            child: const Text('全选'),
+          ),
+          TextButton(
+            onPressed: enabled ? onClearAll : null,
+            child: const Text('清除'),
+          ),
+          const Spacer(),
+          FilledButton(onPressed: onExitSelection, child: const Text('完成')),
+        ],
+      );
+    }
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            '已选 $selectedCount 笔',
+            style: context.appTextStyles.listSupporting,
+          ),
+        ),
+        TextButton(
+          onPressed: enabled ? onEnterSelection : null,
+          child: const Text('排除交易'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ImportRowDetailsSheet extends StatelessWidget {
+  const _ImportRowDetailsSheet({
+    required this.groupReview,
+    required this.row,
+    required this.onConfirm,
+  });
+
+  final ImportGroupReview groupReview;
+  final TransactionRowPresentation row;
+  final VoidCallback onConfirm;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final reasons = <String>[
+      if (groupReview.isExactDuplicate) '与已导入的交易完全一致，确认后会重复导入。',
+      if (groupReview.isSuspectedDuplicate) '与已有交易高度相似，疑似重复。',
+      for (final issue in groupReview.issues.where(
+        (issue) => issue.isWarning,
+      ))
+        issue.message,
+    ];
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.space16,
+          0,
+          AppSpacing.space16,
+          AppSpacing.space16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(row.title, style: context.appTextStyles.listTitle),
+            const SizedBox(height: AppSpacing.space4),
+            Text(
+              '${row.subtitle} · ${row.amountText}',
+              style: context.appTextStyles.pageSubtitle,
+            ),
+            const SizedBox(height: AppSpacing.space8),
+            Row(
+              children: [
+                Text('账户', style: context.appTextStyles.listSupporting),
+                const SizedBox(width: AppSpacing.space8),
+                Expanded(
+                  child: Text(
+                    _accountFlowLabel(row.accountFlow),
+                    style: context.appTextStyles.detailValue,
+                  ),
+                ),
+              ],
+            ),
+            if (reasons.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.space12),
+              Text('需要确认的原因', style: context.appTextStyles.listSupporting),
+              const SizedBox(height: AppSpacing.space6),
+              for (final reason in reasons)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.space4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        RemixIcons.error_warning_line,
+                        size: AppSpacing.space18,
+                        color: _themeExtension(context).warning,
+                      ),
+                      const SizedBox(width: AppSpacing.space8),
+                      Expanded(
+                        child: Text(
+                          reason,
+                          style: context.appTextStyles.detailValue.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+            const SizedBox(height: AppSpacing.space16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  onConfirm();
+                },
+                icon: const Icon(RemixIcons.checkbox_circle_line),
+                label: const Text('确认导入'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _accountFlowLabel(TransactionAccountFlowPresentation flow) {
+    final out = flow.out?.label;
+    final in_ = flow.in_?.label;
+    if (out != null && in_ != null) return '$out ${flow.separator} $in_';
+    return out ?? in_ ?? '无账户';
+  }
+}
+
+class _ImportPreviewDetailsEntry extends StatelessWidget {
+  const _ImportPreviewDetailsEntry({
+    required this.blockedCount,
+    required this.skippedCount,
+    required this.onTap,
+  });
+
+  final int blockedCount;
+  final int skippedCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final hasBlocked = blockedCount > 0;
+    final subtitle = [
+      if (hasBlocked) '无法解析 $blockedCount',
+      if (skippedCount > 0) '已跳过 $skippedCount',
+    ].join(' · ');
+    return AppSurface(
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space16),
+          child: Row(
+            children: [
+              Icon(
+                hasBlocked
+                    ? RemixIcons.error_warning_line
+                    : RemixIcons.information_line,
+                size: AppSpacing.space20,
+                color: hasBlocked ? colors.error : colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: AppSpacing.space12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('解析详情', style: context.appTextStyles.listTitle),
+                    const SizedBox(height: AppSpacing.space2),
+                    Text(subtitle, style: context.appTextStyles.pageSubtitle),
+                  ],
+                ),
+              ),
+              Icon(
+                RemixIcons.arrow_right_s_line,
+                color: colors.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ImportIssuesPage extends StatelessWidget {
+  const ImportIssuesPage({
     required this.blockedGroups,
     required this.filteredRecords,
+    super.key,
   });
 
   final List<ImportGroupReview> blockedGroups;
@@ -213,49 +552,97 @@ class _ImportPreviewDetailsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return AppSurface(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
+    return Scaffold(
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('解析详情', style: context.appTextStyles.groupTitle),
-            if (blockedGroups.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.space12),
-              Text('无法解析', style: context.appTextStyles.listTitle),
-              const SizedBox(height: AppSpacing.space8),
-              for (var index = 0; index < blockedGroups.length; index++) ...[
-                Text(
-                  '${importOperationLabel(blockedGroups[index].group.topLevel.operationKind)}'
-                  ' · ${formatImportDateTime(blockedGroups[index].group.topLevel.occurredAt)}',
-                  style: context.appTextStyles.listSupporting,
+            const AppPageHeader(title: '解析详情'),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.space16,
+                  AppSpacing.space12,
+                  AppSpacing.space16,
+                  AppSpacing.space24,
                 ),
-                const SizedBox(height: AppSpacing.space6),
-                for (final issue in blockedGroups[index].issues.where(
-                  (issue) => issue.isBlocking,
-                ))
-                  _IssueLine(issue: issue, color: colors.error),
-                if (index < blockedGroups.length - 1)
-                  const SizedBox(height: AppSpacing.space8),
-              ],
-            ],
-            if (filteredRecords.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.space12),
-              Text('已跳过记录', style: context.appTextStyles.listTitle),
-              const SizedBox(height: AppSpacing.space8),
-              for (final record in filteredRecords)
-                _FilteredRecordLine(record: record),
-            ],
+                children: [
+                  if (blockedGroups.isNotEmpty) ...[
+                    Text(
+                      '无法解析 (${blockedGroups.length})',
+                      style: context.appTextStyles.groupTitle,
+                    ),
+                    const SizedBox(height: AppSpacing.space8),
+                    for (var index = 0; index < blockedGroups.length; index++)
+                      ...[
+                        _blockedGroupCard(context, blockedGroups[index]),
+                        if (index < blockedGroups.length - 1)
+                          const SizedBox(height: AppSpacing.space10),
+                      ],
+                  ],
+                  if (blockedGroups.isNotEmpty &&
+                      filteredRecords.isNotEmpty)
+                    const SizedBox(height: AppSpacing.space16),
+                  if (filteredRecords.isNotEmpty) ...[
+                    Text(
+                      '已跳过记录 (${filteredRecords.length})',
+                      style: context.appTextStyles.groupTitle,
+                    ),
+                    const SizedBox(height: AppSpacing.space8),
+                    for (var index = 0;
+                        index < filteredRecords.length;
+                        index++) ...[
+                      _SkippedRecordCard(record: filteredRecords[index]),
+                      if (index < filteredRecords.length - 1)
+                        const SizedBox(height: AppSpacing.space10),
+                    ],
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+
+  Widget _blockedGroupCard(BuildContext context, ImportGroupReview group) {
+    final colors = Theme.of(context).colorScheme;
+    return AppSurface(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    RemixIcons.error_warning_line,
+                    size: AppSpacing.space18,
+                    color: colors.error,
+                  ),
+                  const SizedBox(width: AppSpacing.space8),
+                  Expanded(
+                    child: Text(
+                      '${importOperationLabel(group.group.topLevel.operationKind)}'
+                      ' · ${formatImportDateTime(group.group.topLevel.occurredAt)}',
+                      style: context.appTextStyles.listTitle,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space6),
+              for (final issue
+                  in group.issues.where((issue) => issue.isBlocking))
+                _IssueLine(issue: issue, color: colors.error),
+            ],
+          ),
+        ),
+      );
+  }
 }
 
-class _FilteredRecordLine extends StatelessWidget {
-  const _FilteredRecordLine({required this.record});
+class _SkippedRecordCard extends StatelessWidget {
+  const _SkippedRecordCard({required this.record});
 
   final ImportFilteredRecord record;
 
@@ -266,102 +653,31 @@ class _FilteredRecordLine extends StatelessWidget {
       importFileTypeLabel(record.fileType),
       if (record.rowNumber != null) '第 ${record.rowNumber} 行',
     ].join(' · ');
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.space6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            RemixIcons.information_line,
-            size: AppSpacing.space18,
-            color: colors.onSurfaceVariant,
-          ),
-          const SizedBox(width: AppSpacing.space8),
-          Expanded(
-            child: Text(
-              '$location：${record.reason}',
-              style: context.appTextStyles.detailValue.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ImportPreviewConfirmationSection extends StatelessWidget {
-  const _ImportPreviewConfirmationSection({
-    required this.items,
-    required this.state,
-    required this.onChanged,
-  });
-
-  final List<ImportPreviewConfirmationPresentation> items;
-  final ImportPageState state;
-  final void Function(int index, bool selected) onChanged;
-
-  @override
-  Widget build(BuildContext context) {
     return AppSurface(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('待确认交易', style: context.appTextStyles.groupTitle),
-            const SizedBox(height: AppSpacing.space4),
-            Text(
-              '疑似重复或带有警告的交易，确认后才会参与导入。',
-              style: context.appTextStyles.pageSubtitle,
+            Icon(
+              RemixIcons.information_line,
+              size: AppSpacing.space18,
+              color: colors.onSurfaceVariant,
             ),
-            const SizedBox(height: AppSpacing.space8),
-            for (var index = 0; index < items.length; index++) ...[
-              _ImportPreviewConfirmationTile(
-                item: items[index],
-                selected: _isSelected(items[index]),
-                enabled: !state.isBusy,
-                onChanged:
-                    (selected) => onChanged(items[index].groupIndex, selected),
+            const SizedBox(width: AppSpacing.space12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(location, style: context.appTextStyles.listTitle),
+                  const SizedBox(height: AppSpacing.space2),
+                  Text(record.reason, style: context.appTextStyles.pageSubtitle),
+                ],
               ),
-              if (index < items.length - 1)
-                const SizedBox(height: AppSpacing.space6),
-            ],
+            ),
           ],
         ),
       ),
-    );
-  }
-
-  bool _isSelected(ImportPreviewConfirmationPresentation item) {
-    return state.selectedGroupIndexes.contains(item.groupIndex);
-  }
-}
-
-class _ImportPreviewConfirmationTile extends StatelessWidget {
-  const _ImportPreviewConfirmationTile({
-    required this.item,
-    required this.selected,
-    required this.enabled,
-    required this.onChanged,
-  });
-
-  final ImportPreviewConfirmationPresentation item;
-  final bool selected;
-  final bool enabled;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return CheckboxListTile(
-      value: selected,
-      onChanged: enabled ? (value) => onChanged(value ?? false) : null,
-      dense: true,
-      contentPadding: EdgeInsets.zero,
-      controlAffinity: ListTileControlAffinity.leading,
-      title: Text(item.title),
-      subtitle: Text(item.reason),
     );
   }
 }
@@ -387,9 +703,15 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
       body: SafeArea(
         child: Column(
           children: [
-            _ImportHeader(
+            AppPageHeader(
               title: '导入中',
-              trailing: TextButton(onPressed: _cancel, child: const Text('取消')),
+              actions: [
+                AppHeaderIconButton(
+                  icon: RemixIcons.close_line,
+                  tooltip: '取消导入',
+                  onPressed: _cancel,
+                ),
+              ],
             ),
             Expanded(
               child:
@@ -564,13 +886,22 @@ class _ImportLandingPageState extends ConsumerState<ImportPage> {
       body: SafeArea(
         child: Column(
           children: [
-            _ImportHeader(
+            AppPageHeader(
               title: '数据导入',
-              trailing: IconButton(
-                onPressed: () {},
-                icon: const Icon(RemixIcons.question_line),
-                tooltip: '导入帮助',
-              ),
+              onBack: () {
+                if (Navigator.of(context).canPop()) {
+                  Navigator.of(context).pop();
+                } else {
+                  context.go('/profile');
+                }
+              },
+              actions: [
+                AppHeaderIconButton(
+                  icon: RemixIcons.question_line,
+                  tooltip: '导入帮助',
+                  onPressed: () {},
+                ),
+              ],
             ),
             Expanded(
               child: RefreshIndicator(
@@ -578,9 +909,9 @@ class _ImportLandingPageState extends ConsumerState<ImportPage> {
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.space20,
                     AppSpacing.space16,
-                    AppSpacing.space20,
+                    AppSpacing.space16,
+                    AppSpacing.space16,
                     AppSpacing.space32,
                   ),
                   children: [
@@ -592,7 +923,7 @@ class _ImportLandingPageState extends ConsumerState<ImportPage> {
                             '/import/process/${source.routeValue}',
                           ),
                     ),
-                    const SizedBox(height: AppSpacing.space28),
+                    const SizedBox(height: AppSpacing.space16),
                     Row(
                       children: [
                         Expanded(
@@ -669,7 +1000,7 @@ class _ImportHistoryPageState extends ConsumerState<ImportHistoryPage> {
       body: SafeArea(
         child: Column(
           children: [
-            const _ImportHeader(title: '导入记录'),
+            const AppPageHeader(title: '导入记录'),
             Expanded(
               child: _ImportHistoryTab(
                 state: state,
@@ -730,48 +1061,6 @@ class _ImportHistoryPageState extends ConsumerState<ImportHistoryPage> {
           context,
         ).showSnackBar(SnackBar(content: Text(error.message)));
     }
-  }
-}
-
-class _ImportHeader extends StatelessWidget {
-  const _ImportHeader({required this.title, this.trailing});
-
-  final String title;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space4,
-        AppSpacing.space12,
-        AppSpacing.space12,
-        AppSpacing.space4,
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(
-              onPressed: () {
-                if (Navigator.of(context).canPop()) {
-                  Navigator.of(context).pop();
-                } else {
-                  context.go('/profile');
-                }
-              },
-              icon: const Icon(RemixIcons.arrow_left_s_line),
-              iconSize: AppSpacing.space32,
-              tooltip: '返回',
-            ),
-          ),
-          Text(title, style: context.appTextStyles.dateNavigationTitle),
-          if (trailing != null)
-            Align(alignment: Alignment.centerRight, child: trailing),
-        ],
-      ),
-    );
   }
 }
 
@@ -953,10 +1242,8 @@ class _UnavailableImportSource extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.space20),
+      padding: const EdgeInsets.all(AppSpacing.space16),
       children: [
-        const _ImportStepIndicator(activeStep: 0),
-        const SizedBox(height: AppSpacing.space24),
         AppSurface(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.space20),
@@ -1009,29 +1296,16 @@ class _ImportReviewTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final plan = state.plan;
     final review = state.review;
-    final files = state.selectedBundle?.files ?? const <ImportFilePayload>[];
-    final activeStep =
-        state.lastCommit != null
-            ? 4
-            : review != null
-            ? state.mappingConfirmed
-                ? 3
-                : 2
-            : files.isNotEmpty
-            ? 1
-            : 0;
     return Stack(
       children: [
         ListView(
           padding: const EdgeInsets.fromLTRB(
-            AppSpacing.space20,
-            AppSpacing.space20,
-            AppSpacing.space20,
+            AppSpacing.space16,
+            AppSpacing.space16,
+            AppSpacing.space16,
             AppSpacing.space48 + AppSpacing.space40,
           ),
           children: [
-            _ImportStepIndicator(activeStep: activeStep),
-            const SizedBox(height: AppSpacing.space24),
             if (state.error case final error?) ...[
               _FeedbackBanner(
                 icon: RemixIcons.error_warning_line,
@@ -1056,7 +1330,7 @@ class _ImportReviewTab extends StatelessWidget {
                 const SizedBox(height: AppSpacing.space16),
                 _PlanIssuesCard(issues: plan.issues),
               ],
-              const SizedBox(height: AppSpacing.space20),
+              const SizedBox(height: AppSpacing.space16),
               if (state.lastCommit case final result?) ...[
                 _CommitResultBanner(result: result),
                 const SizedBox(height: AppSpacing.space16),
@@ -1068,154 +1342,65 @@ class _ImportReviewTab extends StatelessWidget {
                     onToggleSaveMappingConfiguration,
                 onConfirmMappingConfiguration: onConfirmMappingConfiguration,
               ),
-              const SizedBox(height: AppSpacing.space24),
+              const SizedBox(height: AppSpacing.space16),
               _ImportPreviewSection(state: state),
             ] else if (state.phase == ImportPagePhase.reviewing) ...[
-              const SizedBox(height: AppSpacing.space20),
+              const SizedBox(height: AppSpacing.space16),
               const Center(child: CircularProgressIndicator()),
             ],
           ],
         ),
         if (review != null && !plan!.hasFatalIssues)
           Positioned(
-            left: AppSpacing.space20,
-            right: AppSpacing.space20,
+            left: AppSpacing.space16,
+            right: AppSpacing.space16,
             bottom: AppSpacing.space16,
             child: SafeArea(
               top: false,
-              child: FilledButton.icon(
-                onPressed:
-                    state.isBusy ||
-                            state.selectedGroupIndexes.isEmpty ||
-                            !state.mappingConfirmed
-                        ? null
-                        : onCommit,
-                icon:
-                    state.phase == ImportPagePhase.committing
-                        ? const SizedBox.square(
-                          dimension: AppSpacing.space18,
-                          child: CircularProgressIndicator(
-                            strokeWidth:
-                                AppProgressIndicatorTokens.compactStrokeWidth,
-                          ),
-                        )
-                        : const Icon(RemixIcons.import_line),
-                label: Text(
-                  state.phase == ImportPagePhase.committing ? '正在导入' : '导入',
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Theme.of(context).colorScheme.surface.withValues(
+                        alpha: 0,
+                      ),
+                      Theme.of(context).colorScheme.surface,
+                    ],
+                    stops: const [0, 0.4],
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.space16),
+                  child: FilledButton.icon(
+                    onPressed:
+                        state.isBusy ||
+                                state.selectedGroupIndexes.isEmpty ||
+                                !state.mappingConfirmed
+                            ? null
+                            : onCommit,
+                    icon:
+                        state.phase == ImportPagePhase.committing
+                            ? const SizedBox.square(
+                              dimension: AppSpacing.space18,
+                              child: CircularProgressIndicator(
+                                strokeWidth:
+                                    AppProgressIndicatorTokens
+                                        .compactStrokeWidth,
+                              ),
+                            )
+                            : const Icon(RemixIcons.import_line),
+                    label: Text(
+                      state.phase == ImportPagePhase.committing
+                          ? '正在导入'
+                          : '导入',
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-      ],
-    );
-  }
-}
-
-class _ImportStepIndicator extends StatelessWidget {
-  const _ImportStepIndicator({required this.activeStep});
-
-  final int activeStep;
-
-  static const _labels = ['上传文件', '解析数据', '配置映射', '数据预览', '导入完成'];
-  static const _icons = [
-    RemixIcons.upload_2_line,
-    RemixIcons.file_search_line,
-    RemixIcons.git_merge_line,
-    RemixIcons.list_check_3,
-    RemixIcons.checkbox_circle_line,
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Semantics(
-      label: '导入进度：${_labels[activeStep.clamp(0, 4)]}',
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final nodeWidth = constraints.maxWidth / _labels.length;
-          return Stack(
-            children: [
-              Positioned(
-                top: AppSpacing.space14,
-                left: nodeWidth / 2,
-                right: nodeWidth / 2,
-                child: Row(
-                  children: [
-                    for (var index = 1; index < _labels.length; index++)
-                      Expanded(
-                        child: Container(
-                          height: AppListTokens.dividerThickness * 2,
-                          color:
-                              index <= activeStep
-                                  ? colors.primary
-                                  : colors.outlineVariant,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (var index = 0; index < _labels.length; index++)
-                    Expanded(
-                      child: _ImportStepNode(
-                        label: _labels[index],
-                        icon: _icons[index],
-                        active: index <= activeStep,
-                        completed: index < activeStep || activeStep == 4,
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _ImportStepNode extends StatelessWidget {
-  const _ImportStepNode({
-    required this.label,
-    required this.icon,
-    required this.active,
-    required this.completed,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool active;
-  final bool completed;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: AppSpacing.space28,
-          height: AppSpacing.space28,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: active ? colors.primary : colors.surfaceContainerHighest,
-          ),
-          child: Icon(
-            completed ? RemixIcons.check_line : icon,
-            size: AppSpacing.space16,
-            color: active ? colors.onPrimary : colors.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.space8),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: context.appTextStyles.badgeLabel.copyWith(
-            color: active ? colors.primary : colors.onSurfaceVariant,
-          ),
-        ),
       ],
     );
   }
@@ -1239,7 +1424,6 @@ class _ImportFilesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final files = state.selectedBundle?.files ?? const <ImportFilePayload>[];
-    final colors = Theme.of(context).colorScheme;
     final isParsing = state.phase == ImportPagePhase.parsing;
     final controlsDisabled = state.isBusy;
     return Column(
@@ -1271,41 +1455,23 @@ class _ImportFilesSection extends StatelessWidget {
                         ],
                       ),
                     ),
-                    TextButton(
-                      onPressed:
-                          controlsDisabled || files.isEmpty
-                              ? null
-                              : onParseFiles,
-                      child: Text(isParsing ? '解析中' : '解析'),
-                    ),
+                    if (files.isNotEmpty) ...[
+                      IconButton(
+                        onPressed: controlsDisabled ? null : onReset,
+                        icon: const Icon(RemixIcons.delete_bin_line),
+                        tooltip: '清空',
+                      ),
+                      IconButton(
+                        onPressed: controlsDisabled ? null : onAddFiles,
+                        icon: const Icon(RemixIcons.add_line),
+                        tooltip: '添加文件',
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: AppSpacing.space8),
                 if (files.isEmpty) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.space16,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colors.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(AppRadius.radiusLg),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          RemixIcons.folder_upload_line,
-                          size: AppSpacing.space32,
-                          color: colors.onSurfaceVariant,
-                        ),
-                        const SizedBox(height: AppSpacing.space8),
-                        Text(
-                          '选择一木导出的账单、转账和债务 CSV 或 XLSX 文件；XLS 文件请先另存为这两种格式',
-                          textAlign: TextAlign.center,
-                          style: context.appTextStyles.pageSubtitle,
-                        ),
-                      ],
-                    ),
-                  ),
+                  _UploadDropzone(onTap: controlsDisabled ? null : onAddFiles),
                 ] else ...[
                   for (var index = 0; index < files.length; index++) ...[
                     _ImportFileRow(
@@ -1313,25 +1479,26 @@ class _ImportFilesSection extends StatelessWidget {
                       progress: state.fileProgressAt(index),
                     ),
                   ],
-                ],
-                const SizedBox(height: AppSpacing.space6),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Wrap(
-                    spacing: AppSpacing.space4,
-                    children: [
-                      TextButton(
-                        onPressed:
-                            controlsDisabled || files.isEmpty ? null : onReset,
-                        child: const Text('清空'),
-                      ),
-                      TextButton(
-                        onPressed: controlsDisabled ? null : onAddFiles,
-                        child: const Text('添加文件'),
-                      ),
-                    ],
+                  const SizedBox(height: AppSpacing.space8),
+                  OutlinedButton.icon(
+                    onPressed:
+                        controlsDisabled || files.isEmpty
+                            ? null
+                            : onParseFiles,
+                    icon:
+                        isParsing
+                            ? const SizedBox.square(
+                              dimension: AppSpacing.space18,
+                              child: CircularProgressIndicator(
+                                strokeWidth:
+                                    AppProgressIndicatorTokens
+                                        .compactStrokeWidth,
+                              ),
+                            )
+                            : const Icon(RemixIcons.file_search_line),
+                    label: Text(isParsing ? '解析中' : '解析文件'),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -1352,6 +1519,55 @@ class _ImportFilesSection extends StatelessWidget {
   String _fileSummary(List<ImportFilePayload> files) {
     if (files.isEmpty) return '尚未选择文件';
     return '共 ${files.length} 个文件';
+  }
+}
+
+class _UploadDropzone extends StatelessWidget {
+  const _UploadDropzone({this.onTap});
+
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.radiusLg),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.space28),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(AppRadius.radiusLg),
+          border: Border.all(
+            color: colors.outlineVariant.withValues(
+              alpha: AppComponentTokens.mutedOutlineOpacity,
+            ),
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              RemixIcons.folder_upload_line,
+              size: AppSpacing.space32,
+              color: colors.primary,
+            ),
+            const SizedBox(height: AppSpacing.space8),
+            Text('点击选择文件', style: context.appTextStyles.listTitle),
+            const SizedBox(height: AppSpacing.space4),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space16,
+              ),
+              child: Text(
+                '支持一木导出的账单、转账和债务 CSV 或 XLSX 文件；XLS 文件请先另存为这两种格式',
+                textAlign: TextAlign.center,
+                style: context.appTextStyles.pageSubtitle,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -1861,9 +2077,13 @@ class _ImportPreviewSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final review = state.review!;
-    final groups = buildImportPreviewGroups(review);
+    final groups = buildImportPreviewGroups(
+      review,
+      selectedGroupIndexes: state.selectedGroupIndexes,
+    );
     final summary = summarizeImportPreview(
       review,
+      confirmedExactDuplicateIndexes: state.confirmedExactDuplicateIndexes,
       confirmedSuspectedDuplicateIndexes:
           state.confirmedSuspectedDuplicateIndexes,
       confirmedWarningIndexes: state.confirmedWarningIndexes,
@@ -1951,9 +2171,9 @@ class _ImportHistoryTab extends StatelessWidget {
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
+          AppSpacing.space16,
           AppSpacing.space20,
-          AppSpacing.space20,
-          AppSpacing.space20,
+          AppSpacing.space16,
           AppSpacing.space32,
         ),
         children: [

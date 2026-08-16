@@ -332,14 +332,18 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
             sourceOperationFingerprint: group.sourceOperationFingerprint,
             fingerprintVersion: group.fingerprintVersion,
           );
-          if (duplicates.hasExactMatch) continue;
+          if (duplicates.hasExactMatch &&
+              !command.confirmedExactDuplicateIndexes.contains(index)) {
+            continue;
+          }
           final suspected =
               duplicates.hasFingerprintMatch ||
               currentFingerprints[_fingerprintKey(group)]! > 1;
           final hasWarning = group.issues.any((issue) => issue.isWarning);
           final warningConfirmed =
               command.confirmedWarningIndexes.contains(index) ||
-              command.confirmedSuspectedDuplicateIndexes.contains(index);
+              command.confirmedSuspectedDuplicateIndexes.contains(index) ||
+              command.confirmedExactDuplicateIndexes.contains(index);
           if ((suspected || hasWarning) && !warningConfirmed) {
             continue;
           }
