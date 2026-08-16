@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
@@ -7,7 +9,9 @@ import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../widget/business/account/account_multi_select_sheet.dart';
 import '../../../widget/business/category/category_cascade_multi_select_sheet.dart';
+import '../../../widget/business/tag/tag_multi_select_sheet.dart';
 import '../view_model/home_view_model.dart';
+import '../../shared/provider/tag_providers.dart';
 
 Future<HomeTransactionFilter?> showHomeTransactionFilterSheet({
   required BuildContext context,
@@ -30,7 +34,7 @@ Future<HomeTransactionFilter?> showHomeTransactionFilterSheet({
   );
 }
 
-class _HomeTransactionFilterSheet extends StatefulWidget {
+class _HomeTransactionFilterSheet extends ConsumerStatefulWidget {
   const _HomeTransactionFilterSheet({
     required this.initialFilter,
     required this.expenseTree,
@@ -44,12 +48,12 @@ class _HomeTransactionFilterSheet extends StatefulWidget {
   final List<Account> accounts;
 
   @override
-  State<_HomeTransactionFilterSheet> createState() =>
+  ConsumerState<_HomeTransactionFilterSheet> createState() =>
       _HomeTransactionFilterSheetState();
 }
 
 class _HomeTransactionFilterSheetState
-    extends State<_HomeTransactionFilterSheet> {
+    extends ConsumerState<_HomeTransactionFilterSheet> {
   late final Set<String> _allCategoryIds = _categoryTreeIds(
     widget.expenseTree,
     widget.incomeTree,
@@ -69,6 +73,10 @@ class _HomeTransactionFilterSheetState
           : widget.initialFilter.settlementAccountIds!.intersection(
             _allAccountIds,
           );
+  late Set<String> _selectedTagIds = Set.of(
+    widget.initialFilter.tagIds ?? const <String>{},
+  );
+  late bool _untaggedOnly = widget.initialFilter.untaggedOnly;
 
   bool get _allSelected =>
       _selectedCategoryIds.length == _allCategoryIds.length &&
@@ -106,6 +114,8 @@ class _HomeTransactionFilterSheetState
                           : () => setState(() {
                             _selectedCategoryIds = Set.of(_allCategoryIds);
                             _selectedAccountIds = Set.of(_allAccountIds);
+                            _selectedTagIds = {};
+                            _untaggedOnly = false;
                           }),
                   child: const Text('全部'),
                 ),
@@ -116,6 +126,8 @@ class _HomeTransactionFilterSheetState
                           : () => setState(() {
                             _selectedCategoryIds = {};
                             _selectedAccountIds = {};
+                            _selectedTagIds = {};
+                            _untaggedOnly = false;
                           }),
                   child: const Text('清除'),
                 ),
@@ -133,6 +145,11 @@ class _HomeTransactionFilterSheetState
                   label: '账户',
                   value: _selectionLabel(_selectedAccountIds, _allAccountIds),
                   onTap: _selectAccounts,
+                ),
+                AppPlainValueRow(
+                  label: '标签',
+                  value: _tagLabel,
+                  onTap: _selectTags,
                 ),
               ],
             ),
@@ -165,11 +182,36 @@ class _HomeTransactionFilterSheetState
     setState(() => _selectedAccountIds = selected);
   }
 
+  Future<void> _selectTags() async {
+    final tags = ref.read(tagListProvider).value ?? const <TagView>[];
+    final result = await showTagMultiSelectSheet(
+      context: context,
+      tags: tags,
+      selectedIds: _selectedTagIds,
+      untaggedOnly: _untaggedOnly,
+      allowUntagged: true,
+    );
+    if (!mounted || result == null) return;
+    setState(() {
+      _selectedTagIds = result.selectedTagIds;
+      _untaggedOnly = result.untaggedOnly;
+    });
+  }
+
+  String get _tagLabel {
+    if (_untaggedOnly) return '未打标签';
+    if (_selectedTagIds.isEmpty) return '不限';
+    return '已选 ${_selectedTagIds.length} 项';
+  }
+
   void _apply() {
     Navigator.of(context).pop(
       HomeTransactionFilter(
         categoryAccountIds: _normalize(_selectedCategoryIds, _allCategoryIds),
         settlementAccountIds: _normalize(_selectedAccountIds, _allAccountIds),
+        tagIds:
+            _untaggedOnly || _selectedTagIds.isEmpty ? null : _selectedTagIds,
+        untaggedOnly: _untaggedOnly,
       ),
     );
   }

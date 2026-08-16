@@ -39,11 +39,15 @@ class HomeViewModel extends _$HomeViewModel {
   void applyTransactionFilter({
     required Set<String>? categoryAccountIds,
     required Set<String>? settlementAccountIds,
+    Set<String>? tagIds,
+    bool untaggedOnly = false,
   }) {
     state = state.copyWith(
       transactionFilter: HomeTransactionFilter(
         categoryAccountIds: categoryAccountIds,
         settlementAccountIds: settlementAccountIds,
+        tagIds: tagIds,
+        untaggedOnly: untaggedOnly,
       ),
     );
   }
@@ -64,6 +68,8 @@ Stream<List<TransactionListReadModel>> homeTransactions(
         TransactionListQuery(
           categoryAccountIds: filter.categoryAccountIds,
           settlementAccountIds: filter.settlementAccountIds,
+          tagIds: filter.tagIds,
+          untaggedOnly: filter.untaggedOnly,
           topLevelOnly: true,
           occurredFrom: month.start,
           occurredUntil: month.nextMonthStart,
@@ -178,6 +184,8 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
             TransactionListQuery(
               categoryAccountIds: filter.categoryAccountIds,
               settlementAccountIds: filter.settlementAccountIds,
+              tagIds: filter.tagIds,
+              untaggedOnly: filter.untaggedOnly,
               topLevelOnly: true,
               occurredFrom: month.start,
               occurredUntil: month.nextMonthStart,
@@ -359,6 +367,8 @@ class HomeTransactionFilter {
   HomeTransactionFilter({
     required Set<String>? categoryAccountIds,
     required Set<String>? settlementAccountIds,
+    Set<String>? tagIds,
+    this.untaggedOnly = false,
   }) : categoryAccountIds =
            categoryAccountIds == null
                ? null
@@ -366,17 +376,27 @@ class HomeTransactionFilter {
        settlementAccountIds =
            settlementAccountIds == null
                ? null
-               : Set.unmodifiable(settlementAccountIds);
+               : Set.unmodifiable(settlementAccountIds),
+       tagIds = tagIds == null ? null : Set.unmodifiable(tagIds);
 
   const HomeTransactionFilter.all()
     : categoryAccountIds = null,
-      settlementAccountIds = null;
+      settlementAccountIds = null,
+      tagIds = null,
+      untaggedOnly = false;
 
   final Set<String>? categoryAccountIds;
   final Set<String>? settlementAccountIds;
 
+  /// 标签维度：`null` 表示不筛选；与 [untaggedOnly] 互斥。
+  final Set<String>? tagIds;
+  final bool untaggedOnly;
+
   bool get isActive =>
-      categoryAccountIds != null || settlementAccountIds != null;
+      categoryAccountIds != null ||
+      settlementAccountIds != null ||
+      tagIds != null ||
+      untaggedOnly;
 }
 
 sealed class HomeFilterOptionsState {

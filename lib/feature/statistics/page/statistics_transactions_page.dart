@@ -12,6 +12,8 @@ class StatisticsTransactionsPage extends ConsumerWidget {
     required this.title,
     required this.category,
     required this.settlementAccountId,
+    required this.tagId,
+    required this.untaggedOnly,
     required this.occurredFrom,
     required this.occurredUntil,
     required this.scope,
@@ -21,6 +23,8 @@ class StatisticsTransactionsPage extends ConsumerWidget {
   final String title;
   final CategorySelection? category;
   final String? settlementAccountId;
+  final String? tagId;
+  final bool untaggedOnly;
   final DateTime? occurredFrom;
   final DateTime occurredUntil;
   final StatisticsDrilldownScope scope;
@@ -32,6 +36,8 @@ class StatisticsTransactionsPage extends ConsumerWidget {
       statisticsTransactionsContentProvider(
         category: category,
         settlementAccountId: settlementAccountId,
+        tagId: tagId,
+        untaggedOnly: untaggedOnly,
         occurredFrom: occurredFrom,
         occurredUntil: occurredUntil,
         scope: scope,

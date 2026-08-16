@@ -102,8 +102,10 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     final pageQuery = _normalizeQuery(query, accountsById);
     final categoryAccountIds = pageQuery.categoryAccountIds;
     final settlementAccountIds = pageQuery.settlementAccountIds;
+    final tagIds = pageQuery.tagIds;
     if ((categoryAccountIds != null && categoryAccountIds.isEmpty) ||
-        (settlementAccountIds != null && settlementAccountIds.isEmpty)) {
+        (settlementAccountIds != null && settlementAccountIds.isEmpty) ||
+        (tagIds != null && tagIds.isEmpty)) {
       return const [];
     }
     final page = await _txRead.watchPage(pageQuery).first;
@@ -127,6 +129,8 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
       offset: query.offset,
       before: query.before,
       scope: query.scope,
+      tagIds: query.tagIds,
+      untaggedOnly: query.untaggedOnly,
     );
   }
 

@@ -41,7 +41,7 @@ final class HomeViewModelProvider
   }
 }
 
-String _$homeViewModelHash() => r'0d0352b1457886376488463b89a3a813a47ce858';
+String _$homeViewModelHash() => r'e86972df98a91213d7c084ec8c407a13aaba04f3';
 
 abstract class _$HomeViewModel extends $Notifier<HomePageState> {
   HomePageState build();
@@ -118,7 +118,7 @@ final class HomeTransactionsProvider
   }
 }
 
-String _$homeTransactionsHash() => r'29ea8b14e9a6e0285f13a2570198bfabc97be80d';
+String _$homeTransactionsHash() => r'961e9f80475537107f1e2acdc51e6201dcc588ee';
 
 final class HomeTransactionsFamily extends $Family
     with
@@ -198,7 +198,7 @@ final class HomeTransactionFeedViewModelProvider
 }
 
 String _$homeTransactionFeedViewModelHash() =>
-    r'9ab568952f1fea3889eb0eefdcb3037f2209daca';
+    r'40565fda7c7ddfe9bfbb4b1635949ae78ee5f14a';
 
 final class HomeTransactionFeedViewModelFamily extends $Family
     with
@@ -522,7 +522,7 @@ final class HomeContentProvider
   }
 }
 
-String _$homeContentHash() => r'261720d4b530c95543d4c58d3d24b262628616e7';
+String _$homeContentHash() => r'b02c1021b7f0af21de1b5f0d19adb7189e453b7c';
 
 final class HomeContentFamily extends $Family
     with $FunctionalFamilyOverride<HomeContentState, DateTime> {

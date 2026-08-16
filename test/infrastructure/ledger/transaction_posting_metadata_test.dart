@@ -12,6 +12,7 @@ import 'package:smartflow/infrastructure/ledger/repository/drift_system_account_
 
 import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
+import '../../helper/fake_transaction_tag_repository.dart';
 
 void main() {
   test('creation commands persist import source and posted time', () async {
@@ -29,6 +30,7 @@ void main() {
       transactionRepository: postings,
       transactionGroupRepository: postings,
       accountRepository: accounts,
+      transactionTagRepository: FakeTransactionTagRepository(),
     );
     final service = TransactionPostingAppServiceImpl(
       accountRepository: accounts,

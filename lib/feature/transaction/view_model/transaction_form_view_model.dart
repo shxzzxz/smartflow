@@ -11,6 +11,7 @@ import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import '../../shared/provider/tag_providers.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_form_presentation.dart';
@@ -59,6 +60,11 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             : ref.watch(transactionDetailProvider(editTransactionId));
     final accountsByIdAsync =
         editTransactionId == null ? null : ref.watch(accountsByIdProvider);
+    final tagsAsync = ref.watch(tagListProvider);
+    final editTagIdsAsync =
+        editTransactionId == null
+            ? null
+            : ref.watch(transactionTagIdsProvider(editTransactionId));
 
     final initializedState = _initializedState;
     if (initializedState != null) {
@@ -70,6 +76,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         reimbursementAccounts: reimbursementAccountsAsync.value,
         expenseTree: expenseTreeAsync.value,
         incomeTree: incomeTreeAsync.value,
+        tags: tagsAsync.value,
       );
       _initializedState = next;
       return AsyncValue.data(next);
@@ -89,6 +96,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               reimbursementAccountsAsync.value ?? const <Account>[],
           expenseTree: expenseTreeAsync.value ?? const <CategoryNode>[],
           incomeTree: incomeTreeAsync.value ?? const <CategoryNode>[],
+          tags: tagsAsync.value ?? const <TagView>[],
         ),
       );
     }
@@ -100,8 +108,10 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       reimbursementAccountsAsync,
       expenseTreeAsync,
       incomeTreeAsync,
+      tagsAsync,
       if (editDetailAsync != null) editDetailAsync,
       if (accountsByIdAsync != null) accountsByIdAsync,
+      if (editTagIdsAsync != null) editTagIdsAsync,
     ];
     for (final query in queries) {
       if (query case AsyncError(:final error, :final stackTrace)) {
@@ -139,6 +149,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         reimbursementAccounts: reimbursementAccounts,
         expenseTree: expenseTree,
         incomeTree: incomeTree,
+        tags: tagsAsync.value ?? const <TagView>[],
+        initialTagIds: editTagIdsAsync!.requireValue,
       ),
     );
   }
@@ -258,6 +270,10 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     _update((current) => current.copyWith(excludeStats: value));
   }
 
+  void setTagIds(Set<String> value) {
+    _update((current) => current.copyWith(selectedTagIds: value));
+  }
+
   void setExcludeBudget(bool value) {
     _update((current) => current.copyWith(excludeBudget: value));
   }
@@ -349,6 +365,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               note: note,
               isExcludedFromStats: formState.excludeStats,
               isExcludedFromBudget: formState.excludeBudget,
+              tagIds: formState.selectedTagIds,
             ),
           );
         } else {
@@ -362,6 +379,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               note: note,
               isExcludedFromStats: formState.excludeStats,
               isExcludedFromBudget: formState.excludeBudget,
+              tagIds: formState.selectedTagIds,
             ),
           );
         }
@@ -381,6 +399,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             occurredAt: formState.occurredAt,
             note: note,
             isExcludedFromStats: formState.excludeStats,
+            tagIds: formState.selectedTagIds,
           ),
         );
       case TransactionFormMode.transfer:
@@ -402,6 +421,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             toAccountId: toAccountId,
             occurredAt: formState.occurredAt,
             note: note,
+            tagIds: formState.selectedTagIds,
           ),
         );
       case TransactionFormMode.borrowing:
@@ -424,6 +444,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             receiveAccountId: receiveAccountId,
             occurredAt: formState.occurredAt,
             note: note,
+            tagIds: formState.selectedTagIds,
           ),
         );
     }
@@ -466,6 +487,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               note: note,
               isExcludedFromStats: formState.excludeStats,
               isExcludedFromBudget: formState.excludeBudget,
+              tagIds: formState.selectedTagIds,
             ),
           );
         } else {
@@ -480,6 +502,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               note: note,
               isExcludedFromStats: formState.excludeStats,
               isExcludedFromBudget: formState.excludeBudget,
+              tagIds: formState.selectedTagIds,
             ),
           );
         }
@@ -500,6 +523,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             occurredAt: formState.occurredAt,
             note: note,
             isExcludedFromStats: formState.excludeStats,
+            tagIds: formState.selectedTagIds,
           ),
         );
       case TransactionFormMode.transfer:
@@ -522,6 +546,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             toAccountId: toAccountId,
             occurredAt: formState.occurredAt,
             note: note,
+            tagIds: formState.selectedTagIds,
           ),
         );
       case TransactionFormMode.borrowing:
@@ -544,6 +569,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             receiveAccountId: receiveAccountId,
             occurredAt: formState.occurredAt,
             note: note,
+            tagIds: formState.selectedTagIds,
           ),
         );
     }
@@ -565,6 +591,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     required List<Account>? reimbursementAccounts,
     required List<CategoryNode>? expenseTree,
     required List<CategoryNode>? incomeTree,
+    required List<TagView>? tags,
   }) {
     return current.copyWith(
       settlementAccounts: settlementAccounts,
@@ -573,6 +600,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       reimbursementAccounts: reimbursementAccounts,
       expenseTree: expenseTree,
       incomeTree: incomeTree,
+      tags: tags,
     );
   }
 
@@ -632,6 +660,8 @@ class TransactionFormState {
     required List<Account> reimbursementAccounts,
     required List<CategoryNode> expenseTree,
     required List<CategoryNode> incomeTree,
+    required List<TagView> tags,
+    this.selectedTagIds = const {},
     this.expenseCategoryId,
     this.expenseRootId,
     this.incomeCategoryId,
@@ -645,7 +675,8 @@ class TransactionFormState {
        liabilityAccounts = List.unmodifiable(liabilityAccounts),
        reimbursementAccounts = List.unmodifiable(reimbursementAccounts),
        expenseTree = List.unmodifiable(expenseTree),
-       incomeTree = List.unmodifiable(incomeTree);
+       incomeTree = List.unmodifiable(incomeTree),
+       tags = List.unmodifiable(tags);
 
   factory TransactionFormState.initial({
     required TransactionFormMode mode,
@@ -657,6 +688,7 @@ class TransactionFormState {
     required List<Account> reimbursementAccounts,
     required List<CategoryNode> expenseTree,
     required List<CategoryNode> incomeTree,
+    required List<TagView> tags,
   }) {
     return TransactionFormState(
       initialValues: const TransactionFormInitialValues(),
@@ -673,6 +705,7 @@ class TransactionFormState {
       reimbursementAccounts: reimbursementAccounts,
       expenseTree: expenseTree,
       incomeTree: incomeTree,
+      tags: tags,
     );
   }
 
@@ -684,11 +717,14 @@ class TransactionFormState {
     required List<Account> reimbursementAccounts,
     required List<CategoryNode> expenseTree,
     required List<CategoryNode> incomeTree,
+    required List<TagView> tags,
+    required Set<String> initialTagIds,
   }) {
     return TransactionFormState(
       initialValues: TransactionFormInitialValues.fromSnapshot(snapshot),
       mode: snapshot.mode,
       occurredAt: snapshot.occurredAt,
+      selectedTagIds: initialTagIds,
       expenseCategoryId: snapshot.expenseCategoryId,
       expenseRootId: snapshot.expenseRootId,
       incomeCategoryId: snapshot.incomeCategoryId,
@@ -706,6 +742,7 @@ class TransactionFormState {
       reimbursementAccounts: reimbursementAccounts,
       expenseTree: expenseTree,
       incomeTree: incomeTree,
+      tags: tags,
     );
   }
 
@@ -723,12 +760,14 @@ class TransactionFormState {
   final bool excludeStats;
   final bool excludeBudget;
   final bool submitting;
+  final Set<String> selectedTagIds;
   final List<Account> settlementAccounts;
   final List<Account> fundAccounts;
   final List<Account> liabilityAccounts;
   final List<Account> reimbursementAccounts;
   final List<CategoryNode> expenseTree;
   final List<CategoryNode> incomeTree;
+  final List<TagView> tags;
 
   TransactionFormState copyWith({
     TransactionFormInitialValues? initialValues,
@@ -751,6 +790,8 @@ class TransactionFormState {
     List<Account>? reimbursementAccounts,
     List<CategoryNode>? expenseTree,
     List<CategoryNode>? incomeTree,
+    List<TagView>? tags,
+    Set<String>? selectedTagIds,
   }) {
     return TransactionFormState(
       initialValues: initialValues ?? this.initialValues,
@@ -796,6 +837,8 @@ class TransactionFormState {
           reimbursementAccounts ?? this.reimbursementAccounts,
       expenseTree: expenseTree ?? this.expenseTree,
       incomeTree: incomeTree ?? this.incomeTree,
+      tags: tags ?? this.tags,
+      selectedTagIds: selectedTagIds ?? this.selectedTagIds,
     );
   }
 }

@@ -72,6 +72,67 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
   }
 
   @override
+  Future<List<TagAggregate>> aggregateByTag({
+    required Set<AccountType> accountTypes,
+    required TransactionScopeFilter scope,
+    DateTimeWindow window = const DateTimeWindow(),
+  }) async {
+    if (accountTypes.isEmpty) return const [];
+
+    final tagIdCol = _db.transactionTags.tagId;
+    final typeCol = _db.accounts.accountType;
+    final sumExpr =
+        balanceDeltaExpr(entries: _db.entries, accounts: _db.accounts).sum();
+    final groupRoot = coalesce<String>([
+      _db.transactions.parentTransactionId,
+      _db.transactions.id,
+    ]);
+    final select =
+        _db.selectOnly(_db.entries).join([
+            innerJoin(
+              _db.transactions,
+              _db.transactions.id.equalsExp(_db.entries.transactionId),
+            ),
+            innerJoin(
+              _db.accounts,
+              _db.accounts.id.equalsExp(_db.entries.accountId),
+            ),
+            leftOuterJoin(
+              _db.transactionTags,
+              _db.transactionTags.transactionId.equalsExp(groupRoot),
+            ),
+          ])
+          ..addColumns([tagIdCol, typeCol, sumExpr])
+          ..where(
+            applyTransactionScope(transactions: _db.transactions, scope: scope),
+          )
+          ..where(_statisticalAccountFilter())
+          ..where(_db.accounts.accountType.isInValues(accountTypes))
+          ..groupBy([tagIdCol, typeCol]);
+
+    if (window.from != null) {
+      select.where(
+        _db.transactions.occurredAt.isBiggerOrEqualValue(window.from!),
+      );
+    }
+    if (window.until != null) {
+      select.where(
+        _db.transactions.occurredAt.isSmallerThanValue(window.until!),
+      );
+    }
+
+    return [
+      for (final row in await select.get())
+        if (row.read(typeCol) case final String typeName)
+          TagAggregate(
+            tagId: row.read(tagIdCol),
+            accountType: AccountType.values.byName(typeName),
+            amountMinor: row.read(sumExpr) ?? 0,
+          ),
+    ];
+  }
+
+  @override
   Future<Map<AccountType, int>> aggregateByAccountType({
     required Set<AccountType> accountTypes,
     required TransactionScopeFilter scope,

@@ -71,6 +71,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
     }
     _andEntryMatch(select, query.categoryAccountIds);
     _andEntryMatch(select, query.settlementAccountIds);
+    _andTagMatch(select, query);
     select.orderBy([
       (table) => OrderingTerm.desc(table.occurredAt),
       (table) => OrderingTerm.desc(table.id),
@@ -89,6 +90,42 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
   ) {
     if (accountIds == null) return;
     select.where((_) => _entryAccountMatch(accountIds));
+  }
+
+  /// 标签维度：事件级匹配。标签只挂在顶层交易上，子交易经
+  /// `parent_transaction_id` 继承所属交易组的标签。
+  void _andTagMatch(
+    SimpleSelectStatement<$TransactionsTable, TransactionRow> select,
+    TransactionPageQuery query,
+  ) {
+    final tagIds = query.tagIds;
+    if (tagIds != null) {
+      select.where((_) => _taggedTransactionMatch(tagIds));
+    } else if (query.untaggedOnly) {
+      select.where((_) => _untaggedTransactionMatch());
+    }
+  }
+
+  Expression<bool> _taggedTransactionMatch(Set<String> tagIds) {
+    final transactions = _db.transactions;
+    final taggedGroupRoots =
+        _db.selectOnly(_db.transactionTags, distinct: true)
+          ..addColumns([_db.transactionTags.transactionId])
+          ..where(_db.transactionTags.tagId.isIn(tagIds));
+    return (transactions.parentTransactionId.isNull() &
+            transactions.id.isInQuery(taggedGroupRoots)) |
+        (transactions.parentTransactionId.isNotNull() &
+            transactions.parentTransactionId.isInQuery(taggedGroupRoots));
+  }
+
+  Expression<bool> _untaggedTransactionMatch() {
+    final transactions = _db.transactions;
+    final taggedGroupRoots = _db.selectOnly(_db.transactionTags, distinct: true)
+      ..addColumns([_db.transactionTags.transactionId]);
+    return (transactions.parentTransactionId.isNull() &
+            transactions.id.isNotInQuery(taggedGroupRoots)) |
+        (transactions.parentTransactionId.isNotNull() &
+            transactions.parentTransactionId.isNotInQuery(taggedGroupRoots));
   }
 
   @override

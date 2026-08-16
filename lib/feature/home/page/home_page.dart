@@ -172,6 +172,8 @@ class _HomeFilterButton extends ConsumerWidget {
                     .applyTransactionFilter(
                       categoryAccountIds: selected.categoryAccountIds,
                       settlementAccountIds: selected.settlementAccountIds,
+                      tagIds: selected.tagIds,
+                      untaggedOnly: selected.untaggedOnly,
                     );
               }
               : null,

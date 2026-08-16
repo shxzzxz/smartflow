@@ -102,6 +102,7 @@ class StatisticsRangeReport {
     required this.cashflow,
     required this.dailySummaries,
     required this.categories,
+    required this.tags,
     required this.balanceTrend,
   });
 
@@ -110,7 +111,30 @@ class StatisticsRangeReport {
   final CashflowSummary cashflow;
   final List<DailyCashflowSummary> dailySummaries;
   final List<CategoryMetricGroup> categories;
+
+  /// 标签构成统计。每个标签桶的口径是"命中该标签的交易净额"，
+  /// 多标签交易会在多个桶重复计入，桶间合计可大于收支总额；
+  /// 未打标签的净额以 `tagId == null` 的项呈现。
+  final List<TagMetricItem> tags;
   final List<BalanceTrendPoint> balanceTrend;
+}
+
+/// 标签构成统计项。`tagId` 为 null 表示「未打标签」，
+/// 它是统计展示口径而不是持久化实体，地位类似分类统计的「未细分」。
+class TagMetricItem {
+  const TagMetricItem({
+    required this.tagId,
+    required this.name,
+    required this.accountType,
+    required this.amount,
+  });
+
+  final String? tagId;
+  final String name;
+  final AccountType accountType;
+  final Money amount;
+
+  bool get isUntagged => tagId == null;
 }
 
 class BalanceTrendPoint {

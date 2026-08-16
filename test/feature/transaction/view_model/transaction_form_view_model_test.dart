@@ -10,6 +10,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
+import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/presentation/transaction_form_presentation.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
@@ -40,6 +41,10 @@ void main() {
           AccountType.income,
         ).overrideWithValue(const AsyncData(<CategoryNode>[])),
         accountsByIdProvider.overrideWithValue(AsyncData(accounts)),
+        tagListProvider.overrideWithValue(const AsyncData(<TagView>[])),
+        transactionTagIdsProvider(
+          'tx-1',
+        ).overrideWithValue(const AsyncData(<String>{})),
       ];
 
       final loading = ProviderContainer(
@@ -617,10 +622,15 @@ ProviderContainer _container({
         AccountType.income,
       ).overrideWithValue(const AsyncData(<CategoryNode>[])),
       accountsByIdProvider.overrideWithValue(AsyncData(accountsById)),
-      if (editTransactionId != null)
+      tagListProvider.overrideWithValue(const AsyncData(<TagView>[])),
+      if (editTransactionId != null) ...[
         transactionDetailProvider(
           editTransactionId,
         ).overrideWithValue(AsyncValue.data(editDetail)),
+        transactionTagIdsProvider(
+          editTransactionId,
+        ).overrideWithValue(const AsyncData(<String>{})),
+      ],
     ],
   );
   addTearDown(container.dispose);

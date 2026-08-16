@@ -11,6 +11,7 @@ import '../feature/account/page/account_form_page.dart';
 import '../feature/account/page/accounts_page.dart';
 import '../feature/account/page/archived_accounts_page.dart';
 import '../feature/category/page/categories_page.dart';
+import '../feature/tag/page/tags_page.dart';
 import '../feature/category/page/category_form_page.dart';
 import '../feature/calendar/page/calendar_page.dart';
 import '../feature/calendar/page/calendar_bills_page.dart';
@@ -111,14 +112,21 @@ final appRouter = GoRouter(
                 ? CategorySelection.ownOnly(categoryId)
                 : CategorySelection.withDescendants(categoryId);
         final settlementAccountId = query['accountId'];
+        final tagId = query['tagId'];
+        final untaggedOnly = query['untagged'] == '1';
         if (until == null ||
-            (categoryId == null && settlementAccountId == null)) {
+            (categoryId == null &&
+                settlementAccountId == null &&
+                tagId == null &&
+                !untaggedOnly)) {
           return const PlaceholderPage(title: '统计流水参数无效');
         }
         return StatisticsTransactionsPage(
           title: query['title'] ?? '统计流水',
           category: category,
           settlementAccountId: settlementAccountId,
+          tagId: tagId,
+          untaggedOnly: untaggedOnly,
           occurredFrom: from,
           occurredUntil: until,
           scope: scope,
@@ -363,6 +371,7 @@ final appRouter = GoRouter(
       path: '/category',
       builder: (context, state) => const CategoriesPage(),
     ),
+    GoRoute(path: '/tags', builder: (context, state) => const TagsPage()),
     GoRoute(
       path: '/profile/settings',
       builder: (context, state) => const SettingsPage(),

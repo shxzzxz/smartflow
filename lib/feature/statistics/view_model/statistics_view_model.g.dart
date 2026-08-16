@@ -42,7 +42,7 @@ final class StatisticsViewModelProvider
 }
 
 String _$statisticsViewModelHash() =>
-    r'2812a71e010885b92d3d0b7aae5458c38f379af9';
+    r'3b0c8e01cbcf73f15a848ee744e12ae5f0662a16';
 
 abstract class _$StatisticsViewModel extends $Notifier<StatisticsControlState> {
   StatisticsControlState build();
@@ -548,6 +548,8 @@ final class StatisticsTransactionsProvider
     required ({
       CategorySelection? category,
       String? settlementAccountId,
+      String? tagId,
+      bool untaggedOnly,
       DateTime? occurredFrom,
       DateTime occurredUntil,
       StatisticsDrilldownScope scope,
@@ -584,6 +586,8 @@ final class StatisticsTransactionsProvider
             as ({
               CategorySelection? category,
               String? settlementAccountId,
+              String? tagId,
+              bool untaggedOnly,
               DateTime? occurredFrom,
               DateTime occurredUntil,
               StatisticsDrilldownScope scope,
@@ -592,6 +596,8 @@ final class StatisticsTransactionsProvider
       ref,
       category: argument.category,
       settlementAccountId: argument.settlementAccountId,
+      tagId: argument.tagId,
+      untaggedOnly: argument.untaggedOnly,
       occurredFrom: argument.occurredFrom,
       occurredUntil: argument.occurredUntil,
       scope: argument.scope,
@@ -611,7 +617,7 @@ final class StatisticsTransactionsProvider
 }
 
 String _$statisticsTransactionsHash() =>
-    r'7e372a8b789effc81a1aa402aa4f8d6c6667e474';
+    r'e5f9f103b44007a4666fab1dd9a36e997c601aa5';
 
 final class StatisticsTransactionsFamily extends $Family
     with
@@ -620,6 +626,8 @@ final class StatisticsTransactionsFamily extends $Family
           ({
             CategorySelection? category,
             String? settlementAccountId,
+            String? tagId,
+            bool untaggedOnly,
             DateTime? occurredFrom,
             DateTime occurredUntil,
             StatisticsDrilldownScope scope,
@@ -637,6 +645,8 @@ final class StatisticsTransactionsFamily extends $Family
   StatisticsTransactionsProvider call({
     required CategorySelection? category,
     required String? settlementAccountId,
+    required String? tagId,
+    required bool untaggedOnly,
     required DateTime? occurredFrom,
     required DateTime occurredUntil,
     required StatisticsDrilldownScope scope,
@@ -644,6 +654,8 @@ final class StatisticsTransactionsFamily extends $Family
     argument: (
       category: category,
       settlementAccountId: settlementAccountId,
+      tagId: tagId,
+      untaggedOnly: untaggedOnly,
       occurredFrom: occurredFrom,
       occurredUntil: occurredUntil,
       scope: scope,
@@ -672,6 +684,8 @@ final class StatisticsTransactionsContentProvider
     required ({
       CategorySelection? category,
       String? settlementAccountId,
+      String? tagId,
+      bool untaggedOnly,
       DateTime? occurredFrom,
       DateTime occurredUntil,
       StatisticsDrilldownScope scope,
@@ -708,6 +722,8 @@ final class StatisticsTransactionsContentProvider
             as ({
               CategorySelection? category,
               String? settlementAccountId,
+              String? tagId,
+              bool untaggedOnly,
               DateTime? occurredFrom,
               DateTime occurredUntil,
               StatisticsDrilldownScope scope,
@@ -716,6 +732,8 @@ final class StatisticsTransactionsContentProvider
       ref,
       category: argument.category,
       settlementAccountId: argument.settlementAccountId,
+      tagId: argument.tagId,
+      untaggedOnly: argument.untaggedOnly,
       occurredFrom: argument.occurredFrom,
       occurredUntil: argument.occurredUntil,
       scope: argument.scope,
@@ -745,7 +763,7 @@ final class StatisticsTransactionsContentProvider
 }
 
 String _$statisticsTransactionsContentHash() =>
-    r'dfd1a009b73d63d38ce378db1cf2dbd4556f2fe5';
+    r'178d72f499c4916476ef727688ce6acc453ad512';
 
 final class StatisticsTransactionsContentFamily extends $Family
     with
@@ -754,6 +772,8 @@ final class StatisticsTransactionsContentFamily extends $Family
           ({
             CategorySelection? category,
             String? settlementAccountId,
+            String? tagId,
+            bool untaggedOnly,
             DateTime? occurredFrom,
             DateTime occurredUntil,
             StatisticsDrilldownScope scope,
@@ -771,6 +791,8 @@ final class StatisticsTransactionsContentFamily extends $Family
   StatisticsTransactionsContentProvider call({
     required CategorySelection? category,
     required String? settlementAccountId,
+    required String? tagId,
+    required bool untaggedOnly,
     required DateTime? occurredFrom,
     required DateTime occurredUntil,
     required StatisticsDrilldownScope scope,
@@ -778,6 +800,8 @@ final class StatisticsTransactionsContentFamily extends $Family
     argument: (
       category: category,
       settlementAccountId: settlementAccountId,
+      tagId: tagId,
+      untaggedOnly: untaggedOnly,
       occurredFrom: occurredFrom,
       occurredUntil: occurredUntil,
       scope: scope,

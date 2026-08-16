@@ -15,6 +15,7 @@ import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/business_icon_bubble.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
+import '../../shared/provider/tag_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_detail_presentation.dart';
 import '../view_model/transaction_detail_state.dart';
@@ -137,6 +138,8 @@ class _DetailBody extends ConsumerWidget {
                 onAccountTap: (row) => _handleAccountTap(context, ref, row),
                 onNoteTap: () => _editNote(context, ref),
               ),
+              const SizedBox(height: AppSpacing.space12),
+              _TagCard(transactionId: state.transactionId),
               if (state.showExcludeStats || state.showExcludeBudget) ...[
                 const SizedBox(height: AppSpacing.space12),
                 _ExclusionCard(state: state),
@@ -435,6 +438,38 @@ class _PrimaryMetaCard extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// 标签展示卡。标签是只读事实：顶层交易的标签在编辑表单中修改，
+/// 子交易继承所属交易组的标签展示。
+class _TagCard extends ConsumerWidget {
+  const _TagCard({required this.transactionId});
+
+  final String transactionId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tagIds = ref.watch(transactionTagIdsProvider(transactionId)).value;
+    final tags = ref.watch(tagListProvider).value;
+    if (tagIds == null || tags == null) return const SizedBox.shrink();
+    if (tagIds.isEmpty) {
+      return _RowCard(
+        rows: [
+          AppPlainValueRow(
+            label: '标签',
+            value: '无',
+            valueColor: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ],
+      );
+    }
+    final nameById = {for (final tag in tags) tag.id: tag.name};
+    final names = [
+      for (final id in tagIds)
+        if (nameById.containsKey(id)) nameById[id]!,
+    ].join('、');
+    return _RowCard(rows: [AppPlainValueRow(label: '标签', value: names)]);
   }
 }
 

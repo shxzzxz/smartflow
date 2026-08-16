@@ -72,6 +72,11 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
       if (from < 26 && !await _hasColumn(database, 'budgets', 'sort_order')) {
         await migrator.addColumn(database.budgets, database.budgets.sortOrder);
       }
+      if (from < 27) {
+        await migrator.createTable(database.tags);
+        await migrator.createTable(database.transactionTags);
+        await _createTagIndexes(database);
+      }
     },
   );
 }
@@ -201,7 +206,18 @@ Future<void> _createCurrentSchema(
   await _createBillIndexes(database);
   await _createRepaymentIndexes(database);
   await _createImportIndexes(database);
+  await _createTagIndexes(database);
   await ensureBuiltinData(database);
+}
+
+Future<void> _createTagIndexes(AppDatabase database) async {
+  await database.customStatement(
+    'CREATE UNIQUE INDEX IF NOT EXISTS tags_name_unique ON tags (name)',
+  );
+  await database.customStatement(
+    'CREATE INDEX IF NOT EXISTS transaction_tags_tag_idx '
+    'ON transaction_tags (tag_id)',
+  );
 }
 
 Future<void> _createImportTables(

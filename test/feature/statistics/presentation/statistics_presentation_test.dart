@@ -21,6 +21,7 @@ void main() {
           ),
         ],
         categories: const [],
+        tags: const [],
         balanceTrend: const [],
       ),
     );
@@ -277,7 +278,10 @@ void main() {
   });
 
   test('renormalizes secondary category progress across parents', () {
-    StatisticsBreakdownItem parent(String id, List<StatisticsBreakdownItem> children) {
+    StatisticsBreakdownItem parent(
+      String id,
+      List<StatisticsBreakdownItem> children,
+    ) {
       return StatisticsBreakdownItem(
         id: id,
         title: id,

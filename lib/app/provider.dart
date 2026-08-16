@@ -27,6 +27,8 @@ import '../infrastructure/ledger/repository/drift_posting_repository.dart';
 import '../infrastructure/ledger/repository/drift_system_account_resolver.dart';
 import '../infrastructure/ledger/repository/drift_transaction_detail_read_repository.dart';
 import '../infrastructure/ledger/repository/drift_transaction_read_repository.dart';
+import '../infrastructure/ledger/repository/drift_transaction_tag_repository.dart';
+import '../application/ledger/tag/tag_repository.dart';
 import '../infrastructure/database/drift_app_settings_store.dart';
 import '../infrastructure/database/drift_asset_section_collapse_store.dart';
 import '../infrastructure/database/drift_log_retention_store.dart';
@@ -215,6 +217,19 @@ TransactionReadRepository transactionReadRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+TransactionTagRepository transactionTagRepository(Ref ref) {
+  return DriftTransactionTagRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+TagApplicationService tagApplicationService(Ref ref) {
+  return TagApplicationService(
+    repository: ref.watch(transactionTagRepositoryProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
 EntryReadRepository entryReadRepository(Ref ref) {
   return DriftEntryReadRepository(ref.watch(appDatabaseProvider));
 }
@@ -304,6 +319,7 @@ TransactionLedgerWriter transactionLedgerWriter(Ref ref) {
     transactionRepository: ref.watch(ledgerRepositoryProvider),
     transactionGroupRepository: ref.watch(ledgerRepositoryProvider),
     accountRepository: ref.watch(accountRepositoryProvider),
+    transactionTagRepository: ref.watch(transactionTagRepositoryProvider),
   );
 }
 
@@ -389,6 +405,7 @@ FinancialMetricsService financialMetricsService(Ref ref) {
   return FinancialMetricsServiceImpl(
     metricsSource: ref.watch(ledgerMetricsSourceProvider),
     accountQuery: ref.watch(accountQueryServiceProvider),
+    tagRepository: ref.watch(transactionTagRepositoryProvider),
   );
 }
 

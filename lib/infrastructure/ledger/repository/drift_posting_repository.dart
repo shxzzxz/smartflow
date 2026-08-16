@@ -173,6 +173,8 @@ class DriftPostingRepository
       ..where((row) => row.transactionId.isIn(transactionIds))).go();
     await (_database.delete(_database.transactionDetails)
       ..where((row) => row.transactionId.isIn(transactionIds))).go();
+    await (_database.delete(_database.transactionTags)
+      ..where((row) => row.transactionId.isIn(transactionIds))).go();
     await (_database.delete(_database.transactions)
       ..where((row) => row.id.isIn(transactionIds))).go();
   }

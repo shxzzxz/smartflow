@@ -12,6 +12,7 @@ import 'package:smartflow/domain/ledger/service/mutation/transaction_deletion_re
 import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_result.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:test/test.dart';
+import '../../../helper/fake_transaction_tag_repository.dart';
 
 void main() {
   test(
@@ -25,6 +26,7 @@ void main() {
         transactionRepository: transactions,
         transactionGroupRepository: transactions,
         accountRepository: accounts,
+        transactionTagRepository: FakeTransactionTagRepository(),
       );
       final before = _transaction('tx-1', amount: 1000);
       final after = _transaction('tx-1', amount: 1200);
@@ -63,6 +65,7 @@ void main() {
         transactionRepository: transactions,
         transactionGroupRepository: transactions,
         accountRepository: accounts,
+        transactionTagRepository: FakeTransactionTagRepository(),
       );
 
       await writer.planAndPersistDeletion(() async {

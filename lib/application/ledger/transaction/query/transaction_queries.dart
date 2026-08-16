@@ -77,14 +77,24 @@ class TransactionListQuery {
     this.offset = 0,
     this.before,
     this.scope = TransactionScopeFilter.assetLiability,
+    this.tagIds,
+    this.untaggedOnly = false,
   }) : assert(limit != null || offset == 0),
-       assert(before == null || offset == 0);
+       assert(before == null || offset == 0),
+       assert(!untaggedOnly || tagIds == null);
 
   /// `null` 表示不筛选，空集合表示筛选维度已启用但无有效物理账户。
   final Set<String>? categoryAccountIds;
 
   /// `null` 表示不筛选，空集合表示筛选维度已启用但无有效物理账户。
   final Set<String>? settlementAccountIds;
+
+  /// 标签维度：`null` 表示不筛选，空集合表示维度已启用但无有效标签；
+  /// 匹配语义为任一命中（OR），子交易按所属顶层交易的标签继承命中。
+  final Set<String>? tagIds;
+
+  /// 只匹配未携带任何标签的交易；与 [tagIds] 互斥。
+  final bool untaggedOnly;
 
   final DateTime? occurredFrom;
   final DateTime? occurredUntil;
@@ -98,7 +108,8 @@ class TransactionListQuery {
 /// 仓储层翻页查询。分类树已由查询层展开为物理分类 ID 集合，仓储不理解分类树。
 ///
 /// 两个账户维度各自独立匹配分录后取交集；`null` 表示该维度缺省，
-/// 空集合表示该维度无可匹配项，结果恒为空。
+/// 空集合表示该维度无可匹配项，结果恒为空。标签维度按事件级语义匹配：
+/// 标签挂在顶层交易上，子交易经 `parent_transaction_id` 继承命中。
 class TransactionPageQuery {
   const TransactionPageQuery({
     this.categoryAccountIds,
@@ -110,10 +121,14 @@ class TransactionPageQuery {
     this.offset = 0,
     this.before,
     this.scope = TransactionScopeFilter.assetLiability,
-  });
+    this.tagIds,
+    this.untaggedOnly = false,
+  }) : assert(!untaggedOnly || tagIds == null);
 
   final Set<String>? categoryAccountIds;
   final Set<String>? settlementAccountIds;
+  final Set<String>? tagIds;
+  final bool untaggedOnly;
   final DateTime? occurredFrom;
   final DateTime? occurredUntil;
   final bool topLevelOnly;

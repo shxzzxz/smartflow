@@ -20,6 +20,7 @@ import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
+import 'package:smartflow/widget/business/tag/tag_multi_select_sheet.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_form_presentation.dart';
 import '../view_model/transaction_form_view_model.dart';
@@ -365,7 +366,9 @@ class _TransactionFormContentState
                       reimbursementAccountId: formState.reimbursementAccountId,
                       excludeStats: formState.excludeStats,
                       excludeBudget: formState.excludeBudget,
+                      tagNames: _selectedTagNames(formState),
                       onPickDate: _pickDate,
+                      onSelectTags: _selectTags,
                       onFromAccountChanged:
                           (value) => ref
                               .read(_formProvider.notifier)
@@ -426,6 +429,26 @@ class _TransactionFormContentState
     );
     if (picked == null || !mounted) return;
     ref.read(_formProvider.notifier).setOccurredAt(picked);
+  }
+
+  String _selectedTagNames(TransactionFormState formState) {
+    final nameById = {for (final tag in formState.tags) tag.id: tag.name};
+    return [
+      for (final id in formState.selectedTagIds)
+        if (nameById.containsKey(id)) nameById[id]!,
+    ].join('、');
+  }
+
+  Future<void> _selectTags() async {
+    final formState = ref.read(_formProvider).requireValue!;
+    final result = await showTagMultiSelectSheet(
+      context: context,
+      tags: formState.tags,
+      selectedIds: formState.selectedTagIds,
+      allowCreate: true,
+    );
+    if (!mounted || result == null) return;
+    ref.read(_formProvider.notifier).setTagIds(result.selectedTagIds);
   }
 
   void _openCategoryForm(AccountType type, {String? parentId}) {
@@ -854,7 +877,9 @@ class _TransactionOptionsPanel extends StatelessWidget {
     required this.reimbursementAccountId,
     required this.excludeStats,
     required this.excludeBudget,
+    required this.tagNames,
     required this.onPickDate,
+    required this.onSelectTags,
     required this.onFromAccountChanged,
     required this.onToAccountChanged,
     required this.onReimbursementAccountChanged,
@@ -871,7 +896,9 @@ class _TransactionOptionsPanel extends StatelessWidget {
   final String? reimbursementAccountId;
   final bool excludeStats;
   final bool excludeBudget;
+  final String tagNames;
   final VoidCallback onPickDate;
+  final VoidCallback onSelectTags;
   final ValueChanged<String?> onFromAccountChanged;
   final ValueChanged<String?> onToAccountChanged;
   final ValueChanged<String?> onReimbursementAccountChanged;
@@ -907,6 +934,11 @@ class _TransactionOptionsPanel extends StatelessWidget {
                     label: _formatDateTime(occurredAt),
                     selected: false,
                     onTap: onPickDate,
+                  ),
+                  _QuickActionChip(
+                    label: tagNames.isEmpty ? '标签' : tagNames,
+                    selected: tagNames.isNotEmpty,
+                    onTap: onSelectTags,
                   ),
                   if (showPrimaryAccount)
                     _AccountSelectorChip(

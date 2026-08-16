@@ -92,6 +92,7 @@ class TransactionEditAppServiceImpl implements TransactionEditAppService {
           ),
         ),
       ),
+      tagIds: cmd.tagIds,
     );
   }
 
@@ -112,6 +113,7 @@ class TransactionEditAppServiceImpl implements TransactionEditAppService {
           ),
         ),
       ),
+      tagIds: cmd.tagIds,
     );
   }
 
@@ -132,6 +134,7 @@ class TransactionEditAppServiceImpl implements TransactionEditAppService {
           ),
         ),
       ),
+      tagIds: cmd.tagIds,
     );
   }
 
@@ -156,6 +159,7 @@ class TransactionEditAppServiceImpl implements TransactionEditAppService {
           ),
         ),
       ),
+      tagIds: cmd.tagIds,
     );
   }
 
@@ -233,6 +237,7 @@ class TransactionEditAppServiceImpl implements TransactionEditAppService {
           ),
         ),
       ),
+      tagIds: cmd.tagIds,
     );
   }
 

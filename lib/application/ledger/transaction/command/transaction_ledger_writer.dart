@@ -6,6 +6,7 @@ import 'package:smartflow/domain/ledger/service/mutation/transaction_deletion_re
 import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_result.dart';
 import 'package:smartflow/domain/ledger/service/mutation/transaction_update_result.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_result.dart';
+import 'package:smartflow/application/ledger/tag/tag_repository.dart';
 
 import 'transaction_command.dart';
 
@@ -15,21 +16,32 @@ class TransactionLedgerWriter {
     required TransactionRepository transactionRepository,
     required TransactionGroupRepository transactionGroupRepository,
     required AccountRepository accountRepository,
+    required TransactionTagRepository transactionTagRepository,
   }) : _transactionRunner = transactionRunner,
        _transactionRepository = transactionRepository,
        _transactionGroupRepository = transactionGroupRepository,
-       _accountRepository = accountRepository;
+       _accountRepository = accountRepository,
+       _transactionTagRepository = transactionTagRepository;
 
   final TransactionRunner _transactionRunner;
   final TransactionRepository _transactionRepository;
   final TransactionGroupRepository _transactionGroupRepository;
   final AccountRepository _accountRepository;
+  final TransactionTagRepository _transactionTagRepository;
 
   Future<PostedTransactionResult> planAndPersistRewrite(
-    Future<TransactionGroupRewriteResult> Function() plan,
-  ) {
+    Future<TransactionGroupRewriteResult> Function() plan, {
+    Set<String>? tagIds,
+  }) {
     return _transactionRunner.run(() async {
-      return _persistRewrite(await plan());
+      final result = await _persistRewrite(await plan());
+      if (tagIds != null) {
+        await _transactionTagRepository.replaceTransactionTags(
+          transactionId: result.transactionId,
+          tagIds: tagIds,
+        );
+      }
+      return result;
     });
   }
 
@@ -41,10 +53,19 @@ class TransactionLedgerWriter {
     });
   }
 
-  Future<PostedTransactionResult> persistPosting(PostingResult posting) async {
+  Future<PostedTransactionResult> persistPosting(
+    PostingResult posting, {
+    Set<String> tagIds = const {},
+  }) async {
     return _transactionRunner.run(() async {
       await _transactionRepository.save(posting.transaction);
       await _accountRepository.saveAll(posting.accounts);
+      if (tagIds.isNotEmpty) {
+        await _transactionTagRepository.replaceTransactionTags(
+          transactionId: posting.transaction.id,
+          tagIds: tagIds,
+        );
+      }
       return PostedTransactionResult(transactionId: posting.transaction.id);
     });
   }

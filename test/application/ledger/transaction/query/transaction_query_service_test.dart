@@ -825,5 +825,12 @@ class _UnusedLedgerMetricsSource implements LedgerMetricsSource {
   }) => throw UnimplementedError();
 
   @override
+  Future<List<TagAggregate>> aggregateByTag({
+    required Set<AccountType> accountTypes,
+    required TransactionScopeFilter scope,
+    DateTimeWindow window = const DateTimeWindow(),
+  }) => throw UnimplementedError();
+
+  @override
   Stream<void> watchChanges() => const Stream.empty();
 }

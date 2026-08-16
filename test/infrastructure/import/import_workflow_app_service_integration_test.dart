@@ -43,6 +43,7 @@ import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_rea
 
 import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
+import '../../helper/fake_transaction_tag_repository.dart';
 
 void main() {
   test(
@@ -1252,6 +1253,7 @@ class _Fixture {
       transactionRepository: postings,
       transactionGroupRepository: postings,
       accountRepository: accounts,
+      transactionTagRepository: FakeTransactionTagRepository(),
     );
     final posting = TransactionPostingAppServiceImpl(
       accountRepository: accounts,

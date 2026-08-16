@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/home/view_model/home_view_model.dart';
@@ -57,37 +60,42 @@ class _TestHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: AppTheme.light(),
-      home: Scaffold(
-        body: Builder(
-          builder: (context) {
-            return TextButton(
-              onPressed: () async {
-                onResult(
-                  await showHomeTransactionFilterSheet(
-                    context: context,
-                    initialFilter: initialFilter,
-                    expenseTree: [
-                      CategoryNode(
-                        account: _account(
-                          'cat-food',
-                          '餐饮',
-                          AccountType.expense,
+    return ProviderScope(
+      overrides: [
+        tagListProvider.overrideWithValue(const AsyncData(<TagView>[])),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              return TextButton(
+                onPressed: () async {
+                  onResult(
+                    await showHomeTransactionFilterSheet(
+                      context: context,
+                      initialFilter: initialFilter,
+                      expenseTree: [
+                        CategoryNode(
+                          account: _account(
+                            'cat-food',
+                            '餐饮',
+                            AccountType.expense,
+                          ),
+                          children: [
+                            _account('cat-lunch', '午餐', AccountType.expense),
+                          ],
                         ),
-                        children: [
-                          _account('cat-lunch', '午餐', AccountType.expense),
-                        ],
-                      ),
-                    ],
-                    incomeTree: const [],
-                    accounts: [_account('acc-cash', '现金', AccountType.asset)],
-                  ),
-                );
-              },
-              child: const Text('打开'),
-            );
-          },
+                      ],
+                      incomeTree: const [],
+                      accounts: [_account('acc-cash', '现金', AccountType.asset)],
+                    ),
+                  );
+                },
+                child: const Text('打开'),
+              );
+            },
+          ),
         ),
       ),
     );

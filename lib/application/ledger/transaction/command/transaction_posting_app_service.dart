@@ -131,6 +131,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
           sourceKind: command.sourceKind,
         ),
       ),
+      tagIds: command.tagIds,
     );
   }
 
@@ -153,6 +154,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
           sourceKind: command.sourceKind,
         ),
       ),
+      tagIds: command.tagIds,
     );
   }
 
@@ -174,6 +176,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
           sourceKind: command.sourceKind,
         ),
       ),
+      tagIds: command.tagIds,
     );
   }
 
@@ -216,6 +219,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
           sourceKind: command.sourceKind,
         ),
       ),
+      tagIds: command.tagIds,
     );
   }
 
@@ -301,6 +305,7 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
           sourceKind: command.sourceKind,
         ),
       ),
+      tagIds: command.tagIds,
     );
   }
 

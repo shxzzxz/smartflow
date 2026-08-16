@@ -33,6 +33,29 @@ class AccountAggregate {
   int get hashCode => Object.hash(accountId, accountType, amountMinor);
 }
 
+/// 按标签聚合的余额变化事实。`tagId` 为 null 表示未打标签的交易净额。
+class TagAggregate {
+  const TagAggregate({
+    required this.tagId,
+    required this.accountType,
+    required this.amountMinor,
+  });
+
+  final String? tagId;
+  final AccountType accountType;
+  final int amountMinor;
+
+  @override
+  bool operator ==(Object other) =>
+      other is TagAggregate &&
+      other.tagId == tagId &&
+      other.accountType == accountType &&
+      other.amountMinor == amountMinor;
+
+  @override
+  int get hashCode => Object.hash(tagId, accountType, amountMinor);
+}
+
 /// 账务指标事实源(entries × account × transaction)。
 ///
 /// 此场景按 account_type 分桶累计,JOIN account 是该领域本分,不在「列表去 account」
@@ -47,6 +70,17 @@ abstract interface class LedgerMetricsSource {
 
   /// 按实际分录账户（物理分类粒度）累计余额变化；归档账户不参与统计。
   Future<List<AccountAggregate>> aggregateByAccount({
+    required Set<AccountType> accountTypes,
+    required TransactionScopeFilter scope,
+    DateTimeWindow window = const DateTimeWindow(),
+  });
+
+  /// 按 `(标签, account_type)` 聚合余额变化（应用 [TransactionScopeFilter] 口径）。
+  ///
+  /// 标签挂在顶层交易上，子交易经所属顶层继承；`tagId` 为 null 的聚合行
+  /// 表示未打标签的交易。同一笔交易携带多个标签时在每个标签桶各计一次，
+  /// 这是标签统计「命中该标签的交易净额」的既定口径。
+  Future<List<TagAggregate>> aggregateByTag({
     required Set<AccountType> accountTypes,
     required TransactionScopeFilter scope,
     DateTimeWindow window = const DateTimeWindow(),

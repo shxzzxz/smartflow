@@ -24,3 +24,5 @@ export 'transaction/command/transaction_edit_app_service.dart';
 export 'transaction/command/transaction_ledger_writer.dart';
 export 'transaction/command/transaction_posting_app_service.dart';
 export 'transaction/command/transaction_update_app_service.dart';
+export 'tag/tag_application_service.dart';
+export 'tag/tag_read_models.dart';

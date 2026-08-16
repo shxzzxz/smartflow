@@ -84,6 +84,12 @@ class _ProfilePageState extends State<ProfilePage> {
                         onTap: () => context.push('/category'),
                       ),
                       _ProfileActionRow(
+                        icon: RemixIcons.price_tag_3_line,
+                        label: '标签管理',
+                        description: '维护交易标签词表',
+                        onTap: () => context.push('/tags'),
+                      ),
+                      _ProfileActionRow(
                         icon: RemixIcons.wallet_3_line,
                         label: '账户管理',
                         description: '管理资产与负债账户',

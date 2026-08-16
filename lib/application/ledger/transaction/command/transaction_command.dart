@@ -15,6 +15,7 @@ class CreateExpenseCommand {
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
+    this.tagIds = const {},
   });
 
   final Money amount;
@@ -27,6 +28,9 @@ class CreateExpenseCommand {
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
   final SourceKind sourceKind;
+
+  /// 交易携带的标签 ID；标签挂在顶层交易上，随入账一并写入。
+  final Set<String> tagIds;
 }
 
 class CreateIncomeCommand {
@@ -41,6 +45,7 @@ class CreateIncomeCommand {
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
+    this.tagIds = const {},
   });
 
   final Money amount;
@@ -53,6 +58,7 @@ class CreateIncomeCommand {
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
   final SourceKind sourceKind;
+  final Set<String> tagIds;
 }
 
 class CreateTransferCommand {
@@ -66,6 +72,7 @@ class CreateTransferCommand {
     this.counterpartyName,
     this.note,
     this.sourceKind = SourceKind.manual,
+    this.tagIds = const {},
   });
 
   final Money amount;
@@ -77,6 +84,7 @@ class CreateTransferCommand {
   final String? counterpartyName;
   final String? note;
   final SourceKind sourceKind;
+  final Set<String> tagIds;
 }
 
 class CreateRefundCommand {
@@ -112,6 +120,7 @@ class CreateReimbursementAdvanceCommand {
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
+    this.tagIds = const {},
   });
 
   final Money amount;
@@ -125,6 +134,7 @@ class CreateReimbursementAdvanceCommand {
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
   final SourceKind sourceKind;
+  final Set<String> tagIds;
 }
 
 class CreateReimbursementReceiptCommand {
@@ -212,6 +222,7 @@ class CreateBorrowingCommand {
     this.note,
     this.ownership,
     this.sourceKind = SourceKind.manual,
+    this.tagIds = const {},
   });
 
   final Money amount;
@@ -223,6 +234,7 @@ class CreateBorrowingCommand {
   final String? note;
   final TransactionOwnership? ownership;
   final SourceKind sourceKind;
+  final Set<String> tagIds;
 }
 
 class CreateOpeningBalanceCommand {
@@ -272,6 +284,7 @@ class EditExpenseCommand {
     this.note,
     this.isExcludedFromStats,
     this.isExcludedFromBudget,
+    this.tagIds,
   });
 
   final String transactionId;
@@ -283,6 +296,9 @@ class EditExpenseCommand {
   final Patch<String?>? note;
   final bool? isExcludedFromStats;
   final bool? isExcludedFromBudget;
+
+  /// `null` 表示不改标签；非空集合表示用该集合整体替换交易标签。
+  final Set<String>? tagIds;
 }
 
 class EditIncomeCommand {
@@ -295,6 +311,7 @@ class EditIncomeCommand {
     this.counterpartyName,
     this.note,
     this.isExcludedFromStats,
+    this.tagIds,
   });
 
   final String transactionId;
@@ -305,6 +322,9 @@ class EditIncomeCommand {
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;
   final bool? isExcludedFromStats;
+
+  /// `null` 表示不改标签；非空集合表示用该集合整体替换交易标签。
+  final Set<String>? tagIds;
 }
 
 class EditTransferCommand {
@@ -317,6 +337,7 @@ class EditTransferCommand {
     this.feeAmount,
     this.counterpartyName,
     this.note,
+    this.tagIds,
   });
 
   final String transactionId;
@@ -327,6 +348,9 @@ class EditTransferCommand {
   final Money? feeAmount;
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;
+
+  /// `null` 表示不改标签；非空集合表示用该集合整体替换交易标签。
+  final Set<String>? tagIds;
 }
 
 class EditReimbursementAdvanceCommand {
@@ -341,6 +365,7 @@ class EditReimbursementAdvanceCommand {
     this.note,
     this.isExcludedFromStats,
     this.isExcludedFromBudget,
+    this.tagIds,
   });
 
   final String transactionId;
@@ -353,6 +378,9 @@ class EditReimbursementAdvanceCommand {
   final Patch<String?>? note;
   final bool? isExcludedFromStats;
   final bool? isExcludedFromBudget;
+
+  /// `null` 表示不改标签；非空集合表示用该集合整体替换交易标签。
+  final Set<String>? tagIds;
 }
 
 class EditRefundCommand {
@@ -422,6 +450,7 @@ class EditBorrowingCommand {
     this.occurredAt,
     this.counterpartyName,
     this.note,
+    this.tagIds,
   });
 
   final String transactionId;
@@ -431,6 +460,9 @@ class EditBorrowingCommand {
   final DateTime? occurredAt;
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;
+
+  /// `null` 表示不改标签；非空集合表示用该集合整体替换交易标签。
+  final Set<String>? tagIds;
 }
 
 class EditRepaymentCommand {

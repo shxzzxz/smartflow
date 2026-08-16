@@ -10,6 +10,7 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
+import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_form_page.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
@@ -114,6 +115,7 @@ void main() {
         categoryTreeProvider(
           AccountType.income,
         ).overrideWithValue(const AsyncLoading<List<CategoryNode>>()),
+        tagListProvider.overrideWithValue(const AsyncLoading<List<TagView>>()),
       ],
     );
     addTearDown(container.dispose);
@@ -260,6 +262,16 @@ List<dynamic> _editQueryOverrides(Map<String, Account> accounts) {
       AccountType.income,
     ).overrideWithValue(const AsyncData(<CategoryNode>[])),
     accountsByIdProvider.overrideWithValue(AsyncData(accounts)),
+    tagListProvider.overrideWithValue(const AsyncData(<TagView>[])),
+    transactionTagIdsProvider(
+      'tx-1',
+    ).overrideWithValue(const AsyncData(<String>{})),
+    transactionTagIdsProvider(
+      'tx-a',
+    ).overrideWithValue(const AsyncData(<String>{})),
+    transactionTagIdsProvider(
+      'tx-b',
+    ).overrideWithValue(const AsyncData(<String>{})),
   ];
 }
 

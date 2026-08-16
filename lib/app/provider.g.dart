@@ -1081,6 +1081,102 @@ final class TransactionReadRepositoryProvider
 String _$transactionReadRepositoryHash() =>
     r'6309935e65b9cef7d535b751f6e258921f5ee1cc';
 
+@ProviderFor(transactionTagRepository)
+final transactionTagRepositoryProvider = TransactionTagRepositoryProvider._();
+
+final class TransactionTagRepositoryProvider
+    extends
+        $FunctionalProvider<
+          TransactionTagRepository,
+          TransactionTagRepository,
+          TransactionTagRepository
+        >
+    with $Provider<TransactionTagRepository> {
+  TransactionTagRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'transactionTagRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$transactionTagRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<TransactionTagRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  TransactionTagRepository create(Ref ref) {
+    return transactionTagRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TransactionTagRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TransactionTagRepository>(value),
+    );
+  }
+}
+
+String _$transactionTagRepositoryHash() =>
+    r'd859766b1b20819f280e9ef1465a526a4fcec67a';
+
+@ProviderFor(tagApplicationService)
+final tagApplicationServiceProvider = TagApplicationServiceProvider._();
+
+final class TagApplicationServiceProvider
+    extends
+        $FunctionalProvider<
+          TagApplicationService,
+          TagApplicationService,
+          TagApplicationService
+        >
+    with $Provider<TagApplicationService> {
+  TagApplicationServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'tagApplicationServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$tagApplicationServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<TagApplicationService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  TagApplicationService create(Ref ref) {
+    return tagApplicationService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TagApplicationService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TagApplicationService>(value),
+    );
+  }
+}
+
+String _$tagApplicationServiceHash() =>
+    r'1e741e908740fa346b47175a1d433147c52f1e50';
+
 @ProviderFor(entryReadRepository)
 final entryReadRepositoryProvider = EntryReadRepositoryProvider._();
 
@@ -1701,7 +1797,7 @@ final class TransactionLedgerWriterProvider
 }
 
 String _$transactionLedgerWriterHash() =>
-    r'c8dff77976aa1adb1212d72576476e0c1d8c4824';
+    r'e930b7173b4564ca628943b2eb1c711100b3b7bb';
 
 @ProviderFor(ledgerPostingService)
 final ledgerPostingServiceProvider = LedgerPostingServiceProvider._();
@@ -2091,7 +2187,7 @@ final class FinancialMetricsServiceProvider
 }
 
 String _$financialMetricsServiceHash() =>
-    r'19982f2fe15329b1f861821bdf5ed681769bb4cf';
+    r'9be42565e4dc9becb91bf377ba6e39bc1f76f5dd';
 
 @ProviderFor(creditAccountRepository)
 final creditAccountRepositoryProvider = CreditAccountRepositoryProvider._();

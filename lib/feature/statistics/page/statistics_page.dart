@@ -427,14 +427,24 @@ class _CategoryAnalysis extends ConsumerWidget {
     final notifier = ref.read(statisticsViewModelProvider.notifier);
     final showingExpense =
         control.categoryKind == StatisticsCategoryKind.expense;
+    final showingTags =
+        control.categoryDimension == StatisticsCategoryDimension.tag;
     final primary =
         showingExpense
-            ? presentation.expenseCategories
-            : presentation.incomeCategories;
-    final items = selectStatisticsCategoryItems(
-      primary,
-      secondary: control.categoryLevel == StatisticsCategoryLevel.secondary,
-    );
+            ? (showingTags
+                ? presentation.expenseTags
+                : presentation.expenseCategories)
+            : (showingTags
+                ? presentation.incomeTags
+                : presentation.incomeCategories);
+    final items =
+        showingTags
+            ? primary
+            : selectStatisticsCategoryItems(
+              primary,
+              secondary:
+                  control.categoryLevel == StatisticsCategoryLevel.secondary,
+            );
     final semantic =
         showingExpense ? MoneySemantic.expense : MoneySemantic.income;
     final totalMinor = items.fold<int>(
@@ -444,44 +454,79 @@ class _CategoryAnalysis extends ConsumerWidget {
     final centerLabel = showingExpense ? '总支出' : '总收入';
     final centerValue = Money(minorUnits: totalMinor).format();
     return AnalysisChartCard(
-      title: '分类构成',
-      trailing: Wrap(
-        spacing: AppSpacing.space6,
-        runSpacing: AppSpacing.space6,
+      title: showingTags ? '标签构成' : '分类构成',
+      // 控制区放在内容区顶部而不是标题行 trailing：标题行的 Row 给
+      // trailing 无界宽度，Wrap 不会换行，紧凑屏上会横向溢出。
+      chart: Column(
         children: [
-          AppSlidingSegmentedControl<StatisticsCategoryKind>(
-            key: const ValueKey('statistics-category-kind'),
-            segments: const [
-              AppSegment(value: StatisticsCategoryKind.expense, label: '支出'),
-              AppSegment(value: StatisticsCategoryKind.income, label: '收入'),
-            ],
-            selected: control.categoryKind,
-            onChanged: notifier.selectCategoryKind,
-          ),
-          AppSlidingSegmentedControl<StatisticsCategoryLevel>(
-            key: const ValueKey('statistics-category-level'),
-            segments: const [
-              AppSegment(value: StatisticsCategoryLevel.primary, label: '主分类'),
-              AppSegment(
-                value: StatisticsCategoryLevel.secondary,
-                label: '子分类',
-              ),
-            ],
-            selected: control.categoryLevel,
-            onChanged: notifier.selectCategoryLevel,
-          ),
-        ],
-      ),
-      chart:
-          items.isEmpty
-              ? const AppChartEmptyState(message: '区间内暂无分类数据')
-              : Column(
-                children: [
-                  StatisticsDonutChart(
-                    items: items,
-                    centerLabel: centerLabel,
-                    centerValue: centerValue,
+          Wrap(
+            spacing: AppSpacing.space6,
+            runSpacing: AppSpacing.space6,
+            children: [
+              AppSlidingSegmentedControl<StatisticsCategoryDimension>(
+                key: const ValueKey('statistics-category-dimension'),
+                segments: const [
+                  AppSegment(
+                    value: StatisticsCategoryDimension.category,
+                    label: '分类',
                   ),
+                  AppSegment(
+                    value: StatisticsCategoryDimension.tag,
+                    label: '标签',
+                  ),
+                ],
+                selected: control.categoryDimension,
+                onChanged: notifier.selectCategoryDimension,
+              ),
+              AppSlidingSegmentedControl<StatisticsCategoryKind>(
+                key: const ValueKey('statistics-category-kind'),
+                segments: const [
+                  AppSegment(
+                    value: StatisticsCategoryKind.expense,
+                    label: '支出',
+                  ),
+                  AppSegment(value: StatisticsCategoryKind.income, label: '收入'),
+                ],
+                selected: control.categoryKind,
+                onChanged: notifier.selectCategoryKind,
+              ),
+              if (!showingTags)
+                AppSlidingSegmentedControl<StatisticsCategoryLevel>(
+                  key: const ValueKey('statistics-category-level'),
+                  segments: const [
+                    AppSegment(
+                      value: StatisticsCategoryLevel.primary,
+                      label: '主分类',
+                    ),
+                    AppSegment(
+                      value: StatisticsCategoryLevel.secondary,
+                      label: '子分类',
+                    ),
+                  ],
+                  selected: control.categoryLevel,
+                  onChanged: notifier.selectCategoryLevel,
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          if (items.isEmpty)
+            AppChartEmptyState(message: showingTags ? '区间内暂无标签数据' : '区间内暂无分类数据')
+          else
+            Column(
+              children: [
+                StatisticsDonutChart(
+                  items: items,
+                  centerLabel: centerLabel,
+                  centerValue: centerValue,
+                ),
+                if (showingTags)
+                  _TagList(
+                    items: items,
+                    semantic: semantic,
+                    from: presentation.cashflowFrom,
+                    until: presentation.cashflowUntil,
+                  )
+                else
                   _CategoryList(
                     items: items,
                     semantic: semantic,
@@ -489,8 +534,10 @@ class _CategoryAnalysis extends ConsumerWidget {
                     from: presentation.cashflowFrom,
                     until: presentation.cashflowUntil,
                   ),
-                ],
-              ),
+              ],
+            ),
+        ],
+      ),
       expandedChartBuilder:
           (height) => StatisticsDonutChart(
             items: items,
@@ -498,6 +545,44 @@ class _CategoryAnalysis extends ConsumerWidget {
             centerValue: centerValue,
             height: height,
           ),
+    );
+  }
+}
+
+/// 标签构成列表：标签没有层级，每行直接钻取交易流水。
+class _TagList extends StatelessWidget {
+  const _TagList({
+    required this.items,
+    required this.semantic,
+    required this.from,
+    required this.until,
+  });
+
+  final List<StatisticsBreakdownItem> items;
+  final MoneySemantic semantic;
+  final DateTime from;
+  final DateTime until;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (var i = 0; i < items.length; i++)
+          _CategoryRow(
+            item: items[i],
+            color: statisticsCategoryRowColor(
+              context,
+              index: i,
+              itemCount: items.length,
+            ),
+            trailing: _CategoryRowValue(
+              item: items[i],
+              items: items,
+              semantic: semantic,
+            ),
+            onTap: () => _openTagTransactions(context, items[i], from, until),
+          ),
+      ],
     );
   }
 }
@@ -731,6 +816,26 @@ void _openTransactions(
       queryParameters: {
         'categoryId': item.id,
         if (item.isUnsubdivided) 'categoryScope': 'own',
+        'from': from.toIso8601String(),
+        'until': until.toIso8601String(),
+        'title': item.title,
+        'scope': StatisticsDrilldownScope.cashflow.name,
+      },
+    ).toString(),
+  );
+}
+
+void _openTagTransactions(
+  BuildContext context,
+  StatisticsBreakdownItem item,
+  DateTime from,
+  DateTime until,
+) {
+  context.push(
+    Uri(
+      path: '/statistics/transactions',
+      queryParameters: {
+        if (item.id == untaggedTagItemId) 'untagged': '1' else 'tagId': item.id,
         'from': from.toIso8601String(),
         'until': until.toIso8601String(),
         'title': item.title,

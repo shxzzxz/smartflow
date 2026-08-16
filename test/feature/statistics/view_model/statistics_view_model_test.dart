@@ -201,6 +201,8 @@ void main() {
     final cashflowProvider = statisticsTransactionsProvider(
       category: const CategorySelection.withDescendants('dining'),
       settlementAccountId: null,
+      tagId: null,
+      untaggedOnly: false,
       occurredFrom: from,
       occurredUntil: until,
       scope: StatisticsDrilldownScope.cashflow,
@@ -208,6 +210,8 @@ void main() {
     final unsubdividedProvider = statisticsTransactionsProvider(
       category: const CategorySelection.ownOnly('food'),
       settlementAccountId: null,
+      tagId: null,
+      untaggedOnly: false,
       occurredFrom: from,
       occurredUntil: until,
       scope: StatisticsDrilldownScope.cashflow,
@@ -215,6 +219,8 @@ void main() {
     final balanceProvider = statisticsTransactionsProvider(
       category: null,
       settlementAccountId: 'cash',
+      tagId: null,
+      untaggedOnly: false,
       occurredFrom: null,
       occurredUntil: until,
       scope: StatisticsDrilldownScope.balance,
@@ -265,6 +271,8 @@ void main() {
     final provider = statisticsTransactionsProvider(
       category: const CategorySelection.withDescendants('food'),
       settlementAccountId: null,
+      tagId: null,
+      untaggedOnly: false,
       occurredFrom: DateTime(2026, 1),
       occurredUntil: DateTime(2026, 2),
       scope: StatisticsDrilldownScope.cashflow,

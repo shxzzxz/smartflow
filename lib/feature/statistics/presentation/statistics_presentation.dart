@@ -19,6 +19,8 @@ class StatisticsPresentation {
     required this.incomeChangeText,
     required this.expenseChangeText,
     required this.netAssetChangeText,
+    this.incomeTags = const [],
+    this.expenseTags = const [],
     this.rangeBalanceTrend = const [],
   });
 
@@ -35,6 +37,11 @@ class StatisticsPresentation {
   final String incomeChangeText;
   final String expenseChangeText;
   final String netAssetChangeText;
+
+  /// 标签构成统计项。每个标签桶的口径是"命中该标签的交易净额"，
+  /// 多标签交易跨桶重复计入，桶间合计可大于收支总额。
+  final List<StatisticsBreakdownItem> incomeTags;
+  final List<StatisticsBreakdownItem> expenseTags;
   final List<BalanceTrendPoint> rangeBalanceTrend;
 }
 
@@ -74,6 +81,8 @@ StatisticsPresentation buildRangeStatisticsPresentation({
       report.categories,
       AccountType.expense,
     ),
+    incomeTags: _toTagBreakdownItems(report.tags, AccountType.income),
+    expenseTags: _toTagBreakdownItems(report.tags, AccountType.expense),
     balanceComparison: BalanceSheetComparison(
       current: BalanceSheetSnapshot(
         assets: lastBalance,
@@ -492,6 +501,29 @@ StatisticsPresentation buildStatisticsPresentation({
     expenseChangeText: _changeText('较上月同期', cashflow.comparison.expenseChange),
     netAssetChangeText: _changeText('较上月', balance.comparison.netAssetChange),
   );
+}
+
+/// 「未打标签」统计项的展示 ID。它只是统计展示口径，不是持久化实体；
+/// 不会与 uuid 生成的标签 ID 冲突。
+const untaggedTagItemId = 'untagged';
+
+/// 标签构成读模型已是命名条目，这里只做展示映射与 progress 归一。
+List<StatisticsBreakdownItem> _toTagBreakdownItems(
+  List<TagMetricItem> tags,
+  AccountType type,
+) {
+  final result = [
+    for (final tag in tags)
+      if (tag.accountType == type)
+        StatisticsBreakdownItem(
+          id: tag.tagId ?? untaggedTagItemId,
+          title: tag.isUntagged ? '未打标签' : tag.name,
+          accountType: tag.accountType,
+          amount: tag.amount,
+          progress: 0,
+        ),
+  ];
+  return _withProgress(result);
 }
 
 /// 分类统计读模型已由应用查询层组装为两层结构，这里只做展示映射与

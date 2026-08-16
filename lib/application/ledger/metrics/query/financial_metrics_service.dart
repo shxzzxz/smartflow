@@ -5,6 +5,8 @@ import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/shared/analytics/time_series_transform.dart';
 
 import '../../account/query/account_query_service.dart';
+import '../../tag/tag_read_models.dart';
+import '../../tag/tag_repository.dart';
 import '../../transaction/query/transaction_read_models.dart';
 import '../../transaction/query/transaction_scope.dart';
 import 'financial_metrics_queries.dart';
@@ -39,11 +41,14 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
   const FinancialMetricsServiceImpl({
     required LedgerMetricsSource metricsSource,
     required AccountQueryService accountQuery,
+    required TransactionTagRepository tagRepository,
   }) : _aggregate = metricsSource,
-       _accountQuery = accountQuery;
+       _accountQuery = accountQuery,
+       _tagRepository = tagRepository;
 
   final LedgerMetricsSource _aggregate;
   final AccountQueryService _accountQuery;
+  final TransactionTagRepository _tagRepository;
 
   static const Set<AccountType> _cashflowTypes = {
     AccountType.income,
@@ -68,6 +73,7 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
       );
       final dailySummariesFuture = _loadDailyCashflowSummaries(window);
       final categoriesFuture = _loadCategoryGroups(window);
+      final tagsFuture = _loadTagMetrics(window);
       final balanceTrendFuture = _loadBalanceTrend(query);
       return StatisticsRangeReport(
         from: query.from,
@@ -75,6 +81,7 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
         cashflow: _toCashflowSummary(await cashflowFuture),
         dailySummaries: await dailySummariesFuture,
         categories: await categoriesFuture,
+        tags: await tagsFuture,
         balanceTrend: await balanceTrendFuture,
       );
     });
@@ -444,6 +451,37 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
           right.total.minorUnits.abs().compareTo(left.total.minorUnits.abs()),
     );
     return groups;
+  }
+
+  /// 标签构成读模型：SQL 按 `(标签, 账户类型)` 聚合后组装命名条目。
+  /// 未打标签的聚合行呈现为「未打标签」项；词表内无引用的标签不出现。
+  Future<List<TagMetricItem>> _loadTagMetrics(DateTimeWindow window) async {
+    final aggregatesFuture = _aggregate.aggregateByTag(
+      accountTypes: _cashflowTypes,
+      scope: TransactionScopeFilter.stats,
+      window: window,
+    );
+    final tagsFuture = _tagRepository.listTags();
+    final aggregates = await aggregatesFuture;
+    if (aggregates.isEmpty) return const [];
+    final nameByTagId = {
+      for (final TagView tag in await tagsFuture) tag.id: tag.name,
+    };
+    return [
+      for (final aggregate in aggregates)
+        TagMetricItem(
+          tagId: aggregate.tagId,
+          name:
+              aggregate.tagId == null
+                  ? '未打标签'
+                  : nameByTagId[aggregate.tagId] ?? '已删除标签',
+          accountType: aggregate.accountType,
+          amount: Money(minorUnits: aggregate.amountMinor),
+        ),
+    ]..sort(
+      (left, right) =>
+          right.amount.minorUnits.abs().compareTo(left.amount.minorUnits.abs()),
+    );
   }
 
   List<AccountMetric> _toAccountMetrics(List<AccountAggregate> aggregates) {

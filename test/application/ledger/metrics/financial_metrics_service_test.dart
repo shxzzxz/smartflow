@@ -3,6 +3,7 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_port_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/time/month_key.dart';
+import '../../../helper/fake_transaction_tag_repository.dart';
 
 void main() {
   test('returns only dates that contain daily cashflow facts', () async {
@@ -98,6 +99,50 @@ void main() {
       ]);
     },
   );
+
+  test('composes tag metrics with names and the untagged bucket', () async {
+    final aggregate = _FakeLedgerMetricsSource(
+      accountTypeResults: const [
+        {AccountType.income: 0, AccountType.expense: 1300},
+        {AccountType.asset: 0, AccountType.liability: 0},
+      ],
+      byTagResult: const [
+        TagAggregate(
+          tagId: 'tag-a',
+          accountType: AccountType.expense,
+          amountMinor: 800,
+        ),
+        TagAggregate(
+          tagId: null,
+          accountType: AccountType.expense,
+          amountMinor: 500,
+        ),
+      ],
+    );
+    final tagRepository = FakeTransactionTagRepository();
+    await tagRepository.insertTag(id: 'tag-a', name: '旅行');
+    final service = FinancialMetricsServiceImpl(
+      metricsSource: aggregate,
+      accountQuery: _FakeAccountQueryService(const []),
+      tagRepository: tagRepository,
+    );
+
+    final report =
+        await service
+            .watchStatisticsRangeReport(
+              StatisticsRangeReportQuery(
+                from: DateTime(2026, 1, 1),
+                until: DateTime(2026, 1, 4),
+              ),
+            )
+            .first;
+
+    expect(report.tags.map((tag) => tag.name), ['旅行', '未打标签']);
+    expect(report.tags.first.tagId, 'tag-a');
+    expect(report.tags.first.amount.minorUnits, 800);
+    expect(report.tags.last.isUntagged, isTrue);
+    expect(report.tags.last.amount.minorUnits, 500);
+  });
 
   test(
     'builds a current-state cashflow report for the selected month',
@@ -340,6 +385,7 @@ FinancialMetricsServiceImpl _service(
   return FinancialMetricsServiceImpl(
     metricsSource: aggregate,
     accountQuery: _FakeAccountQueryService(categories),
+    tagRepository: FakeTransactionTagRepository(),
   );
 }
 
@@ -380,6 +426,7 @@ class _FakeLedgerMetricsSource implements LedgerMetricsSource {
     this.byAccountResult = const [],
     this.byMonthResult = const {},
     this.byDayResults,
+    this.byTagResult = const [],
   });
 
   final List<Map<AccountType, int>> accountTypeResults;
@@ -387,6 +434,7 @@ class _FakeLedgerMetricsSource implements LedgerMetricsSource {
   final List<AccountAggregate> byAccountResult;
   final Map<MonthKey, Map<AccountType, int>> byMonthResult;
   final List<Map<DateTime, Map<AccountType, int>>>? byDayResults;
+  final List<TagAggregate> byTagResult;
   int _accountTypeIndex = 0;
   int _byDayIndex = 0;
 
@@ -397,6 +445,15 @@ class _FakeLedgerMetricsSource implements LedgerMetricsSource {
     DateTimeWindow window = const DateTimeWindow(),
   }) async {
     return byAccountResult;
+  }
+
+  @override
+  Future<List<TagAggregate>> aggregateByTag({
+    required Set<AccountType> accountTypes,
+    required TransactionScopeFilter scope,
+    DateTimeWindow window = const DateTimeWindow(),
+  }) async {
+    return byTagResult;
   }
 
   @override
