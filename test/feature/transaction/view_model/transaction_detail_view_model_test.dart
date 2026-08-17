@@ -69,6 +69,27 @@ void main() {
     );
 
     test(
+      'dispatches plain expense tag change to ledger edit service',
+      () async {
+        final editService = _FakeTransactionEditAppService();
+        final container = _container(
+          detail: _detail(purpose: BusinessPurpose.dailyExpense),
+          editService: editService,
+        );
+        await _readState(container);
+
+        final outcome = await container
+            .read(transactionDetailViewModelProvider('tx-1').notifier)
+            .changeTags({'tag-1', 'tag-2'});
+
+        expect(outcome, isA<UiActionSuccess<void>>());
+        final command = editService.expenseCommands.single;
+        expect(command.transactionId, 'tx-1');
+        expect(command.tagIds, {'tag-1', 'tag-2'});
+      },
+    );
+
+    test(
       'dispatches plain income account change to ledger edit service',
       () async {
         final editService = _FakeTransactionEditAppService();

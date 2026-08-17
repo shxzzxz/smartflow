@@ -63,6 +63,20 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     });
   }
 
+  Future<UiActionOutcome<void>> changeTags(Set<String> tagIds) {
+    return _runAction(
+      (loaded) => switch (loaded.behavior.canEditTags) {
+        DetailEditDenied(:final reason) => Future.value(
+          detailNotEditable(reason),
+        ),
+        DetailEditAllowed() => _actionDispatcherFor(
+          loaded.detail.transaction,
+        ).changeTags(Set.of(tagIds)),
+        _ => Future.value(detailNotEditable('当前交易类型不支持修改标签')),
+      },
+    );
+  }
+
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) {
     return _runAction((loaded) {
       return _actionDispatcherFor(

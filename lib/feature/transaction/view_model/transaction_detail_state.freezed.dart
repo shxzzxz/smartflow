@@ -349,7 +349,7 @@ String toString() {
 /// @nodoc
 mixin _$DetailBehaviorConfig {
 
- DetailEditPermission get canEditOccurredAt; DetailEditPermission get canEditPostedAt; DetailEditPermission get canEditNote; DetailEditPermission get canEditSettlementAccount; String? get bannerText; String? get editRoute;
+ DetailEditPermission get canEditOccurredAt; DetailEditPermission get canEditPostedAt; DetailEditPermission get canEditNote; DetailEditPermission get canEditSettlementAccount; DetailEditPermission get canEditTags; String? get bannerText; String? get editRoute;
 /// Create a copy of DetailBehaviorConfig
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -360,16 +360,16 @@ $DetailBehaviorConfigCopyWith<DetailBehaviorConfig> get copyWith => _$DetailBeha
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DetailBehaviorConfig&&(identical(other.canEditOccurredAt, canEditOccurredAt) || other.canEditOccurredAt == canEditOccurredAt)&&(identical(other.canEditPostedAt, canEditPostedAt) || other.canEditPostedAt == canEditPostedAt)&&(identical(other.canEditNote, canEditNote) || other.canEditNote == canEditNote)&&(identical(other.canEditSettlementAccount, canEditSettlementAccount) || other.canEditSettlementAccount == canEditSettlementAccount)&&(identical(other.bannerText, bannerText) || other.bannerText == bannerText)&&(identical(other.editRoute, editRoute) || other.editRoute == editRoute));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DetailBehaviorConfig&&(identical(other.canEditOccurredAt, canEditOccurredAt) || other.canEditOccurredAt == canEditOccurredAt)&&(identical(other.canEditPostedAt, canEditPostedAt) || other.canEditPostedAt == canEditPostedAt)&&(identical(other.canEditNote, canEditNote) || other.canEditNote == canEditNote)&&(identical(other.canEditSettlementAccount, canEditSettlementAccount) || other.canEditSettlementAccount == canEditSettlementAccount)&&(identical(other.canEditTags, canEditTags) || other.canEditTags == canEditTags)&&(identical(other.bannerText, bannerText) || other.bannerText == bannerText)&&(identical(other.editRoute, editRoute) || other.editRoute == editRoute));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,canEditOccurredAt,canEditPostedAt,canEditNote,canEditSettlementAccount,bannerText,editRoute);
+int get hashCode => Object.hash(runtimeType,canEditOccurredAt,canEditPostedAt,canEditNote,canEditSettlementAccount,canEditTags,bannerText,editRoute);
 
 @override
 String toString() {
-  return 'DetailBehaviorConfig(canEditOccurredAt: $canEditOccurredAt, canEditPostedAt: $canEditPostedAt, canEditNote: $canEditNote, canEditSettlementAccount: $canEditSettlementAccount, bannerText: $bannerText, editRoute: $editRoute)';
+  return 'DetailBehaviorConfig(canEditOccurredAt: $canEditOccurredAt, canEditPostedAt: $canEditPostedAt, canEditNote: $canEditNote, canEditSettlementAccount: $canEditSettlementAccount, canEditTags: $canEditTags, bannerText: $bannerText, editRoute: $editRoute)';
 }
 
 
@@ -380,11 +380,11 @@ abstract mixin class $DetailBehaviorConfigCopyWith<$Res>  {
   factory $DetailBehaviorConfigCopyWith(DetailBehaviorConfig value, $Res Function(DetailBehaviorConfig) _then) = _$DetailBehaviorConfigCopyWithImpl;
 @useResult
 $Res call({
- DetailEditPermission canEditOccurredAt, DetailEditPermission canEditPostedAt, DetailEditPermission canEditNote, DetailEditPermission canEditSettlementAccount, String? bannerText, String? editRoute
+ DetailEditPermission canEditOccurredAt, DetailEditPermission canEditPostedAt, DetailEditPermission canEditNote, DetailEditPermission canEditSettlementAccount, DetailEditPermission canEditTags, String? bannerText, String? editRoute
 });
 
 
-$DetailEditPermissionCopyWith<$Res> get canEditOccurredAt;$DetailEditPermissionCopyWith<$Res> get canEditPostedAt;$DetailEditPermissionCopyWith<$Res> get canEditNote;$DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount;
+$DetailEditPermissionCopyWith<$Res> get canEditOccurredAt;$DetailEditPermissionCopyWith<$Res> get canEditPostedAt;$DetailEditPermissionCopyWith<$Res> get canEditNote;$DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount;$DetailEditPermissionCopyWith<$Res> get canEditTags;
 
 }
 /// @nodoc
@@ -397,12 +397,13 @@ class _$DetailBehaviorConfigCopyWithImpl<$Res>
 
 /// Create a copy of DetailBehaviorConfig
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? canEditOccurredAt = null,Object? canEditPostedAt = null,Object? canEditNote = null,Object? canEditSettlementAccount = null,Object? bannerText = freezed,Object? editRoute = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? canEditOccurredAt = null,Object? canEditPostedAt = null,Object? canEditNote = null,Object? canEditSettlementAccount = null,Object? canEditTags = null,Object? bannerText = freezed,Object? editRoute = freezed,}) {
   return _then(_self.copyWith(
 canEditOccurredAt: null == canEditOccurredAt ? _self.canEditOccurredAt : canEditOccurredAt // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,canEditPostedAt: null == canEditPostedAt ? _self.canEditPostedAt : canEditPostedAt // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,canEditNote: null == canEditNote ? _self.canEditNote : canEditNote // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,canEditSettlementAccount: null == canEditSettlementAccount ? _self.canEditSettlementAccount : canEditSettlementAccount // ignore: cast_nullable_to_non_nullable
+as DetailEditPermission,canEditTags: null == canEditTags ? _self.canEditTags : canEditTags // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,bannerText: freezed == bannerText ? _self.bannerText : bannerText // ignore: cast_nullable_to_non_nullable
 as String?,editRoute: freezed == editRoute ? _self.editRoute : editRoute // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -443,6 +444,14 @@ $DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount {
   
   return $DetailEditPermissionCopyWith<$Res>(_self.canEditSettlementAccount, (value) {
     return _then(_self.copyWith(canEditSettlementAccount: value));
+  });
+}/// Create a copy of DetailBehaviorConfig
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$DetailEditPermissionCopyWith<$Res> get canEditTags {
+  return $DetailEditPermissionCopyWith<$Res>(_self.canEditTags, (value) {
+    return _then(_self.copyWith(canEditTags: value));
   });
 }
 }
@@ -526,10 +535,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( DetailEditPermission canEditOccurredAt,  DetailEditPermission canEditPostedAt,  DetailEditPermission canEditNote,  DetailEditPermission canEditSettlementAccount,  String? bannerText,  String? editRoute)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( DetailEditPermission canEditOccurredAt,  DetailEditPermission canEditPostedAt,  DetailEditPermission canEditNote,  DetailEditPermission canEditSettlementAccount,  DetailEditPermission canEditTags,  String? bannerText,  String? editRoute)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DetailBehaviorConfig() when $default != null:
-return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,_that.canEditSettlementAccount,_that.bannerText,_that.editRoute);case _:
+return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,_that.canEditSettlementAccount,_that.canEditTags,_that.bannerText,_that.editRoute);case _:
   return orElse();
 
 }
@@ -547,10 +556,10 @@ return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( DetailEditPermission canEditOccurredAt,  DetailEditPermission canEditPostedAt,  DetailEditPermission canEditNote,  DetailEditPermission canEditSettlementAccount,  String? bannerText,  String? editRoute)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( DetailEditPermission canEditOccurredAt,  DetailEditPermission canEditPostedAt,  DetailEditPermission canEditNote,  DetailEditPermission canEditSettlementAccount,  DetailEditPermission canEditTags,  String? bannerText,  String? editRoute)  $default,) {final _that = this;
 switch (_that) {
 case _DetailBehaviorConfig():
-return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,_that.canEditSettlementAccount,_that.bannerText,_that.editRoute);case _:
+return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,_that.canEditSettlementAccount,_that.canEditTags,_that.bannerText,_that.editRoute);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -567,10 +576,10 @@ return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( DetailEditPermission canEditOccurredAt,  DetailEditPermission canEditPostedAt,  DetailEditPermission canEditNote,  DetailEditPermission canEditSettlementAccount,  String? bannerText,  String? editRoute)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( DetailEditPermission canEditOccurredAt,  DetailEditPermission canEditPostedAt,  DetailEditPermission canEditNote,  DetailEditPermission canEditSettlementAccount,  DetailEditPermission canEditTags,  String? bannerText,  String? editRoute)?  $default,) {final _that = this;
 switch (_that) {
 case _DetailBehaviorConfig() when $default != null:
-return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,_that.canEditSettlementAccount,_that.bannerText,_that.editRoute);case _:
+return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,_that.canEditSettlementAccount,_that.canEditTags,_that.bannerText,_that.editRoute);case _:
   return null;
 
 }
@@ -582,13 +591,14 @@ return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,
 
 
 class _DetailBehaviorConfig implements DetailBehaviorConfig {
-  const _DetailBehaviorConfig({required this.canEditOccurredAt, required this.canEditPostedAt, required this.canEditNote, required this.canEditSettlementAccount, this.bannerText, this.editRoute});
+  const _DetailBehaviorConfig({required this.canEditOccurredAt, required this.canEditPostedAt, required this.canEditNote, required this.canEditSettlementAccount, required this.canEditTags, this.bannerText, this.editRoute});
   
 
 @override final  DetailEditPermission canEditOccurredAt;
 @override final  DetailEditPermission canEditPostedAt;
 @override final  DetailEditPermission canEditNote;
 @override final  DetailEditPermission canEditSettlementAccount;
+@override final  DetailEditPermission canEditTags;
 @override final  String? bannerText;
 @override final  String? editRoute;
 
@@ -602,16 +612,16 @@ _$DetailBehaviorConfigCopyWith<_DetailBehaviorConfig> get copyWith => __$DetailB
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DetailBehaviorConfig&&(identical(other.canEditOccurredAt, canEditOccurredAt) || other.canEditOccurredAt == canEditOccurredAt)&&(identical(other.canEditPostedAt, canEditPostedAt) || other.canEditPostedAt == canEditPostedAt)&&(identical(other.canEditNote, canEditNote) || other.canEditNote == canEditNote)&&(identical(other.canEditSettlementAccount, canEditSettlementAccount) || other.canEditSettlementAccount == canEditSettlementAccount)&&(identical(other.bannerText, bannerText) || other.bannerText == bannerText)&&(identical(other.editRoute, editRoute) || other.editRoute == editRoute));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DetailBehaviorConfig&&(identical(other.canEditOccurredAt, canEditOccurredAt) || other.canEditOccurredAt == canEditOccurredAt)&&(identical(other.canEditPostedAt, canEditPostedAt) || other.canEditPostedAt == canEditPostedAt)&&(identical(other.canEditNote, canEditNote) || other.canEditNote == canEditNote)&&(identical(other.canEditSettlementAccount, canEditSettlementAccount) || other.canEditSettlementAccount == canEditSettlementAccount)&&(identical(other.canEditTags, canEditTags) || other.canEditTags == canEditTags)&&(identical(other.bannerText, bannerText) || other.bannerText == bannerText)&&(identical(other.editRoute, editRoute) || other.editRoute == editRoute));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,canEditOccurredAt,canEditPostedAt,canEditNote,canEditSettlementAccount,bannerText,editRoute);
+int get hashCode => Object.hash(runtimeType,canEditOccurredAt,canEditPostedAt,canEditNote,canEditSettlementAccount,canEditTags,bannerText,editRoute);
 
 @override
 String toString() {
-  return 'DetailBehaviorConfig(canEditOccurredAt: $canEditOccurredAt, canEditPostedAt: $canEditPostedAt, canEditNote: $canEditNote, canEditSettlementAccount: $canEditSettlementAccount, bannerText: $bannerText, editRoute: $editRoute)';
+  return 'DetailBehaviorConfig(canEditOccurredAt: $canEditOccurredAt, canEditPostedAt: $canEditPostedAt, canEditNote: $canEditNote, canEditSettlementAccount: $canEditSettlementAccount, canEditTags: $canEditTags, bannerText: $bannerText, editRoute: $editRoute)';
 }
 
 
@@ -622,11 +632,11 @@ abstract mixin class _$DetailBehaviorConfigCopyWith<$Res> implements $DetailBeha
   factory _$DetailBehaviorConfigCopyWith(_DetailBehaviorConfig value, $Res Function(_DetailBehaviorConfig) _then) = __$DetailBehaviorConfigCopyWithImpl;
 @override @useResult
 $Res call({
- DetailEditPermission canEditOccurredAt, DetailEditPermission canEditPostedAt, DetailEditPermission canEditNote, DetailEditPermission canEditSettlementAccount, String? bannerText, String? editRoute
+ DetailEditPermission canEditOccurredAt, DetailEditPermission canEditPostedAt, DetailEditPermission canEditNote, DetailEditPermission canEditSettlementAccount, DetailEditPermission canEditTags, String? bannerText, String? editRoute
 });
 
 
-@override $DetailEditPermissionCopyWith<$Res> get canEditOccurredAt;@override $DetailEditPermissionCopyWith<$Res> get canEditPostedAt;@override $DetailEditPermissionCopyWith<$Res> get canEditNote;@override $DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount;
+@override $DetailEditPermissionCopyWith<$Res> get canEditOccurredAt;@override $DetailEditPermissionCopyWith<$Res> get canEditPostedAt;@override $DetailEditPermissionCopyWith<$Res> get canEditNote;@override $DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount;@override $DetailEditPermissionCopyWith<$Res> get canEditTags;
 
 }
 /// @nodoc
@@ -639,12 +649,13 @@ class __$DetailBehaviorConfigCopyWithImpl<$Res>
 
 /// Create a copy of DetailBehaviorConfig
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? canEditOccurredAt = null,Object? canEditPostedAt = null,Object? canEditNote = null,Object? canEditSettlementAccount = null,Object? bannerText = freezed,Object? editRoute = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? canEditOccurredAt = null,Object? canEditPostedAt = null,Object? canEditNote = null,Object? canEditSettlementAccount = null,Object? canEditTags = null,Object? bannerText = freezed,Object? editRoute = freezed,}) {
   return _then(_DetailBehaviorConfig(
 canEditOccurredAt: null == canEditOccurredAt ? _self.canEditOccurredAt : canEditOccurredAt // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,canEditPostedAt: null == canEditPostedAt ? _self.canEditPostedAt : canEditPostedAt // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,canEditNote: null == canEditNote ? _self.canEditNote : canEditNote // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,canEditSettlementAccount: null == canEditSettlementAccount ? _self.canEditSettlementAccount : canEditSettlementAccount // ignore: cast_nullable_to_non_nullable
+as DetailEditPermission,canEditTags: null == canEditTags ? _self.canEditTags : canEditTags // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,bannerText: freezed == bannerText ? _self.bannerText : bannerText // ignore: cast_nullable_to_non_nullable
 as String?,editRoute: freezed == editRoute ? _self.editRoute : editRoute // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -686,6 +697,14 @@ $DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount {
   
   return $DetailEditPermissionCopyWith<$Res>(_self.canEditSettlementAccount, (value) {
     return _then(_self.copyWith(canEditSettlementAccount: value));
+  });
+}/// Create a copy of DetailBehaviorConfig
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$DetailEditPermissionCopyWith<$Res> get canEditTags {
+  return $DetailEditPermissionCopyWith<$Res>(_self.canEditTags, (value) {
+    return _then(_self.copyWith(canEditTags: value));
   });
 }
 }

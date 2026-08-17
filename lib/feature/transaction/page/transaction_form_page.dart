@@ -19,6 +19,7 @@ import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
+import 'package:smartflow/widget/business/tag/tag_badge.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
 import 'package:smartflow/widget/business/tag/tag_multi_select_sheet.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -431,12 +432,12 @@ class _TransactionFormContentState
     ref.read(_formProvider.notifier).setOccurredAt(picked);
   }
 
-  String _selectedTagNames(TransactionFormState formState) {
+  List<String> _selectedTagNames(TransactionFormState formState) {
     final nameById = {for (final tag in formState.tags) tag.id: tag.name};
     return [
       for (final id in formState.selectedTagIds)
         if (nameById.containsKey(id)) nameById[id]!,
-    ].join('、');
+    ];
   }
 
   Future<void> _selectTags() async {
@@ -896,7 +897,7 @@ class _TransactionOptionsPanel extends StatelessWidget {
   final String? reimbursementAccountId;
   final bool excludeStats;
   final bool excludeBudget;
-  final String tagNames;
+  final List<String> tagNames;
   final VoidCallback onPickDate;
   final VoidCallback onSelectTags;
   final ValueChanged<String?> onFromAccountChanged;
@@ -919,6 +920,29 @@ class _TransactionOptionsPanel extends StatelessWidget {
             ? onToAccountChanged
             : onFromAccountChanged;
 
+    Widget buildTagSelector() {
+      if (tagNames.isEmpty) {
+        return _QuickActionChip(
+          label: '标签',
+          selected: false,
+          onTap: onSelectTags,
+        );
+      }
+
+      return InkWell(
+        onTap: onSelectTags,
+        borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
+          child: Wrap(
+            spacing: AppSpacing.space4,
+            runSpacing: AppSpacing.space4,
+            children: [for (final name in tagNames) TagBadge(name: name)],
+          ),
+        ),
+      );
+    }
+
     Widget buildPanel(ValueChanged<String?> accountChanged, String? errorText) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -934,11 +958,6 @@ class _TransactionOptionsPanel extends StatelessWidget {
                     label: _formatDateTime(occurredAt),
                     selected: false,
                     onTap: onPickDate,
-                  ),
-                  _QuickActionChip(
-                    label: tagNames.isEmpty ? '标签' : tagNames,
-                    selected: tagNames.isNotEmpty,
-                    onTap: onSelectTags,
                   ),
                   if (showPrimaryAccount)
                     _AccountSelectorChip(
@@ -974,6 +993,8 @@ class _TransactionOptionsPanel extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: AppSpacing.space4),
+          Align(alignment: Alignment.centerLeft, child: buildTagSelector()),
           if (errorText != null) _FormFieldErrorText(errorText),
         ],
       );

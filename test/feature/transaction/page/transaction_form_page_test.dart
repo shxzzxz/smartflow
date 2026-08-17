@@ -92,6 +92,54 @@ void main() {
     expect(find.byType(TransactionAmountInput), findsOneWidget);
   });
 
+  testWidgets('places the tag action on the row below other options', (
+    tester,
+  ) async {
+    await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
+
+    final dateText = find.byWidgetPredicate(
+      (widget) =>
+          widget is Text &&
+          RegExp(
+            r'^(今天|\d{1,2}/\d{1,2}) \d{2}:\d{2}$',
+          ).hasMatch(widget.data ?? ''),
+    );
+    expect(dateText, findsOneWidget);
+    expect(find.text('标签'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('标签')).dy,
+      greaterThan(tester.getTopLeft(dateText).dy),
+    );
+  });
+
+  testWidgets('renders selected tags as badges that can be edited', (
+    tester,
+  ) async {
+    await _pumpTransactionForm(
+      tester,
+      _FakeTransactionPostingAppService(),
+      tags: const [
+        TagView(id: 'tag-1', name: '工作', sortOrder: 0, usageCount: 1),
+        TagView(id: 'tag-2', name: '旅行', sortOrder: 1, usageCount: 0),
+      ],
+    );
+
+    await tester.tap(find.text('标签'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('工作'));
+    await tester.tap(find.text('旅行'));
+    await tester.tap(find.widgetWithText(FilledButton, '确定'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(Chip, '工作'), findsOneWidget);
+    expect(find.widgetWithText(Chip, '旅行'), findsOneWidget);
+    expect(find.text('工作、旅行'), findsNothing);
+
+    await tester.tap(find.text('工作'));
+    await tester.pumpAndSettle();
+    expect(find.text('选择标签'), findsOneWidget);
+  });
+
   testWidgets('new form renders while option queries are loading', (
     tester,
   ) async {
@@ -280,6 +328,7 @@ Future<void> _pumpTransactionForm(
   _FakeTransactionPostingAppService fakeService, {
   ThemeMode themeMode = ThemeMode.light,
   TextScaler textScaler = TextScaler.noScaling,
+  List<TagView> tags = const [],
 }) async {
   final router = GoRouter(
     routes: [
@@ -323,6 +372,7 @@ Future<void> _pumpTransactionForm(
         categoryTreeProvider(
           AccountType.income,
         ).overrideWith((ref) => Stream.value(const <CategoryNode>[])),
+        tagListProvider.overrideWith((ref) => Stream.value(tags)),
       ],
       child: MaterialApp.router(
         theme: AppTheme.light(),

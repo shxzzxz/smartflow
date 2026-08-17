@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
+import '../../../application/ledger/ledger_command_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
@@ -15,6 +16,8 @@ import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/business_icon_bubble.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
+import 'package:smartflow/widget/business/tag/tag_badge.dart';
+import 'package:smartflow/widget/business/tag/tag_multi_select_sheet.dart';
 import '../../shared/provider/tag_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_detail_presentation.dart';
@@ -139,7 +142,10 @@ class _DetailBody extends ConsumerWidget {
                 onNoteTap: () => _editNote(context, ref),
               ),
               const SizedBox(height: AppSpacing.space12),
-              _TagCard(transactionId: state.transactionId),
+              _TagCard(
+                transactionId: state.transactionId,
+                permission: state.behavior.canEditTags,
+              ),
               if (state.showExcludeStats || state.showExcludeBudget) ...[
                 const SizedBox(height: AppSpacing.space12),
                 _ExclusionCard(state: state),
@@ -441,12 +447,12 @@ class _PrimaryMetaCard extends StatelessWidget {
   }
 }
 
-/// 标签展示卡。标签是只读事实：顶层交易的标签在编辑表单中修改，
-/// 子交易继承所属交易组的标签展示。
+/// 标签展示卡。顶层交易支持在详情页直接修改，子交易展示所属交易组的标签。
 class _TagCard extends ConsumerWidget {
-  const _TagCard({required this.transactionId});
+  const _TagCard({required this.transactionId, required this.permission});
 
   final String transactionId;
+  final DetailEditPermission permission;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -460,6 +466,7 @@ class _TagCard extends ConsumerWidget {
             label: '标签',
             value: '无',
             valueColor: Theme.of(context).colorScheme.onSurfaceVariant,
+            onTap: () => _editTags(context, ref, tagIds, tags),
           ),
         ],
       );
@@ -468,8 +475,53 @@ class _TagCard extends ConsumerWidget {
     final names = [
       for (final id in tagIds)
         if (nameById.containsKey(id)) nameById[id]!,
-    ].join('、');
-    return _RowCard(rows: [AppPlainValueRow(label: '标签', value: names)]);
+    ];
+    return _RowCard(
+      rows: [
+        AppPlainValueRow(
+          label: '标签',
+          child: Wrap(
+            alignment: WrapAlignment.end,
+            spacing: AppSpacing.space4,
+            runSpacing: AppSpacing.space4,
+            children: [for (final name in names) TagBadge(name: name)],
+          ),
+          onTap: () => _editTags(context, ref, tagIds, tags),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _editTags(
+    BuildContext context,
+    WidgetRef ref,
+    Set<String> tagIds,
+    List<TagView> tags,
+  ) async {
+    switch (permission) {
+      case DetailEditDenied(:final reason):
+        _showMessage(context, reason);
+        return;
+      case DetailEditAllowed():
+        break;
+    }
+    final result = await showTagMultiSelectSheet(
+      context: context,
+      tags: tags,
+      selectedIds: tagIds,
+      allowCreate: true,
+    );
+    if (!context.mounted || result == null) return;
+    final selectedIds = result.selectedTagIds;
+    if (selectedIds.length == tagIds.length &&
+        selectedIds.containsAll(tagIds)) {
+      return;
+    }
+    final outcome = await ref
+        .read(transactionDetailViewModelProvider(transactionId).notifier)
+        .changeTags(selectedIds);
+    if (!context.mounted) return;
+    _handleActionOutcome(context, outcome, successMessage: '标签已更新');
   }
 }
 

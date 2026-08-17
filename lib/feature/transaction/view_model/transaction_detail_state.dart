@@ -41,6 +41,7 @@ abstract class DetailBehaviorConfig with _$DetailBehaviorConfig {
     required DetailEditPermission canEditPostedAt,
     required DetailEditPermission canEditNote,
     required DetailEditPermission canEditSettlementAccount,
+    required DetailEditPermission canEditTags,
     String? bannerText,
     String? editRoute,
   }) = _DetailBehaviorConfig;

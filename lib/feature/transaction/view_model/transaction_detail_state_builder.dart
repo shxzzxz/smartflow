@@ -319,6 +319,7 @@ DetailBehaviorConfig _behaviorConfigFor(TransactionDetail detail) {
       canEditPostedAt: editPermission,
       canEditNote: editPermission,
       canEditSettlementAccount: editPermission,
+      canEditTags: _tagEditPermissionFor(transaction),
     );
   }
 
@@ -343,6 +344,7 @@ DetailBehaviorConfig _behaviorConfigFor(TransactionDetail detail) {
       canEditPostedAt: postedAtPermission,
       canEditNote: const DetailEditPermission.allowed(),
       canEditSettlementAccount: const DetailEditPermission.allowed(),
+      canEditTags: _tagEditPermissionFor(transaction),
     );
   }
 
@@ -357,6 +359,7 @@ DetailBehaviorConfig _behaviorConfigFor(TransactionDetail detail) {
         canEditPostedAt: postedAtPermission,
         canEditNote: const DetailEditPermission.allowed(),
         canEditSettlementAccount: const DetailEditPermission.allowed(),
+        canEditTags: _tagEditPermissionFor(transaction),
       );
     }
   }
@@ -376,6 +379,7 @@ DetailBehaviorConfig _behaviorConfigFor(TransactionDetail detail) {
         canEditPostedAt: postedAtPermission,
         canEditNote: const DetailEditPermission.allowed(),
         canEditSettlementAccount: const DetailEditPermission.allowed(),
+        canEditTags: _tagEditPermissionFor(transaction),
       );
     }
   }
@@ -392,7 +396,29 @@ DetailBehaviorConfig _behaviorConfigFor(TransactionDetail detail) {
     canEditSettlementAccount: const DetailEditPermission.denied(
       reason: '该交易属于当前版本未识别的业务来源，仅允许修改备注和入账时间',
     ),
+    canEditTags: _tagEditPermissionFor(transaction),
   );
+}
+
+DetailEditPermission _tagEditPermissionFor(Transaction transaction) {
+  if (transaction.ownership != null) {
+    return const DetailEditPermission.denied(reason: _tagEditDeniedReason);
+  }
+  return switch (transaction.businessPurpose) {
+    BusinessPurpose.dailyExpense ||
+    BusinessPurpose.dailyIncome ||
+    BusinessPurpose.transfer ||
+    BusinessPurpose.reimbursementAdvance ||
+    BusinessPurpose.borrowing ||
+    BusinessPurpose.debtRepayment => const DetailEditPermission.allowed(),
+    BusinessPurpose.refund ||
+    BusinessPurpose.reimbursementReceipt ||
+    BusinessPurpose.reimbursementClose ||
+    BusinessPurpose.openingBalance ||
+    BusinessPurpose.balanceAdjustment => const DetailEditPermission.denied(
+      reason: _tagEditDeniedReason,
+    ),
+  };
 }
 
 bool _isEarlierReimbursementChildLocked(TransactionDetail detail) {
@@ -405,6 +431,7 @@ bool _isEarlierReimbursementChildLocked(TransactionDetail detail) {
 }
 
 const String _reimbursementClosedEditReason = '报销已结束，请先删除结束报销';
+const String _tagEditDeniedReason = '当前交易类型不支持修改标签';
 
 RepaymentType? _repaymentTypeFromOwnerRole(String? ownerRole) {
   if (ownerRole == null) return null;

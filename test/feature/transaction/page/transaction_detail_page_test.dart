@@ -10,6 +10,7 @@ import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_datetime_picker.dart';
 import 'package:smartflow/design_system/widget/app_form_field.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
+import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_detail_page.dart';
 import 'package:smartflow/feature/transaction/page/reimbursement_form_page.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
@@ -108,6 +109,52 @@ void main() {
     expect(find.text('退款金额'), findsOneWidget);
     expect(find.text('报销详情'), findsOneWidget);
     expect(find.text('已收 40.00 / 应收 100.00'), findsOneWidget);
+  });
+
+  testWidgets('edits transaction tags from the detail tag row', (tester) async {
+    final editService = _FakeTransactionEditAppService();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          transactionDetailProvider(
+            'tx-1',
+          ).overrideWith((ref) => Stream.value(_detail())),
+          accountLookupProvider.overrideWith(
+            (ref) => Stream.value(AccountLookup(_accounts)),
+          ),
+          tagListProvider.overrideWithValue(
+            const AsyncData([
+              TagView(id: 'tag-1', name: '工作', sortOrder: 0, usageCount: 1),
+              TagView(id: 'tag-2', name: '旅行', sortOrder: 1, usageCount: 0),
+            ]),
+          ),
+          transactionTagIdsProvider(
+            'tx-1',
+          ).overrideWithValue(const AsyncData({'tag-1'})),
+          transactionUpdateAppServiceProvider.overrideWithValue(
+            _FakeTransactionUpdateAppService(),
+          ),
+          transactionEditAppServiceProvider.overrideWithValue(editService),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const TransactionDetailPage(transactionId: 'tx-1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(Chip, '工作'), findsOneWidget);
+    await tester.tap(find.text('标签'));
+    await tester.pumpAndSettle();
+    expect(find.text('选择标签'), findsOneWidget);
+
+    await tester.tap(find.text('旅行'));
+    await tester.tap(find.widgetWithText(FilledButton, '确定'));
+    await tester.pumpAndSettle();
+
+    expect(editService.expenseCommands.single.tagIds, {'tag-1', 'tag-2'});
+    expect(find.text('标签已更新'), findsOneWidget);
   });
 
   testWidgets('reimbursement date and close switch reset with the form', (
