@@ -1,6 +1,9 @@
 abstract final class AppComponentTokens {
   static const double controlMinHeight = 48;
   static const double navigationBarHeight = 64;
+
+  /// 底部栏图标字形，导航栏与占用同一槽位的批量操作栏共用。
+  static const double bottomBarIconSize = 22;
   static const double iconChoiceGridTileExtent = 72;
   static const double menuElevation = 8;
   static const double menuMinWidth = 180;

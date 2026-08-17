@@ -80,6 +80,24 @@ void main() {
     expect(find.byType(CategoryAvatar), findsNothing);
   });
 
+  testWidgets('批量提交中复选框渲染为禁用态', (tester) async {
+    final presentation = buildTransactionRowPresentation(
+      item: _item(),
+      accountLookup: _lookup,
+    ).copyWith(selectable: true);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: TransactionRow(presentation: presentation, onTap: () {}),
+        ),
+      ),
+    );
+
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).onChanged, isNull);
+  });
+
   testWidgets(
     'aggregates badges into four slots without horizontal scrolling',
     (tester) async {

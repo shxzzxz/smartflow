@@ -47,87 +47,97 @@ class TransactionRow extends StatelessWidget {
 
     final row = Opacity(
       opacity: presentation.dimmed ? AppComponentTokens.staleContentOpacity : 1,
-      child: SizedBox(
-        width: double.infinity,
-        height: AppTransactionTokens.rowHeight,
-        child: InkWell(
-          onTap: onTap,
-          onLongPress: onLongPress,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.space8,
-              vertical: AppSpacing.space8,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                if (presentation.selectable)
-                  SizedBox(
-                    width: AppSpacing.space40,
-                    height: AppSpacing.space40,
-                    child: Checkbox(
-                      value: presentation.selected,
-                      onChanged:
-                          onSelectionChanged == null
-                              ? null
-                              : (value) => onSelectionChanged!(value ?? false),
+      child: Material(
+        color:
+            presentation.selected
+                ? colors.primary.withValues(
+                  alpha: AppComponentTokens.selectedContainerOpacity,
+                )
+                : Colors.transparent,
+        child: SizedBox(
+          width: double.infinity,
+          height: AppTransactionTokens.rowHeight,
+          child: InkWell(
+            onTap: onTap,
+            onLongPress: onLongPress,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space8,
+                vertical: AppSpacing.space8,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (presentation.selectable)
+                    SizedBox(
+                      width: AppSpacing.space40,
+                      height: AppSpacing.space40,
+                      child: Checkbox(
+                        value: presentation.selected,
+                        onChanged:
+                            onSelectionChanged == null
+                                ? null
+                                : (value) =>
+                                    onSelectionChanged!(value ?? false),
+                      ),
+                    )
+                  else
+                    CategoryAvatar(
+                      iconKey: presentation.iconKey,
+                      size: AppSpacing.space32,
                     ),
-                  )
-                else
-                  CategoryAvatar(
-                    iconKey: presentation.iconKey,
-                    size: AppSpacing.space32,
-                  ),
-                const SizedBox(width: AppSpacing.space8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(
-                        width: double.infinity,
-                        height: AppSpacing.space24,
-                        child: _PrimaryLine(
-                          title: presentation.title,
-                          titleStyle: textStyles.transactionTitle,
-                          amount: presentation.amountText,
-                          compactAmount:
-                              presentation.compactAmountText ??
-                              presentation.amountText,
-                          originalAmount: presentation.originalAmountText,
-                          originalCompactAmount:
-                              presentation.originalCompactAmountText,
-                          amountStyle: textStyles.transactionAmount.copyWith(
-                            color: amountColor,
+                  const SizedBox(width: AppSpacing.space8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          height: AppSpacing.space24,
+                          child: _PrimaryLine(
+                            title: presentation.title,
+                            titleStyle: textStyles.transactionTitle,
+                            amount: presentation.amountText,
+                            compactAmount:
+                                presentation.compactAmountText ??
+                                presentation.amountText,
+                            originalAmount: presentation.originalAmountText,
+                            originalCompactAmount:
+                                presentation.originalCompactAmountText,
+                            amountStyle: textStyles.transactionAmount.copyWith(
+                              color: amountColor,
+                            ),
+                            originalAmountStyle:
+                                textStyles.transactionSupporting,
+                            badges: presentation.badges,
                           ),
-                          originalAmountStyle: textStyles.transactionSupporting,
-                          badges: presentation.badges,
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.space2),
-                      SizedBox(
-                        width: double.infinity,
-                        height: AppSpacing.space16,
-                        child: Row(
-                          children: [
-                            Text(
-                              presentation.subtitle,
-                              style: textStyles.transactionSupporting,
-                              maxLines: 1,
-                            ),
-                            const SizedBox(width: AppSpacing.space8),
-                            Expanded(
-                              child: _AccountLine(
-                                flow: presentation.accountFlow,
+                        const SizedBox(height: AppSpacing.space2),
+                        SizedBox(
+                          width: double.infinity,
+                          height: AppSpacing.space16,
+                          child: Row(
+                            children: [
+                              Text(
+                                presentation.subtitle,
                                 style: textStyles.transactionSupporting,
+                                maxLines: 1,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: AppSpacing.space8),
+                              Expanded(
+                                child: _AccountLine(
+                                  flow: presentation.accountFlow,
+                                  style: textStyles.transactionSupporting,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

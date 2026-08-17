@@ -2129,25 +2129,58 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   }
 
   Widget _transactionRowsPreview() {
-    return AppSurface(
-      border: true,
-      child: Column(
-        children: [
-          for (
-            var index = 0;
-            index < _sampleTransactionRows.length;
-            index++
-          ) ...[
-            TransactionRow(
-              presentation: _sampleTransactionRows[index],
-              enableQuickEdit: false,
-              onTap: () => _showMessage('打开交易详情'),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpacing.space12,
+      children: [
+        AppSurface(
+          border: true,
+          child: Column(
+            children: [
+              for (
+                var index = 0;
+                index < _sampleTransactionRows.length;
+                index++
+              ) ...[
+                TransactionRow(
+                  presentation: _sampleTransactionRows[index],
+                  enableQuickEdit: false,
+                  onTap: () => _showMessage('打开交易详情'),
+                ),
+                if (index < _sampleTransactionRows.length - 1)
+                  const Divider(height: AppSpacing.space2),
+              ],
+            ],
+          ),
+        ),
+        _ShowcaseState(
+          label: '批量选择',
+          child: AppSurface(
+            border: true,
+            child: Column(
+              children: [
+                for (
+                  var index = 0;
+                  index < _sampleTransactionRows.length;
+                  index++
+                ) ...[
+                  TransactionRow(
+                    presentation: _sampleTransactionRows[index].copyWith(
+                      selectable: true,
+                      selected: index == 0,
+                    ),
+                    enableQuickEdit: false,
+                    onTap: () => _showMessage('切换选中状态'),
+                    onSelectionChanged: (_) => _showMessage('切换选中状态'),
+                  ),
+                  if (index < _sampleTransactionRows.length - 1)
+                    const Divider(height: AppSpacing.space2),
+                ],
+              ],
             ),
-            if (index < _sampleTransactionRows.length - 1)
-              const Divider(height: AppSpacing.space2),
-          ],
-        ],
-      ),
+          ),
+        ),
+      ],
     );
   }
 

@@ -7,6 +7,8 @@ import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/shared/app_settings_store.dart';
 import '../../../design_system/theme/app_text_styles.dart';
+import '../../../design_system/token/component.dart';
+import '../../../design_system/token/motion.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_month_picker.dart';
 import '../../../design_system/widget/app_page_header.dart';
@@ -49,119 +51,170 @@ class _HomePageState extends ConsumerState<HomePage> {
     final settings =
         ref.watch(appSettingsViewModelProvider).value ?? const AppSettings();
     final visibleTransactionIds = _contentTransactionIds(content);
+    final visibleCount = visibleTransactionIds.length;
     final selectedVisibleCount =
         _selectedTransactionIds.intersection(visibleTransactionIds).length;
+    final allVisibleTransactionsSelected =
+        visibleTransactionIds.isNotEmpty &&
+        selectedVisibleCount == visibleCount;
+    final hasMore = content is HomeContentLoaded && content.hasMore;
 
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            if (_batchMode)
-              AppPageHeader(title: '批量操作', onBack: _exitBatchMode)
-            else
-              AppPageHeader.custom(
-                titleContent: AppMonthSelector(
-                  visibleMonth: state.visibleMonth,
-                  onPreviousMonth: () => _shiftMonth(-1),
-                  onMonthPressed: _pickMonth,
-                  onNextMonth: () => _shiftMonth(1),
+    return PopScope(
+      canPop: !_batchMode,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _exitBatchMode();
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              AnimatedSwitcher(
+                duration: AppMotion.durationFast,
+                child:
+                    _batchMode
+                        ? AppPageHeader(
+                          key: const ValueKey('home-batch-header'),
+                          title:
+                              selectedVisibleCount > 0
+                                  ? '已选 $selectedVisibleCount 笔'
+                                  : '选择交易',
+                          subtitle: hasMore ? '已加载 $visibleCount 笔' : null,
+                          onBack: _exitBatchMode,
+                          actions: [
+                            AppHeaderIconButton(
+                              icon:
+                                  allVisibleTransactionsSelected
+                                      ? RemixIcons.checkbox_circle_fill
+                                      : RemixIcons.checkbox_circle_line,
+                              tooltip:
+                                  allVisibleTransactionsSelected
+                                      ? '取消全选'
+                                      : '全选已加载',
+                              onPressed:
+                                  !_batchSubmitting &&
+                                          visibleTransactionIds.isNotEmpty
+                                      ? () =>
+                                          _toggleSelectAll(visibleTransactionIds)
+                                      : null,
+                            ),
+                          ],
+                        )
+                        : AppPageHeader.custom(
+                          key: const ValueKey('home-header'),
+                          titleContent: AppMonthSelector(
+                            visibleMonth: state.visibleMonth,
+                            onPreviousMonth: () => _shiftMonth(-1),
+                            onMonthPressed: _pickMonth,
+                            onNextMonth: () => _shiftMonth(1),
+                          ),
+                          actions: [
+                            _HomeFilterButton(filter: state.transactionFilter),
+                            _HomeSettingsMenu(
+                              showAddTransactionFab:
+                                  settings.showAddTransactionFab,
+                              pullToCreateSensitivity:
+                                  settings.pullToCreateSensitivity,
+                              cashflowPeriodMetric:
+                                  settings.cashflowPeriodMetric,
+                            ),
+                          ],
+                        ),
+              ),
+              Expanded(
+                child: AbsorbPointer(
+                  absorbing: _batchSubmitting,
+                  child: HomePullToCreate(
+                    onTrigger: _openNewTransaction,
+                    triggerExtent:
+                        settings.pullToCreateSensitivity.triggerExtent,
+                    enabled: !_batchMode,
+                    child: switch (content) {
+                      HomeContentLoaded(
+                        :final summary,
+                        :final groups,
+                        :final hasMore,
+                        :final isLoadingMore,
+                        :final loadMoreErrorMessage,
+                        :final hasPendingRefresh,
+                        :final isRefreshing,
+                        :final refreshErrorMessage,
+                      ) =>
+                        _HomeContent(
+                          visibleMonth: state.visibleMonth,
+                          summary: summary,
+                          groups: groups,
+                          reserveFabSpace:
+                              settings.showAddTransactionFab && !_batchMode,
+                          hasMore: hasMore,
+                          isLoadingMore: isLoadingMore,
+                          loadMoreErrorMessage: loadMoreErrorMessage,
+                          hasPendingRefresh: hasPendingRefresh,
+                          isRefreshing: isRefreshing,
+                          refreshErrorMessage: refreshErrorMessage,
+                          filterActive: state.transactionFilter.isActive,
+                          batchMode: _batchMode,
+                          selectedTransactionIds: _selectedTransactionIds,
+                          onTransactionTap: _handleTransactionTap,
+                          onTransactionLongPress: _handleTransactionLongPress,
+                          onSelectionChanged:
+                              _batchSubmitting ? null : _handleSelectionChanged,
+                          onLoadMore:
+                              () =>
+                                  ref
+                                      .read(
+                                        homeTransactionFeedViewModelProvider(
+                                          state.visibleMonth,
+                                        ).notifier,
+                                      )
+                                      .loadMore(),
+                          onRefresh:
+                              () =>
+                                  ref
+                                      .read(
+                                        homeTransactionFeedViewModelProvider(
+                                          state.visibleMonth,
+                                        ).notifier,
+                                      )
+                                      .refresh(),
+                        ),
+                      HomeContentError(:final message) => Center(
+                        child: Text(message),
+                      ),
+                      HomeContentLoading() => const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    },
+                  ),
                 ),
-                actions: [
-                  _HomeFilterButton(filter: state.transactionFilter),
-                  _HomeSettingsMenu(
-                    showAddTransactionFab: settings.showAddTransactionFab,
-                    pullToCreateSensitivity: settings.pullToCreateSensitivity,
-                    cashflowPeriodMetric: settings.cashflowPeriodMetric,
-                  ),
-                ],
               ),
-            Expanded(
-              child: HomePullToCreate(
-                onTrigger: _openNewTransaction,
-                triggerExtent: settings.pullToCreateSensitivity.triggerExtent,
-                enabled: !_batchMode,
-                child: switch (content) {
-                  HomeContentLoaded(
-                    :final summary,
-                    :final groups,
-                    :final hasMore,
-                    :final isLoadingMore,
-                    :final loadMoreErrorMessage,
-                    :final hasPendingRefresh,
-                    :final isRefreshing,
-                    :final refreshErrorMessage,
-                  ) =>
-                    _HomeContent(
-                      visibleMonth: state.visibleMonth,
-                      summary: summary,
-                      groups: groups,
-                      reserveFabSpace: settings.showAddTransactionFab,
-                      hasMore: hasMore,
-                      isLoadingMore: isLoadingMore,
-                      loadMoreErrorMessage: loadMoreErrorMessage,
-                      hasPendingRefresh: hasPendingRefresh,
-                      isRefreshing: isRefreshing,
-                      refreshErrorMessage: refreshErrorMessage,
-                      filterActive: state.transactionFilter.isActive,
-                      batchMode: _batchMode,
-                      selectedTransactionIds: _selectedTransactionIds,
-                      onTransactionTap: _handleTransactionTap,
-                      onTransactionLongPress: _handleTransactionLongPress,
-                      onSelectionChanged: _handleSelectionChanged,
-                      onLoadMore:
-                          () =>
-                              ref
-                                  .read(
-                                    homeTransactionFeedViewModelProvider(
-                                      state.visibleMonth,
-                                    ).notifier,
-                                  )
-                                  .loadMore(),
-                      onRefresh:
-                          () =>
-                              ref
-                                  .read(
-                                    homeTransactionFeedViewModelProvider(
-                                      state.visibleMonth,
-                                    ).notifier,
-                                  )
-                                  .refresh(),
-                    ),
-                  HomeContentError(:final message) => Center(
-                    child: Text(message),
-                  ),
-                  HomeContentLoading() => const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                },
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
+        floatingActionButton:
+            !_batchMode && settings.showAddTransactionFab
+                ? FloatingActionButton(
+                  onPressed: _openNewTransaction,
+                  tooltip: '新建记账',
+                  shape: const CircleBorder(),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  child: const Icon(RemixIcons.add_line),
+                )
+                : null,
+        bottomNavigationBar:
+            _batchMode
+                ? HomeBatchActionBar(
+                  selectedCount: selectedVisibleCount,
+                  enabled: !_batchSubmitting,
+                  processing: _batchSubmitting,
+                  onDelete:
+                      () => _deleteSelectedTransactions(visibleTransactionIds),
+                  onManageTags:
+                      () => _manageSelectedTags(visibleTransactionIds),
+                )
+                : null,
       ),
-      floatingActionButton:
-          !_batchMode && settings.showAddTransactionFab
-              ? FloatingActionButton(
-                onPressed: _openNewTransaction,
-                tooltip: '新建记账',
-                shape: const CircleBorder(),
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                child: const Icon(RemixIcons.add_line),
-              )
-              : null,
-      bottomNavigationBar:
-          _batchMode
-              ? HomeBatchActionBar(
-                selectedCount: selectedVisibleCount,
-                totalCount: visibleTransactionIds.length,
-                enabled: !_batchSubmitting,
-                onSelectAll: () => _selectAll(visibleTransactionIds),
-                onClearAll: () => _clearAll(visibleTransactionIds),
-                onDelete: _deleteSelectedTransactions,
-                onManageTags: _manageSelectedTags,
-              )
-              : null,
     );
   }
 
@@ -205,18 +258,21 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  void _selectAll(Set<String> transactionIds) {
+  void _toggleSelectAll(Set<String> transactionIds) {
     if (!_batchMode || _batchSubmitting) return;
+    final selectedVisibleIds = _selectedTransactionIds.intersection(
+      transactionIds,
+    );
+    final allSelected =
+        transactionIds.isNotEmpty &&
+        selectedVisibleIds.length == transactionIds.length;
+    final next = Set<String>.of(_selectedTransactionIds);
+    if (allSelected) {
+      next.removeAll(transactionIds);
+    } else {
+      next.addAll(transactionIds);
+    }
     setState(() {
-      _selectedTransactionIds = Set<String>.of(transactionIds);
-    });
-  }
-
-  void _clearAll(Set<String> transactionIds) {
-    if (!_batchMode || _batchSubmitting) return;
-    setState(() {
-      final next = Set<String>.of(_selectedTransactionIds)
-        ..removeAll(transactionIds);
       _selectedTransactionIds = next;
     });
   }
@@ -230,8 +286,12 @@ class _HomePageState extends ConsumerState<HomePage> {
     ref.read(homeBatchModeProvider.notifier).exit();
   }
 
-  Future<void> _deleteSelectedTransactions() async {
-    final ids = Set<String>.of(_selectedTransactionIds);
+  Future<void> _deleteSelectedTransactions(
+    Set<String> visibleTransactionIds,
+  ) async {
+    final ids = Set<String>.of(
+      _selectedTransactionIds.intersection(visibleTransactionIds),
+    );
     if (ids.isEmpty || _batchSubmitting) return;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -246,6 +306,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(true),
+                style: _destructiveConfirmStyle(context),
                 child: const Text('删除'),
               ),
             ],
@@ -259,17 +320,24 @@ class _HomePageState extends ConsumerState<HomePage> {
           .read(homeViewModelProvider.notifier)
           .deleteTransactions(ids);
       if (!mounted) return;
+      final shouldExit = result.skippedGroupCount == 0;
       setState(() {
         _batchSubmitting = false;
-        _batchMode = false;
-        _selectedTransactionIds = {};
+        if (shouldExit) {
+          _batchMode = false;
+          _selectedTransactionIds = {};
+        } else {
+          // 删除成功的交易会从列表中消失，保留快照可以让被跳过的交易继续处于选择态。
+          _selectedTransactionIds = ids;
+        }
       });
-      ref.read(homeBatchModeProvider.notifier).exit();
+      if (shouldExit) {
+        ref.read(homeBatchModeProvider.notifier).exit();
+      }
       _showBatchResult(
-        result.deletedGroupCount,
         result.skippedGroupCount,
-        successLabel: '已删除',
-        skippedLabel: '笔交易因存在业务归属未删除',
+        successMessage: '已删除 ${result.deletedGroupCount} 笔交易',
+        skippedMessage: '笔交易因存在业务关联未处理',
       );
     } catch (_) {
       if (!mounted) return;
@@ -278,8 +346,10 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  Future<void> _manageSelectedTags() async {
-    final ids = Set<String>.of(_selectedTransactionIds);
+  Future<void> _manageSelectedTags(Set<String> visibleTransactionIds) async {
+    final ids = Set<String>.of(
+      _selectedTransactionIds.intersection(visibleTransactionIds),
+    );
     if (ids.isEmpty || _batchSubmitting) return;
 
     List<TagView> tags;
@@ -312,6 +382,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(context).pop(true),
+                  style: _destructiveConfirmStyle(context),
                   child: const Text('清空'),
                 ),
               ],
@@ -355,15 +426,18 @@ class _HomePageState extends ConsumerState<HomePage> {
           .updateTags(ids: ids, operation: operation, tagIds: tagIds);
       if (!mounted) return;
       setState(() => _batchSubmitting = false);
+      final successMessage = switch (operation) {
+        TransactionTagBatchOperation.add =>
+          '已为 ${result.updatedGroupCount} 笔交易添加标签',
+        TransactionTagBatchOperation.remove =>
+          '已从 ${result.updatedGroupCount} 笔交易移除标签',
+        TransactionTagBatchOperation.clear =>
+          '已清空 ${result.updatedGroupCount} 笔交易的标签',
+      };
       _showBatchResult(
-        result.updatedGroupCount,
         result.skippedGroupCount,
-        successLabel: switch (operation) {
-          TransactionTagBatchOperation.add => '已新增标签到',
-          TransactionTagBatchOperation.remove => '已删除标签于',
-          TransactionTagBatchOperation.clear => '已清空标签于',
-        },
-        skippedLabel: '笔交易不支持标签操作',
+        successMessage: successMessage,
+        skippedMessage: '笔交易不支持标签操作',
       );
     } catch (_) {
       if (!mounted) return;
@@ -373,22 +447,46 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   void _showBatchResult(
-    int affectedCount,
     int skippedCount, {
-    required String successLabel,
-    required String skippedLabel,
+    required String successMessage,
+    required String skippedMessage,
   }) {
     final message =
         skippedCount == 0
-            ? '$successLabel $affectedCount 笔交易'
-            : '$successLabel $affectedCount 笔交易，跳过 $skippedCount $skippedLabel';
-    _showMessage(message);
+            ? successMessage
+            : '$successMessage，跳过 $skippedCount $skippedMessage';
+    _showMessage(
+      message,
+      duration:
+          skippedCount == 0
+              ? const Duration(seconds: 3)
+              : const Duration(seconds: 6),
+    );
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+  void _showMessage(
+    String message, {
+    Duration duration = const Duration(seconds: 4),
+  }) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: duration,
+          // SnackBar 由根 Scaffold 承载，批量模式下根 Scaffold 没有底部栏，
+          // 需要自行让开挂在本页 Scaffold 上的批量操作栏。
+          margin:
+              _batchMode
+                  ? const EdgeInsets.fromLTRB(
+                    AppSpacing.space16,
+                    AppSpacing.space4,
+                    AppSpacing.space16,
+                    AppComponentTokens.navigationBarHeight + AppSpacing.space10,
+                  )
+                  : null,
+        ),
+      );
   }
 
   void _openNewTransaction() {
@@ -571,7 +669,9 @@ class _HomeContent extends StatelessWidget {
   final Set<String> selectedTransactionIds;
   final ValueChanged<String> onTransactionTap;
   final ValueChanged<String> onTransactionLongPress;
-  final void Function(String transactionId, bool selected) onSelectionChanged;
+
+  /// 传 null 表示当前不接受选中变更（批量提交中），复选框会渲染为禁用态。
+  final void Function(String transactionId, bool selected)? onSelectionChanged;
   final VoidCallback onLoadMore;
   final VoidCallback onRefresh;
 
@@ -585,9 +685,7 @@ class _HomeContent extends StatelessWidget {
               row.copyWith(
                 selectable: batchMode,
                 selected: selectedTransactionIds.contains(row.transactionId),
-                dimmed:
-                    batchMode &&
-                    !selectedTransactionIds.contains(row.transactionId),
+                dimmed: batchMode ? false : row.dimmed,
               ),
           ],
         ),
@@ -599,10 +697,8 @@ class _HomeContent extends StatelessWidget {
         AppSpacing.space16,
         0,
       ),
-      bottomPadding:
-          AppSpacing.space24 +
-          (reserveFabSpace ? 56 : 0) +
-          (batchMode ? 56 : 0), // 留给 FAB 或批量操作栏
+      // 批量操作栏由 Scaffold 的底部槽位占位，不需要额外让位。
+      bottomPadding: AppSpacing.space24 + (reserveFabSpace ? 56 : 0),
       leading: [
         CashflowSummaryCard(
           summary: summary,
@@ -654,6 +750,14 @@ class _HomeContent extends StatelessWidget {
       emptyMessage: filterActive ? '没有符合筛选条件的交易' : '本月暂无交易记录',
     );
   }
+}
+
+ButtonStyle _destructiveConfirmStyle(BuildContext context) {
+  final colors = Theme.of(context).colorScheme;
+  return FilledButton.styleFrom(
+    backgroundColor: colors.error,
+    foregroundColor: colors.onError,
+  );
 }
 
 Set<String> _contentTransactionIds(HomeContentState content) {
