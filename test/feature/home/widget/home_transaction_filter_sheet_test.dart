@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/home/view_model/home_view_model.dart';
 import 'package:smartflow/feature/home/widget/home_transaction_filter_sheet.dart';
+
+import '../../../helper/fake_transaction_tag_repository.dart';
 
 void main() {
   testWidgets('all normalizes both filter dimensions to null', (tester) async {
@@ -60,6 +64,33 @@ void main() {
     expect(result?.categoryAccountIds, isEmpty);
     expect(result?.settlementAccountIds, isEmpty);
   });
+
+  testWidgets('waits for tags before opening the tag selector', (tester) async {
+    final repository = _DelayedTagRepository();
+    await repository.insertTag(id: 'tag-travel', name: '旅行');
+    final service = TagApplicationService(
+      repository: repository,
+      idGenerator: _NoopIdGenerator(),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [tagApplicationServiceProvider.overrideWithValue(service)],
+        child: _TestHost(
+          initialFilter: const HomeTransactionFilter.all(),
+          onResult: (_) {},
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('打开'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('标签'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('未打标签'), findsOneWidget);
+    expect(find.text('旅行'), findsOneWidget);
+  });
 }
 
 class _TestHost extends StatelessWidget {
@@ -109,4 +140,17 @@ class _TestHost extends StatelessWidget {
 
 Account _account(String id, String name, AccountType type) {
   return Account(id: id, name: name, type: type, balance: Money.zero());
+}
+
+class _DelayedTagRepository extends FakeTransactionTagRepository {
+  @override
+  Future<List<TagView>> listTags() async {
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    return super.listTags();
+  }
+}
+
+class _NoopIdGenerator implements IdGenerator {
+  @override
+  String newId() => 'unused';
 }
