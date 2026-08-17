@@ -57,7 +57,7 @@ void main() {
     expect(find.byType(BarChart), findsNothing);
   });
 
-  testWidgets('keeps the category header compact with inline controls', (
+  testWidgets('shows category and tag breakdowns in separate cards', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(360, 800);
@@ -76,8 +76,15 @@ void main() {
     final levelControl = find.byKey(
       const ValueKey('statistics-category-level'),
     );
+    final tagKindControl = find.byKey(const ValueKey('statistics-tag-kind'));
     expect(kindControl, findsOneWidget);
     expect(levelControl, findsOneWidget);
+    expect(tagKindControl, findsOneWidget);
+    expect(find.text('标签构成'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('statistics-category-dimension')),
+      findsNothing,
+    );
     expect(tester.getRect(kindControl).right, lessThanOrEqualTo(360));
     expect(tester.getRect(levelControl).right, lessThanOrEqualTo(360));
     expect(find.text('主分类'), findsOneWidget);
@@ -85,7 +92,7 @@ void main() {
     // 金额与占比同时展示，不再提供数值模式开关。
     expect(find.text('金额'), findsNothing);
     expect(find.text('占比'), findsNothing);
-    expect(find.text('100.0%'), findsOneWidget);
+    expect(find.text('100.0%'), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
 
@@ -225,7 +232,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('shows market-level charts and switches analysis dimensions', (
+  testWidgets('shows market-level charts and switches analysis kinds', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(800, 1200);
@@ -300,11 +307,11 @@ void main() {
       200,
       scrollable: _verticalScrollable().last,
     );
-    expect(find.byType(PieChart), findsOneWidget);
+    expect(find.byType(PieChart), findsNWidgets(2));
     expect(find.text('主分类'), findsOneWidget);
     expect(find.text('子分类'), findsOneWidget);
-    expect(find.text('总支出'), findsOneWidget);
-    expect(find.text('100.0%'), findsOneWidget);
+    expect(find.text('总支出'), findsNWidgets(2));
+    expect(find.text('100.0%'), findsNWidgets(2));
 
     await tester.scrollUntilVisible(
       find.text('支出习惯'),
@@ -325,7 +332,7 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.text('总收入'), findsOneWidget);
+    expect(find.text('总收入'), findsNWidgets(2));
     expect(find.text('工资'), findsOneWidget);
 
     await tester.scrollUntilVisible(
@@ -439,6 +446,24 @@ StatisticsPresentation _presentation({
       StatisticsBreakdownItem(
         id: 'food',
         title: '餐饮',
+        accountType: AccountType.expense,
+        amount: Money(minorUnits: 700),
+        progress: 1,
+      ),
+    ],
+    incomeTags: const [
+      StatisticsBreakdownItem(
+        id: 'work',
+        title: '工作',
+        accountType: AccountType.income,
+        amount: Money(minorUnits: 2000),
+        progress: 1,
+      ),
+    ],
+    expenseTags: const [
+      StatisticsBreakdownItem(
+        id: 'trip',
+        title: '旅行',
         accountType: AccountType.expense,
         amount: Money(minorUnits: 700),
         progress: 1,

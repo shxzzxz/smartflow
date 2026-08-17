@@ -21,9 +21,6 @@ enum CashflowChartForm { bar, line }
 
 enum StatisticsCategoryKind { expense, income }
 
-/// 构成分析的展示维度：按分类或按标签。
-enum StatisticsCategoryDimension { category, tag }
-
 enum StatisticsDrilldownScope { cashflow, balance }
 
 @riverpod
@@ -41,12 +38,7 @@ class StatisticsViewModel extends _$StatisticsViewModel {
       chartForm: CashflowChartForm.bar,
       categoryKind: StatisticsCategoryKind.expense,
       categoryLevel: StatisticsCategoryLevel.primary,
-      categoryDimension: StatisticsCategoryDimension.category,
     );
-  }
-
-  void selectCategoryDimension(StatisticsCategoryDimension dimension) {
-    state = state.copyWith(categoryDimension: dimension);
   }
 
   void selectSection(StatisticsSection section) {
@@ -309,7 +301,6 @@ class StatisticsControlState {
     required this.chartForm,
     required this.categoryKind,
     required this.categoryLevel,
-    this.categoryDimension = StatisticsCategoryDimension.category,
   });
 
   final DateTime visibleMonth;
@@ -323,7 +314,6 @@ class StatisticsControlState {
   final CashflowChartForm chartForm;
   final StatisticsCategoryKind categoryKind;
   final StatisticsCategoryLevel categoryLevel;
-  final StatisticsCategoryDimension categoryDimension;
 
   int get _spanDays => periodUntil.difference(periodFrom).inDays;
 
@@ -365,7 +355,6 @@ class StatisticsControlState {
     CashflowChartForm? chartForm,
     StatisticsCategoryKind? categoryKind,
     StatisticsCategoryLevel? categoryLevel,
-    StatisticsCategoryDimension? categoryDimension,
   }) {
     return StatisticsControlState(
       visibleMonth: visibleMonth ?? this.visibleMonth,
@@ -377,7 +366,6 @@ class StatisticsControlState {
       chartForm: chartForm ?? this.chartForm,
       categoryKind: categoryKind ?? this.categoryKind,
       categoryLevel: categoryLevel ?? this.categoryLevel,
-      categoryDimension: categoryDimension ?? this.categoryDimension,
     );
   }
 }

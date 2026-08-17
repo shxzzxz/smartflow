@@ -427,90 +427,127 @@ class _CategoryAnalysis extends ConsumerWidget {
     final notifier = ref.read(statisticsViewModelProvider.notifier);
     final showingExpense =
         control.categoryKind == StatisticsCategoryKind.expense;
-    final showingTags =
-        control.categoryDimension == StatisticsCategoryDimension.tag;
-    final primary =
+    final categoryPrimary =
         showingExpense
-            ? (showingTags
-                ? presentation.expenseTags
-                : presentation.expenseCategories)
-            : (showingTags
-                ? presentation.incomeTags
-                : presentation.incomeCategories);
-    final items =
-        showingTags
-            ? primary
-            : selectStatisticsCategoryItems(
-              primary,
-              secondary:
-                  control.categoryLevel == StatisticsCategoryLevel.secondary,
-            );
+            ? presentation.expenseCategories
+            : presentation.incomeCategories;
+    final categoryItems = selectStatisticsCategoryItems(
+      categoryPrimary,
+      secondary: control.categoryLevel == StatisticsCategoryLevel.secondary,
+    );
+    final tagItems =
+        showingExpense ? presentation.expenseTags : presentation.incomeTags;
     final semantic =
         showingExpense ? MoneySemantic.expense : MoneySemantic.income;
+    final centerLabel = showingExpense ? '总支出' : '总收入';
+    return Column(
+      children: [
+        _BreakdownAnalysisCard(
+          title: '分类构成',
+          items: categoryItems,
+          semantic: semantic,
+          centerLabel: centerLabel,
+          emptyMessage: '区间内暂无分类数据',
+          kindControlKey: const ValueKey('statistics-category-kind'),
+          categoryKind: control.categoryKind,
+          onCategoryKindChanged: notifier.selectCategoryKind,
+          categoryLevel: control.categoryLevel,
+          onCategoryLevelChanged: notifier.selectCategoryLevel,
+          from: presentation.cashflowFrom,
+          until: presentation.cashflowUntil,
+        ),
+        const SizedBox(height: AppSpacing.space16),
+        _BreakdownAnalysisCard(
+          title: '标签构成',
+          items: tagItems,
+          semantic: semantic,
+          centerLabel: centerLabel,
+          emptyMessage: '区间内暂无标签数据',
+          kindControlKey: const ValueKey('statistics-tag-kind'),
+          categoryKind: control.categoryKind,
+          onCategoryKindChanged: notifier.selectCategoryKind,
+          from: presentation.cashflowFrom,
+          until: presentation.cashflowUntil,
+          showTags: true,
+        ),
+      ],
+    );
+  }
+}
+
+class _BreakdownAnalysisCard extends StatelessWidget {
+  const _BreakdownAnalysisCard({
+    required this.title,
+    required this.items,
+    required this.semantic,
+    required this.centerLabel,
+    required this.emptyMessage,
+    required this.kindControlKey,
+    required this.categoryKind,
+    required this.onCategoryKindChanged,
+    required this.from,
+    required this.until,
+    this.categoryLevel,
+    this.onCategoryLevelChanged,
+    this.showTags = false,
+  });
+
+  final String title;
+  final List<StatisticsBreakdownItem> items;
+  final MoneySemantic semantic;
+  final String centerLabel;
+  final String emptyMessage;
+  final Key kindControlKey;
+  final StatisticsCategoryKind categoryKind;
+  final ValueChanged<StatisticsCategoryKind> onCategoryKindChanged;
+  final StatisticsCategoryLevel? categoryLevel;
+  final ValueChanged<StatisticsCategoryLevel>? onCategoryLevelChanged;
+  final DateTime from;
+  final DateTime until;
+  final bool showTags;
+
+  @override
+  Widget build(BuildContext context) {
     final totalMinor = items.fold<int>(
       0,
       (sum, item) => sum + statisticsCategoryMagnitude(item),
     );
-    final centerLabel = showingExpense ? '总支出' : '总收入';
     final centerValue = Money(minorUnits: totalMinor).format();
+    final controls = Wrap(
+      spacing: AppSpacing.space6,
+      runSpacing: AppSpacing.space6,
+      children: [
+        AppSlidingSegmentedControl<StatisticsCategoryKind>(
+          key: kindControlKey,
+          segments: const [
+            AppSegment(value: StatisticsCategoryKind.expense, label: '支出'),
+            AppSegment(value: StatisticsCategoryKind.income, label: '收入'),
+          ],
+          selected: categoryKind,
+          onChanged: onCategoryKindChanged,
+        ),
+        if (categoryLevel != null && onCategoryLevelChanged != null)
+          AppSlidingSegmentedControl<StatisticsCategoryLevel>(
+            key: const ValueKey('statistics-category-level'),
+            segments: const [
+              AppSegment(value: StatisticsCategoryLevel.primary, label: '主分类'),
+              AppSegment(
+                value: StatisticsCategoryLevel.secondary,
+                label: '子分类',
+              ),
+            ],
+            selected: categoryLevel!,
+            onChanged: onCategoryLevelChanged!,
+          ),
+      ],
+    );
     return AnalysisChartCard(
-      title: showingTags ? '标签构成' : '分类构成',
-      // 控制区放在内容区顶部而不是标题行 trailing：标题行的 Row 给
-      // trailing 无界宽度，Wrap 不会换行，紧凑屏上会横向溢出。
+      title: title,
+      trailing: controls,
       chart: Column(
         children: [
-          Wrap(
-            spacing: AppSpacing.space6,
-            runSpacing: AppSpacing.space6,
-            children: [
-              AppSlidingSegmentedControl<StatisticsCategoryDimension>(
-                key: const ValueKey('statistics-category-dimension'),
-                segments: const [
-                  AppSegment(
-                    value: StatisticsCategoryDimension.category,
-                    label: '分类',
-                  ),
-                  AppSegment(
-                    value: StatisticsCategoryDimension.tag,
-                    label: '标签',
-                  ),
-                ],
-                selected: control.categoryDimension,
-                onChanged: notifier.selectCategoryDimension,
-              ),
-              AppSlidingSegmentedControl<StatisticsCategoryKind>(
-                key: const ValueKey('statistics-category-kind'),
-                segments: const [
-                  AppSegment(
-                    value: StatisticsCategoryKind.expense,
-                    label: '支出',
-                  ),
-                  AppSegment(value: StatisticsCategoryKind.income, label: '收入'),
-                ],
-                selected: control.categoryKind,
-                onChanged: notifier.selectCategoryKind,
-              ),
-              if (!showingTags)
-                AppSlidingSegmentedControl<StatisticsCategoryLevel>(
-                  key: const ValueKey('statistics-category-level'),
-                  segments: const [
-                    AppSegment(
-                      value: StatisticsCategoryLevel.primary,
-                      label: '主分类',
-                    ),
-                    AppSegment(
-                      value: StatisticsCategoryLevel.secondary,
-                      label: '子分类',
-                    ),
-                  ],
-                  selected: control.categoryLevel,
-                  onChanged: notifier.selectCategoryLevel,
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space12),
           if (items.isEmpty)
-            AppChartEmptyState(message: showingTags ? '区间内暂无标签数据' : '区间内暂无分类数据')
+            AppChartEmptyState(message: emptyMessage)
           else
             Column(
               children: [
@@ -519,20 +556,20 @@ class _CategoryAnalysis extends ConsumerWidget {
                   centerLabel: centerLabel,
                   centerValue: centerValue,
                 ),
-                if (showingTags)
+                if (showTags)
                   _TagList(
                     items: items,
                     semantic: semantic,
-                    from: presentation.cashflowFrom,
-                    until: presentation.cashflowUntil,
+                    from: from,
+                    until: until,
                   )
                 else
                   _CategoryList(
                     items: items,
                     semantic: semantic,
-                    level: control.categoryLevel,
-                    from: presentation.cashflowFrom,
-                    until: presentation.cashflowUntil,
+                    level: categoryLevel!,
+                    from: from,
+                    until: until,
                   ),
               ],
             ),
