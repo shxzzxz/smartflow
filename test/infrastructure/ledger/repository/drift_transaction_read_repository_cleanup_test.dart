@@ -95,6 +95,19 @@ void main() {
     });
   });
 
+  test('显式交易 ID 只匹配指定的顶层交易', () async {
+    final targets = await repository.findCleanupTargets(
+      const TransactionCleanupQuery(
+        transactionIds: {'food-bank', 'food-bank-refund', 'travel-cash'},
+      ),
+    );
+
+    expect(
+      targets.map((target) => target.transactionId),
+      unorderedEquals(['food-bank', 'travel-cash']),
+    );
+  });
+
   test('分类与账户条件取交集，且只按顶层交易自身分录匹配', () async {
     final targets = await repository.findCleanupTargets(
       const TransactionCleanupQuery(

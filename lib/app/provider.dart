@@ -378,6 +378,18 @@ TransactionCleanupAppService transactionCleanupAppService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+TransactionBatchOperationAppService transactionBatchOperationAppService(
+  Ref ref,
+) {
+  return TransactionBatchOperationAppServiceImpl(
+    transactionRunner: ref.watch(transactionRunnerProvider),
+    transactionReadRepository: ref.watch(transactionReadRepositoryProvider),
+    transactionEditService: ref.watch(transactionEditAppServiceProvider),
+    transactionTagRepository: ref.watch(transactionTagRepositoryProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
 CategoryTransactionMigrationAppService categoryTransactionMigrationAppService(
   Ref ref,
 ) {

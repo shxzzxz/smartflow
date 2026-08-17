@@ -23,6 +23,12 @@ class TransactionFeedScrollView extends StatefulWidget {
     this.isLoadingMore = false,
     this.loadMoreErrorMessage,
     this.onLoadMore,
+    this.onRowTap,
+    this.onRowLongPress,
+    this.onRowQuickEdit,
+    this.onRowSelectionChanged,
+    this.enableRowTap = true,
+    this.enableRowQuickEdit = true,
     this.physics = const AlwaysScrollableScrollPhysics(
       parent: BouncingScrollPhysics(),
     ),
@@ -42,6 +48,13 @@ class TransactionFeedScrollView extends StatefulWidget {
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
   final VoidCallback? onLoadMore;
+  final ValueChanged<String>? onRowTap;
+  final ValueChanged<String>? onRowLongPress;
+  final ValueChanged<String>? onRowQuickEdit;
+  final void Function(String transactionId, bool selected)?
+  onRowSelectionChanged;
+  final bool enableRowTap;
+  final bool enableRowQuickEdit;
   final ScrollPhysics physics;
 
   @override
@@ -101,6 +114,12 @@ class _TransactionFeedScrollViewState extends State<TransactionFeedScrollView> {
                   EmptyTransactionCard(message: widget.emptyMessage),
               groupEmptyMessage: widget.groupEmptyMessage,
               showDailyTotals: widget.showDailyTotals,
+              onRowTap: widget.onRowTap,
+              onRowLongPress: widget.onRowLongPress,
+              onRowQuickEdit: widget.onRowQuickEdit,
+              onRowSelectionChanged: widget.onRowSelectionChanged,
+              enableRowTap: widget.enableRowTap,
+              enableRowQuickEdit: widget.enableRowQuickEdit,
               isLoadingMore: widget.isLoadingMore,
               loadMoreErrorMessage: widget.loadMoreErrorMessage,
               onRetryLoadMore: widget.onLoadMore,
@@ -123,6 +142,12 @@ class _TransactionFeedSliver extends StatelessWidget {
     required this.emptyState,
     required this.groupEmptyMessage,
     required this.showDailyTotals,
+    required this.onRowTap,
+    required this.onRowLongPress,
+    required this.onRowQuickEdit,
+    required this.onRowSelectionChanged,
+    required this.enableRowTap,
+    required this.enableRowQuickEdit,
     required this.isLoadingMore,
     required this.loadMoreErrorMessage,
     required this.onRetryLoadMore,
@@ -132,6 +157,13 @@ class _TransactionFeedSliver extends StatelessWidget {
   final Widget emptyState;
   final String? groupEmptyMessage;
   final bool showDailyTotals;
+  final ValueChanged<String>? onRowTap;
+  final ValueChanged<String>? onRowLongPress;
+  final ValueChanged<String>? onRowQuickEdit;
+  final void Function(String transactionId, bool selected)?
+  onRowSelectionChanged;
+  final bool enableRowTap;
+  final bool enableRowQuickEdit;
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
   final VoidCallback? onRetryLoadMore;
@@ -180,6 +212,12 @@ class _TransactionFeedSliver extends StatelessWidget {
             group: groups[index],
             emptyMessage: groupEmptyMessage,
             showDailyTotals: showDailyTotals,
+            onRowTap: onRowTap,
+            onRowLongPress: onRowLongPress,
+            onRowQuickEdit: onRowQuickEdit,
+            onRowSelectionChanged: onRowSelectionChanged,
+            enableRowTap: enableRowTap,
+            enableRowQuickEdit: enableRowQuickEdit,
           ),
         );
       },

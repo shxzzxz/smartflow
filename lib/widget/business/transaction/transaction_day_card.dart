@@ -22,6 +22,7 @@ class TransactionDayCard extends StatelessWidget {
     this.onRowQuickEdit,
     this.onRowSelectionChanged,
     this.enableRowTap = true,
+    this.enableRowQuickEdit = true,
     this.showDailyTotals = true,
   });
 
@@ -33,6 +34,7 @@ class TransactionDayCard extends StatelessWidget {
   final void Function(String transactionId, bool selected)?
   onRowSelectionChanged;
   final bool enableRowTap;
+  final bool enableRowQuickEdit;
   final bool showDailyTotals;
 
   @override
@@ -68,11 +70,11 @@ class TransactionDayCard extends StatelessWidget {
                     onLongPress:
                         onRowLongPress == null
                             ? null
-                            : () => onRowLongPress!(
-                              group.rows[i].transactionId,
-                            ),
+                            : () =>
+                                onRowLongPress!(group.rows[i].transactionId),
                     onQuickEdit:
                         () => _openTransactionEditor(context, group.rows[i]),
+                    enableQuickEdit: enableRowQuickEdit,
                     onSelectionChanged:
                         onRowSelectionChanged == null
                             ? null

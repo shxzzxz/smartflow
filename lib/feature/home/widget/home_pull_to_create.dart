@@ -12,11 +12,13 @@ class HomePullToCreate extends StatefulWidget {
     required this.child,
     required this.triggerExtent,
     super.key,
+    this.enabled = true,
   });
 
   final VoidCallback onTrigger;
   final Widget child;
   final double triggerExtent;
+  final bool enabled;
 
   @override
   State<HomePullToCreate> createState() => _HomePullToCreateState();
@@ -32,7 +34,17 @@ class _HomePullToCreateState extends State<HomePullToCreate> {
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(HomePullToCreate oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.enabled) {
+      _dragging = false;
+      _pulledExtent.value = 0;
+    }
+  }
+
   bool _handleNotification(ScrollNotification notification) {
+    if (!widget.enabled) return false;
     if (notification.depth != 0) {
       return false;
     }
@@ -65,6 +77,7 @@ class _HomePullToCreateState extends State<HomePullToCreate> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.enabled) return widget.child;
     return Stack(
       children: [
         Positioned(

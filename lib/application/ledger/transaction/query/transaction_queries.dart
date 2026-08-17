@@ -163,12 +163,15 @@ class CashflowSummaryQuery {
 /// `occurredUntil` 为排他端点。
 class TransactionCleanupQuery {
   const TransactionCleanupQuery({
+    this.transactionIds,
     this.categoryIds,
     this.accountIds,
     this.occurredFrom,
     this.occurredUntil,
   });
 
+  /// 显式指定待处理的顶层交易 ID；与其它条件一起使用时取交集。
+  final Set<String>? transactionIds;
   final Set<String>? categoryIds;
   final Set<String>? accountIds;
   final DateTime? occurredFrom;

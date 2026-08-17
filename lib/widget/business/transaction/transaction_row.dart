@@ -46,8 +46,7 @@ class TransactionRow extends StatelessWidget {
     );
 
     final row = Opacity(
-      opacity:
-          presentation.dimmed ? AppComponentTokens.staleContentOpacity : 1,
+      opacity: presentation.dimmed ? AppComponentTokens.staleContentOpacity : 1,
       child: SizedBox(
         width: double.infinity,
         height: AppTransactionTokens.rowHeight,
@@ -62,7 +61,7 @@ class TransactionRow extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                if (presentation.selectable) ...[
+                if (presentation.selectable)
                   SizedBox(
                     width: AppSpacing.space40,
                     height: AppSpacing.space40,
@@ -73,13 +72,12 @@ class TransactionRow extends StatelessWidget {
                               ? null
                               : (value) => onSelectionChanged!(value ?? false),
                     ),
+                  )
+                else
+                  CategoryAvatar(
+                    iconKey: presentation.iconKey,
+                    size: AppSpacing.space32,
                   ),
-                  const SizedBox(width: AppSpacing.space4),
-                ],
-                CategoryAvatar(
-                  iconKey: presentation.iconKey,
-                  size: AppSpacing.space32,
-                ),
                 const SizedBox(width: AppSpacing.space8),
                 Expanded(
                   child: Column(

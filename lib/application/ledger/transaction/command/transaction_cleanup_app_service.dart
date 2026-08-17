@@ -38,6 +38,7 @@ class TransactionCleanupAppServiceImpl implements TransactionCleanupAppService {
     final result = await _transactionRunner.run(() async {
       final targets = await _transactionRead.findCleanupTargets(
         TransactionCleanupQuery(
+          transactionIds: command.transactionIds,
           categoryIds: command.categoryIds,
           accountIds: command.accountIds,
           occurredFrom: command.occurredFrom,

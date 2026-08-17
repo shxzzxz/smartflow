@@ -55,6 +55,31 @@ void main() {
     expect(tapped, true);
   });
 
+  testWidgets('replaces the category icon with the selection checkbox', (
+    tester,
+  ) async {
+    final presentation = buildTransactionRowPresentation(
+      item: _item(),
+      accountLookup: _lookup,
+    ).copyWith(selectable: true);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: TransactionRow(
+            presentation: presentation,
+            onTap: () {},
+            onSelectionChanged: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(Checkbox), findsOneWidget);
+    expect(find.byType(CategoryAvatar), findsNothing);
+  });
+
   testWidgets(
     'aggregates badges into four slots without horizontal scrolling',
     (tester) async {

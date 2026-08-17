@@ -508,12 +508,15 @@ class DeleteTransactionCommand {
 /// 按条件批量清理交易组。条件语义与 `TransactionCleanupQuery` 一致。
 class CleanupTransactionsCommand {
   const CleanupTransactionsCommand({
+    this.transactionIds,
     this.categoryIds,
     this.accountIds,
     this.occurredFrom,
     this.occurredUntil,
   });
 
+  /// 显式指定待清理的顶层交易 ID；为空时继续使用条件清理。
+  final Set<String>? transactionIds;
   final Set<String>? categoryIds;
   final Set<String>? accountIds;
   final DateTime? occurredFrom;

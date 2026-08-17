@@ -43,6 +43,20 @@ class TransactionDayGroup {
   final List<TransactionRowPresentation> rows;
   final int incomeMinor;
   final int expenseMinor;
+
+  TransactionDayGroup copyWith({
+    DateTime? date,
+    List<TransactionRowPresentation>? rows,
+    int? incomeMinor,
+    int? expenseMinor,
+  }) {
+    return TransactionDayGroup(
+      date: date ?? this.date,
+      rows: rows ?? this.rows,
+      incomeMinor: incomeMinor ?? this.incomeMinor,
+      expenseMinor: expenseMinor ?? this.expenseMinor,
+    );
+  }
 }
 
 class TransactionRowPresentation {
@@ -83,6 +97,30 @@ class TransactionRowPresentation {
   final bool dimmed;
 
   bool get hasBadges => badges.isNotEmpty;
+
+  TransactionRowPresentation copyWith({
+    bool? selectable,
+    bool? selected,
+    bool? dimmed,
+  }) {
+    return TransactionRowPresentation(
+      transactionId: transactionId,
+      iconKey: iconKey,
+      title: title,
+      subtitle: subtitle,
+      amountText: amountText,
+      compactAmountText: compactAmountText,
+      originalAmountText: originalAmountText,
+      originalCompactAmountText: originalCompactAmountText,
+      amountTone: amountTone,
+      accountFlow: accountFlow,
+      badges: badges,
+      canQuickEdit: canQuickEdit,
+      selectable: selectable ?? this.selectable,
+      selected: selected ?? this.selected,
+      dimmed: dimmed ?? this.dimmed,
+    );
+  }
 }
 
 class TransactionAccountFlowPresentation {

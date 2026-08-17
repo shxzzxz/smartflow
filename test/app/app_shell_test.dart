@@ -7,6 +7,7 @@ import 'package:smartflow/app/app_shell.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/feature/home/view_model/home_view_model.dart';
 
 class _FakeAppSettingsStore implements AppSettingsStore {
   _FakeAppSettingsStore(this.settings);
@@ -108,5 +109,31 @@ void main() {
     expect(find.byIcon(RemixIcons.home_4_fill), findsOneWidget);
     expect(find.text('首页'), findsNothing);
     expect(find.text('我的'), findsNothing);
+  });
+
+  testWidgets('hides bottom navigation while home batch mode is active', (
+    tester,
+  ) async {
+    final router = _buildRouter('/home');
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appSettingsStoreProvider.overrideWithValue(
+            _FakeAppSettingsStore(const AppSettings()),
+          ),
+          homeBatchModeProvider.overrideWithValue(true),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.light(),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('普通页面'), findsOneWidget);
+    expect(find.text('首页'), findsNothing);
   });
 }

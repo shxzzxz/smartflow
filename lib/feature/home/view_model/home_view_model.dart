@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
+import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../application/shared/app_settings_store.dart';
 import '../../../core/time/month_key.dart';
@@ -51,6 +52,40 @@ class HomeViewModel extends _$HomeViewModel {
       ),
     );
   }
+
+  Future<TransactionCleanupResult> deleteTransactions(Set<String> ids) {
+    return ref
+        .read(transactionBatchOperationAppServiceProvider)
+        .deleteTransactions(
+          BatchDeleteTransactionsCommand(transactionIds: ids),
+        );
+  }
+
+  Future<TransactionBatchTagResult> updateTags({
+    required Set<String> ids,
+    required TransactionTagBatchOperation operation,
+    required Set<String> tagIds,
+  }) {
+    return ref
+        .read(transactionBatchOperationAppServiceProvider)
+        .updateTags(
+          BatchTransactionTagsCommand(
+            transactionIds: ids,
+            operation: operation,
+            tagIds: tagIds,
+          ),
+        );
+  }
+}
+
+@riverpod
+class HomeBatchMode extends _$HomeBatchMode {
+  @override
+  bool build() => false;
+
+  void enter() => state = true;
+
+  void exit() => state = false;
 }
 
 @riverpod

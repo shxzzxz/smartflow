@@ -41,7 +41,7 @@ final class HomeViewModelProvider
   }
 }
 
-String _$homeViewModelHash() => r'e86972df98a91213d7c084ec8c407a13aaba04f3';
+String _$homeViewModelHash() => r'1f004c48f721b0b895db45ebbfaa2760c7dc066c';
 
 abstract class _$HomeViewModel extends $Notifier<HomePageState> {
   HomePageState build();
@@ -54,6 +54,58 @@ abstract class _$HomeViewModel extends $Notifier<HomePageState> {
             as $ClassProviderElement<
               AnyNotifier<HomePageState, HomePageState>,
               HomePageState,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(HomeBatchMode)
+final homeBatchModeProvider = HomeBatchModeProvider._();
+
+final class HomeBatchModeProvider
+    extends $NotifierProvider<HomeBatchMode, bool> {
+  HomeBatchModeProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'homeBatchModeProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$homeBatchModeHash();
+
+  @$internal
+  @override
+  HomeBatchMode create() => HomeBatchMode();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$homeBatchModeHash() => r'14fc3d9657f763cf879009aefbda720de65b5333';
+
+abstract class _$HomeBatchMode extends $Notifier<bool> {
+  bool build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<bool, bool>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<bool, bool>,
+              bool,
               Object?,
               Object?
             >;

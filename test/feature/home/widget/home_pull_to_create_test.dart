@@ -34,4 +34,31 @@ void main() {
     await tester.pumpAndSettle();
     expect(triggerCount, 1);
   });
+
+  testWidgets('does not trigger while disabled', (tester) async {
+    var triggerCount = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: HomePullToCreate(
+            enabled: false,
+            triggerExtent: 56,
+            onTrigger: () => triggerCount++,
+            child: ListView(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
+              children: const [SizedBox(height: 200, child: Text('交易'))],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.drag(find.text('交易'), const Offset(0, 140));
+    await tester.pumpAndSettle();
+
+    expect(triggerCount, 0);
+  });
 }

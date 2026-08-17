@@ -154,6 +154,41 @@ void main() {
 
     expect(find.text('编辑交易'), findsOneWidget);
   });
+
+  testWidgets(
+    'forwards long press and selection callbacks to transaction rows',
+    (tester) async {
+      String? longPressedId;
+      String? changedId;
+      bool? changedValue;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: TransactionFeedScrollView(
+              groups: [
+                _group(0).copyWith(
+                  rows: [_group(0).rows.single.copyWith(selectable: true)],
+                ),
+              ],
+              onRowLongPress: (id) => longPressedId = id,
+              onRowSelectionChanged: (id, selected) {
+                changedId = id;
+                changedValue = selected;
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.longPress(find.byType(TransactionRow));
+      await tester.tap(find.byType(Checkbox));
+
+      expect(longPressedId, 'tx-0');
+      expect(changedId, 'tx-0');
+      expect(changedValue, isTrue);
+    },
+  );
 }
 
 TransactionDayGroup _group(

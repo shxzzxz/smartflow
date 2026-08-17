@@ -20,6 +20,8 @@ export 'category/command/category_command.dart';
 export 'category/command/category_transaction_migration_app_service.dart';
 export 'transaction/command/transaction_command.dart';
 export 'transaction/command/transaction_cleanup_app_service.dart';
+export 'transaction/command/transaction_batch_command.dart';
+export 'transaction/command/transaction_batch_operation_app_service.dart';
 export 'transaction/command/transaction_edit_app_service.dart';
 export 'transaction/command/transaction_ledger_writer.dart';
 export 'transaction/command/transaction_posting_app_service.dart';

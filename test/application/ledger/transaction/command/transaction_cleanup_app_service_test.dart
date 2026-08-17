@@ -54,6 +54,23 @@ void main() {
     expect(editService.deletedIds, isEmpty);
   });
 
+  test('显式交易 ID 会透传到清理查询', () async {
+    final readRepository = _FakeReadRepository(const []);
+    final service = TransactionCleanupAppServiceImpl(
+      transactionRunner: _RecordingRunner(),
+      transactionReadRepository: readRepository,
+      editService: _RecordingEditService(),
+    );
+
+    await service.cleanupTransactions(
+      const CleanupTransactionsCommand(
+        transactionIds: {'tx-1', 'tx-2'},
+      ),
+    );
+
+    expect(readRepository.lastQuery?.transactionIds, {'tx-1', 'tx-2'});
+  });
+
   test('删除失败时在事务内向外传播异常', () async {
     final editService = _RecordingEditService(failOn: {'plain-2'});
     final service = TransactionCleanupAppServiceImpl(

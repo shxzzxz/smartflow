@@ -362,6 +362,10 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
 
   Expression<bool> _cleanupMatchExpression(TransactionCleanupQuery query) {
     Expression<bool> expression = _db.transactions.parentTransactionId.isNull();
+    final transactionIds = query.transactionIds;
+    if (transactionIds != null) {
+      expression = expression & _db.transactions.id.isIn(transactionIds);
+    }
     final occurredFrom = query.occurredFrom;
     if (occurredFrom != null) {
       expression =
