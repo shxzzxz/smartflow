@@ -13,12 +13,17 @@ void main() {
   testWidgets('all normalizes both filter dimensions to null', (tester) async {
     HomeTransactionFilter? result;
     await tester.pumpWidget(
-      _TestHost(
-        initialFilter: HomeTransactionFilter(
-          categoryAccountIds: const {},
-          settlementAccountIds: const {},
+      ProviderScope(
+        overrides: [
+          tagListProvider.overrideWithValue(const AsyncData(<TagView>[])),
+        ],
+        child: _TestHost(
+          initialFilter: HomeTransactionFilter(
+            categoryAccountIds: const {},
+            settlementAccountIds: const {},
+          ),
+          onResult: (value) => result = value,
         ),
-        onResult: (value) => result = value,
       ),
     );
 
@@ -35,9 +40,14 @@ void main() {
   testWidgets('clear keeps both filter dimensions empty', (tester) async {
     HomeTransactionFilter? result;
     await tester.pumpWidget(
-      _TestHost(
-        initialFilter: const HomeTransactionFilter.all(),
-        onResult: (value) => result = value,
+      ProviderScope(
+        overrides: [
+          tagListProvider.overrideWithValue(const AsyncData(<TagView>[])),
+        ],
+        child: _TestHost(
+          initialFilter: const HomeTransactionFilter.all(),
+          onResult: (value) => result = value,
+        ),
       ),
     );
 
@@ -60,42 +70,37 @@ class _TestHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ProviderScope(
-      overrides: [
-        tagListProvider.overrideWithValue(const AsyncData(<TagView>[])),
-      ],
-      child: MaterialApp(
-        theme: AppTheme.light(),
-        home: Scaffold(
-          body: Builder(
-            builder: (context) {
-              return TextButton(
-                onPressed: () async {
-                  onResult(
-                    await showHomeTransactionFilterSheet(
-                      context: context,
-                      initialFilter: initialFilter,
-                      expenseTree: [
-                        CategoryNode(
-                          account: _account(
-                            'cat-food',
-                            '餐饮',
-                            AccountType.expense,
-                          ),
-                          children: [
-                            _account('cat-lunch', '午餐', AccountType.expense),
-                          ],
+    return MaterialApp(
+      theme: AppTheme.light(),
+      home: Scaffold(
+        body: Builder(
+          builder: (context) {
+            return TextButton(
+              onPressed: () async {
+                onResult(
+                  await showHomeTransactionFilterSheet(
+                    context: context,
+                    initialFilter: initialFilter,
+                    expenseTree: [
+                      CategoryNode(
+                        account: _account(
+                          'cat-food',
+                          '餐饮',
+                          AccountType.expense,
                         ),
-                      ],
-                      incomeTree: const [],
-                      accounts: [_account('acc-cash', '现金', AccountType.asset)],
-                    ),
-                  );
-                },
-                child: const Text('打开'),
-              );
-            },
-          ),
+                        children: [
+                          _account('cat-lunch', '午餐', AccountType.expense),
+                        ],
+                      ),
+                    ],
+                    incomeTree: const [],
+                    accounts: [_account('acc-cash', '现金', AccountType.asset)],
+                  ),
+                );
+              },
+              child: const Text('打开'),
+            );
+          },
         ),
       ),
     );
