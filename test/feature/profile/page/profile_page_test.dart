@@ -53,9 +53,10 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.descendant(of: sections.at(0), matching: find.text('账户管理')),
+      find.descendant(of: sections.at(0), matching: find.text('标签管理')),
       findsOneWidget,
     );
+    expect(find.text('账户管理'), findsNothing);
     expect(
       find.descendant(of: sections.at(1), matching: find.text('数据导入')),
       findsOneWidget,
