@@ -41,7 +41,9 @@ void main() {
     expect(result?.settlementAccountIds, isNull);
   });
 
-  testWidgets('clear keeps both filter dimensions empty', (tester) async {
+  testWidgets('clear treats both filter dimensions as no condition', (
+    tester,
+  ) async {
     HomeTransactionFilter? result;
     await tester.pumpWidget(
       ProviderScope(
@@ -61,8 +63,71 @@ void main() {
     await tester.tap(find.text('应用'));
     await tester.pumpAndSettle();
 
-    expect(result?.categoryAccountIds, isEmpty);
-    expect(result?.settlementAccountIds, isEmpty);
+    expect(result?.categoryAccountIds, isNull);
+    expect(result?.settlementAccountIds, isNull);
+  });
+
+  testWidgets('clear allows selecting a subset afterward', (tester) async {
+    HomeTransactionFilter? result;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          tagListProvider.overrideWithValue(const AsyncData(<TagView>[])),
+        ],
+        child: _TestHost(
+          initialFilter: const HomeTransactionFilter.all(),
+          onResult: (value) => result = value,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('打开'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('清除'));
+    await tester.tap(find.text('账户'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('现金'));
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('应用'));
+    await tester.pumpAndSettle();
+
+    expect(result?.categoryAccountIds, isNull);
+    expect(result?.settlementAccountIds, {'acc-cash'});
+  });
+
+  testWidgets('selects multiple tags in the home filter', (tester) async {
+    final repository = _DelayedTagRepository();
+    await repository.insertTag(id: 'tag-travel', name: '旅行');
+    await repository.insertTag(id: 'tag-work', name: '出差');
+    final service = TagApplicationService(
+      repository: repository,
+      idGenerator: _NoopIdGenerator(),
+    );
+    HomeTransactionFilter? result;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [tagApplicationServiceProvider.overrideWithValue(service)],
+        child: _TestHost(
+          initialFilter: const HomeTransactionFilter.all(),
+          onResult: (value) => result = value,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('打开'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('标签'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('旅行'));
+    await tester.tap(find.text('出差'));
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('应用'));
+    await tester.pumpAndSettle();
+
+    expect(result?.tagIds, {'tag-travel', 'tag-work'});
   });
 
   testWidgets('waits for tags before opening the tag selector', (tester) async {
@@ -125,7 +190,10 @@ class _TestHost extends StatelessWidget {
                       ),
                     ],
                     incomeTree: const [],
-                    accounts: [_account('acc-cash', '现金', AccountType.asset)],
+                    accounts: [
+                      _account('acc-cash', '现金', AccountType.asset),
+                      _account('acc-card', '银行卡', AccountType.asset),
+                    ],
                   ),
                 );
               },

@@ -79,10 +79,15 @@ class _HomeTransactionFilterSheetState
 
   bool get _allSelected =>
       _selectedCategoryIds.length == _allCategoryIds.length &&
-      _selectedAccountIds.length == _allAccountIds.length;
+      _selectedAccountIds.length == _allAccountIds.length &&
+      _selectedTagIds.isEmpty &&
+      !_untaggedOnly;
 
   bool get _noneSelected =>
-      _selectedCategoryIds.isEmpty && _selectedAccountIds.isEmpty;
+      _selectedCategoryIds.isEmpty &&
+      _selectedAccountIds.isEmpty &&
+      _selectedTagIds.isEmpty &&
+      !_untaggedOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -217,7 +222,10 @@ class _HomeTransactionFilterSheetState
   }
 
   Set<String>? _normalize(Set<String> selected, Set<String> all) {
-    if (selected.length == all.length && selected.containsAll(all)) return null;
+    if (selected.isEmpty ||
+        (selected.length == all.length && selected.containsAll(all))) {
+      return null;
+    }
     return selected;
   }
 
