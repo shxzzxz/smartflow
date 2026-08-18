@@ -26,9 +26,11 @@ void main() {
     );
 
     expect(rows, hasLength(1));
-    expect(rows.single.accountName, '信用卡');
-    expect(rows.single.supportingTexts, ['分期明细']);
-    expect(rows.single.amount, const Money(minorUnits: 9300));
+    final row = rows.single as CalendarBillDueRowPresentation;
+    expect(row.presentation.title, '信用卡');
+    expect(row.presentation.supportingTexts, ['分期明细']);
+    expect(row.presentation.amount, const Money(minorUnits: 9300));
+    expect(row.presentation.status.label, '待还');
   });
 
   test(
@@ -42,26 +44,39 @@ void main() {
         accountLookup: const AccountLookup({}),
       );
 
-      expect(rows.first.accountName, '未知账户');
-      expect(rows.first.supportingTexts, ['2 条明细', '累积中']);
-      expect(rows.first.amount, const Money(minorUnits: 8000));
-      expect(rows.last.supportingTexts, ['2 条明细', '已了结']);
-      expect(rows.last.amount, const Money(minorUnits: 10500));
+      final open = rows.first as CalendarBillSummaryRowPresentation;
+      final settled = rows.last as CalendarBillSummaryRowPresentation;
+      expect(open.summary.title, '未知账户');
+      expect(open.summary.supportingTexts.map((item) => item.text), ['2 条明细']);
+      expect(open.summary.status.label, '累积中');
+      expect(open.summary.amount, const Money(minorUnits: 8000));
+      expect(settled.summary.supportingTexts.map((item) => item.text), [
+        '2 条明细',
+      ]);
+      expect(settled.summary.status.label, '已了结');
+      expect(settled.summary.amount, const Money(minorUnits: 10500));
     },
   );
 }
 
-CreditDueCalendarItemReadModel _dueItem(DateTime date, BillItemType type) {
+CreditDueCalendarItemReadModel _dueItem(
+  DateTime date,
+  BillItemType type, {
+  BillItemStatus status = BillItemStatus.pending,
+  bool isOverdue = false,
+}) {
   return CreditDueCalendarItemReadModel.billItem(
     accountId: 'card',
     billId: 'bill',
     billItemId: 'item-${date.day}',
     dueDate: date,
     itemType: type,
+    status: status,
     principal: const Money(minorUnits: 9000),
     interest: const Money(minorUnits: 300),
     fee: Money.zero(),
     pendingTotal: const Money(minorUnits: 9300),
+    isOverdue: isOverdue,
   );
 }
 

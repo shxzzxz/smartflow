@@ -1,23 +1,34 @@
+import 'package:remixicon/remixicon.dart';
+
 import '../../../application/credit/credit_query_api.dart';
-import '../../../core/money/money.dart';
+import '../../../widget/business/finance/bill_item_row.dart';
+import '../../../widget/business/finance/bill_status_badge.dart';
+import '../../../widget/business/finance/bill_summary_row.dart';
+
+import '../../credit/presentation/bill_item_presentation.dart';
 import '../../credit/presentation/bill_status_presentation.dart';
 import '../../shared/presentation/account_lookup.dart';
 import '../../shared/presentation/transaction_list_presentation.dart';
 
-class CalendarBillRowPresentation {
-  const CalendarBillRowPresentation({
+sealed class CalendarBillRowPresentation {
+  const CalendarBillRowPresentation();
+}
+
+final class CalendarBillDueRowPresentation extends CalendarBillRowPresentation {
+  const CalendarBillDueRowPresentation({
     required this.billId,
-    required this.accountName,
-    required this.supportingTexts,
-    required this.amount,
-    required this.showBillIcon,
+    required this.presentation,
   });
 
   final String billId;
-  final String accountName;
-  final List<String> supportingTexts;
-  final Money amount;
-  final bool showBillIcon;
+  final BillItemRowPresentation presentation;
+}
+
+final class CalendarBillSummaryRowPresentation
+    extends CalendarBillRowPresentation {
+  const CalendarBillSummaryRowPresentation({required this.summary});
+
+  final BillSummaryRowPresentation summary;
 }
 
 List<CalendarBillRowPresentation> buildCalendarDayBillRows({
@@ -28,17 +39,25 @@ List<CalendarBillRowPresentation> buildCalendarDayBillRows({
   return [
     for (final item in items)
       if (isSameDate(item.dueDate, date))
-        CalendarBillRowPresentation(
+        CalendarBillDueRowPresentation(
           billId: item.billId,
-          accountName: accountLookup.find(item.accountId)?.name ?? '未知账户',
-          supportingTexts: [
-            switch (item.itemType) {
-              BillItemType.consumption => '消费明细',
-              BillItemType.installment => '分期明细',
-            },
-          ],
-          amount: item.pendingTotal,
-          showBillIcon: true,
+          presentation: BillItemRowPresentation(
+            id: item.billItemId,
+            leadingIcon: RemixIcons.bill_line,
+            title: accountLookup.find(item.accountId)?.name ?? '未知账户',
+            supportingTexts: [
+              switch (item.itemType) {
+                BillItemType.consumption => '消费明细',
+                BillItemType.installment => '分期明细',
+              },
+            ],
+            amount: item.pendingTotal,
+            status: billItemStatusPresentation(
+              status: item.status,
+              isOverdue: item.isOverdue,
+            ),
+            showChevron: true,
+          ),
         ),
   ];
 }
@@ -49,20 +68,39 @@ List<CalendarBillRowPresentation> buildCalendarMonthBillRows({
 }) {
   return [
     for (final bill in bills)
-      CalendarBillRowPresentation(
-        billId: bill.billId,
-        accountName: accountLookup.find(bill.accountId)?.name ?? '未知账户',
-        supportingTexts: [
-          '${bill.itemCount} 条明细',
-          billStatusLabel(bill.status),
-        ],
-        amount:
-            bill.status == BillStatus.settled
-                ? bill.expectedPrincipal +
-                    bill.expectedInterest +
-                    bill.expectedFee
-                : bill.pendingTotal,
-        showBillIcon: false,
+      CalendarBillSummaryRowPresentation(
+        summary: BillSummaryRowPresentation(
+          id: bill.billId,
+          title: accountLookup.find(bill.accountId)?.name ?? '未知账户',
+          supportingTexts: [
+            BillSummarySupportingText(text: '${bill.itemCount} 条明细'),
+          ],
+          amount:
+              bill.status == BillStatus.settled
+                  ? bill.expectedPrincipal +
+                      bill.expectedInterest +
+                      bill.expectedFee
+                  : bill.pendingTotal,
+          status: _billStatusPresentation(bill.status),
+          showChevron: true,
+        ),
       ),
   ];
+}
+
+BillStatusBadgePresentation _billStatusPresentation(BillStatus status) {
+  return switch (status) {
+    BillStatus.open => BillStatusBadgePresentation(
+      label: billStatusLabel(BillStatus.open),
+      tone: BillStatusTone.primary,
+    ),
+    BillStatus.billed => BillStatusBadgePresentation(
+      label: billStatusLabel(BillStatus.billed),
+      tone: BillStatusTone.warning,
+    ),
+    BillStatus.settled => BillStatusBadgePresentation(
+      label: billStatusLabel(BillStatus.settled),
+      tone: BillStatusTone.success,
+    ),
+  };
 }

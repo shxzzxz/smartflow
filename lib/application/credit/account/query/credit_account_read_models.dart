@@ -41,6 +41,8 @@ class CreditDueCalendarItemReadModel {
     required this.billId,
     required this.billItemId,
     required this.itemType,
+    required this.status,
+    required this.isOverdue,
     this.contractId,
     this.scheduleId,
   });
@@ -51,11 +53,13 @@ class CreditDueCalendarItemReadModel {
     required String billItemId,
     required DateTime dueDate,
     required BillItemType itemType,
+    required BillItemStatus status,
     required Money principal,
     required Money interest,
     required Money fee,
     Money discount = const Money(minorUnits: 0),
     required Money pendingTotal,
+    required bool isOverdue,
     String? contractId,
     String? scheduleId,
   }) {
@@ -64,12 +68,14 @@ class CreditDueCalendarItemReadModel {
       billId: billId,
       billItemId: billItemId,
       itemType: itemType,
+      status: status,
       dueDate: dueDate,
       principal: principal,
       interest: interest,
       fee: fee,
       discount: discount,
       pendingTotal: pendingTotal,
+      isOverdue: isOverdue,
       contractId: contractId,
       scheduleId: scheduleId,
     );
@@ -79,6 +85,8 @@ class CreditDueCalendarItemReadModel {
   final String billId;
   final String billItemId;
   final BillItemType itemType;
+  final BillItemStatus status;
+  final bool isOverdue;
   final String? contractId;
   final String? scheduleId;
   final DateTime dueDate;

@@ -101,6 +101,7 @@ void main() {
             principal: 2000,
             contractId: schedules.contractId,
             scheduleId: schedules.scheduleIds[0],
+            status: credit.BillItemStatus.partiallyPaid,
           ),
           _BillItemSeed.consumption(id: 'bill-consumption', principal: 1000),
         ],
@@ -149,6 +150,11 @@ void main() {
             .principal,
         const Money(minorUnits: 1500),
       );
+      final installmentDue = dueItems.singleWhere(
+        (item) => item.billItemId == 'bill-installment',
+      );
+      expect(installmentDue.status, credit.BillItemStatus.partiallyPaid);
+      expect(installmentDue.isOverdue, isTrue);
       expect(summaries, hasLength(1));
       expect(summaries.single.pendingPrincipal, const Money(minorUnits: 2500));
     });
@@ -163,6 +169,7 @@ class _Fixture {
       installments: installments,
       repayments: repayments,
       ledger: ledgerPort,
+      now: () => DateTime(2026, 8, 18),
     );
   }
 

@@ -1,6 +1,8 @@
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
+import 'package:smartflow/widget/business/finance/bill_status_badge.dart';
+import 'package:smartflow/widget/business/finance/bill_summary_row.dart';
 
 import '../../credit/presentation/bill_status_presentation.dart';
 
@@ -63,6 +65,29 @@ AccountCreditSummaryPresentation billAccountCreditSummary(
         ),
     ],
     status: status,
+  );
+}
+
+BillSummaryRowPresentation billAccountSummaryRowPresentation(
+  BillSummaryReadModel bill,
+) {
+  final summary = billAccountCreditSummary(bill);
+  return BillSummaryRowPresentation(
+    id: summary.id,
+    title: summary.title,
+    amount: summary.amount,
+    amountLabel: summary.amountLabel,
+    supportingTexts: [
+      for (final item in summary.supportingItems)
+        BillSummarySupportingText(
+          text: item.text,
+          tone: _billSummaryTone(item.tone),
+        ),
+    ],
+    status: BillStatusBadgePresentation(
+      label: summary.status.label,
+      tone: _billSummaryTone(summary.status.tone),
+    ),
   );
 }
 
@@ -157,5 +182,15 @@ String _repaymentMethodLabel(InstallmentRepaymentMethod method) {
     InstallmentRepaymentMethod.interestFirst => '先息后本',
     InstallmentRepaymentMethod.flatFee => '一次性手续费',
     InstallmentRepaymentMethod.custom => '自定义',
+  };
+}
+
+BillStatusTone _billSummaryTone(AccountCreditSummaryTone tone) {
+  return switch (tone) {
+    AccountCreditSummaryTone.neutral => BillStatusTone.neutral,
+    AccountCreditSummaryTone.primary => BillStatusTone.primary,
+    AccountCreditSummaryTone.warning => BillStatusTone.warning,
+    AccountCreditSummaryTone.success => BillStatusTone.success,
+    AccountCreditSummaryTone.danger => BillStatusTone.danger,
   };
 }

@@ -39,12 +39,14 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
     required RepaymentRepository repayments,
     required CreditLedgerPort ledger,
     CreditDebtBucketService debtBuckets = const CreditDebtBucketService(),
+    DateTime Function()? now,
   }) : _creditAccounts = creditAccounts,
        _bills = bills,
        _installments = installments,
        _repayments = repayments,
        _ledger = ledger,
-       _debtBuckets = debtBuckets;
+       _debtBuckets = debtBuckets,
+       _now = now;
 
   final CreditAccountRepository _creditAccounts;
   final BillRepository _bills;
@@ -52,6 +54,7 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
   final RepaymentRepository _repayments;
   final CreditLedgerPort _ledger;
   final CreditDebtBucketService _debtBuckets;
+  final DateTime Function()? _now;
 
   @override
   Stream<Map<String, CreditLiabilityAccountReadModel>>
@@ -118,6 +121,7 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
     CreditDueCalendarQuery query,
   ) async {
     final accounts = await _matchingCreditAccounts(query.accountId);
+    final today = _dateOnly(_currentTime());
     final result = <CreditDueCalendarItemReadModel>[];
     for (final account in accounts) {
       final bills = await _bills.listBillsByAccount(account.accountId);
@@ -158,11 +162,13 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
             billItemId: item.id,
             dueDate: item.repaymentDate,
             itemType: item.itemType,
+            status: item.status,
             principal: Money(minorUnits: remainingPrincipal),
             interest: Money(minorUnits: remainingInterest),
             fee: Money(minorUnits: remainingFee),
             discount: allocated.discount,
             pendingTotal: Money(minorUnits: pendingTotal),
+            isOverdue: _dateOnly(item.repaymentDate).isBefore(today),
             contractId: item.contractId,
             scheduleId: item.scheduleId,
           ),
@@ -238,6 +244,15 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
 
   bool _inWindow(DateTime value, DateTime from, DateTime until) {
     return !value.isBefore(from) && value.isBefore(until);
+  }
+
+  DateTime _dateOnly(DateTime value) {
+    return DateTime(value.year, value.month, value.day);
+  }
+
+  DateTime _currentTime() {
+    final now = _now;
+    return now == null ? DateTime.now() : now();
   }
 
   int _remaining(int expected, int allocated) {

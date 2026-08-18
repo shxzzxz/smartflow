@@ -13,6 +13,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_swipe_action.dart';
+import '../../../widget/business/finance/bill_item_row.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/bill_item_presentation.dart';
 import '../presentation/bill_repayment_presentation.dart';
@@ -231,7 +232,12 @@ class _BillDetailContent extends StatelessWidget {
                   : Column(
                     children: [
                       for (var i = 0; i < detail.items.length; i++) ...[
-                        _BillItemRow(item: detail.items[i]),
+                        BillItemRow(
+                          presentation: billItemRowPresentation(
+                            detail.items[i],
+                          ),
+                          onTap: _itemTap(context, detail.items[i]),
+                        ),
                         if (i < detail.items.length - 1)
                           const Padding(
                             padding: EdgeInsets.symmetric(
@@ -275,6 +281,11 @@ class _BillDetailContent extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  VoidCallback? _itemTap(BuildContext context, BillItemReadModel item) {
+    final destination = billItemDestination(item);
+    return destination == null ? null : () => context.push(destination);
   }
 }
 
@@ -536,58 +547,6 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _BillItemRow extends StatelessWidget {
-  const _BillItemRow({required this.item});
-
-  final BillItemReadModel item;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final styles = context.appTextStyles;
-    final destination = billItemDestination(item);
-    final icon =
-        item.itemType == BillItemType.consumption
-            ? RemixIcons.shopping_bag_3_line
-            : RemixIcons.calendar_schedule_line;
-    return InkWell(
-      onTap: destination == null ? null : () => context.push(destination),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space12,
-          vertical: AppSpacing.space12,
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 22, color: colors.primary),
-            const SizedBox(width: AppSpacing.space10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(billItemLabel(item), style: styles.formLabel),
-                  const SizedBox(height: AppSpacing.space2),
-                  Text(
-                    '${formatDateLabel(item.repaymentDate)} · ${_itemStatusLabel(item)}',
-                    style: styles.listSupporting.copyWith(
-                      color:
-                          item.isOverdue
-                              ? colors.error
-                              : colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.space10),
-            Text(item.remainingTotal.format(), style: styles.amountList),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _StatusPill extends StatelessWidget {
   const _StatusPill({required this.status});
 
@@ -622,16 +581,6 @@ class _StatusPill extends StatelessWidget {
 
 String _periodLabel(BillPeriod period) {
   return '${period.year}年${period.month.toString().padLeft(2, '0')}月账单';
-}
-
-String _itemStatusLabel(BillItemReadModel item) {
-  if (item.isOverdue) return '已逾期';
-  return switch (item.status) {
-    BillItemStatus.pending => '待还',
-    BillItemStatus.partiallyPaid => '部分已还',
-    BillItemStatus.paid => '已核销',
-    BillItemStatus.skipped => '已跳过',
-  };
 }
 
 void _showFailure(

@@ -14,6 +14,9 @@ import 'package:smartflow/widget/business/analytics/chart/app_donut_chart.dart';
 import 'package:smartflow/widget/business/category/category_avatar.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
+import 'package:smartflow/widget/business/finance/bill_item_row.dart';
+import 'package:smartflow/widget/business/finance/bill_status_badge.dart';
+import 'package:smartflow/widget/business/finance/bill_summary_row.dart';
 import 'package:smartflow/widget/business/finance/cashflow_summary_card.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
@@ -113,6 +116,7 @@ enum _ShowcaseExampleKind {
   snackBar,
   moneyText,
   adaptiveMoneyText,
+  billRows,
   businessIcons,
   accountEndpoint,
   accountTypeTags,
@@ -404,6 +408,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '自适应金额文本',
     componentNames: 'AdaptiveMoneyText / ComparedMoneyText / SummaryMoneyText',
     keywords: ['金额', '自适应', '紧凑', '对比'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.billRows,
+    category: '财务表达',
+    title: '账单行与状态',
+    componentNames: 'BillSummaryRow / BillItemRow / BillStatusBadge',
+    keywords: ['账单', '明细', '金额', '状态', '徽章'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.businessIcons,
@@ -826,6 +837,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.snackBar => _snackBarPreview(),
       _ShowcaseExampleKind.moneyText => _moneyTextPreview(),
       _ShowcaseExampleKind.adaptiveMoneyText => _adaptiveMoneyTextPreview(),
+      _ShowcaseExampleKind.billRows => _billRowsPreview(),
       _ShowcaseExampleKind.businessIcons => _businessIconsPreview(),
       _ShowcaseExampleKind.accountEndpoint => _accountEndpointPreview(),
       _ShowcaseExampleKind.accountTypeTags => _accountTypeTagsPreview(),
@@ -1982,6 +1994,48 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _billRowsPreview() {
+    const summary = BillSummaryRowPresentation(
+      id: 'bill',
+      title: '2026年07月',
+      amount: Money(minorUnits: 320000),
+      supportingTexts: [BillSummarySupportingText(text: '2 条明细')],
+      status: BillStatusBadgePresentation(
+        label: '已出账',
+        tone: BillStatusTone.warning,
+      ),
+    );
+    const item = BillItemRowPresentation(
+      id: 'item',
+      leadingIcon: RemixIcons.shopping_bag_3_line,
+      title: '消费',
+      supportingTexts: ['还款 2026-07-25'],
+      amount: Money(minorUnits: 120000),
+      status: BillStatusBadgePresentation(
+        label: '待还',
+        tone: BillStatusTone.warning,
+      ),
+    );
+    return _PreviewBackdrop(
+      child: AppSurface(
+        border: true,
+        child: Column(
+          children: [
+            BillSummaryRow(
+              presentation: summary,
+              onTap: () => _showMessage('打开账单详情'),
+            ),
+            const Divider(height: AppSpacing.space2),
+            BillItemRow(
+              presentation: item,
+              onTap: () => _showMessage('打开账单明细'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

@@ -298,10 +298,12 @@ CreditDueCalendarItemReadModel _dueBillItem() {
     billItemId: 'item-1',
     dueDate: _selectedDate,
     itemType: BillItemType.consumption,
+    status: BillItemStatus.pending,
     principal: const Money(minorUnits: 12000),
     interest: Money.zero(),
     fee: Money.zero(),
     pendingTotal: const Money(minorUnits: 12000),
+    isOverdue: false,
   );
 }
 

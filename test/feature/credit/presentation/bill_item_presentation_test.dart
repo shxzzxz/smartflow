@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/credit/presentation/bill_item_presentation.dart';
+import 'package:smartflow/widget/business/finance/bill_status_badge.dart';
 
 void main() {
   test('installment bill item opens contract detail', () {
@@ -58,5 +59,55 @@ void main() {
     );
 
     expect(item.remainingTotal, const Money(minorUnits: 7550));
+  });
+
+  test('maps bill item statuses to badge presentations', () {
+    expect(
+      billItemStatusPresentation(
+        status: BillItemStatus.pending,
+        isOverdue: false,
+      ),
+      const BillStatusBadgePresentation(
+        label: '待还',
+        tone: BillStatusTone.warning,
+      ),
+    );
+    expect(
+      billItemStatusPresentation(
+        status: BillItemStatus.partiallyPaid,
+        isOverdue: false,
+      ),
+      const BillStatusBadgePresentation(
+        label: '部分已还',
+        tone: BillStatusTone.warning,
+      ),
+    );
+    expect(
+      billItemStatusPresentation(status: BillItemStatus.paid, isOverdue: false),
+      const BillStatusBadgePresentation(
+        label: '已核销',
+        tone: BillStatusTone.success,
+      ),
+    );
+    expect(
+      billItemStatusPresentation(
+        status: BillItemStatus.skipped,
+        isOverdue: false,
+      ),
+      const BillStatusBadgePresentation(
+        label: '已跳过',
+        tone: BillStatusTone.neutral,
+      ),
+    );
+  });
+
+  test('overdue takes precedence over the persisted item status', () {
+    expect(
+      billItemStatusPresentation(status: BillItemStatus.paid, isOverdue: true),
+      const BillStatusBadgePresentation(
+        label: '已逾期',
+        tone: BillStatusTone.danger,
+      ),
+    );
   });
 }

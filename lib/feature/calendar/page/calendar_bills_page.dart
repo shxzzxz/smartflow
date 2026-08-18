@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:remixicon/remixicon.dart';
 
-import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
-import '../../../widget/business/finance/money_text.dart';
+import '../../../widget/business/finance/bill_item_row.dart';
+import '../../../widget/business/finance/bill_summary_row.dart';
 import '../presentation/calendar_bills_presentation.dart';
 import '../view_model/calendar_bills_view_model.dart';
 
@@ -95,52 +94,26 @@ class _CalendarBillRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: () => context.push('/bills/${row.billId}'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space12,
-          vertical: AppSpacing.space12,
-        ),
-        child: Row(
-          children: [
-            if (row.showBillIcon) ...[
-              Icon(RemixIcons.bill_line, color: colors.primary),
-              const SizedBox(width: AppSpacing.space12),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(row.accountName, style: context.appTextStyles.listTitle),
-                  const SizedBox(height: AppSpacing.space4),
-                  Wrap(
-                    spacing: AppSpacing.space8,
-                    children: [
-                      for (final text in row.supportingTexts)
-                        Text(
-                          text,
-                          style: context.appTextStyles.listSupporting.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.space12),
-            MoneyText(
-              money: row.amount,
-              style: context.appTextStyles.amountList,
-              semantic: MoneySemantic.liability,
-            ),
-            const SizedBox(width: AppSpacing.space4),
-            Icon(RemixIcons.arrow_right_s_line, color: colors.onSurfaceVariant),
-          ],
-        ),
+    return switch (row) {
+      CalendarBillDueRowPresentation due => _CalendarBillDueRow(row: due),
+      CalendarBillSummaryRowPresentation(:final summary) => BillSummaryRow(
+        presentation: summary,
+        onTap: () => context.push('/bills/${summary.id}'),
       ),
+    };
+  }
+}
+
+class _CalendarBillDueRow extends StatelessWidget {
+  const _CalendarBillDueRow({required this.row});
+
+  final CalendarBillDueRowPresentation row;
+
+  @override
+  Widget build(BuildContext context) {
+    return BillItemRow(
+      presentation: row.presentation,
+      onTap: () => context.push('/bills/${row.billId}'),
     );
   }
 }
