@@ -162,6 +162,20 @@ void main() {
     expect(saved.calendarHeatMetric, CalendarHeatMetric.net);
   });
 
+  testWidgets('hides the transaction FAB when the shared setting is disabled', (
+    tester,
+  ) async {
+    await _pumpCalendar(
+      tester,
+      dayTransactions: const [],
+      settingsStore: _InMemoryAppSettingsStore(
+        const AppSettings(showAddTransactionFab: false),
+      ),
+    );
+
+    expect(find.byTooltip('新建记账'), findsNothing);
+  });
+
   testWidgets('loads the next day page when scrolled to the end', (
     tester,
   ) async {
@@ -358,7 +372,9 @@ CashflowComparison _comparison() {
 }
 
 class _InMemoryAppSettingsStore implements AppSettingsStore {
-  AppSettings _settings = const AppSettings();
+  _InMemoryAppSettingsStore([this._settings = const AppSettings()]);
+
+  AppSettings _settings;
 
   @override
   Future<AppSettings> read() async => _settings;

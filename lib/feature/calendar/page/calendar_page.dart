@@ -96,14 +96,17 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/transaction/new'),
-        tooltip: '新建记账',
-        shape: const CircleBorder(),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-        child: const Icon(RemixIcons.add_line),
-      ),
+      floatingActionButton:
+          settings.showAddTransactionFab
+              ? FloatingActionButton(
+                onPressed: () => context.push('/transaction/new'),
+                tooltip: '新建记账',
+                shape: const CircleBorder(),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                child: const Icon(RemixIcons.add_line),
+              )
+              : null,
     );
   }
 
