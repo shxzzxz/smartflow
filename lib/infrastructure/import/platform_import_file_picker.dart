@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 
 import '../../application/import/import_file_picker.dart';
@@ -32,13 +34,11 @@ class PlatformImportFilePicker implements ImportFilePicker {
 
   @override
   Future<ImportBundle?> pickYimuBundle() async {
-    final FilePickerResult? result;
+    final List<PlatformFile> result;
     try {
       result = await FilePicker.pickFiles(
-        allowMultiple: true,
         type: FileType.custom,
         allowedExtensions: const ['csv', 'xlsx'],
-        withData: true,
       );
     } on Exception catch (error, stackTrace) {
       throw InfrastructureException(
@@ -47,14 +47,18 @@ class PlatformImportFilePicker implements ImportFilePicker {
         stackTrace: stackTrace,
       );
     }
-    if (result == null) return null;
+    if (result.isEmpty) return null;
 
     final files = <ImportFilePayload>[];
-    for (final file in result.files) {
-      final bytes = file.bytes;
-      if (bytes == null) {
+    for (final file in result) {
+      late final Uint8List bytes;
+      try {
+        bytes = await file.readAsBytes();
+      } on Exception catch (error, stackTrace) {
         throw InfrastructureException(
           _ImportFilePickerErrorCode.readFailed,
+          cause: error,
+          stackTrace: stackTrace,
           message: '无法读取文件 ${file.name}，请重新选择。',
         );
       }
