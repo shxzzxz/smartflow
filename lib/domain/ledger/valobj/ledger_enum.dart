@@ -1,6 +1,6 @@
 enum AccountType { asset, liability, equity, income, expense }
 
-enum AccountSubtype { reimbursement }
+enum AccountSubtype { fund, receivable, payable, loan }
 
 enum EntryDirection { debit, credit }
 
@@ -14,6 +14,10 @@ enum BusinessPurpose {
   reimbursementClose,
   debtRepayment,
   borrowing,
+  lending,
+  receivableCollection,
+  badDebt,
+  debtRelief,
   openingBalance,
   balanceAdjustment,
 }
@@ -34,6 +38,11 @@ enum TransactionDetailType {
   repaymentFee,
   repaymentDiscount,
   borrowingPrincipal,
+  lendingPrincipal,
+  receivableCollectionPrincipal,
+  receivableCollectionInterest,
+  badDebtMain,
+  debtReliefMain,
   openingBalanceMain,
   balanceAdjustmentMain,
 }
@@ -46,6 +55,9 @@ enum SystemKey {
   interestExpense,
   feeExpense,
   discountIncome,
+  interestIncome,
+  badDebtExpense,
+  debtReliefIncome,
   ghostAccount,
 }
 
@@ -61,11 +73,5 @@ extension AccountTypeBehavior on AccountType {
       this == AccountType.income || this == AccountType.expense;
 
   /// 是否支持手动调整余额。
-  /// 报销子类型的 asset 走报销三段式原语,余额不可手动覆写。
-  bool supportsManualBalance(AccountSubtype? subtype) {
-    if (this == AccountType.asset) {
-      return subtype != AccountSubtype.reimbursement;
-    }
-    return this == AccountType.liability;
-  }
+  bool supportsManualBalance(AccountSubtype? subtype) => isUserAccount;
 }

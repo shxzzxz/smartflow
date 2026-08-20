@@ -39,12 +39,15 @@ TransactionDetailUiState buildTransactionDetailLoadedState({
 bool canShowExcludeStats(Transaction transaction) {
   return isPlainTransaction(transaction) &&
       (transaction.businessPurpose == BusinessPurpose.dailyExpense ||
-          transaction.businessPurpose == BusinessPurpose.dailyIncome);
+          transaction.businessPurpose == BusinessPurpose.dailyIncome ||
+          transaction.businessPurpose == BusinessPurpose.badDebt ||
+          transaction.businessPurpose == BusinessPurpose.debtRelief);
 }
 
 bool canShowExcludeBudget(Transaction transaction) {
   return isPlainTransaction(transaction) &&
-      transaction.businessPurpose == BusinessPurpose.dailyExpense;
+      (transaction.businessPurpose == BusinessPurpose.dailyExpense ||
+          transaction.businessPurpose == BusinessPurpose.badDebt);
 }
 
 bool isPlainTransaction(Transaction transaction) {
@@ -109,6 +112,7 @@ List<DetailAccountRow> _accountRows(
     case BusinessPurpose.reimbursementReceipt:
     case BusinessPurpose.reimbursementClose:
     case BusinessPurpose.borrowing:
+    case BusinessPurpose.receivableCollection:
       final editPurpose =
           purpose == BusinessPurpose.dailyIncome ||
                   purpose == BusinessPurpose.borrowing
@@ -126,7 +130,13 @@ List<DetailAccountRow> _accountRows(
       return [info('收支账户', inAccount, editPurpose: editPurpose)];
     case BusinessPurpose.dailyExpense:
     case BusinessPurpose.debtRepayment:
-      final label = purpose == BusinessPurpose.debtRepayment ? '还款账户' : '收支账户';
+    case BusinessPurpose.lending:
+      final label =
+          purpose == BusinessPurpose.debtRepayment
+              ? '还款账户'
+              : purpose == BusinessPurpose.lending
+              ? '付款账户'
+              : '收支账户';
       final editPurpose =
           purpose == BusinessPurpose.debtRepayment
               ? AccountSelectionPurpose.repaymentSource
@@ -169,6 +179,8 @@ List<DetailAccountRow> _accountRows(
       ];
     case BusinessPurpose.openingBalance:
     case BusinessPurpose.balanceAdjustment:
+    case BusinessPurpose.badDebt:
+    case BusinessPurpose.debtRelief:
       if (settlementEntries.isEmpty) {
         return [placeholder('账户')];
       }
@@ -288,6 +300,9 @@ DetailEditPermission _accountEditPermission(
         .repaymentSource => behavior.canEditSettlementAccount,
     AccountSelectionPurpose.reimbursementReceivable =>
       const DetailEditPermission.allowed(),
+    AccountSelectionPurpose.receivable => const DetailEditPermission.denied(
+      reason: '当前账户用途不能在交易详情页编辑',
+    ),
     AccountSelectionPurpose.repaymentTarget ||
     AccountSelectionPurpose.borrowingLiability =>
       const DetailEditPermission.denied(reason: '当前账户用途不能在交易详情页编辑'),
@@ -332,6 +347,13 @@ DetailBehaviorConfig _behaviorConfigFor(TransactionDetail detail) {
         BusinessPurpose.transfer ||
         BusinessPurpose.reimbursementAdvance ||
         BusinessPurpose.borrowing => '/transaction/${transaction.id}/edit',
+        BusinessPurpose.lending => '/transaction/${transaction.id}/edit',
+        BusinessPurpose.receivableCollection =>
+          '/transaction/${transaction.id}/receivable-collection/edit',
+        BusinessPurpose.badDebt =>
+          '/transaction/${transaction.id}/bad-debt/edit',
+        BusinessPurpose.debtRelief =>
+          '/transaction/${transaction.id}/debt-relief/edit',
         BusinessPurpose.debtRepayment =>
           '/transaction/${transaction.id}/repayment/edit',
         BusinessPurpose.openingBalance ||
@@ -411,6 +433,10 @@ DetailEditPermission _tagEditPermissionFor(Transaction transaction) {
     BusinessPurpose.reimbursementAdvance ||
     BusinessPurpose.borrowing ||
     BusinessPurpose.debtRepayment => const DetailEditPermission.allowed(),
+    BusinessPurpose.lending ||
+    BusinessPurpose.receivableCollection ||
+    BusinessPurpose.badDebt ||
+    BusinessPurpose.debtRelief => const DetailEditPermission.allowed(),
     BusinessPurpose.refund ||
     BusinessPurpose.reimbursementReceipt ||
     BusinessPurpose.reimbursementClose ||

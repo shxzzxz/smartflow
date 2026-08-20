@@ -102,6 +102,51 @@ void main() {
     },
   );
 
+  test(
+    'receivable collection list item carries principal and interest',
+    () async {
+      final collection = _transaction(
+        id: 'collection',
+        purpose: BusinessPurpose.receivableCollection,
+        amount: 10500,
+      );
+      final service = _service(
+        transactionRead: _FakeTransactionReadRepository(
+          transactions: {'collection': collection},
+        ),
+        detailRead: const _FakeTransactionDetailReadRepository({
+          'collection': [
+            TransactionDetailRecord(
+              id: 'principal',
+              transactionId: 'collection',
+              lineNo: 1,
+              type: TransactionDetailType.receivableCollectionPrincipal,
+              amount: Money(minorUnits: 10000),
+            ),
+            TransactionDetailRecord(
+              id: 'interest',
+              transactionId: 'collection',
+              lineNo: 2,
+              type: TransactionDetailType.receivableCollectionInterest,
+              amount: Money(minorUnits: 500),
+            ),
+          ],
+        }),
+      );
+
+      final item =
+          (await service.watchTransactions(const TransactionListQuery()).first)
+              .single;
+
+      expect(item.adjustments.map((adjustment) => adjustment.kind), [
+        TransactionAdjustmentKind.receivableCollectionPrincipal,
+        TransactionAdjustmentKind.receivableCollectionInterest,
+      ]);
+      expect(item.adjustments.first.amount, const Money(minorUnits: 10000));
+      expect(item.adjustments.last.amount, const Money(minorUnits: 500));
+    },
+  );
+
   test('child detail includes parent reimbursement closed summary', () async {
     final parent = _transaction(
       id: 'parent',
@@ -213,7 +258,7 @@ void main() {
           _account(
             'company',
             AccountType.asset,
-            subtype: AccountSubtype.reimbursement,
+            subtype: AccountSubtype.receivable,
           ),
           _account('card', AccountType.liability),
         ],
@@ -621,12 +666,14 @@ Account _account(
 TransactionQueryServiceImpl _service({
   required _FakeTransactionReadRepository transactionRead,
   _FakeEntryReadRepository entryRead = const _FakeEntryReadRepository({}),
+  _FakeTransactionDetailReadRepository detailRead =
+      const _FakeTransactionDetailReadRepository(),
   List<Account> accounts = const [],
 }) {
   return TransactionQueryServiceImpl(
     transactionRead: transactionRead,
     entryRead: entryRead,
-    detailRead: const _FakeTransactionDetailReadRepository(),
+    detailRead: detailRead,
     accountQuery: _FakeAccountQueryService(accounts),
     metricsSource: const _UnusedLedgerMetricsSource(),
   );
@@ -779,12 +826,19 @@ class _FakeEntryReadRepository implements EntryReadRepository {
 
 class _FakeTransactionDetailReadRepository
     implements TransactionDetailReadRepository {
-  const _FakeTransactionDetailReadRepository();
+  const _FakeTransactionDetailReadRepository([
+    this._detailsByTransaction = const {},
+  ]);
+
+  final Map<String, List<TransactionDetailRecord>> _detailsByTransaction;
 
   @override
   Future<Map<String, List<TransactionDetailRecord>>> findByTransactionIds(
     Set<String> transactionIds,
-  ) async => const {};
+  ) async => {
+    for (final id in transactionIds)
+      if (_detailsByTransaction[id] case final details?) id: details,
+  };
 
   @override
   Future<Map<String, Map<TransactionDetailType, int>>> sumOwnByType({

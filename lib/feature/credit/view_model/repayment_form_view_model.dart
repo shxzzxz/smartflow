@@ -118,6 +118,30 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
     _update((state) => state.copyWith(selectedTagIds: value));
   }
 
+  RepaymentBalanceConfirmation? balanceCrossingConfirmation(
+    String principalText,
+  ) {
+    final current = state.asData?.value;
+    if (current == null || !current.isLoaded) return null;
+    final principal = Money.tryParse(principalText.trim());
+    if (principal == null) return null;
+    final liabilityAccount = _accountById(
+      current.liabilityAccounts,
+      current.liabilityAccountId,
+    );
+    final originalPrincipal =
+        args.editTransactionId == null
+            ? Money.zero()
+            : Money.tryParse(current.principalText) ?? Money.zero();
+    final reducibleBalance =
+        (liabilityAccount?.balance ?? Money.zero()) + originalPrincipal;
+    if (principal.minorUnits <= reducibleBalance.minorUnits) return null;
+    return const RepaymentBalanceConfirmation(
+      title: '还款将超过当前欠款',
+      message: '提交后该负债账户余额将小于 0，是否继续？',
+    );
+  }
+
   Future<SubmitOutcome> submit({
     required String principalText,
     required String interestText,
@@ -263,6 +287,16 @@ class RepaymentFormArgs {
   int get hashCode => Object.hash(liabilityAccountId, editTransactionId);
 }
 
+class RepaymentBalanceConfirmation {
+  const RepaymentBalanceConfirmation({
+    required this.title,
+    required this.message,
+  });
+
+  final String title;
+  final String message;
+}
+
 enum RepaymentFormLoadStatus { loaded, notFound, notEditable }
 
 class RepaymentFormState {
@@ -404,6 +438,14 @@ List<Account> _repaymentAccounts(List<Account> accounts, String? liabilityId) {
 String? _selectedId(String? id, List<Account> accounts) {
   if (id != null && accounts.any((account) => account.id == id)) return id;
   return accounts.isEmpty ? null : accounts.first.id;
+}
+
+Account? _accountById(List<Account> accounts, String? id) {
+  if (id == null) return null;
+  for (final account in accounts) {
+    if (account.id == id) return account;
+  }
+  return null;
 }
 
 Money? _parseNonNegativeMoney(String value) {

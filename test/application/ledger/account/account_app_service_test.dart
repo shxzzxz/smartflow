@@ -11,6 +11,40 @@ import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 
 void main() {
   group('AccountAppService', () {
+    test('rejects a missing account profile before domain creation', () async {
+      final service = _service(_FakeAccountRepository(const []));
+
+      await expectLater(
+        () => service.createAccount(
+          const CreateAccountCommand(
+            name: 'cash',
+            type: AccountType.asset,
+            subtype: AccountSubtype.fund,
+          ),
+        ),
+        throwsA(_hasCode(LedgerErrorCode.accountInvalidCommand)),
+      );
+    });
+
+    test(
+      'rejects an incompatible account profile before domain creation',
+      () async {
+        final service = _service(_FakeAccountRepository(const []));
+
+        await expectLater(
+          () => service.createAccount(
+            const CreateAccountCommand(
+              name: 'receivable',
+              type: AccountType.asset,
+              subtype: AccountSubtype.receivable,
+              profileKey: 'ledger.fund',
+            ),
+          ),
+          throwsA(_hasCode(LedgerErrorCode.accountInvalidCommand)),
+        );
+      },
+    );
+
     test('archives an active user account', () async {
       final account = _account('cash');
       final repository = _FakeAccountRepository([account]);
@@ -102,7 +136,12 @@ void main() {
 
       test('rejects deleting a credit-managed liability account', () async {
         final repository = _FakeAccountRepository([
-          _account('card', type: AccountType.liability, archived: true),
+          _account(
+            'card',
+            type: AccountType.liability,
+            profileKey: 'credit.credit',
+            archived: true,
+          ),
         ]);
         final service = _service(repository);
 
@@ -116,7 +155,12 @@ void main() {
 
       test('allows the dedicated credit deletion capability', () async {
         final repository = _FakeAccountRepository([
-          _account('card', type: AccountType.liability, archived: true),
+          _account(
+            'card',
+            type: AccountType.liability,
+            profileKey: 'credit.credit',
+            archived: true,
+          ),
         ]);
         final service = _service(repository);
 
@@ -125,6 +169,22 @@ void main() {
         );
 
         expect(repository.contains('card'), isFalse);
+      });
+
+      test('physically deletes an archived payable account', () async {
+        final repository = _FakeAccountRepository([
+          _account(
+            'payable',
+            type: AccountType.liability,
+            profileKey: 'ledger.payable',
+            archived: true,
+          ),
+        ]);
+        final service = _service(repository);
+
+        await service.deleteAccount(const DeleteAccountCommand(id: 'payable'));
+
+        expect(repository.contains('payable'), isFalse);
       });
 
       test(
@@ -173,12 +233,28 @@ Account _account(
   String id, {
   SystemKey? systemKey,
   AccountType type = AccountType.asset,
+  String? profileKey,
   bool archived = false,
 }) {
   return Account(
     id: id,
     name: id,
     type: type,
+    subtype:
+        type == AccountType.asset
+            ? AccountSubtype.fund
+            : type == AccountType.liability
+            ? profileKey == 'credit.loan'
+                ? AccountSubtype.loan
+                : AccountSubtype.payable
+            : null,
+    profileKey:
+        profileKey ??
+        (type == AccountType.asset
+            ? 'ledger.fund'
+            : type == AccountType.liability
+            ? 'credit.credit'
+            : null),
     balance: Money.zero(),
     systemKey: systemKey,
     archivedAt: archived ? DateTime(2026) : null,

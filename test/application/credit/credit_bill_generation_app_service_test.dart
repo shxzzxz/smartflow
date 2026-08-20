@@ -302,6 +302,8 @@ void main() {
           id: 'asset-cash',
           name: 'Cash',
           type: AccountType.asset,
+          subtype: AccountSubtype.fund,
+          profileKey: 'ledger.fund',
           balance: Money.zero(),
           source: AccountSource.user,
         ),

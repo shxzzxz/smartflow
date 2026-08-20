@@ -153,6 +153,38 @@ Future<UiActionOutcome<void>> _changeTagsForPlainTransaction({
           EditRepaymentCommand(transactionId: transaction.id, tagIds: tagIds),
         );
       });
+    case BusinessPurpose.lending:
+      return detailVoidOutcomeFromAction(
+        () => (editService as ReceivableTransactionEditAppService).editLending(
+          EditLendingCommand(transactionId: transaction.id, tagIds: tagIds),
+        ),
+      );
+    case BusinessPurpose.receivableCollection:
+      return detailVoidOutcomeFromAction(
+        () => (editService as ReceivableTransactionEditAppService)
+            .editReceivableCollection(
+              EditReceivableCollectionCommand(
+                transactionId: transaction.id,
+                tagIds: tagIds,
+              ),
+            ),
+      );
+    case BusinessPurpose.badDebt:
+      return detailVoidOutcomeFromAction(
+        () => (editService as ReceivableTransactionEditAppService).editBadDebt(
+          EditBadDebtCommand(transactionId: transaction.id, tagIds: tagIds),
+        ),
+      );
+    case BusinessPurpose.debtRelief:
+      return detailVoidOutcomeFromAction(
+        () =>
+            (editService as ReceivableTransactionEditAppService).editDebtRelief(
+              EditDebtReliefCommand(
+                transactionId: transaction.id,
+                tagIds: tagIds,
+              ),
+            ),
+      );
     case BusinessPurpose.refund:
     case BusinessPurpose.reimbursementReceipt:
     case BusinessPurpose.reimbursementClose:
@@ -292,12 +324,34 @@ final class _DefaultActionDispatcher
             ),
           );
         });
+      case BusinessPurpose.lending:
+        return detailVoidOutcomeFromAction(
+          () =>
+              (editService as ReceivableTransactionEditAppService).editLending(
+                EditLendingCommand(
+                  transactionId: transaction.id,
+                  paidFromAccountId: accountId,
+                ),
+              ),
+        );
+      case BusinessPurpose.receivableCollection:
+        return detailVoidOutcomeFromAction(
+          () => (editService as ReceivableTransactionEditAppService)
+              .editReceivableCollection(
+                EditReceivableCollectionCommand(
+                  transactionId: transaction.id,
+                  receiveAccountId: accountId,
+                ),
+              ),
+        );
       case BusinessPurpose.transfer:
       case BusinessPurpose.refund:
       case BusinessPurpose.reimbursementReceipt:
       case BusinessPurpose.reimbursementClose:
       case BusinessPurpose.openingBalance:
       case BusinessPurpose.balanceAdjustment:
+      case BusinessPurpose.badDebt:
+      case BusinessPurpose.debtRelief:
         return detailInvalidCommand('当前交易不支持在详情页修改账户');
     }
   }

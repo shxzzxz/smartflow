@@ -22,6 +22,11 @@ class LedgerCreditAccountPort implements CreditAccountLedgerPort {
         name: command.name,
         type: ledger_command.AccountType.liability,
         openingBalance: command.openingBalance,
+        subtype: switch (command.kind) {
+          CreditLiabilityAccountKind.credit =>
+            ledger_command.AccountSubtype.payable,
+          CreditLiabilityAccountKind.loan => ledger_command.AccountSubtype.loan,
+        },
         profileKey: switch (command.kind) {
           CreditLiabilityAccountKind.credit => AccountProfileKind.credit.key,
           CreditLiabilityAccountKind.loan => AccountProfileKind.loan.key,

@@ -303,9 +303,11 @@ class Transaction {
 extension BusinessPurposeBehavior on BusinessPurpose {
   bool get isExpense =>
       this == BusinessPurpose.dailyExpense ||
-      this == BusinessPurpose.reimbursementAdvance;
+      this == BusinessPurpose.reimbursementAdvance ||
+      this == BusinessPurpose.badDebt;
 
-  bool get isIncome => this == BusinessPurpose.dailyIncome;
+  bool get isIncome =>
+      this == BusinessPurpose.dailyIncome || this == BusinessPurpose.debtRelief;
 
   bool get isIncomeOrExpense => isIncome || isExpense;
 }

@@ -191,6 +191,22 @@ void main() {
       _assertClean(violations);
     });
 
+    test('ledger domain 不编码账户画像身份', () {
+      final violations = <_Violation>[];
+      final profileIdentity = RegExp(
+        r'''(?:ledger|credit)\.(?:fund|reimbursement|receivable|payable|credit|loan)''',
+      );
+      for (final file in _dartFiles('lib/domain/ledger')) {
+        final content = file.readAsStringSync();
+        for (final match in profileIdentity.allMatches(content)) {
+          violations.add(
+            _Violation(file, match.group(0)!, 'ledger domain 不能识别账户画像 key'),
+          );
+        }
+      }
+      _assertClean(violations);
+    });
+
     test('credit application 不直接依赖 ledger application', () {
       final violations = <_Violation>[];
       for (final file in _dartFiles('lib/application/credit')) {

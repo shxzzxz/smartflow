@@ -8,8 +8,8 @@ import 'package:smartflow/domain/ledger/port/transaction_repository.dart';
 import 'package:smartflow/domain/ledger/service/account/account_factory.dart';
 import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
-import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
+import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 import 'account_command.dart';
 
@@ -56,6 +56,16 @@ class AccountAppServiceImpl
 
   @override
   Future<Account> createAccount(CreateAccountCommand command) async {
+    if (!isAccountProfileCompatible(
+      type: command.type,
+      subtype: command.subtype,
+      profileKey: command.profileKey,
+    )) {
+      throw BusinessException(
+        LedgerErrorCode.accountInvalidCommand,
+        message: 'Account profile does not match account type and subtype.',
+      );
+    }
     final groupId = await _availableGroupId(command.groupId);
     final account = _accountFactory.createUserAccount(
       id: _idGenerator.newId(),
@@ -111,8 +121,6 @@ class AccountAppServiceImpl
         name: command.name,
         sortOrder: command.sortOrder,
         isHidden: command.isHidden,
-        subtype: command.subtype,
-        profileKey: command.profileKey,
         groupId: command.groupId,
         iconKey: command.iconKey,
         note: command.note,
@@ -164,24 +172,25 @@ class AccountAppServiceImpl
 
   @override
   Future<void> deleteAccount(DeleteAccountCommand command) async {
-    await _deleteAccount(command, expectedType: AccountType.asset);
+    await _deleteAccount(command, profileOwner: AccountProfileOwner.ledger);
   }
 
   @override
   Future<void> deleteCreditManagedAccount(DeleteAccountCommand command) async {
-    await _deleteAccount(command, expectedType: AccountType.liability);
+    await _deleteAccount(command, profileOwner: AccountProfileOwner.credit);
   }
 
   Future<void> _deleteAccount(
     DeleteAccountCommand command, {
-    required AccountType expectedType,
+    required AccountProfileOwner profileOwner,
   }) async {
     await _runner.run<void>(() async {
       final account = await _repository.findById(command.id);
       if (account == null) {
         throw BusinessException(LedgerErrorCode.accountNotFound);
       }
-      if (account.type != expectedType ||
+      if (AccountProfileKind.fromKey(account.profileKey)?.owner !=
+              profileOwner ||
           account.systemKey != null ||
           !account.isArchived) {
         throw BusinessException(LedgerErrorCode.accountUnavailable);

@@ -23,6 +23,28 @@ import 'package:smartflow/widget/business/finance/finance_tone.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 
 void main() {
+  testWidgets('shows receivable account actions', (tester) async {
+    await tester.pumpWidget(
+      _app(account: _account(kind: AccountProfileKind.receivable)),
+    );
+
+    expect(find.text('借出'), findsOneWidget);
+    expect(find.text('收回'), findsOneWidget);
+    expect(find.text('坏账'), findsOneWidget);
+    expect(find.text('债务豁免'), findsNothing);
+  });
+
+  testWidgets('shows payable account actions', (tester) async {
+    await tester.pumpWidget(
+      _app(account: _account(kind: AccountProfileKind.payable)),
+    );
+
+    expect(find.text('借入'), findsOneWidget);
+    expect(find.text('还款'), findsOneWidget);
+    expect(find.text('债务豁免'), findsOneWidget);
+    expect(find.text('坏账'), findsNothing);
+  });
+
   testWidgets('hides new transaction actions for an archived account', (
     tester,
   ) async {

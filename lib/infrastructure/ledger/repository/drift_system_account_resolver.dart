@@ -4,7 +4,7 @@ import '../../../domain/ledger/valobj/ledger_enum.dart';
 import '../../../domain/ledger/port/system_account_resolver.dart';
 import '../../database/app_database.dart';
 
-class DriftSystemAccountResolver implements SystemAccountResolver {
+class DriftSystemAccountResolver implements ReceivableSystemAccountResolver {
   DriftSystemAccountResolver(this._database);
 
   final AppDatabase _database;
@@ -54,6 +54,27 @@ class DriftSystemAccountResolver implements SystemAccountResolver {
       defaultName: '优惠',
     );
   }
+
+  @override
+  Future<String> resolveInterestIncome() => _resolve(
+    systemKey: SystemKey.interestIncome,
+    accountType: AccountType.income,
+    defaultName: '利息收入',
+  );
+
+  @override
+  Future<String> resolveBadDebtExpense() => _resolve(
+    systemKey: SystemKey.badDebtExpense,
+    accountType: AccountType.expense,
+    defaultName: '坏账损失',
+  );
+
+  @override
+  Future<String> resolveDebtReliefIncome() => _resolve(
+    systemKey: SystemKey.debtReliefIncome,
+    accountType: AccountType.income,
+    defaultName: '债务减免',
+  );
 
   @override
   Future<String> resolveGhostAccount() {

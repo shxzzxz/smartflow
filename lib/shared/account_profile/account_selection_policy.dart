@@ -23,12 +23,16 @@ bool accountMatchesSelectionPurpose(
     AccountSelectionPurpose.repaymentSource =>
       accountMatchesUsage(account, AccountUsage.repaymentSource) &&
           account.profileKey != AccountProfileKind.loan.key,
-    AccountSelectionPurpose.borrowingLiability =>
-      accountMatchesUsage(account, AccountUsage.borrowingLiability) &&
-          account.profileKey == AccountProfileKind.loan.key,
-    AccountSelectionPurpose.reimbursementReceivable => accountMatchesUsage(
+    AccountSelectionPurpose.borrowingLiability => accountMatchesUsage(
       account,
-      AccountUsage.reimbursementReceivable,
+      AccountUsage.liability,
+    ),
+    AccountSelectionPurpose.reimbursementReceivable =>
+      accountMatchesUsage(account, AccountUsage.receivable) &&
+          account.profileKey == AccountProfileKind.reimbursement.key,
+    AccountSelectionPurpose.receivable => accountMatchesUsage(
+      account,
+      AccountUsage.receivable,
     ),
   };
 }

@@ -213,7 +213,7 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
                         ),
                       ],
                     ),
-                    if (isLiabilityAccountKind(formState.kind)) ...[
+                    if (isCreditManagedAccountKind(formState.kind)) ...[
                       const SizedBox(height: AppSpacing.space24),
                       AppFormSection(
                         title:
@@ -413,6 +413,16 @@ class _AccountKindTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
+        _AccountKindTab(
+          label: '应收',
+          selected: kind == AccountProfileKind.receivable,
+          onTap: () => onChanged(AccountProfileKind.receivable),
+        ),
+        _AccountKindTab(
+          label: '应付',
+          selected: kind == AccountProfileKind.payable,
+          onTap: () => onChanged(AccountProfileKind.payable),
+        ),
         _AccountKindTab(
           label: '资金',
           selected: kind == AccountProfileKind.fund,

@@ -13,8 +13,6 @@ class AccountProfilePatch {
     this.name,
     this.sortOrder,
     this.isHidden,
-    this.subtype,
-    this.profileKey,
     this.groupId,
     this.iconKey,
     this.note,
@@ -23,8 +21,6 @@ class AccountProfilePatch {
   final String? name;
   final int? sortOrder;
   final bool? isHidden;
-  final Patch<AccountSubtype>? subtype;
-  final Patch<String>? profileKey;
   final Patch<String>? groupId;
   final Patch<String>? iconKey;
   final Patch<String>? note;
@@ -63,8 +59,8 @@ class Account {
   final SystemKey? systemKey;
   final AccountSource source;
   String name;
-  AccountSubtype? subtype;
-  String? profileKey;
+  final AccountSubtype? subtype;
+  final String? profileKey;
   String? groupId;
   String? parentId;
   Money balance;
@@ -131,12 +127,7 @@ class Account {
         message: 'Account name is required.',
       );
     }
-    final nextSubtype = patch.subtype.applyTo(subtype);
-    _ensureSubtypeCompatibility(type: type, subtype: nextSubtype);
-
     name = normalizedName;
-    subtype = nextSubtype;
-    profileKey = patch.profileKey.applyMappedTo(profileKey, trimToNull);
     groupId = patch.groupId.applyMappedTo(groupId, trimToNull);
     iconKey = patch.iconKey.applyMappedTo(iconKey, trimToNull);
     note = patch.note.applyMappedTo(note, trimToNull);
@@ -245,7 +236,6 @@ class Account {
     required AccountType type,
     required AccountSubtype? subtype,
   }) {
-    if (subtype == null) return null;
     if (isSubtypeCompatible(type: type, subtype: subtype)) return null;
     return LedgerViolationReason.accountSubtypeTypeMismatch;
   }
@@ -254,11 +244,14 @@ class Account {
     required AccountType type,
     required AccountSubtype? subtype,
   }) {
-    if (subtype == null) return true;
     return switch (type) {
-      AccountType.asset => subtype == AccountSubtype.reimbursement,
-      AccountType.liability => false,
-      AccountType.equity || AccountType.income || AccountType.expense => false,
+      AccountType.asset =>
+        subtype == AccountSubtype.fund || subtype == AccountSubtype.receivable,
+      AccountType.liability =>
+        subtype == AccountSubtype.payable || subtype == AccountSubtype.loan,
+      AccountType.equity ||
+      AccountType.income ||
+      AccountType.expense => subtype == null,
     };
   }
 
@@ -305,16 +298,5 @@ class Account {
         message: 'Categories support one child level in this stage.',
       );
     }
-  }
-
-  static void _ensureSubtypeCompatibility({
-    required AccountType type,
-    required AccountSubtype? subtype,
-  }) {
-    if (isSubtypeCompatible(type: type, subtype: subtype)) return;
-    throw BusinessException(
-      LedgerErrorCode.accountInvalidCommand,
-      message: 'Account subtype does not match account type.',
-    );
   }
 }

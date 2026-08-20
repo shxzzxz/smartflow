@@ -16,6 +16,18 @@ class InitialAccountGroup {
 
 const initialAccountGroups = [
   InitialAccountGroup(
+    id: 'builtin-account-group-receivable',
+    name: '应收账户',
+    profile: AccountProfileKind.receivable,
+    sortOrder: 20,
+  ),
+  InitialAccountGroup(
+    id: 'builtin-account-group-payable',
+    name: '应付账户',
+    profile: AccountProfileKind.payable,
+    sortOrder: 30,
+  ),
+  InitialAccountGroup(
     id: 'builtin-account-group-funds',
     name: '资金',
     profile: AccountProfileKind.fund,
@@ -25,19 +37,19 @@ const initialAccountGroups = [
     id: 'builtin-account-group-credit',
     name: '信用',
     profile: AccountProfileKind.credit,
-    sortOrder: 20,
+    sortOrder: 40,
   ),
   InitialAccountGroup(
     id: 'builtin-account-group-loan',
     name: '贷款',
     profile: AccountProfileKind.loan,
-    sortOrder: 30,
+    sortOrder: 50,
   ),
   InitialAccountGroup(
     id: 'builtin-account-group-reimbursement',
     name: '报销',
     profile: AccountProfileKind.reimbursement,
-    sortOrder: 40,
+    sortOrder: 60,
   ),
 ];
 

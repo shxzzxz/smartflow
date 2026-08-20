@@ -77,8 +77,267 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         await migrator.createTable(database.transactionTags);
         await _createTagIndexes(database);
       }
+      if (from < 28) {
+        await _standardizeAccountProfiles(database);
+        await _normalizeReceivablePayableBudgetFlags(database);
+      }
     },
   );
+}
+
+Future<void> _normalizeReceivablePayableBudgetFlags(
+  AppDatabase database,
+) async {
+  await database.customStatement(
+    "UPDATE transactions SET is_excluded_from_budget = 0 "
+    "WHERE business_purpose IN "
+    "('lending', 'receivableCollection', 'badDebt', 'debtRelief')",
+  );
+}
+
+Future<void> _standardizeAccountProfiles(AppDatabase database) async {
+  final rows =
+      await database.customSelect('''
+SELECT a.id,
+       a.account_type,
+       a.account_subtype,
+       a.account_profile_key,
+       a.source,
+       c.kind AS credit_kind
+FROM accounts AS a
+LEFT JOIN credit_liability_accounts AS c ON c.account_id = a.id
+ORDER BY a.id
+''').get();
+
+  final defaultedLiabilityIds = <String>[];
+  for (final row in rows) {
+    final id = row.read<String>('id');
+    final type = row.read<String>('account_type');
+    final subtype = row.readNullable<String>('account_subtype');
+    final profile = row.readNullable<String>('account_profile_key');
+    final source = row.read<String>('source');
+    final creditKind = row.readNullable<String>('credit_kind');
+
+    if (!const {
+      'asset',
+      'liability',
+      'equity',
+      'income',
+      'expense',
+    }.contains(type)) {
+      throw StateError('Account $id has unknown account_type=$type.');
+    }
+
+    if (type == 'equity' || type == 'income' || type == 'expense') {
+      if (profile != null || creditKind != null) {
+        throw StateError(
+          'Account $id has conflicting non-user account signals: '
+          'type=$type, profile=$profile, creditKind=$creditKind.',
+        );
+      }
+      await database.customStatement(
+        'UPDATE accounts SET account_subtype = NULL, '
+        'account_profile_key = NULL WHERE id = ?',
+        [id],
+      );
+      continue;
+    }
+
+    final candidates = <_AccountClassification>[];
+    if (subtype != null) {
+      final candidate = switch (subtype) {
+        'reimbursement' => const _AccountClassification(
+          type: 'asset',
+          subtype: 'receivable',
+          profile: null,
+        ),
+        'fund' => const _AccountClassification(
+          type: 'asset',
+          subtype: 'fund',
+          profile: null,
+        ),
+        'receivable' => const _AccountClassification(
+          type: 'asset',
+          subtype: 'receivable',
+          profile: null,
+        ),
+        'payable' => const _AccountClassification(
+          type: 'liability',
+          subtype: 'payable',
+          profile: null,
+        ),
+        'loan' => const _AccountClassification(
+          type: 'liability',
+          subtype: 'loan',
+          profile: null,
+        ),
+        _ =>
+          throw StateError('Account $id has unknown account_subtype=$subtype.'),
+      };
+      candidates.add(candidate);
+    }
+    if (profile != null) {
+      candidates.add(_classificationForProfile(id, profile));
+    }
+    if (creditKind != null) {
+      candidates.add(switch (creditKind) {
+        'credit' => const _AccountClassification(
+          type: 'liability',
+          subtype: 'payable',
+          profile: 'credit.credit',
+        ),
+        'loan' => const _AccountClassification(
+          type: 'liability',
+          subtype: 'loan',
+          profile: 'credit.loan',
+        ),
+        _ =>
+          throw StateError('Account $id has unknown credit kind=$creditKind.'),
+      });
+    }
+
+    for (final candidate in candidates) {
+      if (candidate.type != type) {
+        throw StateError(
+          'Account $id has conflicting account type signals: '
+          'account_type=$type, inferred=${candidate.type}, '
+          'subtype=$subtype, profile=$profile, creditKind=$creditKind.',
+        );
+      }
+    }
+    final inferredSubtypes = candidates.map((item) => item.subtype).toSet();
+    if (inferredSubtypes.length > 1) {
+      throw StateError(
+        'Account $id has conflicting subtype signals: '
+        'subtype=$subtype, profile=$profile, creditKind=$creditKind.',
+      );
+    }
+    final inferredProfiles =
+        candidates.map((item) => item.profile).whereType<String>().toSet();
+    if (inferredProfiles.length > 1) {
+      throw StateError(
+        'Account $id has conflicting profile signals: '
+        'profile=$profile, creditKind=$creditKind.',
+      );
+    }
+
+    final targetSubtype =
+        inferredSubtypes.singleOrNull ?? (type == 'asset' ? 'fund' : 'payable');
+    String? targetProfile = inferredProfiles.singleOrNull ?? profile;
+    if (targetProfile == null && source != 'builtin') {
+      targetProfile = switch ((type, subtype, targetSubtype)) {
+        ('asset', 'reimbursement', _) => 'ledger.reimbursement',
+        ('asset', _, 'fund') => 'ledger.fund',
+        ('asset', _, 'receivable') => 'ledger.receivable',
+        ('liability', _, 'payable') => 'ledger.payable',
+        _ => null,
+      };
+      if (targetProfile == null) {
+        throw StateError(
+          'Account $id has no profile signal for '
+          'type=$type, subtype=$targetSubtype.',
+        );
+      }
+      if (type == 'liability') defaultedLiabilityIds.add(id);
+    }
+    if (profile == 'ledger.reimbursement') {
+      targetProfile = 'ledger.reimbursement';
+    }
+
+    await database.customStatement(
+      'UPDATE accounts SET account_subtype = ?, account_profile_key = ? '
+      'WHERE id = ?',
+      [targetSubtype, targetProfile, id],
+    );
+  }
+
+  if (defaultedLiabilityIds.isNotEmpty) {
+    _logger.warning(
+      'Defaulted legacy liabilities to payable: '
+      'count=${defaultedLiabilityIds.length}, ids=$defaultedLiabilityIds.',
+    );
+  }
+  await _validateStandardizedAccounts(database);
+}
+
+_AccountClassification _classificationForProfile(String id, String profile) {
+  return switch (profile) {
+    'ledger.fund' => const _AccountClassification(
+      type: 'asset',
+      subtype: 'fund',
+      profile: 'ledger.fund',
+    ),
+    'ledger.reimbursement' => const _AccountClassification(
+      type: 'asset',
+      subtype: 'receivable',
+      profile: 'ledger.reimbursement',
+    ),
+    'ledger.receivable' => const _AccountClassification(
+      type: 'asset',
+      subtype: 'receivable',
+      profile: 'ledger.receivable',
+    ),
+    'ledger.payable' => const _AccountClassification(
+      type: 'liability',
+      subtype: 'payable',
+      profile: 'ledger.payable',
+    ),
+    'credit.credit' => const _AccountClassification(
+      type: 'liability',
+      subtype: 'payable',
+      profile: 'credit.credit',
+    ),
+    'credit.loan' => const _AccountClassification(
+      type: 'liability',
+      subtype: 'loan',
+      profile: 'credit.loan',
+    ),
+    _ =>
+      throw StateError('Account $id has unknown account_profile_key=$profile.'),
+  };
+}
+
+Future<void> _validateStandardizedAccounts(AppDatabase database) async {
+  final invalid =
+      await database.customSelect('''
+SELECT id, account_type, account_subtype, account_profile_key, source
+FROM accounts
+WHERE (account_type = 'asset' AND account_subtype NOT IN ('fund', 'receivable'))
+   OR (account_type = 'liability' AND account_subtype NOT IN ('payable', 'loan'))
+   OR (account_type IN ('equity', 'income', 'expense')
+       AND (account_subtype IS NOT NULL OR account_profile_key IS NOT NULL))
+   OR (account_type IN ('asset', 'liability') AND account_subtype IS NULL)
+   OR (account_type IN ('asset', 'liability') AND source != 'builtin'
+       AND account_profile_key IS NULL)
+   OR (source != 'builtin' AND account_type IN ('asset', 'liability') AND NOT (
+        (account_type = 'asset' AND account_subtype = 'fund'
+         AND account_profile_key = 'ledger.fund')
+     OR (account_type = 'asset' AND account_subtype = 'receivable'
+         AND account_profile_key IN ('ledger.reimbursement', 'ledger.receivable'))
+     OR (account_type = 'liability' AND account_subtype = 'payable'
+         AND account_profile_key IN ('ledger.payable', 'credit.credit'))
+     OR (account_type = 'liability' AND account_subtype = 'loan'
+         AND account_profile_key = 'credit.loan')
+   ))
+LIMIT 1
+''').getSingleOrNull();
+  if (invalid != null) {
+    throw StateError(
+      'Account ${invalid.read<String>('id')} violates standardized account invariants.',
+    );
+  }
+}
+
+class _AccountClassification {
+  const _AccountClassification({
+    required this.type,
+    required this.subtype,
+    required this.profile,
+  });
+
+  final String type;
+  final String subtype;
+  final String? profile;
 }
 
 /// 测试夹具或开发库可能已含 v24 列但仍保留旧 user_version；避免重复加列。

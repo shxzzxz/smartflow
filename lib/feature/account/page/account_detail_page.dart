@@ -224,7 +224,7 @@ class _AccountDetailContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final showInstallments = account.isLiability;
+    final showInstallments = account.isCreditLiability;
     final feed = switch (transactions) {
       AccountTransactionsLoaded(
         :final groups,
@@ -481,7 +481,12 @@ class _AccountBalanceBlock extends StatelessWidget {
 }
 
 String _balanceTitle(AccountView account) {
-  return account.isLiability ? '当前欠款' : '当前余额';
+  return switch (account.kind) {
+    AccountProfileKind.receivable => '当前应收',
+    AccountProfileKind.payable => '当前应付',
+    AccountProfileKind.credit || AccountProfileKind.loan => '当前欠款',
+    AccountProfileKind.fund || AccountProfileKind.reimbursement => '当前余额',
+  };
 }
 
 List<_InfoItem> _creditAccountMetrics(
@@ -553,6 +558,58 @@ class _AccountActionBar extends StatelessWidget {
     final isLiability = account.isLiability;
     const installmentSource = 'disbursement';
 
+    if (account.kind == AccountProfileKind.receivable) {
+      return _ActionRow(
+        children: [
+          _ActionButton(
+            icon: RemixIcons.logout_box_r_line,
+            label: '借出',
+            onTap:
+                () => context.push(
+                  '/transaction/new?mode=lending&toAccountId=${account.id}',
+                ),
+          ),
+          _ActionButton(
+            icon: RemixIcons.refund_2_line,
+            label: '收回',
+            onTap:
+                () => context.push(
+                  '/account/${account.id}/receivable-collection',
+                ),
+          ),
+          _ActionButton(
+            icon: RemixIcons.close_circle_line,
+            label: '坏账',
+            onTap: () => context.push('/account/${account.id}/bad-debt'),
+          ),
+        ],
+      );
+    }
+    if (account.kind == AccountProfileKind.payable) {
+      return _ActionRow(
+        children: [
+          _ActionButton(
+            icon: RemixIcons.hand_coin_line,
+            label: '借入',
+            onTap:
+                () => context.push(
+                  '/transaction/new?mode=borrowing&toAccountId=${account.id}',
+                ),
+          ),
+          _ActionButton(
+            icon: RemixIcons.bank_card_line,
+            label: '还款',
+            onTap: () => context.push('/account/${account.id}/repayment'),
+          ),
+          _ActionButton(
+            icon: RemixIcons.hand_heart_line,
+            label: '债务豁免',
+            onTap: () => context.push('/account/${account.id}/debt-relief'),
+          ),
+        ],
+      );
+    }
+
     return AppSurface(
       child: Padding(
         padding: const EdgeInsets.symmetric(
@@ -612,6 +669,30 @@ class _AccountActionBar extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ActionRow extends StatelessWidget {
+  const _ActionRow({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => AppSurface(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space8,
+        vertical: AppSpacing.space6,
+      ),
+      child: Row(
+        children: [
+          for (var index = 0; index < children.length; index++) ...[
+            Expanded(child: children[index]),
+            if (index < children.length - 1)
+              const SizedBox(width: AppSpacing.space6),
+          ],
+        ],
+      ),
+    ),
+  );
 }
 
 class _ActionButton extends StatelessWidget {

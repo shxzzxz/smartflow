@@ -12,7 +12,10 @@ String accountTypeLabel(AccountType type) {
 
 String accountSubtypeLabel(AccountSubtype subtype) {
   return switch (subtype) {
-    AccountSubtype.reimbursement => '报销账户',
+    AccountSubtype.fund => '资金账户',
+    AccountSubtype.receivable => '应收账户',
+    AccountSubtype.payable => '应付账户',
+    AccountSubtype.loan => '贷款账户',
   };
 }
 
@@ -34,6 +37,10 @@ String transactionPurposeLabel(BusinessPurpose purpose) {
     BusinessPurpose.reimbursementClose => '结束报销',
     BusinessPurpose.debtRepayment => '还款',
     BusinessPurpose.borrowing => '借入',
+    BusinessPurpose.lending => '借出',
+    BusinessPurpose.receivableCollection => '收回',
+    BusinessPurpose.badDebt => '坏账',
+    BusinessPurpose.debtRelief => '债务豁免',
     BusinessPurpose.openingBalance => '期初余额',
     BusinessPurpose.balanceAdjustment => '余额调整',
   };
@@ -56,6 +63,11 @@ String transactionDetailTypeLabel(TransactionDetailType type) {
     TransactionDetailType.repaymentFee => '还款手续费',
     TransactionDetailType.repaymentDiscount => '优惠',
     TransactionDetailType.borrowingPrincipal => '借入本金',
+    TransactionDetailType.lendingPrincipal => '借出本金',
+    TransactionDetailType.receivableCollectionPrincipal => '收回本金',
+    TransactionDetailType.receivableCollectionInterest => '利息',
+    TransactionDetailType.badDebtMain => '坏账本金',
+    TransactionDetailType.debtReliefMain => '豁免本金',
     TransactionDetailType.openingBalanceMain => '期初余额',
     TransactionDetailType.balanceAdjustmentMain => '余额调整',
   };

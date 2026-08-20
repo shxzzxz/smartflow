@@ -139,7 +139,7 @@ class AccountFormViewModel extends _$AccountFormViewModel {
     String creditLimitText,
     AccountFormState formState,
   ) {
-    if (!isLiabilityAccountKind(formState.kind)) return null;
+    if (!isCreditManagedAccountKind(formState.kind)) return null;
     final text = creditLimitText.trim();
     if (text.isEmpty) return null;
     final money = Money.tryParse(text);
@@ -154,7 +154,7 @@ class AccountFormViewModel extends _$AccountFormViewModel {
     required Money? creditLimit,
     required String? note,
   }) {
-    if (!isLiabilityAccountKind(formState.kind)) {
+    if (!isCreditManagedAccountKind(formState.kind)) {
       return ref
           .read(accountAppServiceProvider)
           .createAccount(
@@ -204,18 +204,13 @@ class AccountFormViewModel extends _$AccountFormViewModel {
     required Money? creditLimit,
     required String? note,
   }) {
-    if (!isLiabilityAccountKind(formState.kind)) {
+    if (!isCreditManagedAccountKind(formState.kind)) {
       return ref
           .read(accountAppServiceProvider)
           .editAccount(
             EditAccountCommand(
               id: id,
               name: name,
-              subtype:
-                  formState.kind.accountSubtype == null
-                      ? const Patch<AccountSubtype>.clear()
-                      : Patch.set(formState.kind.accountSubtype!),
-              profileKey: Patch.set(formState.kind.key),
               groupId:
                   formState.groupId == null
                       ? const Patch<String>.clear()
@@ -386,6 +381,10 @@ bool isLiabilityAccountKind(AccountProfileKind kind) {
   return kind.accountType == AccountType.liability;
 }
 
+bool isCreditManagedAccountKind(AccountProfileKind kind) {
+  return kind == AccountProfileKind.credit || kind == AccountProfileKind.loan;
+}
+
 CreditLiabilityAccountKind creditLiabilityKindForProfile(
   AccountProfileKind kind,
 ) {
@@ -397,14 +396,19 @@ CreditLiabilityAccountKind creditLiabilityKindForProfile(
 }
 
 bool showsManualBalanceField(AccountProfileKind kind) {
-  return kind == AccountProfileKind.fund || isLiabilityAccountKind(kind);
+  return kind != AccountProfileKind.reimbursement;
 }
 
 String manualBalanceLabel({
   required AccountProfileKind kind,
   required bool isEdit,
 }) {
-  if (isLiabilityAccountKind(kind)) return isEdit ? '当前欠款' : '初始欠款';
+  if (kind == AccountProfileKind.receivable) {
+    return isEdit ? '当前应收' : '期初应收';
+  }
+  if (isLiabilityAccountKind(kind)) {
+    return isEdit ? '当前应付' : '期初应付';
+  }
   return isEdit ? '当前余额' : '初始余额';
 }
 
@@ -412,7 +416,12 @@ String manualBalanceHint({
   required AccountProfileKind kind,
   required bool isEdit,
 }) {
-  if (isLiabilityAccountKind(kind)) return isEdit ? '请输入当前欠款' : '请输入初始欠款';
+  if (kind == AccountProfileKind.receivable) {
+    return isEdit ? '请输入当前应收' : '请输入期初应收';
+  }
+  if (isLiabilityAccountKind(kind)) {
+    return isEdit ? '请输入当前应付' : '请输入期初应付';
+  }
   return isEdit ? '请输入当前余额' : '请输入初始余额';
 }
 

@@ -47,7 +47,7 @@ void main() {
         _account(
           'receivable',
           AccountType.asset,
-          subtype: AccountSubtype.reimbursement,
+          subtype: AccountSubtype.receivable,
         ),
       ]);
       final service = RefundPostingService(

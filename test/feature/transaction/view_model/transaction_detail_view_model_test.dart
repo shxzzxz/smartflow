@@ -295,6 +295,38 @@ void main() {
       expect(failure.error.message, '交易当前不可编辑');
     });
 
+    test(
+      'exposes bad debt flags like expense and debt relief like income',
+      () async {
+        final badDebt =
+            await _readState(
+                  _container(detail: _detail(purpose: BusinessPurpose.badDebt)),
+                )
+                as TransactionDetailLoaded;
+        final reliefUpdate = _FakeTransactionUpdateAppService();
+        final reliefContainer = _container(
+          detail: _detail(purpose: BusinessPurpose.debtRelief),
+          update: reliefUpdate,
+        );
+        final relief =
+            await _readState(reliefContainer) as TransactionDetailLoaded;
+
+        expect(badDebt.showExcludeStats, isTrue);
+        expect(badDebt.showExcludeBudget, isTrue);
+        expect(relief.showExcludeStats, isTrue);
+        expect(relief.showExcludeBudget, isFalse);
+
+        final outcome = await reliefContainer
+            .read(transactionDetailViewModelProvider('tx-1').notifier)
+            .toggleExcludeStats(true);
+        expect(outcome, isA<UiActionSuccess<void>>());
+        expect(
+          reliefUpdate.reportingFlagCommands.single.isExcludedFromStats,
+          isTrue,
+        );
+      },
+    );
+
     test('updates posted time through the ledger basic info service', () async {
       final update = _FakeTransactionUpdateAppService();
       final container = _container(
@@ -403,7 +435,7 @@ ProviderContainer _container({
     'company': _account(
       'company',
       '公司报销',
-      subtype: AccountSubtype.reimbursement,
+      subtype: AccountSubtype.receivable,
       iconKey: 'reimburse',
     ),
     'loan': _account('loan', '贷款', type: AccountType.liability),

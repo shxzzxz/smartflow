@@ -26,7 +26,13 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_form_presentation.dart';
 import '../view_model/transaction_form_view_model.dart';
 
-enum TransactionFormInitialMode { expense, income, transfer, borrowing }
+enum TransactionFormInitialMode {
+  expense,
+  income,
+  transfer,
+  borrowing,
+  lending,
+}
 
 class TransactionFormPage extends ConsumerWidget {
   const TransactionFormPage({
@@ -334,6 +340,34 @@ class _TransactionFormContentState
                           ),
                         ],
                       ),
+                    if (formState.mode == TransactionFormMode.lending)
+                      _MainAccountPickerSection(
+                        children: [
+                          _MainAccountPickerTile(
+                            label: '付款账户',
+                            accounts: fundAccounts,
+                            selectedId: formState.fromAccountId,
+                            validator:
+                                (value) => value == null ? '请选择付款账户' : null,
+                            onChanged:
+                                (value) => ref
+                                    .read(_formProvider.notifier)
+                                    .setFromAccountId(value),
+                          ),
+                          const SizedBox(height: AppSpacing.space8),
+                          _MainAccountPickerTile(
+                            label: '应收账户',
+                            accounts: reimbursementAccounts,
+                            selectedId: formState.reimbursementAccountId,
+                            validator:
+                                (value) => value == null ? '请选择应收账户' : null,
+                            onChanged:
+                                (value) => ref
+                                    .read(_formProvider.notifier)
+                                    .setReimbursementAccountId(value),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -514,6 +548,7 @@ class _TransactionFormContentState
       TransactionFormMode.income => MoneySemantic.income,
       TransactionFormMode.transfer => MoneySemantic.neutral,
       TransactionFormMode.borrowing => MoneySemantic.neutral,
+      TransactionFormMode.lending => MoneySemantic.neutral,
     };
   }
 
@@ -1359,6 +1394,7 @@ String _modeLabel(TransactionFormMode mode) {
     TransactionFormMode.income => '收入',
     TransactionFormMode.transfer => '转账',
     TransactionFormMode.borrowing => '借入',
+    TransactionFormMode.lending => '借出',
   };
 }
 
@@ -1368,6 +1404,7 @@ TransactionFormMode _toFormMode(TransactionFormInitialMode mode) {
     TransactionFormInitialMode.income => TransactionFormMode.income,
     TransactionFormInitialMode.transfer => TransactionFormMode.transfer,
     TransactionFormInitialMode.borrowing => TransactionFormMode.borrowing,
+    TransactionFormInitialMode.lending => TransactionFormMode.lending,
   };
 }
 

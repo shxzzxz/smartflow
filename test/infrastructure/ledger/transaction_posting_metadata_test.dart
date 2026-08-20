@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_command.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_ledger_writer.dart';
@@ -74,7 +75,25 @@ Future<void> _insertAccount(
   String id,
   AccountType type,
 ) async {
+  final subtype = switch (type) {
+    AccountType.asset => AccountSubtype.fund,
+    AccountType.liability => AccountSubtype.loan,
+    _ => null,
+  };
+  final profileKey = switch (type) {
+    AccountType.asset => 'ledger.fund',
+    AccountType.liability => 'credit.loan',
+    _ => null,
+  };
   await database
       .into(database.accounts)
-      .insert(AccountsCompanion.insert(id: id, name: id, accountType: type));
+      .insert(
+        AccountsCompanion.insert(
+          id: id,
+          name: id,
+          accountType: type,
+          accountSubtype: Value(subtype),
+          accountProfileKey: Value(profileKey),
+        ),
+      );
 }

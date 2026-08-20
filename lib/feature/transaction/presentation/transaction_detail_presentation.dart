@@ -96,12 +96,16 @@ MoneySemantic semanticForTransactionPurpose(BusinessPurpose purpose) {
     BusinessPurpose.dailyExpense ||
     BusinessPurpose.reimbursementAdvance ||
     BusinessPurpose.debtRepayment => MoneySemantic.expense,
+    BusinessPurpose.badDebt => MoneySemantic.expense,
     BusinessPurpose.dailyIncome ||
     BusinessPurpose.refund ||
     BusinessPurpose.reimbursementReceipt ||
     BusinessPurpose.reimbursementClose ||
     BusinessPurpose.borrowing => MoneySemantic.income,
+    BusinessPurpose.debtRelief => MoneySemantic.income,
     BusinessPurpose.transfer ||
+    BusinessPurpose.lending ||
+    BusinessPurpose.receivableCollection ||
     BusinessPurpose.openingBalance ||
     BusinessPurpose.balanceAdjustment => MoneySemantic.neutral,
   };
@@ -132,14 +136,16 @@ Account? _resolveCategoryAccount(
 ) {
   final purpose = detail.transaction.businessPurpose;
   if (purpose == BusinessPurpose.dailyExpense ||
-      purpose == BusinessPurpose.refund) {
+      purpose == BusinessPurpose.refund ||
+      purpose == BusinessPurpose.badDebt) {
     final entry = accountLookup.firstEntryByType(
       detail.entries,
       accountType: AccountType.expense,
     );
     return entry == null ? null : accountLookup.accountOf(entry);
   }
-  if (purpose == BusinessPurpose.dailyIncome) {
+  if (purpose == BusinessPurpose.dailyIncome ||
+      purpose == BusinessPurpose.debtRelief) {
     final entry = accountLookup.firstEntryByType(
       detail.entries,
       accountType: AccountType.income,

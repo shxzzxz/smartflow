@@ -74,6 +74,7 @@ class LedgerImportPort implements ImportLedgerPort {
           CreateAccountCommand(
             name: creation.name,
             type: AccountType.asset,
+            subtype: AccountSubtype.fund,
             profileKey: AccountProfileKind.fund.key,
           ),
         )).id,
@@ -82,7 +83,7 @@ class LedgerImportPort implements ImportLedgerPort {
           CreateAccountCommand(
             name: creation.name,
             type: AccountType.asset,
-            subtype: AccountSubtype.reimbursement,
+            subtype: AccountSubtype.receivable,
             profileKey: AccountProfileKind.reimbursement.key,
           ),
         )).id,
@@ -412,7 +413,7 @@ class LedgerImportPort implements ImportLedgerPort {
   ImportLedgerTarget _target(Account account, {String? parentName}) {
     final kind = switch ((account.type, account.subtype, account.systemKey)) {
       (_, _, SystemKey.ghostAccount) => ImportLedgerTargetKind.ghost,
-      (AccountType.asset, AccountSubtype.reimbursement, _) =>
+      (AccountType.asset, AccountSubtype.receivable, _) =>
         ImportLedgerTargetKind.reimbursement,
       (AccountType.asset, _, _) => ImportLedgerTargetKind.asset,
       (AccountType.liability, _, _) => ImportLedgerTargetKind.liability,
@@ -478,13 +479,15 @@ class LedgerImportPort implements ImportLedgerPort {
         AccountProfileKind.fund => ImportTargetDescriptor.fundAccount,
         AccountProfileKind.reimbursement =>
           ImportTargetDescriptor.reimbursementAccount,
+        AccountProfileKind.receivable => ImportTargetDescriptor.fundAccount,
+        AccountProfileKind.payable => ImportTargetDescriptor.creditAccount,
         AccountProfileKind.credit => ImportTargetDescriptor.creditAccount,
         AccountProfileKind.loan => ImportTargetDescriptor.loanAccount,
       };
     }
     return switch ((account.type, account.subtype, account.systemKey)) {
       (_, _, SystemKey.ghostAccount) => ImportTargetDescriptor.ghostAccount,
-      (AccountType.asset, AccountSubtype.reimbursement, _) =>
+      (AccountType.asset, AccountSubtype.receivable, _) =>
         ImportTargetDescriptor.reimbursementAccount,
       (AccountType.asset, _, _) => ImportTargetDescriptor.fundAccount,
       // AccountType.liability alone does not identify a credit card versus a

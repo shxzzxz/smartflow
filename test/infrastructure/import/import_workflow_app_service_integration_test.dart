@@ -1456,6 +1456,20 @@ Future<void> _insertAccount(
   AccountType type, {
   String? profileKey,
 }) {
+  final effectiveProfileKey =
+      profileKey ??
+      switch (type) {
+        AccountType.asset => 'ledger.fund',
+        AccountType.liability => 'ledger.payable',
+        _ => null,
+      };
+  final subtype = switch ((type, effectiveProfileKey)) {
+    (AccountType.asset, 'ledger.fund') => AccountSubtype.fund,
+    (AccountType.asset, _) => AccountSubtype.receivable,
+    (AccountType.liability, 'credit.loan') => AccountSubtype.loan,
+    (AccountType.liability, _) => AccountSubtype.payable,
+    _ => null,
+  };
   return database
       .into(database.accounts)
       .insert(
@@ -1463,7 +1477,8 @@ Future<void> _insertAccount(
           id: id,
           name: name,
           accountType: type,
-          accountProfileKey: Value(profileKey),
+          accountSubtype: Value(subtype),
+          accountProfileKey: Value(effectiveProfileKey),
         ),
       );
 }

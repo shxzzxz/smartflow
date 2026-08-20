@@ -34,8 +34,6 @@ class EditAccountCommand {
     this.name,
     this.sortOrder,
     this.isHidden,
-    this.subtype,
-    this.profileKey,
     this.groupId,
     this.iconKey,
     this.note,
@@ -46,8 +44,6 @@ class EditAccountCommand {
   final String? name;
   final int? sortOrder;
   final bool? isHidden;
-  final Patch<AccountSubtype>? subtype;
-  final Patch<String>? profileKey;
   final Patch<String>? groupId;
   final Patch<String>? iconKey;
   final Patch<String>? note;

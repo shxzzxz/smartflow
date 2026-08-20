@@ -1,7 +1,7 @@
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money_formatter.dart';
 
-enum TransactionFormMode { expense, income, transfer, borrowing }
+enum TransactionFormMode { expense, income, transfer, borrowing, lending }
 
 class TransactionFormEditSnapshot {
   const TransactionFormEditSnapshot({
@@ -44,12 +44,16 @@ bool supportsTransactionFormEdit(BusinessPurpose purpose) {
     BusinessPurpose.transfer ||
     BusinessPurpose.reimbursementAdvance ||
     BusinessPurpose.borrowing => true,
+    BusinessPurpose.lending => true,
     BusinessPurpose.refund ||
     BusinessPurpose.reimbursementReceipt ||
     BusinessPurpose.reimbursementClose ||
     BusinessPurpose.debtRepayment ||
     BusinessPurpose.openingBalance ||
     BusinessPurpose.balanceAdjustment => false,
+    BusinessPurpose.receivableCollection ||
+    BusinessPurpose.badDebt ||
+    BusinessPurpose.debtRelief => false,
   };
 }
 
@@ -172,12 +176,35 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
           EntryDirection.debit,
         ),
       );
+    case BusinessPurpose.lending:
+      return TransactionFormEditSnapshot(
+        mode: TransactionFormMode.lending,
+        amountText: amountText,
+        noteText: noteText,
+        occurredAt: transaction.occurredAt,
+        excludeStats: false,
+        excludeBudget: true,
+        reimbursementAccountId: _firstAccountId(
+          detail,
+          accountsById,
+          AccountType.asset,
+          EntryDirection.debit,
+        ),
+        fromAccountId: settlementAccountId(
+          detail,
+          accountsById,
+          EntryDirection.credit,
+        ),
+      );
     case BusinessPurpose.refund:
     case BusinessPurpose.reimbursementReceipt:
     case BusinessPurpose.reimbursementClose:
     case BusinessPurpose.debtRepayment:
     case BusinessPurpose.openingBalance:
     case BusinessPurpose.balanceAdjustment:
+    case BusinessPurpose.receivableCollection:
+    case BusinessPurpose.badDebt:
+    case BusinessPurpose.debtRelief:
       throw ArgumentError.value(
         transaction.businessPurpose,
         'detail.transaction.businessPurpose',

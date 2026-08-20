@@ -7,7 +7,7 @@ import '../../shared/account_profile/account_profile_kind.dart';
 import 'app_database.dart';
 
 const builtinDataVersionKey = 'builtin_data_version';
-const currentBuiltinDataVersion = 9;
+const currentBuiltinDataVersion = 10;
 
 const _uuid = Uuid();
 
@@ -42,9 +42,59 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
     if (version < 9) {
       await _seedInitialAccountGroups(database);
     }
+    if (version < 10) {
+      await _seedInitialAccountGroups(database);
+      await _seedReceivableAndPayableCategories(database);
+    }
 
     await _writeBuiltinDataVersion(database, currentBuiltinDataVersion);
   });
+}
+
+Future<void> _seedReceivableAndPayableCategories(AppDatabase database) async {
+  final otherIncome = await _findBuiltinAccount(
+    database,
+    name: '其他',
+    type: AccountType.income,
+  );
+  final otherExpense = await _findBuiltinAccount(
+    database,
+    name: '其他',
+    type: AccountType.expense,
+  );
+  await _ensureCategory(
+    database,
+    _BuiltinCategory(
+      name: '利息收入',
+      type: AccountType.income,
+      parentId: otherIncome?.id,
+      iconKey: 'money-cny-circle-line',
+      sortOrder: 40,
+      systemKey: SystemKey.interestIncome,
+    ),
+  );
+  await _ensureCategory(
+    database,
+    _BuiltinCategory(
+      name: '债务减免',
+      type: AccountType.income,
+      parentId: otherIncome?.id,
+      iconKey: 'hand-coin-line',
+      sortOrder: 50,
+      systemKey: SystemKey.debtReliefIncome,
+    ),
+  );
+  await _ensureCategory(
+    database,
+    _BuiltinCategory(
+      name: '坏账损失',
+      type: AccountType.expense,
+      parentId: otherExpense?.id,
+      iconKey: 'close-circle-line',
+      sortOrder: 50,
+      systemKey: SystemKey.badDebtExpense,
+    ),
+  );
 }
 
 Future<void> _seedInitialAccountGroups(AppDatabase database) async {
@@ -74,6 +124,14 @@ Future<void> _seedInitialAccountGroups(AppDatabase database) async {
   await database.customStatement(
     "UPDATE accounts SET group_id = '${initialAccountGroupIdForProfile(AccountProfileKind.reimbursement)}' "
     "WHERE group_id IS NULL AND account_profile_key = 'ledger.reimbursement'",
+  );
+  await database.customStatement(
+    "UPDATE accounts SET group_id = '${initialAccountGroupIdForProfile(AccountProfileKind.receivable)}' "
+    "WHERE group_id IS NULL AND account_profile_key = 'ledger.receivable'",
+  );
+  await database.customStatement(
+    "UPDATE accounts SET group_id = '${initialAccountGroupIdForProfile(AccountProfileKind.payable)}' "
+    "WHERE group_id IS NULL AND account_profile_key = 'ledger.payable'",
   );
   await database.customStatement(
     "UPDATE accounts SET group_id = '${initialAccountGroupIdForProfile(AccountProfileKind.fund)}' "

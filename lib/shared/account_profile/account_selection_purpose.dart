@@ -5,4 +5,5 @@ enum AccountSelectionPurpose {
   repaymentSource,
   borrowingLiability,
   reimbursementReceivable,
+  receivable,
 }

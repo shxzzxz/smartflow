@@ -170,7 +170,10 @@ String _installmentSourceLabel(
     InstallmentSourceType.disbursement => switch (accountKind) {
       AccountProfileKind.credit => '现金分期',
       AccountProfileKind.loan => '贷款分期',
-      AccountProfileKind.fund || AccountProfileKind.reimbursement => '放款分期',
+      AccountProfileKind.fund ||
+      AccountProfileKind.reimbursement ||
+      AccountProfileKind.receivable ||
+      AccountProfileKind.payable => '放款分期',
     },
   };
 }

@@ -305,7 +305,13 @@ class _FakeAccountQueryService implements AccountQueryService {
 final _accounts = <String, Account>{
   'cash': _account('cash', '现金', iconKey: 'cash'),
   'bank': _account('bank', '银行卡', iconKey: 'account'),
-  'receivable': _account('receivable', '报销应收', iconKey: 'wallet'),
+  'receivable': _account(
+    'receivable',
+    '报销应收',
+    subtype: AccountSubtype.receivable,
+    profileKey: 'ledger.reimbursement',
+    iconKey: 'wallet',
+  ),
   'food': _account('food', '午餐', type: AccountType.expense, iconKey: 'meal'),
 };
 
@@ -425,12 +431,18 @@ Account _account(
   String id,
   String name, {
   AccountType type = AccountType.asset,
+  AccountSubtype? subtype,
+  String? profileKey,
   String? iconKey,
 }) {
   return Account(
     id: id,
     name: name,
     type: type,
+    subtype:
+        subtype ?? (type == AccountType.asset ? AccountSubtype.fund : null),
+    profileKey:
+        profileKey ?? (type == AccountType.asset ? 'ledger.fund' : null),
     iconKey: iconKey,
     balance: const Money(minorUnits: 0),
   );

@@ -23,6 +23,15 @@ class PostingEngine {
       TransferInstruction i => createTransfer(i),
       RepaymentInstruction i => createRepayment(i),
       BorrowingInstruction i => createBorrowing(i),
+      LendingInstruction i => createLending(i),
+      ReceivableCollectionInstruction() =>
+        throw StateError(
+          'Receivable collection requires a resolved interest account.',
+        ),
+      BadDebtInstruction() =>
+        throw StateError('Bad debt requires a resolved expense account.'),
+      DebtReliefInstruction() =>
+        throw StateError('Debt relief requires a resolved income account.'),
     };
   }
 
@@ -515,6 +524,209 @@ class PostingEngine {
           _entry(
             transactionId: transactionId,
             accountId: instruction.liabilityAccountId,
+            direction: EntryDirection.credit,
+            amount: instruction.amount,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Transaction createLending(LendingInstruction instruction) {
+    if (instruction.amount.minorUnits <= 0) {
+      return LedgerViolationReason.lendingAmountNotPositive.throwException();
+    }
+    final transactionId = _idGenerator.newId();
+    return _validated(
+      Transaction(
+        id: transactionId,
+        businessPurpose: BusinessPurpose.lending,
+        occurredAt: instruction.occurredAt,
+        postedAt: instruction.postedAt,
+        primaryAmount: instruction.amount,
+        counterpartyName: instruction.counterpartyName,
+        note: instruction.note,
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+        sourceKind: instruction.sourceKind,
+        details: [
+          _detail(
+            transactionId: transactionId,
+            lineNo: 1,
+            type: TransactionDetailType.lendingPrincipal,
+            amount: instruction.amount,
+          ),
+        ],
+        entries: [
+          _entry(
+            transactionId: transactionId,
+            accountId: instruction.receivableAccountId,
+            direction: EntryDirection.debit,
+            amount: instruction.amount,
+          ),
+          _entry(
+            transactionId: transactionId,
+            accountId: instruction.paidFromAccountId,
+            direction: EntryDirection.credit,
+            amount: instruction.amount,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Transaction createReceivableCollection(
+    ReceivableCollectionInstruction instruction, {
+    String? interestIncomeAccountId,
+  }) {
+    if (instruction.principal.minorUnits <= 0 ||
+        instruction.interest.minorUnits < 0) {
+      return LedgerViolationReason.receivableCollectionAmountInvalid
+          .throwException();
+    }
+    final hasInterest = instruction.interest.minorUnits > 0;
+    if (hasInterest && interestIncomeAccountId == null) {
+      return LedgerViolationReason.interestIncomeAccountMissing
+          .throwException();
+    }
+    final total = instruction.principal + instruction.interest;
+    final transactionId = _idGenerator.newId();
+    return _validated(
+      Transaction(
+        id: transactionId,
+        businessPurpose: BusinessPurpose.receivableCollection,
+        occurredAt: instruction.occurredAt,
+        postedAt: instruction.postedAt,
+        primaryAmount: total,
+        counterpartyName: instruction.counterpartyName,
+        note: instruction.note,
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+        sourceKind: instruction.sourceKind,
+        details: [
+          _detail(
+            transactionId: transactionId,
+            lineNo: 1,
+            type: TransactionDetailType.receivableCollectionPrincipal,
+            amount: instruction.principal,
+          ),
+          if (hasInterest)
+            _detail(
+              transactionId: transactionId,
+              lineNo: 2,
+              type: TransactionDetailType.receivableCollectionInterest,
+              amount: instruction.interest,
+            ),
+        ],
+        entries: [
+          _entry(
+            transactionId: transactionId,
+            accountId: instruction.receiveAccountId,
+            direction: EntryDirection.debit,
+            amount: total,
+          ),
+          _entry(
+            transactionId: transactionId,
+            accountId: instruction.receivableAccountId,
+            direction: EntryDirection.credit,
+            amount: instruction.principal,
+          ),
+          if (hasInterest)
+            _entry(
+              transactionId: transactionId,
+              accountId: interestIncomeAccountId!,
+              direction: EntryDirection.credit,
+              amount: instruction.interest,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Transaction createBadDebt(
+    BadDebtInstruction instruction, {
+    required String badDebtExpenseAccountId,
+  }) {
+    if (instruction.amount.minorUnits <= 0) {
+      return LedgerViolationReason.badDebtAmountNotPositive.throwException();
+    }
+    final transactionId = _idGenerator.newId();
+    return _validated(
+      Transaction(
+        id: transactionId,
+        businessPurpose: BusinessPurpose.badDebt,
+        occurredAt: instruction.occurredAt,
+        postedAt: instruction.postedAt,
+        primaryAmount: instruction.amount,
+        counterpartyName: instruction.counterpartyName,
+        note: instruction.note,
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+        sourceKind: instruction.sourceKind,
+        details: [
+          _detail(
+            transactionId: transactionId,
+            lineNo: 1,
+            type: TransactionDetailType.badDebtMain,
+            amount: instruction.amount,
+          ),
+        ],
+        entries: [
+          _entry(
+            transactionId: transactionId,
+            accountId: badDebtExpenseAccountId,
+            direction: EntryDirection.debit,
+            amount: instruction.amount,
+          ),
+          _entry(
+            transactionId: transactionId,
+            accountId: instruction.receivableAccountId,
+            direction: EntryDirection.credit,
+            amount: instruction.amount,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Transaction createDebtRelief(
+    DebtReliefInstruction instruction, {
+    required String debtReliefIncomeAccountId,
+  }) {
+    if (instruction.amount.minorUnits <= 0) {
+      return LedgerViolationReason.debtReliefAmountNotPositive.throwException();
+    }
+    final transactionId = _idGenerator.newId();
+    return _validated(
+      Transaction(
+        id: transactionId,
+        businessPurpose: BusinessPurpose.debtRelief,
+        occurredAt: instruction.occurredAt,
+        postedAt: instruction.postedAt,
+        primaryAmount: instruction.amount,
+        counterpartyName: instruction.counterpartyName,
+        note: instruction.note,
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+        sourceKind: instruction.sourceKind,
+        details: [
+          _detail(
+            transactionId: transactionId,
+            lineNo: 1,
+            type: TransactionDetailType.debtReliefMain,
+            amount: instruction.amount,
+          ),
+        ],
+        entries: [
+          _entry(
+            transactionId: transactionId,
+            accountId: instruction.liabilityAccountId,
+            direction: EntryDirection.debit,
+            amount: instruction.amount,
+          ),
+          _entry(
+            transactionId: transactionId,
+            accountId: debtReliefIncomeAccountId,
             direction: EntryDirection.credit,
             amount: instruction.amount,
           ),

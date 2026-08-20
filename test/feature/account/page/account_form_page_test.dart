@@ -15,6 +15,28 @@ import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 
 void main() {
+  testWidgets('shows all six account profiles when creating an account', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          accountAppServiceProvider.overrideWith(
+            (ref) => _FakeAccountAppService(),
+          ),
+          _accountGroupsOverride(),
+        ],
+        child: const MaterialApp(home: AccountFormPage()),
+      ),
+    );
+
+    for (final label in ['资金', '报销', '应收', '应付', '信用', '贷款']) {
+      expect(find.text(label), findsOneWidget);
+    }
+  });
+
   testWidgets('name validator blocks account submit', (tester) async {
     final service = _FakeAccountAppService();
     await tester.pumpWidget(

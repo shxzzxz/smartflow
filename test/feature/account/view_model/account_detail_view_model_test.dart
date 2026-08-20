@@ -213,6 +213,7 @@ void main() {
         id: 'card',
         name: '信用卡',
         type: AccountType.liability,
+        subtype: AccountSubtype.payable,
         profileKey: 'credit.credit',
         balance: Money.zero(),
         archivedAt: DateTime(2026),
@@ -301,10 +302,22 @@ Account _account(
   String? iconKey,
   DateTime? archivedAt,
 }) {
+  final subtype = switch (type) {
+    AccountType.asset => AccountSubtype.fund,
+    AccountType.liability => AccountSubtype.payable,
+    _ => null,
+  };
+  final profileKey = switch (type) {
+    AccountType.asset => 'ledger.fund',
+    AccountType.liability => 'credit.credit',
+    _ => null,
+  };
   return Account(
     id: id,
     name: name,
     type: type,
+    subtype: subtype,
+    profileKey: profileKey,
     iconKey: iconKey,
     archivedAt: archivedAt,
     balance: const Money(minorUnits: 0),

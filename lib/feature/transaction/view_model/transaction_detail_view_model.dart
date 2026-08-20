@@ -115,6 +115,8 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
                 ),
               );
           return const UiActionOutcome.success(null);
+        case AccountSelectionPurpose.receivable:
+          return detailInvalidCommand('当前账户用途不能在交易详情页编辑');
         case AccountSelectionPurpose.repaymentTarget:
         case AccountSelectionPurpose.borrowingLiability:
           return detailInvalidCommand('当前账户用途不能在交易详情页编辑');

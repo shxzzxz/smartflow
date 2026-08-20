@@ -44,6 +44,42 @@ enum LedgerViolationReason {
     LedgerErrorCode.transactionPostingFailed,
     'Borrowing accounts cannot be resolved.',
   ),
+  lendingAmountNotPositive(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Lending amount must be positive.',
+  ),
+  receivableCollectionAmountInvalid(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Collection principal must be positive and interest cannot be negative.',
+  ),
+  badDebtAmountNotPositive(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Bad debt amount must be positive.',
+  ),
+  badDebtExceedsBalance(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Bad debt exceeds the reducible receivable balance.',
+  ),
+  debtReliefAmountNotPositive(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Debt relief amount must be positive.',
+  ),
+  debtReliefExceedsBalance(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Debt relief exceeds the reducible liability balance.',
+  ),
+  interestIncomeAccountMissing(
+    LedgerErrorCode.transactionPostingFailed,
+    'Interest income system account is required.',
+  ),
+  badDebtExpenseAccountMissing(
+    LedgerErrorCode.transactionPostingFailed,
+    'Bad debt expense system account is required.',
+  ),
+  debtReliefIncomeAccountMissing(
+    LedgerErrorCode.transactionPostingFailed,
+    'Debt relief income system account is required.',
+  ),
   categoryArchived(
     LedgerErrorCode.categoryUnavailable,
     'Category is archived.',

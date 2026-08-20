@@ -141,6 +141,27 @@ void main() {
       },
     );
 
+    test('hides collection principal badge and keeps interest badge', () {
+      final row = buildTransactionRowPresentation(
+        accountLookup: _lookup,
+        item: _item(
+          businessPurpose: BusinessPurpose.receivableCollection,
+          adjustments: const [
+            TransactionAdjustment(
+              kind: TransactionAdjustmentKind.receivableCollectionPrincipal,
+              amount: Money(minorUnits: 10000),
+            ),
+            TransactionAdjustment(
+              kind: TransactionAdjustmentKind.receivableCollectionInterest,
+              amount: Money(minorUnits: 500),
+            ),
+          ],
+        ),
+      );
+
+      expect(row.badges.map((badge) => badge.label), ['利息 5']);
+    });
+
     test('uses account balance delta in account ledger mode', () {
       final row = buildTransactionRowPresentation(
         item: _item(),
@@ -395,6 +416,7 @@ TransactionListReadModel _item({
   Money? reimbursementReceivedTotal,
   String? primaryCategoryId = 'food',
   Map<String, TransactionAccountImpact>? impactsByAccountId,
+  List<TransactionAdjustment> adjustments = const [],
 }) {
   return TransactionListReadModel(
     id: id,
@@ -429,6 +451,7 @@ TransactionListReadModel _item({
           kind: TransactionAdjustmentKind.reimbursementReceived,
           amount: reimbursementReceivedTotal,
         ),
+      ...adjustments,
     ],
   );
 }

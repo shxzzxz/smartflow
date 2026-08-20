@@ -48,6 +48,8 @@ class TransactionAccountImpact {
 enum TransactionAdjustmentKind {
   refund,
   reimbursementReceived,
+  receivableCollectionPrincipal,
+  receivableCollectionInterest,
   repaymentInterest,
   repaymentFee,
   repaymentDiscount,
@@ -55,7 +57,7 @@ enum TransactionAdjustmentKind {
   reimbursementGapExpense,
 }
 
-/// 交易组的调整摘要：退款、报销到账、利/费/优与报销差额。
+/// 交易组的调整摘要：退款、报销到账、应收收回分项、利/费/优与报销差额。
 class TransactionAdjustment {
   const TransactionAdjustment({required this.kind, required this.amount});
 

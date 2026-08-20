@@ -167,7 +167,13 @@ Account _account(String id, AccountType type, {AccountSubtype? subtype}) {
     id: id,
     name: id,
     type: type,
-    subtype: subtype,
+    subtype:
+        subtype ??
+        switch (type) {
+          AccountType.asset => AccountSubtype.fund,
+          AccountType.liability => AccountSubtype.payable,
+          _ => null,
+        },
     balance: const Money(minorUnits: 0),
   );
 }
@@ -227,6 +233,10 @@ class _FakeAccountRepository implements AccountRepository {
 }
 
 class _FakeSystemAccountResolver implements SystemAccountResolver {
+  Future<String> resolveBadDebtExpense() => throw UnimplementedError();
+
+  Future<String> resolveDebtReliefIncome() => throw UnimplementedError();
+
   @override
   Future<String> resolveDiscountIncome() => throw UnimplementedError();
 
@@ -238,6 +248,8 @@ class _FakeSystemAccountResolver implements SystemAccountResolver {
 
   @override
   Future<String> resolveInterestExpense() => throw UnimplementedError();
+
+  Future<String> resolveInterestIncome() => throw UnimplementedError();
 
   @override
   Future<String> resolveOpeningBalance() => throw UnimplementedError();

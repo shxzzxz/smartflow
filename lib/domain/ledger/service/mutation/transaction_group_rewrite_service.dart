@@ -73,12 +73,21 @@ class TransactionGroupRewriteService {
 
     final currentGroup = _currentGroup(rootGroup!);
     final currentParent = currentGroup.parentTransaction;
+    final currentAccounts = await _accountRepository.findByIds(
+      currentParent.accountIds,
+    );
     final currentInstruction = _postingInstructionResolver.resolve(
       currentParent,
+      accountsById: {
+        for (final account in currentAccounts) account.id: account,
+      },
     );
     final editedInstruction = instruction.editPatch.applyTo(currentInstruction);
     final candidateParent = await _postingService.createCandidate(
       editedInstruction,
+      reducibleBalanceOverrides: await _reducibleBalanceOverrides(
+        currentInstruction,
+      ),
     );
     candidateParent.updateBasicInfo(
       occurredAt: instruction.occurredAt,
@@ -118,6 +127,30 @@ class TransactionGroupRewriteService {
       accounts: changedAccounts,
       currentTransaction: plan.currentGroup.parentTransaction,
     );
+  }
+
+  Future<Map<String, Money>> _reducibleBalanceOverrides(
+    PostingInstruction current,
+  ) async {
+    final (accountId, amount) = switch (current) {
+      BadDebtInstruction(:final receivableAccountId, :final amount) => (
+        receivableAccountId,
+        amount,
+      ),
+      DebtReliefInstruction(:final liabilityAccountId, :final amount) => (
+        liabilityAccountId,
+        amount,
+      ),
+      _ => (null, null),
+    };
+    if (accountId == null || amount == null) return const {};
+    final account = await _accountRepository.findById(accountId);
+    if (account == null) return const {};
+    return {
+      accountId: Money(
+        minorUnits: account.balance.minorUnits + amount.minorUnits,
+      ),
+    };
   }
 
   Future<TransactionGroupRewriteResult> rewriteRefundTransaction(

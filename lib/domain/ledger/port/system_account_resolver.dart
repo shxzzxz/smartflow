@@ -12,3 +12,10 @@ abstract interface class SystemAccountResolver {
   /// 幽灵账户:用于导入 / 修复等场景下"暂时挂在某个语义账户"的占位入口。
   Future<String> resolveGhostAccount();
 }
+
+abstract interface class ReceivableSystemAccountResolver
+    implements SystemAccountResolver {
+  Future<String> resolveInterestIncome();
+  Future<String> resolveBadDebtExpense();
+  Future<String> resolveDebtReliefIncome();
+}

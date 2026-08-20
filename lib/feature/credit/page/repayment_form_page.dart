@@ -254,15 +254,20 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
 
   Future<void> _submit(RepaymentFormViewModelProvider provider) async {
     if (!_formKey.currentState!.validate()) return;
-    final outcome = await ref
-        .read(provider.notifier)
-        .submit(
-          principalText: _principalController.text,
-          interestText: _interestController.text,
-          feeText: _feeController.text,
-          discountText: _discountController.text,
-          noteText: _noteController.text,
-        );
+    final viewModel = ref.read(provider.notifier);
+    final confirmation = viewModel.balanceCrossingConfirmation(
+      _principalController.text,
+    );
+    if (confirmation != null && !await _confirmNegativeBalance(confirmation)) {
+      return;
+    }
+    final outcome = await viewModel.submit(
+      principalText: _principalController.text,
+      interestText: _interestController.text,
+      feeText: _feeController.text,
+      discountText: _discountController.text,
+      noteText: _noteController.text,
+    );
     if (!mounted) return;
     switch (outcome) {
       case SubmitSuccess():
@@ -271,6 +276,29 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
         _showError(error.message);
     }
   }
+
+  Future<bool> _confirmNegativeBalance(
+    RepaymentBalanceConfirmation confirmation,
+  ) async =>
+      await showDialog<bool>(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: Text(confirmation.title),
+              content: Text(confirmation.message),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('取消'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('继续提交'),
+                ),
+              ],
+            ),
+      ) ??
+      false;
 
   void _hydrateControllers(RepaymentFormState state) {
     if (_controllersHydrated) return;

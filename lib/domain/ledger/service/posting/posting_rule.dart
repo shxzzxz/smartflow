@@ -140,6 +140,15 @@ const _allowedPurposeByDetail = <TransactionDetailType, Set<BusinessPurpose>>{
   TransactionDetailType.repaymentFee: {BusinessPurpose.debtRepayment},
   TransactionDetailType.repaymentDiscount: {BusinessPurpose.debtRepayment},
   TransactionDetailType.borrowingPrincipal: {BusinessPurpose.borrowing},
+  TransactionDetailType.lendingPrincipal: {BusinessPurpose.lending},
+  TransactionDetailType.receivableCollectionPrincipal: {
+    BusinessPurpose.receivableCollection,
+  },
+  TransactionDetailType.receivableCollectionInterest: {
+    BusinessPurpose.receivableCollection,
+  },
+  TransactionDetailType.badDebtMain: {BusinessPurpose.badDebt},
+  TransactionDetailType.debtReliefMain: {BusinessPurpose.debtRelief},
   TransactionDetailType.openingBalanceMain: {BusinessPurpose.openingBalance},
   TransactionDetailType.balanceAdjustmentMain: {
     BusinessPurpose.balanceAdjustment,

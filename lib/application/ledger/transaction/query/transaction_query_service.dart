@@ -192,11 +192,14 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
             )
             .map((transaction) => transaction.id)
             .toSet();
-    final repaymentIds =
+    final detailTransactionIds =
         page
             .where(
               (transaction) =>
-                  transaction.businessPurpose == BusinessPurpose.debtRepayment,
+                  transaction.businessPurpose ==
+                      BusinessPurpose.debtRepayment ||
+                  transaction.businessPurpose ==
+                      BusinessPurpose.receivableCollection,
             )
             .map((transaction) => transaction.id)
             .toSet();
@@ -221,7 +224,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
         },
       ),
       _entryRead.findByTransactionIds(pageIds),
-      _detailRead.findByTransactionIds(repaymentIds),
+      _detailRead.findByTransactionIds(detailTransactionIds),
     ]);
     final refundAgg = results[0] as Map<String, TransactionChildAggregate>;
     final reimbursementAgg =
@@ -285,9 +288,42 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
         reimbursementCategoryId == null
             ? null
             : accountsById[reimbursementCategoryId],
+      BusinessPurpose.badDebt => _uniqueRoleAccount(
+        entries,
+        accountsById,
+        type: AccountType.expense,
+        direction: EntryDirection.debit,
+        amount: transaction.primaryAmount,
+      ),
+      BusinessPurpose.debtRelief => _uniqueRoleAccount(
+        entries,
+        accountsById,
+        type: AccountType.income,
+        direction: EntryDirection.credit,
+        amount: transaction.primaryAmount,
+      ),
+      BusinessPurpose.receivableCollection => _firstRoleAccount(
+        entries,
+        accountsById,
+        type: AccountType.income,
+        direction: EntryDirection.credit,
+      ),
       _ => null,
     };
     return category?.id;
+  }
+
+  Account? _firstRoleAccount(
+    List<Entry> entries,
+    Map<String, Account> accountsById, {
+    required AccountType type,
+    required EntryDirection direction,
+  }) {
+    for (final entry in entries) {
+      final account = accountsById[entry.accountId];
+      if (account?.type == type && entry.direction == direction) return account;
+    }
+    return null;
   }
 
   Account? _uniqueRoleAccount(
@@ -409,6 +445,21 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
         add(
           TransactionAdjustmentKind.repaymentDiscount,
           _detailAmount(details, TransactionDetailType.repaymentDiscount),
+        );
+      case BusinessPurpose.receivableCollection:
+        add(
+          TransactionAdjustmentKind.receivableCollectionPrincipal,
+          _detailAmount(
+            details,
+            TransactionDetailType.receivableCollectionPrincipal,
+          ),
+        );
+        add(
+          TransactionAdjustmentKind.receivableCollectionInterest,
+          _detailAmount(
+            details,
+            TransactionDetailType.receivableCollectionInterest,
+          ),
         );
       default:
         break;

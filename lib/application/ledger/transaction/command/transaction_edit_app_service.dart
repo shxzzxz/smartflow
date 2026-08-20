@@ -1,4 +1,5 @@
 import 'package:smartflow/core/id/id_generator.dart';
+import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/transaction_group_repository.dart';
 import 'package:smartflow/domain/ledger/port/system_account_resolver.dart';
@@ -40,7 +41,17 @@ abstract interface class TransactionEditAppService {
   Future<void> deleteTransaction(DeleteTransactionCommand command);
 }
 
-class TransactionEditAppServiceImpl implements TransactionEditAppService {
+abstract interface class ReceivableTransactionEditAppService {
+  Future<PostedTransactionResult> editLending(EditLendingCommand command);
+  Future<PostedTransactionResult> editReceivableCollection(
+    EditReceivableCollectionCommand command,
+  );
+  Future<PostedTransactionResult> editBadDebt(EditBadDebtCommand command);
+  Future<PostedTransactionResult> editDebtRelief(EditDebtReliefCommand command);
+}
+
+class TransactionEditAppServiceImpl
+    implements TransactionEditAppService, ReceivableTransactionEditAppService {
   TransactionEditAppServiceImpl({
     required AccountRepository accountRepository,
     required TransactionGroupRepository transactionGroupRepository,
@@ -265,6 +276,86 @@ class TransactionEditAppServiceImpl implements TransactionEditAppService {
       tagIds: cmd.tagIds,
     );
   }
+
+  @override
+  Future<PostedTransactionResult> editLending(EditLendingCommand cmd) =>
+      _rewrite(
+        transactionId: cmd.transactionId,
+        occurredAt: cmd.occurredAt,
+        counterpartyName: cmd.counterpartyName,
+        note: cmd.note,
+        patch: LendingEditPatch(
+          amount: cmd.amount,
+          receivableAccountId: cmd.receivableAccountId,
+          paidFromAccountId: cmd.paidFromAccountId,
+        ),
+        tagIds: cmd.tagIds,
+      );
+
+  @override
+  Future<PostedTransactionResult> editReceivableCollection(
+    EditReceivableCollectionCommand cmd,
+  ) => _rewrite(
+    transactionId: cmd.transactionId,
+    occurredAt: cmd.occurredAt,
+    counterpartyName: cmd.counterpartyName,
+    note: cmd.note,
+    patch: ReceivableCollectionEditPatch(
+      principal: cmd.principal,
+      interest: cmd.interest,
+      receivableAccountId: cmd.receivableAccountId,
+      receiveAccountId: cmd.receiveAccountId,
+    ),
+    tagIds: cmd.tagIds,
+  );
+
+  @override
+  Future<PostedTransactionResult> editBadDebt(EditBadDebtCommand cmd) =>
+      _rewrite(
+        transactionId: cmd.transactionId,
+        occurredAt: cmd.occurredAt,
+        counterpartyName: cmd.counterpartyName,
+        note: cmd.note,
+        patch: BadDebtEditPatch(
+          amount: cmd.amount,
+          receivableAccountId: cmd.receivableAccountId,
+        ),
+        tagIds: cmd.tagIds,
+      );
+
+  @override
+  Future<PostedTransactionResult> editDebtRelief(EditDebtReliefCommand cmd) =>
+      _rewrite(
+        transactionId: cmd.transactionId,
+        occurredAt: cmd.occurredAt,
+        counterpartyName: cmd.counterpartyName,
+        note: cmd.note,
+        patch: DebtReliefEditPatch(
+          amount: cmd.amount,
+          liabilityAccountId: cmd.liabilityAccountId,
+        ),
+        tagIds: cmd.tagIds,
+      );
+
+  Future<PostedTransactionResult> _rewrite({
+    required String transactionId,
+    required PostingEditPatch patch,
+    DateTime? occurredAt,
+    Patch<String?>? counterpartyName,
+    Patch<String?>? note,
+    Set<String>? tagIds,
+  }) => _ledgerWriter.planAndPersistRewrite(
+    () => _transactionGroupRewriteService.rewriteParentTransaction(
+      EditParentTransactionInstruction(
+        transactionId: transactionId,
+        occurredAt: occurredAt,
+        counterpartyName: counterpartyName,
+        note: note,
+        editPatch: patch,
+      ),
+    ),
+    tagIds: tagIds,
+  );
 
   @override
   Future<void> deleteTransaction(DeleteTransactionCommand command) async {

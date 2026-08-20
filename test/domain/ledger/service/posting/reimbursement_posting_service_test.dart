@@ -103,11 +103,11 @@ class _Fixture {
       refundOffsetAccountId: 'receivable',
     );
     final accountRepository = _AccountRepository([
-      _account('cash', AccountType.asset),
+      _account('cash', AccountType.asset, subtype: AccountSubtype.fund),
       _account(
         'receivable',
         AccountType.asset,
-        subtype: AccountSubtype.reimbursement,
+        subtype: AccountSubtype.receivable,
       ),
       _account('travel', AccountType.expense),
     ]);
@@ -230,9 +230,15 @@ class _SystemAccountResolver implements SystemAccountResolver {
   @override
   Future<String> resolveInterestExpense() => throw UnimplementedError();
 
+  Future<String> resolveInterestIncome() => throw UnimplementedError();
+
   @override
   Future<String> resolveOpeningBalance() => throw UnimplementedError();
 
   @override
   Future<String> resolveReimbursementGapIncome() => throw UnimplementedError();
+
+  Future<String> resolveBadDebtExpense() => throw UnimplementedError();
+
+  Future<String> resolveDebtReliefIncome() => throw UnimplementedError();
 }

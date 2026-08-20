@@ -39,13 +39,14 @@ class AccountFactory {
         message: 'Account subtype does not match account type.',
       );
     }
+    final normalizedProfileKey = trimToNull(profileKey);
 
     return Account(
       id: id,
       name: normalizedName,
       type: type,
       subtype: subtype,
-      profileKey: trimToNull(profileKey),
+      profileKey: normalizedProfileKey,
       groupId: trimToNull(groupId),
       balance: const Money(minorUnits: 0),
       iconKey: trimToNull(iconKey),

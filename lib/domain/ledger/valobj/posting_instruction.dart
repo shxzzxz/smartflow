@@ -444,6 +444,116 @@ class BorrowingInstruction extends PostingInstruction {
   }
 }
 
+class LendingInstruction extends PostingInstruction {
+  const LendingInstruction({
+    required this.amount,
+    required this.receivableAccountId,
+    required this.paidFromAccountId,
+    required this.occurredAt,
+    this.postedAt,
+    this.counterpartyName,
+    this.note,
+    this.sourceKind = SourceKind.manual,
+  });
+
+  final Money amount;
+  final String receivableAccountId;
+  final String paidFromAccountId;
+  final DateTime occurredAt;
+  final DateTime? postedAt;
+  final String? counterpartyName;
+  final String? note;
+  final SourceKind sourceKind;
+
+  @override
+  BusinessPurpose get businessPurpose => BusinessPurpose.lending;
+
+  @override
+  Set<String> get accountIds => {receivableAccountId, paidFromAccountId};
+}
+
+class ReceivableCollectionInstruction extends PostingInstruction {
+  const ReceivableCollectionInstruction({
+    required this.principal,
+    required this.receivableAccountId,
+    required this.receiveAccountId,
+    required this.occurredAt,
+    this.interest = const Money(minorUnits: 0),
+    this.postedAt,
+    this.counterpartyName,
+    this.note,
+    this.sourceKind = SourceKind.manual,
+  });
+
+  final Money principal;
+  final Money interest;
+  final String receivableAccountId;
+  final String receiveAccountId;
+  final DateTime occurredAt;
+  final DateTime? postedAt;
+  final String? counterpartyName;
+  final String? note;
+  final SourceKind sourceKind;
+
+  @override
+  BusinessPurpose get businessPurpose => BusinessPurpose.receivableCollection;
+
+  @override
+  Set<String> get accountIds => {receivableAccountId, receiveAccountId};
+}
+
+class BadDebtInstruction extends PostingInstruction {
+  const BadDebtInstruction({
+    required this.amount,
+    required this.receivableAccountId,
+    required this.occurredAt,
+    this.postedAt,
+    this.counterpartyName,
+    this.note,
+    this.sourceKind = SourceKind.manual,
+  });
+
+  final Money amount;
+  final String receivableAccountId;
+  final DateTime occurredAt;
+  final DateTime? postedAt;
+  final String? counterpartyName;
+  final String? note;
+  final SourceKind sourceKind;
+
+  @override
+  BusinessPurpose get businessPurpose => BusinessPurpose.badDebt;
+
+  @override
+  Set<String> get accountIds => {receivableAccountId};
+}
+
+class DebtReliefInstruction extends PostingInstruction {
+  const DebtReliefInstruction({
+    required this.amount,
+    required this.liabilityAccountId,
+    required this.occurredAt,
+    this.postedAt,
+    this.counterpartyName,
+    this.note,
+    this.sourceKind = SourceKind.manual,
+  });
+
+  final Money amount;
+  final String liabilityAccountId;
+  final DateTime occurredAt;
+  final DateTime? postedAt;
+  final String? counterpartyName;
+  final String? note;
+  final SourceKind sourceKind;
+
+  @override
+  BusinessPurpose get businessPurpose => BusinessPurpose.debtRelief;
+
+  @override
+  Set<String> get accountIds => {liabilityAccountId};
+}
+
 class OpeningBalanceInstruction {
   const OpeningBalanceInstruction({
     required this.accountId,
@@ -840,6 +950,113 @@ class RepaymentEditPatch extends PostingEditPatch {
     }
     return LedgerViolationReason.unsupportedEditSource.throwException(
       message: 'This transaction cannot be edited as repayment.',
+    );
+  }
+}
+
+class LendingEditPatch extends PostingEditPatch {
+  const LendingEditPatch({
+    this.amount,
+    this.receivableAccountId,
+    this.paidFromAccountId,
+  });
+  final Money? amount;
+  final String? receivableAccountId;
+  final String? paidFromAccountId;
+  @override
+  BusinessPurpose get targetPurpose => BusinessPurpose.lending;
+  @override
+  LendingInstruction applyTo(PostingInstruction current) {
+    if (current is! LendingInstruction) {
+      return LedgerViolationReason.unsupportedEditSource.throwException();
+    }
+    return LendingInstruction(
+      amount: amount ?? current.amount,
+      receivableAccountId: receivableAccountId ?? current.receivableAccountId,
+      paidFromAccountId: paidFromAccountId ?? current.paidFromAccountId,
+      occurredAt: current.occurredAt,
+      postedAt: current.postedAt,
+      counterpartyName: current.counterpartyName,
+      note: current.note,
+      sourceKind: current.sourceKind,
+    );
+  }
+}
+
+class ReceivableCollectionEditPatch extends PostingEditPatch {
+  const ReceivableCollectionEditPatch({
+    this.principal,
+    this.interest,
+    this.receivableAccountId,
+    this.receiveAccountId,
+  });
+  final Money? principal;
+  final Money? interest;
+  final String? receivableAccountId;
+  final String? receiveAccountId;
+  @override
+  BusinessPurpose get targetPurpose => BusinessPurpose.receivableCollection;
+  @override
+  ReceivableCollectionInstruction applyTo(PostingInstruction current) {
+    if (current is! ReceivableCollectionInstruction) {
+      return LedgerViolationReason.unsupportedEditSource.throwException();
+    }
+    return ReceivableCollectionInstruction(
+      principal: principal ?? current.principal,
+      interest: interest ?? current.interest,
+      receivableAccountId: receivableAccountId ?? current.receivableAccountId,
+      receiveAccountId: receiveAccountId ?? current.receiveAccountId,
+      occurredAt: current.occurredAt,
+      postedAt: current.postedAt,
+      counterpartyName: current.counterpartyName,
+      note: current.note,
+      sourceKind: current.sourceKind,
+    );
+  }
+}
+
+class BadDebtEditPatch extends PostingEditPatch {
+  const BadDebtEditPatch({this.amount, this.receivableAccountId});
+  final Money? amount;
+  final String? receivableAccountId;
+  @override
+  BusinessPurpose get targetPurpose => BusinessPurpose.badDebt;
+  @override
+  BadDebtInstruction applyTo(PostingInstruction current) {
+    if (current is! BadDebtInstruction) {
+      return LedgerViolationReason.unsupportedEditSource.throwException();
+    }
+    return BadDebtInstruction(
+      amount: amount ?? current.amount,
+      receivableAccountId: receivableAccountId ?? current.receivableAccountId,
+      occurredAt: current.occurredAt,
+      postedAt: current.postedAt,
+      counterpartyName: current.counterpartyName,
+      note: current.note,
+      sourceKind: current.sourceKind,
+    );
+  }
+}
+
+class DebtReliefEditPatch extends PostingEditPatch {
+  const DebtReliefEditPatch({this.amount, this.liabilityAccountId});
+  final Money? amount;
+  final String? liabilityAccountId;
+  @override
+  BusinessPurpose get targetPurpose => BusinessPurpose.debtRelief;
+  @override
+  DebtReliefInstruction applyTo(PostingInstruction current) {
+    if (current is! DebtReliefInstruction) {
+      return LedgerViolationReason.unsupportedEditSource.throwException();
+    }
+    return DebtReliefInstruction(
+      amount: amount ?? current.amount,
+      liabilityAccountId: liabilityAccountId ?? current.liabilityAccountId,
+      occurredAt: current.occurredAt,
+      postedAt: current.postedAt,
+      counterpartyName: current.counterpartyName,
+      note: current.note,
+      sourceKind: current.sourceKind,
     );
   }
 }

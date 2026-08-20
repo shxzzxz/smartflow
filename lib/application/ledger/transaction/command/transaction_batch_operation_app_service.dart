@@ -121,6 +121,10 @@ class TransactionBatchOperationAppServiceImpl
       BusinessPurpose.transfer ||
       BusinessPurpose.reimbursementAdvance ||
       BusinessPurpose.borrowing ||
+      BusinessPurpose.lending ||
+      BusinessPurpose.receivableCollection ||
+      BusinessPurpose.badDebt ||
+      BusinessPurpose.debtRelief ||
       BusinessPurpose.debtRepayment => true,
       BusinessPurpose.refund ||
       BusinessPurpose.reimbursementReceipt ||

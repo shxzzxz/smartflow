@@ -1,5 +1,6 @@
 import '../../entity/account.dart';
 import '../../entity/transaction.dart';
+import 'package:smartflow/core/money/money.dart';
 import '../../port/account_repository.dart';
 import '../../port/system_account_resolver.dart';
 import '../../valobj/ledger_violation_reason.dart';
@@ -48,7 +49,24 @@ class LedgerPostingService {
     return _applyPosting(await createCandidate(instruction));
   }
 
-  Future<Transaction> createCandidate(PostingInstruction instruction) async {
+  Future<PostingResult> postLending(LendingInstruction instruction) async =>
+      _applyPosting(await createCandidate(instruction));
+
+  Future<PostingResult> postReceivableCollection(
+    ReceivableCollectionInstruction instruction,
+  ) async => _applyPosting(await createCandidate(instruction));
+
+  Future<PostingResult> postBadDebt(BadDebtInstruction instruction) async =>
+      _applyPosting(await createCandidate(instruction));
+
+  Future<PostingResult> postDebtRelief(
+    DebtReliefInstruction instruction,
+  ) async => _applyPosting(await createCandidate(instruction));
+
+  Future<Transaction> createCandidate(
+    PostingInstruction instruction, {
+    Map<String, Money> reducibleBalanceOverrides = const {},
+  }) async {
     final roleViolation = await _accountRolePolicy.validate(
       switch (instruction) {
         ExpenseInstruction i => AccountRoleContext.expense(
@@ -76,6 +94,21 @@ class LedgerPostingService {
         BorrowingInstruction i => AccountRoleContext.borrowing(
           liabilityAccountId: i.liabilityAccountId,
           receiveAccountId: i.receiveAccountId,
+        ),
+        LendingInstruction i => AccountRoleContext.lending(
+          receivableAccountId: i.receivableAccountId,
+          paidFromAccountId: i.paidFromAccountId,
+        ),
+        ReceivableCollectionInstruction i =>
+          AccountRoleContext.receivableCollection(
+            receivableAccountId: i.receivableAccountId,
+            receiveAccountId: i.receiveAccountId,
+          ),
+        BadDebtInstruction i => AccountRoleContext.badDebt(
+          receivableAccountId: i.receivableAccountId,
+        ),
+        DebtReliefInstruction i => AccountRoleContext.debtRelief(
+          liabilityAccountId: i.liabilityAccountId,
         ),
       },
     );
@@ -111,7 +144,60 @@ class LedgerPostingService {
                 : null,
       );
     }
+    if (instruction is ReceivableCollectionInstruction) {
+      return _postingEngine.createReceivableCollection(
+        instruction,
+        interestIncomeAccountId:
+            instruction.interest.minorUnits > 0
+                ? await _receivableSystemAccounts.resolveInterestIncome()
+                : null,
+      );
+    }
+    if (instruction is BadDebtInstruction) {
+      final account = await _accountRepository.findById(
+        instruction.receivableAccountId,
+      );
+      if (account == null) {
+        LedgerViolationReason.accountNotFound.throwException();
+      }
+      final reducible =
+          reducibleBalanceOverrides[account.id] ?? account.balance;
+      if (reducible.minorUnits <= 0 ||
+          instruction.amount.minorUnits > reducible.minorUnits) {
+        LedgerViolationReason.badDebtExceedsBalance.throwException();
+      }
+      return _postingEngine.createBadDebt(
+        instruction,
+        badDebtExpenseAccountId:
+            await _receivableSystemAccounts.resolveBadDebtExpense(),
+      );
+    }
+    if (instruction is DebtReliefInstruction) {
+      final account = await _accountRepository.findById(
+        instruction.liabilityAccountId,
+      );
+      if (account == null) {
+        LedgerViolationReason.accountNotFound.throwException();
+      }
+      final reducible =
+          reducibleBalanceOverrides[account.id] ?? account.balance;
+      if (reducible.minorUnits <= 0 ||
+          instruction.amount.minorUnits > reducible.minorUnits) {
+        LedgerViolationReason.debtReliefExceedsBalance.throwException();
+      }
+      return _postingEngine.createDebtRelief(
+        instruction,
+        debtReliefIncomeAccountId:
+            await _receivableSystemAccounts.resolveDebtReliefIncome(),
+      );
+    }
     return _postingEngine.create(instruction);
+  }
+
+  ReceivableSystemAccountResolver get _receivableSystemAccounts {
+    final resolver = _systemAccountResolver;
+    if (resolver is ReceivableSystemAccountResolver) return resolver;
+    throw StateError('System account resolver does not support receivables.');
   }
 
   Future<PostingResult> postOpeningBalance(

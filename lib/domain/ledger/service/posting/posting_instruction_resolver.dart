@@ -1,11 +1,16 @@
 import 'package:smartflow/core/money/money.dart';
+import '../../entity/account.dart';
 import '../../entity/transaction.dart';
+import '../../valobj/account_usage.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 
 abstract interface class PostingInstructionResolver {
-  PostingInstruction resolve(Transaction transaction);
+  PostingInstruction resolve(
+    Transaction transaction, {
+    Map<String, Account> accountsById = const {},
+  });
 
   RefundInstruction resolveRefund(Transaction transaction);
 }
@@ -14,7 +19,10 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
   const DefaultPostingInstructionResolver();
 
   @override
-  PostingInstruction resolve(Transaction transaction) {
+  PostingInstruction resolve(
+    Transaction transaction, {
+    Map<String, Account> accountsById = const {},
+  }) {
     return switch (transaction.businessPurpose) {
       BusinessPurpose.dailyExpense => _resolveExpense(transaction),
       BusinessPurpose.dailyIncome => _resolveIncome(transaction),
@@ -24,6 +32,13 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       BusinessPurpose.transfer => _resolveTransfer(transaction),
       BusinessPurpose.debtRepayment => _resolveRepayment(transaction),
       BusinessPurpose.borrowing => _resolveBorrowing(transaction),
+      BusinessPurpose.lending => _resolveLending(transaction),
+      BusinessPurpose.receivableCollection => _resolveCollection(
+        transaction,
+        accountsById,
+      ),
+      BusinessPurpose.badDebt => _resolveBadDebt(transaction),
+      BusinessPurpose.debtRelief => _resolveDebtRelief(transaction),
       _ => LedgerViolationReason.unsupportedPostingInstructionResolution
           .throwException(
             message:
@@ -252,6 +267,123 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       sourceKind: transaction.sourceKind,
     );
   }
+
+  LendingInstruction _resolveLending(Transaction transaction) =>
+      LendingInstruction(
+        amount: transaction.primaryAmount,
+        receivableAccountId:
+            _entryForDetailAmount(
+              transaction,
+              detailType: TransactionDetailType.lendingPrincipal,
+              direction: EntryDirection.debit,
+            )!,
+        paidFromAccountId:
+            _entryForDetailAmount(
+              transaction,
+              detailType: TransactionDetailType.lendingPrincipal,
+              direction: EntryDirection.credit,
+            )!,
+        occurredAt: transaction.occurredAt,
+        postedAt: transaction.postedAt,
+        counterpartyName: transaction.counterpartyName,
+        note: transaction.note,
+        sourceKind: transaction.sourceKind,
+      );
+
+  ReceivableCollectionInstruction _resolveCollection(
+    Transaction transaction,
+    Map<String, Account> accountsById,
+  ) => ReceivableCollectionInstruction(
+    principal:
+        _detailAmount(
+          transaction,
+          TransactionDetailType.receivableCollectionPrincipal,
+        )!,
+    interest:
+        _detailAmount(
+          transaction,
+          TransactionDetailType.receivableCollectionInterest,
+        ) ??
+        Money.zero(),
+    receivableAccountId:
+        _entryForUsage(
+          transaction,
+          accountsById: accountsById,
+          direction: EntryDirection.credit,
+          usage: AccountUsage.receivable,
+        ) ??
+        _entryForDetailAmount(
+          transaction,
+          detailType: TransactionDetailType.receivableCollectionPrincipal,
+          direction: EntryDirection.credit,
+        )!,
+    receiveAccountId:
+        _entryForUsage(
+          transaction,
+          accountsById: accountsById,
+          direction: EntryDirection.debit,
+          usage: AccountUsage.fund,
+        ) ??
+        _firstEntryAccount(transaction, direction: EntryDirection.debit)!,
+    occurredAt: transaction.occurredAt,
+    postedAt: transaction.postedAt,
+    counterpartyName: transaction.counterpartyName,
+    note: transaction.note,
+    sourceKind: transaction.sourceKind,
+  );
+
+  String? _entryForUsage(
+    Transaction transaction, {
+    required Map<String, Account> accountsById,
+    required EntryDirection direction,
+    required AccountUsage usage,
+  }) {
+    if (accountsById.isEmpty) return null;
+    String? match;
+    for (final entry in transaction.entries) {
+      final account = accountsById[entry.accountId];
+      if (entry.direction != direction ||
+          account == null ||
+          !accountMatchesUsage(account, usage)) {
+        continue;
+      }
+      if (match != null) return null;
+      match = entry.accountId;
+    }
+    return match;
+  }
+
+  BadDebtInstruction _resolveBadDebt(Transaction transaction) =>
+      BadDebtInstruction(
+        amount: transaction.primaryAmount,
+        receivableAccountId:
+            _entryForDetailAmount(
+              transaction,
+              detailType: TransactionDetailType.badDebtMain,
+              direction: EntryDirection.credit,
+            )!,
+        occurredAt: transaction.occurredAt,
+        postedAt: transaction.postedAt,
+        counterpartyName: transaction.counterpartyName,
+        note: transaction.note,
+        sourceKind: transaction.sourceKind,
+      );
+
+  DebtReliefInstruction _resolveDebtRelief(Transaction transaction) =>
+      DebtReliefInstruction(
+        amount: transaction.primaryAmount,
+        liabilityAccountId:
+            _entryForDetailAmount(
+              transaction,
+              detailType: TransactionDetailType.debtReliefMain,
+              direction: EntryDirection.debit,
+            )!,
+        occurredAt: transaction.occurredAt,
+        postedAt: transaction.postedAt,
+        counterpartyName: transaction.counterpartyName,
+        note: transaction.note,
+        sourceKind: transaction.sourceKind,
+      );
 
   Money? _detailAmount(Transaction transaction, TransactionDetailType type) {
     for (final detail in transaction.details) {

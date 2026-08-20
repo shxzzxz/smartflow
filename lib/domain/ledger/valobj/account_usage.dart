@@ -6,8 +6,8 @@ enum AccountUsage {
   fund,
   repaymentTarget,
   repaymentSource,
-  borrowingLiability,
-  reimbursementReceivable,
+  liability,
+  receivable,
 }
 
 bool accountMatchesUsage(Account account, AccountUsage usage) {
@@ -28,15 +28,17 @@ bool accountMatchesUsage(Account account, AccountUsage usage) {
           account.type == AccountType.liability,
     AccountUsage.fund =>
       account.type == AccountType.asset &&
-          account.subtype != AccountSubtype.reimbursement,
-    AccountUsage.repaymentTarget => account.type == AccountType.liability,
+          account.subtype == AccountSubtype.fund,
+    AccountUsage.repaymentTarget || AccountUsage.liability =>
+      account.type == AccountType.liability &&
+          (account.subtype == AccountSubtype.payable ||
+              account.subtype == AccountSubtype.loan),
     AccountUsage.repaymentSource => accountMatchesUsage(
       account,
-      AccountUsage.settlement,
+      AccountUsage.fund,
     ),
-    AccountUsage.borrowingLiability => account.type == AccountType.liability,
-    AccountUsage.reimbursementReceivable =>
+    AccountUsage.receivable =>
       account.type == AccountType.asset &&
-          account.subtype == AccountSubtype.reimbursement,
+          account.subtype == AccountSubtype.receivable,
   };
 }

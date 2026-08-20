@@ -163,7 +163,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         reimbursementAccountId: null,
         excludeStats:
             value == TransactionFormMode.transfer ||
-                    value == TransactionFormMode.borrowing
+                    value == TransactionFormMode.borrowing ||
+                    value == TransactionFormMode.lending
                 ? false
                 : current.excludeStats,
         excludeBudget:
@@ -430,13 +431,13 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           formState.liabilityAccounts,
         );
         if (liabilityAccountId == null) {
-          throw _invalidCommandException('请选择借出账户');
+          throw _invalidCommandException('请选择负债账户');
         }
         final receiveAccountId = _effectiveId(
           formState.toAccountId,
           formState.fundAccounts,
         );
-        if (receiveAccountId == null) throw _invalidCommandException('请选择借入账户');
+        if (receiveAccountId == null) throw _invalidCommandException('请选择收款账户');
         await postingService.createBorrowing(
           CreateBorrowingCommand(
             amount: amount,
@@ -447,6 +448,29 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             tagIds: formState.selectedTagIds,
           ),
         );
+      case TransactionFormMode.lending:
+        final paidFromAccountId = _effectiveId(
+          formState.fromAccountId,
+          formState.fundAccounts,
+        );
+        final receivableAccountId = _effectiveId(
+          formState.reimbursementAccountId,
+          formState.reimbursementAccounts,
+        );
+        if (paidFromAccountId == null || receivableAccountId == null) {
+          throw _invalidCommandException('请选择付款账户和应收账户');
+        }
+        await (postingService as ReceivableTransactionPostingAppService)
+            .createLending(
+              CreateLendingCommand(
+                amount: amount,
+                receivableAccountId: receivableAccountId,
+                paidFromAccountId: paidFromAccountId,
+                occurredAt: formState.occurredAt,
+                note: note,
+                tagIds: formState.selectedTagIds,
+              ),
+            );
     }
   }
 
@@ -559,7 +583,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           formState.fundAccounts,
         );
         if (liabilityAccountId == null || receiveAccountId == null) {
-          throw _invalidCommandException('请选择借出和借入账户');
+          throw _invalidCommandException('请选择负债账户和收款账户');
         }
         await editService.editBorrowing(
           EditBorrowingCommand(
@@ -567,6 +591,29 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             amount: amount,
             liabilityAccountId: liabilityAccountId,
             receiveAccountId: receiveAccountId,
+            occurredAt: formState.occurredAt,
+            note: note,
+            tagIds: formState.selectedTagIds,
+          ),
+        );
+      case TransactionFormMode.lending:
+        final paidFromAccountId = _effectiveId(
+          formState.fromAccountId,
+          formState.fundAccounts,
+        );
+        final receivableAccountId = _effectiveId(
+          formState.reimbursementAccountId,
+          formState.reimbursementAccounts,
+        );
+        if (paidFromAccountId == null || receivableAccountId == null) {
+          throw _invalidCommandException('请选择付款账户和应收账户');
+        }
+        await (editService as ReceivableTransactionEditAppService).editLending(
+          EditLendingCommand(
+            transactionId: transactionId,
+            amount: amount,
+            receivableAccountId: receivableAccountId,
+            paidFromAccountId: paidFromAccountId,
             occurredAt: formState.occurredAt,
             note: note,
             tagIds: formState.selectedTagIds,
@@ -698,7 +745,15 @@ class TransactionFormState {
       excludeBudget: false,
       submitting: false,
       fromAccountId: fromAccountId,
-      toAccountId: toAccountId,
+      toAccountId:
+          mode == TransactionFormMode.lending ||
+                  mode == TransactionFormMode.borrowing
+              ? null
+              : toAccountId,
+      reimbursementAccountId:
+          mode == TransactionFormMode.lending ? toAccountId : null,
+      liabilityAccountId:
+          mode == TransactionFormMode.borrowing ? toAccountId : null,
       settlementAccounts: settlementAccounts,
       fundAccounts: fundAccounts,
       liabilityAccounts: liabilityAccounts,

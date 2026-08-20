@@ -88,7 +88,7 @@ class AccountRoleContext {
     return AccountRoleContext([
       AccountRoleRequirement(
         accountId: receivableAccountId,
-        requiredUsage: AccountUsage.reimbursementReceivable,
+        requiredUsage: AccountUsage.receivable,
       ),
       AccountRoleRequirement(
         accountId: paidFromAccountId,
@@ -112,7 +112,7 @@ class AccountRoleContext {
       ),
       AccountRoleRequirement(
         accountId: receivableAccountId,
-        requiredUsage: AccountUsage.reimbursementReceivable,
+        requiredUsage: AccountUsage.receivable,
       ),
     ]);
   }
@@ -130,7 +130,7 @@ class AccountRoleContext {
         ),
       AccountRoleRequirement(
         accountId: receivableAccountId,
-        requiredUsage: AccountUsage.reimbursementReceivable,
+        requiredUsage: AccountUsage.receivable,
       ),
     ]);
   }
@@ -158,7 +158,7 @@ class AccountRoleContext {
     return AccountRoleContext([
       AccountRoleRequirement(
         accountId: liabilityAccountId,
-        requiredUsage: AccountUsage.borrowingLiability,
+        requiredUsage: AccountUsage.liability,
       ),
       AccountRoleRequirement(
         accountId: receiveAccountId,
@@ -166,6 +166,50 @@ class AccountRoleContext {
       ),
     ]);
   }
+
+  factory AccountRoleContext.lending({
+    required String receivableAccountId,
+    required String paidFromAccountId,
+  }) => AccountRoleContext([
+    AccountRoleRequirement(
+      accountId: receivableAccountId,
+      requiredUsage: AccountUsage.receivable,
+    ),
+    AccountRoleRequirement(
+      accountId: paidFromAccountId,
+      requiredUsage: AccountUsage.fund,
+    ),
+  ]);
+
+  factory AccountRoleContext.receivableCollection({
+    required String receivableAccountId,
+    required String receiveAccountId,
+  }) => AccountRoleContext([
+    AccountRoleRequirement(
+      accountId: receivableAccountId,
+      requiredUsage: AccountUsage.receivable,
+    ),
+    AccountRoleRequirement(
+      accountId: receiveAccountId,
+      requiredUsage: AccountUsage.fund,
+    ),
+  ]);
+
+  factory AccountRoleContext.badDebt({required String receivableAccountId}) =>
+      AccountRoleContext([
+        AccountRoleRequirement(
+          accountId: receivableAccountId,
+          requiredUsage: AccountUsage.receivable,
+        ),
+      ]);
+
+  factory AccountRoleContext.debtRelief({required String liabilityAccountId}) =>
+      AccountRoleContext([
+        AccountRoleRequirement(
+          accountId: liabilityAccountId,
+          requiredUsage: AccountUsage.liability,
+        ),
+      ]);
 }
 
 class AccountRolePolicy {

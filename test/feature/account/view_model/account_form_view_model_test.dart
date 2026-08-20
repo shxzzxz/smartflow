@@ -136,6 +136,35 @@ void main() {
       expect(command.note, 'daily account');
     });
 
+    for (final kind in [
+      AccountProfileKind.receivable,
+      AccountProfileKind.payable,
+    ]) {
+      test(
+        'creates ${kind.name} account with standardized classification',
+        () async {
+          final service = _FakeAccountAppService();
+          final container = _container(service);
+          final viewModel = container.read(
+            accountFormViewModelProvider(null).notifier,
+          )..setKind(kind);
+
+          final outcome = await viewModel.submit(
+            nameText: kind.label,
+            openingBalanceText: '10',
+            creditLimitText: '',
+            noteText: '',
+          );
+
+          expect(outcome, isA<SubmitSuccess>());
+          final command = service.createCommands.single;
+          expect(command.type, kind.accountType);
+          expect(command.subtype, kind.accountSubtype);
+          expect(command.profileKey, kind.key);
+        },
+      );
+    }
+
     test('creates credit account through credit account service', () async {
       final creditAppService = _FakeCreditAccountAppService();
       final container = _container(

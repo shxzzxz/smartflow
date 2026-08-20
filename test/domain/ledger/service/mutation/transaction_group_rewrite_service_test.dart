@@ -407,6 +407,10 @@ class _AccountRolePolicy implements AccountRolePolicy {
 }
 
 class _SystemAccountResolver implements SystemAccountResolver {
+  Future<String> resolveBadDebtExpense() async => 'bad-debt';
+
+  Future<String> resolveDebtReliefIncome() async => 'debt-relief';
+
   @override
   Future<String> resolveDiscountIncome() async => 'discount';
 
@@ -418,6 +422,8 @@ class _SystemAccountResolver implements SystemAccountResolver {
 
   @override
   Future<String> resolveInterestExpense() async => 'interest';
+
+  Future<String> resolveInterestIncome() async => 'interest-income';
 
   @override
   Future<String> resolveOpeningBalance() async => 'opening';

@@ -399,12 +399,14 @@ List<TransactionBadgePresentation> buildTransactionBadges(
 ) {
   final badges = <TransactionBadgePresentation>[
     for (final adjustment in item.adjustments)
-      TransactionBadgePresentation(
-        label:
-            '${_adjustmentLabel(adjustment.kind)} '
-            '${formatCompactMoney(adjustment.amount)}',
-        tone: _adjustmentTone(adjustment.kind),
-      ),
+      if (adjustment.kind !=
+          TransactionAdjustmentKind.receivableCollectionPrincipal)
+        TransactionBadgePresentation(
+          label:
+              '${_adjustmentLabel(adjustment.kind)} '
+              '${formatCompactMoney(adjustment.amount)}',
+          tone: _adjustmentTone(adjustment.kind),
+        ),
   ];
 
   if (item.isExcludedFromStats) {
@@ -431,6 +433,8 @@ String _adjustmentLabel(TransactionAdjustmentKind kind) {
   return switch (kind) {
     TransactionAdjustmentKind.refund => '退',
     TransactionAdjustmentKind.reimbursementReceived => '报',
+    TransactionAdjustmentKind.receivableCollectionPrincipal => '本金',
+    TransactionAdjustmentKind.receivableCollectionInterest => '利息',
     TransactionAdjustmentKind.repaymentInterest => '利',
     TransactionAdjustmentKind.repaymentFee => '费',
     TransactionAdjustmentKind.repaymentDiscount => '优',
@@ -442,9 +446,11 @@ String _adjustmentLabel(TransactionAdjustmentKind kind) {
 FinanceTone _adjustmentTone(TransactionAdjustmentKind kind) {
   return switch (kind) {
     TransactionAdjustmentKind.refund ||
+    TransactionAdjustmentKind.receivableCollectionInterest ||
     TransactionAdjustmentKind.repaymentDiscount ||
     TransactionAdjustmentKind.reimbursementGapIncome => FinanceTone.income,
-    TransactionAdjustmentKind.reimbursementReceived => FinanceTone.info,
+    TransactionAdjustmentKind.reimbursementReceived ||
+    TransactionAdjustmentKind.receivableCollectionPrincipal => FinanceTone.info,
     TransactionAdjustmentKind.repaymentInterest ||
     TransactionAdjustmentKind.repaymentFee ||
     TransactionAdjustmentKind.reimbursementGapExpense => FinanceTone.expense,
@@ -503,6 +509,10 @@ String? resolveCategoryIconKey(
     BusinessPurpose.transfer => 'transfer',
     BusinessPurpose.debtRepayment => 'loan',
     BusinessPurpose.borrowing => 'hand-coin-line',
+    BusinessPurpose.lending => 'logout-box-r-line',
+    BusinessPurpose.receivableCollection => 'login-box-r-line',
+    BusinessPurpose.badDebt => 'close-circle-line',
+    BusinessPurpose.debtRelief => 'hand-coin-line',
     BusinessPurpose.openingBalance ||
     BusinessPurpose.balanceAdjustment => 'wallet-line',
     BusinessPurpose.refund ||
@@ -584,9 +594,13 @@ FinanceTone amountTone(BusinessPurpose purpose) {
     BusinessPurpose.reimbursementAdvance ||
     BusinessPurpose.debtRepayment ||
     BusinessPurpose.borrowing ||
+    BusinessPurpose.lending ||
+    BusinessPurpose.receivableCollection ||
     BusinessPurpose.openingBalance ||
     BusinessPurpose.balanceAdjustment ||
     BusinessPurpose.reimbursementClose => FinanceTone.neutral,
+    BusinessPurpose.badDebt => FinanceTone.expense,
+    BusinessPurpose.debtRelief => FinanceTone.income,
   };
 }
 
@@ -663,6 +677,10 @@ bool canQuickEditTransaction(TransactionListReadModel item) {
     BusinessPurpose.dailyIncome ||
     BusinessPurpose.transfer ||
     BusinessPurpose.borrowing => true,
+    BusinessPurpose.lending ||
+    BusinessPurpose.receivableCollection ||
+    BusinessPurpose.badDebt ||
+    BusinessPurpose.debtRelief => false,
     BusinessPurpose.debtRepayment ||
     BusinessPurpose.openingBalance ||
     BusinessPurpose.balanceAdjustment ||

@@ -35,7 +35,13 @@ class AccountTypeTag extends StatelessWidget {
 
 String _accountTagLabel(AccountType type, AccountSubtype? subtype) {
   if (type == AccountType.asset) {
-    return subtype == AccountSubtype.reimbursement ? '报销账户' : '资金账户';
+    return switch (subtype) {
+      AccountSubtype.fund => '资金账户',
+      AccountSubtype.receivable => '应收账户',
+      AccountSubtype.payable => '应付账户',
+      AccountSubtype.loan => '贷款账户',
+      null => '账户',
+    };
   }
   return accountTypeLabel(type);
 }

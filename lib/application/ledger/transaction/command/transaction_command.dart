@@ -241,6 +241,88 @@ class CreateBorrowingCommand {
   final Set<String> tagIds;
 }
 
+class CreateLendingCommand {
+  const CreateLendingCommand({
+    required this.amount,
+    required this.receivableAccountId,
+    required this.paidFromAccountId,
+    required this.occurredAt,
+    this.postedAt,
+    this.counterpartyName,
+    this.note,
+    this.tagIds = const {},
+  });
+  final Money amount;
+  final String receivableAccountId;
+  final String paidFromAccountId;
+  final DateTime occurredAt;
+  final DateTime? postedAt;
+  final String? counterpartyName;
+  final String? note;
+  final Set<String> tagIds;
+}
+
+class CreateReceivableCollectionCommand {
+  const CreateReceivableCollectionCommand({
+    required this.principal,
+    required this.receivableAccountId,
+    required this.receiveAccountId,
+    required this.occurredAt,
+    this.interest = const Money(minorUnits: 0),
+    this.postedAt,
+    this.counterpartyName,
+    this.note,
+    this.tagIds = const {},
+  });
+  final Money principal;
+  final Money interest;
+  final String receivableAccountId;
+  final String receiveAccountId;
+  final DateTime occurredAt;
+  final DateTime? postedAt;
+  final String? counterpartyName;
+  final String? note;
+  final Set<String> tagIds;
+}
+
+class CreateBadDebtCommand {
+  const CreateBadDebtCommand({
+    required this.amount,
+    required this.receivableAccountId,
+    required this.occurredAt,
+    this.postedAt,
+    this.counterpartyName,
+    this.note,
+    this.tagIds = const {},
+  });
+  final Money amount;
+  final String receivableAccountId;
+  final DateTime occurredAt;
+  final DateTime? postedAt;
+  final String? counterpartyName;
+  final String? note;
+  final Set<String> tagIds;
+}
+
+class CreateDebtReliefCommand {
+  const CreateDebtReliefCommand({
+    required this.amount,
+    required this.liabilityAccountId,
+    required this.occurredAt,
+    this.postedAt,
+    this.counterpartyName,
+    this.note,
+    this.tagIds = const {},
+  });
+  final Money amount;
+  final String liabilityAccountId;
+  final DateTime occurredAt;
+  final DateTime? postedAt;
+  final String? counterpartyName;
+  final String? note;
+  final Set<String> tagIds;
+}
+
 class CreateOpeningBalanceCommand {
   const CreateOpeningBalanceCommand({
     required this.accountId,
@@ -503,6 +585,88 @@ class DeleteTransactionCommand {
   const DeleteTransactionCommand({required this.transactionId});
 
   final String transactionId;
+}
+
+class EditLendingCommand {
+  const EditLendingCommand({
+    required this.transactionId,
+    this.amount,
+    this.receivableAccountId,
+    this.paidFromAccountId,
+    this.occurredAt,
+    this.counterpartyName,
+    this.note,
+    this.tagIds,
+  });
+  final String transactionId;
+  final Money? amount;
+  final String? receivableAccountId;
+  final String? paidFromAccountId;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
+  final Set<String>? tagIds;
+}
+
+class EditReceivableCollectionCommand {
+  const EditReceivableCollectionCommand({
+    required this.transactionId,
+    this.principal,
+    this.interest,
+    this.receivableAccountId,
+    this.receiveAccountId,
+    this.occurredAt,
+    this.counterpartyName,
+    this.note,
+    this.tagIds,
+  });
+  final String transactionId;
+  final Money? principal;
+  final Money? interest;
+  final String? receivableAccountId;
+  final String? receiveAccountId;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
+  final Set<String>? tagIds;
+}
+
+class EditBadDebtCommand {
+  const EditBadDebtCommand({
+    required this.transactionId,
+    this.amount,
+    this.receivableAccountId,
+    this.occurredAt,
+    this.counterpartyName,
+    this.note,
+    this.tagIds,
+  });
+  final String transactionId;
+  final Money? amount;
+  final String? receivableAccountId;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
+  final Set<String>? tagIds;
+}
+
+class EditDebtReliefCommand {
+  const EditDebtReliefCommand({
+    required this.transactionId,
+    this.amount,
+    this.liabilityAccountId,
+    this.occurredAt,
+    this.counterpartyName,
+    this.note,
+    this.tagIds,
+  });
+  final String transactionId;
+  final Money? amount;
+  final String? liabilityAccountId;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyName;
+  final Patch<String?>? note;
+  final Set<String>? tagIds;
 }
 
 /// 按条件批量清理交易组。条件语义与 `TransactionCleanupQuery` 一致。

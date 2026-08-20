@@ -33,7 +33,7 @@ void main() {
           await upgradedDatabase
               .customSelect('PRAGMA user_version')
               .getSingle();
-      expect(version.read<int>('user_version'), 27);
+      expect(version.read<int>('user_version'), 28);
       await _insertNoTransactionContract(upgradedDatabase);
     },
   );
@@ -71,7 +71,7 @@ void main() {
           await upgradedDatabase
               .customSelect('PRAGMA user_version')
               .getSingle();
-      expect(version.read<int>('user_version'), 27);
+      expect(version.read<int>('user_version'), 28);
 
       final row =
           await upgradedDatabase
@@ -179,7 +179,7 @@ void main() {
           await upgradedDatabase
               .customSelect('PRAGMA user_version')
               .getSingle();
-      expect(version.read<int>('user_version'), 27);
+      expect(version.read<int>('user_version'), 28);
 
       final transactions =
           await upgradedDatabase
@@ -349,7 +349,7 @@ void main() {
           await upgradedDatabase
               .customSelect('PRAGMA user_version')
               .getSingle();
-      expect(version.read<int>('user_version'), 27);
+      expect(version.read<int>('user_version'), 28);
 
       for (final table in [
         'import_entity_mappings',
@@ -512,6 +512,142 @@ void main() {
             .getSingle();
     expect(target.read<int>('balance_minor'), 1200);
     expect(target.read<int>('version'), 1);
+  });
+
+  test('opening a v27 database standardizes account classifications', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'smartflow-account-standardization-test-',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File(
+      '${directory.path}${Platform.pathSeparator}smartflow.sqlite',
+    );
+    final staleDatabase = _openDatabase(file);
+    await staleDatabase.customStatement(
+      "INSERT INTO accounts "
+      "(id, name, account_type, account_subtype, account_profile_key, "
+      "balance_minor, source) VALUES "
+      "('reimbursement-old', '旧报销', 'asset', 'reimbursement', "
+      "'ledger.reimbursement', 12345, 'user'), "
+      "('reimbursement-unprofiled-old', '旧无画像报销', 'asset', "
+      "'reimbursement', NULL, 15000, 'user'), "
+      "('asset-old', '旧资产', 'asset', NULL, NULL, 20000, 'user'), "
+      "('liability-old', '旧负债', 'liability', NULL, NULL, 30000, 'user')",
+    );
+    await staleDatabase.customStatement('PRAGMA user_version = 27');
+    await staleDatabase.close();
+
+    final upgraded = _openDatabase(file);
+    addTearDown(upgraded.close);
+    final rows =
+        await upgraded
+            .customSelect(
+              'SELECT id, account_type, account_subtype, account_profile_key, '
+              'balance_minor FROM accounts '
+              "WHERE id LIKE '%-old' ORDER BY id",
+            )
+            .get();
+    final byId = {for (final row in rows) row.read<String>('id'): row};
+    expect(
+      byId['reimbursement-old']!.read<String>('account_subtype'),
+      'receivable',
+    );
+    expect(
+      byId['reimbursement-old']!.read<String>('account_profile_key'),
+      'ledger.reimbursement',
+    );
+    expect(byId['reimbursement-old']!.read<int>('balance_minor'), 12345);
+    expect(
+      byId['reimbursement-unprofiled-old']!.read<String>('account_subtype'),
+      'receivable',
+    );
+    expect(
+      byId['reimbursement-unprofiled-old']!.read<String>('account_profile_key'),
+      'ledger.reimbursement',
+    );
+    expect(byId['asset-old']!.read<String>('account_subtype'), 'fund');
+    expect(
+      byId['asset-old']!.read<String>('account_profile_key'),
+      'ledger.fund',
+    );
+    expect(byId['liability-old']!.read<String>('account_subtype'), 'payable');
+    expect(
+      byId['liability-old']!.read<String>('account_profile_key'),
+      'ledger.payable',
+    );
+  });
+
+  test('v27 account signal conflict aborts the upgrade', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'smartflow-account-conflict-test-',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File(
+      '${directory.path}${Platform.pathSeparator}smartflow.sqlite',
+    );
+    final staleDatabase = _openDatabase(file);
+    await staleDatabase.customStatement(
+      "INSERT INTO accounts "
+      "(id, name, account_type, account_subtype, account_profile_key, source) "
+      "VALUES ('conflict', '冲突', 'asset', 'fund', 'credit.credit', 'user')",
+    );
+    await staleDatabase.customStatement('PRAGMA user_version = 27');
+    await staleDatabase.close();
+
+    final upgrading = _openDatabase(file);
+    addTearDown(upgrading.close);
+    await expectLater(
+      upgrading.customSelect('SELECT 1').get(),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('conflict'),
+        ),
+      ),
+    );
+  });
+
+  test('opening a v27 database normalizes default budget flags', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'smartflow-receivable-reporting-migration-test-',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File(
+      '${directory.path}${Platform.pathSeparator}smartflow.sqlite',
+    );
+    final staleDatabase = _openDatabase(file);
+    await staleDatabase.customStatement(
+      "INSERT INTO transactions "
+      "(id, business_purpose, occurred_at, posted_at, primary_amount_minor, "
+      "is_excluded_from_budget, source_kind) VALUES "
+      "('lending', 'lending', 1, 1, 1000, 1, 'manual'), "
+      "('collection', 'receivableCollection', 1, 1, 1000, 1, 'manual'), "
+      "('bad-debt', 'badDebt', 1, 1, 1000, 1, 'manual'), "
+      "('debt-relief', 'debtRelief', 1, 1, 1000, 1, 'manual')",
+    );
+    await staleDatabase.customStatement('PRAGMA user_version = 27');
+    await staleDatabase.close();
+
+    final upgraded = _openDatabase(file);
+    addTearDown(upgraded.close);
+    final rows =
+        await upgraded
+            .customSelect(
+              'SELECT id, is_excluded_from_budget FROM transactions '
+              'ORDER BY id',
+            )
+            .get();
+    final flags = {
+      for (final row in rows)
+        row.read<String>('id'): row.read<int>('is_excluded_from_budget'),
+    };
+    expect(flags, {
+      'bad-debt': 0,
+      'collection': 0,
+      'debt-relief': 0,
+      'lending': 0,
+    });
   });
 }
 

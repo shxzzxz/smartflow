@@ -50,7 +50,21 @@ abstract interface class TransactionPostingAppService {
   Future<PostedTransactionResult> adjustBalance(AdjustBalanceCommand command);
 }
 
-class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
+abstract interface class ReceivableTransactionPostingAppService {
+  Future<PostedTransactionResult> createLending(CreateLendingCommand command);
+  Future<PostedTransactionResult> createReceivableCollection(
+    CreateReceivableCollectionCommand command,
+  );
+  Future<PostedTransactionResult> createBadDebt(CreateBadDebtCommand command);
+  Future<PostedTransactionResult> createDebtRelief(
+    CreateDebtReliefCommand command,
+  );
+}
+
+class TransactionPostingAppServiceImpl
+    implements
+        TransactionPostingAppService,
+        ReceivableTransactionPostingAppService {
   TransactionPostingAppServiceImpl({
     required AccountRepository accountRepository,
     required TransactionGroupRepository transactionGroupRepository,
@@ -309,6 +323,77 @@ class TransactionPostingAppServiceImpl implements TransactionPostingAppService {
       tagIds: command.tagIds,
     );
   }
+
+  @override
+  Future<PostedTransactionResult> createLending(
+    CreateLendingCommand command,
+  ) async => _ledgerWriter.persistPosting(
+    await _ledgerPostingService.postLending(
+      LendingInstruction(
+        amount: command.amount,
+        receivableAccountId: command.receivableAccountId,
+        paidFromAccountId: command.paidFromAccountId,
+        occurredAt: command.occurredAt,
+        postedAt: command.postedAt,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+      ),
+    ),
+    tagIds: command.tagIds,
+  );
+
+  @override
+  Future<PostedTransactionResult> createReceivableCollection(
+    CreateReceivableCollectionCommand command,
+  ) async => _ledgerWriter.persistPosting(
+    await _ledgerPostingService.postReceivableCollection(
+      ReceivableCollectionInstruction(
+        principal: command.principal,
+        interest: command.interest,
+        receivableAccountId: command.receivableAccountId,
+        receiveAccountId: command.receiveAccountId,
+        occurredAt: command.occurredAt,
+        postedAt: command.postedAt,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+      ),
+    ),
+    tagIds: command.tagIds,
+  );
+
+  @override
+  Future<PostedTransactionResult> createBadDebt(
+    CreateBadDebtCommand command,
+  ) async => _ledgerWriter.persistPosting(
+    await _ledgerPostingService.postBadDebt(
+      BadDebtInstruction(
+        amount: command.amount,
+        receivableAccountId: command.receivableAccountId,
+        occurredAt: command.occurredAt,
+        postedAt: command.postedAt,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+      ),
+    ),
+    tagIds: command.tagIds,
+  );
+
+  @override
+  Future<PostedTransactionResult> createDebtRelief(
+    CreateDebtReliefCommand command,
+  ) async => _ledgerWriter.persistPosting(
+    await _ledgerPostingService.postDebtRelief(
+      DebtReliefInstruction(
+        amount: command.amount,
+        liabilityAccountId: command.liabilityAccountId,
+        occurredAt: command.occurredAt,
+        postedAt: command.postedAt,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+      ),
+    ),
+    tagIds: command.tagIds,
+  );
 
   @override
   Future<PostedTransactionResult> createOpeningBalance(

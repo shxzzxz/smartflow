@@ -129,6 +129,20 @@ void main() {
       expect(edit.enabled, isFalse);
     },
   );
+
+  test('shows expense-like reporting controls for bad debt', () {
+    final state = _build(purpose: BusinessPurpose.badDebt);
+
+    expect(state.showExcludeStats, isTrue);
+    expect(state.showExcludeBudget, isTrue);
+  });
+
+  test('shows income-like reporting controls for debt relief', () {
+    final state = _build(purpose: BusinessPurpose.debtRelief);
+
+    expect(state.showExcludeStats, isTrue);
+    expect(state.showExcludeBudget, isFalse);
+  });
 }
 
 TransactionDetailLoaded _build({

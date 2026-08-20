@@ -45,6 +45,7 @@ import '../feature/transaction/page/reimbursement_close_form_page.dart';
 import '../feature/transaction/page/reimbursement_edit_form_page.dart';
 import '../feature/transaction/page/reimbursement_form_page.dart';
 import '../feature/transaction/page/reimbursement_receipt_form_page.dart';
+import '../feature/transaction/page/receivable_payable_form_pages.dart';
 import '../feature/transaction/page/transaction_detail_page.dart';
 import '../feature/transaction/page/transaction_form_page.dart';
 
@@ -188,6 +189,7 @@ final appRouter = GoRouter(
           'income' => TransactionFormInitialMode.income,
           'transfer' => TransactionFormInitialMode.transfer,
           'borrowing' => TransactionFormInitialMode.borrowing,
+          'lending' => TransactionFormInitialMode.lending,
           _ => TransactionFormInitialMode.expense,
         };
         return TransactionFormPage(
@@ -216,6 +218,25 @@ final appRouter = GoRouter(
           (context, state) => RepaymentFormPage.edit(
             editTransactionId: state.pathParameters['id']!,
           ),
+    ),
+    GoRoute(
+      path: '/transaction/:id/receivable-collection/edit',
+      builder:
+          (context, state) => ReceivableCollectionFormPage(
+            transactionId: state.pathParameters['id']!,
+          ),
+    ),
+    GoRoute(
+      path: '/transaction/:id/bad-debt/edit',
+      builder:
+          (context, state) =>
+              BadDebtFormPage(transactionId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/transaction/:id/debt-relief/edit',
+      builder:
+          (context, state) =>
+              DebtReliefFormPage(transactionId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/transaction/:id/refund',
@@ -290,6 +311,26 @@ final appRouter = GoRouter(
       path: '/account/:id/repayment',
       builder:
           (context, state) => RepaymentFormPage(
+            liabilityAccountId: state.pathParameters['id']!,
+          ),
+    ),
+    GoRoute(
+      path: '/account/:id/receivable-collection',
+      builder:
+          (context, state) => ReceivableCollectionFormPage(
+            receivableAccountId: state.pathParameters['id']!,
+          ),
+    ),
+    GoRoute(
+      path: '/account/:id/bad-debt',
+      builder:
+          (context, state) =>
+              BadDebtFormPage(receivableAccountId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/account/:id/debt-relief',
+      builder:
+          (context, state) => DebtReliefFormPage(
             liabilityAccountId: state.pathParameters['id']!,
           ),
     ),
