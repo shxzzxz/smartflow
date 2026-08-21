@@ -19,6 +19,8 @@ enum ImportTargetDescriptor {
   expenseCategory,
   fundAccount,
   reimbursementAccount,
+  receivableAccount,
+  payableAccount,
   creditAccount,
   loanAccount,
   ghostAccount,
@@ -36,6 +38,8 @@ enum ImportOperationKind {
   repayment,
   interestExpense,
   borrowing,
+  lending,
+  receivableCollection,
   openingBalance,
 }
 
@@ -522,24 +526,86 @@ class ImportBorrowingDraft extends ImportTransactionDraft {
   ];
 }
 
-class ImportOpeningBalanceDraft extends ImportTransactionDraft {
-  const ImportOpeningBalanceDraft({
+class ImportLendingDraft extends ImportTransactionDraft {
+  const ImportLendingDraft({
     required super.amount,
-    required this.liabilityAccount,
+    required this.receivableAccount,
+    required this.paidFrom,
     required super.occurredAt,
     super.postedAt,
     super.note,
   });
 
-  final ImportAccountReference liabilityAccount;
+  final ImportAccountReference receivableAccount;
+  final ImportAccountReference paidFrom;
+
+  @override
+  ImportOperationKind get operationKind => ImportOperationKind.lending;
+
+  @override
+  Iterable<String> get sourceEntityKeys => [
+    if (receivableAccount.sourceEntityKey != null)
+      receivableAccount.sourceEntityKey!,
+    if (paidFrom.sourceEntityKey != null) paidFrom.sourceEntityKey!,
+  ];
+}
+
+class ImportReceivableCollectionDraft extends ImportTransactionDraft {
+  ImportReceivableCollectionDraft({
+    required this.principal,
+    required this.receivableAccount,
+    required this.receiveAccount,
+    this.interest,
+    required super.occurredAt,
+    super.postedAt,
+    super.note,
+  }) : super(amount: principal + (interest ?? Money.zero()));
+
+  final Money principal;
+  final Money? interest;
+  final ImportAccountReference receivableAccount;
+  final ImportAccountReference receiveAccount;
+
+  @override
+  ImportOperationKind get operationKind =>
+      ImportOperationKind.receivableCollection;
+
+  @override
+  Iterable<String> get sourceEntityKeys => [
+    if (receivableAccount.sourceEntityKey != null)
+      receivableAccount.sourceEntityKey!,
+    if (receiveAccount.sourceEntityKey != null) receiveAccount.sourceEntityKey!,
+  ];
+}
+
+enum ImportOpeningBalanceAccountKind { receivable, liability }
+
+class ImportOpeningBalanceDraft extends ImportTransactionDraft {
+  ImportOpeningBalanceDraft({
+    required super.amount,
+    ImportAccountReference? account,
+    @Deprecated('Use account instead.')
+    ImportAccountReference? liabilityAccount,
+    this.accountKind = ImportOpeningBalanceAccountKind.liability,
+    required super.occurredAt,
+    super.postedAt,
+    super.note,
+  }) : assert(account != null || liabilityAccount != null),
+       account = account ?? liabilityAccount!;
+
+  final ImportAccountReference account;
+  final ImportOpeningBalanceAccountKind accountKind;
+
+  /// Kept as a compatibility alias for code which predates ordinary
+  /// receivable opening balances.
+  ImportAccountReference get liabilityAccount => account;
 
   @override
   ImportOperationKind get operationKind => ImportOperationKind.openingBalance;
 
   @override
   Iterable<String> get sourceEntityKeys => [
-    if (liabilityAccount.sourceEntityKey != null)
-      liabilityAccount.sourceEntityKey!,
+    if (account.sourceEntityKey != null) account.sourceEntityKey!,
   ];
 }
 
@@ -800,10 +866,30 @@ ImportTransactionDraft applyImportDraftEdit(
         postedAt: postedAt,
         note: note,
       );
+    case ImportLendingDraft draft:
+      return ImportLendingDraft(
+        amount: edit.amount ?? draft.amount,
+        receivableAccount: draft.receivableAccount,
+        paidFrom: draft.paidFrom,
+        occurredAt: occurredAt,
+        postedAt: postedAt,
+        note: note,
+      );
+    case ImportReceivableCollectionDraft draft:
+      return ImportReceivableCollectionDraft(
+        principal: edit.amount ?? draft.principal,
+        receivableAccount: draft.receivableAccount,
+        receiveAccount: draft.receiveAccount,
+        interest: edit.interest?.applyTo(draft.interest) ?? draft.interest,
+        occurredAt: occurredAt,
+        postedAt: postedAt,
+        note: note,
+      );
     case ImportOpeningBalanceDraft draft:
       return ImportOpeningBalanceDraft(
         amount: edit.amount ?? draft.amount,
-        liabilityAccount: draft.liabilityAccount,
+        account: draft.account,
+        accountKind: draft.accountKind,
         occurredAt: occurredAt,
         postedAt: postedAt,
         note: note,

@@ -134,6 +134,11 @@ Set<String> _amountIssueCodes(ImportTransactionDraft draft) {
       '手续费_negative',
     },
     ImportBorrowingDraft() => {...amount, 'borrowing_amount_invalid'},
+    ImportLendingDraft() => {...amount, 'lending_amount_invalid'},
+    ImportReceivableCollectionDraft() => {
+      ...amount,
+      'collection_principal_invalid',
+    },
     ImportOpeningBalanceDraft() => {...amount, 'opening_amount_invalid'},
   };
 }

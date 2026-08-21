@@ -192,6 +192,25 @@ abstract interface class ImportLedgerPort {
     String? note,
   });
 
+  Future<String> createLending({
+    required Money amount,
+    required String receivableAccountId,
+    required String paidFromAccountId,
+    required DateTime occurredAt,
+    required DateTime postedAt,
+    String? note,
+  });
+
+  Future<String> createReceivableCollection({
+    required Money principal,
+    required String receivableAccountId,
+    required String receiveAccountId,
+    required DateTime occurredAt,
+    required DateTime postedAt,
+    Money? interest,
+    String? note,
+  });
+
   Future<String> createOpeningBalance({
     required Money amount,
     required String accountId,

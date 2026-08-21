@@ -895,6 +895,8 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
             : const [
               ImportTargetDescriptor.fundAccount,
               ImportTargetDescriptor.reimbursementAccount,
+              ImportTargetDescriptor.receivableAccount,
+              ImportTargetDescriptor.payableAccount,
               ImportTargetDescriptor.creditAccount,
               ImportTargetDescriptor.loanAccount,
             ];
@@ -946,7 +948,9 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     }
     const order = [
       ImportTargetDescriptor.reimbursementAccount,
+      ImportTargetDescriptor.receivableAccount,
       ImportTargetDescriptor.fundAccount,
+      ImportTargetDescriptor.payableAccount,
       ImportTargetDescriptor.creditAccount,
       ImportTargetDescriptor.loanAccount,
     ];
@@ -1362,10 +1366,34 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           _TargetUsage.fund,
           groupIndex: groupIndex,
         );
+      case ImportLendingDraft draft:
+        await context.account(
+          draft.receivableAccount,
+          _TargetUsage.receivable,
+          groupIndex: groupIndex,
+        );
+        await context.account(
+          draft.paidFrom,
+          _TargetUsage.fund,
+          groupIndex: groupIndex,
+        );
+      case ImportReceivableCollectionDraft draft:
+        await context.account(
+          draft.receivableAccount,
+          _TargetUsage.receivable,
+          groupIndex: groupIndex,
+        );
+        await context.account(
+          draft.receiveAccount,
+          _TargetUsage.fund,
+          groupIndex: groupIndex,
+        );
       case ImportOpeningBalanceDraft draft:
         await context.account(
-          draft.liabilityAccount,
-          _TargetUsage.liability,
+          draft.account,
+          draft.accountKind == ImportOpeningBalanceAccountKind.receivable
+              ? _TargetUsage.receivable
+              : _TargetUsage.liability,
           groupIndex: groupIndex,
         );
       case ImportRefundDraft() ||
@@ -1424,6 +1452,8 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           ImportRepaymentDraft() ||
           ImportInterestExpenseDraft() ||
           ImportBorrowingDraft() ||
+          ImportLendingDraft() ||
+          ImportReceivableCollectionDraft() ||
           ImportOpeningBalanceDraft():
         throw ImportWorkflowException(
           ImportErrorCode.invalidDraftStructure,
@@ -1600,11 +1630,47 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         postedAt: draft.postedAt,
         note: draft.note,
       ),
+      ImportLendingDraft draft => _ledger.createLending(
+        amount: draft.amount,
+        receivableAccountId: await context.account(
+          draft.receivableAccount,
+          _TargetUsage.receivable,
+          groupIndex: groupIndex,
+        ),
+        paidFromAccountId: await context.account(
+          draft.paidFrom,
+          _TargetUsage.fund,
+          groupIndex: groupIndex,
+        ),
+        occurredAt: draft.occurredAt,
+        postedAt: draft.postedAt,
+        note: draft.note,
+      ),
+      ImportReceivableCollectionDraft draft => _ledger
+          .createReceivableCollection(
+            principal: draft.principal,
+            interest: draft.interest,
+            receivableAccountId: await context.account(
+              draft.receivableAccount,
+              _TargetUsage.receivable,
+              groupIndex: groupIndex,
+            ),
+            receiveAccountId: await context.account(
+              draft.receiveAccount,
+              _TargetUsage.fund,
+              groupIndex: groupIndex,
+            ),
+            occurredAt: draft.occurredAt,
+            postedAt: draft.postedAt,
+            note: draft.note,
+          ),
       ImportOpeningBalanceDraft draft => _ledger.createOpeningBalance(
         amount: draft.amount,
         accountId: await context.account(
-          draft.liabilityAccount,
-          _TargetUsage.liability,
+          draft.account,
+          draft.accountKind == ImportOpeningBalanceAccountKind.receivable
+              ? _TargetUsage.receivable
+              : _TargetUsage.liability,
           groupIndex: groupIndex,
         ),
         occurredAt: draft.occurredAt,

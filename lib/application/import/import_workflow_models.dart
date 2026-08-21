@@ -20,6 +20,8 @@ String importTargetDescription(ImportTargetDescriptor descriptor) {
     ImportTargetDescriptor.expenseCategory => '支出分类',
     ImportTargetDescriptor.fundAccount => '资金账户',
     ImportTargetDescriptor.reimbursementAccount => '报销账户',
+    ImportTargetDescriptor.receivableAccount => '应收账户',
+    ImportTargetDescriptor.payableAccount => '应付账户',
     ImportTargetDescriptor.creditAccount => '信用账户',
     ImportTargetDescriptor.loanAccount => '贷款账户',
     ImportTargetDescriptor.ghostAccount => '无账户',
@@ -175,6 +177,8 @@ extension ImportTargetDescriptorMappingProjection on ImportTargetDescriptor {
     ImportTargetDescriptor.fundAccount => ImportMappingTargetKind.asset,
     ImportTargetDescriptor.reimbursementAccount =>
       ImportMappingTargetKind.reimbursement,
+    ImportTargetDescriptor.receivableAccount => ImportMappingTargetKind.asset,
+    ImportTargetDescriptor.payableAccount => ImportMappingTargetKind.liability,
     ImportTargetDescriptor.creditAccount ||
     ImportTargetDescriptor.loanAccount => ImportMappingTargetKind.liability,
     ImportTargetDescriptor.incomeCategory =>

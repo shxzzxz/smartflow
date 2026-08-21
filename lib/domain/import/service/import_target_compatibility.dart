@@ -9,6 +9,7 @@ enum ImportTargetUsage {
   settlement,
   fund,
   liability,
+  receivable,
   reimbursement,
   incomeCategory,
   expenseCategory,
@@ -36,13 +37,17 @@ class ImportTargetCompatibilityPolicy {
     return switch (usage) {
       ImportTargetUsage.settlement => {
         ImportTargetDescriptor.fundAccount,
+        ImportTargetDescriptor.payableAccount,
         ImportTargetDescriptor.creditAccount,
-        ImportTargetDescriptor.loanAccount,
       },
       ImportTargetUsage.fund => {ImportTargetDescriptor.fundAccount},
       ImportTargetUsage.liability => {
+        ImportTargetDescriptor.payableAccount,
         ImportTargetDescriptor.creditAccount,
         ImportTargetDescriptor.loanAccount,
+      },
+      ImportTargetUsage.receivable => {
+        ImportTargetDescriptor.receivableAccount,
       },
       ImportTargetUsage.reimbursement => {
         ImportTargetDescriptor.reimbursementAccount,
@@ -77,6 +82,8 @@ class ImportTargetCompatibilityPolicy {
       ImportEntityKind.account => {
         ImportTargetDescriptor.fundAccount,
         ImportTargetDescriptor.reimbursementAccount,
+        ImportTargetDescriptor.receivableAccount,
+        ImportTargetDescriptor.payableAccount,
         ImportTargetDescriptor.creditAccount,
         ImportTargetDescriptor.loanAccount,
       }.contains(descriptor),
@@ -174,10 +181,27 @@ class ImportTargetCompatibilityPolicy {
           draft.receiveAccount.sourceEntityKey,
           ImportTargetUsage.fund,
         );
+      case ImportLendingDraft draft:
+        yield* _account(
+          draft.receivableAccount.sourceEntityKey,
+          ImportTargetUsage.receivable,
+        );
+        yield* _account(draft.paidFrom.sourceEntityKey, ImportTargetUsage.fund);
+      case ImportReceivableCollectionDraft draft:
+        yield* _account(
+          draft.receivableAccount.sourceEntityKey,
+          ImportTargetUsage.receivable,
+        );
+        yield* _account(
+          draft.receiveAccount.sourceEntityKey,
+          ImportTargetUsage.fund,
+        );
       case ImportOpeningBalanceDraft draft:
         yield* _account(
-          draft.liabilityAccount.sourceEntityKey,
-          ImportTargetUsage.liability,
+          draft.account.sourceEntityKey,
+          draft.accountKind == ImportOpeningBalanceAccountKind.receivable
+              ? ImportTargetUsage.receivable
+              : ImportTargetUsage.liability,
         );
     }
   }

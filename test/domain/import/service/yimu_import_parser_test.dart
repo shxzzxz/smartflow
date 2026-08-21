@@ -326,7 +326,7 @@ void main() {
   });
 
   test(
-    'marks debt transfer-in accounts as loan-constrained source entities',
+    'keeps debt liability targets compatible with payable and loan accounts',
     () {
       final result = _parser(
         debtRows: [
@@ -358,12 +358,121 @@ void main() {
       );
       expect(
         entity.preferredTargetDescriptor,
-        ImportTargetDescriptor.loanAccount,
+        ImportTargetDescriptor.payableAccount,
+      );
+      expect(
+        entity.allowedTargetDescriptors,
+        contains(ImportTargetDescriptor.payableAccount),
       );
       expect(
         entity.allowedTargetDescriptors,
         isNot(contains(ImportTargetDescriptor.creditAccount)),
       );
+    },
+  );
+
+  test('maps debt lending, collection, and receivable opening balances', () {
+    final result = _parser(
+      debtRows: [
+        {
+          '日期': '2026-01-01 09:00',
+          '类型': '借出',
+          '转出账户': '现金',
+          '转入账户': '小王',
+          '金额': 100.0,
+          '手续费': 0.0,
+        },
+        {
+          '日期': '2026-01-02 09:00',
+          '类型': '收款',
+          '转出账户': '现金',
+          '转入账户': '小王',
+          '金额': 40.0,
+          '手续费': 0.0,
+        },
+        {
+          '日期': '2026-01-03 09:00',
+          '类型': '借出',
+          '转出账户': '无账户',
+          '转入账户': '旧应收',
+          '金额': 60.0,
+          '手续费': 0.0,
+        },
+      ],
+    ).parse(_bundle(names: const ['债务.xls']));
+
+    expect(result.groups[0].topLevel, isA<ImportLendingDraft>());
+    expect(result.groups[1].topLevel, isA<ImportReceivableCollectionDraft>());
+    final opening = result.groups[2].topLevel as ImportOpeningBalanceDraft;
+    expect(opening.accountKind, ImportOpeningBalanceAccountKind.receivable);
+    final receivable = result.sourceAccounts.singleWhere(
+      (account) => account.displayName == '小王',
+    );
+    expect(receivable.allowedTargetDescriptors, {
+      ImportTargetDescriptor.receivableAccount,
+    });
+  });
+
+  test('turns a reimbursed expense refund into a gross advance and refund', () {
+    final result = _parser(
+      billRows: [
+        {
+          '日期': '2026-08-21 20:24',
+          '收支类型': '支出',
+          '金额': -18.0,
+          '类别': '食品餐饮',
+          '二级分类': '请客吃饭',
+          '账户': 'test 资金',
+          '退款': 2.0,
+          '报销账户': 'test 报销',
+          '报销金额': 17.0,
+          '报销明细':
+              '2026/08/21test 资金 B到账10.0\n'
+              '2026/08/21test 资金 B到账7.0',
+          '备注': '',
+          '其他': '',
+        },
+      ],
+    ).parse(_bundle(names: const ['账单.xls']));
+
+    final group = result.groups.single;
+    final advance = group.topLevel as ImportReimbursementAdvanceDraft;
+    expect(advance.amount, Money.parse('20.00'));
+    expect(group.children, hasLength(3));
+    final refund = group.children[0] as ImportRefundDraft;
+    expect(refund.amount, Money.parse('2.00'));
+    final receipt = group.children[1] as ImportReimbursementReceiptDraft;
+    expect(receipt.amount, Money.parse('10.00'));
+    final close = group.children[2] as ImportReimbursementCloseDraft;
+    expect(close.actualReceivedAmount, Money.parse('7.00'));
+  });
+
+  test('filters a bill transfer-fee result from its generated note', () {
+      final result = _parser(
+        billRows: [
+          {
+            '日期': '2026-01-01 09:00',
+            '收支类型': '支出',
+            '金额': -3.0,
+            '类别': '其他',
+            '二级分类': '',
+            '账户': '现金',
+            '退款': 0.0,
+            '报销账户': '',
+            '报销金额': '',
+            '报销明细': '',
+            '备注': '银行卡 转账手续费',
+            '其他': '',
+          },
+        ],
+    ).parse(_bundle(names: const ['账单.xls']));
+
+    expect(result.groups, isEmpty);
+      expect(
+        result.filteredRecords.single.reasonCode,
+        'transfer_fee_generated',
+      );
+      expect(result.sourceCategories, isEmpty);
     },
   );
 

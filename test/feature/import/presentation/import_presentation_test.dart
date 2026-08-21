@@ -29,6 +29,11 @@ void main() {
     );
 
     expect(importOperationLabel(group.topLevel.operationKind), '转账');
+    expect(importOperationLabel(ImportOperationKind.lending), '借出');
+    expect(
+      importOperationLabel(ImportOperationKind.receivableCollection),
+      '收回',
+    );
     expect(importEntityKindLabel(entity), '来源账户');
     expect(importGroupEntities(group, const [entity]), const [entity]);
     expect(formatImportDateTime(group.topLevel.occurredAt), '2026-07-22 09:30');
@@ -213,9 +218,7 @@ void main() {
     final suspected = buildImportPreviewGroups(
       _previewReview(suspectedDuplicate: true),
     );
-    expect(suspected.single.rows.single.badges.map((b) => b.label), [
-      '疑似重复',
-    ]);
+    expect(suspected.single.rows.single.badges.map((b) => b.label), ['疑似重复']);
 
     final warning = buildImportPreviewGroups(_previewReview());
     expect(warning.single.rows.single.badges.map((b) => b.label), ['需确认']);

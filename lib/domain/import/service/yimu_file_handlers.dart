@@ -205,7 +205,9 @@ class YimuBillFileHandler implements YimuFileHandler {
       fileName: fileName,
       fileType: fileType.descriptor,
       records: records,
-      localEntities: _billEntities(records),
+      // Bill entities are derived only after bundle-level filters run. This
+      // prevents a generated transfer-fee result row from leaving behind an
+      // unnecessary account/category mapping item.
       issues: records.expand((record) => record.issues),
     );
   }
@@ -430,14 +432,7 @@ class YimuTransferFileHandler implements YimuFileHandler {
       fileName: fileName,
       fileType: fileType.descriptor,
       records: records,
-      localEntities: _movementEntities(
-        records,
-        fileType: fileType,
-        allowedLiabilityDescriptors: const {
-          ImportTargetDescriptor.creditAccount,
-          ImportTargetDescriptor.loanAccount,
-        },
-      ),
+      localEntities: _movementEntities(records, fileType: fileType),
       issues: records.expand((record) => record.issues),
     );
   }
@@ -500,11 +495,7 @@ class YimuDebtFileHandler implements YimuFileHandler {
       fileName: fileName,
       fileType: fileType.descriptor,
       records: records,
-      localEntities: _movementEntities(
-        records,
-        fileType: fileType,
-        allowedLiabilityDescriptors: const {ImportTargetDescriptor.loanAccount},
-      ),
+      localEntities: _movementEntities(records, fileType: fileType),
       issues: records.expand((record) => record.issues),
     );
   }
@@ -595,73 +586,77 @@ final class _NormalizedMovementRecord extends YimuAccountMovementRecord {
   });
 }
 
-Iterable<ImportSourceEntity> _billEntities(
-  Iterable<YimuBillRecord> records,
-) sync* {
-  for (final record in records) {
-    if (record.filterReason != null) continue;
-    final kind = record.kind;
-    if (kind != '收入' && kind != '支出') continue;
-    final category = record.categoryPath;
-    if (category != null) {
-      yield _categoryEntity(
-        category,
-        kind == '收入' ? ImportCategoryKind.income : ImportCategoryKind.expense,
-      );
-    }
-    final account = record.accountName;
-    if (account != null && !_isNone(account)) yield _accountEntity(account);
-    if (kind == '支出' && record.hasReimbursementFields) {
-      final receivable = record.reimbursementAccountName;
-      if (receivable != null && !_isNone(receivable)) {
-        yield _accountEntity(
-          receivable,
-          allowed: const {ImportTargetDescriptor.reimbursementAccount},
-          preferred: ImportTargetDescriptor.reimbursementAccount,
-        );
-      }
-      for (final detail in record.reimbursementDetails) {
-        final detailAccount = detail.accountName;
-        if (detailAccount != null && !_isNone(detailAccount)) {
-          yield _accountEntity(detailAccount);
-        }
-      }
-    }
-  }
-}
-
 Iterable<ImportSourceEntity> _movementEntities(
   Iterable<YimuAccountMovementRecord> records, {
   required YimuFileType fileType,
-  required Set<ImportTargetDescriptor> allowedLiabilityDescriptors,
 }) sync* {
   for (final record in records) {
     final kind = record.kind;
-    if (kind != '转账' && kind != '还款' && kind != '借入') continue;
     final from = record.fromAccountName;
     final to = record.toAccountName;
-    if (from != null && !_isNone(from)) {
-      yield _accountEntity(
-        from,
-        allowed: const {ImportTargetDescriptor.fundAccount},
-        preferred: ImportTargetDescriptor.fundAccount,
-      );
+    if (kind == '转账') {
+      if (from != null && !_isNone(from)) {
+        yield _accountEntity(
+          from,
+          allowed: const {ImportTargetDescriptor.fundAccount},
+          preferred: ImportTargetDescriptor.fundAccount,
+        );
+      }
+      if (to != null && !_isNone(to)) {
+        yield _accountEntity(
+          to,
+          allowed: const {ImportTargetDescriptor.fundAccount},
+          preferred: ImportTargetDescriptor.fundAccount,
+        );
+      }
+      continue;
     }
-    if (to != null && !_isNone(to)) {
-      final isLiability = kind == '还款' || kind == '借入';
-      yield _accountEntity(
-        to,
-        allowed:
-            isLiability
-                ? allowedLiabilityDescriptors
-                : const {ImportTargetDescriptor.fundAccount},
-        preferred:
-            isLiability && allowedLiabilityDescriptors.length == 1
-                ? allowedLiabilityDescriptors.first
-                : isLiability
-                ? null
-                : ImportTargetDescriptor.fundAccount,
-      );
+    if (kind == '还款' || kind == '借入') {
+      if (from != null && !_isNone(from)) {
+        yield _accountEntity(
+          from,
+          allowed: const {ImportTargetDescriptor.fundAccount},
+          preferred: ImportTargetDescriptor.fundAccount,
+        );
+      }
+      if (to != null && !_isNone(to)) {
+        final allowed =
+            fileType == YimuFileType.transfer
+                ? const {
+                  ImportTargetDescriptor.payableAccount,
+                  ImportTargetDescriptor.creditAccount,
+                  ImportTargetDescriptor.loanAccount,
+                }
+                : const {
+                  ImportTargetDescriptor.payableAccount,
+                  ImportTargetDescriptor.loanAccount,
+                };
+        yield _accountEntity(
+          to,
+          allowed: allowed,
+          preferred:
+              fileType == YimuFileType.transfer
+                  ? ImportTargetDescriptor.creditAccount
+                  : ImportTargetDescriptor.payableAccount,
+        );
+      }
+      continue;
+    }
+    if (fileType == YimuFileType.debt && (kind == '借出' || kind == '收款')) {
+      if (from != null && !_isNone(from)) {
+        yield _accountEntity(
+          from,
+          allowed: const {ImportTargetDescriptor.fundAccount},
+          preferred: ImportTargetDescriptor.fundAccount,
+        );
+      }
+      if (to != null && !_isNone(to)) {
+        yield _accountEntity(
+          to,
+          allowed: const {ImportTargetDescriptor.receivableAccount},
+          preferred: ImportTargetDescriptor.receivableAccount,
+        );
+      }
     }
   }
 }
@@ -678,20 +673,6 @@ ImportSourceEntity _accountEntity(
     displayName: name.trim(),
     allowedTargetDescriptors: allowed,
     preferredTargetDescriptor: preferred,
-  );
-}
-
-ImportSourceEntity _categoryEntity(String path, ImportCategoryKind kind) {
-  return ImportSourceEntity(
-    source: ImportSource.yimu,
-    kind: ImportEntityKind.category,
-    sourceEntityKey: 'category:${kind.name}:${_normalized(path)}',
-    displayName: path.trim(),
-    categoryKind: kind,
-    preferredTargetDescriptor:
-        kind == ImportCategoryKind.income
-            ? ImportTargetDescriptor.incomeCategory
-            : ImportTargetDescriptor.expenseCategory,
   );
 }
 
@@ -763,11 +744,6 @@ Money? _optionalMoney(
       ),
     );
     return null;
-  }
-  if (parsed.minorUnits < 0) {
-    issues.add(
-      _issue(fileType, '${fieldName}_negative', '$fieldName不能为负数。', rowNumber),
-    );
   }
   return parsed.minorUnits == 0 ? null : parsed;
 }

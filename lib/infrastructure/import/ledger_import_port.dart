@@ -87,6 +87,24 @@ class LedgerImportPort implements ImportLedgerPort {
             profileKey: AccountProfileKind.reimbursement.key,
           ),
         )).id,
+      ImportTargetDescriptor.receivableAccount =>
+        (await _accountCommands.createAccount(
+          CreateAccountCommand(
+            name: creation.name,
+            type: AccountType.asset,
+            subtype: AccountSubtype.receivable,
+            profileKey: AccountProfileKind.receivable.key,
+          ),
+        )).id,
+      ImportTargetDescriptor.payableAccount =>
+        (await _accountCommands.createAccount(
+          CreateAccountCommand(
+            name: creation.name,
+            type: AccountType.liability,
+            subtype: AccountSubtype.payable,
+            profileKey: AccountProfileKind.payable.key,
+          ),
+        )).id,
       ImportTargetDescriptor.creditAccount => _createCreditTarget(
         creation,
         CreditLiabilityAccountKind.credit,
@@ -375,6 +393,54 @@ class LedgerImportPort implements ImportLedgerPort {
   }
 
   @override
+  Future<String> createLending({
+    required Money amount,
+    required String receivableAccountId,
+    required String paidFromAccountId,
+    required DateTime occurredAt,
+    required DateTime postedAt,
+    String? note,
+  }) async {
+    final result = await (_posting as ReceivableTransactionPostingAppService)
+        .createLending(
+      CreateLendingCommand(
+        amount: amount,
+        receivableAccountId: receivableAccountId,
+        paidFromAccountId: paidFromAccountId,
+        occurredAt: occurredAt,
+        postedAt: postedAt,
+        note: note,
+      ),
+    );
+    return result.transactionId;
+  }
+
+  @override
+  Future<String> createReceivableCollection({
+    required Money principal,
+    required String receivableAccountId,
+    required String receiveAccountId,
+    required DateTime occurredAt,
+    required DateTime postedAt,
+    Money? interest,
+    String? note,
+  }) async {
+    final result = await (_posting as ReceivableTransactionPostingAppService)
+        .createReceivableCollection(
+      CreateReceivableCollectionCommand(
+        principal: principal,
+        interest: interest ?? Money.zero(),
+        receivableAccountId: receivableAccountId,
+        receiveAccountId: receiveAccountId,
+        occurredAt: occurredAt,
+        postedAt: postedAt,
+        note: note,
+      ),
+    );
+    return result.transactionId;
+  }
+
+  @override
   Future<String> createOpeningBalance({
     required Money amount,
     required String accountId,
@@ -479,8 +545,9 @@ class LedgerImportPort implements ImportLedgerPort {
         AccountProfileKind.fund => ImportTargetDescriptor.fundAccount,
         AccountProfileKind.reimbursement =>
           ImportTargetDescriptor.reimbursementAccount,
-        AccountProfileKind.receivable => ImportTargetDescriptor.fundAccount,
-        AccountProfileKind.payable => ImportTargetDescriptor.creditAccount,
+        AccountProfileKind.receivable =>
+          ImportTargetDescriptor.receivableAccount,
+        AccountProfileKind.payable => ImportTargetDescriptor.payableAccount,
         AccountProfileKind.credit => ImportTargetDescriptor.creditAccount,
         AccountProfileKind.loan => ImportTargetDescriptor.loanAccount,
       };
@@ -488,7 +555,7 @@ class LedgerImportPort implements ImportLedgerPort {
     return switch ((account.type, account.subtype, account.systemKey)) {
       (_, _, SystemKey.ghostAccount) => ImportTargetDescriptor.ghostAccount,
       (AccountType.asset, AccountSubtype.receivable, _) =>
-        ImportTargetDescriptor.reimbursementAccount,
+        ImportTargetDescriptor.receivableAccount,
       (AccountType.asset, _, _) => ImportTargetDescriptor.fundAccount,
       // AccountType.liability alone does not identify a credit card versus a
       // loan.  The import mapping must rely on an explicit account profile.

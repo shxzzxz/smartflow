@@ -235,6 +235,17 @@ void _parseBillRows(
       );
       continue;
     }
+    if (_isGeneratedTransferFee(record)) {
+      filtered.add(
+        ImportFilteredRecord(
+          reasonCode: 'transfer_fee_generated',
+          reason: '转账手续费是一木自动生成的结果行。',
+          fileType: YimuFileType.bill.descriptor,
+          rowNumber: rowNumber,
+        ),
+      );
+      continue;
+    }
 
     final issues = [...record.issues];
     final kind = record.kind;
@@ -306,7 +317,9 @@ void _parseBillRows(
       }
       final gross = actualAmount.abs() + (refund?.abs() ?? Money.zero());
       if (gross.minorUnits == 0) {
-        issues.add(_blocking('expense_amount_invalid', '支出金额必须大于零。', rowNumber));
+        issues.add(
+          _blocking('expense_amount_invalid', '支出金额必须大于零。', rowNumber),
+        );
       }
       final top = ImportExpenseDraft(
         amount: gross,
@@ -442,6 +455,14 @@ ImportTransactionGroupDraft _parseReimbursement(
     fieldName: '报销账户',
   );
   final reimbursementAmount = record.reimbursementAmount;
+  final refund = record.refundAmount;
+  if (refund != null && refund.minorUnits < 0) {
+    issues.add(_blocking('refund_negative', '退款金额不能为负数。', rowNumber));
+  }
+  final grossAdvance = amount.abs() + (refund?.abs() ?? Money.zero());
+  if (grossAdvance.minorUnits == 0) {
+    issues.add(_blocking('expense_amount_invalid', '支出金额必须大于零。', rowNumber));
+  }
   final details = [
     for (final detail in record.reimbursementDetails)
       if (detail.occurredAt != null && detail.amount != null)
@@ -482,7 +503,7 @@ ImportTransactionGroupDraft _parseReimbursement(
   }
 
   final top = ImportReimbursementAdvanceDraft(
-    amount: amount.abs(),
+    amount: grossAdvance,
     receivableAccount: receivable,
     paidFrom: paidFrom,
     category: category,
@@ -492,7 +513,16 @@ ImportTransactionGroupDraft _parseReimbursement(
     isExcludedFromStats: excludedFromStats,
     isExcludedFromBudget: excludedFromBudget,
   );
-  final children = <ImportTransactionDraft>[];
+  final children = <ImportTransactionDraft>[
+    if (refund != null && refund.minorUnits > 0)
+      ImportRefundDraft(
+        amount: refund,
+        refundTo: paidFrom,
+        occurredAt: occurredAt,
+        postedAt: postedAt,
+        note: note,
+      ),
+  ];
   if (details.isNotEmpty) {
     for (var index = 0; index < details.length - 1; index++) {
       final detail = details[index];
@@ -597,6 +627,11 @@ void _parseTransferRows(
           _blocking('transfer_amount_invalid', '转账金额必须大于零。', rowNumber),
         );
       }
+      if ((fee?.minorUnits ?? 0) < 0) {
+        issues.add(
+          _blocking('transfer_fee_negative', '转账手续费不能为负数。', rowNumber),
+        );
+      }
       groups.add(
         _group(
           ImportTransferDraft(
@@ -641,12 +676,19 @@ void _parseTransferRows(
         fieldName: '转入账户',
         allowedTargetDescriptors:
             role == YimuFileType.debt
-                ? const {ImportTargetDescriptor.loanAccount}
-                : const {},
+                ? const {
+                  ImportTargetDescriptor.payableAccount,
+                  ImportTargetDescriptor.loanAccount,
+                }
+                : const {
+                  ImportTargetDescriptor.payableAccount,
+                  ImportTargetDescriptor.creditAccount,
+                  ImportTargetDescriptor.loanAccount,
+                },
         preferredTargetDescriptor:
             role == YimuFileType.debt
-                ? ImportTargetDescriptor.loanAccount
-                : null,
+                ? ImportTargetDescriptor.payableAccount
+                : ImportTargetDescriptor.creditAccount,
       );
       final fee = record.feeAmount;
       final interest = fee != null && fee.minorUnits > 0 ? fee : null;
@@ -705,8 +747,11 @@ void _parseTransferRows(
         fileType: role,
         fieldKey: 'to',
         fieldName: '转入账户',
-        allowedTargetDescriptors: const {ImportTargetDescriptor.loanAccount},
-        preferredTargetDescriptor: ImportTargetDescriptor.loanAccount,
+        allowedTargetDescriptors: const {
+          ImportTargetDescriptor.payableAccount,
+          ImportTargetDescriptor.loanAccount,
+        },
+        preferredTargetDescriptor: ImportTargetDescriptor.payableAccount,
       );
       final isOpening = fromValue == null || _isExplicitNone(fromValue);
       if (isOpening) {
@@ -719,7 +764,7 @@ void _parseTransferRows(
           _group(
             ImportOpeningBalanceDraft(
               amount: actualAmount.abs(),
-              liabilityAccount: liability,
+              account: liability,
               occurredAt: actualDate,
               postedAt: postedAt,
               note: note,
@@ -768,6 +813,132 @@ void _parseTransferRows(
       continue;
     }
 
+    if (type == '借出' && role == YimuFileType.debt) {
+      final receivable = _accountReference(
+        toValue,
+        entities: entities,
+        issues: issues,
+        rowNumber: rowNumber,
+        required: true,
+        fileType: role,
+        fieldKey: 'to',
+        fieldName: '转入账户',
+        allowedTargetDescriptors: const {
+          ImportTargetDescriptor.receivableAccount,
+        },
+        preferredTargetDescriptor: ImportTargetDescriptor.receivableAccount,
+      );
+      final isOpening = fromValue == null || _isExplicitNone(fromValue);
+      if (actualAmount.minorUnits <= 0) {
+        issues.add(
+          _blocking(
+            isOpening ? 'opening_amount_invalid' : 'lending_amount_invalid',
+            isOpening ? '债务期初金额必须大于零。' : '借出金额必须大于零。',
+            rowNumber,
+          ),
+        );
+      }
+      if (isOpening) {
+        groups.add(
+          _group(
+            ImportOpeningBalanceDraft(
+              amount: actualAmount.abs(),
+              account: receivable,
+              accountKind: ImportOpeningBalanceAccountKind.receivable,
+              occurredAt: actualDate,
+              postedAt: postedAt,
+              note: note,
+            ),
+            fileType: role,
+            issues: issues,
+            operationKey: operationKey,
+            canonical: canonical,
+          ),
+        );
+      } else {
+        final paidFrom = _accountReference(
+          fromValue,
+          entities: entities,
+          issues: issues,
+          rowNumber: rowNumber,
+          required: true,
+          fileType: role,
+          fieldKey: 'from',
+          fieldName: '转出账户',
+          allowedTargetDescriptors: const {ImportTargetDescriptor.fundAccount},
+          preferredTargetDescriptor: ImportTargetDescriptor.fundAccount,
+        );
+        groups.add(
+          _group(
+            ImportLendingDraft(
+              amount: actualAmount.abs(),
+              receivableAccount: receivable,
+              paidFrom: paidFrom,
+              occurredAt: actualDate,
+              postedAt: postedAt,
+              note: note,
+            ),
+            fileType: role,
+            issues: issues,
+            operationKey: operationKey,
+            canonical: canonical,
+          ),
+        );
+      }
+      continue;
+    }
+
+    if (type == '收款' && role == YimuFileType.debt) {
+      final receive = _accountReference(
+        fromValue,
+        entities: entities,
+        issues: issues,
+        rowNumber: rowNumber,
+        required: true,
+        fileType: role,
+        fieldKey: 'from',
+        fieldName: '转出账户',
+        allowedTargetDescriptors: const {ImportTargetDescriptor.fundAccount},
+        preferredTargetDescriptor: ImportTargetDescriptor.fundAccount,
+      );
+      final receivable = _accountReference(
+        toValue,
+        entities: entities,
+        issues: issues,
+        rowNumber: rowNumber,
+        required: true,
+        fileType: role,
+        fieldKey: 'to',
+        fieldName: '转入账户',
+        allowedTargetDescriptors: const {
+          ImportTargetDescriptor.receivableAccount,
+        },
+        preferredTargetDescriptor: ImportTargetDescriptor.receivableAccount,
+      );
+      if (actualAmount.minorUnits <= 0) {
+        issues.add(
+          _blocking('collection_principal_invalid', '收款本金必须大于零。', rowNumber),
+        );
+      }
+      groups.add(
+        _group(
+          ImportReceivableCollectionDraft(
+            principal: actualAmount.abs(),
+            receivableAccount: receivable,
+            receiveAccount: receive,
+            occurredAt: actualDate,
+            postedAt: postedAt,
+            note: note,
+          ),
+          fileType: role,
+          issues: issues,
+          operationKey: operationKey,
+          canonical: canonical,
+        ),
+      );
+      continue;
+    }
+
     issues.add(
       _blocking(
         'unsupported_transfer_type',
@@ -791,6 +962,13 @@ void _parseTransferRows(
       ),
     );
   }
+}
+
+bool _isGeneratedTransferFee(YimuBillRecord bill) {
+  final note = bill.note;
+  return bill.kind == '支出' &&
+      note != null &&
+      note.endsWith(' 转账手续费');
 }
 
 ImportTransactionGroupDraft _group(

@@ -71,14 +71,16 @@ List<TransactionDayGroup> buildImportPreviewGroups(
       draft.occurredAt.month,
       draft.occurredAt.day,
     );
-    rowsByDate.putIfAbsent(date, () => []).add(
-      _buildImportPreviewRow(
-        review,
-        groupReview,
-        selectedGroupIndexes,
-        showSelectionControls: showSelectionControls,
-      ),
-    );
+    rowsByDate
+        .putIfAbsent(date, () => [])
+        .add(
+          _buildImportPreviewRow(
+            review,
+            groupReview,
+            selectedGroupIndexes,
+            showSelectionControls: showSelectionControls,
+          ),
+        );
     if (_isIncomeDraft(draft)) {
       incomeByDate.update(
         date,
@@ -301,6 +303,8 @@ String importOperationLabel(ImportOperationKind kind) {
     ImportOperationKind.repayment => '还款',
     ImportOperationKind.interestExpense => '利息支出',
     ImportOperationKind.borrowing => '借入',
+    ImportOperationKind.lending => '借出',
+    ImportOperationKind.receivableCollection => '收回',
     ImportOperationKind.openingBalance => '债务期初余额',
   };
 }
@@ -465,8 +469,16 @@ TransactionAccountFlowPresentation _previewAccountFlow(
       out: endpoint(draft.liabilityAccount),
       in_: endpoint(draft.receiveAccount),
     ),
+    ImportLendingDraft draft => TransactionAccountFlowPresentation(
+      out: endpoint(draft.paidFrom),
+      in_: endpoint(draft.receivableAccount),
+    ),
+    ImportReceivableCollectionDraft draft => TransactionAccountFlowPresentation(
+      out: endpoint(draft.receivableAccount),
+      in_: endpoint(draft.receiveAccount),
+    ),
     ImportOpeningBalanceDraft draft => TransactionAccountFlowPresentation(
-      in_: endpoint(draft.liabilityAccount),
+      in_: endpoint(draft.account),
     ),
   };
 }
@@ -528,6 +540,8 @@ String? _previewIconKey(ImportTransactionDraft draft) {
     ImportOperationKind.transfer => 'transfer',
     ImportOperationKind.repayment => 'loan',
     ImportOperationKind.borrowing => 'hand-coin-line',
+    ImportOperationKind.lending => 'logout-box-r-line',
+    ImportOperationKind.receivableCollection => 'login-box-r-line',
     ImportOperationKind.openingBalance => 'wallet-line',
     _ => null,
   };
