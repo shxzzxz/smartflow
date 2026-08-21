@@ -510,6 +510,8 @@ class BadDebtInstruction extends PostingInstruction {
     this.postedAt,
     this.counterpartyName,
     this.note,
+    this.isExcludedFromStats = false,
+    this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
   });
 
@@ -519,6 +521,8 @@ class BadDebtInstruction extends PostingInstruction {
   final DateTime? postedAt;
   final String? counterpartyName;
   final String? note;
+  final bool isExcludedFromStats;
+  final bool isExcludedFromBudget;
   final SourceKind sourceKind;
 
   @override
@@ -536,6 +540,7 @@ class DebtReliefInstruction extends PostingInstruction {
     this.postedAt,
     this.counterpartyName,
     this.note,
+    this.isExcludedFromStats = false,
     this.sourceKind = SourceKind.manual,
   });
 
@@ -545,6 +550,7 @@ class DebtReliefInstruction extends PostingInstruction {
   final DateTime? postedAt;
   final String? counterpartyName;
   final String? note;
+  final bool isExcludedFromStats;
   final SourceKind sourceKind;
 
   @override
@@ -1033,6 +1039,8 @@ class BadDebtEditPatch extends PostingEditPatch {
       postedAt: current.postedAt,
       counterpartyName: current.counterpartyName,
       note: current.note,
+      isExcludedFromStats: current.isExcludedFromStats,
+      isExcludedFromBudget: current.isExcludedFromBudget,
       sourceKind: current.sourceKind,
     );
   }
@@ -1056,6 +1064,7 @@ class DebtReliefEditPatch extends PostingEditPatch {
       postedAt: current.postedAt,
       counterpartyName: current.counterpartyName,
       note: current.note,
+      isExcludedFromStats: current.isExcludedFromStats,
       sourceKind: current.sourceKind,
     );
   }

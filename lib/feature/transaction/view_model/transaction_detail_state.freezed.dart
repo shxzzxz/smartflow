@@ -450,6 +450,7 @@ $DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount {
 @override
 @pragma('vm:prefer-inline')
 $DetailEditPermissionCopyWith<$Res> get canEditTags {
+  
   return $DetailEditPermissionCopyWith<$Res>(_self.canEditTags, (value) {
     return _then(_self.copyWith(canEditTags: value));
   });
@@ -703,6 +704,7 @@ $DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount {
 @override
 @pragma('vm:prefer-inline')
 $DetailEditPermissionCopyWith<$Res> get canEditTags {
+  
   return $DetailEditPermissionCopyWith<$Res>(_self.canEditTags, (value) {
     return _then(_self.copyWith(canEditTags: value));
   });

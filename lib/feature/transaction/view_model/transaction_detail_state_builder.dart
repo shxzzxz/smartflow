@@ -300,6 +300,7 @@ DetailEditPermission _accountEditPermission(
         .repaymentSource => behavior.canEditSettlementAccount,
     AccountSelectionPurpose.reimbursementReceivable =>
       const DetailEditPermission.allowed(),
+    AccountSelectionPurpose.ordinaryReceivable ||
     AccountSelectionPurpose.receivable => const DetailEditPermission.denied(
       reason: '当前账户用途不能在交易详情页编辑',
     ),

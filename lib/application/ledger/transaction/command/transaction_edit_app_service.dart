@@ -320,6 +320,8 @@ class TransactionEditAppServiceImpl
           amount: cmd.amount,
           receivableAccountId: cmd.receivableAccountId,
         ),
+        isExcludedFromStats: cmd.isExcludedFromStats,
+        isExcludedFromBudget: cmd.isExcludedFromBudget,
         tagIds: cmd.tagIds,
       );
 
@@ -334,6 +336,7 @@ class TransactionEditAppServiceImpl
           amount: cmd.amount,
           liabilityAccountId: cmd.liabilityAccountId,
         ),
+        isExcludedFromStats: cmd.isExcludedFromStats,
         tagIds: cmd.tagIds,
       );
 
@@ -343,6 +346,8 @@ class TransactionEditAppServiceImpl
     DateTime? occurredAt,
     Patch<String?>? counterpartyName,
     Patch<String?>? note,
+    bool? isExcludedFromStats,
+    bool? isExcludedFromBudget,
     Set<String>? tagIds,
   }) => _ledgerWriter.planAndPersistRewrite(
     () => _transactionGroupRewriteService.rewriteParentTransaction(
@@ -351,6 +356,8 @@ class TransactionEditAppServiceImpl
         occurredAt: occurredAt,
         counterpartyName: counterpartyName,
         note: note,
+        isExcludedFromStats: isExcludedFromStats,
+        isExcludedFromBudget: isExcludedFromBudget,
         editPatch: patch,
       ),
     ),

@@ -11,12 +11,38 @@ import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/feature/account/view_model/account_detail_view_model.dart';
+import 'package:smartflow/feature/account/view_model/account_view.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
+import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 void main() {
+  group('accountDetailActions', () {
+    test('maps each account profile to its supported detail actions', () {
+      expect(
+        accountDetailActions(_accountView('receivable', AccountProfileKind.receivable))
+            .map((action) => action.label),
+        ['借出', '收回', '坏账'],
+      );
+      final payableActions = accountDetailActions(
+        _accountView('payable', AccountProfileKind.payable),
+      );
+      expect(payableActions.map((action) => action.label), ['借入', '还款', '债务豁免']);
+      expect(
+        payableActions.first.route,
+        '/transaction/new?mode=borrowing&liabilityAccountId=payable',
+      );
+      expect(
+        accountDetailActions(
+          _accountView('archived', AccountProfileKind.fund, isArchived: true),
+        ),
+        isEmpty,
+      );
+    });
+  });
+
   group('AccountDetailViewModel', () {
     test('builds account detail for an existing account', () async {
       final transactionService = _FakeTransactionQueryService();
@@ -294,6 +320,19 @@ final _accounts = <String, Account>{
   'cash': _account('cash', '现金', iconKey: 'cash'),
   'food': _account('food', '餐饮', type: AccountType.expense, iconKey: 'meal'),
 };
+
+AccountView _accountView(
+  String id,
+  AccountProfileKind kind, {
+  bool isArchived = false,
+}) => AccountView(
+  id: id,
+  name: id,
+  kind: kind,
+  balance: Money.zero(),
+  iconKey: kind.iconKey,
+  isArchived: isArchived,
+);
 
 Account _account(
   String id,

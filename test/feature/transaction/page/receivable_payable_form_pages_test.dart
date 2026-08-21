@@ -100,6 +100,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('交易日期'), findsOneWidget);
+    expect(find.text('不计收支'), findsOneWidget);
+    expect(find.text('不计预算'), findsOneWidget);
 
     await tester.pumpWidget(
       ProviderScope(
@@ -115,6 +117,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('交易日期'), findsOneWidget);
+    expect(find.text('不计收支'), findsOneWidget);
+    expect(find.text('不计预算'), findsNothing);
   });
 }
 

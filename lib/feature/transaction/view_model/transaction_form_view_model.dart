@@ -32,6 +32,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     TransactionFormMode initialMode = TransactionFormMode.expense,
     String? initialFromAccountId,
     String? initialToAccountId,
+    String? initialLiabilityAccountId,
   }) {
     _editTransactionId = editTransactionId;
     final settlementAccountsAsync = ref.watch(
@@ -48,6 +49,11 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     final reimbursementAccountsAsync = ref.watch(
       accountsForSelectionPurposeProvider(
         AccountSelectionPurpose.reimbursementReceivable,
+      ),
+    );
+    final ordinaryReceivableAccountsAsync = ref.watch(
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.ordinaryReceivable,
       ),
     );
     final expenseTreeAsync = ref.watch(
@@ -74,6 +80,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         fundAccounts: fundAccountsAsync.value,
         liabilityAccounts: liabilityAccountsAsync.value,
         reimbursementAccounts: reimbursementAccountsAsync.value,
+        ordinaryReceivableAccounts: ordinaryReceivableAccountsAsync.value,
         expenseTree: expenseTreeAsync.value,
         incomeTree: incomeTreeAsync.value,
         tags: tagsAsync.value,
@@ -88,12 +95,15 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           mode: initialMode,
           fromAccountId: initialFromAccountId,
           toAccountId: initialToAccountId,
+          liabilityAccountId: initialLiabilityAccountId,
           settlementAccounts:
               settlementAccountsAsync.value ?? const <Account>[],
           fundAccounts: fundAccountsAsync.value ?? const <Account>[],
           liabilityAccounts: liabilityAccountsAsync.value ?? const <Account>[],
           reimbursementAccounts:
               reimbursementAccountsAsync.value ?? const <Account>[],
+          ordinaryReceivableAccounts:
+              ordinaryReceivableAccountsAsync.value ?? const <Account>[],
           expenseTree: expenseTreeAsync.value ?? const <CategoryNode>[],
           incomeTree: incomeTreeAsync.value ?? const <CategoryNode>[],
           tags: tagsAsync.value ?? const <TagView>[],
@@ -106,6 +116,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       fundAccountsAsync,
       liabilityAccountsAsync,
       reimbursementAccountsAsync,
+      ordinaryReceivableAccountsAsync,
       expenseTreeAsync,
       incomeTreeAsync,
       tagsAsync,
@@ -126,6 +137,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     final fundAccounts = fundAccountsAsync.requireValue;
     final liabilityAccounts = liabilityAccountsAsync.requireValue;
     final reimbursementAccounts = reimbursementAccountsAsync.requireValue;
+    final ordinaryReceivableAccounts =
+        ordinaryReceivableAccountsAsync.requireValue;
     final expenseTree = expenseTreeAsync.requireValue;
     final incomeTree = incomeTreeAsync.requireValue;
 
@@ -147,6 +160,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         fundAccounts: fundAccounts,
         liabilityAccounts: liabilityAccounts,
         reimbursementAccounts: reimbursementAccounts,
+        ordinaryReceivableAccounts: ordinaryReceivableAccounts,
         expenseTree: expenseTree,
         incomeTree: incomeTree,
         tags: tagsAsync.value ?? const <TagView>[],
@@ -161,6 +175,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       return current.copyWith(
         mode: value,
         reimbursementAccountId: null,
+        ordinaryReceivableAccountId: null,
         excludeStats:
             value == TransactionFormMode.transfer ||
                     value == TransactionFormMode.borrowing ||
@@ -263,6 +278,10 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     _update((current) => current.copyWith(reimbursementAccountId: value));
   }
 
+  void setOrdinaryReceivableAccountId(String? value) {
+    _update((current) => current.copyWith(ordinaryReceivableAccountId: value));
+  }
+
   void setLiabilityAccountId(String? value) {
     _update((current) => current.copyWith(liabilityAccountId: value));
   }
@@ -283,6 +302,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     _update(
       (current) => current.copyWith(
         reimbursementAccountId: null,
+        ordinaryReceivableAccountId: null,
         excludeStats: false,
         excludeBudget: false,
         occurredAt: occurredAt ?? DateTime.now(),
@@ -454,8 +474,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           formState.fundAccounts,
         );
         final receivableAccountId = _effectiveId(
-          formState.reimbursementAccountId,
-          formState.reimbursementAccounts,
+          formState.ordinaryReceivableAccountId,
+          formState.ordinaryReceivableAccounts,
         );
         if (paidFromAccountId == null || receivableAccountId == null) {
           throw _invalidCommandException('请选择付款账户和应收账户');
@@ -602,8 +622,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           formState.fundAccounts,
         );
         final receivableAccountId = _effectiveId(
-          formState.reimbursementAccountId,
-          formState.reimbursementAccounts,
+          formState.ordinaryReceivableAccountId,
+          formState.ordinaryReceivableAccounts,
         );
         if (paidFromAccountId == null || receivableAccountId == null) {
           throw _invalidCommandException('请选择付款账户和应收账户');
@@ -636,6 +656,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     required List<Account>? fundAccounts,
     required List<Account>? liabilityAccounts,
     required List<Account>? reimbursementAccounts,
+    required List<Account>? ordinaryReceivableAccounts,
     required List<CategoryNode>? expenseTree,
     required List<CategoryNode>? incomeTree,
     required List<TagView>? tags,
@@ -645,6 +666,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       fundAccounts: fundAccounts,
       liabilityAccounts: liabilityAccounts,
       reimbursementAccounts: reimbursementAccounts,
+      ordinaryReceivableAccounts: ordinaryReceivableAccounts,
       expenseTree: expenseTree,
       incomeTree: incomeTree,
       tags: tags,
@@ -705,6 +727,7 @@ class TransactionFormState {
     required List<Account> fundAccounts,
     required List<Account> liabilityAccounts,
     required List<Account> reimbursementAccounts,
+    required List<Account> ordinaryReceivableAccounts,
     required List<CategoryNode> expenseTree,
     required List<CategoryNode> incomeTree,
     required List<TagView> tags,
@@ -716,11 +739,15 @@ class TransactionFormState {
     this.fromAccountId,
     this.toAccountId,
     this.reimbursementAccountId,
+    this.ordinaryReceivableAccountId,
     this.liabilityAccountId,
   }) : settlementAccounts = List.unmodifiable(settlementAccounts),
        fundAccounts = List.unmodifiable(fundAccounts),
        liabilityAccounts = List.unmodifiable(liabilityAccounts),
        reimbursementAccounts = List.unmodifiable(reimbursementAccounts),
+       ordinaryReceivableAccounts = List.unmodifiable(
+         ordinaryReceivableAccounts,
+       ),
        expenseTree = List.unmodifiable(expenseTree),
        incomeTree = List.unmodifiable(incomeTree),
        tags = List.unmodifiable(tags);
@@ -729,10 +756,12 @@ class TransactionFormState {
     required TransactionFormMode mode,
     String? fromAccountId,
     String? toAccountId,
+    String? liabilityAccountId,
     required List<Account> settlementAccounts,
     required List<Account> fundAccounts,
     required List<Account> liabilityAccounts,
     required List<Account> reimbursementAccounts,
+    required List<Account> ordinaryReceivableAccounts,
     required List<CategoryNode> expenseTree,
     required List<CategoryNode> incomeTree,
     required List<TagView> tags,
@@ -750,14 +779,15 @@ class TransactionFormState {
                   mode == TransactionFormMode.borrowing
               ? null
               : toAccountId,
-      reimbursementAccountId:
+      ordinaryReceivableAccountId:
           mode == TransactionFormMode.lending ? toAccountId : null,
       liabilityAccountId:
-          mode == TransactionFormMode.borrowing ? toAccountId : null,
+          mode == TransactionFormMode.borrowing ? liabilityAccountId : null,
       settlementAccounts: settlementAccounts,
       fundAccounts: fundAccounts,
       liabilityAccounts: liabilityAccounts,
       reimbursementAccounts: reimbursementAccounts,
+      ordinaryReceivableAccounts: ordinaryReceivableAccounts,
       expenseTree: expenseTree,
       incomeTree: incomeTree,
       tags: tags,
@@ -770,6 +800,7 @@ class TransactionFormState {
     required List<Account> fundAccounts,
     required List<Account> liabilityAccounts,
     required List<Account> reimbursementAccounts,
+    required List<Account> ordinaryReceivableAccounts,
     required List<CategoryNode> expenseTree,
     required List<CategoryNode> incomeTree,
     required List<TagView> tags,
@@ -787,6 +818,7 @@ class TransactionFormState {
       fromAccountId: snapshot.fromAccountId,
       toAccountId: snapshot.toAccountId,
       reimbursementAccountId: snapshot.reimbursementAccountId,
+      ordinaryReceivableAccountId: snapshot.ordinaryReceivableAccountId,
       liabilityAccountId: snapshot.liabilityAccountId,
       excludeStats: snapshot.excludeStats,
       excludeBudget: snapshot.excludeBudget,
@@ -795,6 +827,7 @@ class TransactionFormState {
       fundAccounts: fundAccounts,
       liabilityAccounts: liabilityAccounts,
       reimbursementAccounts: reimbursementAccounts,
+      ordinaryReceivableAccounts: ordinaryReceivableAccounts,
       expenseTree: expenseTree,
       incomeTree: incomeTree,
       tags: tags,
@@ -811,6 +844,7 @@ class TransactionFormState {
   final String? fromAccountId;
   final String? toAccountId;
   final String? reimbursementAccountId;
+  final String? ordinaryReceivableAccountId;
   final String? liabilityAccountId;
   final bool excludeStats;
   final bool excludeBudget;
@@ -820,6 +854,7 @@ class TransactionFormState {
   final List<Account> fundAccounts;
   final List<Account> liabilityAccounts;
   final List<Account> reimbursementAccounts;
+  final List<Account> ordinaryReceivableAccounts;
   final List<CategoryNode> expenseTree;
   final List<CategoryNode> incomeTree;
   final List<TagView> tags;
@@ -835,6 +870,7 @@ class TransactionFormState {
     Object? fromAccountId = _sentinel,
     Object? toAccountId = _sentinel,
     Object? reimbursementAccountId = _sentinel,
+    Object? ordinaryReceivableAccountId = _sentinel,
     Object? liabilityAccountId = _sentinel,
     bool? excludeStats,
     bool? excludeBudget,
@@ -843,6 +879,7 @@ class TransactionFormState {
     List<Account>? fundAccounts,
     List<Account>? liabilityAccounts,
     List<Account>? reimbursementAccounts,
+    List<Account>? ordinaryReceivableAccounts,
     List<CategoryNode>? expenseTree,
     List<CategoryNode>? incomeTree,
     List<TagView>? tags,
@@ -878,6 +915,10 @@ class TransactionFormState {
           reimbursementAccountId == _sentinel
               ? this.reimbursementAccountId
               : reimbursementAccountId as String?,
+      ordinaryReceivableAccountId:
+          ordinaryReceivableAccountId == _sentinel
+              ? this.ordinaryReceivableAccountId
+              : ordinaryReceivableAccountId as String?,
       liabilityAccountId:
           liabilityAccountId == _sentinel
               ? this.liabilityAccountId
@@ -890,6 +931,8 @@ class TransactionFormState {
       liabilityAccounts: liabilityAccounts ?? this.liabilityAccounts,
       reimbursementAccounts:
           reimbursementAccounts ?? this.reimbursementAccounts,
+      ordinaryReceivableAccounts:
+          ordinaryReceivableAccounts ?? this.ordinaryReceivableAccounts,
       expenseTree: expenseTree ?? this.expenseTree,
       incomeTree: incomeTree ?? this.incomeTree,
       tags: tags ?? this.tags,

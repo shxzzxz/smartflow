@@ -210,6 +210,21 @@ class _ReceivablePayableFormContentState
                       },
                     ),
                     NotePlainFormRow(controller: _noteController),
+                    if (state.kind == ReceivablePayableFormKind.badDebt ||
+                        state.kind == ReceivablePayableFormKind.debtRelief)
+                      SwitchListTile.adaptive(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('不计收支'),
+                        value: state.excludeStats,
+                        onChanged: ref.read(provider.notifier).setExcludeStats,
+                      ),
+                    if (state.kind == ReceivablePayableFormKind.badDebt)
+                      SwitchListTile.adaptive(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('不计预算'),
+                        value: state.excludeBudget,
+                        onChanged: ref.read(provider.notifier).setExcludeBudget,
+                      ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.space24),

@@ -40,6 +40,7 @@ class TransactionFormPage extends ConsumerWidget {
     this.initialMode = TransactionFormInitialMode.expense,
     this.initialFromAccountId,
     this.initialToAccountId,
+    this.initialLiabilityAccountId,
     super.key,
   });
 
@@ -47,6 +48,7 @@ class TransactionFormPage extends ConsumerWidget {
   final TransactionFormInitialMode initialMode;
   final String? initialFromAccountId;
   final String? initialToAccountId;
+  final String? initialLiabilityAccountId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -56,6 +58,7 @@ class TransactionFormPage extends ConsumerWidget {
         initialMode: _toFormMode(initialMode),
         initialFromAccountId: initialFromAccountId,
         initialToAccountId: initialToAccountId,
+        initialLiabilityAccountId: initialLiabilityAccountId,
       ),
     );
     return switch (asyncState) {
@@ -66,6 +69,7 @@ class TransactionFormPage extends ConsumerWidget {
           initialMode: initialMode,
           initialFromAccountId: initialFromAccountId,
           initialToAccountId: initialToAccountId,
+          initialLiabilityAccountId: initialLiabilityAccountId,
           formState: formState,
         ),
       AsyncData(value: null) => const _TransactionFormStatusPage(
@@ -111,6 +115,7 @@ class _TransactionFormContent extends ConsumerStatefulWidget {
     required this.initialMode,
     required this.initialFromAccountId,
     required this.initialToAccountId,
+    required this.initialLiabilityAccountId,
     required this.formState,
     super.key,
   });
@@ -119,6 +124,7 @@ class _TransactionFormContent extends ConsumerStatefulWidget {
   final TransactionFormInitialMode initialMode;
   final String? initialFromAccountId;
   final String? initialToAccountId;
+  final String? initialLiabilityAccountId;
   final TransactionFormState formState;
 
   @override
@@ -154,6 +160,7 @@ class _TransactionFormContentState
     final fundAccounts = formState.fundAccounts;
     final liabilityAccounts = formState.liabilityAccounts;
     final reimbursementAccounts = formState.reimbursementAccounts;
+    final ordinaryReceivableAccounts = formState.ordinaryReceivableAccounts;
     final expenseTree = formState.expenseTree;
     final incomeTree = formState.incomeTree;
     final editTransactionId = widget.editTransactionId;
@@ -316,11 +323,11 @@ class _TransactionFormContentState
                       _MainAccountPickerSection(
                         children: [
                           _MainAccountPickerTile(
-                            label: '借出账户',
+                            label: '负债账户',
                             accounts: liabilityAccounts,
                             selectedId: formState.liabilityAccountId,
                             validator:
-                                (value) => value == null ? '请选择借出账户' : null,
+                                (value) => value == null ? '请选择负债账户' : null,
                             onChanged:
                                 (value) => ref
                                     .read(_formProvider.notifier)
@@ -328,11 +335,11 @@ class _TransactionFormContentState
                           ),
                           const SizedBox(height: AppSpacing.space8),
                           _MainAccountPickerTile(
-                            label: '借入账户',
+                            label: '收款账户',
                             accounts: fundAccounts,
                             selectedId: formState.toAccountId,
                             validator:
-                                (value) => value == null ? '请选择借入账户' : null,
+                                (value) => value == null ? '请选择收款账户' : null,
                             onChanged:
                                 (value) => ref
                                     .read(_formProvider.notifier)
@@ -357,14 +364,14 @@ class _TransactionFormContentState
                           const SizedBox(height: AppSpacing.space8),
                           _MainAccountPickerTile(
                             label: '应收账户',
-                            accounts: reimbursementAccounts,
-                            selectedId: formState.reimbursementAccountId,
+                            accounts: ordinaryReceivableAccounts,
+                            selectedId: formState.ordinaryReceivableAccountId,
                             validator:
                                 (value) => value == null ? '请选择应收账户' : null,
                             onChanged:
                                 (value) => ref
                                     .read(_formProvider.notifier)
-                                    .setReimbursementAccountId(value),
+                                    .setOrdinaryReceivableAccountId(value),
                           ),
                         ],
                       ),
@@ -454,6 +461,7 @@ class _TransactionFormContentState
         initialMode: _toFormMode(widget.initialMode),
         initialFromAccountId: widget.initialFromAccountId,
         initialToAccountId: widget.initialToAccountId,
+        initialLiabilityAccountId: widget.initialLiabilityAccountId,
       );
 
   Future<void> _pickDate() async {

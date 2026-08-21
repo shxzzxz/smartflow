@@ -196,6 +196,8 @@ final appRouter = GoRouter(
           initialMode: mode,
           initialFromAccountId: state.uri.queryParameters['fromAccountId'],
           initialToAccountId: state.uri.queryParameters['toAccountId'],
+          initialLiabilityAccountId:
+              state.uri.queryParameters['liabilityAccountId'],
         );
       },
     ),

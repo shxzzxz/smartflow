@@ -12,6 +12,7 @@ import '../../../design_system/widget/app_surface.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
+import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
 import '../presentation/account_credit_summary_presentation.dart';
 import '../view_model/account_detail_view_model.dart';
@@ -67,6 +68,7 @@ class AccountDetailPage extends ConsumerWidget {
               child: switch (state) {
                 AccountDetailLoaded(
                   :final account,
+                  :final actions,
                   :final transactions,
                   :final contracts,
                   :final bills,
@@ -74,6 +76,7 @@ class AccountDetailPage extends ConsumerWidget {
                 ) =>
                   _AccountDetailContent(
                     account: account,
+                    actions: actions,
                     transactions: transactions,
                     contracts: contracts,
                     bills: bills,
@@ -204,10 +207,10 @@ class AccountDetailPage extends ConsumerWidget {
     }
   }
 }
-
 class _AccountDetailContent extends StatelessWidget {
   const _AccountDetailContent({
     required this.account,
+    required this.actions,
     required this.transactions,
     required this.contracts,
     required this.bills,
@@ -216,6 +219,7 @@ class _AccountDetailContent extends StatelessWidget {
   });
 
   final AccountView account;
+  final List<AccountDetailAction> actions;
   final AccountTransactionsState transactions;
   final AccountContractsState contracts;
   final AccountBillsState bills;
@@ -278,7 +282,7 @@ class _AccountDetailContent extends StatelessWidget {
       leading: [
         _AccountInfoSection(account: account, creditOverview: creditOverview),
         const SizedBox(height: AppSpacing.space12),
-        if (!account.isArchived) _AccountActionBar(account: account),
+        if (actions.isNotEmpty) _AccountActionBar(actions: actions),
         if (showInstallments) ...[
           const SizedBox(height: AppSpacing.space20),
           _BillSection(accountId: account.id, bills: bills),
@@ -549,124 +553,21 @@ String _monthlyDay(int? day) {
 }
 
 class _AccountActionBar extends StatelessWidget {
-  const _AccountActionBar({required this.account});
+  const _AccountActionBar({required this.actions});
 
-  final AccountView account;
+  final List<AccountDetailAction> actions;
 
   @override
   Widget build(BuildContext context) {
-    final isLiability = account.isLiability;
-    const installmentSource = 'disbursement';
-
-    if (account.kind == AccountProfileKind.receivable) {
-      return _ActionRow(
-        children: [
+    return _ActionRow(
+      children: [
+        for (final action in actions)
           _ActionButton(
-            icon: RemixIcons.logout_box_r_line,
-            label: '借出',
-            onTap:
-                () => context.push(
-                  '/transaction/new?mode=lending&toAccountId=${account.id}',
-                ),
+            iconKey: action.iconKey,
+            label: action.label,
+            onTap: () => context.push(action.route),
           ),
-          _ActionButton(
-            icon: RemixIcons.refund_2_line,
-            label: '收回',
-            onTap:
-                () => context.push(
-                  '/account/${account.id}/receivable-collection',
-                ),
-          ),
-          _ActionButton(
-            icon: RemixIcons.close_circle_line,
-            label: '坏账',
-            onTap: () => context.push('/account/${account.id}/bad-debt'),
-          ),
-        ],
-      );
-    }
-    if (account.kind == AccountProfileKind.payable) {
-      return _ActionRow(
-        children: [
-          _ActionButton(
-            icon: RemixIcons.hand_coin_line,
-            label: '借入',
-            onTap:
-                () => context.push(
-                  '/transaction/new?mode=borrowing&toAccountId=${account.id}',
-                ),
-          ),
-          _ActionButton(
-            icon: RemixIcons.bank_card_line,
-            label: '还款',
-            onTap: () => context.push('/account/${account.id}/repayment'),
-          ),
-          _ActionButton(
-            icon: RemixIcons.hand_heart_line,
-            label: '债务豁免',
-            onTap: () => context.push('/account/${account.id}/debt-relief'),
-          ),
-        ],
-      );
-    }
-
-    return AppSurface(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space8,
-          vertical: AppSpacing.space6,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _ActionButton(
-                icon: RemixIcons.add_circle_line,
-                label: '记账',
-                onTap: () => _openTransactionForm(context, account),
-              ),
-            ),
-            if (isLiability) ...[
-              const SizedBox(width: AppSpacing.space6),
-              Expanded(
-                child: _ActionButton(
-                  icon: RemixIcons.bank_card_line,
-                  label: account.isCreditLiability ? '未归属还款' : '还款',
-                  onTap:
-                      () => context.push(
-                        account.isCreditLiability
-                            ? '/account/${account.id}/unattributed-repayment'
-                            : '/account/${account.id}/repayment',
-                      ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.space6),
-              Expanded(
-                child: _ActionButton(
-                  icon: RemixIcons.calendar_schedule_line,
-                  label: account.isCredit ? '现金分期' : '贷款分期',
-                  onTap:
-                      () => context.push(
-                        '/account/${account.id}/installments/new'
-                        '?source=$installmentSource',
-                      ),
-                ),
-              ),
-            ] else ...[
-              const SizedBox(width: AppSpacing.space6),
-              Expanded(
-                child: _ActionButton(
-                  icon: RemixIcons.arrow_left_right_line,
-                  label: '转账',
-                  onTap:
-                      () => context.push(
-                        '/transaction/new?mode=transfer&fromAccountId=${account.id}',
-                      ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
+      ],
     );
   }
 }
@@ -697,12 +598,12 @@ class _ActionRow extends StatelessWidget {
 
 class _ActionButton extends StatelessWidget {
   const _ActionButton({
-    required this.icon,
+    required this.iconKey,
     required this.label,
     required this.onTap,
   });
 
-  final IconData icon;
+  final String iconKey;
   final String label;
   final VoidCallback onTap;
 
@@ -723,7 +624,11 @@ class _ActionButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: colors.primary, size: AppSpacing.space20),
+            BusinessIcon(
+              iconKey: iconKey,
+              color: colors.primary,
+              size: AppSpacing.space20,
+            ),
             const SizedBox(width: AppSpacing.space6),
             Flexible(
               child: Text(
@@ -888,16 +793,4 @@ class _InstallmentSection extends StatelessWidget {
       AccountContractsNotApplicable() => const SizedBox.shrink(),
     };
   }
-}
-
-void _openTransactionForm(BuildContext context, AccountView account) {
-  final query =
-      Uri(
-        path: '/transaction/new',
-        queryParameters: {
-          'fromAccountId': account.id.toString(),
-          'toAccountId': account.id.toString(),
-        },
-      ).toString();
-  context.push(query);
 }

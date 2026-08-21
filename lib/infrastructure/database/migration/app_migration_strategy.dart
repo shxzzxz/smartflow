@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 
 import '../app_database.dart';
 import '../builtin_data.dart';
+import 'account_profile_migration_error.dart';
 
 final _logger = Logger('infra.database');
 
@@ -78,7 +79,16 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         await _createTagIndexes(database);
       }
       if (from < 28) {
-        await _standardizeAccountProfiles(database);
+        try {
+          await _standardizeAccountProfiles(database);
+        } on AccountProfileMigrationError catch (error, stackTrace) {
+          _logger.severe(
+            'Account profile migration failed: $error',
+            error,
+            stackTrace,
+          );
+          rethrow;
+        }
         await _normalizeReceivablePayableBudgetFlags(database);
       }
     },
@@ -125,14 +135,28 @@ ORDER BY a.id
       'income',
       'expense',
     }.contains(type)) {
-      throw StateError('Account $id has unknown account_type=$type.');
+      throw _accountProfileMigrationError(
+        accountId: id,
+        reason: AccountProfileMigrationFailureReason.unknownAccountType,
+        accountType: type,
+        accountSubtype: subtype,
+        accountProfileKey: profile,
+        creditKind: creditKind,
+        source: source,
+      );
     }
 
     if (type == 'equity' || type == 'income' || type == 'expense') {
       if (profile != null || creditKind != null) {
-        throw StateError(
-          'Account $id has conflicting non-user account signals: '
-          'type=$type, profile=$profile, creditKind=$creditKind.',
+        throw _accountProfileMigrationError(
+          accountId: id,
+          reason:
+              AccountProfileMigrationFailureReason.nonUserAccountSignalConflict,
+          accountType: type,
+          accountSubtype: subtype,
+          accountProfileKey: profile,
+          creditKind: creditKind,
+          source: source,
         );
       }
       await database.customStatement(
@@ -172,12 +196,29 @@ ORDER BY a.id
           profile: null,
         ),
         _ =>
-          throw StateError('Account $id has unknown account_subtype=$subtype.'),
+          throw _accountProfileMigrationError(
+            accountId: id,
+            reason: AccountProfileMigrationFailureReason.unknownAccountSubtype,
+            accountType: type,
+            accountSubtype: subtype,
+            accountProfileKey: profile,
+            creditKind: creditKind,
+            source: source,
+          ),
       };
       candidates.add(candidate);
     }
     if (profile != null) {
-      candidates.add(_classificationForProfile(id, profile));
+      candidates.add(
+        _classificationForProfile(
+          accountId: id,
+          profile: profile,
+          accountType: type,
+          subtype: subtype,
+          creditKind: creditKind,
+          source: source,
+        ),
+      );
     }
     if (creditKind != null) {
       candidates.add(switch (creditKind) {
@@ -192,32 +233,54 @@ ORDER BY a.id
           profile: 'credit.loan',
         ),
         _ =>
-          throw StateError('Account $id has unknown credit kind=$creditKind.'),
+          throw _accountProfileMigrationError(
+            accountId: id,
+            reason: AccountProfileMigrationFailureReason.unknownCreditKind,
+            accountType: type,
+            accountSubtype: subtype,
+            accountProfileKey: profile,
+            creditKind: creditKind,
+            source: source,
+          ),
       });
     }
 
     for (final candidate in candidates) {
       if (candidate.type != type) {
-        throw StateError(
-          'Account $id has conflicting account type signals: '
-          'account_type=$type, inferred=${candidate.type}, '
-          'subtype=$subtype, profile=$profile, creditKind=$creditKind.',
+        throw _accountProfileMigrationError(
+          accountId: id,
+          reason: AccountProfileMigrationFailureReason.accountTypeConflict,
+          accountType: type,
+          accountSubtype: subtype,
+          accountProfileKey: profile,
+          creditKind: creditKind,
+          source: source,
         );
       }
     }
     final inferredSubtypes = candidates.map((item) => item.subtype).toSet();
     if (inferredSubtypes.length > 1) {
-      throw StateError(
-        'Account $id has conflicting subtype signals: '
-        'subtype=$subtype, profile=$profile, creditKind=$creditKind.',
+      throw _accountProfileMigrationError(
+        accountId: id,
+        reason: AccountProfileMigrationFailureReason.accountSubtypeConflict,
+        accountType: type,
+        accountSubtype: subtype,
+        accountProfileKey: profile,
+        creditKind: creditKind,
+        source: source,
       );
     }
     final inferredProfiles =
         candidates.map((item) => item.profile).whereType<String>().toSet();
     if (inferredProfiles.length > 1) {
-      throw StateError(
-        'Account $id has conflicting profile signals: '
-        'profile=$profile, creditKind=$creditKind.',
+      throw _accountProfileMigrationError(
+        accountId: id,
+        reason: AccountProfileMigrationFailureReason.accountProfileConflict,
+        accountType: type,
+        accountSubtype: subtype,
+        accountProfileKey: profile,
+        creditKind: creditKind,
+        source: source,
       );
     }
 
@@ -233,9 +296,14 @@ ORDER BY a.id
         _ => null,
       };
       if (targetProfile == null) {
-        throw StateError(
-          'Account $id has no profile signal for '
-          'type=$type, subtype=$targetSubtype.',
+        throw _accountProfileMigrationError(
+          accountId: id,
+          reason: AccountProfileMigrationFailureReason.missingAccountProfile,
+          accountType: type,
+          accountSubtype: targetSubtype,
+          accountProfileKey: profile,
+          creditKind: creditKind,
+          source: source,
         );
       }
       if (type == 'liability') defaultedLiabilityIds.add(id);
@@ -260,7 +328,14 @@ ORDER BY a.id
   await _validateStandardizedAccounts(database);
 }
 
-_AccountClassification _classificationForProfile(String id, String profile) {
+_AccountClassification _classificationForProfile({
+  required String accountId,
+  required String profile,
+  required String accountType,
+  required String? subtype,
+  required String? creditKind,
+  required String source,
+}) {
   return switch (profile) {
     'ledger.fund' => const _AccountClassification(
       type: 'asset',
@@ -293,7 +368,15 @@ _AccountClassification _classificationForProfile(String id, String profile) {
       profile: 'credit.loan',
     ),
     _ =>
-      throw StateError('Account $id has unknown account_profile_key=$profile.'),
+      throw _accountProfileMigrationError(
+        accountId: accountId,
+        reason: AccountProfileMigrationFailureReason.unknownAccountProfile,
+        accountType: accountType,
+        accountSubtype: subtype,
+        accountProfileKey: profile,
+        creditKind: creditKind,
+        source: source,
+      ),
   };
 }
 
@@ -322,10 +405,37 @@ WHERE (account_type = 'asset' AND account_subtype NOT IN ('fund', 'receivable'))
 LIMIT 1
 ''').getSingleOrNull();
   if (invalid != null) {
-    throw StateError(
-      'Account ${invalid.read<String>('id')} violates standardized account invariants.',
+    throw _accountProfileMigrationError(
+      accountId: invalid.read<String>('id'),
+      reason:
+          AccountProfileMigrationFailureReason.standardizedInvariantViolation,
+      accountType: invalid.read<String>('account_type'),
+      accountSubtype: invalid.readNullable<String>('account_subtype'),
+      accountProfileKey: invalid.readNullable<String>('account_profile_key'),
+      creditKind: null,
+      source: invalid.read<String>('source'),
     );
   }
+}
+
+AccountProfileMigrationError _accountProfileMigrationError({
+  required String accountId,
+  required AccountProfileMigrationFailureReason reason,
+  required String? accountType,
+  required String? accountSubtype,
+  required String? accountProfileKey,
+  required String? creditKind,
+  required String? source,
+}) {
+  return AccountProfileMigrationError(
+    accountId: accountId,
+    reason: reason,
+    accountType: accountType,
+    accountSubtype: accountSubtype,
+    accountProfileKey: accountProfileKey,
+    creditKind: creditKind,
+    source: source,
+  );
 }
 
 class _AccountClassification {

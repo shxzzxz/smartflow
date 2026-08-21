@@ -29,6 +29,18 @@ void main() {
     }
   });
 
+  testWidgets('uses standardized account roles for borrowing', (tester) async {
+    await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
+
+    await tester.tap(find.text('借入'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('负债账户'), findsOneWidget);
+    expect(find.text('收款账户'), findsOneWidget);
+    expect(find.text('借出账户'), findsNothing);
+    expect(find.text('借入账户'), findsNothing);
+  });
+
   testWidgets('renders on a common Android phone with accessibility text', (
     tester,
   ) async {
@@ -156,6 +168,9 @@ void main() {
         ).overrideWithValue(const AsyncLoading<List<Account>>()),
         accountsForSelectionPurposeProvider(
           AccountSelectionPurpose.reimbursementReceivable,
+        ).overrideWithValue(const AsyncLoading<List<Account>>()),
+        accountsForSelectionPurposeProvider(
+          AccountSelectionPurpose.ordinaryReceivable,
         ).overrideWithValue(const AsyncLoading<List<Account>>()),
         categoryTreeProvider(
           AccountType.expense,
@@ -303,6 +318,9 @@ List<dynamic> _editQueryOverrides(Map<String, Account> accounts) {
     accountsForSelectionPurposeProvider(
       AccountSelectionPurpose.reimbursementReceivable,
     ).overrideWithValue(const AsyncData(<Account>[])),
+    accountsForSelectionPurposeProvider(
+      AccountSelectionPurpose.ordinaryReceivable,
+    ).overrideWithValue(const AsyncData(<Account>[])),
     categoryTreeProvider(
       AccountType.expense,
     ).overrideWithValue(AsyncData([CategoryNode(account: accounts['food']!)])),
@@ -365,6 +383,9 @@ Future<void> _pumpTransactionForm(
         ).overrideWith((ref) => Stream.value(const <Account>[])),
         accountsForSelectionPurposeProvider(
           AccountSelectionPurpose.reimbursementReceivable,
+        ).overrideWith((ref) => Stream.value(const <Account>[])),
+        accountsForSelectionPurposeProvider(
+          AccountSelectionPurpose.ordinaryReceivable,
         ).overrideWith((ref) => Stream.value(const <Account>[])),
         categoryTreeProvider(AccountType.expense).overrideWith(
           (ref) => Stream.value([CategoryNode(account: _category('food'))]),

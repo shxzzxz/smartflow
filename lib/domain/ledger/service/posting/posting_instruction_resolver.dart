@@ -366,6 +366,8 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
         postedAt: transaction.postedAt,
         counterpartyName: transaction.counterpartyName,
         note: transaction.note,
+        isExcludedFromStats: transaction.isExcludedFromStats,
+        isExcludedFromBudget: transaction.isExcludedFromBudget,
         sourceKind: transaction.sourceKind,
       );
 
@@ -382,6 +384,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
         postedAt: transaction.postedAt,
         counterpartyName: transaction.counterpartyName,
         note: transaction.note,
+        isExcludedFromStats: transaction.isExcludedFromStats,
         sourceKind: transaction.sourceKind,
       );
 

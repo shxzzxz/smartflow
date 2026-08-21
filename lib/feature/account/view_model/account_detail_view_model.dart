@@ -42,6 +42,7 @@ class AccountDetailViewModel extends _$AccountDetailViewModel {
 
     return AccountDetailPageState.loaded(
       account: accountValue,
+      actions: accountDetailActions(accountValue),
       transactions: transactions,
       contracts: _contractsStateFor(ref, accountValue),
       bills: _billsStateFor(ref, accountValue),
@@ -92,6 +93,115 @@ class AccountDetailViewModel extends _$AccountDetailViewModel {
           .restoreAccount(RestoreAccountCommand(id: accountId));
     });
   }
+}
+
+class AccountDetailAction {
+  const AccountDetailAction({
+    required this.label,
+    required this.iconKey,
+    required this.route,
+  });
+
+  final String label;
+  final String iconKey;
+  final String route;
+}
+
+List<AccountDetailAction> accountDetailActions(AccountView account) {
+  if (account.isArchived) return const [];
+
+  return switch (account.kind) {
+    AccountProfileKind.receivable => [
+      AccountDetailAction(
+        label: '借出',
+        iconKey: 'logout-box-r-line',
+        route: _transactionRoute(
+          mode: 'lending',
+          queryParameters: {'toAccountId': account.id},
+        ),
+      ),
+      AccountDetailAction(
+        label: '收回',
+        iconKey: 'refund-income',
+        route: '/account/${account.id}/receivable-collection',
+      ),
+      AccountDetailAction(
+        label: '坏账',
+        iconKey: 'money-cny-circle-line',
+        route: '/account/${account.id}/bad-debt',
+      ),
+    ],
+    AccountProfileKind.payable => [
+      AccountDetailAction(
+        label: '借入',
+        iconKey: 'hand-coin-line',
+        route: _transactionRoute(
+          mode: 'borrowing',
+          queryParameters: {'liabilityAccountId': account.id},
+        ),
+      ),
+      AccountDetailAction(
+        label: '还款',
+        iconKey: 'loan',
+        route: '/account/${account.id}/repayment',
+      ),
+      AccountDetailAction(
+        label: '债务豁免',
+        iconKey: 'hand-heart-line',
+        route: '/account/${account.id}/debt-relief',
+      ),
+    ],
+    AccountProfileKind.fund || AccountProfileKind.reimbursement => [
+      _recordTransactionAction(account),
+      AccountDetailAction(
+        label: '转账',
+        iconKey: 'transfer',
+        route: _transactionRoute(
+          mode: 'transfer',
+          queryParameters: {'fromAccountId': account.id},
+        ),
+      ),
+    ],
+    AccountProfileKind.credit || AccountProfileKind.loan => [
+      _recordTransactionAction(account),
+      AccountDetailAction(
+        label: '未归属还款',
+        iconKey: 'loan',
+        route: '/account/${account.id}/unattributed-repayment',
+      ),
+      AccountDetailAction(
+        label: account.isCredit ? '现金分期' : '贷款分期',
+        iconKey: 'loan',
+        route: '/account/${account.id}/installments/new?source=disbursement',
+      ),
+    ],
+  };
+}
+
+AccountDetailAction _recordTransactionAction(AccountView account) {
+  return AccountDetailAction(
+    label: '记账',
+    iconKey: 'wallet-line',
+    route: _transactionRoute(
+      queryParameters: {
+        'fromAccountId': account.id,
+        'toAccountId': account.id,
+      },
+    ),
+  );
+}
+
+String _transactionRoute({
+  String? mode,
+  required Map<String, String> queryParameters,
+}) {
+  return Uri(
+    path: '/transaction/new',
+    queryParameters: {
+      if (mode != null) 'mode': mode,
+      ...queryParameters,
+    },
+  ).toString();
 }
 
 AccountContractsState _contractsStateFor(Ref ref, AccountView account) {
@@ -154,6 +264,7 @@ sealed class AccountDetailPageState {
 
   const factory AccountDetailPageState.loaded({
     required AccountView account,
+    required List<AccountDetailAction> actions,
     required AccountTransactionsState transactions,
     required AccountContractsState contracts,
     required AccountBillsState bills,
@@ -178,6 +289,7 @@ final class AccountDetailNotFound extends AccountDetailPageState {
 final class AccountDetailLoaded extends AccountDetailPageState {
   const AccountDetailLoaded({
     required this.account,
+    required this.actions,
     required this.transactions,
     required this.contracts,
     required this.bills,
@@ -185,6 +297,7 @@ final class AccountDetailLoaded extends AccountDetailPageState {
   });
 
   final AccountView account;
+  final List<AccountDetailAction> actions;
   final AccountTransactionsState transactions;
   final AccountContractsState contracts;
   final AccountBillsState bills;

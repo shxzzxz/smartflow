@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
+import 'package:smartflow/infrastructure/database/migration/account_profile_migration_error.dart';
 
 void main() {
   test(
@@ -599,11 +600,20 @@ void main() {
     await expectLater(
       upgrading.customSelect('SELECT 1').get(),
       throwsA(
-        isA<StateError>().having(
-          (error) => error.message,
-          'message',
-          contains('conflict'),
-        ),
+        isA<AccountProfileMigrationError>()
+            .having((error) => error.accountId, 'accountId', 'conflict')
+            .having(
+              (error) => error.reason,
+              'reason',
+              AccountProfileMigrationFailureReason.accountTypeConflict,
+            )
+            .having((error) => error.accountType, 'accountType', 'asset')
+            .having((error) => error.accountSubtype, 'accountSubtype', 'fund')
+            .having(
+              (error) => error.accountProfileKey,
+              'accountProfileKey',
+              'credit.credit',
+            ),
       ),
     );
   });

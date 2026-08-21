@@ -25,6 +25,7 @@ final class TransactionFormViewModelProvider
       TransactionFormMode initialMode,
       String? initialFromAccountId,
       String? initialToAccountId,
+      String? initialLiabilityAccountId,
     })
     super.argument,
   }) : super(
@@ -72,7 +73,7 @@ final class TransactionFormViewModelProvider
 }
 
 String _$transactionFormViewModelHash() =>
-    r'b196dbde78c350715506b005fbd60b8e6d9f43c3';
+    r'0a245b3c62611718f48b07c1dd9e21bc476bfc58';
 
 final class TransactionFormViewModelFamily extends $Family
     with
@@ -86,6 +87,7 @@ final class TransactionFormViewModelFamily extends $Family
             TransactionFormMode initialMode,
             String? initialFromAccountId,
             String? initialToAccountId,
+            String? initialLiabilityAccountId,
           })
         > {
   TransactionFormViewModelFamily._()
@@ -102,12 +104,14 @@ final class TransactionFormViewModelFamily extends $Family
     TransactionFormMode initialMode = TransactionFormMode.expense,
     String? initialFromAccountId,
     String? initialToAccountId,
+    String? initialLiabilityAccountId,
   }) => TransactionFormViewModelProvider._(
     argument: (
       editTransactionId: editTransactionId,
       initialMode: initialMode,
       initialFromAccountId: initialFromAccountId,
       initialToAccountId: initialToAccountId,
+      initialLiabilityAccountId: initialLiabilityAccountId,
     ),
     from: this,
   );
@@ -125,17 +129,20 @@ abstract class _$TransactionFormViewModel
             TransactionFormMode initialMode,
             String? initialFromAccountId,
             String? initialToAccountId,
+            String? initialLiabilityAccountId,
           });
   String? get editTransactionId => _$args.editTransactionId;
   TransactionFormMode get initialMode => _$args.initialMode;
   String? get initialFromAccountId => _$args.initialFromAccountId;
   String? get initialToAccountId => _$args.initialToAccountId;
+  String? get initialLiabilityAccountId => _$args.initialLiabilityAccountId;
 
   AsyncValue<TransactionFormState?> build({
     String? editTransactionId,
     TransactionFormMode initialMode = TransactionFormMode.expense,
     String? initialFromAccountId,
     String? initialToAccountId,
+    String? initialLiabilityAccountId,
   });
   @$mustCallSuper
   @override
@@ -164,6 +171,7 @@ abstract class _$TransactionFormViewModel
         initialMode: _$args.initialMode,
         initialFromAccountId: _$args.initialFromAccountId,
         initialToAccountId: _$args.initialToAccountId,
+        initialLiabilityAccountId: _$args.initialLiabilityAccountId,
       ),
     );
   }

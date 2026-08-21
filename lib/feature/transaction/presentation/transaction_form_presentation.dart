@@ -18,6 +18,7 @@ class TransactionFormEditSnapshot {
     this.fromAccountId,
     this.toAccountId,
     this.reimbursementAccountId,
+    this.ordinaryReceivableAccountId,
     this.liabilityAccountId,
   });
 
@@ -34,6 +35,7 @@ class TransactionFormEditSnapshot {
   final String? fromAccountId;
   final String? toAccountId;
   final String? reimbursementAccountId;
+  final String? ordinaryReceivableAccountId;
   final String? liabilityAccountId;
 }
 
@@ -184,7 +186,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         occurredAt: transaction.occurredAt,
         excludeStats: false,
         excludeBudget: true,
-        reimbursementAccountId: _firstAccountId(
+        ordinaryReceivableAccountId: _firstAccountId(
           detail,
           accountsById,
           AccountType.asset,

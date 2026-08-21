@@ -115,6 +115,20 @@ void main() {
       ),
       isTrue,
     );
+    expect(
+      accountMatchesSelectionPurpose(
+        reimbursement,
+        AccountSelectionPurpose.ordinaryReceivable,
+      ),
+      isFalse,
+    );
+    expect(
+      accountMatchesSelectionPurpose(
+        receivable,
+        AccountSelectionPurpose.ordinaryReceivable,
+      ),
+      isTrue,
+    );
   });
 }
 

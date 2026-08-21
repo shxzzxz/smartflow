@@ -18,6 +18,25 @@ import 'package:smartflow/shared/account_profile/account_selection_purpose.dart'
 
 void main() {
   group('TransactionFormViewModel', () {
+    test('initializes a borrowing form with its liability account', () {
+      final container = _container(
+        liabilityAccounts: [_account('payable', type: AccountType.liability)],
+      );
+
+      final state =
+          container
+              .read(
+                transactionFormViewModelProvider(
+                  initialMode: TransactionFormMode.borrowing,
+                  initialLiabilityAccountId: 'payable',
+                ),
+              )
+              .requireValue!;
+
+      expect(state.liabilityAccountId, 'payable');
+      expect(state.toAccountId, isNull);
+    });
+
     test('maps edit loading, data, and not-found snapshots', () {
       final detail = _transactionDetail();
       final accounts = {
@@ -33,6 +52,9 @@ void main() {
         ).overrideWithValue(const AsyncData(<Account>[])),
         accountsForSelectionPurposeProvider(
           AccountSelectionPurpose.reimbursementReceivable,
+        ).overrideWithValue(const AsyncData(<Account>[])),
+        accountsForSelectionPurposeProvider(
+          AccountSelectionPurpose.ordinaryReceivable,
         ).overrideWithValue(const AsyncData(<Account>[])),
         categoryTreeProvider(AccountType.expense).overrideWithValue(
           AsyncData([CategoryNode(account: accounts['food']!)]),
@@ -382,6 +404,67 @@ void main() {
     });
 
     test(
+      'creates lending with a fund and ordinary receivable account',
+      () async {
+        final posting = _FakeTransactionPostingAppService();
+        final container = _container(
+          postingService: posting,
+          fundAccounts: [_account('cash')],
+          reimbursementAccounts: [_account('reimbursement')],
+          ordinaryReceivableAccounts: [_account('receivable')],
+        );
+        final viewModel = container.read(_provider().notifier);
+
+        viewModel
+          ..setMode(TransactionFormMode.lending)
+          ..setFromAccountId('cash')
+          ..setOrdinaryReceivableAccountId('receivable');
+
+        final outcome = await viewModel.submit(amountText: '100', noteText: '');
+
+        expect(outcome, isA<SubmitSuccess>());
+        final command = posting.lendingCommands.single;
+        expect(command.paidFromAccountId, 'cash');
+        expect(command.receivableAccountId, 'receivable');
+      },
+    );
+
+    test('loads and submits a lending edit', () async {
+      final editService = _FakeTransactionEditAppService();
+      final detail = _lendingTransactionDetail();
+      final container = _container(
+        editService: editService,
+        editTransactionId: 'lending-1',
+        editDetail: detail,
+        accountsById: {
+          'cash': _account('cash'),
+          'receivable': _account('receivable'),
+        },
+        fundAccounts: [_account('cash')],
+        ordinaryReceivableAccounts: [_account('receivable')],
+      );
+      final provider = _provider(editTransactionId: 'lending-1');
+
+      final state = container.read(provider).requireValue!;
+      expect(state.mode, TransactionFormMode.lending);
+      expect(state.fromAccountId, 'cash');
+      expect(state.ordinaryReceivableAccountId, 'receivable');
+
+      final outcome = await container
+          .read(provider.notifier)
+          .submit(amountText: '50', noteText: 'loan note');
+
+      expect(outcome, isA<SubmitSuccess>());
+      final command = editService.lendingCommands.single;
+      expect(command.transactionId, 'lending-1');
+      expect(command.amount, const Money(minorUnits: 5000));
+      expect(command.paidFromAccountId, 'cash');
+      expect(command.receivableAccountId, 'receivable');
+      expect(command.note, isA<PatchSet<String?>>());
+      expect((command.note as PatchSet<String?>).value, 'loan note');
+    });
+
+    test(
       'returns failure and skips service when command state is incomplete',
       () async {
         final posting = _FakeTransactionPostingAppService();
@@ -591,6 +674,7 @@ ProviderContainer _container({
   List<Account> fundAccounts = const [],
   List<Account> liabilityAccounts = const [],
   List<Account> reimbursementAccounts = const [],
+  List<Account> ordinaryReceivableAccounts = const [],
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -615,6 +699,9 @@ ProviderContainer _container({
       accountsForSelectionPurposeProvider(
         AccountSelectionPurpose.reimbursementReceivable,
       ).overrideWithValue(AsyncData(reimbursementAccounts)),
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.ordinaryReceivable,
+      ).overrideWithValue(AsyncData(ordinaryReceivableAccounts)),
       categoryTreeProvider(
         AccountType.expense,
       ).overrideWithValue(const AsyncData(<CategoryNode>[])),
@@ -675,6 +762,28 @@ TransactionDetail _transactionDetail() {
   );
 }
 
+TransactionDetail _lendingTransactionDetail() {
+  final entries = [
+    _entry('receivable', EntryDirection.debit),
+    _entry('cash', EntryDirection.credit),
+  ];
+  return TransactionDetail(
+    transaction: Transaction(
+      id: 'lending-1',
+      businessPurpose: BusinessPurpose.lending,
+      occurredAt: DateTime(2026, 8, 21),
+      primaryAmount: const Money(minorUnits: 5000),
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+      sourceKind: SourceKind.manual,
+      entries: entries,
+    ),
+    createdAt: DateTime(2026, 8, 21),
+    details: const [],
+    entries: entries,
+  );
+}
+
 Entry _entry(String accountId, EntryDirection direction) {
   return Entry(
     id: 'entry-$accountId',
@@ -710,7 +819,9 @@ class _FakeTransactionQueryService implements TransactionQueryService {
 }
 
 class _FakeTransactionPostingAppService
-    implements TransactionPostingAppService {
+    implements
+        TransactionPostingAppService,
+        ReceivableTransactionPostingAppService {
   _FakeTransactionPostingAppService({this.exception});
 
   final Object? exception;
@@ -719,6 +830,7 @@ class _FakeTransactionPostingAppService
   final transferCommands = <CreateTransferCommand>[];
   final reimbursementAdvanceCommands = <CreateReimbursementAdvanceCommand>[];
   final borrowingCommands = <CreateBorrowingCommand>[];
+  final lendingCommands = <CreateLendingCommand>[];
 
   @override
   Future<PostedTransactionResult> createExpense(
@@ -759,6 +871,29 @@ class _FakeTransactionPostingAppService
     borrowingCommands.add(command);
     return _postedResult();
   }
+
+  @override
+  Future<PostedTransactionResult> createLending(
+    CreateLendingCommand command,
+  ) async {
+    lendingCommands.add(command);
+    return _postedResult();
+  }
+
+  @override
+  Future<PostedTransactionResult> createReceivableCollection(
+    CreateReceivableCollectionCommand command,
+  ) async => _postedResult();
+
+  @override
+  Future<PostedTransactionResult> createBadDebt(
+    CreateBadDebtCommand command,
+  ) async => _postedResult();
+
+  @override
+  Future<PostedTransactionResult> createDebtRelief(
+    CreateDebtReliefCommand command,
+  ) async => _postedResult();
 
   PostedTransactionResult _postedResult() {
     final exception = this.exception;
@@ -805,9 +940,11 @@ class _FakeTransactionPostingAppService
   }
 }
 
-class _FakeTransactionEditAppService implements TransactionEditAppService {
+class _FakeTransactionEditAppService
+    implements TransactionEditAppService, ReceivableTransactionEditAppService {
   final expenseCommands = <EditExpenseCommand>[];
   final reimbursementAdvanceCommands = <EditReimbursementAdvanceCommand>[];
+  final lendingCommands = <EditLendingCommand>[];
   final deletedTransactionIds = <String>[];
 
   @override
@@ -842,9 +979,20 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
   }
 
   @override
+  Future<PostedTransactionResult> editLending(
+    EditLendingCommand command,
+  ) async {
+    lendingCommands.add(command);
+    return const PostedTransactionResult(transactionId: 'lending-1');
+  }
+
+  @override
   Future<void> deleteTransaction(DeleteTransactionCommand command) async {
     deletedTransactionIds.add(command.transactionId);
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   @override
   Future<PostedTransactionResult> editRefund(EditRefundCommand command) {

@@ -172,7 +172,12 @@ Future<UiActionOutcome<void>> _changeTagsForPlainTransaction({
     case BusinessPurpose.badDebt:
       return detailVoidOutcomeFromAction(
         () => (editService as ReceivableTransactionEditAppService).editBadDebt(
-          EditBadDebtCommand(transactionId: transaction.id, tagIds: tagIds),
+          EditBadDebtCommand(
+            transactionId: transaction.id,
+            isExcludedFromStats: transaction.isExcludedFromStats,
+            isExcludedFromBudget: transaction.isExcludedFromBudget,
+            tagIds: tagIds,
+          ),
         ),
       );
     case BusinessPurpose.debtRelief:
@@ -181,6 +186,7 @@ Future<UiActionOutcome<void>> _changeTagsForPlainTransaction({
             (editService as ReceivableTransactionEditAppService).editDebtRelief(
               EditDebtReliefCommand(
                 transactionId: transaction.id,
+                isExcludedFromStats: transaction.isExcludedFromStats,
                 tagIds: tagIds,
               ),
             ),

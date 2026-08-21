@@ -91,13 +91,22 @@ void main() {
           amount: Money.parse('40'),
           receivableAccountId: 'receivable',
           occurredAt: DateTime(2026, 8, 21),
+          isExcludedFromStats: true,
+          isExcludedFromBudget: true,
         ),
       );
+      final createdBadDebt = await fixture.transactions.findById(
+        badDebt.transactionId,
+      );
+      expect(createdBadDebt!.isExcludedFromStats, isTrue);
+      expect(createdBadDebt.isExcludedFromBudget, isTrue);
 
       await fixture.editing.editBadDebt(
         EditBadDebtCommand(
           transactionId: badDebt.transactionId,
           amount: Money.parse('100'),
+          isExcludedFromStats: true,
+          isExcludedFromBudget: true,
         ),
       );
       expect(await fixture.balance('receivable'), Money.zero());
@@ -107,6 +116,8 @@ void main() {
           EditBadDebtCommand(
             transactionId: badDebt.transactionId,
             amount: Money.parse('100.01'),
+            isExcludedFromStats: true,
+            isExcludedFromBudget: true,
           ),
         ),
         throwsA(isA<BusinessException>()),
@@ -138,6 +149,7 @@ void main() {
           amount: Money.parse('40'),
           liabilityAccountId: 'payable',
           occurredAt: DateTime(2026, 8, 21),
+          isExcludedFromStats: true,
         ),
       );
 
@@ -145,6 +157,7 @@ void main() {
         EditDebtReliefCommand(
           transactionId: relief.transactionId,
           amount: Money.parse('100'),
+          isExcludedFromStats: true,
         ),
       );
       expect(await fixture.balance('payable'), Money.zero());
@@ -154,6 +167,7 @@ void main() {
           EditDebtReliefCommand(
             transactionId: relief.transactionId,
             amount: Money.parse('100.01'),
+            isExcludedFromStats: true,
           ),
         ),
         throwsA(isA<BusinessException>()),

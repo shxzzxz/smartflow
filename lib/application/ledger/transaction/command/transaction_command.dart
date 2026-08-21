@@ -290,6 +290,8 @@ class CreateBadDebtCommand {
     required this.amount,
     required this.receivableAccountId,
     required this.occurredAt,
+    required this.isExcludedFromStats,
+    required this.isExcludedFromBudget,
     this.postedAt,
     this.counterpartyName,
     this.note,
@@ -298,6 +300,8 @@ class CreateBadDebtCommand {
   final Money amount;
   final String receivableAccountId;
   final DateTime occurredAt;
+  final bool isExcludedFromStats;
+  final bool isExcludedFromBudget;
   final DateTime? postedAt;
   final String? counterpartyName;
   final String? note;
@@ -309,6 +313,7 @@ class CreateDebtReliefCommand {
     required this.amount,
     required this.liabilityAccountId,
     required this.occurredAt,
+    required this.isExcludedFromStats,
     this.postedAt,
     this.counterpartyName,
     this.note,
@@ -317,6 +322,7 @@ class CreateDebtReliefCommand {
   final Money amount;
   final String liabilityAccountId;
   final DateTime occurredAt;
+  final bool isExcludedFromStats;
   final DateTime? postedAt;
   final String? counterpartyName;
   final String? note;
@@ -634,6 +640,8 @@ class EditReceivableCollectionCommand {
 class EditBadDebtCommand {
   const EditBadDebtCommand({
     required this.transactionId,
+    required this.isExcludedFromStats,
+    required this.isExcludedFromBudget,
     this.amount,
     this.receivableAccountId,
     this.occurredAt,
@@ -642,6 +650,8 @@ class EditBadDebtCommand {
     this.tagIds,
   });
   final String transactionId;
+  final bool isExcludedFromStats;
+  final bool isExcludedFromBudget;
   final Money? amount;
   final String? receivableAccountId;
   final DateTime? occurredAt;
@@ -653,6 +663,7 @@ class EditBadDebtCommand {
 class EditDebtReliefCommand {
   const EditDebtReliefCommand({
     required this.transactionId,
+    required this.isExcludedFromStats,
     this.amount,
     this.liabilityAccountId,
     this.occurredAt,
@@ -661,6 +672,7 @@ class EditDebtReliefCommand {
     this.tagIds,
   });
   final String transactionId;
+  final bool isExcludedFromStats;
   final Money? amount;
   final String? liabilityAccountId;
   final DateTime? occurredAt;

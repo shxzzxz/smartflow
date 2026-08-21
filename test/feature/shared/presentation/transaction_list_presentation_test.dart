@@ -121,6 +121,22 @@ void main() {
       expect(row.canQuickEdit, true);
     });
 
+    test('uses expense and income signs for bad debt and debt relief', () {
+      final badDebt = buildTransactionRowPresentation(
+        item: _item(businessPurpose: BusinessPurpose.badDebt),
+        accountLookup: _lookup,
+      );
+      final debtRelief = buildTransactionRowPresentation(
+        item: _item(businessPurpose: BusinessPurpose.debtRelief),
+        accountLookup: _lookup,
+      );
+
+      expect(badDebt.amountText, '-12.34');
+      expect(badDebt.amountTone, FinanceTone.expense);
+      expect(debtRelief.amountText, '+12.34');
+      expect(debtRelief.amountTone, FinanceTone.income);
+    });
+
     test(
       'shows refund and reimbursement badges while refund adjusts advance amount',
       () {

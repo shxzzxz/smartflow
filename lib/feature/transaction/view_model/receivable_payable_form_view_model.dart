@@ -91,6 +91,12 @@ class ReceivablePayableFormViewModel extends _$ReceivablePayableFormViewModel {
   void setReceiveAccountId(String? value) =>
       _update((state) => state.copyWith(receiveAccountId: value));
 
+  void setExcludeStats(bool value) =>
+      _update((state) => state.copyWith(excludeStats: value));
+
+  void setExcludeBudget(bool value) =>
+      _update((state) => state.copyWith(excludeBudget: value));
+
   BalanceCrossingConfirmation? balanceCrossingConfirmation(String amountText) {
     final current = state.asData?.value;
     if (current == null ||
@@ -227,6 +233,8 @@ class ReceivablePayableFormViewModel extends _$ReceivablePayableFormViewModel {
       noteText: transaction.note ?? '',
       reducibleBalance:
           (accountsById[accountId]?.balance ?? Money.zero()) + amount,
+      excludeStats: transaction.isExcludedFromStats,
+      excludeBudget: transaction.isExcludedFromBudget,
     );
   }
 
@@ -279,6 +287,8 @@ class ReceivablePayableFormViewModel extends _$ReceivablePayableFormViewModel {
               receivableAccountId: accountId,
               occurredAt: current.occurredAt,
               note: note,
+              isExcludedFromStats: current.excludeStats,
+              isExcludedFromBudget: current.excludeBudget,
             ),
           );
         } else {
@@ -289,6 +299,8 @@ class ReceivablePayableFormViewModel extends _$ReceivablePayableFormViewModel {
               receivableAccountId: accountId,
               occurredAt: current.occurredAt,
               note: _notePatch(note),
+              isExcludedFromStats: current.excludeStats,
+              isExcludedFromBudget: current.excludeBudget,
             ),
           );
         }
@@ -300,6 +312,7 @@ class ReceivablePayableFormViewModel extends _$ReceivablePayableFormViewModel {
               liabilityAccountId: accountId,
               occurredAt: current.occurredAt,
               note: note,
+              isExcludedFromStats: current.excludeStats,
             ),
           );
         } else {
@@ -310,6 +323,7 @@ class ReceivablePayableFormViewModel extends _$ReceivablePayableFormViewModel {
               liabilityAccountId: accountId,
               occurredAt: current.occurredAt,
               note: _notePatch(note),
+              isExcludedFromStats: current.excludeStats,
             ),
           );
         }
@@ -360,6 +374,8 @@ class ReceivablePayableFormState {
     required this.interestText,
     required this.noteText,
     required this.reducibleBalance,
+    required this.excludeStats,
+    required this.excludeBudget,
     this.transactionId,
     this.accountId,
     this.receiveAccountId,
@@ -373,6 +389,8 @@ class ReceivablePayableFormState {
     required String interestText,
     required String noteText,
     required Money reducibleBalance,
+    bool excludeStats = false,
+    bool excludeBudget = false,
     String? transactionId,
     String? accountId,
     String? receiveAccountId,
@@ -389,6 +407,8 @@ class ReceivablePayableFormState {
     interestText: interestText,
     noteText: noteText,
     reducibleBalance: reducibleBalance,
+    excludeStats: excludeStats,
+    excludeBudget: excludeBudget,
   );
 
   factory ReceivablePayableFormState.notFound({
@@ -406,6 +426,8 @@ class ReceivablePayableFormState {
     interestText: '0.00',
     noteText: '',
     reducibleBalance: Money.zero(),
+    excludeStats: false,
+    excludeBudget: false,
   );
 
   final ReceivablePayableFormStatus status;
@@ -420,6 +442,8 @@ class ReceivablePayableFormState {
   final String interestText;
   final String noteText;
   final Money reducibleBalance;
+  final bool excludeStats;
+  final bool excludeBudget;
 
   bool get isLoaded => status == ReceivablePayableFormStatus.loaded;
 
@@ -438,6 +462,8 @@ class ReceivablePayableFormState {
   ReceivablePayableFormState copyWith({
     DateTime? occurredAt,
     Object? receiveAccountId = _sentinel,
+    bool? excludeStats,
+    bool? excludeBudget,
     bool? submitting,
   }) => ReceivablePayableFormState(
     status: status,
@@ -455,6 +481,8 @@ class ReceivablePayableFormState {
     interestText: interestText,
     noteText: noteText,
     reducibleBalance: reducibleBalance,
+    excludeStats: excludeStats ?? this.excludeStats,
+    excludeBudget: excludeBudget ?? this.excludeBudget,
   );
 }
 

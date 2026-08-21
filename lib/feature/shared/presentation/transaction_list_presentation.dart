@@ -612,8 +612,9 @@ String formatTransactionAmount(
   final prefix = switch (item.businessPurpose) {
     BusinessPurpose.dailyIncome ||
     BusinessPurpose.refund ||
-    BusinessPurpose.reimbursementReceipt => '+',
-    BusinessPurpose.dailyExpense => '-',
+    BusinessPurpose.reimbursementReceipt ||
+    BusinessPurpose.debtRelief => '+',
+    BusinessPurpose.dailyExpense || BusinessPurpose.badDebt => '-',
     _ => '',
   };
   final formatted = formatMoney(

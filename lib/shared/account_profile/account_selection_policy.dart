@@ -30,6 +30,9 @@ bool accountMatchesSelectionPurpose(
     AccountSelectionPurpose.reimbursementReceivable =>
       accountMatchesUsage(account, AccountUsage.receivable) &&
           account.profileKey == AccountProfileKind.reimbursement.key,
+    AccountSelectionPurpose.ordinaryReceivable =>
+      accountMatchesUsage(account, AccountUsage.receivable) &&
+          account.profileKey == AccountProfileKind.receivable.key,
     AccountSelectionPurpose.receivable => accountMatchesUsage(
       account,
       AccountUsage.receivable,

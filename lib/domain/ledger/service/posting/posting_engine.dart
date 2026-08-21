@@ -660,8 +660,8 @@ class PostingEngine {
         primaryAmount: instruction.amount,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
-        isExcludedFromStats: false,
-        isExcludedFromBudget: false,
+        isExcludedFromStats: instruction.isExcludedFromStats,
+        isExcludedFromBudget: instruction.isExcludedFromBudget,
         sourceKind: instruction.sourceKind,
         details: [
           _detail(
@@ -706,7 +706,7 @@ class PostingEngine {
         primaryAmount: instruction.amount,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
-        isExcludedFromStats: false,
+        isExcludedFromStats: instruction.isExcludedFromStats,
         isExcludedFromBudget: false,
         sourceKind: instruction.sourceKind,
         details: [

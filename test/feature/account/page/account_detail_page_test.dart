@@ -70,6 +70,7 @@ void main() {
     final account = _account(kind: AccountProfileKind.fund);
     final detailState = AccountDetailPageState.loaded(
       account: account,
+      actions: accountDetailActions(account),
       transactions: const AccountTransactionsState.loaded(
         groups: [],
         hasMore: false,
@@ -188,6 +189,7 @@ void main() {
     final account = _account(kind: AccountProfileKind.credit);
     final detailState = AccountDetailPageState.loaded(
       account: account,
+      actions: accountDetailActions(account),
       transactions: const AccountTransactionsState.loaded(
         groups: [],
         hasMore: false,
@@ -251,6 +253,7 @@ void main() {
     final account = _account(kind: AccountProfileKind.fund);
     final detailState = AccountDetailPageState.loaded(
       account: account,
+      actions: accountDetailActions(account),
       transactions: AccountTransactionsState.loaded(
         groups: [
           TransactionDayGroup(
@@ -328,6 +331,7 @@ Widget _app({
 }) {
   final state = AccountDetailPageState.loaded(
     account: account,
+    actions: accountDetailActions(account),
     transactions: const AccountTransactionsState.loaded(
       groups: [],
       hasMore: false,
