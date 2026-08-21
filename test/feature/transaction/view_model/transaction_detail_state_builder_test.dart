@@ -4,6 +4,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_state.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_state_builder.dart';
+import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {
   test(
@@ -142,6 +143,14 @@ void main() {
 
     expect(state.showExcludeStats, isTrue);
     expect(state.showExcludeBudget, isFalse);
+  });
+
+  test('uses fund accounts for lending payment account edits', () {
+    final state = _build(purpose: BusinessPurpose.lending);
+
+    final paymentAccount = state.accountRows.single;
+    expect(paymentAccount.label, '付款账户');
+    expect(paymentAccount.editPurpose, AccountSelectionPurpose.fund);
   });
 }
 

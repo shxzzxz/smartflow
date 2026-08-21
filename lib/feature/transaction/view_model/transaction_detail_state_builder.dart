@@ -140,6 +140,8 @@ List<DetailAccountRow> _accountRows(
       final editPurpose =
           purpose == BusinessPurpose.debtRepayment
               ? AccountSelectionPurpose.repaymentSource
+              : purpose == BusinessPurpose.lending
+              ? AccountSelectionPurpose.fund
               : AccountSelectionPurpose.settlement;
       if (settlementEntries.isEmpty) {
         return [placeholder(label, editPurpose: editPurpose)];
