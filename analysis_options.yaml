@@ -25,7 +25,7 @@ analyzer:
     - linux/**
 
 plugins:
-  riverpod_lint: 3.1.0
+  riverpod_lint: 3.1.8
 
 linter:
   # The lint rules applied to this project can be customized in the
