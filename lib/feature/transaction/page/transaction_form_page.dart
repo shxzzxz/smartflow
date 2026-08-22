@@ -136,6 +136,7 @@ class _TransactionFormContentState
     extends ConsumerState<_TransactionFormContent> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _amountController;
+  late final TextEditingController _feeController;
   late final TextEditingController _noteController;
 
   @override
@@ -143,12 +144,14 @@ class _TransactionFormContentState
     super.initState();
     final initialValues = widget.formState.initialValues;
     _amountController = TextEditingController(text: initialValues.amount);
+    _feeController = TextEditingController(text: initialValues.fee);
     _noteController = TextEditingController(text: initialValues.note);
   }
 
   @override
   void dispose() {
     _amountController.dispose();
+    _feeController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -180,12 +183,11 @@ class _TransactionFormContentState
                 mode: formState.mode,
                 editing: editTransactionId != null,
                 onBack: () => context.pop(),
-                onDelete:
-                    editTransactionId != null && !formState.submitting
-                        ? _confirmDelete
-                        : null,
-                onModeChanged:
-                    (mode) => ref.read(_formProvider.notifier).setMode(mode),
+                onDelete: editTransactionId != null && !formState.submitting
+                    ? _confirmDelete
+                    : null,
+                onModeChanged: (mode) =>
+                    ref.read(_formProvider.notifier).setMode(mode),
               ),
               Expanded(
                 child: ListView(
@@ -199,97 +201,86 @@ class _TransactionFormContentState
                     if (formState.mode == TransactionFormMode.expense)
                       AppControlledFormField<String>(
                         value: formState.expenseCategoryId,
-                        validator:
-                            (value) =>
-                                formState.mode == TransactionFormMode.expense &&
-                                        value == null
-                                    ? '请选择支出分类'
-                                    : null,
-                        builder:
-                            (context, _, errorText, onChanged) => Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                CategoryGridPicker(
-                                  nodes: expenseTree,
-                                  selectedRootId: formState.expenseRootId,
-                                  selectedCategoryId:
-                                      formState.expenseCategoryId,
-                                  emptyLabel: '尚未创建支出分类',
-                                  onRootSelected: (account) {
-                                    _selectExpenseCategory(
-                                      rootId: account.id,
-                                      categoryId: account.id,
-                                    );
-                                    onChanged(account.id);
-                                  },
-                                  onChildSelected: (root, child) {
-                                    _selectExpenseCategory(
-                                      rootId: root.id,
-                                      categoryId: child.id,
-                                    );
-                                    onChanged(child.id);
-                                  },
-                                  onAddRoot:
-                                      () => _openCategoryForm(
-                                        AccountType.expense,
-                                      ),
-                                  onAddChild:
-                                      (rootId) => _openCategoryForm(
-                                        AccountType.expense,
-                                        parentId: rootId,
-                                      ),
-                                ),
-                                if (errorText != null)
-                                  _FormFieldErrorText(errorText),
-                              ],
+                        validator: (value) =>
+                            formState.mode == TransactionFormMode.expense &&
+                                value == null
+                            ? '请选择支出分类'
+                            : null,
+                        builder: (context, _, errorText, onChanged) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            CategoryGridPicker(
+                              nodes: expenseTree,
+                              selectedRootId: formState.expenseRootId,
+                              selectedCategoryId: formState.expenseCategoryId,
+                              emptyLabel: '尚未创建支出分类',
+                              onRootSelected: (account) {
+                                _selectExpenseCategory(
+                                  rootId: account.id,
+                                  categoryId: account.id,
+                                );
+                                onChanged(account.id);
+                              },
+                              onChildSelected: (root, child) {
+                                _selectExpenseCategory(
+                                  rootId: root.id,
+                                  categoryId: child.id,
+                                );
+                                onChanged(child.id);
+                              },
+                              onAddRoot: () =>
+                                  _openCategoryForm(AccountType.expense),
+                              onAddChild: (rootId) => _openCategoryForm(
+                                AccountType.expense,
+                                parentId: rootId,
+                              ),
                             ),
+                            if (errorText != null)
+                              _FormFieldErrorText(errorText),
+                          ],
+                        ),
                       ),
                     if (formState.mode == TransactionFormMode.income)
                       AppControlledFormField<String>(
                         value: formState.incomeCategoryId,
-                        validator:
-                            (value) =>
-                                formState.mode == TransactionFormMode.income &&
-                                        value == null
-                                    ? '请选择收入分类'
-                                    : null,
-                        builder:
-                            (context, _, errorText, onChanged) => Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                CategoryGridPicker(
-                                  nodes: incomeTree,
-                                  selectedRootId: formState.incomeRootId,
-                                  selectedCategoryId:
-                                      formState.incomeCategoryId,
-                                  emptyLabel: '尚未创建收入分类',
-                                  onRootSelected: (account) {
-                                    _selectIncomeCategory(
-                                      rootId: account.id,
-                                      categoryId: account.id,
-                                    );
-                                    onChanged(account.id);
-                                  },
-                                  onChildSelected: (root, child) {
-                                    _selectIncomeCategory(
-                                      rootId: root.id,
-                                      categoryId: child.id,
-                                    );
-                                    onChanged(child.id);
-                                  },
-                                  onAddRoot:
-                                      () =>
-                                          _openCategoryForm(AccountType.income),
-                                  onAddChild:
-                                      (rootId) => _openCategoryForm(
-                                        AccountType.income,
-                                        parentId: rootId,
-                                      ),
-                                ),
-                                if (errorText != null)
-                                  _FormFieldErrorText(errorText),
-                              ],
+                        validator: (value) =>
+                            formState.mode == TransactionFormMode.income &&
+                                value == null
+                            ? '请选择收入分类'
+                            : null,
+                        builder: (context, _, errorText, onChanged) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            CategoryGridPicker(
+                              nodes: incomeTree,
+                              selectedRootId: formState.incomeRootId,
+                              selectedCategoryId: formState.incomeCategoryId,
+                              emptyLabel: '尚未创建收入分类',
+                              onRootSelected: (account) {
+                                _selectIncomeCategory(
+                                  rootId: account.id,
+                                  categoryId: account.id,
+                                );
+                                onChanged(account.id);
+                              },
+                              onChildSelected: (root, child) {
+                                _selectIncomeCategory(
+                                  rootId: root.id,
+                                  categoryId: child.id,
+                                );
+                                onChanged(child.id);
+                              },
+                              onAddRoot: () =>
+                                  _openCategoryForm(AccountType.income),
+                              onAddChild: (rootId) => _openCategoryForm(
+                                AccountType.income,
+                                parentId: rootId,
+                              ),
                             ),
+                            if (errorText != null)
+                              _FormFieldErrorText(errorText),
+                          ],
+                        ),
                       ),
                     if (formState.mode == TransactionFormMode.transfer)
                       _MainAccountPickerSection(
@@ -298,24 +289,27 @@ class _TransactionFormContentState
                             label: '转出账户',
                             accounts: settlementAccounts,
                             selectedId: formState.fromAccountId,
-                            validator:
-                                (value) => value == null ? '请选择转出账户' : null,
-                            onChanged:
-                                (value) => ref
-                                    .read(_formProvider.notifier)
-                                    .setFromAccountId(value),
+                            validator: (value) =>
+                                value == null ? '请选择转出账户' : null,
+                            onChanged: (value) => ref
+                                .read(_formProvider.notifier)
+                                .setFromAccountId(value),
                           ),
                           const SizedBox(height: AppSpacing.space8),
                           _MainAccountPickerTile(
                             label: '转入账户',
                             accounts: settlementAccounts,
                             selectedId: formState.toAccountId,
-                            validator:
-                                (value) => value == null ? '请选择转入账户' : null,
-                            onChanged:
-                                (value) => ref
-                                    .read(_formProvider.notifier)
-                                    .setToAccountId(value),
+                            validator: (value) =>
+                                value == null ? '请选择转入账户' : null,
+                            onChanged: (value) => ref
+                                .read(_formProvider.notifier)
+                                .setToAccountId(value),
+                          ),
+                          const SizedBox(height: AppSpacing.space8),
+                          _MainFeeInputTile(
+                            key: const ValueKey('transfer-fee-input'),
+                            controller: _feeController,
                           ),
                         ],
                       ),
@@ -326,24 +320,22 @@ class _TransactionFormContentState
                             label: '负债账户',
                             accounts: liabilityAccounts,
                             selectedId: formState.liabilityAccountId,
-                            validator:
-                                (value) => value == null ? '请选择负债账户' : null,
-                            onChanged:
-                                (value) => ref
-                                    .read(_formProvider.notifier)
-                                    .setLiabilityAccountId(value),
+                            validator: (value) =>
+                                value == null ? '请选择负债账户' : null,
+                            onChanged: (value) => ref
+                                .read(_formProvider.notifier)
+                                .setLiabilityAccountId(value),
                           ),
                           const SizedBox(height: AppSpacing.space8),
                           _MainAccountPickerTile(
                             label: '收款账户',
                             accounts: fundAccounts,
                             selectedId: formState.toAccountId,
-                            validator:
-                                (value) => value == null ? '请选择收款账户' : null,
-                            onChanged:
-                                (value) => ref
-                                    .read(_formProvider.notifier)
-                                    .setToAccountId(value),
+                            validator: (value) =>
+                                value == null ? '请选择收款账户' : null,
+                            onChanged: (value) => ref
+                                .read(_formProvider.notifier)
+                                .setToAccountId(value),
                           ),
                         ],
                       ),
@@ -354,24 +346,22 @@ class _TransactionFormContentState
                             label: '付款账户',
                             accounts: fundAccounts,
                             selectedId: formState.fromAccountId,
-                            validator:
-                                (value) => value == null ? '请选择付款账户' : null,
-                            onChanged:
-                                (value) => ref
-                                    .read(_formProvider.notifier)
-                                    .setFromAccountId(value),
+                            validator: (value) =>
+                                value == null ? '请选择付款账户' : null,
+                            onChanged: (value) => ref
+                                .read(_formProvider.notifier)
+                                .setFromAccountId(value),
                           ),
                           const SizedBox(height: AppSpacing.space8),
                           _MainAccountPickerTile(
                             label: '应收账户',
                             accounts: ordinaryReceivableAccounts,
                             selectedId: formState.ordinaryReceivableAccountId,
-                            validator:
-                                (value) => value == null ? '请选择应收账户' : null,
-                            onChanged:
-                                (value) => ref
-                                    .read(_formProvider.notifier)
-                                    .setOrdinaryReceivableAccountId(value),
+                            validator: (value) =>
+                                value == null ? '请选择应收账户' : null,
+                            onChanged: (value) => ref
+                                .read(_formProvider.notifier)
+                                .setOrdinaryReceivableAccountId(value),
                           ),
                         ],
                       ),
@@ -391,11 +381,10 @@ class _TransactionFormContentState
                       amountController: _amountController,
                       noteController: _noteController,
                       semantic: _amountSemantic(formState.mode),
-                      amountValidator:
-                          (value) => validatePositiveMoneyText(
-                            value,
-                            nonPositiveMessage: '请输入有效金额',
-                          ),
+                      amountValidator: (value) => validatePositiveMoneyText(
+                        value,
+                        nonPositiveMessage: '请输入有效金额',
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.space4),
                     _TransactionOptionsPanel(
@@ -411,26 +400,21 @@ class _TransactionFormContentState
                       tagNames: _selectedTagNames(formState),
                       onPickDate: _pickDate,
                       onSelectTags: _selectTags,
-                      onFromAccountChanged:
-                          (value) => ref
-                              .read(_formProvider.notifier)
-                              .setFromAccountId(value),
-                      onToAccountChanged:
-                          (value) => ref
-                              .read(_formProvider.notifier)
-                              .setToAccountId(value),
-                      onReimbursementAccountChanged:
-                          (value) => ref
-                              .read(_formProvider.notifier)
-                              .setReimbursementAccountId(value),
-                      onExcludeStatsChanged:
-                          (value) => ref
-                              .read(_formProvider.notifier)
-                              .setExcludeStats(value),
-                      onExcludeBudgetChanged:
-                          (value) => ref
-                              .read(_formProvider.notifier)
-                              .setExcludeBudget(value),
+                      onFromAccountChanged: (value) => ref
+                          .read(_formProvider.notifier)
+                          .setFromAccountId(value),
+                      onToAccountChanged: (value) => ref
+                          .read(_formProvider.notifier)
+                          .setToAccountId(value),
+                      onReimbursementAccountChanged: (value) => ref
+                          .read(_formProvider.notifier)
+                          .setReimbursementAccountId(value),
+                      onExcludeStatsChanged: (value) => ref
+                          .read(_formProvider.notifier)
+                          .setExcludeStats(value),
+                      onExcludeBudgetChanged: (value) => ref
+                          .read(_formProvider.notifier)
+                          .setExcludeBudget(value),
                     ),
                     if (keyboardVisible)
                       SizedBox(height: keyboardInset)
@@ -495,14 +479,13 @@ class _TransactionFormContentState
   }
 
   void _openCategoryForm(AccountType type, {String? parentId}) {
-    final query =
-        Uri(
-          path: '/category/new',
-          queryParameters: {
-            'type': type.name,
-            if (parentId != null) 'parentId': parentId.toString(),
-          },
-        ).toString();
+    final query = Uri(
+      path: '/category/new',
+      queryParameters: {
+        'type': type.name,
+        if (parentId != null) 'parentId': parentId.toString(),
+      },
+    ).toString();
     context.push(query);
   }
 
@@ -522,6 +505,7 @@ class _TransactionFormContentState
 
   void _clearForNext() {
     _amountController.clear();
+    _feeController.clear();
     _noteController.clear();
     ref.read(_formProvider.notifier).clearForNext();
   }
@@ -534,6 +518,7 @@ class _TransactionFormContentState
         .read(_formProvider.notifier)
         .submit(
           amountText: _amountController.text,
+          feeText: _feeController.text,
           noteText: _noteController.text,
         );
     if (!mounted) return;
@@ -593,21 +578,20 @@ class _TransactionFormContentState
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('删除交易'),
-            content: const Text('删除后交易及其账务记录将无法恢复。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('删除'),
-              ),
-            ],
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除交易'),
+        content: const Text('删除后交易及其账务记录将无法恢复。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
           ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
     );
     if (confirmed != true || !mounted) return;
 
@@ -658,15 +642,14 @@ class _TopBar extends StatelessWidget {
             style: appHeaderIconButtonStyle,
           ),
           Expanded(
-            child:
-                editing
-                    ? Center(
-                      child: Text(
-                        '编辑${_modeLabel(mode)}',
-                        style: context.appTextStyles.subsectionTitleStrong,
-                      ),
-                    )
-                    : _ModeTabs(mode: mode, onChanged: onModeChanged),
+            child: editing
+                ? Center(
+                    child: Text(
+                      '编辑${_modeLabel(mode)}',
+                      style: context.appTextStyles.subsectionTitleStrong,
+                    ),
+                  )
+                : _ModeTabs(mode: mode, onChanged: onModeChanged),
           ),
           if (editing)
             IconButton(
@@ -692,24 +675,23 @@ class _ModeTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
-      builder:
-          (context, constraints) => SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: constraints.maxWidth),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  for (final value in TransactionFormMode.values)
-                    _ModeTabItem(
-                      label: _modeLabel(value),
-                      selected: value == mode,
-                      onTap: () => onChanged(value),
-                    ),
-                ],
-              ),
-            ),
+      builder: (context, constraints) => SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: constraints.maxWidth),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              for (final value in TransactionFormMode.values)
+                _ModeTabItem(
+                  label: _modeLabel(value),
+                  selected: value == mode,
+                  onTap: () => onChanged(value),
+                ),
+            ],
           ),
+        ),
+      ),
     );
   }
 }
@@ -751,8 +733,9 @@ class _ModeTabItem extends StatelessWidget {
                   style: textStyles
                       .segmentedControlLabel(selected: selected)
                       .copyWith(
-                        color:
-                            selected ? colors.primary : colors.onSurfaceVariant,
+                        color: selected
+                            ? colors.primary
+                            : colors.onSurfaceVariant,
                       ),
                 ),
                 const SizedBox(height: AppSpacing.space6),
@@ -887,6 +870,65 @@ class _MainAccountPickerTile extends StatelessWidget {
   }
 }
 
+class _MainFeeInputTile extends StatelessWidget {
+  const _MainFeeInputTile({required this.controller, super.key});
+
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textStyles = context.appTextStyles;
+
+    return Material(
+      color: colors.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space12,
+          vertical: AppSpacing.space12,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(
+              width: AppSpacing.space32,
+              child: Center(
+                child: BusinessIcon(
+                  iconKey: 'swap-box-line',
+                  size: 28,
+                  usage: BusinessIconUsage.system,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.space12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('手续费', style: textStyles.formLabel),
+                  const SizedBox(height: AppSpacing.space2),
+                  AppPlainTextFormField(
+                    controller: controller,
+                    hintText: '0.00',
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [moneyInputFormatter],
+                    validator: validateOptionalNonNegativeMoneyText,
+                    textAlign: TextAlign.left,
+                    style: textStyles.formValue,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _FormFieldErrorText extends StatelessWidget {
   const _FormFieldErrorText(this.message);
 
@@ -956,12 +998,12 @@ class _TransactionOptionsPanel extends StatelessWidget {
         mode == TransactionFormMode.income;
     final showExcludeStats = showPrimaryAccount;
     final accountLabel = mode == TransactionFormMode.income ? '收入账户' : '支出账户';
-    final primaryAccountId =
-        mode == TransactionFormMode.income ? toAccountId : fromAccountId;
-    final primaryChanged =
-        mode == TransactionFormMode.income
-            ? onToAccountChanged
-            : onFromAccountChanged;
+    final primaryAccountId = mode == TransactionFormMode.income
+        ? toAccountId
+        : fromAccountId;
+    final primaryChanged = mode == TransactionFormMode.income
+        ? onToAccountChanged
+        : onFromAccountChanged;
 
     Widget buildTagSelector() {
       if (tagNames.isEmpty) {
@@ -1049,9 +1091,8 @@ class _TransactionOptionsPanel extends StatelessWidget {
       value: effectiveAccountId(primaryAccountId, moneyAccounts),
       onChanged: primaryChanged,
       validator: (value) => value == null ? '请选择$accountLabel' : null,
-      builder:
-          (context, _, errorText, changeValue) =>
-              buildPanel(changeValue, errorText),
+      builder: (context, _, errorText, changeValue) =>
+          buildPanel(changeValue, errorText),
     );
   }
 }
@@ -1075,25 +1116,22 @@ class _AccountSelectorChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selected =
-        selectedId == null
-            ? null
-            : accounts.where((account) => account.id == selectedId).firstOrNull;
+    final selected = selectedId == null
+        ? null
+        : accounts.where((account) => account.id == selectedId).firstOrNull;
     final effective = selected ?? effectiveAccount(null, accounts);
-    final text =
-        allowNone && selectedId == null
-            ? noneLabel
-            : effective == null
-            ? '$label为空'
-            : effective.name;
-    final leading =
-        effective == null || (allowNone && selectedId == null)
-            ? null
-            : BusinessIcon(
-              iconKey: effective.iconKey,
-              size: 14,
-              usage: BusinessIconUsage.account,
-            );
+    final text = allowNone && selectedId == null
+        ? noneLabel
+        : effective == null
+        ? '$label为空'
+        : effective.name;
+    final leading = effective == null || (allowNone && selectedId == null)
+        ? null
+        : BusinessIcon(
+            iconKey: effective.iconKey,
+            size: 14,
+            usage: BusinessIconUsage.account,
+          );
 
     return _QuickActionChip(
       label: text,
@@ -1184,10 +1222,9 @@ class _QuickActionChip extends StatelessWidget {
             vertical: AppSpacing.space4,
           ),
           decoration: BoxDecoration(
-            color:
-                selected
-                    ? colors.primary.withValues(alpha: 0.08)
-                    : AppColors.neutral99,
+            color: selected
+                ? colors.primary.withValues(alpha: 0.08)
+                : AppColors.neutral99,
             borderRadius: BorderRadius.circular(AppRadius.radiusMd),
           ),
           child: Row(
@@ -1259,8 +1296,9 @@ class _NumberPad extends StatelessWidget {
                         Expanded(
                           child: _PadKey(
                             label: value,
-                            onTap:
-                                value == '再记' ? onClear : () => onInput(value),
+                            onTap: value == '再记'
+                                ? onClear
+                                : () => onInput(value),
                           ),
                         ),
                     ],
@@ -1328,16 +1366,14 @@ class _PadKey extends StatelessWidget {
           child: SizedBox(
             height: 52,
             child: Center(
-              child:
-                  icon == null
-                      ? Text(
-                        label!,
-                        style:
-                            label == '再记'
-                                ? textStyles.keypadSecondary
-                                : textStyles.keypadPrimary,
-                      )
-                      : Icon(icon, size: 22),
+              child: icon == null
+                  ? Text(
+                      label!,
+                      style: label == '再记'
+                          ? textStyles.keypadSecondary
+                          : textStyles.keypadPrimary,
+                    )
+                  : Icon(icon, size: 22),
             ),
           ),
         ),
@@ -1365,33 +1401,31 @@ class _ActionKey extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.space2),
-      child:
-          filled
-              ? FilledButton(
-                onPressed: submitting ? null : onTap,
-                style: FilledButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-                  ),
-                  backgroundColor: colors.primary,
+      child: filled
+          ? FilledButton(
+              onPressed: submitting ? null : onTap,
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.radiusMd),
                 ),
-                child:
-                    submitting
-                        ? const SizedBox.square(
-                          dimension: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                        : Text(label),
-              )
-              : TextButton(
-                onPressed: onTap,
-                style: TextButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-                  ),
-                ),
-                child: Text(label),
+                backgroundColor: colors.primary,
               ),
+              child: submitting
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(label),
+            )
+          : TextButton(
+              onPressed: onTap,
+              style: TextButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+                ),
+              ),
+              child: Text(label),
+            ),
     );
   }
 }

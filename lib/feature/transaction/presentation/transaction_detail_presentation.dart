@@ -1,5 +1,6 @@
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
+import '../../shared/presentation/transaction_detail_amount.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/widget/business/finance/finance_labels.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
@@ -50,8 +51,9 @@ DetailHero transactionDetailHero({
   final title =
       category?.name ?? transactionPurposeLabel(transaction.businessPurpose);
   final counterparty = transaction.counterpartyName;
-  final subtitle =
-      counterparty != null && counterparty.isNotEmpty ? counterparty : null;
+  final subtitle = counterparty != null && counterparty.isNotEmpty
+      ? counterparty
+      : null;
 
   return DetailHero(
     title: title,
@@ -89,6 +91,17 @@ String formatTransactionDetailDateTime(DateTime value) {
   String two(int n) => n.toString().padLeft(2, '0');
   return '${value.year}年${two(value.month)}月${two(value.day)}日 '
       '${two(value.hour)}:${two(value.minute)}';
+}
+
+Money? transactionTransferFee(TransactionDetail detail) {
+  if (detail.transaction.businessPurpose != BusinessPurpose.transfer) {
+    return null;
+  }
+  final amount = sumTransactionDetailAmount(
+    detail,
+    TransactionDetailType.transferFee,
+  );
+  return amount.minorUnits > 0 ? amount : null;
 }
 
 MoneySemantic semanticForTransactionPurpose(BusinessPurpose purpose) {

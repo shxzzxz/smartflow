@@ -147,6 +147,38 @@ void main() {
     },
   );
 
+  test('transfer list item carries its fee adjustment', () async {
+    final transfer = _transaction(
+      id: 'transfer',
+      purpose: BusinessPurpose.transfer,
+      amount: 2000,
+    );
+    final service = _service(
+      transactionRead: _FakeTransactionReadRepository(
+        transactions: {'transfer': transfer},
+      ),
+      detailRead: const _FakeTransactionDetailReadRepository({
+        'transfer': [
+          TransactionDetailRecord(
+            id: 'fee',
+            transactionId: 'transfer',
+            lineNo: 2,
+            type: TransactionDetailType.transferFee,
+            amount: Money(minorUnits: 300),
+          ),
+        ],
+      }),
+    );
+
+    final item =
+        (await service.watchTransactions(const TransactionListQuery()).first)
+            .single;
+
+    expect(item.adjustments, hasLength(1));
+    expect(item.adjustments.single.kind, TransactionAdjustmentKind.transferFee);
+    expect(item.adjustments.single.amount, const Money(minorUnits: 300));
+  });
+
   test('child detail includes parent reimbursement closed summary', () async {
     final parent = _transaction(
       id: 'parent',
@@ -428,8 +460,9 @@ void main() {
         ],
       );
 
-      final item =
-          (await service.findTransactions(const TransactionListQuery())).single;
+      final item = (await service.findTransactions(
+        const TransactionListQuery(),
+      )).single;
 
       expect(item.primaryCategoryId, 'dining');
     },
@@ -459,8 +492,9 @@ void main() {
       ],
     );
 
-    final item =
-        (await service.findTransactions(const TransactionListQuery())).single;
+    final item = (await service.findTransactions(
+      const TransactionListQuery(),
+    )).single;
 
     expect(item.primaryCategoryId, isNull);
   });
@@ -498,8 +532,9 @@ void main() {
       ],
     );
 
-    final item =
-        (await service.findTransactions(const TransactionListQuery())).single;
+    final item = (await service.findTransactions(
+      const TransactionListQuery(),
+    )).single;
 
     expect(item.impactsByAccountId.keys, {'cash', 'opening-equity'});
   });
@@ -535,10 +570,9 @@ void main() {
       ],
     );
 
-    final impacts =
-        (await service.findTransactions(
-          const TransactionListQuery(),
-        )).single.impactsByAccountId;
+    final impacts = (await service.findTransactions(
+      const TransactionListQuery(),
+    )).single.impactsByAccountId;
 
     expect(impacts.keys, {'asset', 'expense', 'liability', 'income', 'equity'});
     expect(impacts['asset']?.debitAmount.minorUnits, 100);

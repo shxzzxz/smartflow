@@ -60,17 +60,16 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       categoryTreeProvider(AccountType.expense),
     );
     final incomeTreeAsync = ref.watch(categoryTreeProvider(AccountType.income));
-    final editDetailAsync =
-        editTransactionId == null
-            ? null
-            : ref.watch(transactionDetailProvider(editTransactionId));
-    final accountsByIdAsync =
-        editTransactionId == null ? null : ref.watch(accountsByIdProvider);
+    final editDetailAsync = editTransactionId == null
+        ? null
+        : ref.watch(transactionDetailProvider(editTransactionId));
+    final accountsByIdAsync = editTransactionId == null
+        ? null
+        : ref.watch(accountsByIdProvider);
     final tagsAsync = ref.watch(tagListProvider);
-    final editTagIdsAsync =
-        editTransactionId == null
-            ? null
-            : ref.watch(transactionTagIdsProvider(editTransactionId));
+    final editTagIdsAsync = editTransactionId == null
+        ? null
+        : ref.watch(transactionTagIdsProvider(editTransactionId));
 
     final initializedState = _initializedState;
     if (initializedState != null) {
@@ -178,14 +177,13 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         ordinaryReceivableAccountId: null,
         excludeStats:
             value == TransactionFormMode.transfer ||
-                    value == TransactionFormMode.borrowing ||
-                    value == TransactionFormMode.lending
-                ? false
-                : current.excludeStats,
-        excludeBudget:
-            value == TransactionFormMode.expense
-                ? current.excludeBudget
-                : false,
+                value == TransactionFormMode.borrowing ||
+                value == TransactionFormMode.lending
+            ? false
+            : current.excludeStats,
+        excludeBudget: value == TransactionFormMode.expense
+            ? current.excludeBudget
+            : false,
       );
     });
   }
@@ -209,8 +207,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       categoryId: categoryId,
       requestRevision: requestRevision,
       selectedCategoryId: (current) => current.expenseCategoryId,
-      selectAccount:
-          (current, accountId) => current.copyWith(fromAccountId: accountId),
+      selectAccount: (current, accountId) =>
+          current.copyWith(fromAccountId: accountId),
     );
   }
 
@@ -227,8 +225,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       categoryId: categoryId,
       requestRevision: requestRevision,
       selectedCategoryId: (current) => current.incomeCategoryId,
-      selectAccount:
-          (current, accountId) => current.copyWith(toAccountId: accountId),
+      selectAccount: (current, accountId) =>
+          current.copyWith(toAccountId: accountId),
     );
   }
 
@@ -313,6 +311,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   Future<SubmitOutcome> submit({
     required String amountText,
     required String noteText,
+    String? feeText,
   }) async {
     final current = state.asData?.value;
     if (current == null) return _invalidCommand('交易表单尚未加载');
@@ -320,15 +319,34 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     if (amount == null) {
       return _invalidCommand('请输入有效金额');
     }
+    Money? feeAmount;
+    if (current.mode == TransactionFormMode.transfer && feeText != null) {
+      final trimmedFee = feeText.trim();
+      if (trimmedFee.isEmpty) {
+        feeAmount = Money.zero();
+      } else {
+        final parsedFee = Money.tryParse(trimmedFee);
+        if (parsedFee == null || parsedFee.minorUnits < 0) {
+          return _invalidCommand('请输入有效手续费');
+        }
+        feeAmount = parsedFee;
+      }
+    }
 
     _update((current) => current.copyWith(submitting: true));
     try {
       return await guardSubmit(_logger, 'Transaction form submit', () async {
         final editTransactionId = _editTransactionId;
         if (editTransactionId == null) {
-          await _submitCreate(current, amount, noteText);
+          await _submitCreate(current, amount, feeAmount, noteText);
         } else {
-          await _submitEdit(current, editTransactionId, amount, noteText);
+          await _submitEdit(
+            current,
+            editTransactionId,
+            amount,
+            feeAmount,
+            noteText,
+          );
         }
       });
     } finally {
@@ -354,6 +372,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   Future<void> _submitCreate(
     TransactionFormState formState,
     Money amount,
+    Money? feeAmount,
     String noteText,
   ) async {
     final postingService = ref.read(transactionPostingAppServiceProvider);
@@ -440,6 +459,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             amount: amount,
             fromAccountId: fromAccountId,
             toAccountId: toAccountId,
+            feeAmount: feeAmount,
             occurredAt: formState.occurredAt,
             note: note,
             tagIds: formState.selectedTagIds,
@@ -498,6 +518,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     TransactionFormState formState,
     String transactionId,
     Money amount,
+    Money? feeAmount,
     String noteText,
   ) async {
     final editService = ref.read(transactionEditAppServiceProvider);
@@ -588,6 +609,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             amount: amount,
             fromAccountId: fromAccountId,
             toAccountId: toAccountId,
+            feeAmount: feeAmount,
             occurredAt: formState.occurredAt,
             note: note,
             tagIds: formState.selectedTagIds,
@@ -776,13 +798,15 @@ class TransactionFormState {
       fromAccountId: fromAccountId,
       toAccountId:
           mode == TransactionFormMode.lending ||
-                  mode == TransactionFormMode.borrowing
-              ? null
-              : toAccountId,
-      ordinaryReceivableAccountId:
-          mode == TransactionFormMode.lending ? toAccountId : null,
-      liabilityAccountId:
-          mode == TransactionFormMode.borrowing ? liabilityAccountId : null,
+              mode == TransactionFormMode.borrowing
+          ? null
+          : toAccountId,
+      ordinaryReceivableAccountId: mode == TransactionFormMode.lending
+          ? toAccountId
+          : null,
+      liabilityAccountId: mode == TransactionFormMode.borrowing
+          ? liabilityAccountId
+          : null,
       settlementAccounts: settlementAccounts,
       fundAccounts: fundAccounts,
       liabilityAccounts: liabilityAccounts,
@@ -889,40 +913,33 @@ class TransactionFormState {
       initialValues: initialValues ?? this.initialValues,
       mode: mode ?? this.mode,
       occurredAt: occurredAt ?? this.occurredAt,
-      expenseCategoryId:
-          expenseCategoryId == _sentinel
-              ? this.expenseCategoryId
-              : expenseCategoryId as String?,
-      expenseRootId:
-          expenseRootId == _sentinel
-              ? this.expenseRootId
-              : expenseRootId as String?,
-      incomeCategoryId:
-          incomeCategoryId == _sentinel
-              ? this.incomeCategoryId
-              : incomeCategoryId as String?,
-      incomeRootId:
-          incomeRootId == _sentinel
-              ? this.incomeRootId
-              : incomeRootId as String?,
-      fromAccountId:
-          fromAccountId == _sentinel
-              ? this.fromAccountId
-              : fromAccountId as String?,
-      toAccountId:
-          toAccountId == _sentinel ? this.toAccountId : toAccountId as String?,
-      reimbursementAccountId:
-          reimbursementAccountId == _sentinel
-              ? this.reimbursementAccountId
-              : reimbursementAccountId as String?,
-      ordinaryReceivableAccountId:
-          ordinaryReceivableAccountId == _sentinel
-              ? this.ordinaryReceivableAccountId
-              : ordinaryReceivableAccountId as String?,
-      liabilityAccountId:
-          liabilityAccountId == _sentinel
-              ? this.liabilityAccountId
-              : liabilityAccountId as String?,
+      expenseCategoryId: expenseCategoryId == _sentinel
+          ? this.expenseCategoryId
+          : expenseCategoryId as String?,
+      expenseRootId: expenseRootId == _sentinel
+          ? this.expenseRootId
+          : expenseRootId as String?,
+      incomeCategoryId: incomeCategoryId == _sentinel
+          ? this.incomeCategoryId
+          : incomeCategoryId as String?,
+      incomeRootId: incomeRootId == _sentinel
+          ? this.incomeRootId
+          : incomeRootId as String?,
+      fromAccountId: fromAccountId == _sentinel
+          ? this.fromAccountId
+          : fromAccountId as String?,
+      toAccountId: toAccountId == _sentinel
+          ? this.toAccountId
+          : toAccountId as String?,
+      reimbursementAccountId: reimbursementAccountId == _sentinel
+          ? this.reimbursementAccountId
+          : reimbursementAccountId as String?,
+      ordinaryReceivableAccountId: ordinaryReceivableAccountId == _sentinel
+          ? this.ordinaryReceivableAccountId
+          : ordinaryReceivableAccountId as String?,
+      liabilityAccountId: liabilityAccountId == _sentinel
+          ? this.liabilityAccountId
+          : liabilityAccountId as String?,
       excludeStats: excludeStats ?? this.excludeStats,
       excludeBudget: excludeBudget ?? this.excludeBudget,
       submitting: submitting ?? this.submitting,
@@ -944,18 +961,24 @@ class TransactionFormState {
 /// Text captured once from the transaction snapshot for controller creation.
 /// This is not the live text state of the form.
 class TransactionFormInitialValues {
-  const TransactionFormInitialValues({this.amount = '', this.note = ''});
+  const TransactionFormInitialValues({
+    this.amount = '',
+    this.fee = '',
+    this.note = '',
+  });
 
   factory TransactionFormInitialValues.fromSnapshot(
     TransactionFormEditSnapshot snapshot,
   ) {
     return TransactionFormInitialValues(
       amount: snapshot.amountText,
+      fee: snapshot.feeText,
       note: snapshot.noteText,
     );
   }
 
   final String amount;
+  final String fee;
   final String note;
 }
 

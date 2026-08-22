@@ -1,5 +1,6 @@
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money_formatter.dart';
+import '../../shared/presentation/transaction_detail_amount.dart';
 
 enum TransactionFormMode { expense, income, transfer, borrowing, lending }
 
@@ -11,6 +12,7 @@ class TransactionFormEditSnapshot {
     required this.occurredAt,
     required this.excludeStats,
     required this.excludeBudget,
+    this.feeText = '',
     this.expenseCategoryId,
     this.expenseRootId,
     this.incomeCategoryId,
@@ -28,6 +30,7 @@ class TransactionFormEditSnapshot {
   final DateTime occurredAt;
   final bool excludeStats;
   final bool excludeBudget;
+  final String feeText;
   final String? expenseCategoryId;
   final String? expenseRootId;
   final String? incomeCategoryId;
@@ -143,6 +146,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
       return TransactionFormEditSnapshot(
         mode: TransactionFormMode.transfer,
         amountText: amountText,
+        feeText: _detailAmountText(detail, TransactionDetailType.transferFee),
         noteText: noteText,
         occurredAt: transaction.occurredAt,
         excludeStats: false,
@@ -213,6 +217,12 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         '该交易类型不支持通用交易编辑表单',
       );
   }
+}
+
+String _detailAmountText(TransactionDetail detail, TransactionDetailType type) {
+  final amount = sumTransactionDetailAmount(detail, type);
+  if (amount.minorUnits <= 0) return '';
+  return formatMoney(amount, style: MoneyFormatStyle.plain);
 }
 
 String? rootCategoryId(List<CategoryNode> tree, String? categoryId) {

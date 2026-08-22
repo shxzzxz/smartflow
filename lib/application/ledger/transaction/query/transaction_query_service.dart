@@ -170,39 +170,35 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   ) async {
     if (page.isEmpty) return const [];
     final pageIds = page.map((transaction) => transaction.id).toSet();
-    final refundParentIds =
-        page
-            .where(
-              (transaction) =>
-                  transaction.parentTransactionId == null &&
-                  (transaction.businessPurpose ==
-                          BusinessPurpose.dailyExpense ||
-                      transaction.businessPurpose ==
-                          BusinessPurpose.reimbursementAdvance),
-            )
-            .map((transaction) => transaction.id)
-            .toSet();
-    final reimbursementParentIds =
-        page
-            .where(
-              (transaction) =>
-                  transaction.parentTransactionId == null &&
+    final refundParentIds = page
+        .where(
+          (transaction) =>
+              transaction.parentTransactionId == null &&
+              (transaction.businessPurpose == BusinessPurpose.dailyExpense ||
                   transaction.businessPurpose ==
-                      BusinessPurpose.reimbursementAdvance,
-            )
-            .map((transaction) => transaction.id)
-            .toSet();
-    final detailTransactionIds =
-        page
-            .where(
-              (transaction) =>
-                  transaction.businessPurpose ==
-                      BusinessPurpose.debtRepayment ||
-                  transaction.businessPurpose ==
-                      BusinessPurpose.receivableCollection,
-            )
-            .map((transaction) => transaction.id)
-            .toSet();
+                      BusinessPurpose.reimbursementAdvance),
+        )
+        .map((transaction) => transaction.id)
+        .toSet();
+    final reimbursementParentIds = page
+        .where(
+          (transaction) =>
+              transaction.parentTransactionId == null &&
+              transaction.businessPurpose ==
+                  BusinessPurpose.reimbursementAdvance,
+        )
+        .map((transaction) => transaction.id)
+        .toSet();
+    final detailTransactionIds = page
+        .where(
+          (transaction) =>
+              transaction.businessPurpose == BusinessPurpose.transfer ||
+              transaction.businessPurpose == BusinessPurpose.debtRepayment ||
+              transaction.businessPurpose ==
+                  BusinessPurpose.receivableCollection,
+        )
+        .map((transaction) => transaction.id)
+        .toSet();
 
     final results = await Future.wait([
       _txRead.aggregateChildren(
@@ -356,10 +352,9 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     for (final entry in entries) {
       final account = accountsById[entry.accountId];
       if (account == null) continue;
-      final amounts =
-          entry.direction == EntryDirection.debit
-              ? debitByAccountId
-              : creditByAccountId;
+      final amounts = entry.direction == EntryDirection.debit
+          ? debitByAccountId
+          : creditByAccountId;
       amounts[entry.accountId] =
           (amounts[entry.accountId] ?? 0) + entry.amount.minorUnits;
     }
@@ -407,6 +402,11 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     }
 
     switch (transaction.businessPurpose) {
+      case BusinessPurpose.transfer:
+        add(
+          TransactionAdjustmentKind.transferFee,
+          _detailAmount(details, TransactionDetailType.transferFee),
+        );
       case BusinessPurpose.dailyExpense:
         add(
           TransactionAdjustmentKind.refund,
@@ -523,8 +523,9 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   ) async {
     if (transactionIds.isEmpty) return const [];
     final transactions = await _txRead.findByIds(transactionIds);
-    final fetchedIds =
-        transactions.map((transaction) => transaction.id).toSet();
+    final fetchedIds = transactions
+        .map((transaction) => transaction.id)
+        .toSet();
     final entriesByTransaction = await _entryRead.findByTransactionIds(
       fetchedIds,
     );
@@ -555,34 +556,29 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     final detailsByTransaction = await _detailRead.findByTransactionIds({
       transactionId,
     });
-    final children =
-        transaction.parentTransactionId == null
-            ? await _txRead.findChildren(parentId: transaction.id)
-            : const <Transaction>[];
+    final children = transaction.parentTransactionId == null
+        ? await _txRead.findChildren(parentId: transaction.id)
+        : const <Transaction>[];
     final createdAt =
         await _txRead.findCreatedAt(transactionId) ?? transaction.occurredAt;
-    final childModels =
-        children.isEmpty
-            ? const <TransactionListReadModel>[]
-            : await _projectListItems(
-              children,
-              await _accountQuery.findAccountsById(),
-            );
+    final childModels = children.isEmpty
+        ? const <TransactionListReadModel>[]
+        : await _projectListItems(
+            children,
+            await _accountQuery.findAccountsById(),
+          );
     final refundedTotal =
         (transaction.businessPurpose == BusinessPurpose.dailyExpense ||
-                transaction.businessPurpose ==
-                    BusinessPurpose.reimbursementAdvance)
-            ? await getRefundedTotal(transaction.id)
-            : null;
+            transaction.businessPurpose == BusinessPurpose.reimbursementAdvance)
+        ? await getRefundedTotal(transaction.id)
+        : null;
     final reimbursementSummary =
         transaction.businessPurpose == BusinessPurpose.reimbursementAdvance
-            ? await getReimbursementSummary(transaction.id)
-            : _shouldLoadParentReimbursementSummary(
-                  transaction.businessPurpose,
-                ) &&
-                transaction.parentTransactionId != null
-            ? await getReimbursementSummary(transaction.parentTransactionId!)
-            : null;
+        ? await getReimbursementSummary(transaction.id)
+        : _shouldLoadParentReimbursementSummary(transaction.businessPurpose) &&
+              transaction.parentTransactionId != null
+        ? await getReimbursementSummary(transaction.parentTransactionId!)
+        : null;
     return TransactionDetail(
       transaction: transaction,
       createdAt: createdAt,
@@ -681,12 +677,11 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     return ReimbursementSummary(
       advanceAmount: advance.primaryAmount,
       receivedAmount: received,
-      outstanding:
-          isClosed
-              ? Money.zero()
-              : advance.primaryAmount -
-                  received -
-                  Money(minorUnits: refund.sumMinor),
+      outstanding: isClosed
+          ? Money.zero()
+          : advance.primaryAmount -
+                received -
+                Money(minorUnits: refund.sumMinor),
       isClosed: isClosed,
     );
   }

@@ -23,15 +23,14 @@ void main() {
         liabilityAccounts: [_account('payable', type: AccountType.liability)],
       );
 
-      final state =
-          container
-              .read(
-                transactionFormViewModelProvider(
-                  initialMode: TransactionFormMode.borrowing,
-                  initialLiabilityAccountId: 'payable',
-                ),
-              )
-              .requireValue!;
+      final state = container
+          .read(
+            transactionFormViewModelProvider(
+              initialMode: TransactionFormMode.borrowing,
+              initialLiabilityAccountId: 'payable',
+            ),
+          )
+          .requireValue!;
 
       expect(state.liabilityAccountId, 'payable');
       expect(state.toAccountId, isNull);
@@ -100,10 +99,9 @@ void main() {
         ],
       );
       addTearDown(loaded.dispose);
-      final loadedState =
-          loaded
-              .read(transactionFormViewModelProvider(editTransactionId: 'tx-1'))
-              .requireValue!;
+      final loadedState = loaded
+          .read(transactionFormViewModelProvider(editTransactionId: 'tx-1'))
+          .requireValue!;
       expect(loadedState.initialValues.amount, '12.34');
       expect(loadedState.initialValues.note, 'note');
       expect(loadedState.mode, TransactionFormMode.expense);
@@ -373,12 +371,101 @@ void main() {
         ..setFromAccountId('cash')
         ..setToAccountId('bank');
 
-      final outcome = await viewModel.submit(amountText: '50', noteText: '');
+      final outcome = await viewModel.submit(
+        amountText: '50',
+        feeText: '3',
+        noteText: '',
+      );
 
       expect(outcome, isA<SubmitSuccess>());
       final command = posting.transferCommands.single;
       expect(command.fromAccountId, 'cash');
       expect(command.toAccountId, 'bank');
+      expect(command.feeAmount, const Money(minorUnits: 300));
+    });
+
+    test('loads and clears a transfer fee while editing', () async {
+      final editService = _FakeTransactionEditAppService();
+      final container = _container(
+        editService: editService,
+        editTransactionId: 'transfer-1',
+        editDetail: _transferTransactionDetail(),
+        accountsById: {'cash': _account('cash'), 'bank': _account('bank')},
+        settlementAccounts: [_account('cash'), _account('bank')],
+      );
+      final provider = _provider(editTransactionId: 'transfer-1');
+
+      final state = container.read(provider).requireValue!;
+      expect(state.initialValues.fee, '3');
+
+      final outcome = await container
+          .read(provider.notifier)
+          .submit(amountText: '20', feeText: '', noteText: '');
+
+      expect(outcome, isA<SubmitSuccess>());
+      final command = editService.transferCommands.single;
+      expect(command.feeAmount, Money.zero());
+    });
+
+    test('sets a transfer fee while editing', () async {
+      final editService = _FakeTransactionEditAppService();
+      final container = _container(
+        editService: editService,
+        editTransactionId: 'transfer-1',
+        editDetail: _transferTransactionDetail(),
+        accountsById: {'cash': _account('cash'), 'bank': _account('bank')},
+        settlementAccounts: [_account('cash'), _account('bank')],
+      );
+
+      final outcome = await container
+          .read(_provider(editTransactionId: 'transfer-1').notifier)
+          .submit(amountText: '20', feeText: '5', noteText: '');
+
+      expect(outcome, isA<SubmitSuccess>());
+      expect(
+        editService.transferCommands.single.feeAmount,
+        const Money(minorUnits: 500),
+      );
+    });
+
+    test('does not modify a transfer fee when fee text is omitted', () async {
+      final editService = _FakeTransactionEditAppService();
+      final container = _container(
+        editService: editService,
+        editTransactionId: 'transfer-1',
+        editDetail: _transferTransactionDetail(),
+        accountsById: {'cash': _account('cash'), 'bank': _account('bank')},
+        settlementAccounts: [_account('cash'), _account('bank')],
+      );
+
+      final outcome = await container
+          .read(_provider(editTransactionId: 'transfer-1').notifier)
+          .submit(amountText: '20', noteText: '');
+
+      expect(outcome, isA<SubmitSuccess>());
+      expect(editService.transferCommands.single.feeAmount, isNull);
+    });
+
+    test('rejects a negative transfer fee before posting', () async {
+      final posting = _FakeTransactionPostingAppService();
+      final container = _container(
+        postingService: posting,
+        settlementAccounts: [_account('cash'), _account('bank')],
+      );
+      final viewModel = container.read(_provider().notifier);
+      viewModel
+        ..setMode(TransactionFormMode.transfer)
+        ..setFromAccountId('cash')
+        ..setToAccountId('bank');
+
+      final outcome = await viewModel.submit(
+        amountText: '50',
+        feeText: '-1',
+        noteText: '',
+      );
+
+      expect(outcome, isA<SubmitFailure>());
+      expect(posting.transferCommands, isEmpty);
     });
 
     test('creates borrowing command', () async {
@@ -547,8 +634,9 @@ void main() {
 
       viewModel.setToAccountId('cash');
 
-      final state =
-          container.read(_provider(editTransactionId: 'tx-1')).requireValue!;
+      final state = container
+          .read(_provider(editTransactionId: 'tx-1'))
+          .requireValue!;
       expect(state.initialValues.amount, '12.34');
       expect(state.expenseCategoryId, 'food');
       expect(state.toAccountId, 'cash');
@@ -784,6 +872,59 @@ TransactionDetail _lendingTransactionDetail() {
   );
 }
 
+TransactionDetail _transferTransactionDetail() {
+  const amount = Money(minorUnits: 2000);
+  const fee = Money(minorUnits: 300);
+  const details = [
+    TransactionDetailRecord(
+      id: 'transfer-main',
+      transactionId: 'transfer-1',
+      lineNo: 1,
+      type: TransactionDetailType.transferMain,
+      amount: amount,
+    ),
+    TransactionDetailRecord(
+      id: 'transfer-fee',
+      transactionId: 'transfer-1',
+      lineNo: 2,
+      type: TransactionDetailType.transferFee,
+      amount: fee,
+    ),
+  ];
+  const entries = [
+    Entry(
+      id: 'transfer-to',
+      transactionId: 'transfer-1',
+      accountId: 'bank',
+      direction: EntryDirection.debit,
+      amount: amount,
+    ),
+    Entry(
+      id: 'transfer-from',
+      transactionId: 'transfer-1',
+      accountId: 'cash',
+      direction: EntryDirection.credit,
+      amount: Money(minorUnits: 2300),
+    ),
+  ];
+  return TransactionDetail(
+    transaction: Transaction(
+      id: 'transfer-1',
+      businessPurpose: BusinessPurpose.transfer,
+      occurredAt: DateTime(2026, 8, 22),
+      primaryAmount: amount,
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+      sourceKind: SourceKind.manual,
+      details: details,
+      entries: entries,
+    ),
+    createdAt: DateTime(2026, 8, 22),
+    details: details,
+    entries: entries,
+  );
+}
+
 Entry _entry(String accountId, EntryDirection direction) {
   return Entry(
     id: 'entry-$accountId',
@@ -944,6 +1085,7 @@ class _FakeTransactionEditAppService
     implements TransactionEditAppService, ReceivableTransactionEditAppService {
   final expenseCommands = <EditExpenseCommand>[];
   final reimbursementAdvanceCommands = <EditReimbursementAdvanceCommand>[];
+  final transferCommands = <EditTransferCommand>[];
   final lendingCommands = <EditLendingCommand>[];
   final deletedTransactionIds = <String>[];
 
@@ -961,8 +1103,11 @@ class _FakeTransactionEditAppService
   }
 
   @override
-  Future<PostedTransactionResult> editTransfer(EditTransferCommand command) {
-    throw UnimplementedError();
+  Future<PostedTransactionResult> editTransfer(
+    EditTransferCommand command,
+  ) async {
+    transferCommands.add(command);
+    return const PostedTransactionResult(transactionId: 'transfer-1');
   }
 
   @override

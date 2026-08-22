@@ -437,6 +437,8 @@ class EditTransferCommand {
   final String? fromAccountId;
   final String? toAccountId;
   final DateTime? occurredAt;
+
+  /// `null` 表示不修改；`Money.zero()` 表示移除手续费。
   final Money? feeAmount;
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;

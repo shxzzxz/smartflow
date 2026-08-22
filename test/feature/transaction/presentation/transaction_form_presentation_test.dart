@@ -69,6 +69,35 @@ void main() {
       expect(snapshot.reimbursementAccountId, 'company');
     });
 
+    test('maps transfer fee detail to form state snapshot', () {
+      final detail = _detail(
+        purpose: BusinessPurpose.transfer,
+        entries: [
+          _entry('bank', EntryDirection.debit),
+          _entry('cash', EntryDirection.credit),
+        ],
+        details: const [
+          TransactionDetailRecord(
+            id: 'fee',
+            transactionId: 'tx-1',
+            lineNo: 2,
+            type: TransactionDetailType.transferFee,
+            amount: Money(minorUnits: 300),
+          ),
+        ],
+      );
+
+      final snapshot = transactionFormEditSnapshot(
+        detail: detail,
+        expenseTree: const [],
+        incomeTree: const [],
+        accountsById: {'bank': _account('bank'), 'cash': _account('cash')},
+      );
+
+      expect(snapshot.mode, TransactionFormMode.transfer);
+      expect(snapshot.feeText, '3');
+    });
+
     test('trims insignificant decimal zeros for editing', () {
       final wholeAmountSnapshot = transactionFormEditSnapshot(
         detail: _detail(
@@ -177,6 +206,7 @@ void main() {
 TransactionDetail _detail({
   required BusinessPurpose purpose,
   required List<Entry> entries,
+  List<TransactionDetailRecord> details = const [],
   Money primaryAmount = const Money(minorUnits: 1234),
   String? reimbursementExpenseAccountId,
 }) {
@@ -190,12 +220,13 @@ TransactionDetail _detail({
     sourceKind: SourceKind.manual,
     note: 'note',
     reimbursementExpenseAccountId: reimbursementExpenseAccountId,
+    details: details,
     entries: entries,
   );
   return TransactionDetail(
     transaction: transaction,
     createdAt: DateTime(2026, 1, 2, 8, 30),
-    details: const [],
+    details: details,
     entries: entries,
   );
 }

@@ -255,21 +255,27 @@ void main() {
       expect(edited.isExcludedFromBudget, isTrue);
     });
 
-    test('transfer edit patch preserves posting time', () {
+    test('transfer edit patch preserves posting time and accepts zero fee', () {
       final current = TransferInstruction(
         amount: Money.parse('12.30'),
         fromAccountId: 'cash',
         toAccountId: 'bank',
+        feeAmount: Money.parse('1.00'),
         occurredAt: DateTime(2026, 5, 1),
         postedAt: DateTime(2026, 5, 2),
       );
 
       final edited = TransferEditPatch(
         amount: Money.parse('20.00'),
+        feeAmount: Money.zero(),
       ).applyTo(current);
 
       expect(edited.amount, Money.parse('20.00'));
+      expect(edited.feeAmount, Money.zero());
       expect(edited.postedAt, current.postedAt);
+
+      final unchanged = const TransferEditPatch().applyTo(current);
+      expect(unchanged.feeAmount, current.feeAmount);
     });
 
     test('repayment edit patch preserves posting time', () {

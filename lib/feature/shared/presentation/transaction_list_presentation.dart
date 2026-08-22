@@ -262,52 +262,46 @@ TransactionRowPresentation buildTransactionRowPresentation({
     ),
     _ => null,
   };
-  final comparison =
-      amountSource is TransactionGroupAmountSource
-          ? transactionAmountComparison(item)
-          : null;
+  final comparison = amountSource is TransactionGroupAmountSource
+      ? transactionAmountComparison(item)
+      : null;
   final transactionAmount = categoryAmount ?? comparison?.actual;
   return TransactionRowPresentation(
     transactionId: item.id,
     iconKey: resolveCategoryIconKey(item, accountLookup),
     title: transactionPrimaryLabel(item, accountLookup),
     subtitle: formatTime(item.occurredAt),
-    amountText:
-        accountDelta == null
-            ? formatTransactionAmount(
-              item,
-              amount: transactionAmount,
-              style: MoneyFormatStyle.plain,
-            )
-            : formatAccountDelta(accountDelta, style: MoneyFormatStyle.plain),
-    compactAmountText:
-        accountDelta == null
-            ? formatTransactionAmount(
-              item,
-              amount: transactionAmount,
-              style: MoneyFormatStyle.compact,
-            )
-            : formatAccountDelta(accountDelta, style: MoneyFormatStyle.compact),
-    originalAmountText:
-        comparison == null
-            ? null
-            : formatTransactionAmount(
-              item,
-              amount: comparison.original,
-              style: MoneyFormatStyle.plain,
-            ),
-    originalCompactAmountText:
-        comparison == null
-            ? null
-            : formatTransactionAmount(
-              item,
-              amount: comparison.original,
-              style: MoneyFormatStyle.compact,
-            ),
-    amountTone:
-        accountDelta == null
-            ? amountTone(item.businessPurpose)
-            : FinanceTone.neutral,
+    amountText: accountDelta == null
+        ? formatTransactionAmount(
+            item,
+            amount: transactionAmount,
+            style: MoneyFormatStyle.plain,
+          )
+        : formatAccountDelta(accountDelta, style: MoneyFormatStyle.plain),
+    compactAmountText: accountDelta == null
+        ? formatTransactionAmount(
+            item,
+            amount: transactionAmount,
+            style: MoneyFormatStyle.compact,
+          )
+        : formatAccountDelta(accountDelta, style: MoneyFormatStyle.compact),
+    originalAmountText: comparison == null
+        ? null
+        : formatTransactionAmount(
+            item,
+            amount: comparison.original,
+            style: MoneyFormatStyle.plain,
+          ),
+    originalCompactAmountText: comparison == null
+        ? null
+        : formatTransactionAmount(
+            item,
+            amount: comparison.original,
+            style: MoneyFormatStyle.compact,
+          ),
+    amountTone: accountDelta == null
+        ? amountTone(item.businessPurpose)
+        : FinanceTone.neutral,
     accountFlow: resolveAccountFlow(item, accountLookup),
     badges: buildTransactionBadges(item),
     canQuickEdit: canQuickEditTransaction(item),
@@ -322,10 +316,9 @@ String? firstFlowAccountId(
   for (final entry in item.impactsByAccountId.entries) {
     final account = accountLookup.find(entry.key);
     if (account == null || !_isFlowAccount(item, account)) continue;
-    final amount =
-        direction == EntryDirection.debit
-            ? entry.value.debitAmount
-            : entry.value.creditAmount;
+    final amount = direction == EntryDirection.debit
+        ? entry.value.debitAmount
+        : entry.value.creditAmount;
     if (amount.minorUnits > 0) {
       return entry.key;
     }
@@ -401,12 +394,7 @@ List<TransactionBadgePresentation> buildTransactionBadges(
     for (final adjustment in item.adjustments)
       if (adjustment.kind !=
           TransactionAdjustmentKind.receivableCollectionPrincipal)
-        TransactionBadgePresentation(
-          label:
-              '${_adjustmentLabel(adjustment.kind)} '
-              '${formatCompactMoney(adjustment.amount)}',
-          tone: _adjustmentTone(adjustment.kind),
-        ),
+        _adjustmentBadge(adjustment),
   ];
 
   if (item.isExcludedFromStats) {
@@ -429,31 +417,57 @@ List<TransactionBadgePresentation> buildTransactionBadges(
   return badges;
 }
 
-String _adjustmentLabel(TransactionAdjustmentKind kind) {
-  return switch (kind) {
-    TransactionAdjustmentKind.refund => '退',
-    TransactionAdjustmentKind.reimbursementReceived => '报',
-    TransactionAdjustmentKind.receivableCollectionPrincipal => '本金',
-    TransactionAdjustmentKind.receivableCollectionInterest => '利息',
-    TransactionAdjustmentKind.repaymentInterest => '利',
-    TransactionAdjustmentKind.repaymentFee => '费',
-    TransactionAdjustmentKind.repaymentDiscount => '优',
-    TransactionAdjustmentKind.reimbursementGapIncome => '差收',
-    TransactionAdjustmentKind.reimbursementGapExpense => '差支',
-  };
+TransactionBadgePresentation _adjustmentBadge(
+  TransactionAdjustment adjustment,
+) {
+  final presentation = _adjustmentPresentation(adjustment.kind);
+  return TransactionBadgePresentation(
+    label: '${presentation.label} ${formatCompactMoney(adjustment.amount)}',
+    tone: presentation.tone,
+  );
 }
 
-FinanceTone _adjustmentTone(TransactionAdjustmentKind kind) {
+({String label, FinanceTone tone}) _adjustmentPresentation(
+  TransactionAdjustmentKind kind,
+) {
   return switch (kind) {
-    TransactionAdjustmentKind.refund ||
-    TransactionAdjustmentKind.receivableCollectionInterest ||
-    TransactionAdjustmentKind.repaymentDiscount ||
-    TransactionAdjustmentKind.reimbursementGapIncome => FinanceTone.income,
-    TransactionAdjustmentKind.reimbursementReceived ||
-    TransactionAdjustmentKind.receivableCollectionPrincipal => FinanceTone.info,
-    TransactionAdjustmentKind.repaymentInterest ||
-    TransactionAdjustmentKind.repaymentFee ||
-    TransactionAdjustmentKind.reimbursementGapExpense => FinanceTone.expense,
+    TransactionAdjustmentKind.transferFee => (
+      label: '费',
+      tone: FinanceTone.expense,
+    ),
+    TransactionAdjustmentKind.refund => (label: '退', tone: FinanceTone.income),
+    TransactionAdjustmentKind.reimbursementReceived => (
+      label: '报',
+      tone: FinanceTone.info,
+    ),
+    TransactionAdjustmentKind.receivableCollectionPrincipal => (
+      label: '本金',
+      tone: FinanceTone.info,
+    ),
+    TransactionAdjustmentKind.receivableCollectionInterest => (
+      label: '利息',
+      tone: FinanceTone.income,
+    ),
+    TransactionAdjustmentKind.repaymentInterest => (
+      label: '利',
+      tone: FinanceTone.expense,
+    ),
+    TransactionAdjustmentKind.repaymentFee => (
+      label: '费',
+      tone: FinanceTone.expense,
+    ),
+    TransactionAdjustmentKind.repaymentDiscount => (
+      label: '优',
+      tone: FinanceTone.income,
+    ),
+    TransactionAdjustmentKind.reimbursementGapIncome => (
+      label: '差收',
+      tone: FinanceTone.income,
+    ),
+    TransactionAdjustmentKind.reimbursementGapExpense => (
+      label: '差支',
+      tone: FinanceTone.expense,
+    ),
   };
 }
 
@@ -482,11 +496,10 @@ CashflowSummaryPresentation buildMonthlySummaryPresentation(
       CashflowSummaryMetricPresentation(
         label: '剩余预算',
         amount: totalBudget?.remaining ?? Money.zero(),
-        caption:
-            totalBudget == null
-                ? '未设置'
-                : '${formatPercent(totalBudget.usedRatio)}/'
-                    '${formatRoundedMajor(totalBudget.budget.minorUnits)}',
+        caption: totalBudget == null
+            ? '未设置'
+            : '${formatPercent(totalBudget.usedRatio)}/'
+                  '${formatRoundedMajor(totalBudget.budget.minorUnits)}',
         tone: FinanceTone.primary,
         kind: CashflowSummaryMetricKind.budget,
       ),
@@ -498,10 +511,9 @@ String? resolveCategoryIconKey(
   TransactionListReadModel item,
   AccountLookup accountLookup,
 ) {
-  final category =
-      item.primaryCategoryId == null
-          ? null
-          : accountLookup.find(item.primaryCategoryId!);
+  final category = item.primaryCategoryId == null
+      ? null
+      : accountLookup.find(item.primaryCategoryId!);
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense ||
     BusinessPurpose.dailyIncome ||
@@ -525,10 +537,9 @@ String transactionPrimaryLabel(
   TransactionListReadModel item,
   AccountLookup accountLookup,
 ) {
-  final category =
-      item.primaryCategoryId == null
-          ? null
-          : accountLookup.find(item.primaryCategoryId!);
+  final category = item.primaryCategoryId == null
+      ? null
+      : accountLookup.find(item.primaryCategoryId!);
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense || BusinessPurpose.dailyIncome =>
       _cleanText(category?.name) ??

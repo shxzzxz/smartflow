@@ -45,10 +45,9 @@ class TransactionDetailPage extends ConsumerWidget {
               actions: [
                 if (loaded is TransactionDetailLoaded)
                   AppHeaderIconButton(
-                    onPressed:
-                        loaded.submitting
-                            ? null
-                            : () => _confirmDelete(context, ref),
+                    onPressed: loaded.submitting
+                        ? null
+                        : () => _confirmDelete(context, ref),
                     icon: RemixIcons.more_2_line,
                     tooltip: '更多',
                   ),
@@ -77,27 +76,25 @@ class TransactionDetailPage extends ConsumerWidget {
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('删除交易'),
-            content: const Text('删除后交易及其账务记录将无法恢复。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('删除'),
-              ),
-            ],
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除交易'),
+        content: const Text('删除后交易及其账务记录将无法恢复。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
           ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
     );
     if (confirmed != true) return;
-    final outcome =
-        await ref
-            .read(transactionDetailViewModelProvider(transactionId).notifier)
-            .delete();
+    final outcome = await ref
+        .read(transactionDetailViewModelProvider(transactionId).notifier)
+        .delete();
     if (!context.mounted) return;
     _handleActionOutcome(context, outcome, success: () => context.pop());
   }
@@ -350,22 +347,20 @@ class _RefundReimbursementCard extends StatelessWidget {
           label: '退款金额',
           value: refund.hasRefund ? null : '无退款',
           enabled: refund.hasRefund,
-          onTap:
-              refund.hasRefund
-                  ? () => _showChildrenSheet(
-                    context,
-                    title: '退款记录',
-                    items: refund.items,
-                  )
-                  : null,
-          child:
-              refund.hasRefund
-                  ? MoneyText(
-                    money: refund.refundedTotal!,
-                    semantic: MoneySemantic.income,
-                    style: context.appTextStyles.formPlainValue,
-                  )
-                  : null,
+          onTap: refund.hasRefund
+              ? () => _showChildrenSheet(
+                  context,
+                  title: '退款记录',
+                  items: refund.items,
+                )
+              : null,
+          child: refund.hasRefund
+              ? MoneyText(
+                  money: refund.refundedTotal!,
+                  semantic: MoneySemantic.income,
+                  style: context.appTextStyles.formPlainValue,
+                )
+              : null,
         ),
       );
     }
@@ -376,14 +371,13 @@ class _RefundReimbursementCard extends StatelessWidget {
           label: '报销详情',
           value: reimbursement.summaryText,
           enabled: reimbursement.hasActivity,
-          onTap:
-              reimbursement.hasActivity
-                  ? () => _showChildrenSheet(
-                    context,
-                    title: '报销记录',
-                    items: reimbursement.items,
-                  )
-                  : null,
+          onTap: reimbursement.hasActivity
+              ? () => _showChildrenSheet(
+                  context,
+                  title: '报销记录',
+                  items: reimbursement.items,
+                )
+              : null,
         ),
       );
     }
@@ -409,6 +403,7 @@ class _PrimaryMetaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final note = state.noteText;
+    final transferFee = transactionTransferFee(state.detail);
     final hasNote = note != null && note.isNotEmpty;
     final colors = Theme.of(context).colorScheme;
     return _RowCard(
@@ -433,6 +428,15 @@ class _PrimaryMetaCard extends StatelessWidget {
                 label: row.endpoint.label,
                 iconKey: row.endpoint.iconKey,
               ),
+              style: context.appTextStyles.formPlainValue,
+            ),
+          ),
+        if (transferFee != null)
+          AppPlainValueRow(
+            label: '手续费',
+            child: MoneyText(
+              money: transferFee,
+              semantic: MoneySemantic.expense,
               style: context.appTextStyles.formPlainValue,
             ),
           ),
@@ -637,8 +641,9 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onPressed =
-        detailState.submitting ? null : () => _handlePressed(context);
+    final onPressed = detailState.submitting
+        ? null
+        : () => _handlePressed(context);
     if (state.primary) {
       return _PrimaryAction(label: state.label, onPressed: onPressed);
     }

@@ -60,6 +60,42 @@ void main() {
     expect(hero.title, '债务减免');
     expect(hero.amount, const Money(minorUnits: 10000));
   });
+
+  test('transfer detail exposes a positive transfer fee', () {
+    final detail = _detail(
+      purpose: BusinessPurpose.transfer,
+      entries: const [],
+      details: const [
+        TransactionDetailRecord(
+          id: 'fee',
+          transactionId: 'transaction',
+          lineNo: 2,
+          type: TransactionDetailType.transferFee,
+          amount: Money(minorUnits: 300),
+        ),
+      ],
+    );
+
+    expect(transactionTransferFee(detail), const Money(minorUnits: 300));
+  });
+
+  test('transfer detail hides a zero transfer fee', () {
+    final detail = _detail(
+      purpose: BusinessPurpose.transfer,
+      entries: const [],
+      details: const [
+        TransactionDetailRecord(
+          id: 'fee',
+          transactionId: 'transaction',
+          lineNo: 2,
+          type: TransactionDetailType.transferFee,
+          amount: Money(minorUnits: 0),
+        ),
+      ],
+    );
+
+    expect(transactionTransferFee(detail), isNull);
+  });
 }
 
 Account _account(
@@ -78,6 +114,7 @@ Account _account(
 TransactionDetail _detail({
   required BusinessPurpose purpose,
   required List<Entry> entries,
+  List<TransactionDetailRecord> details = const [],
 }) => TransactionDetail(
   transaction: Transaction(
     id: 'transaction',
@@ -90,7 +127,7 @@ TransactionDetail _detail({
     entries: entries,
   ),
   createdAt: DateTime(2026, 8, 20),
-  details: const [],
+  details: details,
   entries: entries,
 );
 

@@ -137,6 +137,23 @@ void main() {
       expect(debtRelief.amountTone, FinanceTone.income);
     });
 
+    test('shows a transfer fee badge', () {
+      final row = buildTransactionRowPresentation(
+        item: _item(
+          businessPurpose: BusinessPurpose.transfer,
+          adjustments: const [
+            TransactionAdjustment(
+              kind: TransactionAdjustmentKind.transferFee,
+              amount: Money(minorUnits: 300),
+            ),
+          ],
+        ),
+        accountLookup: _lookup,
+      );
+
+      expect(row.badges.map((badge) => badge.label), ['费 3']);
+    });
+
     test(
       'shows refund and reimbursement badges while refund adjusts advance amount',
       () {
@@ -241,30 +258,26 @@ void main() {
         item: parent,
         accountLookup: _lookup,
       );
-      final accountRows =
-          [parent, refund]
-              .map(
-                (item) => buildTransactionRowPresentation(
-                  item: item,
-                  accountLookup: _lookup,
-                  amountSource: const TransactionAccountImpactAmountSource(
-                    'cash',
-                  ),
-                ),
-              )
-              .toList();
-      final categoryRows =
-          [parent, refund]
-              .map(
-                (item) => buildTransactionRowPresentation(
-                  item: item,
-                  accountLookup: _lookup,
-                  amountSource: const TransactionCategoryImpactAmountSource({
-                    'food',
-                  }),
-                ),
-              )
-              .toList();
+      final accountRows = [parent, refund]
+          .map(
+            (item) => buildTransactionRowPresentation(
+              item: item,
+              accountLookup: _lookup,
+              amountSource: const TransactionAccountImpactAmountSource('cash'),
+            ),
+          )
+          .toList();
+      final categoryRows = [parent, refund]
+          .map(
+            (item) => buildTransactionRowPresentation(
+              item: item,
+              accountLookup: _lookup,
+              amountSource: const TransactionCategoryImpactAmountSource({
+                'food',
+              }),
+            ),
+          )
+          .toList();
 
       expect(groupRow.amountText, '-18');
       expect(groupRow.originalAmountText, '-20');

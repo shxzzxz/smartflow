@@ -111,6 +111,29 @@ void main() {
     expect(find.text('已收 40.00 / 应收 100.00'), findsOneWidget);
   });
 
+  testWidgets('shows the transfer fee in transaction details', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          transactionDetailProvider(
+            'transfer',
+          ).overrideWith((ref) => Stream.value(_transferDetail())),
+          accountLookupProvider.overrideWith(
+            (ref) => Stream.value(AccountLookup(_accounts)),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const TransactionDetailPage(transactionId: 'transfer'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('手续费'), findsOneWidget);
+    expect(find.text('3.00'), findsOneWidget);
+  });
+
   testWidgets('edits transaction tags from the detail tag row', (tester) async {
     final editService = _FakeTransactionEditAppService();
     await tester.pumpWidget(
@@ -167,17 +190,14 @@ void main() {
       routes: [
         GoRoute(
           path: '/transaction/:id',
-          builder:
-              (context, state) => TransactionDetailPage(
-                transactionId: state.pathParameters['id']!,
-              ),
+          builder: (context, state) =>
+              TransactionDetailPage(transactionId: state.pathParameters['id']!),
         ),
         GoRoute(
           path: '/transaction/:id/reimbursement',
-          builder:
-              (context, state) => ReimbursementFormPage(
-                advanceTransactionId: state.pathParameters['id']!,
-              ),
+          builder: (context, state) => ReimbursementFormPage(
+            advanceTransactionId: state.pathParameters['id']!,
+          ),
         ),
       ],
     );
@@ -232,8 +252,9 @@ void main() {
     final accountField = find.byWidgetPredicate(
       (widget) => widget is AppControlledFormField<String>,
     );
-    final initialAccountValue =
-        tester.state<FormFieldState<String>>(accountField).value;
+    final initialAccountValue = tester
+        .state<FormFieldState<String>>(accountField)
+        .value;
     expect(initialAccountValue, 'cash');
 
     final formPage = find.byType(ReimbursementFormPage);
@@ -342,6 +363,53 @@ TransactionDetail _detail() {
         accountId: 'food',
         direction: EntryDirection.debit,
         amount: Money(minorUnits: 10000),
+      ),
+    ],
+  );
+}
+
+TransactionDetail _transferDetail() {
+  return TransactionDetail(
+    transaction: Transaction(
+      id: 'transfer',
+      businessPurpose: BusinessPurpose.transfer,
+      occurredAt: DateTime(2026, 1, 1, 8),
+      primaryAmount: const Money(minorUnits: 2000),
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+      sourceKind: SourceKind.manual,
+    ),
+    createdAt: DateTime(2026, 1, 1, 8, 1),
+    details: const [
+      TransactionDetailRecord(
+        id: 'transfer-main',
+        transactionId: 'transfer',
+        lineNo: 1,
+        type: TransactionDetailType.transferMain,
+        amount: Money(minorUnits: 2000),
+      ),
+      TransactionDetailRecord(
+        id: 'transfer-fee',
+        transactionId: 'transfer',
+        lineNo: 2,
+        type: TransactionDetailType.transferFee,
+        amount: Money(minorUnits: 300),
+      ),
+    ],
+    entries: const [
+      Entry(
+        id: 'transfer-cash',
+        transactionId: 'transfer',
+        accountId: 'cash',
+        direction: EntryDirection.credit,
+        amount: Money(minorUnits: 2300),
+      ),
+      Entry(
+        id: 'transfer-bank',
+        transactionId: 'transfer',
+        accountId: 'bank',
+        direction: EntryDirection.debit,
+        amount: Money(minorUnits: 2000),
       ),
     ],
   );

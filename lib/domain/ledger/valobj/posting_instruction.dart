@@ -808,6 +808,8 @@ class TransferEditPatch extends PostingEditPatch {
   final Money? amount;
   final String? fromAccountId;
   final String? toAccountId;
+
+  /// `null` 表示不修改；零金额表示无手续费。
   final Money? feeAmount;
 
   @override
