@@ -91,7 +91,7 @@ abstract class _$BillRepaymentFormViewModel
   FutureOr<BillRepaymentFormState> build(BillRepaymentFormArgs args);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<AsyncValue<BillRepaymentFormState>, BillRepaymentFormState>;
@@ -106,6 +106,6 @@ abstract class _$BillRepaymentFormViewModel
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }

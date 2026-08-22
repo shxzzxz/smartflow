@@ -97,7 +97,7 @@ abstract class _$UnattributedRepaymentFormViewModel
   FutureOr<UnattributedRepaymentFormState> build(String accountId);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<
@@ -115,6 +115,6 @@ abstract class _$UnattributedRepaymentFormViewModel
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }

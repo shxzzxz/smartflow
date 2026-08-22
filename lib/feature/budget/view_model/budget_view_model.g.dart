@@ -58,7 +58,7 @@ final class BudgetViewModelProvider
   }
 }
 
-String _$budgetViewModelHash() => r'7580cea1a526d38a5ecf06045404bb7fa495e553';
+String _$budgetViewModelHash() => r'7d259c3fdd1df52744e42032c5e4a072ca0b9f5c';
 
 final class BudgetViewModelFamily extends $Family
     with
@@ -92,7 +92,7 @@ abstract class _$BudgetViewModel extends $Notifier<BudgetControlState> {
   BudgetControlState build(DateTime? initialMonth);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<BudgetControlState, BudgetControlState>;
     final element =
         ref.element
@@ -102,7 +102,7 @@ abstract class _$BudgetViewModel extends $Notifier<BudgetControlState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }
 

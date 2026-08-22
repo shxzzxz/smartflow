@@ -87,7 +87,7 @@ abstract class _$AccountTransactionPaging extends $Notifier<int> {
   int build(String accountId);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<int, int>;
     final element =
         ref.element
@@ -97,7 +97,7 @@ abstract class _$AccountTransactionPaging extends $Notifier<int> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }
 
@@ -192,7 +192,7 @@ abstract class _$AccountTransactionsViewModel
   AccountTransactionsState build(String accountId);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref as $Ref<AccountTransactionsState, AccountTransactionsState>;
     final element =
@@ -203,6 +203,6 @@ abstract class _$AccountTransactionsViewModel
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }

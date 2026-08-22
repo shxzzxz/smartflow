@@ -97,7 +97,7 @@ abstract class _$ReimbursementReceiptFormViewModel
   FutureOr<ReimbursementReceiptFormState> build(String advanceTransactionId);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<
@@ -115,7 +115,7 @@ abstract class _$ReimbursementReceiptFormViewModel
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }
 
@@ -205,7 +205,7 @@ abstract class _$ReimbursementCloseFormViewModel
   FutureOr<ReimbursementCloseFormState> build(String advanceTransactionId);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<
@@ -223,7 +223,7 @@ abstract class _$ReimbursementCloseFormViewModel
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }
 
@@ -312,7 +312,7 @@ abstract class _$ReimbursementFormViewModel
   FutureOr<ReimbursementFormState> build(String advanceTransactionId);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<AsyncValue<ReimbursementFormState>, ReimbursementFormState>;
@@ -327,6 +327,6 @@ abstract class _$ReimbursementFormViewModel
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }

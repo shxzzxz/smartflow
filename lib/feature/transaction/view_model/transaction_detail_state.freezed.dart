@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'transaction_detail_state.dart';
@@ -9,6 +9,7 @@ part of 'transaction_detail_state.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -175,7 +176,7 @@ return notFound();case _:
 
 
 class TransactionDetailLoaded implements TransactionDetailUiState {
-  const TransactionDetailLoaded({required this.transactionId, required this.detail, required this.behavior, required this.hero, required this.occurredAtText, required this.postedAtText, required this.createdAtText, required final  List<DetailAccountRow> accountRows, required this.refund, required this.reimbursement, required this.showExcludeStats, required this.showExcludeBudget, required this.excludeStats, required this.excludeBudget, required final  List<DetailActionButton> actionButtons, required this.submitting, this.noteText}): _accountRows = accountRows,_actionButtons = actionButtons;
+  const TransactionDetailLoaded({required this.transactionId, required this.detail, required this.behavior, required this.hero, required this.occurredAtText, required this.postedAtText, required this.createdAtText, required  List<DetailAccountRow> accountRows, required this.refund, required this.reimbursement, required this.showExcludeStats, required this.showExcludeBudget, required this.excludeStats, required this.excludeBudget, required  List<DetailActionButton> actionButtons, required this.submitting, this.noteText}): _accountRows = accountRows,_actionButtons = actionButtons;
   
 
  final  String transactionId;
@@ -398,7 +399,7 @@ class _$DetailBehaviorConfigCopyWithImpl<$Res>
 /// Create a copy of DetailBehaviorConfig
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? canEditOccurredAt = null,Object? canEditPostedAt = null,Object? canEditNote = null,Object? canEditSettlementAccount = null,Object? canEditTags = null,Object? bannerText = freezed,Object? editRoute = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(DetailBehaviorConfig(
 canEditOccurredAt: null == canEditOccurredAt ? _self.canEditOccurredAt : canEditOccurredAt // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,canEditPostedAt: null == canEditPostedAt ? _self.canEditPostedAt : canEditPostedAt // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,canEditNote: null == canEditNote ? _self.canEditNote : canEditNote // ignore: cast_nullable_to_non_nullable
@@ -763,7 +764,7 @@ class _$DetailAccountRowCopyWithImpl<$Res>
 /// Create a copy of DetailAccountRow
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? label = null,Object? accountId = null,Object? endpoint = null,Object? permission = null,Object? editPurpose = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(DetailAccountRow(
 label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
 as String,accountId: null == accountId ? _self.accountId : accountId // ignore: cast_nullable_to_non_nullable
 as String,endpoint: null == endpoint ? _self.endpoint : endpoint // ignore: cast_nullable_to_non_nullable
@@ -1314,7 +1315,7 @@ class _$DetailRefundCopyWithImpl<$Res>
 /// Create a copy of DetailRefund
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? hasRefund = null,Object? items = null,Object? refundedTotal = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(DetailRefund(
 hasRefund: null == hasRefund ? _self.hasRefund : hasRefund // ignore: cast_nullable_to_non_nullable
 as bool,items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
 as List<DetailSheetItem>,refundedTotal: freezed == refundedTotal ? _self.refundedTotal : refundedTotal // ignore: cast_nullable_to_non_nullable
@@ -1459,7 +1460,7 @@ return $default(_that.hasRefund,_that.items,_that.refundedTotal);case _:
 
 
 class _DetailRefund implements DetailRefund {
-  const _DetailRefund({required this.hasRefund, required final  List<DetailSheetItem> items, this.refundedTotal}): _items = items;
+  const _DetailRefund({required this.hasRefund, required  List<DetailSheetItem> items, this.refundedTotal}): _items = items;
   
 
 @override final  bool hasRefund;
@@ -1583,7 +1584,7 @@ class _$DetailReimbursementCopyWithImpl<$Res>
 /// Create a copy of DetailReimbursement
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? summaryText = null,Object? hasActivity = null,Object? isClosed = null,Object? items = null,Object? outstanding = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(DetailReimbursement(
 summaryText: null == summaryText ? _self.summaryText : summaryText // ignore: cast_nullable_to_non_nullable
 as String,hasActivity: null == hasActivity ? _self.hasActivity : hasActivity // ignore: cast_nullable_to_non_nullable
 as bool,isClosed: null == isClosed ? _self.isClosed : isClosed // ignore: cast_nullable_to_non_nullable
@@ -1730,7 +1731,7 @@ return $default(_that.summaryText,_that.hasActivity,_that.isClosed,_that.items,_
 
 
 class _DetailReimbursement implements DetailReimbursement {
-  const _DetailReimbursement({required this.summaryText, required this.hasActivity, required this.isClosed, required final  List<DetailSheetItem> items, this.outstanding}): _items = items;
+  const _DetailReimbursement({required this.summaryText, required this.hasActivity, required this.isClosed, required  List<DetailSheetItem> items, this.outstanding}): _items = items;
   
 
 @override final  String summaryText;
@@ -1858,7 +1859,7 @@ class _$DetailActionButtonCopyWithImpl<$Res>
 /// Create a copy of DetailActionButton
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? kind = null,Object? label = null,Object? primary = null,Object? enabled = null,Object? route = freezed,Object? deniedReason = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(DetailActionButton(
 kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
 as DetailActionKind,label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
 as String,primary: null == primary ? _self.primary : primary // ignore: cast_nullable_to_non_nullable

@@ -92,7 +92,7 @@ abstract class _$ReceivablePayableFormViewModel
   FutureOr<ReceivablePayableFormState> build(ReceivablePayableFormArgs args);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<
@@ -110,6 +110,6 @@ abstract class _$ReceivablePayableFormViewModel
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }

@@ -131,7 +131,7 @@ abstract class _$CategoryFormViewModel
   });
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<
@@ -149,7 +149,7 @@ abstract class _$CategoryFormViewModel
               Object?,
               Object?
             >;
-    element.handleCreate(
+    return element.handleCreate(
       ref,
       () => build(
         categoryId: _$args.categoryId,

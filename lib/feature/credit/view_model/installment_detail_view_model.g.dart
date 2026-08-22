@@ -91,7 +91,7 @@ abstract class _$InstallmentDetailViewModel
   FutureOr<InstallmentDetailState> build(String contractId);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<AsyncValue<InstallmentDetailState>, InstallmentDetailState>;
@@ -106,6 +106,6 @@ abstract class _$InstallmentDetailViewModel
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }

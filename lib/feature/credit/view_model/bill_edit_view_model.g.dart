@@ -84,7 +84,7 @@ abstract class _$BillEditViewModel extends $AsyncNotifier<BillEditFormState> {
   FutureOr<BillEditFormState> build(String billId);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref as $Ref<AsyncValue<BillEditFormState>, BillEditFormState>;
     final element =
@@ -95,6 +95,6 @@ abstract class _$BillEditViewModel extends $AsyncNotifier<BillEditFormState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }

@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'installment_contract_edit_state.dart';
@@ -9,6 +9,7 @@ part of 'installment_contract_edit_state.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -175,7 +176,7 @@ return notFound();case _:
 
 
 class InstallmentContractEditLoaded implements InstallmentContractEditState {
-  const InstallmentContractEditLoaded({required this.contract, required this.paidCount, required this.firstRepaymentDate, required this.lastRepaymentDate, required this.method, required this.ratePeriod, required this.accrualMethod, required final  List<InstallmentContractDraftRow> draft, final  Set<int> manualPatchedPeriodNos = const {}, this.submitting = false}): _draft = draft,_manualPatchedPeriodNos = manualPatchedPeriodNos;
+  const InstallmentContractEditLoaded({required this.contract, required this.paidCount, required this.firstRepaymentDate, required this.lastRepaymentDate, required this.method, required this.ratePeriod, required this.accrualMethod, required  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos = const {}, this.submitting = false}): _draft = draft,_manualPatchedPeriodNos = manualPatchedPeriodNos;
   
 
  final  InstallmentContractReadModel contract;
@@ -351,7 +352,7 @@ class _$InstallmentContractDraftRowCopyWithImpl<$Res>
 /// Create a copy of InstallmentContractDraftRow
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? periodNo = null,Object? date = null,Object? principal = null,Object? interest = null,Object? fee = null,Object? status = null,Object? scheduleId = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(InstallmentContractDraftRow(
 periodNo: null == periodNo ? _self.periodNo : periodNo // ignore: cast_nullable_to_non_nullable
 as int,date: null == date ? _self.date : date // ignore: cast_nullable_to_non_nullable
 as DateTime,principal: null == principal ? _self.principal : principal // ignore: cast_nullable_to_non_nullable

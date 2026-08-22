@@ -91,7 +91,7 @@ abstract class _$RefundFormViewModel extends $AsyncNotifier<RefundFormState> {
   FutureOr<RefundFormState> build(String transactionId, {bool editing = false});
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AsyncValue<RefundFormState>, RefundFormState>;
     final element =
         ref.element
@@ -101,6 +101,9 @@ abstract class _$RefundFormViewModel extends $AsyncNotifier<RefundFormState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args.$1, editing: _$args.editing));
+    return element.handleCreate(
+      ref,
+      () => build(_$args.$1, editing: _$args.editing),
+    );
   }
 }

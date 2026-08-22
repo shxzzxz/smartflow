@@ -146,7 +146,7 @@ abstract class _$TransactionFormViewModel
   });
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<
@@ -164,7 +164,7 @@ abstract class _$TransactionFormViewModel
               Object?,
               Object?
             >;
-    element.handleCreate(
+    return element.handleCreate(
       ref,
       () => build(
         editTransactionId: _$args.editTransactionId,

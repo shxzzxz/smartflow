@@ -94,7 +94,7 @@ abstract class _$AccountBillsViewModel
   AccountBillsPageState build(String accountId);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AccountBillsPageState, AccountBillsPageState>;
     final element =
         ref.element
@@ -104,6 +104,6 @@ abstract class _$AccountBillsViewModel
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }

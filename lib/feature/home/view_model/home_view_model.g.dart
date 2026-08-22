@@ -47,7 +47,7 @@ abstract class _$HomeViewModel extends $Notifier<HomePageState> {
   HomePageState build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<HomePageState, HomePageState>;
     final element =
         ref.element
@@ -57,7 +57,7 @@ abstract class _$HomeViewModel extends $Notifier<HomePageState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 
@@ -99,7 +99,7 @@ abstract class _$HomeBatchMode extends $Notifier<bool> {
   bool build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<bool, bool>;
     final element =
         ref.element
@@ -109,7 +109,7 @@ abstract class _$HomeBatchMode extends $Notifier<bool> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 
@@ -288,7 +288,7 @@ abstract class _$HomeTransactionFeedViewModel
   HomeTransactionFeedState build(DateTime visibleMonth);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref as $Ref<HomeTransactionFeedState, HomeTransactionFeedState>;
     final element =
@@ -299,7 +299,7 @@ abstract class _$HomeTransactionFeedViewModel
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }
 

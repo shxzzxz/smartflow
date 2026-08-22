@@ -48,7 +48,7 @@ abstract class _$StatisticsViewModel extends $Notifier<StatisticsControlState> {
   StatisticsControlState build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref as $Ref<StatisticsControlState, StatisticsControlState>;
     final element =
@@ -59,7 +59,7 @@ abstract class _$StatisticsViewModel extends $Notifier<StatisticsControlState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 

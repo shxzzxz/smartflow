@@ -47,7 +47,7 @@ abstract class _$CalendarViewModel extends $Notifier<CalendarPageState> {
   CalendarPageState build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<CalendarPageState, CalendarPageState>;
     final element =
         ref.element
@@ -57,7 +57,7 @@ abstract class _$CalendarViewModel extends $Notifier<CalendarPageState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 
@@ -254,7 +254,7 @@ abstract class _$CalendarTransactionFeedViewModel
   CalendarTransactionFeedState build(DateTime selectedDate);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<CalendarTransactionFeedState, CalendarTransactionFeedState>;
@@ -269,7 +269,7 @@ abstract class _$CalendarTransactionFeedViewModel
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }
 

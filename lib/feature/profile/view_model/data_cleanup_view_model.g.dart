@@ -48,7 +48,7 @@ abstract class _$DataCleanupViewModel extends $Notifier<DataCleanupState> {
   DataCleanupState build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<DataCleanupState, DataCleanupState>;
     final element =
         ref.element
@@ -58,7 +58,7 @@ abstract class _$DataCleanupViewModel extends $Notifier<DataCleanupState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 

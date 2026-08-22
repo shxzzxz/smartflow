@@ -48,7 +48,7 @@ abstract class _$LogViewerViewModel extends $Notifier<LogViewerState> {
   LogViewerState build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<LogViewerState, LogViewerState>;
     final element =
         ref.element
@@ -58,7 +58,7 @@ abstract class _$LogViewerViewModel extends $Notifier<LogViewerState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 
@@ -140,7 +140,7 @@ abstract class _$LogRetentionSettingsViewModel
   FutureOr<LogRetentionSettings> build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<AsyncValue<LogRetentionSettings>, LogRetentionSettings>;
@@ -155,6 +155,6 @@ abstract class _$LogRetentionSettingsViewModel
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
