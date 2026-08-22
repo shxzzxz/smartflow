@@ -359,7 +359,7 @@ class _BudgetContentState extends ConsumerState<_BudgetContent> {
       ),
       footer: const SizedBox(height: AppSpacing.space4),
       itemCount: groups.length,
-      onReorder: _reorderGroups,
+      onReorderItem: _reorderGroups,
       itemBuilder: (context, index) {
         final group = groups[index];
         return Padding(
@@ -588,7 +588,7 @@ class _CategoryBudgetGroupCard extends StatelessWidget {
                 physics: const NeverScrollableScrollPhysics(),
                 buildDefaultDragHandles: false,
                 itemCount: group.childBudgets.length,
-                onReorder: onReorderChild,
+                onReorderItem: onReorderChild,
                 itemBuilder: (context, index) {
                   final child = group.childBudgets[index];
                   return Column(

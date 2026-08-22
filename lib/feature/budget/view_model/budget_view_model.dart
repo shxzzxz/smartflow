@@ -124,7 +124,6 @@ class BudgetViewModel extends _$BudgetViewModel {
     int newIndex,
   ) {
     return _reorderCategoryGroups((groups) {
-      if (oldIndex < newIndex) newIndex -= 1;
       final moved = groups.removeAt(oldIndex);
       groups.insert(newIndex, moved);
     });
@@ -136,7 +135,6 @@ class BudgetViewModel extends _$BudgetViewModel {
     int newIndex,
   ) {
     return _reorderCategoryGroups((groups) {
-      if (oldIndex < newIndex) newIndex -= 1;
       final group = groups[groupIndex];
       final children = [...group.childBudgets];
       final moved = children.removeAt(oldIndex);

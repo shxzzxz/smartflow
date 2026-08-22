@@ -164,7 +164,7 @@ class _AccountsContent extends ConsumerWidget {
                     )
                     : null,
             itemCount: sections.length,
-            onReorder:
+            onReorderItem:
                 (oldIndex, newIndex) => _reorderSections(
                   context,
                   ref,
@@ -191,9 +191,6 @@ class _AccountsContent extends ConsumerWidget {
                           .read(assetSectionCollapseViewModelProvider.notifier)
                           .toggle(section.id),
                   onAccountReorder: (oldAccountIndex, newAccountIndex) {
-                    if (oldAccountIndex < newAccountIndex) {
-                      newAccountIndex -= 1;
-                    }
                     _moveAccount(
                       context,
                       ref,
@@ -246,7 +243,6 @@ Future<void> _reorderSections(
   final dragged = sections[oldIndex];
   if (dragged.id == 'ungrouped') return;
   final reorderedSections = [...sections]..removeAt(oldIndex);
-  if (oldIndex < newIndex) newIndex -= 1;
   reorderedSections.insert(
     newIndex.clamp(0, reorderedSections.length),
     dragged,
@@ -644,7 +640,7 @@ class _AccountSection extends StatelessWidget {
                   physics: const NeverScrollableScrollPhysics(),
                   buildDefaultDragHandles: false,
                   itemCount: accounts.length,
-                  onReorder: onAccountReorder,
+                  onReorderItem: onAccountReorder,
                   itemBuilder:
                       (context, index) => Padding(
                         key: ValueKey(accounts[index].id),
@@ -797,7 +793,7 @@ class _AccountGroupManagerSheet extends ConsumerWidget {
               Expanded(
                 child: ReorderableListView.builder(
                   itemCount: groups.length,
-                  onReorder:
+                  onReorderItem:
                       (oldIndex, newIndex) => _reorderGroups(
                         context,
                         ref,
@@ -913,7 +909,6 @@ class _AccountGroupManagerSheet extends ConsumerWidget {
     int newIndex,
   ) async {
     final ordered = [...groups];
-    if (oldIndex < newIndex) newIndex -= 1;
     final moved = ordered.removeAt(oldIndex);
     ordered.insert(newIndex, moved);
     final outcome = await ref

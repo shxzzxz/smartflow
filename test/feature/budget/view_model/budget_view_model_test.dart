@@ -216,10 +216,10 @@ void main() {
 
       await container
           .read(budgetViewModelProvider(month).notifier)
-          .reorderBudgetsWithinGroup(0, 0, 2);
+          .reorderBudgetsWithinGroup(0, 0, 1);
       await container
           .read(budgetViewModelProvider(month).notifier)
-          .reorderBudgetGroups(0, 2);
+          .reorderBudgetGroups(0, 1);
 
       expect(service.reorderCommands, hasLength(2));
       expect(service.reorderCommands[0].orderedBudgetIds, [
@@ -263,7 +263,7 @@ void main() {
 
     final outcome = await container
         .read(budgetViewModelProvider(month).notifier)
-        .reorderBudgetGroups(0, 2);
+        .reorderBudgetGroups(0, 1);
 
     expect(outcome, isA<UiActionFailure<void>>());
     expect(
