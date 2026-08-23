@@ -729,6 +729,96 @@ void main() {
   );
 
   test(
+    'commits a transfer fee as an extra expense from the source account',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.database.close);
+      await _insertAccount(fixture.database, 'bank', '银行卡', AccountType.asset);
+      const fromEntity = ImportSourceEntity(
+        source: ImportSource.yimu,
+        kind: ImportEntityKind.account,
+        sourceEntityKey: 'account:cash',
+        displayName: '现金',
+        allowedTargetDescriptors: {ImportTargetDescriptor.fundAccount},
+        preferredTargetDescriptor: ImportTargetDescriptor.fundAccount,
+      );
+      const toEntity = ImportSourceEntity(
+        source: ImportSource.yimu,
+        kind: ImportEntityKind.account,
+        sourceEntityKey: 'account:bank',
+        displayName: '银行卡',
+        allowedTargetDescriptors: {ImportTargetDescriptor.fundAccount},
+        preferredTargetDescriptor: ImportTargetDescriptor.fundAccount,
+      );
+      final plan = ImportParseResult(
+        source: ImportSource.yimu,
+        sourceEntities: const [fromEntity, toEntity],
+        groups: [
+          ImportTransactionGroupDraft(
+            topLevel: ImportTransferDraft(
+              amount: Money.parse('27.00'),
+              feeAmount: Money.parse('3.00'),
+              fromAccount: const ImportAccountReference.source(
+                sourceEntityKey: 'account:cash',
+                displayName: '现金',
+              ),
+              toAccount: const ImportAccountReference.source(
+                sourceEntityKey: 'account:bank',
+                displayName: '银行卡',
+              ),
+              occurredAt: DateTime(2026, 8, 21, 20, 17),
+            ),
+            sourceOperationFingerprint: 'transfer-fee-fingerprint',
+            fingerprintVersion: 1,
+          ),
+        ],
+      );
+      const fromKey = ImportMappingKey(
+        source: ImportSource.yimu,
+        entityKind: ImportEntityKind.account,
+        sourceEntityKey: 'account:cash',
+      );
+      const toKey = ImportMappingKey(
+        source: ImportSource.yimu,
+        entityKind: ImportEntityKind.account,
+        sourceEntityKey: 'account:bank',
+      );
+      final review = await fixture.service.review(
+        plan,
+        temporaryMappings: {fromKey: 'cash', toKey: 'bank'},
+      );
+
+      final result = await fixture.service.commit(
+        ImportCommitCommand(
+          plan: plan,
+          mappings: review.effectiveMappings,
+          selectedGroupIndexes: const {0},
+        ),
+      );
+
+      expect(result.batch?.importedGroupCount, 1);
+      final details = await fixture.database
+          .select(fixture.database.transactionDetails)
+          .get();
+      expect(
+        details.map((detail) => (detail.detailType, detail.amountMinor)),
+        containsAll([
+          (TransactionDetailType.transferMain, 2700),
+          (TransactionDetailType.transferFee, 300),
+        ]),
+      );
+      expect(
+        (await fixture.accounts.findById('cash'))?.balance,
+        Money.parse('-30'),
+      );
+      expect(
+        (await fixture.accounts.findById('bank'))?.balance,
+        Money.parse('27'),
+      );
+    },
+  );
+
+  test(
     'a later ledger failure rolls back earlier groups and batch rows',
     () async {
       final fixture = await _Fixture.create();

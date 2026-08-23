@@ -120,6 +120,67 @@ void main() {
     );
   });
 
+  test(
+    'maps a transfer fee to the transfer draft without reducing receipt',
+    () {
+      final result = _parser(
+        transferRows: [
+          {
+            '日期': '2026-08-21 20:17',
+            '类型': '转账',
+            '转出账户': 'test 资金 B',
+            '转入账户': 'test 资金',
+            '金额': '27.00 ',
+            '手续费': '3.00 ',
+            '备注': '',
+          },
+        ],
+      ).parse(_bundle(names: const ['转账.xls']));
+
+      final transfer = _groups(result).single.topLevel as ImportTransferDraft;
+      expect(transfer.amount, Money.parse('27.00'));
+      expect(transfer.feeAmount, Money.parse('3.00'));
+      expect(transfer.fromAccount.displayName, 'test 资金 B');
+      expect(transfer.toAccount.displayName, 'test 资金');
+      expect(
+        result.groups.single.issues.where(
+          (issue) => issue.severity == ImportIssueSeverity.blocking,
+        ),
+        isEmpty,
+      );
+    },
+  );
+
+  test('keeps zero fees and blocks negative transfer fees', () {
+    final result = _parser(
+      transferRows: [
+        {
+          '日期': '2026-08-21 20:17',
+          '类型': '转账',
+          '转出账户': '资金 A',
+          '转入账户': '资金 B',
+          '金额': '27.00',
+          '手续费': '0.00',
+        },
+        {
+          '日期': '2026-08-21 20:18',
+          '类型': '转账',
+          '转出账户': '资金 A',
+          '转入账户': '资金 B',
+          '金额': '27.00',
+          '手续费': '-3.00',
+        },
+      ],
+    ).parse(_bundle(names: const ['转账.xls']));
+
+    final groups = _groups(result);
+    expect((groups[0].topLevel as ImportTransferDraft).feeAmount, isNull);
+    expect(
+      groups[1].issues.map((issue) => issue.code),
+      contains('transfer_fee_negative'),
+    );
+  });
+
   test('filters repayment discount bills and maps signed repayment fees', () {
     final result = _parser(
       billRows: [
