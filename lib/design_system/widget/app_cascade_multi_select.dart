@@ -40,12 +40,11 @@ Future<Set<T>?> showAppCascadeMultiSelectSheet<T>({
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder:
-        (context) => _AppCascadeMultiSelectSheet<T>(
-          title: title,
-          sections: sections,
-          initialSelectedValues: selectedValues,
-        ),
+    builder: (context) => _AppCascadeMultiSelectSheet<T>(
+      title: title,
+      sections: sections,
+      initialSelectedValues: selectedValues,
+    ),
   );
 }
 
@@ -96,18 +95,17 @@ class _AppCascadeMultiSelectSheetState<T>
           children: [
             _buildHeader(context),
             Flexible(
-              child:
-                  _rootNodes.isEmpty
-                      ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppSpacing.space24),
-                          child: Text(
-                            '暂无可选项',
-                            style: context.appTextStyles.inputText,
-                          ),
+              child: _rootNodes.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.space24),
+                        child: Text(
+                          '暂无可选项',
+                          style: context.appTextStyles.inputText,
                         ),
-                      )
-                      : _buildColumns(context),
+                      ),
+                    )
+                  : _buildColumns(context),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -118,8 +116,8 @@ class _AppCascadeMultiSelectSheetState<T>
               ),
               child: AppSubmitButton(
                 label: '确定',
-                onPressed:
-                    () => Navigator.of(context).pop(Set.of(_selectedValues)),
+                onPressed: () =>
+                    Navigator.of(context).pop(Set.of(_selectedValues)),
               ),
             ),
           ],
@@ -145,21 +143,19 @@ class _AppCascadeMultiSelectSheetState<T>
             ),
           ),
           TextButton(
-            onPressed:
-                _selectedValues.length == _allValues.length
-                    ? null
-                    : () => setState(() {
-                      _selectedValues
-                        ..clear()
-                        ..addAll(_allValues);
-                    }),
+            onPressed: _selectedValues.length == _allValues.length
+                ? null
+                : () => setState(() {
+                    _selectedValues
+                      ..clear()
+                      ..addAll(_allValues);
+                  }),
             child: const Text('全部'),
           ),
           TextButton(
-            onPressed:
-                _selectedValues.isEmpty
-                    ? null
-                    : () => setState(_selectedValues.clear),
+            onPressed: _selectedValues.isEmpty
+                ? null
+                : () => setState(_selectedValues.clear),
             child: const Text('清除'),
           ),
         ],
@@ -207,10 +203,9 @@ class _AppCascadeMultiSelectSheetState<T>
       );
     }
 
-    final List<AppCascadeSelectionNode<T>> nodes =
-        _path.length >= depth
-            ? _path[depth - 1].children
-            : <AppCascadeSelectionNode<T>>[];
+    final List<AppCascadeSelectionNode<T>> nodes = _path.length >= depth
+        ? _path[depth - 1].children
+        : <AppCascadeSelectionNode<T>>[];
     if (nodes.isEmpty) {
       return Center(
         child: Text(
@@ -322,7 +317,7 @@ class _AppCascadeMultiSelectSheetState<T>
   }
 
   List<T> _valuesOf(AppCascadeSelectionNode<T> node) => [
-    if (node.value case final value?) value,
+    ?node.value,
     for (final child in node.children) ..._valuesOf(child),
   ];
 }

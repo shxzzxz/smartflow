@@ -119,9 +119,9 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       expenseTreeAsync,
       incomeTreeAsync,
       tagsAsync,
-      if (editDetailAsync != null) editDetailAsync,
-      if (accountsByIdAsync != null) accountsByIdAsync,
-      if (editTagIdsAsync != null) editTagIdsAsync,
+      ?editDetailAsync,
+      ?accountsByIdAsync,
+      ?editTagIdsAsync,
     ];
     for (final query in queries) {
       if (query case AsyncError(:final error, :final stackTrace)) {

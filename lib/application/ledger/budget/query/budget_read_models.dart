@@ -61,10 +61,7 @@ class BudgetCategoryGroup {
   final BudgetProgress? rootBudget;
   final List<BudgetProgress> childBudgets;
 
-  List<BudgetProgress> get budgets => [
-    if (rootBudget case final budget?) budget,
-    ...childBudgets,
-  ];
+  List<BudgetProgress> get budgets => [?rootBudget, ...childBudgets];
 }
 
 class MonthlyBudgetReport {

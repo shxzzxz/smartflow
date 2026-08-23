@@ -69,8 +69,9 @@ class AccountDetailViewModel extends _$AccountDetailViewModel {
       final account = await ref
           .read(accountQueryServiceProvider)
           .findAccountById(accountId);
-      final kind =
-          account == null ? null : accountProfileKindForAccount(account);
+      final kind = account == null
+          ? null
+          : accountProfileKindForAccount(account);
       if (kind == AccountProfileKind.credit ||
           kind == AccountProfileKind.loan) {
         await ref
@@ -183,10 +184,7 @@ AccountDetailAction _recordTransactionAction(AccountView account) {
     label: '记账',
     iconKey: 'wallet-line',
     route: _transactionRoute(
-      queryParameters: {
-        'fromAccountId': account.id,
-        'toAccountId': account.id,
-      },
+      queryParameters: {'fromAccountId': account.id, 'toAccountId': account.id},
     ),
   );
 }
@@ -197,10 +195,7 @@ String _transactionRoute({
 }) {
   return Uri(
     path: '/transaction/new',
-    queryParameters: {
-      if (mode != null) 'mode': mode,
-      ...queryParameters,
-    },
+    queryParameters: {'mode': ?mode, ...queryParameters},
   ).toString();
 }
 

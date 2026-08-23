@@ -749,8 +749,7 @@ class _FakeTransactionReadRepository implements TransactionReadRepository {
 
   @override
   Future<List<Transaction>> findByIds(Set<String> ids) async => [
-    for (final id in ids)
-      if (transactions[id] case final tx?) tx,
+    for (final id in ids) ?transactions[id],
   ];
 
   @override
@@ -852,10 +851,7 @@ class _FakeEntryReadRepository implements EntryReadRepository {
   @override
   Future<Map<String, List<Entry>>> findByTransactionIds(
     Set<String> transactionIds,
-  ) async => {
-    for (final id in transactionIds)
-      if (_entriesByTransaction[id] case final entries?) id: entries,
-  };
+  ) async => {for (final id in transactionIds) id: ?_entriesByTransaction[id]};
 }
 
 class _FakeTransactionDetailReadRepository
@@ -869,10 +865,7 @@ class _FakeTransactionDetailReadRepository
   @override
   Future<Map<String, List<TransactionDetailRecord>>> findByTransactionIds(
     Set<String> transactionIds,
-  ) async => {
-    for (final id in transactionIds)
-      if (_detailsByTransaction[id] case final details?) id: details,
-  };
+  ) async => {for (final id in transactionIds) id: ?_detailsByTransaction[id]};
 
   @override
   Future<Map<String, Map<TransactionDetailType, int>>> sumOwnByType({

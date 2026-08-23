@@ -401,16 +401,14 @@ class $AccountsTable extends Accounts
   AccountRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return AccountRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
-      name:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}name'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
       accountType: $AccountsTable.$converteraccountType.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -435,11 +433,10 @@ class $AccountsTable extends Accounts
         DriftSqlType.string,
         data['${effectivePrefix}parent_id'],
       ),
-      balanceMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}balance_minor'],
-          )!,
+      balanceMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}balance_minor'],
+      )!,
       iconKey: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}icon_key'],
@@ -460,16 +457,14 @@ class $AccountsTable extends Accounts
         DriftSqlType.int,
         data['${effectivePrefix}repayment_day'],
       ),
-      sortOrder:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}sort_order'],
-          )!,
-      isHidden:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.bool,
-            data['${effectivePrefix}is_hidden'],
-          )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      isHidden: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_hidden'],
+      )!,
       archivedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}archived_at'],
@@ -486,21 +481,18 @@ class $AccountsTable extends Accounts
           data['${effectivePrefix}source'],
         )!,
       ),
-      version:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}version'],
-          )!,
-      createdAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}created_at'],
-          )!,
-      updatedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}updated_at'],
-          )!,
+      version: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}version'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -638,50 +630,40 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       id: Value(id),
       name: Value(name),
       accountType: Value(accountType),
-      accountSubtype:
-          accountSubtype == null && nullToAbsent
-              ? const Value.absent()
-              : Value(accountSubtype),
-      accountProfileKey:
-          accountProfileKey == null && nullToAbsent
-              ? const Value.absent()
-              : Value(accountProfileKey),
-      groupId:
-          groupId == null && nullToAbsent
-              ? const Value.absent()
-              : Value(groupId),
-      parentId:
-          parentId == null && nullToAbsent
-              ? const Value.absent()
-              : Value(parentId),
+      accountSubtype: accountSubtype == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accountSubtype),
+      accountProfileKey: accountProfileKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accountProfileKey),
+      groupId: groupId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(groupId),
+      parentId: parentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentId),
       balanceMinor: Value(balanceMinor),
-      iconKey:
-          iconKey == null && nullToAbsent
-              ? const Value.absent()
-              : Value(iconKey),
+      iconKey: iconKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(iconKey),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
-      creditLimitMinor:
-          creditLimitMinor == null && nullToAbsent
-              ? const Value.absent()
-              : Value(creditLimitMinor),
-      billingDay:
-          billingDay == null && nullToAbsent
-              ? const Value.absent()
-              : Value(billingDay),
-      repaymentDay:
-          repaymentDay == null && nullToAbsent
-              ? const Value.absent()
-              : Value(repaymentDay),
+      creditLimitMinor: creditLimitMinor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(creditLimitMinor),
+      billingDay: billingDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(billingDay),
+      repaymentDay: repaymentDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(repaymentDay),
       sortOrder: Value(sortOrder),
       isHidden: Value(isHidden),
-      archivedAt:
-          archivedAt == null && nullToAbsent
-              ? const Value.absent()
-              : Value(archivedAt),
-      systemKey:
-          systemKey == null && nullToAbsent
-              ? const Value.absent()
-              : Value(systemKey),
+      archivedAt: archivedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(archivedAt),
+      systemKey: systemKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(systemKey),
       source: Value(source),
       version: Value(version),
       createdAt: Value(createdAt),
@@ -790,21 +772,20 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     id: id ?? this.id,
     name: name ?? this.name,
     accountType: accountType ?? this.accountType,
-    accountSubtype:
-        accountSubtype.present ? accountSubtype.value : this.accountSubtype,
-    accountProfileKey:
-        accountProfileKey.present
-            ? accountProfileKey.value
-            : this.accountProfileKey,
+    accountSubtype: accountSubtype.present
+        ? accountSubtype.value
+        : this.accountSubtype,
+    accountProfileKey: accountProfileKey.present
+        ? accountProfileKey.value
+        : this.accountProfileKey,
     groupId: groupId.present ? groupId.value : this.groupId,
     parentId: parentId.present ? parentId.value : this.parentId,
     balanceMinor: balanceMinor ?? this.balanceMinor,
     iconKey: iconKey.present ? iconKey.value : this.iconKey,
     note: note.present ? note.value : this.note,
-    creditLimitMinor:
-        creditLimitMinor.present
-            ? creditLimitMinor.value
-            : this.creditLimitMinor,
+    creditLimitMinor: creditLimitMinor.present
+        ? creditLimitMinor.value
+        : this.creditLimitMinor,
     billingDay: billingDay.present ? billingDay.value : this.billingDay,
     repaymentDay: repaymentDay.present ? repaymentDay.value : this.repaymentDay,
     sortOrder: sortOrder ?? this.sortOrder,
@@ -820,38 +801,36 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     return AccountRow(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
-      accountType:
-          data.accountType.present ? data.accountType.value : this.accountType,
-      accountSubtype:
-          data.accountSubtype.present
-              ? data.accountSubtype.value
-              : this.accountSubtype,
-      accountProfileKey:
-          data.accountProfileKey.present
-              ? data.accountProfileKey.value
-              : this.accountProfileKey,
+      accountType: data.accountType.present
+          ? data.accountType.value
+          : this.accountType,
+      accountSubtype: data.accountSubtype.present
+          ? data.accountSubtype.value
+          : this.accountSubtype,
+      accountProfileKey: data.accountProfileKey.present
+          ? data.accountProfileKey.value
+          : this.accountProfileKey,
       groupId: data.groupId.present ? data.groupId.value : this.groupId,
       parentId: data.parentId.present ? data.parentId.value : this.parentId,
-      balanceMinor:
-          data.balanceMinor.present
-              ? data.balanceMinor.value
-              : this.balanceMinor,
+      balanceMinor: data.balanceMinor.present
+          ? data.balanceMinor.value
+          : this.balanceMinor,
       iconKey: data.iconKey.present ? data.iconKey.value : this.iconKey,
       note: data.note.present ? data.note.value : this.note,
-      creditLimitMinor:
-          data.creditLimitMinor.present
-              ? data.creditLimitMinor.value
-              : this.creditLimitMinor,
-      billingDay:
-          data.billingDay.present ? data.billingDay.value : this.billingDay,
-      repaymentDay:
-          data.repaymentDay.present
-              ? data.repaymentDay.value
-              : this.repaymentDay,
+      creditLimitMinor: data.creditLimitMinor.present
+          ? data.creditLimitMinor.value
+          : this.creditLimitMinor,
+      billingDay: data.billingDay.present
+          ? data.billingDay.value
+          : this.billingDay,
+      repaymentDay: data.repaymentDay.present
+          ? data.repaymentDay.value
+          : this.repaymentDay,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       isHidden: data.isHidden.present ? data.isHidden.value : this.isHidden,
-      archivedAt:
-          data.archivedAt.present ? data.archivedAt.value : this.archivedAt,
+      archivedAt: data.archivedAt.present
+          ? data.archivedAt.value
+          : this.archivedAt,
       systemKey: data.systemKey.present ? data.systemKey.value : this.systemKey,
       source: data.source.present ? data.source.value : this.source,
       version: data.version.present ? data.version.value : this.version,
@@ -1365,36 +1344,30 @@ class $AccountGroupsTable extends AccountGroups
   AccountGroupRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return AccountGroupRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
-      name:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}name'],
-          )!,
-      sortOrder:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}sort_order'],
-          )!,
-      version:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}version'],
-          )!,
-      createdAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}created_at'],
-          )!,
-      updatedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}updated_at'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      version: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}version'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -1717,21 +1690,18 @@ class $AppMetadataTable extends AppMetadata
   AppMetadataRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return AppMetadataRow(
-      key:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}key'],
-          )!,
-      value:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}value'],
-          )!,
-      updatedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}updated_at'],
-          )!,
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -1916,15 +1886,16 @@ class $TransactionsTable extends Transactions
   );
   @override
   late final GeneratedColumnWithTypeConverter<BusinessPurpose, String>
-  businessPurpose = GeneratedColumn<String>(
-    'business_purpose',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  ).withConverter<BusinessPurpose>(
-    $TransactionsTable.$converterbusinessPurpose,
-  );
+  businessPurpose =
+      GeneratedColumn<String>(
+        'business_purpose',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<BusinessPurpose>(
+        $TransactionsTable.$converterbusinessPurpose,
+      );
   static const VerificationMeta _occurredAtMeta = const VerificationMeta(
     'occurredAt',
   );
@@ -2247,32 +2218,28 @@ class $TransactionsTable extends Transactions
   TransactionRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return TransactionRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
       businessPurpose: $TransactionsTable.$converterbusinessPurpose.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
           data['${effectivePrefix}business_purpose'],
         )!,
       ),
-      occurredAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}occurred_at'],
-          )!,
-      postedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}posted_at'],
-          )!,
-      primaryAmountMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}primary_amount_minor'],
-          )!,
+      occurredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}occurred_at'],
+      )!,
+      postedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}posted_at'],
+      )!,
+      primaryAmountMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}primary_amount_minor'],
+      )!,
       counterpartyName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}counterparty_name'],
@@ -2289,16 +2256,14 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}reimbursement_expense_account_id'],
       ),
-      isExcludedFromStats:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.bool,
-            data['${effectivePrefix}is_excluded_from_stats'],
-          )!,
-      isExcludedFromBudget:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.bool,
-            data['${effectivePrefix}is_excluded_from_budget'],
-          )!,
+      isExcludedFromStats: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_excluded_from_stats'],
+      )!,
+      isExcludedFromBudget: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_excluded_from_budget'],
+      )!,
       sourceKind: $TransactionsTable.$convertersourceKind.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -2317,16 +2282,14 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}owner_role'],
       ),
-      createdAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}created_at'],
-          )!,
-      updatedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}updated_at'],
-          )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -2434,34 +2397,29 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       occurredAt: Value(occurredAt),
       postedAt: Value(postedAt),
       primaryAmountMinor: Value(primaryAmountMinor),
-      counterpartyName:
-          counterpartyName == null && nullToAbsent
-              ? const Value.absent()
-              : Value(counterpartyName),
+      counterpartyName: counterpartyName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(counterpartyName),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
-      parentTransactionId:
-          parentTransactionId == null && nullToAbsent
-              ? const Value.absent()
-              : Value(parentTransactionId),
+      parentTransactionId: parentTransactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentTransactionId),
       reimbursementExpenseAccountId:
           reimbursementExpenseAccountId == null && nullToAbsent
-              ? const Value.absent()
-              : Value(reimbursementExpenseAccountId),
+          ? const Value.absent()
+          : Value(reimbursementExpenseAccountId),
       isExcludedFromStats: Value(isExcludedFromStats),
       isExcludedFromBudget: Value(isExcludedFromBudget),
       sourceKind: Value(sourceKind),
-      ownerType:
-          ownerType == null && nullToAbsent
-              ? const Value.absent()
-              : Value(ownerType),
-      ownerId:
-          ownerId == null && nullToAbsent
-              ? const Value.absent()
-              : Value(ownerId),
-      ownerRole:
-          ownerRole == null && nullToAbsent
-              ? const Value.absent()
-              : Value(ownerRole),
+      ownerType: ownerType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownerType),
+      ownerId: ownerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownerId),
+      ownerRole: ownerRole == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownerRole),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -2558,19 +2516,16 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     occurredAt: occurredAt ?? this.occurredAt,
     postedAt: postedAt ?? this.postedAt,
     primaryAmountMinor: primaryAmountMinor ?? this.primaryAmountMinor,
-    counterpartyName:
-        counterpartyName.present
-            ? counterpartyName.value
-            : this.counterpartyName,
+    counterpartyName: counterpartyName.present
+        ? counterpartyName.value
+        : this.counterpartyName,
     note: note.present ? note.value : this.note,
-    parentTransactionId:
-        parentTransactionId.present
-            ? parentTransactionId.value
-            : this.parentTransactionId,
-    reimbursementExpenseAccountId:
-        reimbursementExpenseAccountId.present
-            ? reimbursementExpenseAccountId.value
-            : this.reimbursementExpenseAccountId,
+    parentTransactionId: parentTransactionId.present
+        ? parentTransactionId.value
+        : this.parentTransactionId,
+    reimbursementExpenseAccountId: reimbursementExpenseAccountId.present
+        ? reimbursementExpenseAccountId.value
+        : this.reimbursementExpenseAccountId,
     isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
     isExcludedFromBudget: isExcludedFromBudget ?? this.isExcludedFromBudget,
     sourceKind: sourceKind ?? this.sourceKind,
@@ -2583,40 +2538,35 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   TransactionRow copyWithCompanion(TransactionsCompanion data) {
     return TransactionRow(
       id: data.id.present ? data.id.value : this.id,
-      businessPurpose:
-          data.businessPurpose.present
-              ? data.businessPurpose.value
-              : this.businessPurpose,
-      occurredAt:
-          data.occurredAt.present ? data.occurredAt.value : this.occurredAt,
+      businessPurpose: data.businessPurpose.present
+          ? data.businessPurpose.value
+          : this.businessPurpose,
+      occurredAt: data.occurredAt.present
+          ? data.occurredAt.value
+          : this.occurredAt,
       postedAt: data.postedAt.present ? data.postedAt.value : this.postedAt,
-      primaryAmountMinor:
-          data.primaryAmountMinor.present
-              ? data.primaryAmountMinor.value
-              : this.primaryAmountMinor,
-      counterpartyName:
-          data.counterpartyName.present
-              ? data.counterpartyName.value
-              : this.counterpartyName,
+      primaryAmountMinor: data.primaryAmountMinor.present
+          ? data.primaryAmountMinor.value
+          : this.primaryAmountMinor,
+      counterpartyName: data.counterpartyName.present
+          ? data.counterpartyName.value
+          : this.counterpartyName,
       note: data.note.present ? data.note.value : this.note,
-      parentTransactionId:
-          data.parentTransactionId.present
-              ? data.parentTransactionId.value
-              : this.parentTransactionId,
-      reimbursementExpenseAccountId:
-          data.reimbursementExpenseAccountId.present
-              ? data.reimbursementExpenseAccountId.value
-              : this.reimbursementExpenseAccountId,
-      isExcludedFromStats:
-          data.isExcludedFromStats.present
-              ? data.isExcludedFromStats.value
-              : this.isExcludedFromStats,
-      isExcludedFromBudget:
-          data.isExcludedFromBudget.present
-              ? data.isExcludedFromBudget.value
-              : this.isExcludedFromBudget,
-      sourceKind:
-          data.sourceKind.present ? data.sourceKind.value : this.sourceKind,
+      parentTransactionId: data.parentTransactionId.present
+          ? data.parentTransactionId.value
+          : this.parentTransactionId,
+      reimbursementExpenseAccountId: data.reimbursementExpenseAccountId.present
+          ? data.reimbursementExpenseAccountId.value
+          : this.reimbursementExpenseAccountId,
+      isExcludedFromStats: data.isExcludedFromStats.present
+          ? data.isExcludedFromStats.value
+          : this.isExcludedFromStats,
+      isExcludedFromBudget: data.isExcludedFromBudget.present
+          ? data.isExcludedFromBudget.value
+          : this.isExcludedFromBudget,
+      sourceKind: data.sourceKind.present
+          ? data.sourceKind.value
+          : this.sourceKind,
       ownerType: data.ownerType.present ? data.ownerType.value : this.ownerType,
       ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       ownerRole: data.ownerRole.present ? data.ownerRole.value : this.ownerRole,
@@ -2986,15 +2936,16 @@ class $TransactionDetailsTable extends TransactionDetails
   );
   @override
   late final GeneratedColumnWithTypeConverter<TransactionDetailType, String>
-  detailType = GeneratedColumn<String>(
-    'detail_type',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  ).withConverter<TransactionDetailType>(
-    $TransactionDetailsTable.$converterdetailType,
-  );
+  detailType =
+      GeneratedColumn<String>(
+        'detail_type',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<TransactionDetailType>(
+        $TransactionDetailsTable.$converterdetailType,
+      );
   static const VerificationMeta _amountMinorMeta = const VerificationMeta(
     'amountMinor',
   );
@@ -3108,42 +3059,36 @@ class $TransactionDetailsTable extends TransactionDetails
   TransactionDetailRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return TransactionDetailRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
-      transactionId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}transaction_id'],
-          )!,
-      lineNo:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}line_no'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      transactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}transaction_id'],
+      )!,
+      lineNo: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}line_no'],
+      )!,
       detailType: $TransactionDetailsTable.$converterdetailType.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
           data['${effectivePrefix}detail_type'],
         )!,
       ),
-      amountMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}amount_minor'],
-          )!,
-      createdAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}created_at'],
-          )!,
-      updatedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}updated_at'],
-          )!,
+      amountMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_minor'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -3258,15 +3203,16 @@ class TransactionDetailRow extends DataClass
   TransactionDetailRow copyWithCompanion(TransactionDetailsCompanion data) {
     return TransactionDetailRow(
       id: data.id.present ? data.id.value : this.id,
-      transactionId:
-          data.transactionId.present
-              ? data.transactionId.value
-              : this.transactionId,
+      transactionId: data.transactionId.present
+          ? data.transactionId.value
+          : this.transactionId,
       lineNo: data.lineNo.present ? data.lineNo.value : this.lineNo,
-      detailType:
-          data.detailType.present ? data.detailType.value : this.detailType,
-      amountMinor:
-          data.amountMinor.present ? data.amountMinor.value : this.amountMinor,
+      detailType: data.detailType.present
+          ? data.detailType.value
+          : this.detailType,
+      amountMinor: data.amountMinor.present
+          ? data.amountMinor.value
+          : this.amountMinor,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -3593,42 +3539,36 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, EntryRow> {
   EntryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return EntryRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
-      transactionId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}transaction_id'],
-          )!,
-      accountId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}account_id'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      transactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}transaction_id'],
+      )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
       direction: $EntriesTable.$converterdirection.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
           data['${effectivePrefix}direction'],
         )!,
       ),
-      amountMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}amount_minor'],
-          )!,
-      createdAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}created_at'],
-          )!,
-      updatedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}updated_at'],
-          )!,
+      amountMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_minor'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -3742,14 +3682,14 @@ class EntryRow extends DataClass implements Insertable<EntryRow> {
   EntryRow copyWithCompanion(EntriesCompanion data) {
     return EntryRow(
       id: data.id.present ? data.id.value : this.id,
-      transactionId:
-          data.transactionId.present
-              ? data.transactionId.value
-              : this.transactionId,
+      transactionId: data.transactionId.present
+          ? data.transactionId.value
+          : this.transactionId,
       accountId: data.accountId.present ? data.accountId.value : this.accountId,
       direction: data.direction.present ? data.direction.value : this.direction,
-      amountMinor:
-          data.amountMinor.present ? data.amountMinor.value : this.amountMinor,
+      amountMinor: data.amountMinor.present
+          ? data.amountMinor.value
+          : this.amountMinor,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -4036,31 +3976,26 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, TagRow> {
   TagRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return TagRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
-      name:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}name'],
-          )!,
-      sortOrder:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}sort_order'],
-          )!,
-      createdAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}created_at'],
-          )!,
-      updatedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}updated_at'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -4343,16 +4278,14 @@ class $TransactionTagsTable extends TransactionTags
   TransactionTagRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return TransactionTagRow(
-      transactionId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}transaction_id'],
-          )!,
-      tagId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}tag_id'],
-          )!,
+      transactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}transaction_id'],
+      )!,
+      tagId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tag_id'],
+      )!,
     );
   }
 
@@ -4408,10 +4341,9 @@ class TransactionTagRow extends DataClass
       );
   TransactionTagRow copyWithCompanion(TransactionTagsCompanion data) {
     return TransactionTagRow(
-      transactionId:
-          data.transactionId.present
-              ? data.transactionId.value
-              : this.transactionId,
+      transactionId: data.transactionId.present
+          ? data.transactionId.value
+          : this.transactionId,
       tagId: data.tagId.present ? data.tagId.value : this.tagId,
     );
   }
@@ -4662,40 +4594,34 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
   BudgetRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return BudgetRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
-      monthKey:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}month_key'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      monthKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}month_key'],
+      )!,
       accountId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}account_id'],
       ),
-      amountMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}amount_minor'],
-          )!,
-      sortOrder:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}sort_order'],
-          )!,
-      createdAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}created_at'],
-          )!,
-      updatedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}updated_at'],
-          )!,
+      amountMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_minor'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -4741,10 +4667,9 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     return BudgetsCompanion(
       id: Value(id),
       monthKey: Value(monthKey),
-      accountId:
-          accountId == null && nullToAbsent
-              ? const Value.absent()
-              : Value(accountId),
+      accountId: accountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accountId),
       amountMinor: Value(amountMinor),
       sortOrder: Value(sortOrder),
       createdAt: Value(createdAt),
@@ -4803,8 +4728,9 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       id: data.id.present ? data.id.value : this.id,
       monthKey: data.monthKey.present ? data.monthKey.value : this.monthKey,
       accountId: data.accountId.present ? data.accountId.value : this.accountId,
-      amountMinor:
-          data.amountMinor.present ? data.amountMinor.value : this.amountMinor,
+      amountMinor: data.amountMinor.present
+          ? data.amountMinor.value
+          : this.amountMinor,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -5000,15 +4926,16 @@ class $CreditLiabilityAccountsTable extends CreditLiabilityAccounts
     CreditLiabilityAccountKind,
     String
   >
-  kind = GeneratedColumn<String>(
-    'kind',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  ).withConverter<CreditLiabilityAccountKind>(
-    $CreditLiabilityAccountsTable.$converterkind,
-  );
+  kind =
+      GeneratedColumn<String>(
+        'kind',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<CreditLiabilityAccountKind>(
+        $CreditLiabilityAccountsTable.$converterkind,
+      );
   static const VerificationMeta _creditLimitMinorMeta = const VerificationMeta(
     'creditLimitMinor',
   );
@@ -5175,16 +5102,14 @@ class $CreditLiabilityAccountsTable extends CreditLiabilityAccounts
   }) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return CreditLiabilityAccountRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
-      accountId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}account_id'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
       kind: $CreditLiabilityAccountsTable.$converterkind.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -5203,21 +5128,18 @@ class $CreditLiabilityAccountsTable extends CreditLiabilityAccounts
         DriftSqlType.int,
         data['${effectivePrefix}repayment_day'],
       ),
-      billingDayToNext:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.bool,
-            data['${effectivePrefix}billing_day_to_next'],
-          )!,
-      createdAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}created_at'],
-          )!,
-      updatedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}updated_at'],
-          )!,
+      billingDayToNext: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}billing_day_to_next'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -5284,18 +5206,15 @@ class CreditLiabilityAccountRow extends DataClass
       id: Value(id),
       accountId: Value(accountId),
       kind: Value(kind),
-      creditLimitMinor:
-          creditLimitMinor == null && nullToAbsent
-              ? const Value.absent()
-              : Value(creditLimitMinor),
-      billingDay:
-          billingDay == null && nullToAbsent
-              ? const Value.absent()
-              : Value(billingDay),
-      repaymentDay:
-          repaymentDay == null && nullToAbsent
-              ? const Value.absent()
-              : Value(repaymentDay),
+      creditLimitMinor: creditLimitMinor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(creditLimitMinor),
+      billingDay: billingDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(billingDay),
+      repaymentDay: repaymentDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(repaymentDay),
       billingDayToNext: Value(billingDayToNext),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -5353,10 +5272,9 @@ class CreditLiabilityAccountRow extends DataClass
     id: id ?? this.id,
     accountId: accountId ?? this.accountId,
     kind: kind ?? this.kind,
-    creditLimitMinor:
-        creditLimitMinor.present
-            ? creditLimitMinor.value
-            : this.creditLimitMinor,
+    creditLimitMinor: creditLimitMinor.present
+        ? creditLimitMinor.value
+        : this.creditLimitMinor,
     billingDay: billingDay.present ? billingDay.value : this.billingDay,
     repaymentDay: repaymentDay.present ? repaymentDay.value : this.repaymentDay,
     billingDayToNext: billingDayToNext ?? this.billingDayToNext,
@@ -5370,20 +5288,18 @@ class CreditLiabilityAccountRow extends DataClass
       id: data.id.present ? data.id.value : this.id,
       accountId: data.accountId.present ? data.accountId.value : this.accountId,
       kind: data.kind.present ? data.kind.value : this.kind,
-      creditLimitMinor:
-          data.creditLimitMinor.present
-              ? data.creditLimitMinor.value
-              : this.creditLimitMinor,
-      billingDay:
-          data.billingDay.present ? data.billingDay.value : this.billingDay,
-      repaymentDay:
-          data.repaymentDay.present
-              ? data.repaymentDay.value
-              : this.repaymentDay,
-      billingDayToNext:
-          data.billingDayToNext.present
-              ? data.billingDayToNext.value
-              : this.billingDayToNext,
+      creditLimitMinor: data.creditLimitMinor.present
+          ? data.creditLimitMinor.value
+          : this.creditLimitMinor,
+      billingDay: data.billingDay.present
+          ? data.billingDay.value
+          : this.billingDay,
+      repaymentDay: data.repaymentDay.present
+          ? data.repaymentDay.value
+          : this.repaymentDay,
+      billingDayToNext: data.billingDayToNext.present
+          ? data.billingDayToNext.value
+          : this.billingDayToNext,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -5769,21 +5685,18 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, BillRow> {
   BillRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return BillRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
-      accountId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}account_id'],
-          )!,
-      period:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}period'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      period: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}period'],
+      )!,
       startDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}start_date'],
@@ -5802,16 +5715,14 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, BillRow> {
           data['${effectivePrefix}status'],
         )!,
       ),
-      createdAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}created_at'],
-          )!,
-      updatedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}updated_at'],
-          )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -5875,18 +5786,15 @@ class BillRow extends DataClass implements Insertable<BillRow> {
       id: Value(id),
       accountId: Value(accountId),
       period: Value(period),
-      startDate:
-          startDate == null && nullToAbsent
-              ? const Value.absent()
-              : Value(startDate),
-      billingDate:
-          billingDate == null && nullToAbsent
-              ? const Value.absent()
-              : Value(billingDate),
-      repaymentDate:
-          repaymentDate == null && nullToAbsent
-              ? const Value.absent()
-              : Value(repaymentDate),
+      startDate: startDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startDate),
+      billingDate: billingDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(billingDate),
+      repaymentDate: repaymentDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(repaymentDate),
       status: Value(status),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -5946,8 +5854,9 @@ class BillRow extends DataClass implements Insertable<BillRow> {
     period: period ?? this.period,
     startDate: startDate.present ? startDate.value : this.startDate,
     billingDate: billingDate.present ? billingDate.value : this.billingDate,
-    repaymentDate:
-        repaymentDate.present ? repaymentDate.value : this.repaymentDate,
+    repaymentDate: repaymentDate.present
+        ? repaymentDate.value
+        : this.repaymentDate,
     status: status ?? this.status,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -5958,12 +5867,12 @@ class BillRow extends DataClass implements Insertable<BillRow> {
       accountId: data.accountId.present ? data.accountId.value : this.accountId,
       period: data.period.present ? data.period.value : this.period,
       startDate: data.startDate.present ? data.startDate.value : this.startDate,
-      billingDate:
-          data.billingDate.present ? data.billingDate.value : this.billingDate,
-      repaymentDate:
-          data.repaymentDate.present
-              ? data.repaymentDate.value
-              : this.repaymentDate,
+      billingDate: data.billingDate.present
+          ? data.billingDate.value
+          : this.billingDate,
+      repaymentDate: data.repaymentDate.present
+          ? data.repaymentDate.value
+          : this.repaymentDate,
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -6407,16 +6316,14 @@ class $BillItemsTable extends BillItems
   BillItemRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return BillItemRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
-      billId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}bill_id'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      billId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bill_id'],
+      )!,
       itemType: $BillItemsTable.$converteritemType.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -6431,42 +6338,36 @@ class $BillItemsTable extends BillItems
         DriftSqlType.string,
         data['${effectivePrefix}schedule_id'],
       ),
-      repaymentDate:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}repayment_date'],
-          )!,
-      expectedPrincipalMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}expected_principal_minor'],
-          )!,
-      expectedInterestMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}expected_interest_minor'],
-          )!,
-      expectedFeeMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}expected_fee_minor'],
-          )!,
+      repaymentDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}repayment_date'],
+      )!,
+      expectedPrincipalMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expected_principal_minor'],
+      )!,
+      expectedInterestMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expected_interest_minor'],
+      )!,
+      expectedFeeMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expected_fee_minor'],
+      )!,
       status: $BillItemsTable.$converterstatus.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
           data['${effectivePrefix}status'],
         )!,
       ),
-      createdAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}created_at'],
-          )!,
-      updatedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}updated_at'],
-          )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -6543,14 +6444,12 @@ class BillItemRow extends DataClass implements Insertable<BillItemRow> {
       id: Value(id),
       billId: Value(billId),
       itemType: Value(itemType),
-      contractId:
-          contractId == null && nullToAbsent
-              ? const Value.absent()
-              : Value(contractId),
-      scheduleId:
-          scheduleId == null && nullToAbsent
-              ? const Value.absent()
-              : Value(scheduleId),
+      contractId: contractId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(contractId),
+      scheduleId: scheduleId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(scheduleId),
       repaymentDate: Value(repaymentDate),
       expectedPrincipalMinor: Value(expectedPrincipalMinor),
       expectedInterestMinor: Value(expectedInterestMinor),
@@ -6645,26 +6544,24 @@ class BillItemRow extends DataClass implements Insertable<BillItemRow> {
       id: data.id.present ? data.id.value : this.id,
       billId: data.billId.present ? data.billId.value : this.billId,
       itemType: data.itemType.present ? data.itemType.value : this.itemType,
-      contractId:
-          data.contractId.present ? data.contractId.value : this.contractId,
-      scheduleId:
-          data.scheduleId.present ? data.scheduleId.value : this.scheduleId,
-      repaymentDate:
-          data.repaymentDate.present
-              ? data.repaymentDate.value
-              : this.repaymentDate,
-      expectedPrincipalMinor:
-          data.expectedPrincipalMinor.present
-              ? data.expectedPrincipalMinor.value
-              : this.expectedPrincipalMinor,
-      expectedInterestMinor:
-          data.expectedInterestMinor.present
-              ? data.expectedInterestMinor.value
-              : this.expectedInterestMinor,
-      expectedFeeMinor:
-          data.expectedFeeMinor.present
-              ? data.expectedFeeMinor.value
-              : this.expectedFeeMinor,
+      contractId: data.contractId.present
+          ? data.contractId.value
+          : this.contractId,
+      scheduleId: data.scheduleId.present
+          ? data.scheduleId.value
+          : this.scheduleId,
+      repaymentDate: data.repaymentDate.present
+          ? data.repaymentDate.value
+          : this.repaymentDate,
+      expectedPrincipalMinor: data.expectedPrincipalMinor.present
+          ? data.expectedPrincipalMinor.value
+          : this.expectedPrincipalMinor,
+      expectedInterestMinor: data.expectedInterestMinor.present
+          ? data.expectedInterestMinor.value
+          : this.expectedInterestMinor,
+      expectedFeeMinor: data.expectedFeeMinor.present
+          ? data.expectedFeeMinor.value
+          : this.expectedFeeMinor,
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -7006,21 +6903,18 @@ class $BillGenerationSuppressionsTable extends BillGenerationSuppressions
   }) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return BillGenerationSuppressionRow(
-      accountId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}account_id'],
-          )!,
-      period:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}period'],
-          )!,
-      createdAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}created_at'],
-          )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      period: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}period'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
     );
   }
 
@@ -7223,15 +7117,16 @@ class $InstallmentContractsTable extends InstallmentContracts
       );
   @override
   late final GeneratedColumnWithTypeConverter<InstallmentSourceType, String>
-  sourceType = GeneratedColumn<String>(
-    'source_type',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  ).withConverter<InstallmentSourceType>(
-    $InstallmentContractsTable.$convertersourceType,
-  );
+  sourceType =
+      GeneratedColumn<String>(
+        'source_type',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<InstallmentSourceType>(
+        $InstallmentContractsTable.$convertersourceType,
+      );
   static const VerificationMeta _disbursementAccountIdMeta =
       const VerificationMeta('disbursementAccountId');
   @override
@@ -7328,26 +7223,28 @@ class $InstallmentContractsTable extends InstallmentContracts
     InstallmentRepaymentMethod,
     String
   >
-  repaymentMethod = GeneratedColumn<String>(
-    'repayment_method',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  ).withConverter<InstallmentRepaymentMethod>(
-    $InstallmentContractsTable.$converterrepaymentMethod,
-  );
+  repaymentMethod =
+      GeneratedColumn<String>(
+        'repayment_method',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<InstallmentRepaymentMethod>(
+        $InstallmentContractsTable.$converterrepaymentMethod,
+      );
   @override
   late final GeneratedColumnWithTypeConverter<InterestRatePeriod?, String>
-  interestRatePeriod = GeneratedColumn<String>(
-    'interest_rate_period',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  ).withConverter<InterestRatePeriod?>(
-    $InstallmentContractsTable.$converterinterestRatePeriodn,
-  );
+  interestRatePeriod =
+      GeneratedColumn<String>(
+        'interest_rate_period',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      ).withConverter<InterestRatePeriod?>(
+        $InstallmentContractsTable.$converterinterestRatePeriodn,
+      );
   static const VerificationMeta _interestRatePpmMeta = const VerificationMeta(
     'interestRatePpm',
   );
@@ -7361,16 +7258,17 @@ class $InstallmentContractsTable extends InstallmentContracts
   );
   @override
   late final GeneratedColumnWithTypeConverter<InterestAccrualMethod, String>
-  interestAccrualMethod = GeneratedColumn<String>(
-    'interest_accrual_method',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant('daily'),
-  ).withConverter<InterestAccrualMethod>(
-    $InstallmentContractsTable.$converterinterestAccrualMethod,
-  );
+  interestAccrualMethod =
+      GeneratedColumn<String>(
+        'interest_accrual_method',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('daily'),
+      ).withConverter<InterestAccrualMethod>(
+        $InstallmentContractsTable.$converterinterestAccrualMethod,
+      );
   static const VerificationMeta _totalFeeMinorMeta = const VerificationMeta(
     'totalFeeMinor',
   );
@@ -7385,15 +7283,16 @@ class $InstallmentContractsTable extends InstallmentContracts
   );
   @override
   late final GeneratedColumnWithTypeConverter<InstallmentContractStatus, String>
-  status = GeneratedColumn<String>(
-    'status',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  ).withConverter<InstallmentContractStatus>(
-    $InstallmentContractsTable.$converterstatus,
-  );
+  status =
+      GeneratedColumn<String>(
+        'status',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<InstallmentContractStatus>(
+        $InstallmentContractsTable.$converterstatus,
+      );
   static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
@@ -7605,16 +7504,14 @@ class $InstallmentContractsTable extends InstallmentContracts
   InstallmentContractRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return InstallmentContractRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
-      liabilityAccountId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}liability_account_id'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      liabilityAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}liability_account_id'],
+      )!,
       sourceType: $InstallmentContractsTable.$convertersourceType.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -7633,31 +7530,26 @@ class $InstallmentContractsTable extends InstallmentContracts
         DriftSqlType.string,
         data['${effectivePrefix}source_repayment_id'],
       ),
-      principalMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}principal_minor'],
-          )!,
-      totalPeriods:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}total_periods'],
-          )!,
-      borrowingDate:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}start_date'],
-          )!,
-      firstRepaymentDate:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}first_repayment_date'],
-          )!,
-      lastRepaymentDate:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}last_repayment_date'],
-          )!,
+      principalMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}principal_minor'],
+      )!,
+      totalPeriods: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_periods'],
+      )!,
+      borrowingDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_date'],
+      )!,
+      firstRepaymentDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}first_repayment_date'],
+      )!,
+      lastRepaymentDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_repayment_date'],
+      )!,
       repaymentMethod: $InstallmentContractsTable.$converterrepaymentMethod
           .fromSql(
             attachedDatabase.typeMapping.read(
@@ -7685,11 +7577,10 @@ class $InstallmentContractsTable extends InstallmentContracts
               data['${effectivePrefix}interest_accrual_method'],
             )!,
           ),
-      totalFeeMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}total_fee_minor'],
-          )!,
+      totalFeeMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_fee_minor'],
+      )!,
       status: $InstallmentContractsTable.$converterstatus.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -7700,16 +7591,14 @@ class $InstallmentContractsTable extends InstallmentContracts
         DriftSqlType.string,
         data['${effectivePrefix}note'],
       ),
-      createdAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}created_at'],
-          )!,
-      updatedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}updated_at'],
-          )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -7869,32 +7758,28 @@ class InstallmentContractRow extends DataClass
       id: Value(id),
       liabilityAccountId: Value(liabilityAccountId),
       sourceType: Value(sourceType),
-      disbursementAccountId:
-          disbursementAccountId == null && nullToAbsent
-              ? const Value.absent()
-              : Value(disbursementAccountId),
+      disbursementAccountId: disbursementAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(disbursementAccountId),
       disbursementTransactionId:
           disbursementTransactionId == null && nullToAbsent
-              ? const Value.absent()
-              : Value(disbursementTransactionId),
-      sourceRepaymentId:
-          sourceRepaymentId == null && nullToAbsent
-              ? const Value.absent()
-              : Value(sourceRepaymentId),
+          ? const Value.absent()
+          : Value(disbursementTransactionId),
+      sourceRepaymentId: sourceRepaymentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceRepaymentId),
       principalMinor: Value(principalMinor),
       totalPeriods: Value(totalPeriods),
       borrowingDate: Value(borrowingDate),
       firstRepaymentDate: Value(firstRepaymentDate),
       lastRepaymentDate: Value(lastRepaymentDate),
       repaymentMethod: Value(repaymentMethod),
-      interestRatePeriod:
-          interestRatePeriod == null && nullToAbsent
-              ? const Value.absent()
-              : Value(interestRatePeriod),
-      interestRatePpm:
-          interestRatePpm == null && nullToAbsent
-              ? const Value.absent()
-              : Value(interestRatePpm),
+      interestRatePeriod: interestRatePeriod == null && nullToAbsent
+          ? const Value.absent()
+          : Value(interestRatePeriod),
+      interestRatePpm: interestRatePpm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(interestRatePpm),
       interestAccrualMethod: Value(interestAccrualMethod),
       totalFeeMinor: Value(totalFeeMinor),
       status: Value(status),
@@ -8025,30 +7910,27 @@ class InstallmentContractRow extends DataClass
     id: id ?? this.id,
     liabilityAccountId: liabilityAccountId ?? this.liabilityAccountId,
     sourceType: sourceType ?? this.sourceType,
-    disbursementAccountId:
-        disbursementAccountId.present
-            ? disbursementAccountId.value
-            : this.disbursementAccountId,
-    disbursementTransactionId:
-        disbursementTransactionId.present
-            ? disbursementTransactionId.value
-            : this.disbursementTransactionId,
-    sourceRepaymentId:
-        sourceRepaymentId.present
-            ? sourceRepaymentId.value
-            : this.sourceRepaymentId,
+    disbursementAccountId: disbursementAccountId.present
+        ? disbursementAccountId.value
+        : this.disbursementAccountId,
+    disbursementTransactionId: disbursementTransactionId.present
+        ? disbursementTransactionId.value
+        : this.disbursementTransactionId,
+    sourceRepaymentId: sourceRepaymentId.present
+        ? sourceRepaymentId.value
+        : this.sourceRepaymentId,
     principalMinor: principalMinor ?? this.principalMinor,
     totalPeriods: totalPeriods ?? this.totalPeriods,
     borrowingDate: borrowingDate ?? this.borrowingDate,
     firstRepaymentDate: firstRepaymentDate ?? this.firstRepaymentDate,
     lastRepaymentDate: lastRepaymentDate ?? this.lastRepaymentDate,
     repaymentMethod: repaymentMethod ?? this.repaymentMethod,
-    interestRatePeriod:
-        interestRatePeriod.present
-            ? interestRatePeriod.value
-            : this.interestRatePeriod,
-    interestRatePpm:
-        interestRatePpm.present ? interestRatePpm.value : this.interestRatePpm,
+    interestRatePeriod: interestRatePeriod.present
+        ? interestRatePeriod.value
+        : this.interestRatePeriod,
+    interestRatePpm: interestRatePpm.present
+        ? interestRatePpm.value
+        : this.interestRatePpm,
     interestAccrualMethod: interestAccrualMethod ?? this.interestAccrualMethod,
     totalFeeMinor: totalFeeMinor ?? this.totalFeeMinor,
     status: status ?? this.status,
@@ -8059,64 +7941,51 @@ class InstallmentContractRow extends DataClass
   InstallmentContractRow copyWithCompanion(InstallmentContractsCompanion data) {
     return InstallmentContractRow(
       id: data.id.present ? data.id.value : this.id,
-      liabilityAccountId:
-          data.liabilityAccountId.present
-              ? data.liabilityAccountId.value
-              : this.liabilityAccountId,
-      sourceType:
-          data.sourceType.present ? data.sourceType.value : this.sourceType,
-      disbursementAccountId:
-          data.disbursementAccountId.present
-              ? data.disbursementAccountId.value
-              : this.disbursementAccountId,
-      disbursementTransactionId:
-          data.disbursementTransactionId.present
-              ? data.disbursementTransactionId.value
-              : this.disbursementTransactionId,
-      sourceRepaymentId:
-          data.sourceRepaymentId.present
-              ? data.sourceRepaymentId.value
-              : this.sourceRepaymentId,
-      principalMinor:
-          data.principalMinor.present
-              ? data.principalMinor.value
-              : this.principalMinor,
-      totalPeriods:
-          data.totalPeriods.present
-              ? data.totalPeriods.value
-              : this.totalPeriods,
-      borrowingDate:
-          data.borrowingDate.present
-              ? data.borrowingDate.value
-              : this.borrowingDate,
-      firstRepaymentDate:
-          data.firstRepaymentDate.present
-              ? data.firstRepaymentDate.value
-              : this.firstRepaymentDate,
-      lastRepaymentDate:
-          data.lastRepaymentDate.present
-              ? data.lastRepaymentDate.value
-              : this.lastRepaymentDate,
-      repaymentMethod:
-          data.repaymentMethod.present
-              ? data.repaymentMethod.value
-              : this.repaymentMethod,
-      interestRatePeriod:
-          data.interestRatePeriod.present
-              ? data.interestRatePeriod.value
-              : this.interestRatePeriod,
-      interestRatePpm:
-          data.interestRatePpm.present
-              ? data.interestRatePpm.value
-              : this.interestRatePpm,
-      interestAccrualMethod:
-          data.interestAccrualMethod.present
-              ? data.interestAccrualMethod.value
-              : this.interestAccrualMethod,
-      totalFeeMinor:
-          data.totalFeeMinor.present
-              ? data.totalFeeMinor.value
-              : this.totalFeeMinor,
+      liabilityAccountId: data.liabilityAccountId.present
+          ? data.liabilityAccountId.value
+          : this.liabilityAccountId,
+      sourceType: data.sourceType.present
+          ? data.sourceType.value
+          : this.sourceType,
+      disbursementAccountId: data.disbursementAccountId.present
+          ? data.disbursementAccountId.value
+          : this.disbursementAccountId,
+      disbursementTransactionId: data.disbursementTransactionId.present
+          ? data.disbursementTransactionId.value
+          : this.disbursementTransactionId,
+      sourceRepaymentId: data.sourceRepaymentId.present
+          ? data.sourceRepaymentId.value
+          : this.sourceRepaymentId,
+      principalMinor: data.principalMinor.present
+          ? data.principalMinor.value
+          : this.principalMinor,
+      totalPeriods: data.totalPeriods.present
+          ? data.totalPeriods.value
+          : this.totalPeriods,
+      borrowingDate: data.borrowingDate.present
+          ? data.borrowingDate.value
+          : this.borrowingDate,
+      firstRepaymentDate: data.firstRepaymentDate.present
+          ? data.firstRepaymentDate.value
+          : this.firstRepaymentDate,
+      lastRepaymentDate: data.lastRepaymentDate.present
+          ? data.lastRepaymentDate.value
+          : this.lastRepaymentDate,
+      repaymentMethod: data.repaymentMethod.present
+          ? data.repaymentMethod.value
+          : this.repaymentMethod,
+      interestRatePeriod: data.interestRatePeriod.present
+          ? data.interestRatePeriod.value
+          : this.interestRatePeriod,
+      interestRatePpm: data.interestRatePpm.present
+          ? data.interestRatePpm.value
+          : this.interestRatePpm,
+      interestAccrualMethod: data.interestAccrualMethod.present
+          ? data.interestAccrualMethod.value
+          : this.interestAccrualMethod,
+      totalFeeMinor: data.totalFeeMinor.present
+          ? data.totalFeeMinor.value
+          : this.totalFeeMinor,
       status: data.status.present ? data.status.value : this.status,
       note: data.note.present ? data.note.value : this.note,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -8587,15 +8456,16 @@ class $InstallmentSchedulesTable extends InstallmentSchedules
   );
   @override
   late final GeneratedColumnWithTypeConverter<InstallmentScheduleStatus, String>
-  status = GeneratedColumn<String>(
-    'status',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  ).withConverter<InstallmentScheduleStatus>(
-    $InstallmentSchedulesTable.$converterstatus,
-  );
+  status =
+      GeneratedColumn<String>(
+        'status',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<InstallmentScheduleStatus>(
+        $InstallmentSchedulesTable.$converterstatus,
+      );
   static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
@@ -8741,41 +8611,34 @@ class $InstallmentSchedulesTable extends InstallmentSchedules
   InstallmentScheduleRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return InstallmentScheduleRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
-      contractId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}contract_id'],
-          )!,
-      periodNo:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}period_no'],
-          )!,
-      expectedRepaymentDate:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}expected_repayment_date'],
-          )!,
-      expectedPrincipalMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}expected_principal_minor'],
-          )!,
-      expectedInterestMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}expected_interest_minor'],
-          )!,
-      expectedFeeMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}expected_fee_minor'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      contractId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}contract_id'],
+      )!,
+      periodNo: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}period_no'],
+      )!,
+      expectedRepaymentDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}expected_repayment_date'],
+      )!,
+      expectedPrincipalMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expected_principal_minor'],
+      )!,
+      expectedInterestMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expected_interest_minor'],
+      )!,
+      expectedFeeMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expected_fee_minor'],
+      )!,
       status: $InstallmentSchedulesTable.$converterstatus.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -8786,16 +8649,14 @@ class $InstallmentSchedulesTable extends InstallmentSchedules
         DriftSqlType.string,
         data['${effectivePrefix}note'],
       ),
-      createdAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}created_at'],
-          )!,
-      updatedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}updated_at'],
-          )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -8953,25 +8814,22 @@ class InstallmentScheduleRow extends DataClass
   InstallmentScheduleRow copyWithCompanion(InstallmentSchedulesCompanion data) {
     return InstallmentScheduleRow(
       id: data.id.present ? data.id.value : this.id,
-      contractId:
-          data.contractId.present ? data.contractId.value : this.contractId,
+      contractId: data.contractId.present
+          ? data.contractId.value
+          : this.contractId,
       periodNo: data.periodNo.present ? data.periodNo.value : this.periodNo,
-      expectedRepaymentDate:
-          data.expectedRepaymentDate.present
-              ? data.expectedRepaymentDate.value
-              : this.expectedRepaymentDate,
-      expectedPrincipalMinor:
-          data.expectedPrincipalMinor.present
-              ? data.expectedPrincipalMinor.value
-              : this.expectedPrincipalMinor,
-      expectedInterestMinor:
-          data.expectedInterestMinor.present
-              ? data.expectedInterestMinor.value
-              : this.expectedInterestMinor,
-      expectedFeeMinor:
-          data.expectedFeeMinor.present
-              ? data.expectedFeeMinor.value
-              : this.expectedFeeMinor,
+      expectedRepaymentDate: data.expectedRepaymentDate.present
+          ? data.expectedRepaymentDate.value
+          : this.expectedRepaymentDate,
+      expectedPrincipalMinor: data.expectedPrincipalMinor.present
+          ? data.expectedPrincipalMinor.value
+          : this.expectedPrincipalMinor,
+      expectedInterestMinor: data.expectedInterestMinor.present
+          ? data.expectedInterestMinor.value
+          : this.expectedInterestMinor,
+      expectedFeeMinor: data.expectedFeeMinor.present
+          ? data.expectedFeeMinor.value
+          : this.expectedFeeMinor,
       status: data.status.present ? data.status.value : this.status,
       note: data.note.present ? data.note.value : this.note,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -9377,40 +9235,34 @@ class $RepaymentsTable extends Repayments
   RepaymentRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return RepaymentRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
-      repaymentType:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}repayment_type'],
-          )!,
-      targetType:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}target_type'],
-          )!,
-      targetId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}target_id'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      repaymentType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}repayment_type'],
+      )!,
+      targetType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_type'],
+      )!,
+      targetId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_id'],
+      )!,
       transactionId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}transaction_id'],
       ),
-      createdAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}created_at'],
-          )!,
-      updatedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}updated_at'],
-          )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -9458,10 +9310,9 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
       repaymentType: Value(repaymentType),
       targetType: Value(targetType),
       targetId: Value(targetId),
-      transactionId:
-          transactionId == null && nullToAbsent
-              ? const Value.absent()
-              : Value(transactionId),
+      transactionId: transactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(transactionId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -9509,25 +9360,25 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
     repaymentType: repaymentType ?? this.repaymentType,
     targetType: targetType ?? this.targetType,
     targetId: targetId ?? this.targetId,
-    transactionId:
-        transactionId.present ? transactionId.value : this.transactionId,
+    transactionId: transactionId.present
+        ? transactionId.value
+        : this.transactionId,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
   RepaymentRow copyWithCompanion(RepaymentsCompanion data) {
     return RepaymentRow(
       id: data.id.present ? data.id.value : this.id,
-      repaymentType:
-          data.repaymentType.present
-              ? data.repaymentType.value
-              : this.repaymentType,
-      targetType:
-          data.targetType.present ? data.targetType.value : this.targetType,
+      repaymentType: data.repaymentType.present
+          ? data.repaymentType.value
+          : this.repaymentType,
+      targetType: data.targetType.present
+          ? data.targetType.value
+          : this.targetType,
       targetId: data.targetId.present ? data.targetId.value : this.targetId,
-      transactionId:
-          data.transactionId.present
-              ? data.transactionId.value
-              : this.transactionId,
+      transactionId: data.transactionId.present
+          ? data.transactionId.value
+          : this.transactionId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -9909,50 +9760,42 @@ class $RepaymentItemsTable extends RepaymentItems
   RepaymentItemRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return RepaymentItemRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
-      repaymentId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}repayment_id'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      repaymentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}repayment_id'],
+      )!,
       billItemId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}bill_item_id'],
       ),
-      allocatedPrincipalMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}allocated_principal_minor'],
-          )!,
-      allocatedInterestMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}allocated_interest_minor'],
-          )!,
-      allocatedFeeMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}allocated_fee_minor'],
-          )!,
-      allocatedDiscountMinor:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}allocated_discount_minor'],
-          )!,
-      createdAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}created_at'],
-          )!,
-      updatedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}updated_at'],
-          )!,
+      allocatedPrincipalMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}allocated_principal_minor'],
+      )!,
+      allocatedInterestMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}allocated_interest_minor'],
+      )!,
+      allocatedFeeMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}allocated_fee_minor'],
+      )!,
+      allocatedDiscountMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}allocated_discount_minor'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -10005,10 +9848,9 @@ class RepaymentItemRow extends DataClass
     return RepaymentItemsCompanion(
       id: Value(id),
       repaymentId: Value(repaymentId),
-      billItemId:
-          billItemId == null && nullToAbsent
-              ? const Value.absent()
-              : Value(billItemId),
+      billItemId: billItemId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(billItemId),
       allocatedPrincipalMinor: Value(allocatedPrincipalMinor),
       allocatedInterestMinor: Value(allocatedInterestMinor),
       allocatedFeeMinor: Value(allocatedFeeMinor),
@@ -10086,26 +9928,24 @@ class RepaymentItemRow extends DataClass
   RepaymentItemRow copyWithCompanion(RepaymentItemsCompanion data) {
     return RepaymentItemRow(
       id: data.id.present ? data.id.value : this.id,
-      repaymentId:
-          data.repaymentId.present ? data.repaymentId.value : this.repaymentId,
-      billItemId:
-          data.billItemId.present ? data.billItemId.value : this.billItemId,
-      allocatedPrincipalMinor:
-          data.allocatedPrincipalMinor.present
-              ? data.allocatedPrincipalMinor.value
-              : this.allocatedPrincipalMinor,
-      allocatedInterestMinor:
-          data.allocatedInterestMinor.present
-              ? data.allocatedInterestMinor.value
-              : this.allocatedInterestMinor,
-      allocatedFeeMinor:
-          data.allocatedFeeMinor.present
-              ? data.allocatedFeeMinor.value
-              : this.allocatedFeeMinor,
-      allocatedDiscountMinor:
-          data.allocatedDiscountMinor.present
-              ? data.allocatedDiscountMinor.value
-              : this.allocatedDiscountMinor,
+      repaymentId: data.repaymentId.present
+          ? data.repaymentId.value
+          : this.repaymentId,
+      billItemId: data.billItemId.present
+          ? data.billItemId.value
+          : this.billItemId,
+      allocatedPrincipalMinor: data.allocatedPrincipalMinor.present
+          ? data.allocatedPrincipalMinor.value
+          : this.allocatedPrincipalMinor,
+      allocatedInterestMinor: data.allocatedInterestMinor.present
+          ? data.allocatedInterestMinor.value
+          : this.allocatedInterestMinor,
+      allocatedFeeMinor: data.allocatedFeeMinor.present
+          ? data.allocatedFeeMinor.value
+          : this.allocatedFeeMinor,
+      allocatedDiscountMinor: data.allocatedDiscountMinor.present
+          ? data.allocatedDiscountMinor.value
+          : this.allocatedDiscountMinor,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -10340,15 +10180,16 @@ class $ImportEntityMappingsTable extends ImportEntityMappings
       );
   @override
   late final GeneratedColumnWithTypeConverter<ImportEntityKind, String>
-  entityKind = GeneratedColumn<String>(
-    'entity_kind',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  ).withConverter<ImportEntityKind>(
-    $ImportEntityMappingsTable.$converterentityKind,
-  );
+  entityKind =
+      GeneratedColumn<String>(
+        'entity_kind',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<ImportEntityKind>(
+        $ImportEntityMappingsTable.$converterentityKind,
+      );
   static const VerificationMeta _sourceEntityKeyMeta = const VerificationMeta(
     'sourceEntityKey',
   );
@@ -10473,11 +10314,10 @@ class $ImportEntityMappingsTable extends ImportEntityMappings
   ImportEntityMappingRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return ImportEntityMappingRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
       source: $ImportEntityMappingsTable.$convertersource.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -10490,26 +10330,22 @@ class $ImportEntityMappingsTable extends ImportEntityMappings
           data['${effectivePrefix}entity_kind'],
         )!,
       ),
-      sourceEntityKey:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}source_entity_key'],
-          )!,
-      targetAccountId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}target_account_id'],
-          )!,
-      createdAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}created_at'],
-          )!,
-      updatedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}updated_at'],
-          )!,
+      sourceEntityKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_entity_key'],
+      )!,
+      targetAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_account_id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -10635,16 +10471,15 @@ class ImportEntityMappingRow extends DataClass
     return ImportEntityMappingRow(
       id: data.id.present ? data.id.value : this.id,
       source: data.source.present ? data.source.value : this.source,
-      entityKind:
-          data.entityKind.present ? data.entityKind.value : this.entityKind,
-      sourceEntityKey:
-          data.sourceEntityKey.present
-              ? data.sourceEntityKey.value
-              : this.sourceEntityKey,
-      targetAccountId:
-          data.targetAccountId.present
-              ? data.targetAccountId.value
-              : this.targetAccountId,
+      entityKind: data.entityKind.present
+          ? data.entityKind.value
+          : this.entityKind,
+      sourceEntityKey: data.sourceEntityKey.present
+          ? data.sourceEntityKey.value
+          : this.sourceEntityKey,
+      targetAccountId: data.targetAccountId.present
+          ? data.targetAccountId.value
+          : this.targetAccountId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -10986,11 +10821,10 @@ class $ImportBatchesTable extends ImportBatches
   ImportBatchRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return ImportBatchRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
       source: $ImportBatchesTable.$convertersource.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -11003,26 +10837,22 @@ class $ImportBatchesTable extends ImportBatches
           data['${effectivePrefix}status'],
         )!,
       ),
-      importedGroupCount:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}imported_group_count'],
-          )!,
-      createdTransactionCount:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}created_transaction_count'],
-          )!,
-      skippedGroupCount:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}skipped_group_count'],
-          )!,
-      importedAt:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.dateTime,
-            data['${effectivePrefix}imported_at'],
-          )!,
+      importedGroupCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}imported_group_count'],
+      )!,
+      createdTransactionCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_transaction_count'],
+      )!,
+      skippedGroupCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}skipped_group_count'],
+      )!,
+      importedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}imported_at'],
+      )!,
       revertedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}reverted_at'],
@@ -11095,10 +10925,9 @@ class ImportBatchRow extends DataClass implements Insertable<ImportBatchRow> {
       createdTransactionCount: Value(createdTransactionCount),
       skippedGroupCount: Value(skippedGroupCount),
       importedAt: Value(importedAt),
-      revertedAt:
-          revertedAt == null && nullToAbsent
-              ? const Value.absent()
-              : Value(revertedAt),
+      revertedAt: revertedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(revertedAt),
     );
   }
 
@@ -11170,22 +10999,21 @@ class ImportBatchRow extends DataClass implements Insertable<ImportBatchRow> {
       id: data.id.present ? data.id.value : this.id,
       source: data.source.present ? data.source.value : this.source,
       status: data.status.present ? data.status.value : this.status,
-      importedGroupCount:
-          data.importedGroupCount.present
-              ? data.importedGroupCount.value
-              : this.importedGroupCount,
-      createdTransactionCount:
-          data.createdTransactionCount.present
-              ? data.createdTransactionCount.value
-              : this.createdTransactionCount,
-      skippedGroupCount:
-          data.skippedGroupCount.present
-              ? data.skippedGroupCount.value
-              : this.skippedGroupCount,
-      importedAt:
-          data.importedAt.present ? data.importedAt.value : this.importedAt,
-      revertedAt:
-          data.revertedAt.present ? data.revertedAt.value : this.revertedAt,
+      importedGroupCount: data.importedGroupCount.present
+          ? data.importedGroupCount.value
+          : this.importedGroupCount,
+      createdTransactionCount: data.createdTransactionCount.present
+          ? data.createdTransactionCount.value
+          : this.createdTransactionCount,
+      skippedGroupCount: data.skippedGroupCount.present
+          ? data.skippedGroupCount.value
+          : this.skippedGroupCount,
+      importedAt: data.importedAt.present
+          ? data.importedAt.value
+          : this.importedAt,
+      revertedAt: data.revertedAt.present
+          ? data.revertedAt.value
+          : this.revertedAt,
     );
   }
 
@@ -11528,35 +11356,30 @@ class $ImportBatchItemsTable extends ImportBatchItems
   ImportBatchItemRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return ImportBatchItemRow(
-      id:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}id'],
-          )!,
-      batchId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}batch_id'],
-          )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      batchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}batch_id'],
+      )!,
       sourceOperationKey: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}source_operation_key'],
       ),
-      sourceOperationFingerprint:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}source_operation_fingerprint'],
-          )!,
-      fingerprintVersion:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}fingerprint_version'],
-          )!,
-      topLevelTransactionId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}top_level_transaction_id'],
-          )!,
+      sourceOperationFingerprint: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_operation_fingerprint'],
+      )!,
+      fingerprintVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fingerprint_version'],
+      )!,
+      topLevelTransactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}top_level_transaction_id'],
+      )!,
     );
   }
 
@@ -11602,10 +11425,9 @@ class ImportBatchItemRow extends DataClass
     return ImportBatchItemsCompanion(
       id: Value(id),
       batchId: Value(batchId),
-      sourceOperationKey:
-          sourceOperationKey == null && nullToAbsent
-              ? const Value.absent()
-              : Value(sourceOperationKey),
+      sourceOperationKey: sourceOperationKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceOperationKey),
       sourceOperationFingerprint: Value(sourceOperationFingerprint),
       fingerprintVersion: Value(fingerprintVersion),
       topLevelTransactionId: Value(topLevelTransactionId),
@@ -11657,10 +11479,9 @@ class ImportBatchItemRow extends DataClass
   }) => ImportBatchItemRow(
     id: id ?? this.id,
     batchId: batchId ?? this.batchId,
-    sourceOperationKey:
-        sourceOperationKey.present
-            ? sourceOperationKey.value
-            : this.sourceOperationKey,
+    sourceOperationKey: sourceOperationKey.present
+        ? sourceOperationKey.value
+        : this.sourceOperationKey,
     sourceOperationFingerprint:
         sourceOperationFingerprint ?? this.sourceOperationFingerprint,
     fingerprintVersion: fingerprintVersion ?? this.fingerprintVersion,
@@ -11670,22 +11491,18 @@ class ImportBatchItemRow extends DataClass
     return ImportBatchItemRow(
       id: data.id.present ? data.id.value : this.id,
       batchId: data.batchId.present ? data.batchId.value : this.batchId,
-      sourceOperationKey:
-          data.sourceOperationKey.present
-              ? data.sourceOperationKey.value
-              : this.sourceOperationKey,
-      sourceOperationFingerprint:
-          data.sourceOperationFingerprint.present
-              ? data.sourceOperationFingerprint.value
-              : this.sourceOperationFingerprint,
-      fingerprintVersion:
-          data.fingerprintVersion.present
-              ? data.fingerprintVersion.value
-              : this.fingerprintVersion,
-      topLevelTransactionId:
-          data.topLevelTransactionId.present
-              ? data.topLevelTransactionId.value
-              : this.topLevelTransactionId,
+      sourceOperationKey: data.sourceOperationKey.present
+          ? data.sourceOperationKey.value
+          : this.sourceOperationKey,
+      sourceOperationFingerprint: data.sourceOperationFingerprint.present
+          ? data.sourceOperationFingerprint.value
+          : this.sourceOperationFingerprint,
+      fingerprintVersion: data.fingerprintVersion.present
+          ? data.fingerprintVersion.value
+          : this.fingerprintVersion,
+      topLevelTransactionId: data.topLevelTransactionId.present
+          ? data.topLevelTransactionId.value
+          : this.topLevelTransactionId,
     );
   }
 
@@ -12304,12 +12121,12 @@ class $$AccountsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$AccountsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer:
-              () => $$AccountsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer:
-              () => $$AccountsTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () =>
+              $$AccountsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AccountsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AccountsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -12406,16 +12223,9 @@ class $$AccountsTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -12587,16 +12397,12 @@ class $$AccountGroupsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$AccountGroupsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer:
-              () =>
-                  $$AccountGroupsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer:
-              () => $$AccountGroupsTableAnnotationComposer(
-                $db: db,
-                $table: table,
-              ),
+          createFilteringComposer: () =>
+              $$AccountGroupsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AccountGroupsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AccountGroupsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -12633,16 +12439,9 @@ class $$AccountGroupsTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -12772,13 +12571,12 @@ class $$AppMetadataTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$AppMetadataTableFilterComposer($db: db, $table: table),
-          createOrderingComposer:
-              () => $$AppMetadataTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer:
-              () =>
-                  $$AppMetadataTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () =>
+              $$AppMetadataTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AppMetadataTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AppMetadataTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> key = const Value.absent(),
@@ -12803,16 +12601,9 @@ class $$AppMetadataTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -13176,13 +12967,12 @@ class $$TransactionsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$TransactionsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer:
-              () => $$TransactionsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer:
-              () =>
-                  $$TransactionsTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () =>
+              $$TransactionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TransactionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TransactionsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -13265,16 +13055,9 @@ class $$TransactionsTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -13482,18 +13265,12 @@ class $$TransactionDetailsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$TransactionDetailsTableFilterComposer(
-                $db: db,
-                $table: table,
-              ),
-          createOrderingComposer:
-              () => $$TransactionDetailsTableOrderingComposer(
-                $db: db,
-                $table: table,
-              ),
-          createComputedFieldComposer:
-              () => $$TransactionDetailsTableAnnotationComposer(
+          createFilteringComposer: () =>
+              $$TransactionDetailsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TransactionDetailsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TransactionDetailsTableAnnotationComposer(
                 $db: db,
                 $table: table,
               ),
@@ -13537,16 +13314,9 @@ class $$TransactionDetailsTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -13742,12 +13512,12 @@ class $$EntriesTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$EntriesTableFilterComposer($db: db, $table: table),
-          createOrderingComposer:
-              () => $$EntriesTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer:
-              () => $$EntriesTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () =>
+              $$EntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$EntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$EntriesTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -13788,16 +13558,9 @@ class $$EntriesTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -13949,12 +13712,12 @@ class $$TagsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$TagsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer:
-              () => $$TagsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer:
-              () => $$TagsTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () =>
+              $$TagsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TagsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TagsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -13987,16 +13750,9 @@ class $$TagsTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -14116,19 +13872,12 @@ class $$TransactionTagsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () =>
-                  $$TransactionTagsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer:
-              () => $$TransactionTagsTableOrderingComposer(
-                $db: db,
-                $table: table,
-              ),
-          createComputedFieldComposer:
-              () => $$TransactionTagsTableAnnotationComposer(
-                $db: db,
-                $table: table,
-              ),
+          createFilteringComposer: () =>
+              $$TransactionTagsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TransactionTagsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TransactionTagsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> transactionId = const Value.absent(),
@@ -14149,16 +13898,9 @@ class $$TransactionTagsTableTableManager
                 tagId: tagId,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -14347,12 +14089,12 @@ class $$BudgetsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$BudgetsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer:
-              () => $$BudgetsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer:
-              () => $$BudgetsTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () =>
+              $$BudgetsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BudgetsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BudgetsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -14393,16 +14135,9 @@ class $$BudgetsTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -14639,18 +14374,18 @@ class $$CreditLiabilityAccountsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$CreditLiabilityAccountsTableFilterComposer(
+          createFilteringComposer: () =>
+              $$CreditLiabilityAccountsTableFilterComposer(
                 $db: db,
                 $table: table,
               ),
-          createOrderingComposer:
-              () => $$CreditLiabilityAccountsTableOrderingComposer(
+          createOrderingComposer: () =>
+              $$CreditLiabilityAccountsTableOrderingComposer(
                 $db: db,
                 $table: table,
               ),
-          createComputedFieldComposer:
-              () => $$CreditLiabilityAccountsTableAnnotationComposer(
+          createComputedFieldComposer: () =>
+              $$CreditLiabilityAccountsTableAnnotationComposer(
                 $db: db,
                 $table: table,
               ),
@@ -14702,16 +14437,9 @@ class $$CreditLiabilityAccountsTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -14936,12 +14664,12 @@ class $$BillsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$BillsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer:
-              () => $$BillsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer:
-              () => $$BillsTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () =>
+              $$BillsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BillsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BillsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -14990,16 +14718,9 @@ class $$BillsTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -15275,12 +14996,12 @@ class $$BillItemsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$BillItemsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer:
-              () => $$BillItemsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer:
-              () => $$BillItemsTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () =>
+              $$BillItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BillItemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BillItemsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -15341,16 +15062,9 @@ class $$BillItemsTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -15486,18 +15200,18 @@ class $$BillGenerationSuppressionsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$BillGenerationSuppressionsTableFilterComposer(
+          createFilteringComposer: () =>
+              $$BillGenerationSuppressionsTableFilterComposer(
                 $db: db,
                 $table: table,
               ),
-          createOrderingComposer:
-              () => $$BillGenerationSuppressionsTableOrderingComposer(
+          createOrderingComposer: () =>
+              $$BillGenerationSuppressionsTableOrderingComposer(
                 $db: db,
                 $table: table,
               ),
-          createComputedFieldComposer:
-              () => $$BillGenerationSuppressionsTableAnnotationComposer(
+          createComputedFieldComposer: () =>
+              $$BillGenerationSuppressionsTableAnnotationComposer(
                 $db: db,
                 $table: table,
               ),
@@ -15525,16 +15239,9 @@ class $$BillGenerationSuppressionsTableTableManager
                 createdAt: createdAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -15989,18 +15696,15 @@ class $$InstallmentContractsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$InstallmentContractsTableFilterComposer(
+          createFilteringComposer: () =>
+              $$InstallmentContractsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$InstallmentContractsTableOrderingComposer(
                 $db: db,
                 $table: table,
               ),
-          createOrderingComposer:
-              () => $$InstallmentContractsTableOrderingComposer(
-                $db: db,
-                $table: table,
-              ),
-          createComputedFieldComposer:
-              () => $$InstallmentContractsTableAnnotationComposer(
+          createComputedFieldComposer: () =>
+              $$InstallmentContractsTableAnnotationComposer(
                 $db: db,
                 $table: table,
               ),
@@ -16101,16 +15805,9 @@ class $$InstallmentContractsTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -16386,18 +16083,15 @@ class $$InstallmentSchedulesTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$InstallmentSchedulesTableFilterComposer(
+          createFilteringComposer: () =>
+              $$InstallmentSchedulesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$InstallmentSchedulesTableOrderingComposer(
                 $db: db,
                 $table: table,
               ),
-          createOrderingComposer:
-              () => $$InstallmentSchedulesTableOrderingComposer(
-                $db: db,
-                $table: table,
-              ),
-          createComputedFieldComposer:
-              () => $$InstallmentSchedulesTableAnnotationComposer(
+          createComputedFieldComposer: () =>
+              $$InstallmentSchedulesTableAnnotationComposer(
                 $db: db,
                 $table: table,
               ),
@@ -16457,16 +16151,9 @@ class $$InstallmentSchedulesTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -16666,12 +16353,12 @@ class $$RepaymentsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$RepaymentsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer:
-              () => $$RepaymentsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer:
-              () => $$RepaymentsTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () =>
+              $$RepaymentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RepaymentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RepaymentsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -16712,16 +16399,9 @@ class $$RepaymentsTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -16959,16 +16639,12 @@ class $$RepaymentItemsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$RepaymentItemsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer:
-              () =>
-                  $$RepaymentItemsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer:
-              () => $$RepaymentItemsTableAnnotationComposer(
-                $db: db,
-                $table: table,
-              ),
+          createFilteringComposer: () =>
+              $$RepaymentItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RepaymentItemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RepaymentItemsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -17017,16 +16693,9 @@ class $$RepaymentItemsTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -17231,18 +16900,15 @@ class $$ImportEntityMappingsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$ImportEntityMappingsTableFilterComposer(
+          createFilteringComposer: () =>
+              $$ImportEntityMappingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ImportEntityMappingsTableOrderingComposer(
                 $db: db,
                 $table: table,
               ),
-          createOrderingComposer:
-              () => $$ImportEntityMappingsTableOrderingComposer(
-                $db: db,
-                $table: table,
-              ),
-          createComputedFieldComposer:
-              () => $$ImportEntityMappingsTableAnnotationComposer(
+          createComputedFieldComposer: () =>
+              $$ImportEntityMappingsTableAnnotationComposer(
                 $db: db,
                 $table: table,
               ),
@@ -17286,16 +16952,9 @@ class $$ImportEntityMappingsTableTableManager
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -17516,16 +17175,12 @@ class $$ImportBatchesTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () => $$ImportBatchesTableFilterComposer($db: db, $table: table),
-          createOrderingComposer:
-              () =>
-                  $$ImportBatchesTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer:
-              () => $$ImportBatchesTableAnnotationComposer(
-                $db: db,
-                $table: table,
-              ),
+          createFilteringComposer: () =>
+              $$ImportBatchesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ImportBatchesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ImportBatchesTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -17570,16 +17225,9 @@ class $$ImportBatchesTableTableManager
                 revertedAt: revertedAt,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -17768,19 +17416,12 @@ class $$ImportBatchItemsTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer:
-              () =>
-                  $$ImportBatchItemsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer:
-              () => $$ImportBatchItemsTableOrderingComposer(
-                $db: db,
-                $table: table,
-              ),
-          createComputedFieldComposer:
-              () => $$ImportBatchItemsTableAnnotationComposer(
-                $db: db,
-                $table: table,
-              ),
+          createFilteringComposer: () =>
+              $$ImportBatchItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ImportBatchItemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ImportBatchItemsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -17817,16 +17458,9 @@ class $$ImportBatchItemsTableTableManager
                 topLevelTransactionId: topLevelTransactionId,
                 rowid: rowid,
               ),
-          withReferenceMapper:
-              (p0) =>
-                  p0
-                      .map(
-                        (e) => (
-                          e.readTable(table),
-                          BaseReferences(db, table, e),
-                        ),
-                      )
-                      .toList(),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );

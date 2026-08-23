@@ -54,14 +54,9 @@ class ImportMappingPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(importViewModelProvider);
     final review = state.review;
-    final summary =
-        review == null
-            ? const ImportMappingAnalysisSummary(
-              mapped: 0,
-              pending: 0,
-              unmapped: 0,
-            )
-            : summarizeImportMappings(review);
+    final summary = review == null
+        ? const ImportMappingAnalysisSummary(mapped: 0, pending: 0, unmapped: 0)
+        : summarizeImportMappings(review);
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -200,10 +195,8 @@ class _ImportPreviewPageState extends ConsumerState<ImportPreviewPage> {
                       selecting: _selecting,
                       selectedCount: state.selectedGroupIndexes.length,
                       enabled: !state.isBusy,
-                      onEnterSelection: () =>
-                          setState(() => _selecting = true),
-                      onExitSelection: () =>
-                          setState(() => _selecting = false),
+                      onEnterSelection: () => setState(() => _selecting = true),
+                      onExitSelection: () => setState(() => _selecting = false),
                       onSelectAll: () =>
                           _setGroupsSelected(selectableGroups, true),
                       onClearAll: () =>
@@ -216,32 +209,30 @@ class _ImportPreviewPageState extends ConsumerState<ImportPreviewPage> {
                       group: groups[index],
                       enableRowTap: !state.isBusy,
                       showDailyTotals: false,
-                      onRowTap:
-                          (transactionId) => _handleRowTap(
-                            state,
-                            currentReview,
-                            transactionId,
-                            rowsById[transactionId],
-                          ),
-                      onRowLongPress:
-                          state.isBusy
-                              ? null
-                              : (_) {
-                                if (!_selecting) {
-                                  setState(() => _selecting = true);
-                                }
-                              },
-                      onRowSelectionChanged:
-                          state.isBusy
-                              ? null
-                              : (transactionId, selected) {
-                                final groupIndex =
-                                    _importGroupIndexFromRowId(transactionId);
-                                if (groupIndex == null) return;
-                                ref
-                                    .read(importViewModelProvider.notifier)
-                                    .setGroupSelection(groupIndex, selected);
-                              },
+                      onRowTap: (transactionId) => _handleRowTap(
+                        state,
+                        currentReview,
+                        transactionId,
+                        rowsById[transactionId],
+                      ),
+                      onRowLongPress: state.isBusy
+                          ? null
+                          : (_) {
+                              if (!_selecting) {
+                                setState(() => _selecting = true);
+                              }
+                            },
+                      onRowSelectionChanged: state.isBusy
+                          ? null
+                          : (transactionId, selected) {
+                              final groupIndex = _importGroupIndexFromRowId(
+                                transactionId,
+                              );
+                              if (groupIndex == null) return;
+                              ref
+                                  .read(importViewModelProvider.notifier)
+                                  .setGroupSelection(groupIndex, selected);
+                            },
                     ),
                     if (index < groups.length - 1)
                       const SizedBox(height: AppSpacing.space10),
@@ -261,11 +252,10 @@ class _ImportPreviewPageState extends ConsumerState<ImportPreviewPage> {
   ) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder:
-            (_) => ImportIssuesPage(
-              blockedGroups: blockedGroups,
-              filteredRecords: filteredRecords,
-            ),
+        builder: (_) => ImportIssuesPage(
+          blockedGroups: blockedGroups,
+          filteredRecords: filteredRecords,
+        ),
       ),
     );
   }
@@ -302,16 +292,15 @@ class _ImportPreviewPageState extends ConsumerState<ImportPreviewPage> {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder:
-          (context) => _ImportRowDetailsSheet(
-            groupReview: group,
-            row: row,
-            onConfirm: () {
-              ref
-                  .read(importViewModelProvider.notifier)
-                  .setGroupSelection(groupIndex, true);
-            },
-          ),
+      builder: (context) => _ImportRowDetailsSheet(
+        groupReview: group,
+        row: row,
+        onConfirm: () {
+          ref
+              .read(importViewModelProvider.notifier)
+              .setGroupSelection(groupIndex, true);
+        },
+      ),
     );
   }
 }
@@ -393,9 +382,7 @@ class _ImportRowDetailsSheet extends StatelessWidget {
     final reasons = <String>[
       if (groupReview.isExactDuplicate) '与已导入的交易完全一致，确认后会重复导入。',
       if (groupReview.isSuspectedDuplicate) '与已有交易高度相似，疑似重复。',
-      for (final issue in groupReview.issues.where(
-        (issue) => issue.isWarning,
-      ))
+      for (final issue in groupReview.issues.where((issue) => issue.isWarning))
         issue.message,
     ];
     return SafeArea(
@@ -572,15 +559,17 @@ class ImportIssuesPage extends StatelessWidget {
                       style: context.appTextStyles.groupTitle,
                     ),
                     const SizedBox(height: AppSpacing.space8),
-                    for (var index = 0; index < blockedGroups.length; index++)
-                      ...[
-                        _blockedGroupCard(context, blockedGroups[index]),
-                        if (index < blockedGroups.length - 1)
-                          const SizedBox(height: AppSpacing.space10),
-                      ],
+                    for (
+                      var index = 0;
+                      index < blockedGroups.length;
+                      index++
+                    ) ...[
+                      _blockedGroupCard(context, blockedGroups[index]),
+                      if (index < blockedGroups.length - 1)
+                        const SizedBox(height: AppSpacing.space10),
+                    ],
                   ],
-                  if (blockedGroups.isNotEmpty &&
-                      filteredRecords.isNotEmpty)
+                  if (blockedGroups.isNotEmpty && filteredRecords.isNotEmpty)
                     const SizedBox(height: AppSpacing.space16),
                   if (filteredRecords.isNotEmpty) ...[
                     Text(
@@ -588,9 +577,11 @@ class ImportIssuesPage extends StatelessWidget {
                       style: context.appTextStyles.groupTitle,
                     ),
                     const SizedBox(height: AppSpacing.space8),
-                    for (var index = 0;
-                        index < filteredRecords.length;
-                        index++) ...[
+                    for (
+                      var index = 0;
+                      index < filteredRecords.length;
+                      index++
+                    ) ...[
                       _SkippedRecordCard(record: filteredRecords[index]),
                       if (index < filteredRecords.length - 1)
                         const SizedBox(height: AppSpacing.space10),
@@ -608,36 +599,35 @@ class ImportIssuesPage extends StatelessWidget {
   Widget _blockedGroupCard(BuildContext context, ImportGroupReview group) {
     final colors = Theme.of(context).colorScheme;
     return AppSurface(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.space16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    RemixIcons.error_warning_line,
-                    size: AppSpacing.space18,
-                    color: colors.error,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.space16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  RemixIcons.error_warning_line,
+                  size: AppSpacing.space18,
+                  color: colors.error,
+                ),
+                const SizedBox(width: AppSpacing.space8),
+                Expanded(
+                  child: Text(
+                    '${importOperationLabel(group.group.topLevel.operationKind)}'
+                    ' · ${formatImportDateTime(group.group.topLevel.occurredAt)}',
+                    style: context.appTextStyles.listTitle,
                   ),
-                  const SizedBox(width: AppSpacing.space8),
-                  Expanded(
-                    child: Text(
-                      '${importOperationLabel(group.group.topLevel.operationKind)}'
-                      ' · ${formatImportDateTime(group.group.topLevel.occurredAt)}',
-                      style: context.appTextStyles.listTitle,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space6),
-              for (final issue
-                  in group.issues.where((issue) => issue.isBlocking))
-                _IssueLine(issue: issue, color: colors.error),
-            ],
-          ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.space6),
+            for (final issue in group.issues.where((issue) => issue.isBlocking))
+              _IssueLine(issue: issue, color: colors.error),
+          ],
         ),
-      );
+      ),
+    );
   }
 }
 
@@ -671,7 +661,10 @@ class _SkippedRecordCard extends StatelessWidget {
                 children: [
                   Text(location, style: context.appTextStyles.listTitle),
                   const SizedBox(height: AppSpacing.space2),
-                  Text(record.reason, style: context.appTextStyles.pageSubtitle),
+                  Text(
+                    record.reason,
+                    style: context.appTextStyles.pageSubtitle,
+                  ),
                 ],
               ),
             ),
@@ -714,23 +707,22 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
               ],
             ),
             Expanded(
-              child:
-                  widget.source.isAvailable
-                      ? _ImportReviewTab(
-                        source: widget.source,
-                        state: state,
-                        onAddFiles: () => _pickFiles(append: true),
-                        onParseFiles: _parseFiles,
-                        onReset: notifier.reset,
-                        onClearError: notifier.clearError,
-                        onViewAllMappings: _viewAllMappings,
-                        onToggleSaveMappingConfiguration:
-                            _toggleSaveMappingConfiguration,
-                        onConfirmMappingConfiguration:
-                            _confirmMappingConfiguration,
-                        onCommit: _commit,
-                      )
-                      : _UnavailableImportSource(source: widget.source),
+              child: widget.source.isAvailable
+                  ? _ImportReviewTab(
+                      source: widget.source,
+                      state: state,
+                      onAddFiles: () => _pickFiles(append: true),
+                      onParseFiles: _parseFiles,
+                      onReset: notifier.reset,
+                      onClearError: notifier.clearError,
+                      onViewAllMappings: _viewAllMappings,
+                      onToggleSaveMappingConfiguration:
+                          _toggleSaveMappingConfiguration,
+                      onConfirmMappingConfiguration:
+                          _confirmMappingConfiguration,
+                      onCommit: _commit,
+                    )
+                  : _UnavailableImportSource(source: widget.source),
             ),
           ],
         ),
@@ -747,8 +739,9 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
   }
 
   Future<void> _parseFiles() async {
-    final outcome =
-        await ref.read(importViewModelProvider.notifier).parseSelectedFiles();
+    final outcome = await ref
+        .read(importViewModelProvider.notifier)
+        .parseSelectedFiles();
     if (!mounted) return;
     _showFailure(outcome);
   }
@@ -771,15 +764,14 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
-      builder:
-          (context) => _MappingTargetSheet(
-            item: item,
-            selectedDecision: item.effectiveDecision,
-            hasTemporaryOverride:
-                state.temporaryMappings.containsKey(key) ||
-                state.plannedCreations.containsKey(key),
-            restoreLabel: '恢复默认映射',
-          ),
+      builder: (context) => _MappingTargetSheet(
+        item: item,
+        selectedDecision: item.effectiveDecision,
+        hasTemporaryOverride:
+            state.temporaryMappings.containsKey(key) ||
+            state.plannedCreations.containsKey(key),
+        restoreLabel: '恢复默认映射',
+      ),
     );
     if (!mounted || selection == null) return;
     final notifier = ref.read(importViewModelProvider.notifier);
@@ -797,18 +789,16 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
   }
 
   void _toggleSaveMappingConfiguration() {
-    final outcome =
-        ref
-            .read(importViewModelProvider.notifier)
-            .toggleSaveMappingConfiguration();
+    final outcome = ref
+        .read(importViewModelProvider.notifier)
+        .toggleSaveMappingConfiguration();
     _showFailure(outcome);
   }
 
   void _confirmMappingConfiguration() {
-    final outcome =
-        ref
-            .read(importViewModelProvider.notifier)
-            .confirmMappingConfiguration();
+    final outcome = ref
+        .read(importViewModelProvider.notifier)
+        .confirmMappingConfiguration();
     _showFailure(outcome);
   }
 
@@ -817,35 +807,34 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
     final selectedCount = state.selectedGroupIndexes.length;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('确认导入'),
-            content: Text('将原子提交 $selectedCount 个交易组。任一交易失败时，本次提交会全部回滚。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('开始导入'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('确认导入'),
+        content: Text('将原子提交 $selectedCount 个交易组。任一交易失败时，本次提交会全部回滚。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
           ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('开始导入'),
+          ),
+        ],
+      ),
     );
     if (!mounted || confirmed != true) return;
 
-    final outcome =
-        await ref.read(importViewModelProvider.notifier).commitSelectedGroups();
+    final outcome = await ref
+        .read(importViewModelProvider.notifier)
+        .commitSelectedGroups();
     if (!mounted) return;
     switch (outcome) {
       case ImportActionSuccess(:final value):
         final batch = value.batch;
-        final message =
-            batch == null
-                ? '没有创建新批次，所选交易组均被跳过。'
-                : '导入完成：${batch.importedGroupCount} 个交易组，'
-                    '${batch.createdTransactionCount} 条交易。';
+        final message = batch == null
+            ? '没有创建新批次，所选交易组均被跳过。'
+            : '导入完成：${batch.importedGroupCount} 个交易组，'
+                  '${batch.createdTransactionCount} 条交易。';
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(message)));
@@ -918,10 +907,8 @@ class _ImportLandingPageState extends ConsumerState<ImportPage> {
                     Text('导入来源', style: context.appTextStyles.groupTitle),
                     const SizedBox(height: AppSpacing.space10),
                     _ImportSourceList(
-                      onSelected:
-                          (source) => context.push(
-                            '/import/process/${source.routeValue}',
-                          ),
+                      onSelected: (source) =>
+                          context.push('/import/process/${source.routeValue}'),
                     ),
                     const SizedBox(height: AppSpacing.space16),
                     Row(
@@ -944,10 +931,9 @@ class _ImportLandingPageState extends ConsumerState<ImportPage> {
                         icon: RemixIcons.error_warning_line,
                         message: error.message,
                         tone: _FeedbackTone.error,
-                        onClose:
-                            ref
-                                .read(importViewModelProvider.notifier)
-                                .clearError,
+                        onClose: ref
+                            .read(importViewModelProvider.notifier)
+                            .clearError,
                       ),
                     ] else if (state.historyLoading && state.batches.isEmpty)
                       const Padding(
@@ -972,8 +958,9 @@ class _ImportLandingPageState extends ConsumerState<ImportPage> {
   }
 
   Future<void> _loadHistory() async {
-    final outcome =
-        await ref.read(importViewModelProvider.notifier).loadHistory();
+    final outcome = await ref
+        .read(importViewModelProvider.notifier)
+        .loadHistory();
     if (!mounted || outcome is ImportActionSuccess<List<ImportBatch>>) return;
     final error = (outcome as ImportActionFailure<List<ImportBatch>>).error;
     ScaffoldMessenger.of(
@@ -1006,8 +993,9 @@ class _ImportHistoryPageState extends ConsumerState<ImportHistoryPage> {
                 state: state,
                 onRefresh: _loadHistory,
                 onRevert: _confirmRevert,
-                onClearError:
-                    ref.read(importViewModelProvider.notifier).clearError,
+                onClearError: ref
+                    .read(importViewModelProvider.notifier)
+                    .clearError,
               ),
             ),
           ],
@@ -1017,8 +1005,9 @@ class _ImportHistoryPageState extends ConsumerState<ImportHistoryPage> {
   }
 
   Future<void> _loadHistory() async {
-    final outcome =
-        await ref.read(importViewModelProvider.notifier).loadHistory();
+    final outcome = await ref
+        .read(importViewModelProvider.notifier)
+        .loadHistory();
     if (!mounted || outcome is ImportActionSuccess<List<ImportBatch>>) return;
     final error = (outcome as ImportActionFailure<List<ImportBatch>>).error;
     ScaffoldMessenger.of(
@@ -1029,21 +1018,20 @@ class _ImportHistoryPageState extends ConsumerState<ImportHistoryPage> {
   Future<void> _confirmRevert(ImportBatch batch) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('撤销导入批次'),
-            content: const Text('将删除该批次当前仍存在的全部顶层交易及其子交易。来源映射、账户和分类会保留。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('确认撤销'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('撤销导入批次'),
+        content: const Text('将删除该批次当前仍存在的全部顶层交易及其子交易。来源映射、账户和分类会保留。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
           ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('确认撤销'),
+          ),
+        ],
+      ),
     );
     if (!mounted || confirmed != true) return;
 
@@ -1154,10 +1142,9 @@ class _ImportSourceIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     if (source == ImportEntrySource.wechat ||
         source == ImportEntrySource.alipay) {
-      final asset =
-          source == ImportEntrySource.wechat
-              ? 'assets/icons/account/wechat_pay.svg'
-              : 'assets/icons/account/alipay.svg';
+      final asset = source == ImportEntrySource.wechat
+          ? 'assets/icons/account/wechat_pay.svg'
+          : 'assets/icons/account/alipay.svg';
       return SizedBox.square(
         dimension: size,
         child: Padding(
@@ -1363,9 +1350,9 @@ class _ImportReviewTab extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Theme.of(context).colorScheme.surface.withValues(
-                        alpha: 0,
-                      ),
+                      Theme.of(
+                        context,
+                      ).colorScheme.surface.withValues(alpha: 0),
                       Theme.of(context).colorScheme.surface,
                     ],
                     stops: const [0, 0.4],
@@ -1376,25 +1363,21 @@ class _ImportReviewTab extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed:
                         state.isBusy ||
-                                state.selectedGroupIndexes.isEmpty ||
-                                !state.mappingConfirmed
-                            ? null
-                            : onCommit,
-                    icon:
-                        state.phase == ImportPagePhase.committing
-                            ? const SizedBox.square(
-                              dimension: AppSpacing.space18,
-                              child: CircularProgressIndicator(
-                                strokeWidth:
-                                    AppProgressIndicatorTokens
-                                        .compactStrokeWidth,
-                              ),
-                            )
-                            : const Icon(RemixIcons.import_line),
+                            state.selectedGroupIndexes.isEmpty ||
+                            !state.mappingConfirmed
+                        ? null
+                        : onCommit,
+                    icon: state.phase == ImportPagePhase.committing
+                        ? const SizedBox.square(
+                            dimension: AppSpacing.space18,
+                            child: CircularProgressIndicator(
+                              strokeWidth:
+                                  AppProgressIndicatorTokens.compactStrokeWidth,
+                            ),
+                          )
+                        : const Icon(RemixIcons.import_line),
                     label: Text(
-                      state.phase == ImportPagePhase.committing
-                          ? '正在导入'
-                          : '导入',
+                      state.phase == ImportPagePhase.committing ? '正在导入' : '导入',
                     ),
                   ),
                 ),
@@ -1481,21 +1464,18 @@ class _ImportFilesSection extends StatelessWidget {
                   ],
                   const SizedBox(height: AppSpacing.space8),
                   OutlinedButton.icon(
-                    onPressed:
-                        controlsDisabled || files.isEmpty
-                            ? null
-                            : onParseFiles,
-                    icon:
-                        isParsing
-                            ? const SizedBox.square(
-                              dimension: AppSpacing.space18,
-                              child: CircularProgressIndicator(
-                                strokeWidth:
-                                    AppProgressIndicatorTokens
-                                        .compactStrokeWidth,
-                              ),
-                            )
-                            : const Icon(RemixIcons.file_search_line),
+                    onPressed: controlsDisabled || files.isEmpty
+                        ? null
+                        : onParseFiles,
+                    icon: isParsing
+                        ? const SizedBox.square(
+                            dimension: AppSpacing.space18,
+                            child: CircularProgressIndicator(
+                              strokeWidth:
+                                  AppProgressIndicatorTokens.compactStrokeWidth,
+                            ),
+                          )
+                        : const Icon(RemixIcons.file_search_line),
                     label: Text(isParsing ? '解析中' : '解析文件'),
                   ),
                 ],
@@ -1580,10 +1560,12 @@ class _ImportFileRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (progress.status) {
-      ImportFileProcessingStatus.waiting =>
-        Theme.of(context).colorScheme.onSurfaceVariant,
-      ImportFileProcessingStatus.parsing =>
-        Theme.of(context).colorScheme.primary,
+      ImportFileProcessingStatus.waiting => Theme.of(
+        context,
+      ).colorScheme.onSurfaceVariant,
+      ImportFileProcessingStatus.parsing => Theme.of(
+        context,
+      ).colorScheme.primary,
       ImportFileProcessingStatus.success => _themeExtension(context).success,
       ImportFileProcessingStatus.warning => _themeExtension(context).warning,
       ImportFileProcessingStatus.failed => Theme.of(context).colorScheme.error,
@@ -1718,16 +1700,14 @@ class _CommitResultBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final batch = result.batch;
     return _FeedbackBanner(
-      icon:
-          batch == null
-              ? RemixIcons.information_line
-              : RemixIcons.checkbox_circle_line,
-      message:
-          batch == null
-              ? '没有创建新批次；${result.skippedGroupCount} 个交易组被跳过。'
-              : '已导入 ${batch.importedGroupCount} 个交易组，创建 '
-                  '${batch.createdTransactionCount} 条交易，跳过 '
-                  '${batch.skippedGroupCount} 个交易组。',
+      icon: batch == null
+          ? RemixIcons.information_line
+          : RemixIcons.checkbox_circle_line,
+      message: batch == null
+          ? '没有创建新批次；${result.skippedGroupCount} 个交易组被跳过。'
+          : '已导入 ${batch.importedGroupCount} 个交易组，创建 '
+                '${batch.createdTransactionCount} 条交易，跳过 '
+                '${batch.skippedGroupCount} 个交易组。',
       tone: batch == null ? _FeedbackTone.info : _FeedbackTone.success,
     );
   }
@@ -1769,10 +1749,9 @@ class _MappingSection extends StatelessWidget {
           children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed:
-                    state.isBusy || state.missingMappingCount > 0
-                        ? null
-                        : onToggleSaveMappingConfiguration,
+                onPressed: state.isBusy || state.missingMappingCount > 0
+                    ? null
+                    : onToggleSaveMappingConfiguration,
                 icon: Icon(
                   state.saveMappingConfiguration
                       ? RemixIcons.checkbox_circle_fill
@@ -1784,10 +1763,9 @@ class _MappingSection extends StatelessWidget {
             const SizedBox(width: AppSpacing.space10),
             Expanded(
               child: FilledButton(
-                onPressed:
-                    state.isBusy || state.missingMappingCount > 0
-                        ? null
-                        : onConfirmMappingConfiguration,
+                onPressed: state.isBusy || state.missingMappingCount > 0
+                    ? null
+                    : onConfirmMappingConfiguration,
                 child: const Text('确认配置'),
               ),
             ),
@@ -1850,35 +1828,34 @@ class _MappingItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final review = state.review!;
     final decision = item.effectiveDecision;
-    final target =
-        decision is ExistingTargetDecision
-            ? review.targets
-                .where((candidate) => candidate.id == decision.targetId)
-                .firstOrNull
-            : null;
-    final creation =
-        decision is PlannedCreationDecision ? decision.creation : null;
-    final targetLabel =
-        target?.isArchived == true
-            ? '${target!.displayPath}（已归档）'
-            : item.targetPath ?? item.targetName ?? '待配置';
+    final target = decision is ExistingTargetDecision
+        ? review.targets
+              .where((candidate) => candidate.id == decision.targetId)
+              .firstOrNull
+        : null;
+    final creation = decision is PlannedCreationDecision
+        ? decision.creation
+        : null;
+    final targetLabel = target?.isArchived == true
+        ? '${target!.displayPath}（已归档）'
+        : item.targetPath ?? item.targetName ?? '待配置';
     return ImportMappingItem(
       sourceLabel: item.sourceName,
       sourceKindLabel: item.sourceDescription,
       targetLabel: targetLabel,
-      action:
-          item.action == ImportMappingAction.create || creation != null
-              ? ImportMappingItemAction.create
-              : item.action == ImportMappingAction.unresolved
-              ? ImportMappingItemAction.unresolved
-              : ImportMappingItemAction.map,
-      targetKindLabel:
-          item.targetDescription == targetLabel ? null : item.targetDescription,
+      action: item.action == ImportMappingAction.create || creation != null
+          ? ImportMappingItemAction.create
+          : item.action == ImportMappingAction.unresolved
+          ? ImportMappingItemAction.unresolved
+          : ImportMappingItemAction.map,
+      targetKindLabel: item.targetDescription == targetLabel
+          ? null
+          : item.targetDescription,
       onTap:
           item.existingTargetOptions.isEmpty && item.creationOptions.isEmpty ||
-                  state.isBusy
-              ? null
-              : () => onSelectMapping(item),
+              state.isBusy
+          ? null
+          : () => onSelectMapping(item),
     );
   }
 }
@@ -1943,12 +1920,11 @@ class _MappingTargetSheetState extends State<_MappingTargetSheet> {
                     ListTile(
                       leading: const Icon(RemixIcons.restart_line),
                       title: Text(widget.restoreLabel),
-                      onTap:
-                          () => Navigator.of(context).pop(
-                            const _MappingSelection(
-                              decision: UnresolvedDecision('恢复默认映射'),
-                            ),
-                          ),
+                      onTap: () => Navigator.of(context).pop(
+                        const _MappingSelection(
+                          decision: UnresolvedDecision('恢复默认映射'),
+                        ),
+                      ),
                     ),
                   if (widget.item.existingTargetOptions.isNotEmpty)
                     Padding(
@@ -1971,23 +1947,21 @@ class _MappingTargetSheetState extends State<_MappingTargetSheet> {
                             : RemixIcons.checkbox_blank_circle_line,
                       ),
                       title: Text(target.displayPath),
-                      subtitle:
-                          target.displayPath == target.name
-                              ? Text(
-                                importTargetDescription(
-                                  target.effectiveDescriptor,
-                                ),
-                              )
-                              : Text(
-                                '${target.name} · '
-                                '${importTargetDescription(target.effectiveDescriptor)}',
+                      subtitle: target.displayPath == target.name
+                          ? Text(
+                              importTargetDescription(
+                                target.effectiveDescriptor,
                               ),
-                      onTap:
-                          () => Navigator.of(context).pop(
-                            _MappingSelection(
-                              decision: ExistingTargetDecision(target.id),
+                            )
+                          : Text(
+                              '${target.name} · '
+                              '${importTargetDescription(target.effectiveDescriptor)}',
                             ),
-                          ),
+                      onTap: () => Navigator.of(context).pop(
+                        _MappingSelection(
+                          decision: ExistingTargetDecision(target.id),
+                        ),
+                      ),
                     ),
                   if (widget.item.creationOptions.isNotEmpty)
                     Padding(
@@ -2018,16 +1992,14 @@ class _MappingTargetSheetState extends State<_MappingTargetSheet> {
                             creation.pathSegments.join(' / ')
                           else
                             creation.name,
-                          if (creation.defaultParametersHint case final hint?)
-                            hint,
+                          ?creation.defaultParametersHint,
                         ].join(' · '),
                       ),
-                      onTap:
-                          () => Navigator.of(context).pop(
-                            _MappingSelection(
-                              decision: PlannedCreationDecision(creation),
-                            ),
-                          ),
+                      onTap: () => Navigator.of(context).pop(
+                        _MappingSelection(
+                          decision: PlannedCreationDecision(creation),
+                        ),
+                      ),
                     ),
                   if (widget.item.existingTargetOptions.isEmpty &&
                       widget.item.creationOptions.isEmpty)
@@ -2196,16 +2168,15 @@ class _ImportHistoryTab extends StatelessWidget {
               ),
               IconButton(
                 onPressed: state.historyLoading ? null : onRefresh,
-                icon:
-                    state.historyLoading
-                        ? const SizedBox.square(
-                          dimension: AppSpacing.space18,
-                          child: CircularProgressIndicator(
-                            strokeWidth:
-                                AppProgressIndicatorTokens.compactStrokeWidth,
-                          ),
-                        )
-                        : const Icon(RemixIcons.refresh_line),
+                icon: state.historyLoading
+                    ? const SizedBox.square(
+                        dimension: AppSpacing.space18,
+                        child: CircularProgressIndicator(
+                          strokeWidth:
+                              AppProgressIndicatorTokens.compactStrokeWidth,
+                        ),
+                      )
+                    : const Icon(RemixIcons.refresh_line),
                 tooltip: '刷新批次历史',
               ),
             ],
@@ -2243,18 +2214,16 @@ class _ImportBatchCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final reverted = batch.status == ImportBatchStatus.reverted;
     final partial = !reverted && batch.skippedGroupCount > 0;
-    final statusLabel =
-        reverted
-            ? '已撤销'
-            : partial
-            ? '部分导入'
-            : '导入成功';
-    final statusTone =
-        reverted
-            ? _FeedbackTone.info
-            : partial
-            ? _FeedbackTone.warning
-            : _FeedbackTone.success;
+    final statusLabel = reverted
+        ? '已撤销'
+        : partial
+        ? '部分导入'
+        : '导入成功';
+    final statusTone = reverted
+        ? _FeedbackTone.info
+        : partial
+        ? _FeedbackTone.warning
+        : _FeedbackTone.success;
     return AppSurface(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space16),
@@ -2321,16 +2290,15 @@ class _ImportBatchCard extends StatelessWidget {
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
                   onPressed: reverting ? null : onRevert,
-                  icon:
-                      reverting
-                          ? const SizedBox.square(
-                            dimension: AppSpacing.space18,
-                            child: CircularProgressIndicator(
-                              strokeWidth:
-                                  AppProgressIndicatorTokens.compactStrokeWidth,
-                            ),
-                          )
-                          : const Icon(RemixIcons.arrow_go_back_line),
+                  icon: reverting
+                      ? const SizedBox.square(
+                          dimension: AppSpacing.space18,
+                          child: CircularProgressIndicator(
+                            strokeWidth:
+                                AppProgressIndicatorTokens.compactStrokeWidth,
+                          ),
+                        )
+                      : const Icon(RemixIcons.arrow_go_back_line),
                   label: Text(reverting ? '正在撤销' : '撤销批次'),
                 ),
               ),

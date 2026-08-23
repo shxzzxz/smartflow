@@ -276,8 +276,7 @@ class _MemoryAccountRepository implements AccountRepository {
 
   @override
   Future<List<Account>> findByIds(Set<String> ids) async => [
-    for (final id in ids)
-      if (_items[id] case final item?) item,
+    for (final id in ids) ?_items[id],
   ];
 
   @override

@@ -196,9 +196,7 @@ class YimuBillFileHandler implements YimuFileHandler {
   }) {
     final records = [
       for (var index = 0; index < sheet.rows.length; index++)
-        if (_normalizeBillRecord(sheet.rows[index], index + 2)
-            case final record?)
-          record,
+        ?_normalizeBillRecord(sheet.rows[index], index + 2),
     ];
     return SourceFileFact(
       fileIndex: fileIndex,
@@ -222,39 +220,36 @@ class YimuBillFileHandler implements YimuFileHandler {
     final filterReason = _filterReason(note);
     final issues = <ImportIssue>[];
     final shouldNormalizeTransaction = filterReason == null;
-    final occurredAt =
-        shouldNormalizeTransaction
-            ? (_date(
-                  row['日期'],
-                  fileType: fileType,
-                  issues: issues,
-                  rowNumber: rowNumber,
-                  required: true,
-                ) ??
-                _epoch)
-            : _epoch;
-    final postedAt =
-        shouldNormalizeTransaction
-            ? _postedAt(
-              row,
-              occurredAt,
-              fileType: fileType,
-              issues: issues,
-              rowNumber: rowNumber,
-            )
-            : occurredAt;
-    final amount =
-        shouldNormalizeTransaction
-            ? (_money(
-                  row['金额'],
-                  fileType: fileType,
-                  issues: issues,
-                  rowNumber: rowNumber,
-                  fieldName: '金额',
-                  required: true,
-                ) ??
-                Money.zero())
-            : Money.zero();
+    final occurredAt = shouldNormalizeTransaction
+        ? (_date(
+                row['日期'],
+                fileType: fileType,
+                issues: issues,
+                rowNumber: rowNumber,
+                required: true,
+              ) ??
+              _epoch)
+        : _epoch;
+    final postedAt = shouldNormalizeTransaction
+        ? _postedAt(
+            row,
+            occurredAt,
+            fileType: fileType,
+            issues: issues,
+            rowNumber: rowNumber,
+          )
+        : occurredAt;
+    final amount = shouldNormalizeTransaction
+        ? (_money(
+                row['金额'],
+                fileType: fileType,
+                issues: issues,
+                rowNumber: rowNumber,
+                fieldName: '金额',
+                required: true,
+              ) ??
+              Money.zero())
+        : Money.zero();
     final hasReimbursementFields =
         kind == '支出' && _hasText(row, '报销账户', '报销金额', '报销明细');
     Money? refundAmount;
@@ -543,16 +538,15 @@ YimuAccountMovementRecord _normalizeMovement(
       ) ??
       Money.zero();
   final feeSource = _text(row, '手续费');
-  final feeAmount =
-      kind == '转账' || kind == '还款'
-          ? _optionalMoney(
-            row['手续费'],
-            fileType: fileType,
-            issues: issues,
-            rowNumber: rowNumber,
-            fieldName: '手续费',
-          )
-          : null;
+  final feeAmount = kind == '转账' || kind == '还款'
+      ? _optionalMoney(
+          row['手续费'],
+          fileType: fileType,
+          issues: issues,
+          rowNumber: rowNumber,
+          fieldName: '手续费',
+        )
+      : null;
   return _NormalizedMovementRecord(
     rowNumber: rowNumber,
     sourceOperationKey: _sourceOperationKey(row, fileType),
@@ -620,24 +614,22 @@ Iterable<ImportSourceEntity> _movementEntities(
         );
       }
       if (to != null && !_isNone(to)) {
-        final allowed =
-            fileType == YimuFileType.transfer
-                ? const {
-                  ImportTargetDescriptor.payableAccount,
-                  ImportTargetDescriptor.creditAccount,
-                  ImportTargetDescriptor.loanAccount,
-                }
-                : const {
-                  ImportTargetDescriptor.payableAccount,
-                  ImportTargetDescriptor.loanAccount,
-                };
+        final allowed = fileType == YimuFileType.transfer
+            ? const {
+                ImportTargetDescriptor.payableAccount,
+                ImportTargetDescriptor.creditAccount,
+                ImportTargetDescriptor.loanAccount,
+              }
+            : const {
+                ImportTargetDescriptor.payableAccount,
+                ImportTargetDescriptor.loanAccount,
+              };
         yield _accountEntity(
           to,
           allowed: allowed,
-          preferred:
-              fileType == YimuFileType.transfer
-                  ? ImportTargetDescriptor.creditAccount
-                  : ImportTargetDescriptor.payableAccount,
+          preferred: fileType == YimuFileType.transfer
+              ? ImportTargetDescriptor.creditAccount
+              : ImportTargetDescriptor.payableAccount,
         );
       }
       continue;

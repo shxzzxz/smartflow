@@ -130,8 +130,7 @@ class _AccountRepository implements AccountRepository {
 
   @override
   Future<List<Account>> findByIds(Set<String> ids) async => [
-    for (final id in ids)
-      if (_accounts[id] case final account?) account,
+    for (final id in ids) ?_accounts[id],
   ];
 
   @override
