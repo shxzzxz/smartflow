@@ -127,7 +127,7 @@ class _ReimbursementEditFormContentState
                     children: [
                       Text(
                         '应收：${formatMoney(state.outstandingBeforeTransaction!, style: MoneyFormatStyle.plain)}',
-                        style: context.appTextStyles.formPlainValue,
+                        style: context.appTextStyles.formValue,
                       ),
                     ],
                   ),
@@ -140,41 +140,38 @@ class _ReimbursementEditFormContentState
                       label: isClose ? '实收金额' : '到账金额',
                       controller: _amountController,
                       hintText: isClose ? '请输入实收金额' : '请输入到账金额',
-                      validator:
-                          isClose
-                              ? validateNonNegativeMoneyText
-                              : validatePositiveMoneyText,
+                      validator: isClose
+                          ? validateNonNegativeMoneyText
+                          : validatePositiveMoneyText,
                     ),
                     AccountPlainFormRow(
                       label: '到账账户',
                       account: receiveAccount,
                       selectedId: state.receiveAccountId,
                       placeholder: '请选择到账账户',
-                      onTap:
-                          (onSelected) => _pickReceiveAccount(
-                            state.accounts,
-                            selectedId: state.receiveAccountId,
-                            onSelected: onSelected,
-                          ),
-                      onChanged:
-                          ref.read(provider.notifier).setReceiveAccountId,
-                      validator:
-                          (value) => validateReimbursementReceiveAccount(
-                            isClose: isClose,
-                            amountText: _amountController.text,
-                            accountId: value,
-                          ),
+                      onTap: (onSelected) => _pickReceiveAccount(
+                        state.accounts,
+                        selectedId: state.receiveAccountId,
+                        onSelected: onSelected,
+                      ),
+                      onChanged: ref
+                          .read(provider.notifier)
+                          .setReceiveAccountId,
+                      validator: (value) => validateReimbursementReceiveAccount(
+                        isClose: isClose,
+                        amountText: _amountController.text,
+                        accountId: value,
+                      ),
                     ),
                     DateTimePlainFormRow(
                       label: isClose ? '结束时间' : '到账时间',
                       dateTime: state.occurredAt,
                       value: _formatDateTime(state.occurredAt),
-                      onTap:
-                          (onSelected) => _pickOccurredAt(
-                            state.occurredAt,
-                            onSelected,
-                            isClose,
-                          ),
+                      onTap: (onSelected) => _pickOccurredAt(
+                        state.occurredAt,
+                        onSelected,
+                        isClose,
+                      ),
                       onChanged: (value) {
                         if (value != null) {
                           ref.read(provider.notifier).setOccurredAt(value);

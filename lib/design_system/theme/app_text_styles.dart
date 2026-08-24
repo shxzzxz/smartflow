@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../token/form.dart';
 import '../token/typography.dart';
 
 extension AppTextStyleContext on BuildContext {
@@ -52,11 +51,11 @@ class AppTextStyles {
   TextStyle get subsectionTitleStrong =>
       subsectionTitle.copyWith(fontWeight: AppTypography.strongWeight);
 
-  TextStyle get listTitle => _titleSmall.copyWith(
-    color: _colors.onSurface,
-    fontSize: AppTypography.fontSizeMd,
-    fontWeight: AppTypography.emphasisWeight,
-  );
+  TextStyle get listTitle => formValueEmphasis;
+
+  TextStyle get settingsTitle => formValueEmphasis;
+
+  TextStyle get actionLabel => formLabel;
 
   TextStyle get listSupporting => _bodySmall.copyWith(
     color: _colors.onSurfaceVariant,
@@ -65,28 +64,32 @@ class AppTextStyles {
   );
 
   TextStyle get formLabel => _labelMedium.copyWith(
-    color: _colors.onSurfaceVariant,
-    fontSize: AppTypography.fontSizeSm,
-    fontWeight: AppTypography.emphasisWeight,
-  );
-
-  TextStyle get formValue => _titleSmall.copyWith(
-    color: _colors.onSurface,
-    fontSize: AppTypography.fontSizeMd,
-    fontWeight: AppTypography.titleWeight,
-  );
-
-  TextStyle get formPlainValue => _bodyLarge.copyWith(
     color: _colors.onSurface,
     fontSize: AppTypography.fontSizeMd,
     fontWeight: AppTypography.bodyWeight,
   );
 
+  TextStyle get formValue => _bodyLarge.copyWith(
+    color: _colors.onSurface,
+    fontSize: AppTypography.fontSizeMd,
+    fontWeight: AppTypography.bodyWeight,
+  );
+
+  TextStyle get formValueEmphasis => _titleSmall.copyWith(
+    color: _colors.onSurface,
+    fontSize: AppTypography.fontSizeMd,
+    fontWeight: AppTypography.emphasisWeight,
+  );
+
+  TextStyle get formSupporting => _bodySmall.copyWith(
+    color: _colors.onSurfaceVariant,
+    fontSize: AppTypography.fontSizeXs,
+    fontWeight: AppTypography.bodyWeight,
+  );
+
   TextStyle get formSwitchDescription => _bodySmall.copyWith(
-    color: _colors.onSurfaceVariant.withValues(
-      alpha: AppFormTokens.switchDescriptionOpacity,
-    ),
-    fontSize: AppTypography.fontSizeCompact,
+    color: _colors.onSurfaceVariant,
+    fontSize: AppTypography.fontSizeXs,
     fontWeight: AppTypography.bodyWeight,
     height: 1.35,
   );
@@ -103,6 +106,7 @@ class AppTextStyles {
   );
 
   TextStyle get inputText => _bodyMedium.copyWith(
+    fontSize: AppTypography.fontSizeMd,
     color: _colors.onSurface,
     fontWeight: AppTypography.bodyWeight,
   );
@@ -236,23 +240,24 @@ class AppTextStyles {
 
   TextStyle quickActionLabel({required bool selected}) => _labelSmall.copyWith(
     fontSize: AppTypography.fontSizeCompact,
-    fontWeight:
-        selected ? AppTypography.titleWeight : AppTypography.emphasisWeight,
+    fontWeight: selected
+        ? AppTypography.titleWeight
+        : AppTypography.emphasisWeight,
   );
 
   TextStyle segmentedControlLabel({required bool selected}) =>
       _titleMedium.copyWith(
         fontSize: AppTypography.fontSizeMd,
-        fontWeight:
-            selected
-                ? AppTypography.strongWeight
-                : AppTypography.emphasisWeight,
+        fontWeight: selected
+            ? AppTypography.strongWeight
+            : AppTypography.emphasisWeight,
       );
 
   TextStyle largeTabLabel({required bool selected}) => _titleLarge.copyWith(
     fontSize: AppTypography.fontSizeLg,
-    fontWeight:
-        selected ? AppTypography.titleWeight : AppTypography.emphasisWeight,
+    fontWeight: selected
+        ? AppTypography.titleWeight
+        : AppTypography.emphasisWeight,
   );
 
   TextStyle get onPrimaryLabel => _bodyMedium.copyWith(

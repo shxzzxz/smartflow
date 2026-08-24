@@ -43,7 +43,7 @@ class AppFormSection extends StatelessWidget {
               ),
               child: Text(
                 description,
-                style: context.appTextStyles.pageSubtitle,
+                style: context.appTextStyles.formSupporting,
               ),
             ),
           ],
@@ -51,7 +51,10 @@ class AppFormSection extends StatelessWidget {
         ] else if (description != null) ...[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
-            child: Text(description, style: context.appTextStyles.pageSubtitle),
+            child: Text(
+              description,
+              style: context.appTextStyles.formSupporting,
+            ),
           ),
           const SizedBox(height: AppSpacing.space8),
         ],

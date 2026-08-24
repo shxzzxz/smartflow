@@ -35,14 +35,13 @@ Future<TagMultiSelectResult?> showTagMultiSelectSheet({
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder:
-        (context) => _TagMultiSelectSheet(
-          tags: tags,
-          initialSelectedIds: selectedIds,
-          initialUntaggedOnly: untaggedOnly,
-          allowCreate: allowCreate,
-          allowUntagged: allowUntagged,
-        ),
+    builder: (context) => _TagMultiSelectSheet(
+      tags: tags,
+      initialSelectedIds: selectedIds,
+      initialUntaggedOnly: untaggedOnly,
+      allowCreate: allowCreate,
+      allowUntagged: allowUntagged,
+    ),
   );
 }
 
@@ -103,10 +102,9 @@ class _TagMultiSelectSheetState extends ConsumerState<_TagMultiSelectSheet> {
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final keyboardInset = mediaQuery.viewInsets.bottom;
-    final availableHeight =
-        (mediaQuery.size.height - keyboardInset)
-            .clamp(0.0, mediaQuery.size.height)
-            .toDouble();
+    final availableHeight = (mediaQuery.size.height - keyboardInset)
+        .clamp(0.0, mediaQuery.size.height)
+        .toDouble();
     final maxHeight =
         availableHeight * AppComponentTokens.selectionSheetMaxHeightFactor;
     return AnimatedPadding(
@@ -136,13 +134,12 @@ class _TagMultiSelectSheetState extends ConsumerState<_TagMultiSelectSheet> {
                       ),
                     ),
                     TextButton(
-                      onPressed:
-                          _selectedIds.isEmpty && !_untaggedOnly
-                              ? null
-                              : () => setState(() {
-                                _selectedIds.clear();
-                                _untaggedOnly = false;
-                              }),
+                      onPressed: _selectedIds.isEmpty && !_untaggedOnly
+                          ? null
+                          : () => setState(() {
+                              _selectedIds.clear();
+                              _untaggedOnly = false;
+                            }),
                       child: const Text('清除'),
                     ),
                   ],
@@ -182,8 +179,8 @@ class _TagMultiSelectSheetState extends ConsumerState<_TagMultiSelectSheet> {
                         child: Text(
                           _searchController.text.trim().isEmpty
                               ? (widget.allowCreate
-                                  ? '还没有标签，输入名称创建一个吧'
-                                  : '暂无可选标签')
+                                    ? '还没有标签，输入名称创建一个吧'
+                                    : '暂无可选标签')
                               : '没有匹配的标签',
                           style: context.appTextStyles.inputText,
                         ),
@@ -197,13 +194,12 @@ class _TagMultiSelectSheetState extends ConsumerState<_TagMultiSelectSheet> {
                         ),
                         title: Text(
                           '未打标签',
-                          style: context.appTextStyles.formPlainValue,
+                          style: context.appTextStyles.formValue,
                         ),
-                        onChanged:
-                            (_) => setState(() {
-                              _untaggedOnly = !_untaggedOnly;
-                              if (_untaggedOnly) _selectedIds.clear();
-                            }),
+                        onChanged: (_) => setState(() {
+                          _untaggedOnly = !_untaggedOnly;
+                          if (_untaggedOnly) _selectedIds.clear();
+                        }),
                       ),
                     for (final tag in _filteredTags)
                       CheckboxListTile(
@@ -216,7 +212,7 @@ class _TagMultiSelectSheetState extends ConsumerState<_TagMultiSelectSheet> {
                           tag.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: context.appTextStyles.formPlainValue,
+                          style: context.appTextStyles.formValue,
                         ),
                         onChanged: (_) => _toggle(tag.id),
                       ),
@@ -235,13 +231,12 @@ class _TagMultiSelectSheetState extends ConsumerState<_TagMultiSelectSheet> {
                   children: [
                     AppSubmitButton(
                       label: '确定',
-                      onPressed:
-                          () => Navigator.of(context).pop(
-                            TagMultiSelectResult(
-                              selectedTagIds: Set.of(_selectedIds),
-                              untaggedOnly: _untaggedOnly,
-                            ),
-                          ),
+                      onPressed: () => Navigator.of(context).pop(
+                        TagMultiSelectResult(
+                          selectedTagIds: Set.of(_selectedIds),
+                          untaggedOnly: _untaggedOnly,
+                        ),
+                      ),
                     ),
                   ],
                 ),

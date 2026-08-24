@@ -67,7 +67,7 @@ class AccountListRow extends StatelessWidget {
                         account.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: textStyles.formValue,
+                        style: textStyles.listTitle,
                       ),
                       if (supportingText.isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.space2),

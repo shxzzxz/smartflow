@@ -166,7 +166,7 @@ class _ManualEmptyState extends StatelessWidget {
               size: 32,
             ),
             const SizedBox(height: AppSpacing.space8),
-            Text('没有找到相关内容', style: styles.formValue),
+            Text('没有找到相关内容', style: styles.listTitle),
             const SizedBox(height: AppSpacing.space4),
             Text('可以换一个关键词试试。', style: styles.listSupporting),
           ],

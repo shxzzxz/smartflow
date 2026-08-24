@@ -248,7 +248,7 @@ class _ProfileActionRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: context.appTextStyles.formValue),
+                  Text(label, style: context.appTextStyles.listTitle),
                   const SizedBox(height: AppSpacing.space4),
                   Text(
                     description,

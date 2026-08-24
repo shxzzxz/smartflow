@@ -105,7 +105,7 @@ class ManualMarkdownBody extends StatelessWidget {
     final theme = Theme.of(context);
     final styles = context.appTextStyles;
     final colors = theme.colorScheme;
-    final bodyStyle = styles.formPlainValue.copyWith(height: 1.7);
+    final bodyStyle = styles.formValue.copyWith(height: 1.7);
     final codeStyle = TextStyle(
       fontFamily: 'monospace',
       fontSize: AppTypography.fontSizeSm - 1,
@@ -168,10 +168,10 @@ class ManualMarkdownBody extends StatelessWidget {
           decoration: TextDecoration.underline,
           decorationColor: colors.primary,
         ),
-        tableHead: styles.formValue.copyWith(
+        tableHead: styles.listTitle.copyWith(
           fontWeight: AppTypography.strongWeight,
         ),
-        tableBody: styles.formPlainValue.copyWith(
+        tableBody: styles.formValue.copyWith(
           fontSize: AppTypography.fontSizeSm,
           height: 1.5,
         ),
@@ -270,10 +270,9 @@ class _ManualBlockquoteBuilder extends MarkdownElementBuilder {
         Icon(
           callout.icon,
           size: 20,
-          color:
-              callout.warning
-                  ? (themeExtension?.warning ?? colors.primary)
-                  : colors.primary,
+          color: callout.warning
+              ? (themeExtension?.warning ?? colors.primary)
+              : colors.primary,
         ),
         const SizedBox(width: AppSpacing.space8),
         Expanded(

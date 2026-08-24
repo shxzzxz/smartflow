@@ -64,7 +64,7 @@ class ManualArticleRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(article.title, style: styles.formValue),
+                  Text(article.title, style: styles.listTitle),
                   const SizedBox(height: AppSpacing.space4),
                   Text(article.summary, style: styles.listSupporting),
                 ],

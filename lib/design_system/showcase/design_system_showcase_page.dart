@@ -687,16 +687,15 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
     final colors = Theme.of(context).colorScheme;
     final selectedCategory = _showcaseCategories[_selectedCategoryIndex];
     final normalizedQuery = _query.trim().toLowerCase();
-    final visibleExamples =
-        normalizedQuery.isEmpty
-            ? [
-              for (final example in _showcaseExamples)
-                if (example.category == selectedCategory) example,
-            ]
-            : [
-              for (final example in _showcaseExamples)
-                if (example.matches(normalizedQuery)) example,
-            ];
+    final visibleExamples = normalizedQuery.isEmpty
+        ? [
+            for (final example in _showcaseExamples)
+              if (example.category == selectedCategory) example,
+          ]
+        : [
+            for (final example in _showcaseExamples)
+              if (example.matches(normalizedQuery)) example,
+          ];
 
     return Scaffold(
       backgroundColor: colors.surface,
@@ -769,24 +768,23 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
                   AppSpacing.space16,
                   AppSpacing.space24,
                 ),
-                children:
-                    visibleExamples.isEmpty
-                        ? const [_EmptySearchResult()]
-                        : [
-                          for (
-                            var index = 0;
-                            index < visibleExamples.length;
-                            index++
-                          ) ...[
-                            _ShowcaseSection(
-                              example: visibleExamples[index],
-                              showCategory: normalizedQuery.isNotEmpty,
-                              preview: _buildPreview(visibleExamples[index]),
-                            ),
-                            if (index < visibleExamples.length - 1)
-                              const SizedBox(height: AppSpacing.space16),
-                          ],
+                children: visibleExamples.isEmpty
+                    ? const [_EmptySearchResult()]
+                    : [
+                        for (
+                          var index = 0;
+                          index < visibleExamples.length;
+                          index++
+                        ) ...[
+                          _ShowcaseSection(
+                            example: visibleExamples[index],
+                            showCategory: normalizedQuery.isNotEmpty,
+                            preview: _buildPreview(visibleExamples[index]),
+                          ),
+                          if (index < visibleExamples.length - 1)
+                            const SizedBox(height: AppSpacing.space16),
                         ],
+                      ],
               ),
             ),
           ],
@@ -1128,31 +1126,28 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           value: _settingsSelectValue,
           tooltip: '选择周期',
           onChanged: (value) => setState(() => _settingsSelectValue = value),
-          triggerBuilder:
-              (context, selected) => DecoratedBox(
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                  borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space12,
-                    vertical: AppSpacing.space8,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (selected.icon != null) ...[
-                        Icon(selected.icon, size: AppSpacing.space20),
-                        const SizedBox(width: AppSpacing.space6),
-                      ],
-                      Text(selected.label),
-                    ],
-                  ),
-                ),
+          triggerBuilder: (context, selected) => DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
+              borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space12,
+                vertical: AppSpacing.space8,
               ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (selected.icon != null) ...[
+                    Icon(selected.icon, size: AppSpacing.space20),
+                    const SizedBox(width: AppSpacing.space6),
+                  ],
+                  Text(selected.label),
+                ],
+              ),
+            ),
+          ),
         ),
         const SizedBox(width: AppSpacing.space12),
         Text('当前：${_settingsSelectValue == 0 ? '按月' : '按年'}'),
@@ -1410,9 +1405,8 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           IconChoiceGridItem(
             iconKey: spec.iconKey,
             label: spec.label,
-            iconBuilder:
-                (context, size) =>
-                    BusinessIcon(iconKey: spec.iconKey, size: size),
+            iconBuilder: (context, size) =>
+                BusinessIcon(iconKey: spec.iconKey, size: size),
           ),
       ],
       selectedKey: _selectedIconKey,
@@ -1436,16 +1430,14 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       selectedRootId: _selectedCategoryRootId,
       selectedCategoryId: _selectedCategoryId,
       emptyLabel: '暂无分类',
-      onRootSelected:
-          (root) => setState(() {
-            _selectedCategoryRootId = root.id;
-            _selectedCategoryId = root.id;
-          }),
-      onChildSelected:
-          (root, child) => setState(() {
-            _selectedCategoryRootId = root.id;
-            _selectedCategoryId = child.id;
-          }),
+      onRootSelected: (root) => setState(() {
+        _selectedCategoryRootId = root.id;
+        _selectedCategoryId = root.id;
+      }),
+      onChildSelected: (root, child) => setState(() {
+        _selectedCategoryRootId = root.id;
+        _selectedCategoryId = child.id;
+      }),
       onAddRoot: () => _showMessage('新增一级分类'),
       onAddChild: (_) => _showMessage('新增子分类'),
     );
@@ -1625,9 +1617,8 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
             expandedReservedHeight:
                 AppChartGeometry.interactiveLegendReservedHeight,
             chart: _showcaseCartesianChart(financeColors),
-            expandedChartBuilder:
-                (height) =>
-                    _showcaseCartesianChart(financeColors, height: height),
+            expandedChartBuilder: (height) =>
+                _showcaseCartesianChart(financeColors, height: height),
           ),
         ),
         AppDonutChart(
@@ -1708,7 +1699,10 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           onChanged: (value) => setState(() => _dropdownValue = value),
         ),
         const SizedBox(width: AppSpacing.space12),
-        Text('当前：$_dropdownValue', style: context.appTextStyles.formValue),
+        Text(
+          '当前：$_dropdownValue',
+          style: context.appTextStyles.formValueEmphasis,
+        ),
       ],
     );
   }
@@ -1753,8 +1747,8 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           range == null
               ? '点选起止日期，点击标题可切换月份 / 年份视图'
               : '${range.start.year}.${range.start.month}.${range.start.day} - '
-                  '${range.end.year}.${range.end.month}.${range.end.day}',
-          style: context.appTextStyles.formValue,
+                    '${range.end.year}.${range.end.month}.${range.end.day}',
+          style: context.appTextStyles.formValueEmphasis,
         ),
       ],
     );
@@ -1779,7 +1773,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
         ),
         Text(
           '${_selectedDate.year}年${_selectedDate.month}月${_selectedDate.day}日',
-          style: context.appTextStyles.formValue,
+          style: context.appTextStyles.formValueEmphasis,
         ),
       ],
     );
@@ -1805,7 +1799,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
         Text(
           '${_selectedTime.hour.toString().padLeft(2, '0')}:'
           '${_selectedTime.minute.toString().padLeft(2, '0')}',
-          style: context.appTextStyles.formValue,
+          style: context.appTextStyles.formValueEmphasis,
         ),
       ],
     );
@@ -1814,14 +1808,12 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   Widget _monthPickerPreview() {
     return AppMonthSelector(
       visibleMonth: _visibleMonth,
-      onPreviousMonth:
-          () => setState(
-            () =>
-                _visibleMonth = DateTime(
-                  _visibleMonth.year,
-                  _visibleMonth.month - 1,
-                ),
-          ),
+      onPreviousMonth: () => setState(
+        () => _visibleMonth = DateTime(
+          _visibleMonth.year,
+          _visibleMonth.month - 1,
+        ),
+      ),
       onMonthPressed: () async {
         final picked = await showAppMonthPicker(
           context: context,
@@ -1830,14 +1822,12 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
         if (picked == null || !mounted) return;
         setState(() => _visibleMonth = picked);
       },
-      onNextMonth:
-          () => setState(
-            () =>
-                _visibleMonth = DateTime(
-                  _visibleMonth.year,
-                  _visibleMonth.month + 1,
-                ),
-          ),
+      onNextMonth: () => setState(
+        () => _visibleMonth = DateTime(
+          _visibleMonth.year,
+          _visibleMonth.month + 1,
+        ),
+      ),
     );
   }
 
@@ -2385,8 +2375,12 @@ class _ShowcaseExample {
   final List<String> keywords;
 
   bool matches(String query) {
-    final searchable =
-        [category, title, componentNames, ...keywords].join(' ').toLowerCase();
+    final searchable = [
+      category,
+      title,
+      componentNames,
+      ...keywords,
+    ].join(' ').toLowerCase();
     return searchable.contains(query);
   }
 }
@@ -2407,8 +2401,9 @@ class _ShowcaseState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment:
-          inline ? CrossAxisAlignment.start : CrossAxisAlignment.stretch,
+      crossAxisAlignment: inline
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.stretch,
       spacing: inline ? AppSpacing.space4 : AppSpacing.space6,
       children: [
         Text(label, style: context.appTextStyles.listSupporting),

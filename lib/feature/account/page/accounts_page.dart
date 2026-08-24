@@ -720,7 +720,7 @@ class _ArchivedAccountsEntry extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text('已归档账户', style: context.appTextStyles.formValue),
+                  child: Text('已归档账户', style: context.appTextStyles.listTitle),
                 ),
                 Text('$count', style: context.appTextStyles.detailLabel),
                 const SizedBox(width: AppSpacing.space8),
@@ -929,25 +929,30 @@ Future<String?> _requestGroupName(
   final controller = TextEditingController(text: initialValue);
   final result = await showDialog<String>(
     context: context,
-    builder:
-        (dialogContext) => AlertDialog(
-          title: Text(title),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(hintText: '请输入分组名称'),
+    builder: (dialogContext) => AlertDialog(
+      title: Text(title),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        style: dialogContext.appTextStyles.inputText,
+        decoration: InputDecoration(
+          hintText: '请输入分组名称',
+          hintStyle: dialogContext.appTextStyles.inputText.copyWith(
+            color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-              child: const Text('确定'),
-            ),
-          ],
         ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: const Text('取消'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+          child: const Text('确定'),
+        ),
+      ],
+    ),
   );
   controller.dispose();
   return result;

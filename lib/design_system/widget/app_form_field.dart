@@ -287,7 +287,7 @@ class AppPlainTextFormField extends StatelessWidget {
       autofocus: autofocus,
       focusNode: focusNode,
       showCursor: showCursor,
-      style: style ?? context.appTextStyles.formPlainValue,
+      style: style ?? context.appTextStyles.formValue,
     );
   }
 }
@@ -299,7 +299,7 @@ InputDecoration appPlainInputDecoration(
   final colors = Theme.of(context).colorScheme;
   return InputDecoration(
     hintText: hintText,
-    hintStyle: context.appTextStyles.formPlainValue.copyWith(
+    hintStyle: context.appTextStyles.formValue.copyWith(
       color: colors.onSurfaceVariant,
     ),
     border: InputBorder.none,

@@ -190,7 +190,7 @@ class _ActionBackground extends StatelessWidget {
                 const SizedBox(width: AppSpacing.space8),
                 Text(
                   label,
-                  style: styles.formLabel.copyWith(color: foregroundColor),
+                  style: styles.actionLabel.copyWith(color: foregroundColor),
                 ),
               ],
             ),

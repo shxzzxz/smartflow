@@ -414,7 +414,7 @@ class _UpdateChannelRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(channel.displayName, style: textStyles.formValue),
+                  Text(channel.displayName, style: textStyles.listTitle),
                   const SizedBox(height: AppSpacing.space6),
                   Text(
                     channel.userFacingDescription,

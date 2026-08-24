@@ -16,11 +16,10 @@ Future<Set<String>?> showAccountMultiSelectSheet({
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder:
-        (context) => _AccountMultiSelectSheet(
-          accounts: accounts,
-          initialSelectedIds: selectedIds,
-        ),
+    builder: (context) => _AccountMultiSelectSheet(
+      accounts: accounts,
+      initialSelectedIds: selectedIds,
+    ),
   );
 }
 
@@ -74,21 +73,19 @@ class _AccountMultiSelectSheetState extends State<_AccountMultiSelectSheet> {
                     ),
                   ),
                   TextButton(
-                    onPressed:
-                        _selectedIds.length == _allIds.length
-                            ? null
-                            : () => setState(() {
-                              _selectedIds
-                                ..clear()
-                                ..addAll(_allIds);
-                            }),
+                    onPressed: _selectedIds.length == _allIds.length
+                        ? null
+                        : () => setState(() {
+                            _selectedIds
+                              ..clear()
+                              ..addAll(_allIds);
+                          }),
                     child: const Text('全部'),
                   ),
                   TextButton(
-                    onPressed:
-                        _selectedIds.isEmpty
-                            ? null
-                            : () => setState(_selectedIds.clear),
+                    onPressed: _selectedIds.isEmpty
+                        ? null
+                        : () => setState(_selectedIds.clear),
                     child: const Text('清除'),
                   ),
                 ],
@@ -126,7 +123,7 @@ class _AccountMultiSelectSheetState extends State<_AccountMultiSelectSheet> {
                               account.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: context.appTextStyles.formPlainValue,
+                              style: context.appTextStyles.formValue,
                             ),
                           ),
                         ],
@@ -145,8 +142,8 @@ class _AccountMultiSelectSheetState extends State<_AccountMultiSelectSheet> {
               ),
               child: AppSubmitButton(
                 label: '确定',
-                onPressed:
-                    () => Navigator.of(context).pop(Set.of(_selectedIds)),
+                onPressed: () =>
+                    Navigator.of(context).pop(Set.of(_selectedIds)),
               ),
             ),
           ],

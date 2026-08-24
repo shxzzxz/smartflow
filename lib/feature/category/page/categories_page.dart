@@ -214,7 +214,7 @@ class _RootCategoryRow extends StatelessWidget {
                 node.account.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: textStyles.formValue,
+                style: textStyles.listTitle,
               ),
             ),
             const SizedBox(width: AppSpacing.space12),

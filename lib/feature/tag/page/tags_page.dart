@@ -46,41 +46,39 @@ class _TagsPageState extends ConsumerState<TagsPage> {
           children: [
             AppPageHeader(
               title: _batchDeleteMode ? '批量删除标签' : '标签管理',
-              actions:
-                  _batchDeleteMode
-                      ? [
-                        AppHeaderIconButton(
-                          onPressed: _batchDeleting ? null : _leaveBatchMode,
-                          icon: RemixIcons.close_line,
-                          tooltip: '取消批量删除',
-                        ),
-                        AppHeaderIconButton(
-                          onPressed:
-                              _selectedTagIds.isEmpty || _batchDeleting
-                                  ? null
-                                  : () => _deleteSelectedTags(context),
-                          icon: RemixIcons.delete_bin_line,
-                          tooltip: '删除已选标签',
-                        ),
-                      ]
-                      : [
-                        AppHeaderIconButton(
-                          onPressed: _enterBatchMode,
-                          icon: RemixIcons.delete_bin_line,
-                          tooltip: '批量删除标签',
-                        ),
-                        AppHeaderIconButton(
-                          onPressed: () => _createTag(context, ref),
-                          icon: RemixIcons.add_circle_line,
-                          tooltip: '新建标签',
-                        ),
-                      ],
+              actions: _batchDeleteMode
+                  ? [
+                      AppHeaderIconButton(
+                        onPressed: _batchDeleting ? null : _leaveBatchMode,
+                        icon: RemixIcons.close_line,
+                        tooltip: '取消批量删除',
+                      ),
+                      AppHeaderIconButton(
+                        onPressed: _selectedTagIds.isEmpty || _batchDeleting
+                            ? null
+                            : () => _deleteSelectedTags(context),
+                        icon: RemixIcons.delete_bin_line,
+                        tooltip: '删除已选标签',
+                      ),
+                    ]
+                  : [
+                      AppHeaderIconButton(
+                        onPressed: _enterBatchMode,
+                        icon: RemixIcons.delete_bin_line,
+                        tooltip: '批量删除标签',
+                      ),
+                      AppHeaderIconButton(
+                        onPressed: () => _createTag(context, ref),
+                        icon: RemixIcons.add_circle_line,
+                        tooltip: '新建标签',
+                      ),
+                    ],
             ),
             Expanded(
               child: tagsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error:
-                    (error, stackTrace) => Center(child: Text('标签加载失败：$error')),
+                error: (error, stackTrace) =>
+                    Center(child: Text('标签加载失败：$error')),
                 data: (tags) => _buildTagContent(context, ref, tags, colors),
               ),
             ),
@@ -97,10 +95,9 @@ class _TagsPageState extends ConsumerState<TagsPage> {
     ColorScheme colors,
   ) {
     final filteredTags = _filterTags(tags);
-    final list =
-        _batchDeleteMode
-            ? _buildBatchTagList(context, filteredTags)
-            : _buildTagList(context, ref, tags);
+    final list = _batchDeleteMode
+        ? _buildBatchTagList(context, filteredTags)
+        : _buildTagList(context, ref, tags);
 
     if (tags.isEmpty) {
       return _buildEmptyState(context, colors);
@@ -133,10 +130,9 @@ class _TagsPageState extends ConsumerState<TagsPage> {
               children: [
                 Expanded(child: Text('已选 ${_selectedTagIds.length} 个标签')),
                 TextButton(
-                  onPressed:
-                      filteredTags.isEmpty || _batchDeleting
-                          ? null
-                          : () => _toggleAll(filteredTags),
+                  onPressed: filteredTags.isEmpty || _batchDeleting
+                      ? null
+                      : () => _toggleAll(filteredTags),
                   child: Text(_allSelected(filteredTags) ? '取消全选结果' : '全选结果'),
                 ),
               ],
@@ -194,14 +190,12 @@ class _TagsPageState extends ConsumerState<TagsPage> {
                   tag: tags[i],
                   canMoveUp: i > 0,
                   canMoveDown: i < tags.length - 1,
-                  onMoveUp:
-                      () => ref
-                          .read(tagApplicationServiceProvider)
-                          .moveTag(id: tags[i].id, delta: -1),
-                  onMoveDown:
-                      () => ref
-                          .read(tagApplicationServiceProvider)
-                          .moveTag(id: tags[i].id, delta: 1),
+                  onMoveUp: () => ref
+                      .read(tagApplicationServiceProvider)
+                      .moveTag(id: tags[i].id, delta: -1),
+                  onMoveDown: () => ref
+                      .read(tagApplicationServiceProvider)
+                      .moveTag(id: tags[i].id, delta: 1),
                   onRename: () => _renameTag(context, ref, tags[i]),
                   onMerge: () => _mergeTag(context, ref, tags[i], tags),
                   onDelete: () => _deleteTag(context, ref, tags[i]),
@@ -243,8 +237,9 @@ class _TagsPageState extends ConsumerState<TagsPage> {
               for (var i = 0; i < tags.length; i++) ...[
                 CheckboxListTile(
                   value: _selectedTagIds.contains(tags[i].id),
-                  onChanged:
-                      _batchDeleting ? null : (_) => _toggleTag(tags[i].id),
+                  onChanged: _batchDeleting
+                      ? null
+                      : (_) => _toggleTag(tags[i].id),
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.space16,
@@ -253,7 +248,7 @@ class _TagsPageState extends ConsumerState<TagsPage> {
                     tags[i].name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: context.appTextStyles.formPlainValue,
+                    style: context.appTextStyles.formValue,
                   ),
                   subtitle: Text('${tags[i].usageCount} 笔交易'),
                 ),
@@ -340,23 +335,20 @@ class _TagsPageState extends ConsumerState<TagsPage> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('批量删除标签'),
-            content: Text(
-              '确定删除选中的 ${selected.length} 个标签？删除后这些标签在交易上的引用也会被解除。',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('删除'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('批量删除标签'),
+        content: Text('确定删除选中的 ${selected.length} 个标签？删除后这些标签在交易上的引用也会被解除。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
           ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
     );
     if (confirmed != true || !context.mounted) return;
 
@@ -415,62 +407,60 @@ class _TagsPageState extends ConsumerState<TagsPage> {
     final target = await showModalBottomSheet<TagView>(
       context: context,
       showDragHandle: true,
-      builder:
-          (context) => SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.space16,
-                    0,
-                    AppSpacing.space16,
-                    AppSpacing.space8,
-                  ),
-                  child: Text(
-                    '把「${tag.name}」合并到',
-                    style: context.appTextStyles.subsectionTitle,
-                  ),
-                ),
-                Flexible(
-                  child: ListView(
-                    shrinkWrap: true,
-                    children: [
-                      for (final other in others)
-                        ListTile(
-                          title: Text(other.name),
-                          subtitle: Text('${other.usageCount} 笔交易'),
-                          onTap: () => Navigator.of(context).pop(other),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.space16,
+                0,
+                AppSpacing.space16,
+                AppSpacing.space8,
+              ),
+              child: Text(
+                '把「${tag.name}」合并到',
+                style: context.appTextStyles.subsectionTitle,
+              ),
             ),
-          ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final other in others)
+                    ListTile(
+                      title: Text(other.name),
+                      subtitle: Text('${other.usageCount} 笔交易'),
+                      onTap: () => Navigator.of(context).pop(other),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
     if (target == null || !context.mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('合并标签'),
-            content: Text(
-              '将把「${tag.name}」的 ${tag.usageCount} 笔交易改指向'
-              '「${target.name}」，并删除「${tag.name}」。',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('合并'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('合并标签'),
+        content: Text(
+          '将把「${tag.name}」的 ${tag.usageCount} 笔交易改指向'
+          '「${target.name}」，并删除「${tag.name}」。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
           ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('合并'),
+          ),
+        ],
+      ),
     );
     if (confirmed != true) return;
     await ref
@@ -485,26 +475,25 @@ class _TagsPageState extends ConsumerState<TagsPage> {
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('删除标签'),
-            content: Text(
-              tag.usageCount > 0
-                  ? '「${tag.name}」正在 ${tag.usageCount} 笔交易上使用，'
-                      '删除后这些交易将不再携带该标签。'
-                  : '「${tag.name}」没有被任何交易使用。',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('删除'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('删除标签'),
+        content: Text(
+          tag.usageCount > 0
+              ? '「${tag.name}」正在 ${tag.usageCount} 笔交易上使用，'
+                    '删除后这些交易将不再携带该标签。'
+              : '「${tag.name}」没有被任何交易使用。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
           ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
     );
     if (confirmed != true) return;
     await ref.read(tagApplicationServiceProvider).deleteTag(tag.id);
@@ -557,7 +546,7 @@ class _TagRow extends StatelessWidget {
                   tag.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: textStyles.formValue,
+                  style: textStyles.listTitle,
                 ),
                 Text(
                   '${tag.usageCount} 笔交易',
@@ -605,12 +594,11 @@ class _TagRow extends StatelessWidget {
                   onDelete();
               }
             },
-            itemBuilder:
-                (context) => const [
-                  PopupMenuItem(value: 'rename', child: Text('重命名')),
-                  PopupMenuItem(value: 'merge', child: Text('合并到…')),
-                  PopupMenuItem(value: 'delete', child: Text('删除')),
-                ],
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'rename', child: Text('重命名')),
+              PopupMenuItem(value: 'merge', child: Text('合并到…')),
+              PopupMenuItem(value: 'delete', child: Text('删除')),
+            ],
           ),
         ],
       ),

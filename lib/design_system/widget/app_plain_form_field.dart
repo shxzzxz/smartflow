@@ -85,7 +85,7 @@ class AppPlainTextFormRow extends FormField<String> {
         onTap: widget.onTap,
         enabled: widget.enabled,
         autofocus: widget.autofocus,
-        style: field.context.appTextStyles.formPlainValue,
+        style: field.context.appTextStyles.formValue,
       ),
     );
   }
@@ -236,18 +236,16 @@ class AppPlainSelectFormRow<T> extends StatelessWidget {
           labelWidth: labelWidth,
           minHeight: minHeight,
           child: Row(
-            mainAxisAlignment:
-                valueAlignment == AppPlainRowValueAlignment.end
-                    ? MainAxisAlignment.end
-                    : MainAxisAlignment.start,
+            mainAxisAlignment: valueAlignment == AppPlainRowValueAlignment.end
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
             children: [
               Expanded(
                 child: AppPlainValueText(
                   text: hasValue ? (valueText ?? '$fieldValue') : placeholder,
-                  textAlign:
-                      valueAlignment == AppPlainRowValueAlignment.end
-                          ? TextAlign.right
-                          : TextAlign.left,
+                  textAlign: valueAlignment == AppPlainRowValueAlignment.end
+                      ? TextAlign.right
+                      : TextAlign.left,
                   color: hasValue ? null : colors.onSurfaceVariant,
                 ),
               ),
@@ -406,11 +404,12 @@ class AppPlainSegmentedFormRow<T> extends StatelessWidget {
             child: AppSegmentedControl<T>(
               segments: segments,
               selected: fieldValue ?? value,
-              onChanged:
-                  interactive ? (nextValue) => fieldChanged(nextValue) : (_) {},
+              onChanged: interactive
+                  ? (nextValue) => fieldChanged(nextValue)
+                  : (_) {},
               size: AppSegmentedControlSize.small,
               tone: AppSegmentedControlTone.neutral,
-              textStyle: context.appTextStyles.formPlainValue,
+              textStyle: context.appTextStyles.formValue,
             ),
           ),
         );

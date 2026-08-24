@@ -26,6 +26,8 @@ void main() {
         );
         expect(theme.searchBarTheme.elevation?.resolve({}), 0);
         expect(theme.inputDecorationTheme.filled, isTrue);
+        expect(theme.inputDecorationTheme.hintStyle?.fontSize, 15);
+        expect(theme.inputDecorationTheme.labelStyle?.fontSize, 15);
         expect(
           theme.inputDecorationTheme.fillColor,
           colors.surfaceContainerLowest,

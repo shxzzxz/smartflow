@@ -30,31 +30,33 @@ class AppDropdown<T> extends StatelessWidget {
       value: value,
       onChanged: onChanged,
       tooltip: tooltip,
-      triggerBuilder:
-          (context, current) => DecoratedBox(
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space12,
-                vertical: AppSpacing.space6,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(current.label, style: context.appTextStyles.formValue),
-                  const SizedBox(width: AppSpacing.space6),
-                  Icon(
-                    RemixIcons.arrow_down_s_line,
-                    size: AppSpacing.space16,
-                    color: colors.onSurfaceVariant,
-                  ),
-                ],
-              ),
-            ),
+      triggerBuilder: (context, current) => DecoratedBox(
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space12,
+            vertical: AppSpacing.space6,
           ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                current.label,
+                style: context.appTextStyles.formValueEmphasis,
+              ),
+              const SizedBox(width: AppSpacing.space6),
+              Icon(
+                RemixIcons.arrow_down_s_line,
+                size: AppSpacing.space16,
+                color: colors.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

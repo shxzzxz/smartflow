@@ -93,7 +93,7 @@ class _RetentionOptionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Text(label, style: context.appTextStyles.formValue)),
+        Expanded(child: Text(label, style: context.appTextStyles.settingsTitle)),
         const SizedBox(width: AppSpacing.space12),
         AppSegmentedControl<int>(
           segments: options,

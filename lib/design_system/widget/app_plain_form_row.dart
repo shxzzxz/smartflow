@@ -103,9 +103,10 @@ class AppPlainFormRow extends StatelessWidget {
             padding: EdgeInsets.only(left: labelWidth),
             child: Text(
               message,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color:
-                    errorText == null ? colors.onSurfaceVariant : colors.error,
+              style: context.appTextStyles.formSupporting.copyWith(
+                color: errorText == null
+                    ? colors.onSurfaceVariant
+                    : colors.error,
               ),
             ),
           ),
@@ -113,14 +114,13 @@ class AppPlainFormRow extends StatelessWidget {
       ],
     );
 
-    final interactive =
-        onTap == null
-            ? content
-            : InkWell(
-              onTap: enabled ? onTap : null,
-              borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-              child: content,
-            );
+    final interactive = onTap == null
+        ? content
+        : InkWell(
+            onTap: enabled ? onTap : null,
+            borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+            child: content,
+          );
     if (enabled) return interactive;
     return IgnorePointer(
       child: Opacity(
@@ -159,10 +159,9 @@ class AppPlainValueRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final valueTextAlign =
-        valueAlignment == AppPlainRowValueAlignment.end
-            ? TextAlign.right
-            : TextAlign.left;
+    final valueTextAlign = valueAlignment == AppPlainRowValueAlignment.end
+        ? TextAlign.right
+        : TextAlign.left;
     final valueChild =
         child ??
         AppPlainValueText(
@@ -179,10 +178,9 @@ class AppPlainValueRow extends StatelessWidget {
       enabled: enabled,
       onTap: enabled ? onTap : null,
       child: Align(
-        alignment:
-            valueAlignment == AppPlainRowValueAlignment.end
-                ? Alignment.centerRight
-                : Alignment.centerLeft,
+        alignment: valueAlignment == AppPlainRowValueAlignment.end
+            ? Alignment.centerRight
+            : Alignment.centerLeft,
         child: valueChild,
       ),
     );
@@ -286,7 +284,7 @@ class AppPlainValueText extends StatelessWidget {
         textAlign: textAlign,
         maxLines: maxLines,
         overflow: TextOverflow.ellipsis,
-        style: context.appTextStyles.formPlainValue.copyWith(color: color),
+        style: context.appTextStyles.formValue.copyWith(color: color),
       ),
     );
   }

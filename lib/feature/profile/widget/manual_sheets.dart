@@ -160,7 +160,7 @@ class _DirectoryRow extends StatelessWidget {
             Expanded(
               child: Text(
                 article.title,
-                style: styles.formValue.copyWith(
+                style: styles.listTitle.copyWith(
                   color: selected ? colors.primary : null,
                   fontWeight: AppTypography.titleWeight,
                 ),
@@ -275,7 +275,7 @@ class _TocSheetItem extends StatelessWidget {
                 style:
                     isSub
                         ? styles.listSupporting
-                        : styles.formValue.copyWith(
+                        : styles.listTitle.copyWith(
                           fontWeight: AppTypography.emphasisWeight,
                         ),
               ),

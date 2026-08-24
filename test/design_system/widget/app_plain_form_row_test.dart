@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/design_system/theme/app_text_styles.dart';
+import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_row.dart';
 
 void main() {
-  testWidgets('keeps form labels close in size to field values', (
+  testWidgets('keeps form labels at the same size as field values', (
     tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
+        theme: AppTheme.light(),
         home: Scaffold(
           body: AppPlainFormRow(
             label: '本金',
@@ -20,8 +23,30 @@ void main() {
     final label = tester.widget<Text>(find.text('本金'));
     final value = tester.widget<Text>(find.text('10000.00'));
 
-    expect(label.style!.fontSize, 14);
+    expect(label.style!.fontSize, 15);
     expect(value.style!.fontSize, 15);
+    expect(label.style!.fontWeight, FontWeight.w400);
+    expect(value.style!.fontWeight, FontWeight.w400);
+    expect(label.style!.color, AppTheme.light().colorScheme.onSurface);
+  });
+
+  testWidgets('uses emphasized weight for form values', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) =>
+                Text('重点值', style: context.appTextStyles.formValueEmphasis),
+          ),
+        ),
+      ),
+    );
+
+    final value = tester.widget<Text>(find.text('重点值'));
+    expect(value.style!.fontSize, 15);
+    expect(value.style!.fontWeight, FontWeight.w500);
+    expect(value.style!.color, AppTheme.light().colorScheme.onSurface);
   });
 
   testWidgets('uses compact touch-safe height for a plain row', (tester) async {
@@ -123,7 +148,9 @@ void main() {
   testWidgets('read-only value rows keep values right aligned', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: Scaffold(body: AppPlainValueRow(label: '账户', value: '现金')),
+        home: Scaffold(
+          body: AppPlainValueRow(label: '账户', value: '现金'),
+        ),
       ),
     );
 

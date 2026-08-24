@@ -24,7 +24,7 @@ class PlaceholderPage extends StatelessWidget {
                   padding: const EdgeInsets.all(AppSpacing.space24),
                   child: Text(
                     '$title功能正在建设中',
-                    style: context.appTextStyles.formPlainValue.copyWith(
+                    style: context.appTextStyles.formValue.copyWith(
                       color: colors.onSurfaceVariant,
                     ),
                   ),

@@ -121,7 +121,7 @@ class _AppSettingsRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(label, style: context.appTextStyles.formValue),
+                  Text(label, style: context.appTextStyles.settingsTitle),
                   if (description != null && description!.isNotEmpty) ...[
                     const SizedBox(height: AppSpacing.space4),
                     Text(

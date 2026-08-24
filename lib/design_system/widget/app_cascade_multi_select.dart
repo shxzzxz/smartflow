@@ -268,7 +268,7 @@ class _AppCascadeMultiSelectSheetState<T>
                           node.label,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: context.appTextStyles.formPlainValue,
+                          style: context.appTextStyles.formValue,
                         ),
                       ),
                       if (node.children.isNotEmpty)

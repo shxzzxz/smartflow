@@ -150,13 +150,11 @@ abstract final class AppTheme {
           horizontal: AppSpacing.space14,
           vertical: AppSpacing.space12,
         ),
-        hintStyle: textTheme.bodyMedium?.copyWith(
+        hintStyle: textTheme.bodyLarge?.copyWith(
           color: colors.onSurfaceVariant,
         ),
-        labelStyle: textTheme.bodyMedium?.copyWith(
-          color: colors.onSurfaceVariant,
-        ),
-        floatingLabelStyle: textTheme.bodyMedium?.copyWith(
+        labelStyle: textTheme.bodyLarge?.copyWith(color: colors.onSurface),
+        floatingLabelStyle: textTheme.bodyLarge?.copyWith(
           color: colors.primary,
         ),
         border: inputBorder,
@@ -410,22 +408,19 @@ abstract final class AppTheme {
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith((states) {
           return IconThemeData(
-            color:
-                states.contains(WidgetState.selected)
-                    ? colors.primary
-                    : colors.onSurfaceVariant,
+            color: states.contains(WidgetState.selected)
+                ? colors.primary
+                : colors.onSurfaceVariant,
           );
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           return textTheme.labelSmall?.copyWith(
-            color:
-                states.contains(WidgetState.selected)
-                    ? colors.primary
-                    : colors.onSurfaceVariant,
-            fontWeight:
-                states.contains(WidgetState.selected)
-                    ? AppTypography.titleWeight
-                    : AppTypography.emphasisWeight,
+            color: states.contains(WidgetState.selected)
+                ? colors.primary
+                : colors.onSurfaceVariant,
+            fontWeight: states.contains(WidgetState.selected)
+                ? AppTypography.titleWeight
+                : AppTypography.emphasisWeight,
           );
         }),
       ),

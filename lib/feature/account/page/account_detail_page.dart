@@ -633,7 +633,7 @@ class _ActionButton extends StatelessWidget {
             Flexible(
               child: Text(
                 label,
-                style: textStyles.formLabel,
+                style: textStyles.actionLabel,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

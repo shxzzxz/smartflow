@@ -174,9 +174,13 @@ class _DetailBody extends ConsumerWidget {
             controller: controller,
             autofocus: true,
             maxLines: 3,
-            decoration: const InputDecoration(
+            style: ctx.appTextStyles.inputText,
+            decoration: InputDecoration(
               hintText: '为这笔交易写点备注',
               border: OutlineInputBorder(),
+              hintStyle: ctx.appTextStyles.inputText.copyWith(
+                color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           actions: [
@@ -358,7 +362,7 @@ class _RefundReimbursementCard extends StatelessWidget {
               ? MoneyText(
                   money: refund.refundedTotal!,
                   semantic: MoneySemantic.income,
-                  style: context.appTextStyles.formPlainValue,
+                  style: context.appTextStyles.formValue,
                 )
               : null,
         ),
@@ -428,7 +432,7 @@ class _PrimaryMetaCard extends StatelessWidget {
                 label: row.endpoint.label,
                 iconKey: row.endpoint.iconKey,
               ),
-              style: context.appTextStyles.formPlainValue,
+              style: context.appTextStyles.formValue,
             ),
           ),
         if (transferFee != null)
@@ -437,7 +441,7 @@ class _PrimaryMetaCard extends StatelessWidget {
             child: MoneyText(
               money: transferFee,
               semantic: MoneySemantic.expense,
-              style: context.appTextStyles.formPlainValue,
+              style: context.appTextStyles.formValue,
             ),
           ),
         AppPlainValueRow(

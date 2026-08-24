@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart';
 
+import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 
 import 'business_icon.dart';
@@ -27,15 +28,15 @@ class _IconCatalogPickerState extends State<IconCatalogPicker> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final specs = searchBusinessIconSpecs(usage: widget.usage, query: _query);
     final choices = [
       for (final spec in specs)
         IconChoiceGridItem(
           iconKey: spec.iconKey,
           label: spec.label,
-          iconBuilder:
-              (context, size) =>
-                  BusinessIcon(iconKey: spec.iconKey, size: size),
+          iconBuilder: (context, size) =>
+              BusinessIcon(iconKey: spec.iconKey, size: size),
         ),
     ];
 
@@ -44,8 +45,12 @@ class _IconCatalogPickerState extends State<IconCatalogPicker> {
       children: [
         TextField(
           onChanged: (value) => setState(() => _query = value),
-          decoration: const InputDecoration(
+          style: context.appTextStyles.inputText,
+          decoration: InputDecoration(
             hintText: '搜索图标',
+            hintStyle: context.appTextStyles.inputText.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
             prefixIcon: Icon(RemixIcons.search_line),
           ),
         ),

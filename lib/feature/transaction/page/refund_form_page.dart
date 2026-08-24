@@ -136,7 +136,7 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
                         label: '可退余额',
                         child: MoneyText(
                           money: state.remaining!,
-                          style: context.appTextStyles.formPlainValue,
+                          style: context.appTextStyles.formValue,
                         ),
                       ),
                     MoneyPlainFormRow(
@@ -150,23 +150,22 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
                       account: refundToAccount,
                       selectedId: state.refundToAccountId,
                       placeholder: '请选择退款账户',
-                      onTap:
-                          (onSelected) => _pickRefundAccount(
-                            state.accounts,
-                            selectedId: state.refundToAccountId,
-                            onSelected: onSelected,
-                          ),
-                      onChanged:
-                          ref.read(provider.notifier).setRefundToAccountId,
+                      onTap: (onSelected) => _pickRefundAccount(
+                        state.accounts,
+                        selectedId: state.refundToAccountId,
+                        onSelected: onSelected,
+                      ),
+                      onChanged: ref
+                          .read(provider.notifier)
+                          .setRefundToAccountId,
                       validator: (value) => value == null ? '请选择账户' : null,
                     ),
                     DateTimePlainFormRow(
                       label: '退款时间',
                       dateTime: state.occurredAt,
                       value: _formatDateTime(state.occurredAt),
-                      onTap:
-                          (onSelected) =>
-                              _pickOccurredAt(state.occurredAt, onSelected),
+                      onTap: (onSelected) =>
+                          _pickOccurredAt(state.occurredAt, onSelected),
                       onChanged: (value) {
                         if (value != null) {
                           ref.read(provider.notifier).setOccurredAt(value);

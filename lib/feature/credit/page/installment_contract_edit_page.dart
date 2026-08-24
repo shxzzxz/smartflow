@@ -117,10 +117,9 @@ class _InstallmentContractEditPageState
             rateController: _rateController,
             feeController: _feeController,
             overrideInstallmentController: _overrideInstallmentController,
-            onPickFirstDate:
-                loaded.paidCount > 0
-                    ? null
-                    : (onSelected) => _pickFirstDate(loaded, onSelected),
+            onPickFirstDate: loaded.paidCount > 0
+                ? null
+                : (onSelected) => _pickFirstDate(loaded, onSelected),
             onPickLastDate: (onSelected) => _pickLastDate(loaded, onSelected),
             onFirstDateChanged: (value) {
               if (value != null) {
@@ -144,32 +143,29 @@ class _InstallmentContractEditPageState
                     .setLastRepaymentDate(value);
               }
             },
-            onMethodChanged:
-                (v) => ref
-                    .read(
-                      installmentContractEditViewModelProvider(
-                        widget.contractId,
-                      ).notifier,
-                    )
-                    .setMethod(v),
-            onRatePeriodChanged:
-                (v) => ref
-                    .read(
-                      installmentContractEditViewModelProvider(
-                        widget.contractId,
-                      ).notifier,
-                    )
-                    .setRatePeriod(v),
-            onAccrualMethodChanged:
-                loaded.paidCount > 0
-                    ? null
-                    : (v) => ref
-                        .read(
-                          installmentContractEditViewModelProvider(
-                            widget.contractId,
-                          ).notifier,
-                        )
-                        .setAccrualMethod(v),
+            onMethodChanged: (v) => ref
+                .read(
+                  installmentContractEditViewModelProvider(
+                    widget.contractId,
+                  ).notifier,
+                )
+                .setMethod(v),
+            onRatePeriodChanged: (v) => ref
+                .read(
+                  installmentContractEditViewModelProvider(
+                    widget.contractId,
+                  ).notifier,
+                )
+                .setRatePeriod(v),
+            onAccrualMethodChanged: loaded.paidCount > 0
+                ? null
+                : (v) => ref
+                      .read(
+                        installmentContractEditViewModelProvider(
+                          widget.contractId,
+                        ).notifier,
+                      )
+                      .setAccrualMethod(v),
             onRecalculate: _recalculate,
           ),
           const SizedBox(height: AppSpacing.space12),
@@ -468,9 +464,7 @@ class _ConfigSection extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Text(
       text,
-      style: context.appTextStyles.formPlainValue.copyWith(
-        color: colors.onSurface,
-      ),
+      style: context.appTextStyles.formValue.copyWith(color: colors.onSurface),
     );
   }
 }
@@ -565,7 +559,10 @@ class _ScheduleHeader extends StatelessWidget {
             width: _periodCellWidth,
             child: Text('期', style: labelStyle),
           ),
-          SizedBox(width: _dateCellWidth, child: Text('时间', style: labelStyle)),
+          SizedBox(
+            width: _dateCellWidth,
+            child: Text('时间', style: labelStyle),
+          ),
           Expanded(
             child: Text('本', style: labelStyle, textAlign: TextAlign.right),
           ),
@@ -655,9 +652,8 @@ class _ScheduleRow extends StatelessWidget {
               style: cellStyle,
               canEdit: pending,
               allowZero: false,
-              onCommit:
-                  (m) =>
-                      onApplyAmount(row, InstallmentAmountField.principal, m),
+              onCommit: (m) =>
+                  onApplyAmount(row, InstallmentAmountField.principal, m),
             ),
           ),
           Expanded(
@@ -667,8 +663,8 @@ class _ScheduleRow extends StatelessWidget {
               style: cellStyle,
               canEdit: pending,
               allowZero: true,
-              onCommit:
-                  (m) => onApplyAmount(row, InstallmentAmountField.interest, m),
+              onCommit: (m) =>
+                  onApplyAmount(row, InstallmentAmountField.interest, m),
             ),
           ),
           Expanded(
@@ -678,8 +674,8 @@ class _ScheduleRow extends StatelessWidget {
               style: cellStyle,
               canEdit: pending,
               allowZero: true,
-              onCommit:
-                  (m) => onApplyAmount(row, InstallmentAmountField.fee, m),
+              onCommit: (m) =>
+                  onApplyAmount(row, InstallmentAmountField.fee, m),
             ),
           ),
           Expanded(
@@ -755,8 +751,9 @@ class _EditableMoneyCellState extends State<_EditableMoneyCell> {
 
   void _startEdit() {
     if (!widget.canEdit || _isEditing) return;
-    final text =
-        widget.value.minorUnits == 0 ? '' : widget.value.major.toString();
+    final text = widget.value.minorUnits == 0
+        ? ''
+        : widget.value.major.toString();
     _controller.text = text;
     _controller.selection = TextSelection(
       baseOffset: 0,
@@ -808,10 +805,9 @@ class _EditableMoneyCellState extends State<_EditableMoneyCell> {
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           textInputAction: TextInputAction.done,
           inputFormatters: [moneyInputFormatter],
-          validator:
-              widget.allowZero
-                  ? validateOptionalNonNegativeMoneyText
-                  : validatePositiveMoneyText,
+          validator: widget.allowZero
+              ? validateOptionalNonNegativeMoneyText
+              : validatePositiveMoneyText,
           onFieldSubmitted: (_) => _commit(),
           onSaved: (_) => _commit(),
         ),

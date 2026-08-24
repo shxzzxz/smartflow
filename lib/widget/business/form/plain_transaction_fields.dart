@@ -188,12 +188,11 @@ class DropdownPlainFormRow<T> extends StatelessWidget {
     return AppControlledFormField<T>(
       value: value,
       enabled: cb != null,
-      onChanged:
-          cb == null
-              ? null
-              : (nextValue) {
-                if (nextValue != null) cb(nextValue);
-              },
+      onChanged: cb == null
+          ? null
+          : (nextValue) {
+              if (nextValue != null) cb(nextValue);
+            },
       builder: (context, fieldValue, _, fieldChanged) {
         return AppPlainFormRow(
           label: label,
@@ -202,17 +201,16 @@ class DropdownPlainFormRow<T> extends StatelessWidget {
             value: fieldValue,
             isExpanded: isExpanded,
             isDense: true,
-            style: context.appTextStyles.formPlainValue.copyWith(
+            style: context.appTextStyles.formValue.copyWith(
               color: colors.onSurface,
             ),
             underline: const SizedBox.shrink(),
             items: items,
-            onChanged:
-                cb == null
-                    ? null
-                    : (nextValue) {
-                      if (nextValue != null) fieldChanged(nextValue);
-                    },
+            onChanged: cb == null
+                ? null
+                : (nextValue) {
+                    if (nextValue != null) fieldChanged(nextValue);
+                  },
           ),
         );
       },
@@ -250,7 +248,7 @@ class ValueWithUnitPlainFormRow<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final valueStyle = context.appTextStyles.formPlainValue;
+    final valueStyle = context.appTextStyles.formValue;
     return AppControlledFormField<T>(
       value: unit,
       onChanged: (nextUnit) {
@@ -284,20 +282,18 @@ class ValueWithUnitPlainFormRow<T> extends StatelessWidget {
                   value: fieldUnit ?? unit,
                   onChanged: (nextValue) => fieldChanged(nextValue),
                   alignment: AppSelectMenuAlignment.end,
-                  triggerBuilder:
-                      (context, selected) => Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(selected.label, style: valueStyle),
-                          const SizedBox(width: AppSpacing.space2),
-                          Icon(
-                            Icons.arrow_drop_down,
-                            size: AppSpacing.space20,
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                        ],
+                  triggerBuilder: (context, selected) => Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(selected.label, style: valueStyle),
+                      const SizedBox(width: AppSpacing.space2),
+                      Icon(
+                        Icons.arrow_drop_down,
+                        size: AppSpacing.space20,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -343,10 +339,9 @@ class AccountPlainFormRow extends StatelessWidget {
           onTap: handleTap == null ? null : () => handleTap(fieldChanged),
           errorText: errorText,
           child: Align(
-            alignment:
-                valueAlignment == AppPlainRowValueAlignment.end
-                    ? Alignment.centerRight
-                    : Alignment.centerLeft,
+            alignment: valueAlignment == AppPlainRowValueAlignment.end
+                ? Alignment.centerRight
+                : Alignment.centerLeft,
             child: AccountPlainValue(
               account: account,
               placeholder: placeholder,
@@ -375,10 +370,9 @@ class AccountPlainValue extends StatelessWidget {
   Widget build(BuildContext context) {
     final account = this.account;
     final colors = Theme.of(context).colorScheme;
-    final textAlign =
-        valueAlignment == AppPlainRowValueAlignment.end
-            ? TextAlign.right
-            : TextAlign.left;
+    final textAlign = valueAlignment == AppPlainRowValueAlignment.end
+        ? TextAlign.right
+        : TextAlign.left;
     if (account == null) {
       return AppPlainValueText(
         text: placeholder,
@@ -388,14 +382,12 @@ class AccountPlainValue extends StatelessWidget {
     }
 
     return Row(
-      mainAxisSize:
-          valueAlignment == AppPlainRowValueAlignment.end
-              ? MainAxisSize.min
-              : MainAxisSize.max,
-      mainAxisAlignment:
-          valueAlignment == AppPlainRowValueAlignment.end
-              ? MainAxisAlignment.end
-              : MainAxisAlignment.start,
+      mainAxisSize: valueAlignment == AppPlainRowValueAlignment.end
+          ? MainAxisSize.min
+          : MainAxisSize.max,
+      mainAxisAlignment: valueAlignment == AppPlainRowValueAlignment.end
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox.square(
@@ -415,7 +407,7 @@ class AccountPlainValue extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: textAlign,
-            style: context.appTextStyles.formPlainValue,
+            style: context.appTextStyles.formValue,
           ),
         ),
       ],
@@ -465,14 +457,10 @@ Future<AccountPickerSheetSelection?> showOptionalAccountPickerSheet({
         accounts: accounts,
         selectedId: selectedId,
         noneLabel: noneLabel,
-        onNoneTap:
-            () => Navigator.of(
-              context,
-            ).pop(const AccountPickerSheetSelection(null)),
-        onAccountTap:
-            (account) => Navigator.of(
-              context,
-            ).pop(AccountPickerSheetSelection(account.id)),
+        onNoneTap: () =>
+            Navigator.of(context).pop(const AccountPickerSheetSelection(null)),
+        onAccountTap: (account) =>
+            Navigator.of(context).pop(AccountPickerSheetSelection(account.id)),
       );
     },
   );
@@ -563,14 +551,13 @@ class _AccountPickerRow extends StatelessWidget {
             SizedBox.square(
               dimension: AppSpacing.space24,
               child: Center(
-                child:
-                    iconKey == null
-                        ? null
-                        : BusinessIcon(
-                          iconKey: iconKey,
-                          size: AppSpacing.space20,
-                          usage: BusinessIconUsage.account,
-                        ),
+                child: iconKey == null
+                    ? null
+                    : BusinessIcon(
+                        iconKey: iconKey,
+                        size: AppSpacing.space20,
+                        usage: BusinessIconUsage.account,
+                      ),
               ),
             ),
             const SizedBox(width: AppSpacing.space12),
@@ -579,7 +566,7 @@ class _AccountPickerRow extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: context.appTextStyles.formPlainValue,
+                style: context.appTextStyles.formValue,
               ),
             ),
             if (selected)
