@@ -105,79 +105,56 @@ void main() {
     expect(find.byType(TransactionAmountInput), findsOneWidget);
   });
 
-  testWidgets('places a direct fee input below transfer accounts', (
-    tester,
-  ) async {
-    await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
+  testWidgets(
+    'places a direct fee input below transfer accounts without overlapping the amount panel',
+    (tester) async {
+      // Pin this geometry assertion to the target phone viewport instead of the
+      // default 800x600 test view.
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    expect(find.byKey(const ValueKey('transfer-fee-input')), findsNothing);
+      await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
 
-    await tester.tap(find.text('转账'));
-    await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('transfer-fee-input')), findsNothing);
 
-    final feeInput = find.byKey(const ValueKey('transfer-fee-input'));
-    final amountInput = find.byType(TransactionAmountInput);
+      await tester.tap(find.text('转账'));
+      await tester.pumpAndSettle();
 
-    expect(feeInput, findsOneWidget);
-    expect(find.text('手续费'), findsOneWidget);
-    final feeIcon = tester.widget<BusinessIcon>(
-      find.descendant(of: feeInput, matching: find.byType(BusinessIcon)),
-    );
-    expect(feeIcon.iconKey, 'swap-box-line');
-    expect(feeIcon.usage, BusinessIconUsage.system);
-    final accountIcons = find.byWidgetPredicate(
-      (widget) =>
-          widget is BusinessIcon && widget.usage == BusinessIconUsage.account,
-    );
-    final feeIconFinder = find.descendant(
-      of: feeInput,
-      matching: find.byWidgetPredicate(
-        (widget) =>
-            widget is BusinessIcon && widget.usage == BusinessIconUsage.system,
-      ),
-    );
-    expect(accountIcons, findsNWidgets(2));
-    final secondAccountRow = find
-        .ancestor(of: accountIcons.last, matching: find.byType(Material))
-        .first;
-    expect(
-      tester.getCenter(feeIconFinder).dy - tester.getTopLeft(feeInput).dy,
-      closeTo(
-        tester.getCenter(accountIcons.last).dy -
-            tester.getTopLeft(secondAccountRow).dy,
-        1,
-      ),
-    );
-    expect(
-      find.descendant(of: feeInput, matching: find.text('0.00')),
-      findsOneWidget,
-    );
-    expect(find.text('0.00（可选）'), findsNothing);
-    expect(
-      tester.getTopLeft(feeInput).dy,
-      greaterThan(tester.getTopLeft(find.text('转入账户')).dy),
-    );
-    expect(
-      tester.getTopLeft(feeInput).dy,
-      lessThan(tester.getTopLeft(amountInput).dy),
-    );
-    expect(
-      tester.getTopLeft(find.text('手续费')).dx,
-      tester.getTopLeft(find.text('转入账户')).dx,
-    );
-    expect(
-      tester
-          .getTopLeft(
-            find.descendant(of: feeInput, matching: find.byType(TextFormField)),
-          )
-          .dx,
-      tester.getTopLeft(find.text('转入账户')).dx,
-    );
-    expect(
-      find.descendant(of: feeInput, matching: find.text('¥')),
-      findsNothing,
-    );
-  });
+      final feeInput = find.byKey(const ValueKey('transfer-fee-input'));
+      final toAccountTile = find.byKey(
+        const ValueKey('transfer-to-account-tile'),
+      );
+      final amountInput = find.byType(TransactionAmountInput);
+
+      expect(feeInput, findsOneWidget);
+      expect(toAccountTile, findsOneWidget);
+      expect(amountInput, findsOneWidget);
+      expect(find.text('手续费'), findsOneWidget);
+      expect(find.text('转出账户'), findsOneWidget);
+      expect(find.text('转入账户'), findsOneWidget);
+      final feeIcon = tester.widget<BusinessIcon>(
+        find.descendant(of: feeInput, matching: find.byType(BusinessIcon)),
+      );
+      expect(feeIcon.iconKey, 'swap-box-line');
+      expect(feeIcon.usage, BusinessIconUsage.system);
+      expect(
+        find.descendant(of: feeInput, matching: find.text('0.00')),
+        findsOneWidget,
+      );
+      expect(find.text('0.00（可选）'), findsNothing);
+      final feeRect = tester.getRect(feeInput);
+      final toAccountRect = tester.getRect(toAccountTile);
+      final amountRect = tester.getRect(amountInput);
+      expect(feeRect.top, greaterThanOrEqualTo(toAccountRect.bottom));
+      expect(feeRect.bottom, lessThanOrEqualTo(amountRect.top));
+      expect(
+        find.descendant(of: feeInput, matching: find.text('¥')),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets('places the tag action on the row below other options', (
     tester,

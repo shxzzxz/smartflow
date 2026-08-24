@@ -297,6 +297,7 @@ class _TransactionFormContentState
                           ),
                           const SizedBox(height: AppSpacing.space8),
                           _MainAccountPickerTile(
+                            key: const ValueKey('transfer-to-account-tile'),
                             label: '转入账户',
                             accounts: settlementAccounts,
                             selectedId: formState.toAccountId,
@@ -781,6 +782,7 @@ class _MainAccountPickerTile extends StatelessWidget {
     required this.selectedId,
     required this.onChanged,
     required this.validator,
+    super.key,
   });
 
   final String label;
