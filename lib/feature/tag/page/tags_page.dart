@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../app/provider.dart';
@@ -188,6 +189,10 @@ class _TagsPageState extends ConsumerState<TagsPage> {
               for (var i = 0; i < tags.length; i++) ...[
                 _TagRow(
                   tag: tags[i],
+                  onTap: () {
+                    final uri = Uri(path: '/tags/${tags[i].id}/transactions');
+                    context.push(uri.toString());
+                  },
                   canMoveUp: i > 0,
                   canMoveDown: i < tags.length - 1,
                   onMoveUp: () => ref
@@ -509,6 +514,7 @@ class _TagsPageState extends ConsumerState<TagsPage> {
 class _TagRow extends StatelessWidget {
   const _TagRow({
     required this.tag,
+    required this.onTap,
     required this.canMoveUp,
     required this.canMoveDown,
     required this.onMoveUp,
@@ -519,6 +525,7 @@ class _TagRow extends StatelessWidget {
   });
 
   final TagView tag;
+  final VoidCallback onTap;
   final bool canMoveUp;
   final bool canMoveDown;
   final VoidCallback onMoveUp;
@@ -531,76 +538,79 @@ class _TagRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textStyles = context.appTextStyles;
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space16,
-        vertical: AppSpacing.space4,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  tag.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textStyles.listTitle,
-                ),
-                Text(
-                  '${tag.usageCount} 笔交易',
-                  style: textStyles.listSupporting.copyWith(
-                    color: colors.onSurfaceVariant,
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space16,
+          vertical: AppSpacing.space4,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tag.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textStyles.listTitle,
                   ),
-                ),
+                  Text(
+                    '${tag.usageCount} 笔交易',
+                    style: textStyles.listSupporting.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: canMoveUp ? onMoveUp : null,
+              icon: Icon(
+                RemixIcons.arrow_up_s_line,
+                size: 20,
+                color: colors.onSurfaceVariant,
+              ),
+              visualDensity: VisualDensity.compact,
+              tooltip: '上移',
+            ),
+            IconButton(
+              onPressed: canMoveDown ? onMoveDown : null,
+              icon: Icon(
+                RemixIcons.arrow_down_s_line,
+                size: 20,
+                color: colors.onSurfaceVariant,
+              ),
+              visualDensity: VisualDensity.compact,
+              tooltip: '下移',
+            ),
+            PopupMenuButton<String>(
+              icon: Icon(
+                RemixIcons.more_2_line,
+                size: 20,
+                color: colors.onSurfaceVariant,
+              ),
+              tooltip: '更多操作',
+              onSelected: (action) {
+                switch (action) {
+                  case 'rename':
+                    onRename();
+                  case 'merge':
+                    onMerge();
+                  case 'delete':
+                    onDelete();
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'rename', child: Text('重命名')),
+                PopupMenuItem(value: 'merge', child: Text('合并到…')),
+                PopupMenuItem(value: 'delete', child: Text('删除')),
               ],
             ),
-          ),
-          IconButton(
-            onPressed: canMoveUp ? onMoveUp : null,
-            icon: Icon(
-              RemixIcons.arrow_up_s_line,
-              size: 20,
-              color: colors.onSurfaceVariant,
-            ),
-            visualDensity: VisualDensity.compact,
-            tooltip: '上移',
-          ),
-          IconButton(
-            onPressed: canMoveDown ? onMoveDown : null,
-            icon: Icon(
-              RemixIcons.arrow_down_s_line,
-              size: 20,
-              color: colors.onSurfaceVariant,
-            ),
-            visualDensity: VisualDensity.compact,
-            tooltip: '下移',
-          ),
-          PopupMenuButton<String>(
-            icon: Icon(
-              RemixIcons.more_2_line,
-              size: 20,
-              color: colors.onSurfaceVariant,
-            ),
-            tooltip: '更多操作',
-            onSelected: (action) {
-              switch (action) {
-                case 'rename':
-                  onRename();
-                case 'merge':
-                  onMerge();
-                case 'delete':
-                  onDelete();
-              }
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'rename', child: Text('重命名')),
-              PopupMenuItem(value: 'merge', child: Text('合并到…')),
-              PopupMenuItem(value: 'delete', child: Text('删除')),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

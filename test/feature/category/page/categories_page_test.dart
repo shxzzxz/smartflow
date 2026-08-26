@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
@@ -15,6 +16,16 @@ void main() {
     Map<String, Account> accountsById = const {},
     CategoryAppService? categoryAppService,
   }) {
+    final router = GoRouter(
+      routes: [
+        GoRoute(path: '/', builder: (context, state) => const CategoriesPage()),
+        GoRoute(
+          path: '/category/:id/transactions',
+          builder: (context, state) =>
+              Scaffold(body: Text('分类流水:${state.pathParameters['id']}')),
+        ),
+      ],
+    );
     return ProviderScope(
       overrides: [
         if (categoryAppService != null)
@@ -27,7 +38,7 @@ void main() {
         ).overrideWith((ref) => Stream.value(const <CategoryNode>[])),
         accountsByIdProvider.overrideWith((ref) => Stream.value(accountsById)),
       ],
-      child: const MaterialApp(home: CategoriesPage()),
+      child: MaterialApp.router(routerConfig: router),
     );
   }
 
@@ -51,7 +62,7 @@ void main() {
     expect(find.text('1 个子分类'), findsOneWidget);
     expect(find.text('早餐'), findsNothing);
 
-    await tester.tap(find.text('餐饮'));
+    await tester.tap(find.byTooltip('展开子分类'));
     await tester.pumpAndSettle();
 
     expect(find.text('早餐'), findsOneWidget);
@@ -101,7 +112,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('餐饮'));
+    await tester.tap(find.byTooltip('展开子分类'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('更多操作').last);
     await tester.pumpAndSettle();
@@ -112,6 +123,47 @@ void main() {
     expect(find.text('移动到…'), findsOneWidget);
     expect(find.text('迁移交易'), findsOneWidget);
     expect(find.text('删除'), findsOneWidget);
+  });
+
+  testWidgets('opens root category transactions when the row is tapped', (
+    tester,
+  ) async {
+    final food = _category('food', name: '餐饮');
+
+    await tester.pumpWidget(
+      buildPage(
+        expenseTree: [CategoryNode(account: food, children: const [])],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('餐饮'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('分类流水:food'), findsOneWidget);
+  });
+
+  testWidgets('opens child category transactions when the row is tapped', (
+    tester,
+  ) async {
+    final food = _category('food', name: '餐饮');
+    final breakfast = _category('breakfast', name: '早餐', parentId: 'food');
+
+    await tester.pumpWidget(
+      buildPage(
+        expenseTree: [
+          CategoryNode(account: food, children: [breakfast]),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('展开子分类'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('早餐'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('分类流水:breakfast'), findsOneWidget);
   });
 
   testWidgets('hides migration and deletion actions for system categories', (
