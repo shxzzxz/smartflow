@@ -500,11 +500,16 @@ TransactionDetail _detail({
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
       ownership: ownership,
-      reimbursementExpenseAccountId:
-          purpose == BusinessPurpose.reimbursementAdvance ? 'food' : null,
+      lines:
+          purpose == BusinessPurpose.reimbursementAdvance
+              ? _advanceLines
+              : const [],
     ),
     createdAt: DateTime(2026, 1, 1, 8, 1),
-    details: const [],
+    lines:
+        purpose == BusinessPurpose.reimbursementAdvance
+            ? _advanceLines
+            : const [],
     entries:
         entries ??
         [
@@ -825,3 +830,14 @@ class _FakeRepaymentAppService implements RepaymentAppService {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
+
+const _advanceLines = [
+  TransactionLine(
+    id: 'advance-category',
+    transactionId: 'tx-1',
+    lineNo: 1,
+    role: TransactionRole.reimbursementExpenseCategory,
+    accountId: 'food',
+    amount: Money(minorUnits: 10000),
+  ),
+];

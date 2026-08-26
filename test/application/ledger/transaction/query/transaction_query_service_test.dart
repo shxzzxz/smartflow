@@ -114,20 +114,20 @@ void main() {
         transactionRead: _FakeTransactionReadRepository(
           transactions: {'collection': collection},
         ),
-        detailRead: const _FakeTransactionDetailReadRepository({
+        lineRead: const _FakeTransactionLineReadRepository({
           'collection': [
-            TransactionDetailRecord(
+            TransactionLine(
               id: 'principal',
               transactionId: 'collection',
               lineNo: 1,
-              type: TransactionDetailType.receivableCollectionPrincipal,
+              role: TransactionRole.receivable,
               amount: Money(minorUnits: 10000),
             ),
-            TransactionDetailRecord(
+            TransactionLine(
               id: 'interest',
               transactionId: 'collection',
               lineNo: 2,
-              type: TransactionDetailType.receivableCollectionInterest,
+              role: TransactionRole.interest,
               amount: Money(minorUnits: 500),
             ),
           ],
@@ -157,13 +157,13 @@ void main() {
       transactionRead: _FakeTransactionReadRepository(
         transactions: {'transfer': transfer},
       ),
-      detailRead: const _FakeTransactionDetailReadRepository({
+      lineRead: const _FakeTransactionLineReadRepository({
         'transfer': [
-          TransactionDetailRecord(
+          TransactionLine(
             id: 'fee',
             transactionId: 'transfer',
             lineNo: 2,
-            type: TransactionDetailType.transferFee,
+            role: TransactionRole.fee,
             amount: Money(minorUnits: 300),
           ),
         ],
@@ -233,6 +233,18 @@ void main() {
         'expense': [
           _entry('e1', 'expense', 'dining', EntryDirection.debit, 1000),
           _entry('e2', 'expense', 'cash', EntryDirection.credit, 1000),
+        ],
+      }),
+      lineRead: const _FakeTransactionLineReadRepository({
+        'expense': [
+          TransactionLine(
+            id: 'category-line',
+            transactionId: 'expense',
+            lineNo: 1,
+            role: TransactionRole.category,
+            accountId: 'dining',
+            amount: Money(minorUnits: 1000),
+          ),
         ],
       }),
       accounts: [
@@ -424,7 +436,7 @@ void main() {
   });
 
   test(
-    'projects the unique expense role entry instead of the first expense account',
+    'projects the category line instead of inferring from expense entries',
     () async {
       final expense = _transaction(
         id: 'expense',
@@ -446,6 +458,18 @@ void main() {
             ),
             _entry('category', 'expense', 'dining', EntryDirection.debit, 1000),
             _entry('cash', 'expense', 'cash', EntryDirection.credit, 1200),
+          ],
+        }),
+        lineRead: const _FakeTransactionLineReadRepository({
+          'expense': [
+            TransactionLine(
+              id: 'category-line',
+              transactionId: 'expense',
+              lineNo: 1,
+              role: TransactionRole.category,
+              accountId: 'dining',
+              amount: Money(minorUnits: 1000),
+            ),
           ],
         }),
         accounts: [
@@ -700,14 +724,14 @@ Account _account(
 TransactionQueryServiceImpl _service({
   required _FakeTransactionReadRepository transactionRead,
   _FakeEntryReadRepository entryRead = const _FakeEntryReadRepository({}),
-  _FakeTransactionDetailReadRepository detailRead =
-      const _FakeTransactionDetailReadRepository(),
+  _FakeTransactionLineReadRepository lineRead =
+      const _FakeTransactionLineReadRepository(),
   List<Account> accounts = const [],
 }) {
   return TransactionQueryServiceImpl(
     transactionRead: transactionRead,
     entryRead: entryRead,
-    detailRead: detailRead,
+    lineRead: lineRead,
     accountQuery: _FakeAccountQueryService(accounts),
     metricsSource: const _UnusedLedgerMetricsSource(),
   );
@@ -795,10 +819,9 @@ class _FakeTransactionReadRepository implements TransactionReadRepository {
   }
 
   @override
-  Future<Map<String, Map<TransactionDetailType, int>>>
-  aggregateChildDetailAmounts({
+  Future<Map<String, Map<TransactionRole, int>>> aggregateChildLineAmounts({
     required Set<String> parentIds,
-    required Set<TransactionDetailType> detailTypes,
+    required Set<TransactionRole> roles,
   }) async => const {};
 
   @override
@@ -854,23 +877,23 @@ class _FakeEntryReadRepository implements EntryReadRepository {
   ) async => {for (final id in transactionIds) id: ?_entriesByTransaction[id]};
 }
 
-class _FakeTransactionDetailReadRepository
-    implements TransactionDetailReadRepository {
-  const _FakeTransactionDetailReadRepository([
+class _FakeTransactionLineReadRepository
+    implements TransactionLineReadRepository {
+  const _FakeTransactionLineReadRepository([
     this._detailsByTransaction = const {},
   ]);
 
-  final Map<String, List<TransactionDetailRecord>> _detailsByTransaction;
+  final Map<String, List<TransactionLine>> _detailsByTransaction;
 
   @override
-  Future<Map<String, List<TransactionDetailRecord>>> findByTransactionIds(
+  Future<Map<String, List<TransactionLine>>> findByTransactionIds(
     Set<String> transactionIds,
   ) async => {for (final id in transactionIds) id: ?_detailsByTransaction[id]};
 
   @override
-  Future<Map<String, Map<TransactionDetailType, int>>> sumOwnByType({
+  Future<Map<String, Map<TransactionRole, int>>> sumOwnByRole({
     required Set<String> transactionIds,
-    required Set<TransactionDetailType> detailTypes,
+    required Set<TransactionRole> roles,
   }) async => const {};
 }
 

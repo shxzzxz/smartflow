@@ -1,6 +1,7 @@
+import 'package:smartflow/core/money/money.dart';
 import '../../entity/transaction.dart';
 import '../../entity/transaction_group.dart';
-import '../../entity/entry.dart';
+import '../../port/system_account_resolver.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
@@ -12,11 +13,14 @@ class TransactionGroupRewritePlanner {
   const TransactionGroupRewritePlanner({
     required PostingEngine postingEngine,
     required PostingInstructionResolver postingInstructionResolver,
+    required SystemAccountResolver systemAccountResolver,
   }) : _postingEngine = postingEngine,
-       _postingInstructionResolver = postingInstructionResolver;
+       _postingInstructionResolver = postingInstructionResolver,
+       _systemAccountResolver = systemAccountResolver;
 
   final PostingEngine _postingEngine;
   final PostingInstructionResolver _postingInstructionResolver;
+  final SystemAccountResolver _systemAccountResolver;
 
   Future<TransactionGroupRewritePlan> planParentRewrite({
     required TransactionGroup currentGroup,
@@ -74,9 +78,9 @@ class TransactionGroupRewritePlanner {
       );
     }
     for (final child in currentGroup.childTransactions) {
-      final rewritten = _rewriteChild(
+      final rewritten = await _rewriteChild(
         child: child,
-        currentParent: currentParent,
+        currentGroup: currentGroup,
         parent: rewrittenParent,
       );
       rewrittenChildren.add(rewritten);
@@ -99,25 +103,34 @@ class TransactionGroupRewritePlanner {
     );
   }
 
-  Transaction _rewriteChild({
+  Future<Transaction> _rewriteChild({
     required Transaction child,
-    required Transaction currentParent,
+    required TransactionGroup currentGroup,
+    required Transaction parent,
+  }) async {
+    switch (child.businessPurpose) {
+      case BusinessPurpose.reimbursementReceipt:
+        return _rebuildReceipt(child: child, parent: parent);
+      case BusinessPurpose.reimbursementClose:
+        return _rebuildClose(
+          child: child,
+          currentGroup: currentGroup,
+          parent: parent,
+        );
+      case BusinessPurpose.refund:
+        return _rebuildRefund(child: child, parent: parent);
+      default:
+        return child.copyWith(
+          isExcludedFromStats: parent.isExcludedFromStats,
+          isExcludedFromBudget: parent.isExcludedFromBudget,
+        );
+    }
+  }
+
+  Transaction _rebuildRefund({
+    required Transaction child,
     required Transaction parent,
   }) {
-    if (child.businessPurpose == BusinessPurpose.reimbursementReceipt ||
-        child.businessPurpose == BusinessPurpose.reimbursementClose) {
-      return _rebaseReimbursementChild(
-        child: child,
-        currentParent: currentParent,
-        parent: parent,
-      );
-    }
-    if (child.businessPurpose != BusinessPurpose.refund) {
-      return child.copyWith(
-        isExcludedFromStats: parent.isExcludedFromStats,
-        isExcludedFromBudget: parent.isExcludedFromBudget,
-      );
-    }
     final parentInstruction = _postingInstructionResolver.resolve(parent);
     final offsetAccountId = resolveRefundOffsetAccountId(parentInstruction);
     if (offsetAccountId == null) {
@@ -137,68 +150,86 @@ class TransactionGroupRewritePlanner {
       parent: parent,
       refundOffsetAccountId: offsetAccountId,
     );
-    return candidate.copyWith(
-      id: child.id,
-      parentTransactionId: parent.id,
-      sourceKind: child.sourceKind,
-      ownership: child.ownership,
-    );
+    return _preserveIdentity(original: child, candidate: candidate);
   }
 
-  Transaction _rebaseReimbursementChild({
+  /// 报销到账跟随父交易的应收科目重建:重算分项后重新过账,而不是改写既有分录。
+  Transaction _rebuildReceipt({
     required Transaction child,
-    required Transaction currentParent,
     required Transaction parent,
   }) {
-    final currentParentInstruction = _postingInstructionResolver.resolve(
-      currentParent,
-    );
     final parentInstruction = _postingInstructionResolver.resolve(parent);
-    if (currentParentInstruction is! ReimbursementAdvanceInstruction ||
-        parentInstruction is! ReimbursementAdvanceInstruction) {
-      return child;
+    if (parentInstruction is! ReimbursementAdvanceInstruction) return child;
+    final receiveAccountId = child.accountOf(TransactionRole.settlementIn);
+    if (receiveAccountId == null) {
+      LedgerViolationReason.reimbursementReceiptAccountsUnresolved
+          .throwException();
     }
-    final currentReceivableAccountId =
-        currentParentInstruction.receivableAccountId;
-    return child.copyWith(
-      parentTransactionId: parent.id,
-      isExcludedFromStats: parent.isExcludedFromStats,
-      isExcludedFromBudget: parent.isExcludedFromBudget,
-      entries: [
-        for (final entry in child.entries)
-          Entry(
-            id: entry.id,
-            transactionId: child.id,
-            accountId: _rebaseReimbursementAccount(
-              accountId: entry.accountId,
-              childPurpose: child.businessPurpose,
-              currentParent: currentParent,
-              parent: parent,
-              currentReceivableAccountId: currentReceivableAccountId,
-              receivableAccountId: parentInstruction.receivableAccountId,
-            ),
-            direction: entry.direction,
-            amount: entry.amount,
-          ),
-      ],
+    final candidate = _postingEngine.createReimbursementReceipt(
+      instruction: ReimbursementReceiptInstruction(
+        advanceTransactionId: parent.id,
+        amount: child.primaryAmount,
+        receivableAccountId: parentInstruction.receivableAccountId,
+        receiveAccountId: receiveAccountId,
+        occurredAt: child.occurredAt,
+        postedAt: child.postedAt,
+        counterpartyName: child.counterpartyName,
+        note: child.note,
+      ),
+      advance: parent,
     );
+    return _preserveIdentity(original: child, candidate: candidate);
   }
 
-  String _rebaseReimbursementAccount({
-    required String accountId,
-    required BusinessPurpose childPurpose,
-    required Transaction currentParent,
+  Future<Transaction> _rebuildClose({
+    required Transaction child,
+    required TransactionGroup currentGroup,
     required Transaction parent,
-    required String currentReceivableAccountId,
-    required String receivableAccountId,
-  }) {
-    if (accountId == currentReceivableAccountId) return receivableAccountId;
-    if (childPurpose == BusinessPurpose.reimbursementClose &&
-        currentParent.reimbursementExpenseAccountId != null &&
-        accountId == currentParent.reimbursementExpenseAccountId) {
-      return parent.reimbursementExpenseAccountId!;
+  }) async {
+    final parentInstruction = _postingInstructionResolver.resolve(parent);
+    if (parentInstruction is! ReimbursementAdvanceInstruction) return child;
+    final receiveAccountId = child.accountOf(TransactionRole.settlementIn);
+    if (receiveAccountId == null) {
+      LedgerViolationReason.reimbursementCloseAccountsUnresolved
+          .throwException();
     }
-    return accountId;
+    // 待核销由交易组推导,不读结束报销自己的派生分项。
+    final outstanding = TransactionGroup(
+      parentTransaction: parent,
+      childTransactions: currentGroup.childTransactions,
+    ).reimbursementOutstandingExcluding(child.id);
+    final actual = child.amountOf(TransactionRole.settlementIn) ?? Money.zero();
+    final candidate = _postingEngine.createReimbursementClose(
+      instruction: ReimbursementCloseInstruction(
+        advanceTransactionId: parent.id,
+        actualReceivedAmount: actual,
+        receivableAccountId: parentInstruction.receivableAccountId,
+        receiveAccountId: receiveAccountId,
+        occurredAt: child.occurredAt,
+        postedAt: child.postedAt,
+        counterpartyName: child.counterpartyName,
+        note: child.note,
+      ),
+      advance: parent,
+      outstanding: outstanding,
+      gapIncomeAccountId:
+          actual.minorUnits > outstanding.minorUnits
+              ? await _systemAccountResolver.resolveReimbursementGapIncome()
+              : null,
+    );
+    return _preserveIdentity(original: child, candidate: candidate);
+  }
+
+  Transaction _preserveIdentity({
+    required Transaction original,
+    required Transaction candidate,
+  }) {
+    return candidate.copyWith(
+      id: original.id,
+      postedAt: original.postedAt,
+      sourceKind: original.sourceKind,
+      ownership: original.ownership,
+    );
   }
 
   void _ensurePurposeChangeSupported({

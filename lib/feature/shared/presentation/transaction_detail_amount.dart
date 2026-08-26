@@ -1,13 +1,13 @@
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
 
-Money sumTransactionDetailAmount(
+Money sumTransactionLineAmount(
   TransactionDetail detail,
-  TransactionDetailType type,
+  TransactionRole role,
 ) {
   var amountMinor = 0;
-  for (final line in detail.details) {
-    if (line.type == type) amountMinor += line.amount.minorUnits;
+  for (final line in detail.lines) {
+    if (line.role == role) amountMinor += line.amount.minorUnits;
   }
   return Money(minorUnits: amountMinor);
 }

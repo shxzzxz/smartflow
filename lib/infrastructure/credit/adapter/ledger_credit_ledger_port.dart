@@ -187,10 +187,10 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
       ownerType: detail.transaction.ownership?.ownerType,
       note: detail.transaction.note,
       details: [
-        for (final line in detail.details)
-          if (_repaymentDetailType(line.type) != null)
+        for (final line in detail.lines)
+          if (_repaymentDetailType(line.role) != null)
             CreditLedgerRepaymentDetail(
-              type: _repaymentDetailType(line.type)!,
+              type: _repaymentDetailType(line.role)!,
               amount: line.amount,
             ),
       ],
@@ -240,17 +240,17 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
     };
   }
 
+  /// 只在还款交易上调用,因此 liability / interest / fee 无需再按用途消歧。
   CreditLedgerRepaymentDetailType? _repaymentDetailType(
-    ledger_query.TransactionDetailType type,
+    ledger_query.TransactionRole role,
   ) {
-    return switch (type) {
-      ledger_query.TransactionDetailType.repaymentPrincipal =>
+    return switch (role) {
+      ledger_query.TransactionRole.liability =>
         CreditLedgerRepaymentDetailType.principal,
-      ledger_query.TransactionDetailType.repaymentInterest =>
+      ledger_query.TransactionRole.interest =>
         CreditLedgerRepaymentDetailType.interest,
-      ledger_query.TransactionDetailType.repaymentFee =>
-        CreditLedgerRepaymentDetailType.fee,
-      ledger_query.TransactionDetailType.repaymentDiscount =>
+      ledger_query.TransactionRole.fee => CreditLedgerRepaymentDetailType.fee,
+      ledger_query.TransactionRole.discount =>
         CreditLedgerRepaymentDetailType.discount,
       _ => null,
     };

@@ -1,7 +1,7 @@
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/entity/entry.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
-import 'package:smartflow/domain/ledger/entity/transaction_detail_record.dart';
+import 'package:smartflow/domain/ledger/entity/transaction_line.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 class CashflowSummary {
@@ -102,7 +102,7 @@ class TransactionDetail {
   const TransactionDetail({
     required this.transaction,
     required this.createdAt,
-    required this.details,
+    required this.lines,
     required this.entries,
     this.children = const [],
     this.refundedTotal,
@@ -111,7 +111,7 @@ class TransactionDetail {
 
   final Transaction transaction;
   final DateTime createdAt;
-  final List<TransactionDetailRecord> details;
+  final List<TransactionLine> lines;
   final List<Entry> entries;
   final List<TransactionListReadModel> children;
   final Money? refundedTotal;

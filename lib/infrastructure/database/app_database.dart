@@ -22,7 +22,7 @@ import 'table/credit/installment_contracts.dart';
 import 'table/credit/installment_schedules.dart';
 import 'table/credit/repayment_items.dart';
 import 'table/credit/repayments.dart';
-import 'table/ledger/transaction_details.dart';
+import 'table/ledger/transaction_lines.dart';
 import 'table/ledger/transactions.dart';
 import 'table/ledger/tags.dart';
 import 'table/ledger/transaction_tags.dart';
@@ -38,7 +38,7 @@ part 'app_database.g.dart';
     AccountGroups,
     AppMetadata,
     Transactions,
-    TransactionDetails,
+    TransactionLines,
     Entries,
     Tags,
     TransactionTags,
@@ -60,7 +60,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 28;
+  int get schemaVersion => 29;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

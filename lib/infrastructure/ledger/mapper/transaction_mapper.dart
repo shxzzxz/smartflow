@@ -13,7 +13,6 @@ Transaction mapTransaction(TransactionRow row) {
     counterpartyName: row.counterpartyName,
     note: row.note,
     parentTransactionId: row.parentTransactionId,
-    reimbursementExpenseAccountId: row.reimbursementExpenseAccountId,
     isExcludedFromStats: row.isExcludedFromStats,
     isExcludedFromBudget: row.isExcludedFromBudget,
     sourceKind: row.sourceKind,

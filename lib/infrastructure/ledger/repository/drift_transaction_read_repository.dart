@@ -169,35 +169,33 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
   }
 
   @override
-  Future<Map<String, Map<TransactionDetailType, int>>>
-  aggregateChildDetailAmounts({
+  Future<Map<String, Map<TransactionRole, int>>> aggregateChildLineAmounts({
     required Set<String> parentIds,
-    required Set<TransactionDetailType> detailTypes,
+    required Set<TransactionRole> roles,
   }) async {
-    if (parentIds.isEmpty || detailTypes.isEmpty) return const {};
+    if (parentIds.isEmpty || roles.isEmpty) return const {};
     final parentColumn = _db.transactions.parentTransactionId;
-    final typeColumn = _db.transactionDetails.detailType;
-    final sumExpression = _db.transactionDetails.amountMinor.sum();
+    final roleColumn = _db.transactionLines.role;
+    final sumExpression = _db.transactionLines.amountMinor.sum();
     final query =
-        _db.selectOnly(_db.transactionDetails).join([
+        _db.selectOnly(_db.transactionLines).join([
             innerJoin(
               _db.transactions,
-              _db.transactions.id.equalsExp(
-                _db.transactionDetails.transactionId,
-              ),
+              _db.transactions.id.equalsExp(_db.transactionLines.transactionId),
             ),
           ])
-          ..addColumns([parentColumn, typeColumn, sumExpression])
+          ..addColumns([parentColumn, roleColumn, sumExpression])
           ..where(parentColumn.isIn(parentIds))
-          ..where(typeColumn.isInValues(detailTypes))
-          ..groupBy([parentColumn, typeColumn]);
-    final result = <String, Map<TransactionDetailType, int>>{};
+          ..where(roleColumn.isInValues(roles))
+          ..groupBy([parentColumn, roleColumn]);
+    final result = <String, Map<TransactionRole, int>>{};
     for (final row in await query.get()) {
       final parentId = row.read(parentColumn);
-      final typeName = row.read(typeColumn);
-      if (parentId == null || typeName == null) continue;
-      result.putIfAbsent(parentId, () => {})[TransactionDetailType.values
-              .byName(typeName)] =
+      final roleName = row.read(roleColumn);
+      if (parentId == null || roleName == null) continue;
+      result.putIfAbsent(parentId, () => {})[TransactionRole.values.byName(
+            roleName,
+          )] =
           row.read(sumExpression) ?? 0;
     }
     return result;
@@ -279,16 +277,27 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
                   members.parentTransactionId.equalsExp(_db.transactions.id)),
         ),
     );
+    final groupLineMatch = existsQuery(
+      _db.selectOnly(_db.transactionLines).join([
+          innerJoin(
+            members,
+            members.id.equalsExp(_db.transactionLines.transactionId),
+          ),
+        ])
+        ..addColumns([_db.transactionLines.id])
+        ..where(
+          _db.transactionLines.accountId.equals(categoryId) &
+              (members.id.equalsExp(_db.transactions.id) |
+                  members.parentTransactionId.equalsExp(_db.transactions.id)),
+        ),
+    );
     final purposeColumn = _db.transactions.businessPurpose;
     final select =
         _db.selectOnly(_db.transactions)
           ..addColumns([_db.transactions.id, purposeColumn])
           ..where(
             _db.transactions.parentTransactionId.isNull() &
-                (_db.transactions.reimbursementExpenseAccountId.equals(
-                      categoryId,
-                    ) |
-                    groupEntryMatch),
+                (groupLineMatch | groupEntryMatch),
           )
           ..orderBy([
             OrderingTerm.asc(_db.transactions.occurredAt),
@@ -318,6 +327,14 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
               _db.entries.accountId.equals(query.categoryId),
         ),
     );
+    final categoryLineMatch = existsQuery(
+      _db.selectOnly(_db.transactionLines)
+        ..addColumns([_db.transactionLines.id])
+        ..where(
+          _db.transactionLines.transactionId.equalsExp(_db.transactions.id) &
+              _db.transactionLines.accountId.equals(query.categoryId),
+        ),
+    );
     final row =
         await (_db.select(_db.transactions)
               ..where(
@@ -328,10 +345,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
                       TransactionHierarchyFilter.child =>
                         table.parentTransactionId.isNotNull(),
                     } &
-                    (categoryEntryMatch |
-                        _db.transactions.reimbursementExpenseAccountId.equals(
-                          query.categoryId,
-                        )),
+                    (categoryEntryMatch | categoryLineMatch),
               )
               ..orderBy([
                 (table) => OrderingTerm.desc(table.occurredAt),
@@ -419,7 +433,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
       TableUpdateQuery.onAllTables([
         _db.transactions,
         _db.entries,
-        _db.transactionDetails,
+        _db.transactionLines,
         _db.accounts,
       ]),
     )) {

@@ -165,7 +165,7 @@ ledger.TransactionDetail _transactionDetail() {
   return ledger.TransactionDetail(
     transaction: transaction,
     createdAt: DateTime(2026, 6, 20),
-    details: const [],
+    lines: const [],
     entries: [
       ledger.Entry(
         id: 'entry-1',

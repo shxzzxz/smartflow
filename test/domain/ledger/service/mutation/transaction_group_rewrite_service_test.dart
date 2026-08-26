@@ -249,10 +249,10 @@ void main() {
         isEmpty,
       );
       expect(
-        rewritten.details
+        rewritten.lines
             .singleWhere(
               (detail) =>
-                  detail.type == TransactionDetailType.reimbursementGapExpense,
+                  detail.role == TransactionRole.reimbursementGapExpense,
             )
             .amount,
         Money.parse('100.00'),

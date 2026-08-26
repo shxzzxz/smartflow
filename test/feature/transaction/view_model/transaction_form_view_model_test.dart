@@ -141,7 +141,7 @@ void main() {
           sourceKind: SourceKind.manual,
         ),
         createdAt: DateTime(2026, 7, 23),
-        details: const [],
+        lines: const [],
         entries: const [],
       );
       final container = _container(
@@ -845,7 +845,7 @@ TransactionDetail _transactionDetail() {
       entries: entries,
     ),
     createdAt: DateTime(2026, 1, 2, 8, 30),
-    details: const [],
+    lines: const [],
     entries: entries,
   );
 }
@@ -867,7 +867,7 @@ TransactionDetail _lendingTransactionDetail() {
       entries: entries,
     ),
     createdAt: DateTime(2026, 8, 21),
-    details: const [],
+    lines: const [],
     entries: entries,
   );
 }
@@ -875,19 +875,28 @@ TransactionDetail _lendingTransactionDetail() {
 TransactionDetail _transferTransactionDetail() {
   const amount = Money(minorUnits: 2000);
   const fee = Money(minorUnits: 300);
-  const details = [
-    TransactionDetailRecord(
-      id: 'transfer-main',
+  const lines = [
+    TransactionLine(
+      id: 'transfer-out',
       transactionId: 'transfer-1',
       lineNo: 1,
-      type: TransactionDetailType.transferMain,
+      role: TransactionRole.settlementOut,
+      accountId: 'cash',
       amount: amount,
     ),
-    TransactionDetailRecord(
-      id: 'transfer-fee',
+    TransactionLine(
+      id: 'transfer-in',
       transactionId: 'transfer-1',
       lineNo: 2,
-      type: TransactionDetailType.transferFee,
+      role: TransactionRole.settlementIn,
+      accountId: 'bank',
+      amount: amount,
+    ),
+    TransactionLine(
+      id: 'transfer-fee',
+      transactionId: 'transfer-1',
+      lineNo: 3,
+      role: TransactionRole.fee,
       amount: fee,
     ),
   ];
@@ -916,11 +925,11 @@ TransactionDetail _transferTransactionDetail() {
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
-      details: details,
+      lines: lines,
       entries: entries,
     ),
     createdAt: DateTime(2026, 8, 22),
-    details: details,
+    lines: lines,
     entries: entries,
   );
 }

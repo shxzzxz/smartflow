@@ -240,11 +240,11 @@ TransactionDetail _parentDetail({
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
-      reimbursementExpenseAccountId: 'expense',
+      lines: _advanceLines,
       entries: entries,
     ),
     createdAt: DateTime(2026, 7, 1),
-    details: const [],
+    lines: _advanceLines,
     entries: entries,
     reimbursementSummary: ReimbursementSummary(
       advanceAmount: const Money(minorUnits: 10000),
@@ -276,7 +276,7 @@ TransactionDetail _receiptDetail() {
       entries: entries,
     ),
     createdAt: DateTime(2026, 7, 2, 9),
-    details: const [],
+    lines: const [],
     entries: entries,
   );
 }
@@ -290,13 +290,14 @@ TransactionDetail _closeDetail({required int actualReceivedMinorUnits}) {
     if (gapExpenseMinorUnits > 0)
       _entry('close', 'expense', EntryDirection.debit, gapExpenseMinorUnits),
   ];
-  final details = [
-    _detail('close', 1, TransactionDetailType.reimbursementCloseMain, 6000),
+  final lines = [
+    _line('close', 1, TransactionRole.settlementIn, actualReceivedMinorUnits),
+    _line('close', 2, TransactionRole.receivable, 6000),
     if (gapExpenseMinorUnits > 0)
-      _detail(
+      _line(
         'close',
-        2,
-        TransactionDetailType.reimbursementGapExpense,
+        3,
+        TransactionRole.reimbursementGapExpense,
         gapExpenseMinorUnits,
       ),
   ];
@@ -311,11 +312,11 @@ TransactionDetail _closeDetail({required int actualReceivedMinorUnits}) {
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
       note: 'original close',
-      details: details,
+      lines: lines,
       entries: entries,
     ),
     createdAt: DateTime(2026, 7, 3, 10),
-    details: details,
+    lines: lines,
     entries: entries,
   );
 }
@@ -335,17 +336,17 @@ Entry _entry(
   );
 }
 
-TransactionDetailRecord _detail(
+TransactionLine _line(
   String transactionId,
   int lineNo,
-  TransactionDetailType type,
+  TransactionRole type,
   int amount,
 ) {
-  return TransactionDetailRecord(
+  return TransactionLine(
     id: '$transactionId-$lineNo',
     transactionId: transactionId,
     lineNo: lineNo,
-    type: type,
+    role: type,
     amount: Money(minorUnits: amount),
   );
 }
@@ -412,3 +413,14 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
   Future<PostedTransactionResult> editTransfer(EditTransferCommand command) =>
       throw UnimplementedError();
 }
+
+const _advanceLines = [
+  TransactionLine(
+    id: 'advance-category',
+    transactionId: 'parent',
+    lineNo: 1,
+    role: TransactionRole.reimbursementExpenseCategory,
+    accountId: 'expense',
+    amount: Money(minorUnits: 10000),
+  ),
+];

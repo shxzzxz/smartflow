@@ -348,7 +348,7 @@ TransactionDetail _detail() {
       sourceKind: SourceKind.manual,
     ),
     createdAt: DateTime(2026, 1, 1, 8, 1),
-    details: const [],
+    lines: const [],
     entries: const [
       Entry(
         id: 'entry-cash',
@@ -380,19 +380,28 @@ TransactionDetail _transferDetail() {
       sourceKind: SourceKind.manual,
     ),
     createdAt: DateTime(2026, 1, 1, 8, 1),
-    details: const [
-      TransactionDetailRecord(
-        id: 'transfer-main',
+    lines: const [
+      TransactionLine(
+        id: 'transfer-out',
         transactionId: 'transfer',
         lineNo: 1,
-        type: TransactionDetailType.transferMain,
+        role: TransactionRole.settlementOut,
+        accountId: 'cash',
         amount: Money(minorUnits: 2000),
       ),
-      TransactionDetailRecord(
-        id: 'transfer-fee',
+      TransactionLine(
+        id: 'transfer-in',
         transactionId: 'transfer',
         lineNo: 2,
-        type: TransactionDetailType.transferFee,
+        role: TransactionRole.settlementIn,
+        accountId: 'bank',
+        amount: Money(minorUnits: 2000),
+      ),
+      TransactionLine(
+        id: 'transfer-fee',
+        transactionId: 'transfer',
+        lineNo: 3,
+        role: TransactionRole.fee,
         amount: Money(minorUnits: 300),
       ),
     ],
@@ -422,13 +431,13 @@ TransactionDetail _reimbursementDetail() {
       businessPurpose: BusinessPurpose.reimbursementAdvance,
       occurredAt: DateTime(2026, 1, 1, 8),
       primaryAmount: const Money(minorUnits: 10000),
-      reimbursementExpenseAccountId: 'food',
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
+      lines: _reimbursementLines,
     ),
     createdAt: DateTime(2026, 1, 1, 8, 1),
-    details: const [],
+    lines: _reimbursementLines,
     entries: const [
       Entry(
         id: 'entry-cash-reimbursement',
@@ -459,7 +468,7 @@ TransactionDetail _combinedReimbursementDetail() {
   return TransactionDetail(
     transaction: detail.transaction,
     createdAt: detail.createdAt,
-    details: detail.details,
+    lines: detail.lines,
     entries: detail.entries,
     children: [
       TransactionListReadModel(
@@ -556,3 +565,14 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
+
+const _reimbursementLines = [
+  TransactionLine(
+    id: 'advance-category',
+    transactionId: 'tx-reimbursement',
+    lineNo: 1,
+    role: TransactionRole.reimbursementExpenseCategory,
+    accountId: 'food',
+    amount: Money(minorUnits: 10000),
+  ),
+];

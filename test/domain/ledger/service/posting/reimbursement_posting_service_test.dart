@@ -52,19 +52,19 @@ void main() {
     );
 
     expect(
-      result.transaction.details
+      result.transaction.lines
           .singleWhere(
             (detail) =>
-                detail.type == TransactionDetailType.reimbursementCloseMain,
+                detail.role == TransactionRole.receivable,
           )
           .amount,
       Money.parse('80.00'),
     );
     expect(
-      result.transaction.details.where(
+      result.transaction.lines.where(
         (detail) =>
-            detail.type == TransactionDetailType.reimbursementGapExpense ||
-            detail.type == TransactionDetailType.reimbursementGapIncome,
+            detail.role == TransactionRole.reimbursementGapExpense ||
+            detail.role == TransactionRole.reimbursementGapIncome,
       ),
       isEmpty,
     );

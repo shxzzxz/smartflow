@@ -50,6 +50,7 @@ class TransactionGroupRewriteService {
            TransactionGroupRewritePlanner(
              postingEngine: postingEngine,
              postingInstructionResolver: postingInstructionResolver,
+             systemAccountResolver: systemAccountResolver,
            );
 
   final TransactionGroupRepository _transactionGroupRepository;
@@ -73,14 +74,8 @@ class TransactionGroupRewriteService {
 
     final currentGroup = _currentGroup(rootGroup!);
     final currentParent = currentGroup.parentTransaction;
-    final currentAccounts = await _accountRepository.findByIds(
-      currentParent.accountIds,
-    );
     final currentInstruction = _postingInstructionResolver.resolve(
       currentParent,
-      accountsById: {
-        for (final account in currentAccounts) account.id: account,
-      },
     );
     final editedInstruction = instruction.editPatch.applyTo(currentInstruction);
     final candidateParent = await _postingService.createCandidate(
@@ -293,15 +288,14 @@ class TransactionGroupRewriteService {
     );
     final group = target.group;
     final currentClose = target.child;
-    final outstanding =
-        _detailAmount(
-          currentClose,
-          TransactionDetailType.reimbursementCloseMain,
-        ) ??
-        Money.zero();
+    // 待核销与实收都来自交易组与自有分项,不从结束报销的派生分项反算。
+    final outstanding = group.reimbursementOutstandingExcluding(
+      currentClose.id,
+    );
     final actual =
         instruction.actualReceivedAmount ??
-        _reimbursementCloseActualAmount(currentClose);
+        currentClose.amountOf(TransactionRole.settlementIn) ??
+        Money.zero();
     final accounts = _resolveReimbursementAccounts(
       child: currentClose,
       receiveAccountId: instruction.receiveAccountId,
@@ -433,9 +427,9 @@ class TransactionGroupRewriteService {
     required LedgerViolationReason unresolvedViolation,
   }) {
     final resolvedReceiveAccountId =
-        receiveAccountId ?? _firstEntryAccount(child, EntryDirection.debit);
+        receiveAccountId ?? child.accountOf(TransactionRole.settlementIn);
     final resolvedReceivableAccountId =
-        receivableAccountId ?? _firstEntryAccount(child, EntryDirection.credit);
+        receivableAccountId ?? child.accountOf(TransactionRole.receivable);
     if (resolvedReceiveAccountId == null ||
         resolvedReceivableAccountId == null) {
       unresolvedViolation.throwException();
@@ -504,16 +498,6 @@ class TransactionGroupRewriteService {
     );
   }
 
-  String? _firstEntryAccount(
-    Transaction transaction,
-    EntryDirection direction,
-  ) {
-    for (final entry in transaction.entries) {
-      if (entry.direction == direction) return entry.accountId;
-    }
-    return null;
-  }
-
   LedgerViolationReason? _validateParentEditTarget(
     TransactionGroup? group,
     EditParentTransactionInstruction instruction,
@@ -534,34 +518,5 @@ class TransactionGroupRewriteService {
       return LedgerViolationReason.reimbursementParentNotAdvance;
     }
     return null;
-  }
-
-  Money? _detailAmount(Transaction transaction, TransactionDetailType type) {
-    for (final detail in transaction.details) {
-      if (detail.type == type) return detail.amount;
-    }
-    return null;
-  }
-
-  Money _reimbursementCloseActualAmount(Transaction transaction) {
-    final outstanding =
-        _detailAmount(
-          transaction,
-          TransactionDetailType.reimbursementCloseMain,
-        ) ??
-        Money.zero();
-    final gapIncome =
-        _detailAmount(
-          transaction,
-          TransactionDetailType.reimbursementGapIncome,
-        ) ??
-        Money.zero();
-    final gapExpense =
-        _detailAmount(
-          transaction,
-          TransactionDetailType.reimbursementGapExpense,
-        ) ??
-        Money.zero();
-    return outstanding + gapIncome - gapExpense;
   }
 }

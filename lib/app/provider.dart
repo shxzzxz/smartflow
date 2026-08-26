@@ -25,7 +25,7 @@ import '../infrastructure/credit/adapter/ledger_credit_ledger_port.dart';
 import '../infrastructure/credit/adapter/ledger_credit_account_port.dart';
 import '../infrastructure/ledger/repository/drift_posting_repository.dart';
 import '../infrastructure/ledger/repository/drift_system_account_resolver.dart';
-import '../infrastructure/ledger/repository/drift_transaction_detail_read_repository.dart';
+import '../infrastructure/ledger/repository/drift_transaction_line_read_repository.dart';
 import '../infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 import '../infrastructure/ledger/repository/drift_transaction_tag_repository.dart';
 import '../application/ledger/tag/query/port/tag_repository.dart';
@@ -235,8 +235,8 @@ EntryReadRepository entryReadRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-TransactionDetailReadRepository transactionDetailReadRepository(Ref ref) {
-  return DriftTransactionDetailReadRepository(ref.watch(appDatabaseProvider));
+TransactionLineReadRepository transactionDetailReadRepository(Ref ref) {
+  return DriftTransactionLineReadRepository(ref.watch(appDatabaseProvider));
 }
 
 @Riverpod(keepAlive: true)
@@ -406,7 +406,7 @@ TransactionQueryService transactionQueryService(Ref ref) {
   return TransactionQueryServiceImpl(
     transactionRead: ref.watch(transactionReadRepositoryProvider),
     entryRead: ref.watch(entryReadRepositoryProvider),
-    detailRead: ref.watch(transactionDetailReadRepositoryProvider),
+    lineRead: ref.watch(transactionDetailReadRepositoryProvider),
     accountQuery: ref.watch(accountQueryServiceProvider),
     metricsSource: ref.watch(ledgerMetricsSourceProvider),
   );

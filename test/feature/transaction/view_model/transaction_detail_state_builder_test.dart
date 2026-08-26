@@ -190,7 +190,7 @@ TransactionDetailLoaded _build({
       entries: entries,
     ),
     createdAt: DateTime(2026, 7, 23),
-    details: const [],
+    lines: const [],
     entries: entries,
     children: children,
     refundedTotal: refundedTotal,

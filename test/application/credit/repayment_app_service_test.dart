@@ -1215,7 +1215,7 @@ ledger_query.TransactionDetail _transactionDetail({
       sourceKind: ledger_query.SourceKind.manual,
     ),
     createdAt: occurredAt,
-    details: const [],
+    lines: const [],
     entries: const [],
   );
 }

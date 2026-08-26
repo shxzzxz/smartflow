@@ -287,12 +287,12 @@ TransactionDetail _badDebtDetail() => TransactionDetail(
     ],
   ),
   createdAt: DateTime(2026, 8, 20),
-  details: const [
-    TransactionDetailRecord(
+  lines: const [
+    TransactionLine(
       id: 'bad-debt-detail',
       transactionId: 'collection',
       lineNo: 1,
-      type: TransactionDetailType.badDebtMain,
+      role: TransactionRole.receivable,
       amount: Money(minorUnits: 1000),
     ),
   ],
@@ -317,12 +317,12 @@ TransactionDetail _debtReliefDetail() => TransactionDetail(
     ],
   ),
   createdAt: DateTime(2026, 8, 20),
-  details: const [
-    TransactionDetailRecord(
+  lines: const [
+    TransactionLine(
       id: 'debt-relief-detail',
       transactionId: 'collection',
       lineNo: 1,
-      type: TransactionDetailType.debtReliefMain,
+      role: TransactionRole.liability,
       amount: Money(minorUnits: 1000),
     ),
   ],
@@ -350,19 +350,19 @@ TransactionDetail _collectionDetail() {
       entries: entries,
     ),
     createdAt: DateTime(2026, 8, 20),
-    details: const [
-      TransactionDetailRecord(
+    lines: const [
+      TransactionLine(
         id: 'principal',
         transactionId: 'collection',
         lineNo: 1,
-        type: TransactionDetailType.receivableCollectionPrincipal,
+        role: TransactionRole.receivable,
         amount: Money(minorUnits: 10000),
       ),
-      TransactionDetailRecord(
+      TransactionLine(
         id: 'interest-detail',
         transactionId: 'collection',
         lineNo: 2,
-        type: TransactionDetailType.receivableCollectionInterest,
+        role: TransactionRole.interest,
         amount: Money(minorUnits: 10000),
       ),
     ],

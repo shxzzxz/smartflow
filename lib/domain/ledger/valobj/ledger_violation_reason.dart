@@ -112,17 +112,29 @@ enum LedgerViolationReason {
     LedgerErrorCode.categoryInvalidParent,
     'Parent category type must match child category type.',
   ),
-  detailAmountSignInvalid(
+  lineAmountSignInvalid(
     LedgerErrorCode.transactionInvalidCommand,
-    'Detail amount has an invalid sign.',
+    'Transaction line amount has an invalid sign.',
   ),
-  detailTypeNotAllowed(
+  lineRoleNotAllowed(
     LedgerErrorCode.transactionInvalidCommand,
-    'Detail type is not allowed for this transaction purpose.',
+    'Transaction line role is not allowed for this transaction purpose.',
   ),
-  detailsRequired(
+  lineAccountExpectationViolated(
     LedgerErrorCode.transactionInvalidCommand,
-    'A transaction must have at least one detail.',
+    'Transaction line account presence does not match its role.',
+  ),
+  linesRequired(
+    LedgerErrorCode.transactionInvalidCommand,
+    'A transaction must have at least one line.',
+  ),
+  postingSystemAccountMissing(
+    LedgerErrorCode.transactionInvalidCommand,
+    'A system account required by the posting rule was not resolved.',
+  ),
+  postingAccountTypeMissing(
+    LedgerErrorCode.transactionInvalidCommand,
+    'A signed line requires its account type to determine the direction.',
   ),
   entriesNotBalanced(
     LedgerErrorCode.transactionInvalidCommand,
@@ -151,6 +163,22 @@ enum LedgerViolationReason {
   incomeInstructionUnresolvable(
     LedgerErrorCode.transactionPostingFailed,
     'Income accounts cannot be resolved.',
+  ),
+  lendingInstructionUnresolvable(
+    LedgerErrorCode.transactionPostingFailed,
+    'Lending accounts cannot be resolved.',
+  ),
+  receivableCollectionInstructionUnresolvable(
+    LedgerErrorCode.transactionPostingFailed,
+    'Receivable collection accounts cannot be resolved.',
+  ),
+  badDebtInstructionUnresolvable(
+    LedgerErrorCode.transactionPostingFailed,
+    'Bad debt accounts cannot be resolved.',
+  ),
+  debtReliefInstructionUnresolvable(
+    LedgerErrorCode.transactionPostingFailed,
+    'Debt relief accounts cannot be resolved.',
   ),
   openingBalanceNotSupported(
     LedgerErrorCode.accountInvalidCommand,

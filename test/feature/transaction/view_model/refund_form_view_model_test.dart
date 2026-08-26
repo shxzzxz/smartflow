@@ -154,7 +154,7 @@ TransactionDetail _refundDetail() {
       entries: entries,
     ),
     createdAt: DateTime(2026, 7, 2, 9),
-    details: const [],
+    lines: const [],
     entries: entries,
   );
 }
@@ -176,11 +176,11 @@ TransactionDetail _parentDetail({
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
-      reimbursementExpenseAccountId: 'expense',
+      lines: _advanceLines,
       entries: entries,
     ),
     createdAt: DateTime(2026, 7, 1),
-    details: const [],
+    lines: _advanceLines,
     entries: entries,
     children: [
       _child('refund', BusinessPurpose.refund, 3000),
@@ -301,3 +301,14 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
   Future<PostedTransactionResult> editTransfer(EditTransferCommand command) =>
       throw UnimplementedError();
 }
+
+const _advanceLines = [
+  TransactionLine(
+    id: 'advance-category',
+    transactionId: 'parent',
+    lineNo: 1,
+    role: TransactionRole.reimbursementExpenseCategory,
+    accountId: 'expense',
+    amount: Money(minorUnits: 10000),
+  ),
+];

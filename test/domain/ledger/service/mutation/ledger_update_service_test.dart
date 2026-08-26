@@ -121,6 +121,10 @@ class _MemoryTransactionRepository
       throw UnimplementedError();
 
   @override
+  Future<void> updateAll(Iterable<Transaction> transactions) =>
+      throw UnimplementedError();
+
+  @override
   Future<Map<String, int>> countEntriesByAccount(Set<String> accountIds) =>
       throw UnimplementedError();
 

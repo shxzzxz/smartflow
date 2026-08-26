@@ -62,10 +62,9 @@ abstract interface class TransactionReadRepository {
     required Set<BusinessPurpose> purposes,
   });
 
-  Future<Map<String, Map<TransactionDetailType, int>>>
-  aggregateChildDetailAmounts({
+  Future<Map<String, Map<TransactionRole, int>>> aggregateChildLineAmounts({
     required Set<String> parentIds,
-    required Set<TransactionDetailType> detailTypes,
+    required Set<TransactionRole> roles,
   });
 
   Future<Map<String, Map<BusinessPurpose, TransactionChildAggregate>>>
@@ -83,17 +82,17 @@ abstract interface class TransactionReadRepository {
   );
 
   /// 命中 [categoryId] 的顶层交易组：组内任一分录触达该分类，
-  /// 或顶层交易行 reimbursement_expense_account_id 引用该分类。
+  /// 或组内任一交易分项引用该分类。
   Future<List<CategoryTransactionTarget>> findCategoryTransactionTargets(
     String categoryId,
   );
 
   /// 按交易列表稳定排序返回最近一笔命中分类的交易。
   ///
-  /// 分类既可能由分录引用，也可能由报销垫付的显式支出分类字段引用。
+  /// 分类既可能由分录引用，也可能由报销垫付的支出分类分项引用。
   Future<Transaction?> findLatestByCategory(CategoryTransactionQuery query);
 
-  /// 响应 transactions / entries / transaction_details / accounts 表变化；
+  /// 响应 transactions / entries / transaction_lines / accounts 表变化；
   /// 账户与分类快照变化需要触发列表重新投影。
   Stream<void> watchChanges();
 }

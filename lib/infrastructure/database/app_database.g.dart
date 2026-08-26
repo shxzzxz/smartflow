@@ -1959,17 +1959,6 @@ class $TransactionsTable extends Transactions
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
-  static const VerificationMeta _reimbursementExpenseAccountIdMeta =
-      const VerificationMeta('reimbursementExpenseAccountId');
-  @override
-  late final GeneratedColumn<String> reimbursementExpenseAccountId =
-      GeneratedColumn<String>(
-        'reimbursement_expense_account_id',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
   static const VerificationMeta _isExcludedFromStatsMeta =
       const VerificationMeta('isExcludedFromStats');
   @override
@@ -2074,7 +2063,6 @@ class $TransactionsTable extends Transactions
     counterpartyName,
     note,
     parentTransactionId,
-    reimbursementExpenseAccountId,
     isExcludedFromStats,
     isExcludedFromBudget,
     sourceKind,
@@ -2149,15 +2137,6 @@ class $TransactionsTable extends Transactions
         parentTransactionId.isAcceptableOrUnknown(
           data['parent_transaction_id']!,
           _parentTransactionIdMeta,
-        ),
-      );
-    }
-    if (data.containsKey('reimbursement_expense_account_id')) {
-      context.handle(
-        _reimbursementExpenseAccountIdMeta,
-        reimbursementExpenseAccountId.isAcceptableOrUnknown(
-          data['reimbursement_expense_account_id']!,
-          _reimbursementExpenseAccountIdMeta,
         ),
       );
     }
@@ -2252,10 +2231,6 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}parent_transaction_id'],
       ),
-      reimbursementExpenseAccountId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}reimbursement_expense_account_id'],
-      ),
       isExcludedFromStats: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_excluded_from_stats'],
@@ -2315,7 +2290,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final String? counterpartyName;
   final String? note;
   final String? parentTransactionId;
-  final String? reimbursementExpenseAccountId;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
   final SourceKind sourceKind;
@@ -2333,7 +2307,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     this.counterpartyName,
     this.note,
     this.parentTransactionId,
-    this.reimbursementExpenseAccountId,
     required this.isExcludedFromStats,
     required this.isExcludedFromBudget,
     required this.sourceKind,
@@ -2363,11 +2336,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     }
     if (!nullToAbsent || parentTransactionId != null) {
       map['parent_transaction_id'] = Variable<String>(parentTransactionId);
-    }
-    if (!nullToAbsent || reimbursementExpenseAccountId != null) {
-      map['reimbursement_expense_account_id'] = Variable<String>(
-        reimbursementExpenseAccountId,
-      );
     }
     map['is_excluded_from_stats'] = Variable<bool>(isExcludedFromStats);
     map['is_excluded_from_budget'] = Variable<bool>(isExcludedFromBudget);
@@ -2404,10 +2372,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       parentTransactionId: parentTransactionId == null && nullToAbsent
           ? const Value.absent()
           : Value(parentTransactionId),
-      reimbursementExpenseAccountId:
-          reimbursementExpenseAccountId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(reimbursementExpenseAccountId),
       isExcludedFromStats: Value(isExcludedFromStats),
       isExcludedFromBudget: Value(isExcludedFromBudget),
       sourceKind: Value(sourceKind),
@@ -2443,9 +2407,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       parentTransactionId: serializer.fromJson<String?>(
         json['parentTransactionId'],
       ),
-      reimbursementExpenseAccountId: serializer.fromJson<String?>(
-        json['reimbursementExpenseAccountId'],
-      ),
       isExcludedFromStats: serializer.fromJson<bool>(
         json['isExcludedFromStats'],
       ),
@@ -2476,9 +2437,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'counterpartyName': serializer.toJson<String?>(counterpartyName),
       'note': serializer.toJson<String?>(note),
       'parentTransactionId': serializer.toJson<String?>(parentTransactionId),
-      'reimbursementExpenseAccountId': serializer.toJson<String?>(
-        reimbursementExpenseAccountId,
-      ),
       'isExcludedFromStats': serializer.toJson<bool>(isExcludedFromStats),
       'isExcludedFromBudget': serializer.toJson<bool>(isExcludedFromBudget),
       'sourceKind': serializer.toJson<String>(
@@ -2501,7 +2459,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     Value<String?> counterpartyName = const Value.absent(),
     Value<String?> note = const Value.absent(),
     Value<String?> parentTransactionId = const Value.absent(),
-    Value<String?> reimbursementExpenseAccountId = const Value.absent(),
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
     SourceKind? sourceKind,
@@ -2523,9 +2480,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     parentTransactionId: parentTransactionId.present
         ? parentTransactionId.value
         : this.parentTransactionId,
-    reimbursementExpenseAccountId: reimbursementExpenseAccountId.present
-        ? reimbursementExpenseAccountId.value
-        : this.reimbursementExpenseAccountId,
     isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
     isExcludedFromBudget: isExcludedFromBudget ?? this.isExcludedFromBudget,
     sourceKind: sourceKind ?? this.sourceKind,
@@ -2555,9 +2509,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       parentTransactionId: data.parentTransactionId.present
           ? data.parentTransactionId.value
           : this.parentTransactionId,
-      reimbursementExpenseAccountId: data.reimbursementExpenseAccountId.present
-          ? data.reimbursementExpenseAccountId.value
-          : this.reimbursementExpenseAccountId,
       isExcludedFromStats: data.isExcludedFromStats.present
           ? data.isExcludedFromStats.value
           : this.isExcludedFromStats,
@@ -2586,9 +2537,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('counterpartyName: $counterpartyName, ')
           ..write('note: $note, ')
           ..write('parentTransactionId: $parentTransactionId, ')
-          ..write(
-            'reimbursementExpenseAccountId: $reimbursementExpenseAccountId, ',
-          )
           ..write('isExcludedFromStats: $isExcludedFromStats, ')
           ..write('isExcludedFromBudget: $isExcludedFromBudget, ')
           ..write('sourceKind: $sourceKind, ')
@@ -2611,7 +2559,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     counterpartyName,
     note,
     parentTransactionId,
-    reimbursementExpenseAccountId,
     isExcludedFromStats,
     isExcludedFromBudget,
     sourceKind,
@@ -2633,8 +2580,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.counterpartyName == this.counterpartyName &&
           other.note == this.note &&
           other.parentTransactionId == this.parentTransactionId &&
-          other.reimbursementExpenseAccountId ==
-              this.reimbursementExpenseAccountId &&
           other.isExcludedFromStats == this.isExcludedFromStats &&
           other.isExcludedFromBudget == this.isExcludedFromBudget &&
           other.sourceKind == this.sourceKind &&
@@ -2654,7 +2599,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<String?> counterpartyName;
   final Value<String?> note;
   final Value<String?> parentTransactionId;
-  final Value<String?> reimbursementExpenseAccountId;
   final Value<bool> isExcludedFromStats;
   final Value<bool> isExcludedFromBudget;
   final Value<SourceKind> sourceKind;
@@ -2673,7 +2617,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.counterpartyName = const Value.absent(),
     this.note = const Value.absent(),
     this.parentTransactionId = const Value.absent(),
-    this.reimbursementExpenseAccountId = const Value.absent(),
     this.isExcludedFromStats = const Value.absent(),
     this.isExcludedFromBudget = const Value.absent(),
     this.sourceKind = const Value.absent(),
@@ -2693,7 +2636,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.counterpartyName = const Value.absent(),
     this.note = const Value.absent(),
     this.parentTransactionId = const Value.absent(),
-    this.reimbursementExpenseAccountId = const Value.absent(),
     this.isExcludedFromStats = const Value.absent(),
     this.isExcludedFromBudget = const Value.absent(),
     required SourceKind sourceKind,
@@ -2718,7 +2660,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<String>? counterpartyName,
     Expression<String>? note,
     Expression<String>? parentTransactionId,
-    Expression<String>? reimbursementExpenseAccountId,
     Expression<bool>? isExcludedFromStats,
     Expression<bool>? isExcludedFromBudget,
     Expression<String>? sourceKind,
@@ -2740,8 +2681,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (note != null) 'note': note,
       if (parentTransactionId != null)
         'parent_transaction_id': parentTransactionId,
-      if (reimbursementExpenseAccountId != null)
-        'reimbursement_expense_account_id': reimbursementExpenseAccountId,
       if (isExcludedFromStats != null)
         'is_excluded_from_stats': isExcludedFromStats,
       if (isExcludedFromBudget != null)
@@ -2765,7 +2704,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<String?>? counterpartyName,
     Value<String?>? note,
     Value<String?>? parentTransactionId,
-    Value<String?>? reimbursementExpenseAccountId,
     Value<bool>? isExcludedFromStats,
     Value<bool>? isExcludedFromBudget,
     Value<SourceKind>? sourceKind,
@@ -2785,8 +2723,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       counterpartyName: counterpartyName ?? this.counterpartyName,
       note: note ?? this.note,
       parentTransactionId: parentTransactionId ?? this.parentTransactionId,
-      reimbursementExpenseAccountId:
-          reimbursementExpenseAccountId ?? this.reimbursementExpenseAccountId,
       isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
       isExcludedFromBudget: isExcludedFromBudget ?? this.isExcludedFromBudget,
       sourceKind: sourceKind ?? this.sourceKind,
@@ -2830,11 +2766,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     if (parentTransactionId.present) {
       map['parent_transaction_id'] = Variable<String>(
         parentTransactionId.value,
-      );
-    }
-    if (reimbursementExpenseAccountId.present) {
-      map['reimbursement_expense_account_id'] = Variable<String>(
-        reimbursementExpenseAccountId.value,
       );
     }
     if (isExcludedFromStats.present) {
@@ -2882,9 +2813,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('counterpartyName: $counterpartyName, ')
           ..write('note: $note, ')
           ..write('parentTransactionId: $parentTransactionId, ')
-          ..write(
-            'reimbursementExpenseAccountId: $reimbursementExpenseAccountId, ',
-          )
           ..write('isExcludedFromStats: $isExcludedFromStats, ')
           ..write('isExcludedFromBudget: $isExcludedFromBudget, ')
           ..write('sourceKind: $sourceKind, ')
@@ -2899,12 +2827,12 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   }
 }
 
-class $TransactionDetailsTable extends TransactionDetails
-    with TableInfo<$TransactionDetailsTable, TransactionDetailRow> {
+class $TransactionLinesTable extends TransactionLines
+    with TableInfo<$TransactionLinesTable, TransactionLineRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $TransactionDetailsTable(this.attachedDatabase, [this._alias]);
+  $TransactionLinesTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -2935,17 +2863,25 @@ class $TransactionDetailsTable extends TransactionDetails
     requiredDuringInsert: true,
   );
   @override
-  late final GeneratedColumnWithTypeConverter<TransactionDetailType, String>
-  detailType =
+  late final GeneratedColumnWithTypeConverter<TransactionRole, String> role =
       GeneratedColumn<String>(
-        'detail_type',
+        'role',
         aliasedName,
         false,
         type: DriftSqlType.string,
         requiredDuringInsert: true,
-      ).withConverter<TransactionDetailType>(
-        $TransactionDetailsTable.$converterdetailType,
-      );
+      ).withConverter<TransactionRole>($TransactionLinesTable.$converterrole);
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _amountMinorMeta = const VerificationMeta(
     'amountMinor',
   );
@@ -2986,7 +2922,8 @@ class $TransactionDetailsTable extends TransactionDetails
     id,
     transactionId,
     lineNo,
-    detailType,
+    role,
+    accountId,
     amountMinor,
     createdAt,
     updatedAt,
@@ -2995,10 +2932,10 @@ class $TransactionDetailsTable extends TransactionDetails
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'transaction_details';
+  static const String $name = 'transaction_lines';
   @override
   VerificationContext validateIntegrity(
-    Insertable<TransactionDetailRow> instance, {
+    Insertable<TransactionLineRow> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -3026,6 +2963,12 @@ class $TransactionDetailsTable extends TransactionDetails
       );
     } else if (isInserting) {
       context.missing(_lineNoMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
     }
     if (data.containsKey('amount_minor')) {
       context.handle(
@@ -3056,9 +2999,9 @@ class $TransactionDetailsTable extends TransactionDetails
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  TransactionDetailRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+  TransactionLineRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return TransactionDetailRow(
+    return TransactionLineRow(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -3071,11 +3014,15 @@ class $TransactionDetailsTable extends TransactionDetails
         DriftSqlType.int,
         data['${effectivePrefix}line_no'],
       )!,
-      detailType: $TransactionDetailsTable.$converterdetailType.fromSql(
+      role: $TransactionLinesTable.$converterrole.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
-          data['${effectivePrefix}detail_type'],
+          data['${effectivePrefix}role'],
         )!,
+      ),
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
       ),
       amountMinor: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -3093,30 +3040,33 @@ class $TransactionDetailsTable extends TransactionDetails
   }
 
   @override
-  $TransactionDetailsTable createAlias(String alias) {
-    return $TransactionDetailsTable(attachedDatabase, alias);
+  $TransactionLinesTable createAlias(String alias) {
+    return $TransactionLinesTable(attachedDatabase, alias);
   }
 
-  static JsonTypeConverter2<TransactionDetailType, String, String>
-  $converterdetailType = const EnumNameConverter<TransactionDetailType>(
-    TransactionDetailType.values,
-  );
+  static JsonTypeConverter2<TransactionRole, String, String> $converterrole =
+      const EnumNameConverter<TransactionRole>(TransactionRole.values);
 }
 
-class TransactionDetailRow extends DataClass
-    implements Insertable<TransactionDetailRow> {
+class TransactionLineRow extends DataClass
+    implements Insertable<TransactionLineRow> {
   final String id;
   final String transactionId;
   final int lineNo;
-  final TransactionDetailType detailType;
+  final TransactionRole role;
+
+  /// 用户账户角色必填,规则账户角色恒空——空只表示账户由过账规则按
+  /// `system_key` 解析。
+  final String? accountId;
   final int amountMinor;
   final DateTime createdAt;
   final DateTime updatedAt;
-  const TransactionDetailRow({
+  const TransactionLineRow({
     required this.id,
     required this.transactionId,
     required this.lineNo,
-    required this.detailType,
+    required this.role,
+    this.accountId,
     required this.amountMinor,
     required this.createdAt,
     required this.updatedAt,
@@ -3128,9 +3078,12 @@ class TransactionDetailRow extends DataClass
     map['transaction_id'] = Variable<String>(transactionId);
     map['line_no'] = Variable<int>(lineNo);
     {
-      map['detail_type'] = Variable<String>(
-        $TransactionDetailsTable.$converterdetailType.toSql(detailType),
+      map['role'] = Variable<String>(
+        $TransactionLinesTable.$converterrole.toSql(role),
       );
+    }
+    if (!nullToAbsent || accountId != null) {
+      map['account_id'] = Variable<String>(accountId);
     }
     map['amount_minor'] = Variable<int>(amountMinor);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -3138,30 +3091,34 @@ class TransactionDetailRow extends DataClass
     return map;
   }
 
-  TransactionDetailsCompanion toCompanion(bool nullToAbsent) {
-    return TransactionDetailsCompanion(
+  TransactionLinesCompanion toCompanion(bool nullToAbsent) {
+    return TransactionLinesCompanion(
       id: Value(id),
       transactionId: Value(transactionId),
       lineNo: Value(lineNo),
-      detailType: Value(detailType),
+      role: Value(role),
+      accountId: accountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accountId),
       amountMinor: Value(amountMinor),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
   }
 
-  factory TransactionDetailRow.fromJson(
+  factory TransactionLineRow.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return TransactionDetailRow(
+    return TransactionLineRow(
       id: serializer.fromJson<String>(json['id']),
       transactionId: serializer.fromJson<String>(json['transactionId']),
       lineNo: serializer.fromJson<int>(json['lineNo']),
-      detailType: $TransactionDetailsTable.$converterdetailType.fromJson(
-        serializer.fromJson<String>(json['detailType']),
+      role: $TransactionLinesTable.$converterrole.fromJson(
+        serializer.fromJson<String>(json['role']),
       ),
+      accountId: serializer.fromJson<String?>(json['accountId']),
       amountMinor: serializer.fromJson<int>(json['amountMinor']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -3174,42 +3131,44 @@ class TransactionDetailRow extends DataClass
       'id': serializer.toJson<String>(id),
       'transactionId': serializer.toJson<String>(transactionId),
       'lineNo': serializer.toJson<int>(lineNo),
-      'detailType': serializer.toJson<String>(
-        $TransactionDetailsTable.$converterdetailType.toJson(detailType),
+      'role': serializer.toJson<String>(
+        $TransactionLinesTable.$converterrole.toJson(role),
       ),
+      'accountId': serializer.toJson<String?>(accountId),
       'amountMinor': serializer.toJson<int>(amountMinor),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
-  TransactionDetailRow copyWith({
+  TransactionLineRow copyWith({
     String? id,
     String? transactionId,
     int? lineNo,
-    TransactionDetailType? detailType,
+    TransactionRole? role,
+    Value<String?> accountId = const Value.absent(),
     int? amountMinor,
     DateTime? createdAt,
     DateTime? updatedAt,
-  }) => TransactionDetailRow(
+  }) => TransactionLineRow(
     id: id ?? this.id,
     transactionId: transactionId ?? this.transactionId,
     lineNo: lineNo ?? this.lineNo,
-    detailType: detailType ?? this.detailType,
+    role: role ?? this.role,
+    accountId: accountId.present ? accountId.value : this.accountId,
     amountMinor: amountMinor ?? this.amountMinor,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
-  TransactionDetailRow copyWithCompanion(TransactionDetailsCompanion data) {
-    return TransactionDetailRow(
+  TransactionLineRow copyWithCompanion(TransactionLinesCompanion data) {
+    return TransactionLineRow(
       id: data.id.present ? data.id.value : this.id,
       transactionId: data.transactionId.present
           ? data.transactionId.value
           : this.transactionId,
       lineNo: data.lineNo.present ? data.lineNo.value : this.lineNo,
-      detailType: data.detailType.present
-          ? data.detailType.value
-          : this.detailType,
+      role: data.role.present ? data.role.value : this.role,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
       amountMinor: data.amountMinor.present
           ? data.amountMinor.value
           : this.amountMinor,
@@ -3220,11 +3179,12 @@ class TransactionDetailRow extends DataClass
 
   @override
   String toString() {
-    return (StringBuffer('TransactionDetailRow(')
+    return (StringBuffer('TransactionLineRow(')
           ..write('id: $id, ')
           ..write('transactionId: $transactionId, ')
           ..write('lineNo: $lineNo, ')
-          ..write('detailType: $detailType, ')
+          ..write('role: $role, ')
+          ..write('accountId: $accountId, ')
           ..write('amountMinor: $amountMinor, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -3237,7 +3197,8 @@ class TransactionDetailRow extends DataClass
     id,
     transactionId,
     lineNo,
-    detailType,
+    role,
+    accountId,
     amountMinor,
     createdAt,
     updatedAt,
@@ -3245,41 +3206,44 @@ class TransactionDetailRow extends DataClass
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is TransactionDetailRow &&
+      (other is TransactionLineRow &&
           other.id == this.id &&
           other.transactionId == this.transactionId &&
           other.lineNo == this.lineNo &&
-          other.detailType == this.detailType &&
+          other.role == this.role &&
+          other.accountId == this.accountId &&
           other.amountMinor == this.amountMinor &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
 
-class TransactionDetailsCompanion
-    extends UpdateCompanion<TransactionDetailRow> {
+class TransactionLinesCompanion extends UpdateCompanion<TransactionLineRow> {
   final Value<String> id;
   final Value<String> transactionId;
   final Value<int> lineNo;
-  final Value<TransactionDetailType> detailType;
+  final Value<TransactionRole> role;
+  final Value<String?> accountId;
   final Value<int> amountMinor;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
-  const TransactionDetailsCompanion({
+  const TransactionLinesCompanion({
     this.id = const Value.absent(),
     this.transactionId = const Value.absent(),
     this.lineNo = const Value.absent(),
-    this.detailType = const Value.absent(),
+    this.role = const Value.absent(),
+    this.accountId = const Value.absent(),
     this.amountMinor = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  TransactionDetailsCompanion.insert({
+  TransactionLinesCompanion.insert({
     required String id,
     required String transactionId,
     required int lineNo,
-    required TransactionDetailType detailType,
+    required TransactionRole role,
+    this.accountId = const Value.absent(),
     required int amountMinor,
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -3287,13 +3251,14 @@ class TransactionDetailsCompanion
   }) : id = Value(id),
        transactionId = Value(transactionId),
        lineNo = Value(lineNo),
-       detailType = Value(detailType),
+       role = Value(role),
        amountMinor = Value(amountMinor);
-  static Insertable<TransactionDetailRow> custom({
+  static Insertable<TransactionLineRow> custom({
     Expression<String>? id,
     Expression<String>? transactionId,
     Expression<int>? lineNo,
-    Expression<String>? detailType,
+    Expression<String>? role,
+    Expression<String>? accountId,
     Expression<int>? amountMinor,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -3303,7 +3268,8 @@ class TransactionDetailsCompanion
       if (id != null) 'id': id,
       if (transactionId != null) 'transaction_id': transactionId,
       if (lineNo != null) 'line_no': lineNo,
-      if (detailType != null) 'detail_type': detailType,
+      if (role != null) 'role': role,
+      if (accountId != null) 'account_id': accountId,
       if (amountMinor != null) 'amount_minor': amountMinor,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -3311,21 +3277,23 @@ class TransactionDetailsCompanion
     });
   }
 
-  TransactionDetailsCompanion copyWith({
+  TransactionLinesCompanion copyWith({
     Value<String>? id,
     Value<String>? transactionId,
     Value<int>? lineNo,
-    Value<TransactionDetailType>? detailType,
+    Value<TransactionRole>? role,
+    Value<String?>? accountId,
     Value<int>? amountMinor,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
   }) {
-    return TransactionDetailsCompanion(
+    return TransactionLinesCompanion(
       id: id ?? this.id,
       transactionId: transactionId ?? this.transactionId,
       lineNo: lineNo ?? this.lineNo,
-      detailType: detailType ?? this.detailType,
+      role: role ?? this.role,
+      accountId: accountId ?? this.accountId,
       amountMinor: amountMinor ?? this.amountMinor,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -3345,10 +3313,13 @@ class TransactionDetailsCompanion
     if (lineNo.present) {
       map['line_no'] = Variable<int>(lineNo.value);
     }
-    if (detailType.present) {
-      map['detail_type'] = Variable<String>(
-        $TransactionDetailsTable.$converterdetailType.toSql(detailType.value),
+    if (role.present) {
+      map['role'] = Variable<String>(
+        $TransactionLinesTable.$converterrole.toSql(role.value),
       );
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
     }
     if (amountMinor.present) {
       map['amount_minor'] = Variable<int>(amountMinor.value);
@@ -3367,11 +3338,12 @@ class TransactionDetailsCompanion
 
   @override
   String toString() {
-    return (StringBuffer('TransactionDetailsCompanion(')
+    return (StringBuffer('TransactionLinesCompanion(')
           ..write('id: $id, ')
           ..write('transactionId: $transactionId, ')
           ..write('lineNo: $lineNo, ')
-          ..write('detailType: $detailType, ')
+          ..write('role: $role, ')
+          ..write('accountId: $accountId, ')
           ..write('amountMinor: $amountMinor, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -11668,8 +11640,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AccountGroupsTable accountGroups = $AccountGroupsTable(this);
   late final $AppMetadataTable appMetadata = $AppMetadataTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
-  late final $TransactionDetailsTable transactionDetails =
-      $TransactionDetailsTable(this);
+  late final $TransactionLinesTable transactionLines = $TransactionLinesTable(
+    this,
+  );
   late final $EntriesTable entries = $EntriesTable(this);
   late final $TagsTable tags = $TagsTable(this);
   late final $TransactionTagsTable transactionTags = $TransactionTagsTable(
@@ -11703,7 +11676,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     accountGroups,
     appMetadata,
     transactions,
-    transactionDetails,
+    transactionLines,
     entries,
     tags,
     transactionTags,
@@ -12636,7 +12609,6 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<String?> counterpartyName,
       Value<String?> note,
       Value<String?> parentTransactionId,
-      Value<String?> reimbursementExpenseAccountId,
       Value<bool> isExcludedFromStats,
       Value<bool> isExcludedFromBudget,
       required SourceKind sourceKind,
@@ -12657,7 +12629,6 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String?> counterpartyName,
       Value<String?> note,
       Value<String?> parentTransactionId,
-      Value<String?> reimbursementExpenseAccountId,
       Value<bool> isExcludedFromStats,
       Value<bool> isExcludedFromBudget,
       Value<SourceKind> sourceKind,
@@ -12716,11 +12687,6 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get parentTransactionId => $composableBuilder(
     column: $table.parentTransactionId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get reimbursementExpenseAccountId => $composableBuilder(
-    column: $table.reimbursementExpenseAccountId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12815,12 +12781,6 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get reimbursementExpenseAccountId =>
-      $composableBuilder(
-        column: $table.reimbursementExpenseAccountId,
-        builder: (column) => ColumnOrderings(column),
-      );
-
   ColumnOrderings<bool> get isExcludedFromStats => $composableBuilder(
     column: $table.isExcludedFromStats,
     builder: (column) => ColumnOrderings(column),
@@ -12906,12 +12866,6 @@ class $$TransactionsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get reimbursementExpenseAccountId =>
-      $composableBuilder(
-        column: $table.reimbursementExpenseAccountId,
-        builder: (column) => column,
-      );
-
   GeneratedColumn<bool> get isExcludedFromStats => $composableBuilder(
     column: $table.isExcludedFromStats,
     builder: (column) => column,
@@ -12983,8 +12937,6 @@ class $$TransactionsTableTableManager
                 Value<String?> counterpartyName = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<String?> parentTransactionId = const Value.absent(),
-                Value<String?> reimbursementExpenseAccountId =
-                    const Value.absent(),
                 Value<bool> isExcludedFromStats = const Value.absent(),
                 Value<bool> isExcludedFromBudget = const Value.absent(),
                 Value<SourceKind> sourceKind = const Value.absent(),
@@ -13003,7 +12955,6 @@ class $$TransactionsTableTableManager
                 counterpartyName: counterpartyName,
                 note: note,
                 parentTransactionId: parentTransactionId,
-                reimbursementExpenseAccountId: reimbursementExpenseAccountId,
                 isExcludedFromStats: isExcludedFromStats,
                 isExcludedFromBudget: isExcludedFromBudget,
                 sourceKind: sourceKind,
@@ -13024,8 +12975,6 @@ class $$TransactionsTableTableManager
                 Value<String?> counterpartyName = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<String?> parentTransactionId = const Value.absent(),
-                Value<String?> reimbursementExpenseAccountId =
-                    const Value.absent(),
                 Value<bool> isExcludedFromStats = const Value.absent(),
                 Value<bool> isExcludedFromBudget = const Value.absent(),
                 required SourceKind sourceKind,
@@ -13044,7 +12993,6 @@ class $$TransactionsTableTableManager
                 counterpartyName: counterpartyName,
                 note: note,
                 parentTransactionId: parentTransactionId,
-                reimbursementExpenseAccountId: reimbursementExpenseAccountId,
                 isExcludedFromStats: isExcludedFromStats,
                 isExcludedFromBudget: isExcludedFromBudget,
                 sourceKind: sourceKind,
@@ -13080,32 +13028,34 @@ typedef $$TransactionsTableProcessedTableManager =
       TransactionRow,
       PrefetchHooks Function()
     >;
-typedef $$TransactionDetailsTableCreateCompanionBuilder =
-    TransactionDetailsCompanion Function({
+typedef $$TransactionLinesTableCreateCompanionBuilder =
+    TransactionLinesCompanion Function({
       required String id,
       required String transactionId,
       required int lineNo,
-      required TransactionDetailType detailType,
+      required TransactionRole role,
+      Value<String?> accountId,
       required int amountMinor,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
-typedef $$TransactionDetailsTableUpdateCompanionBuilder =
-    TransactionDetailsCompanion Function({
+typedef $$TransactionLinesTableUpdateCompanionBuilder =
+    TransactionLinesCompanion Function({
       Value<String> id,
       Value<String> transactionId,
       Value<int> lineNo,
-      Value<TransactionDetailType> detailType,
+      Value<TransactionRole> role,
+      Value<String?> accountId,
       Value<int> amountMinor,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
 
-class $$TransactionDetailsTableFilterComposer
-    extends Composer<_$AppDatabase, $TransactionDetailsTable> {
-  $$TransactionDetailsTableFilterComposer({
+class $$TransactionLinesTableFilterComposer
+    extends Composer<_$AppDatabase, $TransactionLinesTable> {
+  $$TransactionLinesTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -13127,14 +13077,15 @@ class $$TransactionDetailsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<
-    TransactionDetailType,
-    TransactionDetailType,
-    String
-  >
-  get detailType => $composableBuilder(
-    column: $table.detailType,
+  ColumnWithTypeConverterFilters<TransactionRole, TransactionRole, String>
+  get role => $composableBuilder(
+    column: $table.role,
     builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<int> get amountMinor => $composableBuilder(
@@ -13153,9 +13104,9 @@ class $$TransactionDetailsTableFilterComposer
   );
 }
 
-class $$TransactionDetailsTableOrderingComposer
-    extends Composer<_$AppDatabase, $TransactionDetailsTable> {
-  $$TransactionDetailsTableOrderingComposer({
+class $$TransactionLinesTableOrderingComposer
+    extends Composer<_$AppDatabase, $TransactionLinesTable> {
+  $$TransactionLinesTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -13177,8 +13128,13 @@ class $$TransactionDetailsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get detailType => $composableBuilder(
-    column: $table.detailType,
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -13198,9 +13154,9 @@ class $$TransactionDetailsTableOrderingComposer
   );
 }
 
-class $$TransactionDetailsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $TransactionDetailsTable> {
-  $$TransactionDetailsTableAnnotationComposer({
+class $$TransactionLinesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TransactionLinesTable> {
+  $$TransactionLinesTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -13218,11 +13174,11 @@ class $$TransactionDetailsTableAnnotationComposer
   GeneratedColumn<int> get lineNo =>
       $composableBuilder(column: $table.lineNo, builder: (column) => column);
 
-  GeneratedColumnWithTypeConverter<TransactionDetailType, String>
-  get detailType => $composableBuilder(
-    column: $table.detailType,
-    builder: (column) => column,
-  );
+  GeneratedColumnWithTypeConverter<TransactionRole, String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
 
   GeneratedColumn<int> get amountMinor => $composableBuilder(
     column: $table.amountMinor,
@@ -13236,59 +13192,58 @@ class $$TransactionDetailsTableAnnotationComposer
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
 
-class $$TransactionDetailsTableTableManager
+class $$TransactionLinesTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $TransactionDetailsTable,
-          TransactionDetailRow,
-          $$TransactionDetailsTableFilterComposer,
-          $$TransactionDetailsTableOrderingComposer,
-          $$TransactionDetailsTableAnnotationComposer,
-          $$TransactionDetailsTableCreateCompanionBuilder,
-          $$TransactionDetailsTableUpdateCompanionBuilder,
+          $TransactionLinesTable,
+          TransactionLineRow,
+          $$TransactionLinesTableFilterComposer,
+          $$TransactionLinesTableOrderingComposer,
+          $$TransactionLinesTableAnnotationComposer,
+          $$TransactionLinesTableCreateCompanionBuilder,
+          $$TransactionLinesTableUpdateCompanionBuilder,
           (
-            TransactionDetailRow,
+            TransactionLineRow,
             BaseReferences<
               _$AppDatabase,
-              $TransactionDetailsTable,
-              TransactionDetailRow
+              $TransactionLinesTable,
+              TransactionLineRow
             >,
           ),
-          TransactionDetailRow,
+          TransactionLineRow,
           PrefetchHooks Function()
         > {
-  $$TransactionDetailsTableTableManager(
+  $$TransactionLinesTableTableManager(
     _$AppDatabase db,
-    $TransactionDetailsTable table,
+    $TransactionLinesTable table,
   ) : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$TransactionDetailsTableFilterComposer($db: db, $table: table),
+              $$TransactionLinesTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$TransactionDetailsTableOrderingComposer($db: db, $table: table),
+              $$TransactionLinesTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$TransactionDetailsTableAnnotationComposer(
-                $db: db,
-                $table: table,
-              ),
+              $$TransactionLinesTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> transactionId = const Value.absent(),
                 Value<int> lineNo = const Value.absent(),
-                Value<TransactionDetailType> detailType = const Value.absent(),
+                Value<TransactionRole> role = const Value.absent(),
+                Value<String?> accountId = const Value.absent(),
                 Value<int> amountMinor = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => TransactionDetailsCompanion(
+              }) => TransactionLinesCompanion(
                 id: id,
                 transactionId: transactionId,
                 lineNo: lineNo,
-                detailType: detailType,
+                role: role,
+                accountId: accountId,
                 amountMinor: amountMinor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -13299,16 +13254,18 @@ class $$TransactionDetailsTableTableManager
                 required String id,
                 required String transactionId,
                 required int lineNo,
-                required TransactionDetailType detailType,
+                required TransactionRole role,
+                Value<String?> accountId = const Value.absent(),
                 required int amountMinor,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => TransactionDetailsCompanion.insert(
+              }) => TransactionLinesCompanion.insert(
                 id: id,
                 transactionId: transactionId,
                 lineNo: lineNo,
-                detailType: detailType,
+                role: role,
+                accountId: accountId,
                 amountMinor: amountMinor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -13322,25 +13279,25 @@ class $$TransactionDetailsTableTableManager
       );
 }
 
-typedef $$TransactionDetailsTableProcessedTableManager =
+typedef $$TransactionLinesTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $TransactionDetailsTable,
-      TransactionDetailRow,
-      $$TransactionDetailsTableFilterComposer,
-      $$TransactionDetailsTableOrderingComposer,
-      $$TransactionDetailsTableAnnotationComposer,
-      $$TransactionDetailsTableCreateCompanionBuilder,
-      $$TransactionDetailsTableUpdateCompanionBuilder,
+      $TransactionLinesTable,
+      TransactionLineRow,
+      $$TransactionLinesTableFilterComposer,
+      $$TransactionLinesTableOrderingComposer,
+      $$TransactionLinesTableAnnotationComposer,
+      $$TransactionLinesTableCreateCompanionBuilder,
+      $$TransactionLinesTableUpdateCompanionBuilder,
       (
-        TransactionDetailRow,
+        TransactionLineRow,
         BaseReferences<
           _$AppDatabase,
-          $TransactionDetailsTable,
-          TransactionDetailRow
+          $TransactionLinesTable,
+          TransactionLineRow
         >,
       ),
-      TransactionDetailRow,
+      TransactionLineRow,
       PrefetchHooks Function()
     >;
 typedef $$EntriesTableCreateCompanionBuilder =
@@ -17499,8 +17456,8 @@ class $AppDatabaseManager {
       $$AppMetadataTableTableManager(_db, _db.appMetadata);
   $$TransactionsTableTableManager get transactions =>
       $$TransactionsTableTableManager(_db, _db.transactions);
-  $$TransactionDetailsTableTableManager get transactionDetails =>
-      $$TransactionDetailsTableTableManager(_db, _db.transactionDetails);
+  $$TransactionLinesTableTableManager get transactionLines =>
+      $$TransactionLinesTableTableManager(_db, _db.transactionLines);
   $$EntriesTableTableManager get entries =>
       $$EntriesTableTableManager(_db, _db.entries);
   $$TagsTableTableManager get tags => $$TagsTableTableManager(_db, _db.tags);

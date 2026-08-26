@@ -97,10 +97,7 @@ Money? transactionTransferFee(TransactionDetail detail) {
   if (detail.transaction.businessPurpose != BusinessPurpose.transfer) {
     return null;
   }
-  final amount = sumTransactionDetailAmount(
-    detail,
-    TransactionDetailType.transferFee,
-  );
+  final amount = sumTransactionLineAmount(detail, TransactionRole.fee);
   return amount.minorUnits > 0 ? amount : null;
 }
 
@@ -166,7 +163,9 @@ Account? _resolveCategoryAccount(
     return entry == null ? null : accountLookup.accountOf(entry);
   }
   if (purpose == BusinessPurpose.reimbursementAdvance) {
-    final expenseId = detail.transaction.reimbursementExpenseAccountId;
+    final expenseId = detail.transaction.accountOf(
+      TransactionRole.reimbursementExpenseCategory,
+    );
     if (expenseId != null) {
       return accountLookup.find(expenseId);
     }

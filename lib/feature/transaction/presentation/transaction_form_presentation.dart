@@ -99,7 +99,9 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         ),
       );
     case BusinessPurpose.reimbursementAdvance:
-      final categoryId = transaction.reimbursementExpenseAccountId;
+      final categoryId = transaction.accountOf(
+        TransactionRole.reimbursementExpenseCategory,
+      );
       return TransactionFormEditSnapshot(
         mode: TransactionFormMode.expense,
         amountText: amountText,
@@ -146,7 +148,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
       return TransactionFormEditSnapshot(
         mode: TransactionFormMode.transfer,
         amountText: amountText,
-        feeText: _detailAmountText(detail, TransactionDetailType.transferFee),
+        feeText: _lineAmountText(detail, TransactionRole.fee),
         noteText: noteText,
         occurredAt: transaction.occurredAt,
         excludeStats: false,
@@ -219,8 +221,8 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
   }
 }
 
-String _detailAmountText(TransactionDetail detail, TransactionDetailType type) {
-  final amount = sumTransactionDetailAmount(detail, type);
+String _lineAmountText(TransactionDetail detail, TransactionRole role) {
+  final amount = sumTransactionLineAmount(detail, role);
   if (amount.minorUnits <= 0) return '';
   return formatMoney(amount, style: MoneyFormatStyle.plain);
 }

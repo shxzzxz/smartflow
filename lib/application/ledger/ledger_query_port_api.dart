@@ -7,7 +7,7 @@ export 'account/query/account_query_repository.dart';
 export 'budget/query/port/budget_query_source.dart';
 export 'metrics/query/port/ledger_metrics_source.dart';
 export 'transaction/query/port/entry_read_repository.dart';
-export 'transaction/query/port/transaction_detail_read_repository.dart';
+export 'transaction/query/port/transaction_line_read_repository.dart';
 export 'transaction/query/port/transaction_read_repository.dart';
 export 'transaction/query/transaction_queries.dart';
 export 'transaction/query/transaction_read_models.dart';

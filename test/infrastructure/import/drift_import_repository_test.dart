@@ -13,19 +13,19 @@ void main() {
       final database = createTestDatabase();
       addTearDown(database.close);
 
-      final version =
-          await database.customSelect('PRAGMA user_version').getSingle();
-      expect(version.read<int>('user_version'), 28);
+      final version = await database
+          .customSelect('PRAGMA user_version')
+          .getSingle();
+      expect(version.read<int>('user_version'), 29);
 
       for (final table in [
         'import_entity_mappings',
         'import_batches',
         'import_batch_items',
       ]) {
-        final rows =
-            await database
-                .customSelect('PRAGMA foreign_key_list($table)')
-                .get();
+        final rows = await database
+            .customSelect('PRAGMA foreign_key_list($table)')
+            .get();
         expect(rows, isEmpty, reason: '$table must not declare foreign keys');
       }
     },

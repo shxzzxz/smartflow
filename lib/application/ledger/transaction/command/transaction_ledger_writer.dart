@@ -110,7 +110,7 @@ class TransactionLedgerWriter {
     TransactionUpdateResult update,
   ) async {
     return _transactionRunner.run(() async {
-      await _transactionRepository.saveAll(update.transactions);
+      await _transactionRepository.updateAll(update.transactions);
       await _accountRepository.saveAll(update.accounts);
       return PostedTransactionResult(
         transactionId: update.currentTransaction.id,

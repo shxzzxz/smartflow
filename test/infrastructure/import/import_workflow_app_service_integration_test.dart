@@ -38,7 +38,7 @@ import 'package:smartflow/infrastructure/ledger/repository/drift_entry_read_repo
 import 'package:smartflow/infrastructure/ledger/repository/drift_ledger_metrics_source.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_posting_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_system_account_resolver.dart';
-import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_detail_read_repository.dart';
+import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_line_read_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 
 import '../../helper/sequential_id_generator.dart';
@@ -797,14 +797,15 @@ void main() {
       );
 
       expect(result.batch?.importedGroupCount, 1);
-      final details = await fixture.database
-          .select(fixture.database.transactionDetails)
+      final lines = await fixture.database
+          .select(fixture.database.transactionLines)
           .get();
       expect(
-        details.map((detail) => (detail.detailType, detail.amountMinor)),
+        lines.map((line) => (line.role, line.amountMinor)),
         containsAll([
-          (TransactionDetailType.transferMain, 2700),
-          (TransactionDetailType.transferFee, 300),
+          (TransactionRole.settlementOut, 2700),
+          (TransactionRole.settlementIn, 2700),
+          (TransactionRole.fee, 300),
         ]),
       );
       expect(
@@ -1365,7 +1366,7 @@ class _Fixture {
     final transactionQuery = TransactionQueryServiceImpl(
       transactionRead: DriftTransactionReadRepository(database),
       entryRead: DriftEntryReadRepository(database),
-      detailRead: DriftTransactionDetailReadRepository(database),
+      lineRead: DriftTransactionLineReadRepository(database),
       accountQuery: accountQuery,
       metricsSource: DriftLedgerMetricsSource(database),
     );

@@ -95,7 +95,6 @@ void main() {
           'latest-reimbursement',
           DateTime(2026, 4, 4),
           businessPurpose: BusinessPurpose.reimbursementAdvance,
-          reimbursementExpenseAccountId: 'food',
         ),
         _transactionCompanionAt('newer-unrelated', DateTime(2026, 4, 3)),
         _transactionCompanionAt('old-expense', DateTime(2026, 4, 2)),
@@ -114,6 +113,18 @@ void main() {
         _entryCompanion('old-food', 'old-expense', 'food'),
         _entryCompanion('old-cash', 'old-expense', 'cash'),
       ]);
+      // 报销垫付的支出分类只在分项上,不产生分录。
+      batch.insert(
+        database.transactionLines,
+        TransactionLinesCompanion.insert(
+          id: 'latest-category-line',
+          transactionId: 'latest-reimbursement',
+          lineNo: 1,
+          role: TransactionRole.reimbursementExpenseCategory,
+          accountId: const Value('food'),
+          amountMinor: 100,
+        ),
+      );
     });
 
     final transaction = await DriftTransactionReadRepository(
@@ -199,7 +210,6 @@ TransactionsCompanion _transactionCompanionAt(
   DateTime occurredAt, {
   BusinessPurpose businessPurpose = BusinessPurpose.dailyExpense,
   String? parentTransactionId,
-  String? reimbursementExpenseAccountId,
 }) => TransactionsCompanion.insert(
   id: id,
   businessPurpose: businessPurpose,
@@ -208,7 +218,6 @@ TransactionsCompanion _transactionCompanionAt(
   primaryAmountMinor: 100,
   sourceKind: SourceKind.manual,
   parentTransactionId: Value(parentTransactionId),
-  reimbursementExpenseAccountId: Value(reimbursementExpenseAccountId),
 );
 
 EntriesCompanion _entryCompanion(

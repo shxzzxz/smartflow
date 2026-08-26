@@ -22,29 +22,25 @@ enum BusinessPurpose {
   balanceAdjustment,
 }
 
-enum TransactionDetailType {
-  primaryExpense,
-  primaryIncome,
-  transferMain,
-  transferFee,
-  refundMain,
-  reimbursementAdvanceMain,
-  reimbursementReceiptMain,
-  reimbursementCloseMain,
-  reimbursementGapExpense,
+/// 交易分项在业务语言中的身份。
+///
+/// 角色按语义收敛，不按 [BusinessPurpose] 划分——用途已在交易行上。
+/// 合法的用途 × 角色组合、过账方向与账户来源由 `posting_rule.dart` 约束。
+enum TransactionRole {
+  category,
+  settlementIn,
+  settlementOut,
+  receivable,
+  liability,
+  interest,
+  fee,
+  discount,
+  refundOffset,
+  reimbursementExpenseCategory,
   reimbursementGapIncome,
-  repaymentPrincipal,
-  repaymentInterest,
-  repaymentFee,
-  repaymentDiscount,
-  borrowingPrincipal,
-  lendingPrincipal,
-  receivableCollectionPrincipal,
-  receivableCollectionInterest,
-  badDebtMain,
-  debtReliefMain,
-  openingBalanceMain,
-  balanceAdjustmentMain,
+  reimbursementGapExpense,
+  openingBalance,
+  balanceAdjustment,
 }
 
 enum SourceKind { manual, import, auto }

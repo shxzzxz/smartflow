@@ -27,10 +27,10 @@ void main() {
 
       expect(transaction.businessPurpose, BusinessPurpose.dailyExpense);
       expect(transaction.postedAt, transaction.occurredAt);
-      expect(
-        transaction.details.single.type,
-        TransactionDetailType.primaryExpense,
-      );
+      expect(transaction.lines.map((line) => line.role), [
+        TransactionRole.category,
+        TransactionRole.settlementOut,
+      ]);
       expect(entriesAreBalanced(transaction.entries), isTrue);
       expect(
         transaction.entries.map((entry) => (entry.accountId, entry.direction)),
@@ -137,16 +137,18 @@ void main() {
           paidFromAccountId: 'cash',
           occurredAt: DateTime(2026, 5, 1),
         ),
-        interestExpenseAccountId: 'interest-expense',
+        systemAccountIds: const {
+          SystemKey.interestExpense: 'interest-expense',
+        },
       );
 
       expect(transaction.businessPurpose, BusinessPurpose.debtRepayment);
       expect(entriesAreBalanced(transaction.entries), isTrue);
       expect(
-        transaction.details.first.type,
-        TransactionDetailType.repaymentPrincipal,
+        transaction.lines.first.role,
+        TransactionRole.liability,
       );
-      expect(transaction.details.first.amount, Money.zero());
+      expect(transaction.lines.first.amount, Money.zero());
       final resolved = const DefaultPostingInstructionResolver().resolve(
         transaction,
       );

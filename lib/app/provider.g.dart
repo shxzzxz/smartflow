@@ -1232,11 +1232,11 @@ final transactionDetailReadRepositoryProvider =
 final class TransactionDetailReadRepositoryProvider
     extends
         $FunctionalProvider<
-          TransactionDetailReadRepository,
-          TransactionDetailReadRepository,
-          TransactionDetailReadRepository
+          TransactionLineReadRepository,
+          TransactionLineReadRepository,
+          TransactionLineReadRepository
         >
-    with $Provider<TransactionDetailReadRepository> {
+    with $Provider<TransactionLineReadRepository> {
   TransactionDetailReadRepositoryProvider._()
     : super(
         from: null,
@@ -1253,20 +1253,20 @@ final class TransactionDetailReadRepositoryProvider
 
   @$internal
   @override
-  $ProviderElement<TransactionDetailReadRepository> $createElement(
+  $ProviderElement<TransactionLineReadRepository> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  TransactionDetailReadRepository create(Ref ref) {
+  TransactionLineReadRepository create(Ref ref) {
     return transactionDetailReadRepository(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(TransactionDetailReadRepository value) {
+  Override overrideWithValue(TransactionLineReadRepository value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<TransactionDetailReadRepository>(
+      providerOverride: $SyncValueProvider<TransactionLineReadRepository>(
         value,
       ),
     );
@@ -1274,7 +1274,7 @@ final class TransactionDetailReadRepositoryProvider
 }
 
 String _$transactionDetailReadRepositoryHash() =>
-    r'da8e89f2b6c9563e8f6d4440db8bc7bc2fdd0d26';
+    r'724408d1d8008044f426c754fda7fed4a0efc7f5';
 
 @ProviderFor(ledgerMetricsSource)
 final ledgerMetricsSourceProvider = LedgerMetricsSourceProvider._();

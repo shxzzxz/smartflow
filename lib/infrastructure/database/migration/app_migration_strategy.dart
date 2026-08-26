@@ -6,6 +6,8 @@ import 'package:logging/logging.dart';
 import '../app_database.dart';
 import '../builtin_data.dart';
 import 'account_profile_migration_error.dart';
+import 'transaction_line_migration.dart';
+import 'transaction_line_migration_error.dart';
 
 final _logger = Logger('infra.database');
 
@@ -91,6 +93,22 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         }
         await _normalizeReceivablePayableBudgetFlags(database);
       }
+      if (from < 29) {
+        try {
+          // 分项回填需要按 system_key 复现分录。跨多个版本直接升级时，
+          // 先把内置账户补到当前版本，再执行逐笔重放校验。
+          await ensureBuiltinData(database);
+          await migrateTransactionLines(database, migrator);
+          await _createTransactionRowIndexes(database);
+        } on TransactionLineMigrationError catch (error, stackTrace) {
+          _logger.severe(
+            'Transaction line migration failed: $error',
+            error,
+            stackTrace,
+          );
+          rethrow;
+        }
+      }
     },
   );
 }
@@ -106,8 +124,7 @@ Future<void> _normalizeReceivablePayableBudgetFlags(
 }
 
 Future<void> _standardizeAccountProfiles(AppDatabase database) async {
-  final rows =
-      await database.customSelect('''
+  final rows = await database.customSelect('''
 SELECT a.id,
        a.account_type,
        a.account_subtype,
@@ -195,16 +212,15 @@ ORDER BY a.id
           subtype: 'loan',
           profile: null,
         ),
-        _ =>
-          throw _accountProfileMigrationError(
-            accountId: id,
-            reason: AccountProfileMigrationFailureReason.unknownAccountSubtype,
-            accountType: type,
-            accountSubtype: subtype,
-            accountProfileKey: profile,
-            creditKind: creditKind,
-            source: source,
-          ),
+        _ => throw _accountProfileMigrationError(
+          accountId: id,
+          reason: AccountProfileMigrationFailureReason.unknownAccountSubtype,
+          accountType: type,
+          accountSubtype: subtype,
+          accountProfileKey: profile,
+          creditKind: creditKind,
+          source: source,
+        ),
       };
       candidates.add(candidate);
     }
@@ -232,16 +248,15 @@ ORDER BY a.id
           subtype: 'loan',
           profile: 'credit.loan',
         ),
-        _ =>
-          throw _accountProfileMigrationError(
-            accountId: id,
-            reason: AccountProfileMigrationFailureReason.unknownCreditKind,
-            accountType: type,
-            accountSubtype: subtype,
-            accountProfileKey: profile,
-            creditKind: creditKind,
-            source: source,
-          ),
+        _ => throw _accountProfileMigrationError(
+          accountId: id,
+          reason: AccountProfileMigrationFailureReason.unknownCreditKind,
+          accountType: type,
+          accountSubtype: subtype,
+          accountProfileKey: profile,
+          creditKind: creditKind,
+          source: source,
+        ),
       });
     }
 
@@ -270,8 +285,10 @@ ORDER BY a.id
         source: source,
       );
     }
-    final inferredProfiles =
-        candidates.map((item) => item.profile).whereType<String>().toSet();
+    final inferredProfiles = candidates
+        .map((item) => item.profile)
+        .whereType<String>()
+        .toSet();
     if (inferredProfiles.length > 1) {
       throw _accountProfileMigrationError(
         accountId: id,
@@ -367,22 +384,20 @@ _AccountClassification _classificationForProfile({
       subtype: 'loan',
       profile: 'credit.loan',
     ),
-    _ =>
-      throw _accountProfileMigrationError(
-        accountId: accountId,
-        reason: AccountProfileMigrationFailureReason.unknownAccountProfile,
-        accountType: accountType,
-        accountSubtype: subtype,
-        accountProfileKey: profile,
-        creditKind: creditKind,
-        source: source,
-      ),
+    _ => throw _accountProfileMigrationError(
+      accountId: accountId,
+      reason: AccountProfileMigrationFailureReason.unknownAccountProfile,
+      accountType: accountType,
+      accountSubtype: subtype,
+      accountProfileKey: profile,
+      creditKind: creditKind,
+      source: source,
+    ),
   };
 }
 
 Future<void> _validateStandardizedAccounts(AppDatabase database) async {
-  final invalid =
-      await database.customSelect('''
+  final invalid = await database.customSelect('''
 SELECT id, account_type, account_subtype, account_profile_key, source
 FROM accounts
 WHERE (account_type = 'asset' AND account_subtype NOT IN ('fund', 'receivable'))
@@ -456,8 +471,9 @@ Future<bool> _hasColumn(
   String tableName,
   String columnName,
 ) async {
-  final columns =
-      await database.customSelect('PRAGMA table_info($tableName)').get();
+  final columns = await database
+      .customSelect('PRAGMA table_info($tableName)')
+      .get();
   return columns.any((row) => row.read<String>('name') == columnName);
 }
 
@@ -551,6 +567,7 @@ Future<void> _createCurrentSchema(
     'WHERE account_id IS NOT NULL',
   );
   await _createTransactionRowIndexes(database);
+  await createTransactionLineIndexes(database);
   await database.customStatement(
     'CREATE INDEX entries_transaction_idx ON entries (transaction_id)',
   );
@@ -874,8 +891,7 @@ Future<void> _createImportIndexes(AppDatabase database) async {
 Future<void> _validateExternalTransactionReferences(
   AppDatabase database,
 ) async {
-  final row =
-      await database.customSelect('''
+  final row = await database.customSelect('''
 SELECT
   (SELECT COUNT(*)
    FROM repayments AS repayment

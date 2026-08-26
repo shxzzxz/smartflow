@@ -65,12 +65,12 @@ void main() {
     final detail = _detail(
       purpose: BusinessPurpose.transfer,
       entries: const [],
-      details: const [
-        TransactionDetailRecord(
+      lines: const [
+        TransactionLine(
           id: 'fee',
           transactionId: 'transaction',
           lineNo: 2,
-          type: TransactionDetailType.transferFee,
+          role: TransactionRole.fee,
           amount: Money(minorUnits: 300),
         ),
       ],
@@ -83,12 +83,12 @@ void main() {
     final detail = _detail(
       purpose: BusinessPurpose.transfer,
       entries: const [],
-      details: const [
-        TransactionDetailRecord(
+      lines: const [
+        TransactionLine(
           id: 'fee',
           transactionId: 'transaction',
           lineNo: 2,
-          type: TransactionDetailType.transferFee,
+          role: TransactionRole.fee,
           amount: Money(minorUnits: 0),
         ),
       ],
@@ -114,7 +114,7 @@ Account _account(
 TransactionDetail _detail({
   required BusinessPurpose purpose,
   required List<Entry> entries,
-  List<TransactionDetailRecord> details = const [],
+  List<TransactionLine> lines = const [],
 }) => TransactionDetail(
   transaction: Transaction(
     id: 'transaction',
@@ -127,7 +127,7 @@ TransactionDetail _detail({
     entries: entries,
   ),
   createdAt: DateTime(2026, 8, 20),
-  details: details,
+  lines: lines,
   entries: entries,
 );
 

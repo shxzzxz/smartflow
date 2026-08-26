@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_rule.dart';
@@ -28,10 +27,10 @@ void main() {
     expect(transaction.businessPurpose, BusinessPurpose.lending);
     expect(transaction.primaryAmount, Money.parse('200'));
     expect(transaction.isExcludedFromBudget, isFalse);
-    expect(
-      transaction.details.single.type,
-      TransactionDetailType.lendingPrincipal,
-    );
+    expect(transaction.lines.map((line) => line.role), [
+      TransactionRole.receivable,
+      TransactionRole.settlementOut,
+    ]);
     expect(entriesAreBalanced(transaction.entries), isTrue);
     expect(
       transaction.entries.map((entry) => (entry.accountId, entry.direction)),
@@ -51,13 +50,14 @@ void main() {
         receiveAccountId: 'fund',
         occurredAt: DateTime(2026, 8, 20),
       ),
-      interestIncomeAccountId: 'interest-income',
+      systemAccountIds: const {SystemKey.interestIncome: 'interest-income'},
     );
     expect(transaction.primaryAmount, Money.parse('85'));
     expect(transaction.isExcludedFromBudget, isFalse);
-    expect(transaction.details.map((item) => item.type), [
-      TransactionDetailType.receivableCollectionPrincipal,
-      TransactionDetailType.receivableCollectionInterest,
+    expect(transaction.lines.map((line) => line.role), [
+      TransactionRole.receivable,
+      TransactionRole.interest,
+      TransactionRole.settlementIn,
     ]);
     expect(entriesAreBalanced(transaction.entries), isTrue);
 
@@ -69,59 +69,34 @@ void main() {
         occurredAt: DateTime(2026, 8, 20),
       ),
     );
-    expect(withoutInterest.details, hasLength(1));
+    expect(withoutInterest.lines, hasLength(2));
     expect(withoutInterest.entries, hasLength(2));
   });
 
-  test(
-    'collection resolution uses account role when principal equals interest',
-    () {
-      final transaction = engine.createReceivableCollection(
-        ReceivableCollectionInstruction(
-          principal: Money.parse('50'),
-          interest: Money.parse('50'),
-          receivableAccountId: 'receivable',
-          receiveAccountId: 'fund',
-          occurredAt: DateTime(2026, 8, 20),
-        ),
-        interestIncomeAccountId: 'interest-income',
-      );
-      final persisted = transaction.copyWith(
-        entries: transaction.entries.reversed.toList(),
-      );
+  test('collection resolution reads lines, not entry order', () {
+    final transaction = engine.createReceivableCollection(
+      ReceivableCollectionInstruction(
+        principal: Money.parse('50'),
+        interest: Money.parse('50'),
+        receivableAccountId: 'receivable',
+        receiveAccountId: 'fund',
+        occurredAt: DateTime(2026, 8, 20),
+      ),
+      systemAccountIds: const {SystemKey.interestIncome: 'interest-income'},
+    );
+    final persisted = transaction.copyWith(
+      entries: transaction.entries.reversed.toList(),
+    );
 
-      final resolved =
-          const DefaultPostingInstructionResolver().resolve(
-                persisted,
-                accountsById: {
-                  'receivable': Account(
-                    id: 'receivable',
-                    name: '应收',
-                    type: AccountType.asset,
-                    subtype: AccountSubtype.receivable,
-                    balance: Money.zero(),
-                  ),
-                  'fund': Account(
-                    id: 'fund',
-                    name: '资金',
-                    type: AccountType.asset,
-                    subtype: AccountSubtype.fund,
-                    balance: Money.zero(),
-                  ),
-                  'interest-income': Account(
-                    id: 'interest-income',
-                    name: '利息收入',
-                    type: AccountType.income,
-                    balance: Money.zero(),
-                  ),
-                },
-              )
-              as ReceivableCollectionInstruction;
+    final resolved =
+        const DefaultPostingInstructionResolver().resolve(persisted)
+            as ReceivableCollectionInstruction;
 
-      expect(resolved.receivableAccountId, 'receivable');
-      expect(resolved.receiveAccountId, 'fund');
-    },
-  );
+    expect(resolved.receivableAccountId, 'receivable');
+    expect(resolved.receiveAccountId, 'fund');
+    expect(resolved.principal, Money.parse('50'));
+    expect(resolved.interest, Money.parse('50'));
+  });
 
   test('bad debt and debt relief use expense and income counterparts', () {
     final badDebt = engine.createBadDebt(
@@ -130,7 +105,7 @@ void main() {
         receivableAccountId: 'receivable',
         occurredAt: DateTime(2026, 8, 20),
       ),
-      badDebtExpenseAccountId: 'bad-debt-expense',
+      systemAccountIds: const {SystemKey.badDebtExpense: 'bad-debt-expense'},
     );
     final relief = engine.createDebtRelief(
       DebtReliefInstruction(
@@ -138,13 +113,13 @@ void main() {
         liabilityAccountId: 'payable',
         occurredAt: DateTime(2026, 8, 20),
       ),
-      debtReliefIncomeAccountId: 'relief-income',
+      systemAccountIds: const {SystemKey.debtReliefIncome: 'relief-income'},
     );
 
     expect(entriesAreBalanced(badDebt.entries), isTrue);
     expect(entriesAreBalanced(relief.entries), isTrue);
-    expect(badDebt.details.single.type, TransactionDetailType.badDebtMain);
-    expect(relief.details.single.type, TransactionDetailType.debtReliefMain);
+    expect(badDebt.lines.single.role, TransactionRole.receivable);
+    expect(relief.lines.single.role, TransactionRole.liability);
     expect(badDebt.isExcludedFromBudget, isFalse);
     expect(relief.isExcludedFromBudget, isFalse);
   });
@@ -156,7 +131,7 @@ void main() {
         receivableAccountId: 'receivable',
         occurredAt: DateTime(2026, 8, 20),
       ),
-      badDebtExpenseAccountId: 'bad-debt-expense',
+      systemAccountIds: const {SystemKey.badDebtExpense: 'bad-debt-expense'},
     );
     badDebt.updateReportingFlags(
       isExcludedFromStats: true,
@@ -174,7 +149,7 @@ void main() {
         liabilityAccountId: 'payable',
         occurredAt: DateTime(2026, 8, 20),
       ),
-      debtReliefIncomeAccountId: 'relief-income',
+      systemAccountIds: const {SystemKey.debtReliefIncome: 'relief-income'},
     );
 
     relief.updateReportingFlags(

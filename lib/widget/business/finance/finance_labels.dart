@@ -46,29 +46,21 @@ String transactionPurposeLabel(BusinessPurpose purpose) {
   };
 }
 
-String transactionDetailTypeLabel(TransactionDetailType type) {
-  return switch (type) {
-    TransactionDetailType.primaryExpense => '支出主体',
-    TransactionDetailType.primaryIncome => '收入主体',
-    TransactionDetailType.transferMain => '转账主体',
-    TransactionDetailType.transferFee => '转账手续费',
-    TransactionDetailType.refundMain => '退款主体',
-    TransactionDetailType.reimbursementAdvanceMain => '报销垫付',
-    TransactionDetailType.reimbursementReceiptMain => '报销到账',
-    TransactionDetailType.reimbursementCloseMain => '结束报销',
-    TransactionDetailType.reimbursementGapExpense => '报销少收差额',
-    TransactionDetailType.reimbursementGapIncome => '报销多收差额',
-    TransactionDetailType.repaymentPrincipal => '还款本金',
-    TransactionDetailType.repaymentInterest => '还款利息',
-    TransactionDetailType.repaymentFee => '还款手续费',
-    TransactionDetailType.repaymentDiscount => '优惠',
-    TransactionDetailType.borrowingPrincipal => '借入本金',
-    TransactionDetailType.lendingPrincipal => '借出本金',
-    TransactionDetailType.receivableCollectionPrincipal => '收回本金',
-    TransactionDetailType.receivableCollectionInterest => '利息',
-    TransactionDetailType.badDebtMain => '坏账本金',
-    TransactionDetailType.debtReliefMain => '豁免本金',
-    TransactionDetailType.openingBalanceMain => '期初余额',
-    TransactionDetailType.balanceAdjustmentMain => '余额调整',
+String transactionRoleLabel(TransactionRole role) {
+  return switch (role) {
+    TransactionRole.category => '分类',
+    TransactionRole.settlementIn => '收款账户',
+    TransactionRole.settlementOut => '付款账户',
+    TransactionRole.receivable => '应收',
+    TransactionRole.liability => '负债',
+    TransactionRole.interest => '利息',
+    TransactionRole.fee => '手续费',
+    TransactionRole.discount => '优惠',
+    TransactionRole.refundOffset => '退款冲销',
+    TransactionRole.reimbursementExpenseCategory => '报销支出分类',
+    TransactionRole.reimbursementGapExpense => '报销少收差额',
+    TransactionRole.reimbursementGapIncome => '报销多收差额',
+    TransactionRole.openingBalance => '期初余额',
+    TransactionRole.balanceAdjustment => '余额调整',
   };
 }

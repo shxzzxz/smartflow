@@ -3,35 +3,132 @@ import 'package:smartflow/core/money/money.dart';
 import '../../entity/account.dart';
 import '../../entity/entry.dart';
 import '../../entity/transaction.dart';
-import '../../entity/transaction_detail_record.dart';
+import '../../entity/transaction_line.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import 'posting_rule.dart';
 
+/// 过账引擎,分两阶段:
+///
+/// 1. 指令 → 交易分项。需要组上下文(父交易、待核销额)的量由调用方算好后传入。
+/// 2. (交易头 + 分项) → 分录。纯查表,只依赖分项、账户类型与已解析的系统科目。
+///
+/// 引擎自身不解析 `system_key`;规则账户由调用方解析后按 [SystemKey] 传入。
 class PostingEngine {
   const PostingEngine({required IdGenerator idGenerator})
     : _idGenerator = idGenerator;
 
   final IdGenerator _idGenerator;
 
-  Transaction create(PostingInstruction instruction) {
+  /// 阶段二:按过账规则把分项翻译成分录。
+  ///
+  /// 同一账户的多条腿在此合并净额,零额腿不产生分录——转账手续费由转出账户
+  /// 承担,因此转出账户的贷方是转账金额与手续费之和。
+  List<Entry> postEntries({
+    required String transactionId,
+    required BusinessPurpose businessPurpose,
+    required Iterable<TransactionLine> lines,
+    Map<SystemKey, String> systemAccountIds = const {},
+    Map<String, AccountType> accountTypes = const {},
+  }) {
+    final legs = <({String accountId, int signedMinor})>[];
+    for (final line in lines) {
+      final leg = _legFor(
+        businessPurpose: businessPurpose,
+        line: line,
+        systemAccountIds: systemAccountIds,
+        accountTypes: accountTypes,
+      );
+      if (leg != null) legs.add(leg);
+    }
+
+    final imbalance = legs.fold(0, (sum, leg) => sum + leg.signedMinor);
+    if (imbalance != 0) {
+      legs.add(
+        (
+          accountId: _balancingAccountId(
+            businessPurpose: businessPurpose,
+            lines: lines,
+            systemAccountIds: systemAccountIds,
+          ),
+          signedMinor: -imbalance,
+        ),
+      );
+    }
+
+    final netByAccount = <String, int>{};
+    final accountOrder = <String>[];
+    for (final leg in legs) {
+      if (!netByAccount.containsKey(leg.accountId)) {
+        accountOrder.add(leg.accountId);
+      }
+      netByAccount[leg.accountId] =
+          (netByAccount[leg.accountId] ?? 0) + leg.signedMinor;
+    }
+
+    return [
+      for (final accountId in accountOrder)
+        if (netByAccount[accountId] != 0)
+          _entry(
+            transactionId: transactionId,
+            accountId: accountId,
+            direction:
+                netByAccount[accountId]! > 0
+                    ? EntryDirection.debit
+                    : EntryDirection.credit,
+            amount: Money(minorUnits: netByAccount[accountId]!.abs()),
+          ),
+    ];
+  }
+
+  /// 用交易当前的分项重新过账,替换其分录。迁移回填与性质测试的复现入口。
+  Transaction repost(
+    Transaction transaction, {
+    Map<SystemKey, String> systemAccountIds = const {},
+    Map<String, AccountType> accountTypes = const {},
+  }) {
+    return transaction.copyWith(
+      entries: postEntries(
+        transactionId: transaction.id,
+        businessPurpose: transaction.businessPurpose,
+        lines: transaction.lines,
+        systemAccountIds: systemAccountIds,
+        accountTypes: accountTypes,
+      ),
+    );
+  }
+
+  Transaction create(
+    PostingInstruction instruction, {
+    Map<SystemKey, String> systemAccountIds = const {},
+  }) {
     return switch (instruction) {
       ExpenseInstruction i => createExpense(i),
       IncomeInstruction i => createIncome(i),
       ReimbursementAdvanceInstruction i => createReimbursementAdvance(i),
-      TransferInstruction i => createTransfer(i),
-      RepaymentInstruction i => createRepayment(i),
+      TransferInstruction i => createTransfer(
+        i,
+        systemAccountIds: systemAccountIds,
+      ),
+      RepaymentInstruction i => createRepayment(
+        i,
+        systemAccountIds: systemAccountIds,
+      ),
       BorrowingInstruction i => createBorrowing(i),
       LendingInstruction i => createLending(i),
-      ReceivableCollectionInstruction() =>
-        throw StateError(
-          'Receivable collection requires a resolved interest account.',
-        ),
-      BadDebtInstruction() =>
-        throw StateError('Bad debt requires a resolved expense account.'),
-      DebtReliefInstruction() =>
-        throw StateError('Debt relief requires a resolved income account.'),
+      ReceivableCollectionInstruction i => createReceivableCollection(
+        i,
+        systemAccountIds: systemAccountIds,
+      ),
+      BadDebtInstruction i => createBadDebt(
+        i,
+        systemAccountIds: systemAccountIds,
+      ),
+      DebtReliefInstruction i => createDebtRelief(
+        i,
+        systemAccountIds: systemAccountIds,
+      ),
     };
   }
 
@@ -42,7 +139,7 @@ class PostingEngine {
       );
     }
     final transactionId = _idGenerator.newId();
-    return _validated(
+    return _posted(
       Transaction(
         id: transactionId,
         businessPurpose: BusinessPurpose.dailyExpense,
@@ -55,25 +152,19 @@ class PostingEngine {
         isExcludedFromBudget: instruction.isExcludedFromBudget,
         sourceKind: instruction.sourceKind,
         ownership: instruction.ownership,
-        details: [
-          _detail(
+        lines: [
+          _line(
             transactionId: transactionId,
             lineNo: 1,
-            type: TransactionDetailType.primaryExpense,
-            amount: instruction.amount,
-          ),
-        ],
-        entries: [
-          _entry(
-            transactionId: transactionId,
+            role: TransactionRole.category,
             accountId: instruction.expenseAccountId,
-            direction: EntryDirection.debit,
             amount: instruction.amount,
           ),
-          _entry(
+          _line(
             transactionId: transactionId,
+            lineNo: 2,
+            role: TransactionRole.settlementOut,
             accountId: instruction.paidFromAccountId,
-            direction: EntryDirection.credit,
             amount: instruction.amount,
           ),
         ],
@@ -88,7 +179,7 @@ class PostingEngine {
       );
     }
     final transactionId = _idGenerator.newId();
-    return _validated(
+    return _posted(
       Transaction(
         id: transactionId,
         businessPurpose: BusinessPurpose.dailyIncome,
@@ -101,25 +192,19 @@ class PostingEngine {
         isExcludedFromBudget: instruction.isExcludedFromBudget,
         sourceKind: instruction.sourceKind,
         ownership: instruction.ownership,
-        details: [
-          _detail(
+        lines: [
+          _line(
             transactionId: transactionId,
             lineNo: 1,
-            type: TransactionDetailType.primaryIncome,
-            amount: instruction.amount,
-          ),
-        ],
-        entries: [
-          _entry(
-            transactionId: transactionId,
-            accountId: instruction.receiveAccountId,
-            direction: EntryDirection.debit,
-            amount: instruction.amount,
-          ),
-          _entry(
-            transactionId: transactionId,
+            role: TransactionRole.category,
             accountId: instruction.incomeAccountId,
-            direction: EntryDirection.credit,
+            amount: instruction.amount,
+          ),
+          _line(
+            transactionId: transactionId,
+            lineNo: 2,
+            role: TransactionRole.settlementIn,
+            accountId: instruction.receiveAccountId,
             amount: instruction.amount,
           ),
         ],
@@ -137,7 +222,7 @@ class PostingEngine {
           );
     }
     final transactionId = _idGenerator.newId();
-    return _validated(
+    return _posted(
       Transaction(
         id: transactionId,
         businessPurpose: BusinessPurpose.reimbursementAdvance,
@@ -146,30 +231,31 @@ class PostingEngine {
         primaryAmount: instruction.amount,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
-        reimbursementExpenseAccountId: instruction.expenseAccountId,
         isExcludedFromStats: instruction.isExcludedFromStats,
         isExcludedFromBudget: instruction.isExcludedFromBudget,
         sourceKind: instruction.sourceKind,
         ownership: instruction.ownership,
-        details: [
-          _detail(
+        lines: [
+          // 支出分类在垫付时不产生分录,它在结束报销少收差额时才被使用。
+          _line(
             transactionId: transactionId,
             lineNo: 1,
-            type: TransactionDetailType.reimbursementAdvanceMain,
+            role: TransactionRole.reimbursementExpenseCategory,
+            accountId: instruction.expenseAccountId,
             amount: instruction.amount,
           ),
-        ],
-        entries: [
-          _entry(
+          _line(
             transactionId: transactionId,
+            lineNo: 2,
+            role: TransactionRole.receivable,
             accountId: instruction.receivableAccountId,
-            direction: EntryDirection.debit,
             amount: instruction.amount,
           ),
-          _entry(
+          _line(
             transactionId: transactionId,
+            lineNo: 3,
+            role: TransactionRole.settlementOut,
             accountId: instruction.paidFromAccountId,
-            direction: EntryDirection.credit,
             amount: instruction.amount,
           ),
         ],
@@ -188,7 +274,7 @@ class PostingEngine {
       );
     }
     final transactionId = _idGenerator.newId();
-    return _validated(
+    return _posted(
       Transaction(
         id: transactionId,
         parentTransactionId: parent.id,
@@ -202,25 +288,19 @@ class PostingEngine {
         isExcludedFromBudget: parent.isExcludedFromBudget,
         sourceKind: parent.sourceKind,
         ownership: parent.ownership,
-        details: [
-          _detail(
+        lines: [
+          _line(
             transactionId: transactionId,
             lineNo: 1,
-            type: TransactionDetailType.refundMain,
-            amount: instruction.amount,
-          ),
-        ],
-        entries: [
-          _entry(
-            transactionId: transactionId,
+            role: TransactionRole.settlementIn,
             accountId: instruction.refundToAccountId,
-            direction: EntryDirection.debit,
             amount: instruction.amount,
           ),
-          _entry(
+          _line(
             transactionId: transactionId,
+            lineNo: 2,
+            role: TransactionRole.refundOffset,
             accountId: refundOffsetAccountId,
-            direction: EntryDirection.credit,
             amount: instruction.amount,
           ),
         ],
@@ -230,7 +310,7 @@ class PostingEngine {
 
   Transaction createTransfer(
     TransferInstruction instruction, {
-    String? feeExpenseAccountId,
+    Map<SystemKey, String> systemAccountIds = const {},
   }) {
     final fee = instruction.feeAmount;
     final hasFee = fee != null && fee.minorUnits > 0;
@@ -249,15 +329,14 @@ class PostingEngine {
         message: 'Transfer fee cannot be negative.',
       );
     }
-    if (hasFee && feeExpenseAccountId == null) {
+    if (hasFee && systemAccountIds[SystemKey.feeExpense] == null) {
       return LedgerViolationReason.transferFeeAccountRequired.throwException(
         message: 'Transfer fee account is required.',
       );
     }
 
     final transactionId = _idGenerator.newId();
-    final totalPaid = hasFee ? instruction.amount + fee : instruction.amount;
-    return _validated(
+    return _posted(
       Transaction(
         id: transactionId,
         businessPurpose: BusinessPurpose.transfer,
@@ -269,43 +348,31 @@ class PostingEngine {
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
         sourceKind: instruction.sourceKind,
-        details: [
-          _detail(
+        lines: [
+          _line(
             transactionId: transactionId,
             lineNo: 1,
-            type: TransactionDetailType.transferMain,
-            amount: instruction.amount,
-          ),
-          if (hasFee)
-            _detail(
-              transactionId: transactionId,
-              lineNo: 2,
-              type: TransactionDetailType.transferFee,
-              amount: fee,
-            ),
-        ],
-        entries: [
-          _entry(
-            transactionId: transactionId,
-            accountId: instruction.toAccountId,
-            direction: EntryDirection.debit,
-            amount: instruction.amount,
-          ),
-          if (hasFee)
-            _entry(
-              transactionId: transactionId,
-              accountId: feeExpenseAccountId!,
-              direction: EntryDirection.debit,
-              amount: fee,
-            ),
-          _entry(
-            transactionId: transactionId,
+            role: TransactionRole.settlementOut,
             accountId: instruction.fromAccountId,
-            direction: EntryDirection.credit,
-            amount: totalPaid,
+            amount: instruction.amount,
           ),
+          _line(
+            transactionId: transactionId,
+            lineNo: 2,
+            role: TransactionRole.settlementIn,
+            accountId: instruction.toAccountId,
+            amount: instruction.amount,
+          ),
+          if (hasFee)
+            _line(
+              transactionId: transactionId,
+              lineNo: 3,
+              role: TransactionRole.fee,
+              amount: fee,
+            ),
         ],
       ),
+      systemAccountIds: systemAccountIds,
     );
   }
 
@@ -318,7 +385,7 @@ class PostingEngine {
           .throwException(message: 'Receipt amount must be positive.');
     }
     final transactionId = _idGenerator.newId();
-    return _validated(
+    return _posted(
       Transaction(
         id: transactionId,
         parentTransactionId: advance.id,
@@ -332,25 +399,19 @@ class PostingEngine {
         isExcludedFromBudget: advance.isExcludedFromBudget,
         sourceKind: advance.sourceKind,
         ownership: advance.ownership,
-        details: [
-          _detail(
+        lines: [
+          _line(
             transactionId: transactionId,
             lineNo: 1,
-            type: TransactionDetailType.reimbursementReceiptMain,
-            amount: instruction.amount,
-          ),
-        ],
-        entries: [
-          _entry(
-            transactionId: transactionId,
+            role: TransactionRole.settlementIn,
             accountId: instruction.receiveAccountId,
-            direction: EntryDirection.debit,
             amount: instruction.amount,
           ),
-          _entry(
+          _line(
             transactionId: transactionId,
+            lineNo: 2,
+            role: TransactionRole.receivable,
             accountId: instruction.receivableAccountId,
-            direction: EntryDirection.credit,
             amount: instruction.amount,
           ),
         ],
@@ -360,9 +421,7 @@ class PostingEngine {
 
   Transaction createRepayment(
     RepaymentInstruction instruction, {
-    String? interestExpenseAccountId,
-    String? feeExpenseAccountId,
-    String? discountIncomeAccountId,
+    Map<SystemKey, String> systemAccountIds = const {},
   }) {
     if (instruction.principal.minorUnits < 0) {
       return LedgerViolationReason.repaymentPrincipalNotPositive.throwException(
@@ -375,18 +434,18 @@ class PostingEngine {
     final hasInterest = interest != null && interest.minorUnits > 0;
     final hasFee = fee != null && fee.minorUnits > 0;
     final hasDiscount = discount != null && discount.minorUnits > 0;
-    if (hasInterest && interestExpenseAccountId == null) {
+    if (hasInterest && systemAccountIds[SystemKey.interestExpense] == null) {
       return LedgerViolationReason.repaymentInterestAccountMissing
           .throwException(
             message: 'Interest expense system account is required.',
           );
     }
-    if (hasFee && feeExpenseAccountId == null) {
+    if (hasFee && systemAccountIds[SystemKey.feeExpense] == null) {
       return LedgerViolationReason.repaymentFeeAccountMissing.throwException(
         message: 'Fee expense system account is required.',
       );
     }
-    if (hasDiscount && discountIncomeAccountId == null) {
+    if (hasDiscount && systemAccountIds[SystemKey.discountIncome] == null) {
       return LedgerViolationReason.repaymentDiscountAccountMissing
           .throwException(
             message: 'Discount income system account is required.',
@@ -405,7 +464,7 @@ class PostingEngine {
 
     var lineNo = 1;
     final transactionId = _idGenerator.newId();
-    return _validated(
+    return _posted(
       Transaction(
         id: transactionId,
         businessPurpose: BusinessPurpose.debtRepayment,
@@ -418,71 +477,45 @@ class PostingEngine {
         isExcludedFromBudget: false,
         sourceKind: instruction.sourceKind,
         ownership: instruction.ownership,
-        details: [
-          _detail(
+        lines: [
+          _line(
             transactionId: transactionId,
             lineNo: lineNo++,
-            type: TransactionDetailType.repaymentPrincipal,
-            amount: instruction.principal,
-          ),
-          if (hasInterest)
-            _detail(
-              transactionId: transactionId,
-              lineNo: lineNo++,
-              type: TransactionDetailType.repaymentInterest,
-              amount: interest,
-            ),
-          if (hasFee)
-            _detail(
-              transactionId: transactionId,
-              lineNo: lineNo++,
-              type: TransactionDetailType.repaymentFee,
-              amount: fee,
-            ),
-          if (hasDiscount)
-            _detail(
-              transactionId: transactionId,
-              lineNo: lineNo++,
-              type: TransactionDetailType.repaymentDiscount,
-              amount: discount,
-            ),
-        ],
-        entries: [
-          _entry(
-            transactionId: transactionId,
+            role: TransactionRole.liability,
             accountId: instruction.liabilityAccountId,
-            direction: EntryDirection.debit,
             amount: instruction.principal,
           ),
           if (hasInterest)
-            _entry(
+            _line(
               transactionId: transactionId,
-              accountId: interestExpenseAccountId!,
-              direction: EntryDirection.debit,
+              lineNo: lineNo++,
+              role: TransactionRole.interest,
               amount: interest,
             ),
           if (hasFee)
-            _entry(
+            _line(
               transactionId: transactionId,
-              accountId: feeExpenseAccountId!,
-              direction: EntryDirection.debit,
+              lineNo: lineNo++,
+              role: TransactionRole.fee,
               amount: fee,
             ),
           if (hasDiscount)
-            _entry(
+            _line(
               transactionId: transactionId,
-              accountId: discountIncomeAccountId!,
-              direction: EntryDirection.credit,
+              lineNo: lineNo++,
+              role: TransactionRole.discount,
               amount: discount,
             ),
-          _entry(
+          _line(
             transactionId: transactionId,
+            lineNo: lineNo++,
+            role: TransactionRole.settlementOut,
             accountId: instruction.paidFromAccountId,
-            direction: EntryDirection.credit,
             amount: totalPaid,
           ),
         ],
       ),
+      systemAccountIds: systemAccountIds,
     );
   }
 
@@ -493,7 +526,7 @@ class PostingEngine {
       );
     }
     final transactionId = _idGenerator.newId();
-    return _validated(
+    return _posted(
       Transaction(
         id: transactionId,
         businessPurpose: BusinessPurpose.borrowing,
@@ -506,25 +539,19 @@ class PostingEngine {
         isExcludedFromBudget: false,
         sourceKind: instruction.sourceKind,
         ownership: instruction.ownership,
-        details: [
-          _detail(
+        lines: [
+          _line(
             transactionId: transactionId,
             lineNo: 1,
-            type: TransactionDetailType.borrowingPrincipal,
-            amount: instruction.amount,
-          ),
-        ],
-        entries: [
-          _entry(
-            transactionId: transactionId,
-            accountId: instruction.receiveAccountId,
-            direction: EntryDirection.debit,
-            amount: instruction.amount,
-          ),
-          _entry(
-            transactionId: transactionId,
+            role: TransactionRole.liability,
             accountId: instruction.liabilityAccountId,
-            direction: EntryDirection.credit,
+            amount: instruction.amount,
+          ),
+          _line(
+            transactionId: transactionId,
+            lineNo: 2,
+            role: TransactionRole.settlementIn,
+            accountId: instruction.receiveAccountId,
             amount: instruction.amount,
           ),
         ],
@@ -537,7 +564,7 @@ class PostingEngine {
       return LedgerViolationReason.lendingAmountNotPositive.throwException();
     }
     final transactionId = _idGenerator.newId();
-    return _validated(
+    return _posted(
       Transaction(
         id: transactionId,
         businessPurpose: BusinessPurpose.lending,
@@ -549,25 +576,19 @@ class PostingEngine {
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
         sourceKind: instruction.sourceKind,
-        details: [
-          _detail(
+        lines: [
+          _line(
             transactionId: transactionId,
             lineNo: 1,
-            type: TransactionDetailType.lendingPrincipal,
-            amount: instruction.amount,
-          ),
-        ],
-        entries: [
-          _entry(
-            transactionId: transactionId,
+            role: TransactionRole.receivable,
             accountId: instruction.receivableAccountId,
-            direction: EntryDirection.debit,
             amount: instruction.amount,
           ),
-          _entry(
+          _line(
             transactionId: transactionId,
+            lineNo: 2,
+            role: TransactionRole.settlementOut,
             accountId: instruction.paidFromAccountId,
-            direction: EntryDirection.credit,
             amount: instruction.amount,
           ),
         ],
@@ -577,7 +598,7 @@ class PostingEngine {
 
   Transaction createReceivableCollection(
     ReceivableCollectionInstruction instruction, {
-    String? interestIncomeAccountId,
+    Map<SystemKey, String> systemAccountIds = const {},
   }) {
     if (instruction.principal.minorUnits <= 0 ||
         instruction.interest.minorUnits < 0) {
@@ -585,13 +606,13 @@ class PostingEngine {
           .throwException();
     }
     final hasInterest = instruction.interest.minorUnits > 0;
-    if (hasInterest && interestIncomeAccountId == null) {
+    if (hasInterest && systemAccountIds[SystemKey.interestIncome] == null) {
       return LedgerViolationReason.interestIncomeAccountMissing
           .throwException();
     }
     final total = instruction.principal + instruction.interest;
     final transactionId = _idGenerator.newId();
-    return _validated(
+    return _posted(
       Transaction(
         id: transactionId,
         businessPurpose: BusinessPurpose.receivableCollection,
@@ -603,55 +624,43 @@ class PostingEngine {
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
         sourceKind: instruction.sourceKind,
-        details: [
-          _detail(
+        lines: [
+          _line(
             transactionId: transactionId,
             lineNo: 1,
-            type: TransactionDetailType.receivableCollectionPrincipal,
+            role: TransactionRole.receivable,
+            accountId: instruction.receivableAccountId,
             amount: instruction.principal,
           ),
           if (hasInterest)
-            _detail(
+            _line(
               transactionId: transactionId,
               lineNo: 2,
-              type: TransactionDetailType.receivableCollectionInterest,
+              role: TransactionRole.interest,
               amount: instruction.interest,
             ),
-        ],
-        entries: [
-          _entry(
+          _line(
             transactionId: transactionId,
+            lineNo: hasInterest ? 3 : 2,
+            role: TransactionRole.settlementIn,
             accountId: instruction.receiveAccountId,
-            direction: EntryDirection.debit,
             amount: total,
           ),
-          _entry(
-            transactionId: transactionId,
-            accountId: instruction.receivableAccountId,
-            direction: EntryDirection.credit,
-            amount: instruction.principal,
-          ),
-          if (hasInterest)
-            _entry(
-              transactionId: transactionId,
-              accountId: interestIncomeAccountId!,
-              direction: EntryDirection.credit,
-              amount: instruction.interest,
-            ),
         ],
       ),
+      systemAccountIds: systemAccountIds,
     );
   }
 
   Transaction createBadDebt(
     BadDebtInstruction instruction, {
-    required String badDebtExpenseAccountId,
+    Map<SystemKey, String> systemAccountIds = const {},
   }) {
     if (instruction.amount.minorUnits <= 0) {
       return LedgerViolationReason.badDebtAmountNotPositive.throwException();
     }
     final transactionId = _idGenerator.newId();
-    return _validated(
+    return _posted(
       Transaction(
         id: transactionId,
         businessPurpose: BusinessPurpose.badDebt,
@@ -663,41 +672,29 @@ class PostingEngine {
         isExcludedFromStats: instruction.isExcludedFromStats,
         isExcludedFromBudget: instruction.isExcludedFromBudget,
         sourceKind: instruction.sourceKind,
-        details: [
-          _detail(
+        lines: [
+          _line(
             transactionId: transactionId,
             lineNo: 1,
-            type: TransactionDetailType.badDebtMain,
-            amount: instruction.amount,
-          ),
-        ],
-        entries: [
-          _entry(
-            transactionId: transactionId,
-            accountId: badDebtExpenseAccountId,
-            direction: EntryDirection.debit,
-            amount: instruction.amount,
-          ),
-          _entry(
-            transactionId: transactionId,
+            role: TransactionRole.receivable,
             accountId: instruction.receivableAccountId,
-            direction: EntryDirection.credit,
             amount: instruction.amount,
           ),
         ],
       ),
+      systemAccountIds: systemAccountIds,
     );
   }
 
   Transaction createDebtRelief(
     DebtReliefInstruction instruction, {
-    required String debtReliefIncomeAccountId,
+    Map<SystemKey, String> systemAccountIds = const {},
   }) {
     if (instruction.amount.minorUnits <= 0) {
       return LedgerViolationReason.debtReliefAmountNotPositive.throwException();
     }
     final transactionId = _idGenerator.newId();
-    return _validated(
+    return _posted(
       Transaction(
         id: transactionId,
         businessPurpose: BusinessPurpose.debtRelief,
@@ -709,29 +706,17 @@ class PostingEngine {
         isExcludedFromStats: instruction.isExcludedFromStats,
         isExcludedFromBudget: false,
         sourceKind: instruction.sourceKind,
-        details: [
-          _detail(
+        lines: [
+          _line(
             transactionId: transactionId,
             lineNo: 1,
-            type: TransactionDetailType.debtReliefMain,
-            amount: instruction.amount,
-          ),
-        ],
-        entries: [
-          _entry(
-            transactionId: transactionId,
+            role: TransactionRole.liability,
             accountId: instruction.liabilityAccountId,
-            direction: EntryDirection.debit,
-            amount: instruction.amount,
-          ),
-          _entry(
-            transactionId: transactionId,
-            accountId: debtReliefIncomeAccountId,
-            direction: EntryDirection.credit,
             amount: instruction.amount,
           ),
         ],
       ),
+      systemAccountIds: systemAccountIds,
     );
   }
 
@@ -750,51 +735,32 @@ class PostingEngine {
         message: 'Opening balance amount cannot be zero.',
       );
     }
-    final amount = instruction.amount.abs();
-    final accountDirection = directionForBalanceDelta(
-      accountType: account.type,
-      deltaMinor: instruction.amount.minorUnits,
-    );
-    final equityDirection =
-        accountDirection == EntryDirection.debit
-            ? EntryDirection.credit
-            : EntryDirection.debit;
     final transactionId = _idGenerator.newId();
-    return _validated(
+    return _posted(
       Transaction(
         id: transactionId,
         businessPurpose: BusinessPurpose.openingBalance,
         occurredAt: instruction.occurredAt,
         postedAt: instruction.postedAt,
-        primaryAmount: amount,
+        primaryAmount: instruction.amount.abs(),
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
         sourceKind: instruction.sourceKind,
-        details: [
-          _detail(
+        lines: [
+          // 带符号:方向由符号与账户类型共同决定,符号单独不足以判断。
+          _line(
             transactionId: transactionId,
             lineNo: 1,
-            type: TransactionDetailType.openingBalanceMain,
-            amount: amount,
-          ),
-        ],
-        entries: [
-          _entry(
-            transactionId: transactionId,
+            role: TransactionRole.openingBalance,
             accountId: account.id,
-            direction: accountDirection,
-            amount: amount,
-          ),
-          _entry(
-            transactionId: transactionId,
-            accountId: equityAccountId,
-            direction: equityDirection,
-            amount: amount,
+            amount: instruction.amount,
           ),
         ],
       ),
+      systemAccountIds: {SystemKey.openingBalance: equityAccountId},
+      accountTypes: {account.id: account.type},
     );
   }
 
@@ -804,50 +770,30 @@ class PostingEngine {
     required Money signedDelta,
     required String equityAccountId,
   }) {
-    final amount = signedDelta.abs();
-    final accountDirection = directionForBalanceDelta(
-      accountType: account.type,
-      deltaMinor: signedDelta.minorUnits,
-    );
-    final equityDirection =
-        accountDirection == EntryDirection.debit
-            ? EntryDirection.credit
-            : EntryDirection.debit;
     final transactionId = _idGenerator.newId();
-    return _validated(
+    return _posted(
       Transaction(
         id: transactionId,
         businessPurpose: BusinessPurpose.balanceAdjustment,
         occurredAt: instruction.occurredAt,
-        primaryAmount: amount,
+        primaryAmount: signedDelta.abs(),
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
         sourceKind: SourceKind.manual,
-        details: [
-          _detail(
+        lines: [
+          _line(
             transactionId: transactionId,
             lineNo: 1,
-            type: TransactionDetailType.balanceAdjustmentMain,
-            amount: amount,
-          ),
-        ],
-        entries: [
-          _entry(
-            transactionId: transactionId,
+            role: TransactionRole.balanceAdjustment,
             accountId: account.id,
-            direction: accountDirection,
-            amount: amount,
-          ),
-          _entry(
-            transactionId: transactionId,
-            accountId: equityAccountId,
-            direction: equityDirection,
-            amount: amount,
+            amount: signedDelta,
           ),
         ],
       ),
+      systemAccountIds: {SystemKey.openingBalance: equityAccountId},
+      accountTypes: {account.id: account.type},
     );
   }
 
@@ -867,75 +813,18 @@ class PostingEngine {
       return LedgerViolationReason.reimbursementGapIncomeRequired
           .throwException(message: 'Gap income account is required.');
     }
+    final gapExpenseAccountId = advance.accountOf(
+      TransactionRole.reimbursementExpenseCategory,
+    );
+    if (gap.minorUnits < 0 && gapExpenseAccountId == null) {
+      return LedgerViolationReason.reimbursementInstructionUnresolvable
+          .throwException(
+            message: 'Reimbursement advance expense category is missing.',
+          );
+    }
 
     final transactionId = _idGenerator.newId();
-    final hasOutstanding = outstanding.minorUnits > 0;
-    final details = <TransactionDetailRecord>[
-      if (hasOutstanding)
-        _detail(
-          transactionId: transactionId,
-          lineNo: 1,
-          type: TransactionDetailType.reimbursementCloseMain,
-          amount: outstanding,
-        ),
-    ];
-    if (gap.minorUnits > 0) {
-      details.add(
-        _detail(
-          transactionId: transactionId,
-          lineNo: 2,
-          type: TransactionDetailType.reimbursementGapIncome,
-          amount: gap,
-        ),
-      );
-    } else if (gap.minorUnits < 0) {
-      details.add(
-        _detail(
-          transactionId: transactionId,
-          lineNo: 2,
-          type: TransactionDetailType.reimbursementGapExpense,
-          amount: -gap,
-        ),
-      );
-    }
-
-    final entries = <Entry>[
-      if (actual.minorUnits > 0)
-        _entry(
-          transactionId: transactionId,
-          accountId: instruction.receiveAccountId,
-          direction: EntryDirection.debit,
-          amount: actual,
-        ),
-      if (hasOutstanding)
-        _entry(
-          transactionId: transactionId,
-          accountId: instruction.receivableAccountId,
-          direction: EntryDirection.credit,
-          amount: outstanding,
-        ),
-    ];
-    if (gap.minorUnits > 0) {
-      entries.add(
-        _entry(
-          transactionId: transactionId,
-          accountId: gapIncomeAccountId!,
-          direction: EntryDirection.credit,
-          amount: gap,
-        ),
-      );
-    } else if (gap.minorUnits < 0) {
-      entries.add(
-        _entry(
-          transactionId: transactionId,
-          accountId: advance.reimbursementExpenseAccountId!,
-          direction: EntryDirection.debit,
-          amount: -gap,
-        ),
-      );
-    }
-
-    return _validated(
+    return _posted(
       Transaction(
         id: transactionId,
         parentTransactionId: advance.id,
@@ -949,28 +838,148 @@ class PostingEngine {
         isExcludedFromBudget: advance.isExcludedFromBudget,
         sourceKind: advance.sourceKind,
         ownership: advance.ownership,
-        details: details,
-        entries: entries,
+        lines: [
+          // 一分未收时金额为零,但收款账户仍是用户给出的事实,必须留痕。
+          _line(
+            transactionId: transactionId,
+            lineNo: 1,
+            role: TransactionRole.settlementIn,
+            accountId: instruction.receiveAccountId,
+            amount: actual,
+          ),
+          if (outstanding.minorUnits > 0)
+            _line(
+              transactionId: transactionId,
+              lineNo: 2,
+              role: TransactionRole.receivable,
+              accountId: instruction.receivableAccountId,
+              amount: outstanding,
+            ),
+          if (gap.minorUnits > 0)
+            _line(
+              transactionId: transactionId,
+              lineNo: 3,
+              role: TransactionRole.reimbursementGapIncome,
+              amount: gap,
+            ),
+          if (gap.minorUnits < 0)
+            _line(
+              transactionId: transactionId,
+              lineNo: 3,
+              role: TransactionRole.reimbursementGapExpense,
+              accountId: gapExpenseAccountId,
+              amount: -gap,
+            ),
+        ],
       ),
+      systemAccountIds: {
+        SystemKey.reimbursementGapIncome: ?gapIncomeAccountId,
+      },
     );
   }
 
-  Transaction _validated(Transaction transaction) {
+  Transaction _posted(
+    Transaction draft, {
+    Map<SystemKey, String> systemAccountIds = const {},
+    Map<String, AccountType> accountTypes = const {},
+  }) {
+    final transaction = repost(
+      draft,
+      systemAccountIds: systemAccountIds,
+      accountTypes: accountTypes,
+    );
     transaction.validateSelf();
     return transaction;
   }
 
-  TransactionDetailRecord _detail({
+  ({String accountId, int signedMinor})? _legFor({
+    required BusinessPurpose businessPurpose,
+    required TransactionLine line,
+    required Map<SystemKey, String> systemAccountIds,
+    required Map<String, AccountType> accountTypes,
+  }) {
+    if (line.amount.minorUnits == 0) return null;
+
+    final accountId =
+        roleCarriesAccount(line.role)
+            ? line.accountId
+            : systemAccountIds[systemKeyForRole(
+              businessPurpose: businessPurpose,
+              role: line.role,
+            )];
+    if (accountId == null) {
+      return LedgerViolationReason.postingSystemAccountMissing.throwException(
+        message: 'No account resolved for role ${line.role.name}.',
+      );
+    }
+
+    if (roleAmountIsSigned(line.role)) {
+      final accountType = accountTypes[accountId];
+      if (accountType == null) {
+        return LedgerViolationReason.postingAccountTypeMissing.throwException(
+          message: 'Account type of $accountId is required for ${line.role.name}.',
+        );
+      }
+      return (
+        accountId: accountId,
+        signedMinor: _signed(
+          directionForBalanceDelta(
+            accountType: accountType,
+            deltaMinor: line.amount.minorUnits,
+          ),
+          line.amount.minorUnits.abs(),
+        ),
+      );
+    }
+
+    final direction = entryDirectionFor(
+      businessPurpose: businessPurpose,
+      role: line.role,
+    );
+    if (direction == null) return null;
+    return (
+      accountId: accountId,
+      signedMinor: _signed(direction, line.amount.minorUnits),
+    );
+  }
+
+  String _balancingAccountId({
+    required BusinessPurpose businessPurpose,
+    required Iterable<TransactionLine> lines,
+    required Map<SystemKey, String> systemAccountIds,
+  }) {
+    final accountId = switch (balancingAccountFor(businessPurpose)) {
+      SystemBalancingAccount(:final systemKey) => systemAccountIds[systemKey],
+      LineBalancingAccount(:final role) =>
+        lines.where((line) => line.role == role).firstOrNull?.accountId,
+      null => null,
+    };
+    if (accountId == null) {
+      return LedgerViolationReason.entriesNotBalanced.throwException(
+        message:
+            'No balancing account for ${businessPurpose.name}; '
+            'debit and credit do not match.',
+      );
+    }
+    return accountId;
+  }
+
+  int _signed(EntryDirection direction, int amountMinor) =>
+      direction == EntryDirection.debit ? amountMinor : -amountMinor;
+
+  TransactionLine _line({
     required String transactionId,
     required int lineNo,
-    required TransactionDetailType type,
+    required TransactionRole role,
     required Money amount,
+    String? accountId,
   }) {
-    return TransactionDetailRecord(
+    return TransactionLine(
       id: _idGenerator.newId(),
       transactionId: transactionId,
       lineNo: lineNo,
-      type: type,
+      role: role,
+      accountId: accountId,
       amount: amount,
     );
   }

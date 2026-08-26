@@ -354,24 +354,16 @@ class ReimbursementEditFormState {
 }
 
 Money _closeOutstanding(TransactionDetail detail) {
-  return _detailAmount(detail, TransactionDetailType.reimbursementCloseMain) ??
-      Money.zero();
+  return _lineAmount(detail, TransactionRole.receivable) ?? Money.zero();
 }
 
 Money _closeActualAmount(TransactionDetail detail) {
-  final outstanding = _closeOutstanding(detail);
-  final gapIncome =
-      _detailAmount(detail, TransactionDetailType.reimbursementGapIncome) ??
-      Money.zero();
-  final gapExpense =
-      _detailAmount(detail, TransactionDetailType.reimbursementGapExpense) ??
-      Money.zero();
-  return outstanding + gapIncome - gapExpense;
+  return _lineAmount(detail, TransactionRole.settlementIn) ?? Money.zero();
 }
 
-Money? _detailAmount(TransactionDetail detail, TransactionDetailType type) {
-  for (final record in detail.details) {
-    if (record.type == type) return record.amount;
+Money? _lineAmount(TransactionDetail detail, TransactionRole role) {
+  for (final line in detail.lines) {
+    if (line.role == role) return line.amount;
   }
   return null;
 }

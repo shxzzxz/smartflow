@@ -992,8 +992,16 @@ TransactionDetail _detail() {
     sourceKind: SourceKind.manual,
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    reimbursementExpenseAccountId: 'expense',
-    details: const [],
+    lines: const [
+      TransactionLine(
+        id: 'advance-category',
+        transactionId: 'parent',
+        lineNo: 1,
+        role: TransactionRole.reimbursementExpenseCategory,
+        accountId: 'expense',
+        amount: Money(minorUnits: 1000),
+      ),
+    ],
     entries: [
       Entry(
         id: 'entry-1',
@@ -1015,7 +1023,7 @@ TransactionDetail _detail() {
     transaction: transaction,
     createdAt: DateTime(2026),
     entries: transaction.entries,
-    details: const <TransactionDetailRecord>[],
+    lines: const <TransactionLine>[],
     refundedTotal: const Money(minorUnits: 200),
     reimbursementSummary: const ReimbursementSummary(
       advanceAmount: Money(minorUnits: 1000),

@@ -9,7 +9,7 @@ export '../../domain/ledger/entity/account_group.dart';
 export '../../domain/ledger/entity/budget.dart';
 export '../../domain/ledger/entity/entry.dart';
 export '../../domain/ledger/entity/transaction.dart';
-export '../../domain/ledger/entity/transaction_detail_record.dart';
+export '../../domain/ledger/entity/transaction_line.dart';
 export '../../domain/ledger/valobj/account_usage.dart';
 export '../../domain/ledger/valobj/ledger_enum.dart';
 export '../../domain/ledger/valobj/transaction_ownership.dart';

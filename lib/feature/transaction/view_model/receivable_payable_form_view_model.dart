@@ -175,10 +175,7 @@ class ReceivablePayableFormViewModel extends _$ReceivablePayableFormViewModel {
     final transaction = detail.transaction;
     final amount = switch (args.kind) {
       ReceivablePayableFormKind.collection =>
-        _detailAmount(
-              detail,
-              TransactionDetailType.receivableCollectionPrincipal,
-            ) ??
+        _lineAmount(detail, TransactionRole.receivable) ??
             transaction.primaryAmount,
       ReceivablePayableFormKind.badDebt ||
       ReceivablePayableFormKind.debtRelief => transaction.primaryAmount,
@@ -223,11 +220,7 @@ class ReceivablePayableFormViewModel extends _$ReceivablePayableFormViewModel {
       occurredAt: transaction.occurredAt,
       amountText: formatMoney(amount, style: MoneyFormatStyle.plain),
       interestText: formatMoney(
-        _detailAmount(
-              detail,
-              TransactionDetailType.receivableCollectionInterest,
-            ) ??
-            Money.zero(),
+        _lineAmount(detail, TransactionRole.interest) ?? Money.zero(),
         style: MoneyFormatStyle.plain,
       ),
       noteText: transaction.note ?? '',
@@ -496,9 +489,9 @@ class BalanceCrossingConfirmation {
   final String message;
 }
 
-Money? _detailAmount(TransactionDetail detail, TransactionDetailType type) {
-  for (final item in detail.details) {
-    if (item.type == type) return item.amount;
+Money? _lineAmount(TransactionDetail detail, TransactionRole role) {
+  for (final line in detail.lines) {
+    if (line.role == role) return line.amount;
   }
   return null;
 }

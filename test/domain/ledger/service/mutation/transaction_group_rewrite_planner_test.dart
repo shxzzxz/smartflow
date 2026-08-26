@@ -9,6 +9,7 @@ import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
+import '../../../../helper/fake_system_account_resolver.dart';
 import '../../../../helper/sequential_id_generator.dart';
 
 void main() {
@@ -39,6 +40,7 @@ void main() {
       final planner = TransactionGroupRewritePlanner(
         postingEngine: engine,
         postingInstructionResolver: const DefaultPostingInstructionResolver(),
+        systemAccountResolver: const FakeSystemAccountResolver(),
       );
 
       final plan = await planner.planParentRewrite(
@@ -91,6 +93,7 @@ void main() {
       final planner = TransactionGroupRewritePlanner(
         postingEngine: engine,
         postingInstructionResolver: const DefaultPostingInstructionResolver(),
+        systemAccountResolver: const FakeSystemAccountResolver(),
       );
 
       final plan = await planner.planParentRewrite(
@@ -158,6 +161,7 @@ void main() {
       final planner = TransactionGroupRewritePlanner(
         postingEngine: engine,
         postingInstructionResolver: const DefaultPostingInstructionResolver(),
+        systemAccountResolver: const FakeSystemAccountResolver(),
       );
 
       await expectLater(
@@ -211,6 +215,7 @@ void main() {
       final planner = TransactionGroupRewritePlanner(
         postingEngine: engine,
         postingInstructionResolver: const DefaultPostingInstructionResolver(),
+        systemAccountResolver: const FakeSystemAccountResolver(),
       );
 
       final plan = await planner.planParentRewrite(
@@ -274,6 +279,7 @@ void main() {
     final planner = TransactionGroupRewritePlanner(
       postingEngine: engine,
       postingInstructionResolver: const DefaultPostingInstructionResolver(),
+      systemAccountResolver: const FakeSystemAccountResolver(),
     );
 
     await expectLater(
@@ -325,6 +331,7 @@ void main() {
       final planner = TransactionGroupRewritePlanner(
         postingEngine: engine,
         postingInstructionResolver: const DefaultPostingInstructionResolver(),
+        systemAccountResolver: const FakeSystemAccountResolver(),
       );
 
       await expectLater(
@@ -393,6 +400,7 @@ void main() {
       final planner = TransactionGroupRewritePlanner(
         postingEngine: engine,
         postingInstructionResolver: const DefaultPostingInstructionResolver(),
+        systemAccountResolver: const FakeSystemAccountResolver(),
       );
 
       await expectLater(
@@ -446,6 +454,7 @@ void main() {
       final planner = TransactionGroupRewritePlanner(
         postingEngine: engine,
         postingInstructionResolver: const DefaultPostingInstructionResolver(),
+        systemAccountResolver: const FakeSystemAccountResolver(),
       );
 
       final plan = await planner.planParentRewrite(
@@ -492,14 +501,14 @@ void main() {
     final close = engine.createReimbursementClose(
       instruction: ReimbursementCloseInstruction(
         advanceTransactionId: parent.id,
-        actualReceivedAmount: Money.parse('10.00'),
+        actualReceivedAmount: Money.parse('110.00'),
         receivableAccountId: 'receivable-old',
         receiveAccountId: 'bank',
         occurredAt: DateTime(2026, 7, 2),
       ),
       advance: parent,
-      outstanding: Money.zero(),
-      gapIncomeAccountId: 'gap-income',
+      outstanding: Money.parse('100.00'),
+      gapIncomeAccountId: 'system-gap-income',
     );
     final candidate = engine.createReimbursementAdvance(
       ReimbursementAdvanceInstruction(
@@ -513,6 +522,7 @@ void main() {
     final planner = TransactionGroupRewritePlanner(
       postingEngine: engine,
       postingInstructionResolver: const DefaultPostingInstructionResolver(),
+      systemAccountResolver: const FakeSystemAccountResolver(),
     );
 
     final plan = await planner.planParentRewrite(
@@ -525,9 +535,9 @@ void main() {
 
     expect(
       plan.currentGroup.childTransactions.single.entries
-          .singleWhere((entry) => entry.direction == EntryDirection.credit)
+          .singleWhere((entry) => entry.accountId == 'system-gap-income')
           .accountId,
-      'gap-income',
+      'system-gap-income',
     );
   });
 
@@ -568,6 +578,7 @@ void main() {
     final planner = TransactionGroupRewritePlanner(
       postingEngine: engine,
       postingInstructionResolver: const DefaultPostingInstructionResolver(),
+      systemAccountResolver: const FakeSystemAccountResolver(),
     );
 
     final plan = await planner.planParentRewrite(

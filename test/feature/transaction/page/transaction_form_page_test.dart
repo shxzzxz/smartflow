@@ -515,7 +515,7 @@ TransactionDetail _transactionDetail(
       entries: entries,
     ),
     createdAt: DateTime(2026, 1, 2, 8, 30),
-    details: const [],
+    lines: const [],
     entries: entries,
   );
 }

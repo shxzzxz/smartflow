@@ -76,12 +76,12 @@ void main() {
           _entry('bank', EntryDirection.debit),
           _entry('cash', EntryDirection.credit),
         ],
-        details: const [
-          TransactionDetailRecord(
+        lines: const [
+          TransactionLine(
             id: 'fee',
             transactionId: 'tx-1',
             lineNo: 2,
-            type: TransactionDetailType.transferFee,
+            role: TransactionRole.fee,
             amount: Money(minorUnits: 300),
           ),
         ],
@@ -206,10 +206,22 @@ void main() {
 TransactionDetail _detail({
   required BusinessPurpose purpose,
   required List<Entry> entries,
-  List<TransactionDetailRecord> details = const [],
+  List<TransactionLine> lines = const [],
   Money primaryAmount = const Money(minorUnits: 1234),
   String? reimbursementExpenseAccountId,
 }) {
+  final allLines = [
+    if (reimbursementExpenseAccountId != null)
+      TransactionLine(
+        id: 'expense-category',
+        transactionId: 'tx-1',
+        lineNo: 1,
+        role: TransactionRole.reimbursementExpenseCategory,
+        accountId: reimbursementExpenseAccountId,
+        amount: primaryAmount,
+      ),
+    ...lines,
+  ];
   final transaction = Transaction(
     id: 'tx-1',
     businessPurpose: purpose,
@@ -219,14 +231,13 @@ TransactionDetail _detail({
     isExcludedFromBudget: false,
     sourceKind: SourceKind.manual,
     note: 'note',
-    reimbursementExpenseAccountId: reimbursementExpenseAccountId,
-    details: details,
+    lines: allLines,
     entries: entries,
   );
   return TransactionDetail(
     transaction: transaction,
     createdAt: DateTime(2026, 1, 2, 8, 30),
-    details: details,
+    lines: allLines,
     entries: entries,
   );
 }

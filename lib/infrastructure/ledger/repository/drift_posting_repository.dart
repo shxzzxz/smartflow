@@ -6,12 +6,14 @@ import '../../../domain/ledger/entity/account.dart';
 import '../../../domain/ledger/entity/entry.dart';
 import '../../../domain/ledger/entity/transaction_group.dart';
 import '../../../domain/ledger/entity/transaction.dart';
-import '../../../domain/ledger/entity/transaction_detail_record.dart';
+import '../../../domain/ledger/entity/transaction_line.dart';
+import '../../../domain/ledger/valobj/ledger_enum.dart';
 import '../../../domain/ledger/port/transaction_group_repository.dart';
 import '../../../domain/ledger/port/transaction_repository.dart';
 import '../../../domain/ledger/service/mutation/transaction_group_rewrite_plan.dart';
 import '../../database/app_database.dart';
 import '../mapper/account_mapper.dart';
+import '../mapper/transaction_line_mapper.dart';
 import '../mapper/transaction_mapper.dart';
 
 class DriftPostingRepository
@@ -27,18 +29,18 @@ class DriftPostingRepository
       return const [];
     }
 
-    final rows =
-        await (_database.select(_database.accounts)
-          ..where((account) => account.id.isIn(ids))).get();
+    final rows = await (_database.select(
+      _database.accounts,
+    )..where((account) => account.id.isIn(ids))).get();
 
     return rows.map(mapAccount).toList();
   }
 
   @override
   Future<Transaction?> findById(String transactionId) async {
-    final row =
-        await (_database.select(_database.transactions)
-          ..where((row) => row.id.equals(transactionId))).getSingleOrNull();
+    final row = await (_database.select(
+      _database.transactions,
+    )..where((row) => row.id.equals(transactionId))).getSingleOrNull();
     return row == null ? null : mapTransaction(row);
   }
 
@@ -59,10 +61,11 @@ class DriftPostingRepository
   Future<TransactionGroup?> findByParentId(String parentTransactionId) async {
     final rows =
         await (_database.select(_database.transactions)..where(
-          (row) =>
-              row.id.equals(parentTransactionId) |
-              row.parentTransactionId.equals(parentTransactionId),
-        )).get();
+              (row) =>
+                  row.id.equals(parentTransactionId) |
+                  row.parentTransactionId.equals(parentTransactionId),
+            ))
+            .get();
     if (rows.isEmpty) return null;
 
     final complete = await _findCompleteTransactionsByIds({
@@ -95,6 +98,13 @@ class DriftPostingRepository
   }
 
   @override
+  Future<void> updateAll(Iterable<Transaction> transactions) {
+    // 轻量更新只允许改交易头。分项和分录必须通过 applyRewrite 整体替换，
+    // 否则会绕过交易组派生量的重算。
+    return Future.forEach<Transaction>(transactions, updateTransaction);
+  }
+
+  @override
   Future<Map<String, int>> countEntriesByAccount(Set<String> accountIds) async {
     if (accountIds.isEmpty) {
       return const {};
@@ -121,12 +131,17 @@ class DriftPostingRepository
       return const {};
     }
 
-    final refColumn = _database.transactions.reimbursementExpenseAccountId;
-    final countExpr = _database.transactions.id.count();
+    final refColumn = _database.transactionLines.accountId;
+    final countExpr = _database.transactionLines.id.count();
     final rows =
-        await (_database.selectOnly(_database.transactions)
+        await (_database.selectOnly(_database.transactionLines)
               ..addColumns([refColumn, countExpr])
-              ..where(refColumn.isIn(accountIds))
+              ..where(
+                refColumn.isIn(accountIds) &
+                    _database.transactionLines.role.equalsValue(
+                      TransactionRole.reimbursementExpenseCategory,
+                    ),
+              )
               ..groupBy([refColumn]))
             .get();
     return {
@@ -169,14 +184,18 @@ class DriftPostingRepository
 
   Future<void> _deleteTransactions(Set<String> transactionIds) async {
     if (transactionIds.isEmpty) return;
-    await (_database.delete(_database.entries)
-      ..where((row) => row.transactionId.isIn(transactionIds))).go();
-    await (_database.delete(_database.transactionDetails)
-      ..where((row) => row.transactionId.isIn(transactionIds))).go();
-    await (_database.delete(_database.transactionTags)
-      ..where((row) => row.transactionId.isIn(transactionIds))).go();
-    await (_database.delete(_database.transactions)
-      ..where((row) => row.id.isIn(transactionIds))).go();
+    await (_database.delete(
+      _database.entries,
+    )..where((row) => row.transactionId.isIn(transactionIds))).go();
+    await (_database.delete(
+      _database.transactionLines,
+    )..where((row) => row.transactionId.isIn(transactionIds))).go();
+    await (_database.delete(
+      _database.transactionTags,
+    )..where((row) => row.transactionId.isIn(transactionIds))).go();
+    await (_database.delete(
+      _database.transactions,
+    )..where((row) => row.id.isIn(transactionIds))).go();
   }
 
   Future<void> _saveTransaction(Transaction transaction) async {
@@ -209,9 +228,6 @@ class DriftPostingRepository
             counterpartyName: Value(transaction.counterpartyName),
             note: Value(transaction.note),
             parentTransactionId: Value(transaction.parentTransactionId),
-            reimbursementExpenseAccountId: Value(
-              transaction.reimbursementExpenseAccountId,
-            ),
             isExcludedFromStats: Value(transaction.isExcludedFromStats),
             isExcludedFromBudget: Value(transaction.isExcludedFromBudget),
             createdAt: Value(now),
@@ -221,16 +237,13 @@ class DriftPostingRepository
 
     await _database.batch((batch) {
       batch.insertAll(
-        _database.transactionDetails,
-        transaction.details.map(
-          (detail) => TransactionDetailsCompanion.insert(
-            id: detail.id.isEmpty ? _uuid.v7() : detail.id,
+        _database.transactionLines,
+        transaction.lines.map(
+          (line) => transactionLineCompanion(
+            line,
             transactionId: transactionId,
-            lineNo: detail.lineNo,
-            detailType: detail.type,
-            amountMinor: detail.amount.minorUnits,
-            createdAt: Value(now),
-            updatedAt: Value(now),
+            id: line.id.isEmpty ? _uuid.v7() : line.id,
+            now: now,
           ),
         ),
       );
@@ -253,24 +266,23 @@ class DriftPostingRepository
 
   Future<void> _rewriteTransaction(Transaction transaction) async {
     await updateTransaction(transaction);
-    await (_database.delete(_database.entries)
-      ..where((row) => row.transactionId.equals(transaction.id))).go();
-    await (_database.delete(_database.transactionDetails)
-      ..where((row) => row.transactionId.equals(transaction.id))).go();
+    await (_database.delete(
+      _database.entries,
+    )..where((row) => row.transactionId.equals(transaction.id))).go();
+    await (_database.delete(
+      _database.transactionLines,
+    )..where((row) => row.transactionId.equals(transaction.id))).go();
 
     final now = DateTime.now();
     await _database.batch((batch) {
       batch.insertAll(
-        _database.transactionDetails,
-        transaction.details.map(
-          (detail) => TransactionDetailsCompanion.insert(
-            id: detail.id.isEmpty ? _uuid.v7() : detail.id,
+        _database.transactionLines,
+        transaction.lines.map(
+          (line) => transactionLineCompanion(
+            line,
             transactionId: transaction.id,
-            lineNo: detail.lineNo,
-            detailType: detail.type,
-            amountMinor: detail.amount.minorUnits,
-            createdAt: Value(now),
-            updatedAt: Value(now),
+            id: line.id.isEmpty ? _uuid.v7() : line.id,
+            now: now,
           ),
         ),
       );
@@ -295,48 +307,47 @@ class DriftPostingRepository
     Transaction transaction, {
     required DateTime now,
   }) async {
-    for (final detail in transaction.details) {
-      await _upsertDetail(transaction.id, detail, now: now);
+    for (final line in transaction.lines) {
+      await _upsertLine(transaction.id, line, now: now);
     }
     for (final entry in transaction.entries) {
       await _upsertEntry(transaction.id, entry, now: now);
     }
   }
 
-  Future<void> _upsertDetail(
+  Future<void> _upsertLine(
     String transactionId,
-    TransactionDetailRecord detail, {
+    TransactionLine line, {
     required DateTime now,
   }) async {
-    final detailId = detail.id.isEmpty ? _uuid.v7() : detail.id;
+    final lineId = line.id.isEmpty ? _uuid.v7() : line.id;
     final exists =
-        await (_database.selectOnly(_database.transactionDetails)
-              ..addColumns([_database.transactionDetails.id])
-              ..where(_database.transactionDetails.id.equals(detailId)))
+        await (_database.selectOnly(_database.transactionLines)
+              ..addColumns([_database.transactionLines.id])
+              ..where(_database.transactionLines.id.equals(lineId)))
             .getSingleOrNull();
     if (exists == null) {
       await _database
-          .into(_database.transactionDetails)
+          .into(_database.transactionLines)
           .insert(
-            TransactionDetailsCompanion.insert(
-              id: detailId,
+            transactionLineCompanion(
+              line,
               transactionId: transactionId,
-              lineNo: detail.lineNo,
-              detailType: detail.type,
-              amountMinor: detail.amount.minorUnits,
-              createdAt: Value(now),
-              updatedAt: Value(now),
+              id: lineId,
+              now: now,
             ),
           );
       return;
     }
-    await (_database.update(_database.transactionDetails)
-      ..where((row) => row.id.equals(detailId))).write(
-      TransactionDetailsCompanion(
+    await (_database.update(
+      _database.transactionLines,
+    )..where((row) => row.id.equals(lineId))).write(
+      TransactionLinesCompanion(
         transactionId: Value(transactionId),
-        lineNo: Value(detail.lineNo),
-        detailType: Value(detail.type),
-        amountMinor: Value(detail.amount.minorUnits),
+        lineNo: Value(line.lineNo),
+        role: Value(line.role),
+        accountId: Value(line.accountId),
+        amountMinor: Value(line.amount.minorUnits),
         updatedAt: Value(now),
       ),
     );
@@ -369,8 +380,9 @@ class DriftPostingRepository
           );
       return;
     }
-    await (_database.update(_database.entries)
-      ..where((row) => row.id.equals(entryId))).write(
+    await (_database.update(
+      _database.entries,
+    )..where((row) => row.id.equals(entryId))).write(
       EntriesCompanion(
         transactionId: Value(transactionId),
         accountId: Value(entry.accountId),
@@ -383,8 +395,9 @@ class DriftPostingRepository
 
   Future<void> updateTransaction(Transaction transaction) async {
     final now = DateTime.now();
-    await (_database.update(_database.transactions)
-      ..where((t) => t.id.equals(transaction.id))).write(
+    await (_database.update(
+      _database.transactions,
+    )..where((t) => t.id.equals(transaction.id))).write(
       TransactionsCompanion(
         businessPurpose: Value(transaction.businessPurpose),
         occurredAt: Value(transaction.occurredAt),
@@ -397,9 +410,6 @@ class DriftPostingRepository
         counterpartyName: Value(transaction.counterpartyName),
         note: Value(transaction.note),
         parentTransactionId: Value(transaction.parentTransactionId),
-        reimbursementExpenseAccountId: Value(
-          transaction.reimbursementExpenseAccountId,
-        ),
         isExcludedFromStats: Value(transaction.isExcludedFromStats),
         isExcludedFromBudget: Value(transaction.isExcludedFromBudget),
         updatedAt: Value(now),
@@ -411,9 +421,9 @@ class DriftPostingRepository
     Set<String> ids,
   ) async {
     if (ids.isEmpty) return const [];
-    final rows =
-        await (_database.select(_database.transactions)
-          ..where((row) => row.id.isIn(ids))).get();
+    final rows = await (_database.select(
+      _database.transactions,
+    )..where((row) => row.id.isIn(ids))).get();
     if (rows.isEmpty) return const [];
 
     final entryRows =
@@ -421,8 +431,8 @@ class DriftPostingRepository
               ..where((row) => row.transactionId.isIn(ids))
               ..orderBy([(row) => OrderingTerm.asc(row.id)]))
             .get();
-    final detailRows =
-        await (_database.select(_database.transactionDetails)
+    final lineRows =
+        await (_database.select(_database.transactionLines)
               ..where((row) => row.transactionId.isIn(ids))
               ..orderBy([(row) => OrderingTerm.asc(row.lineNo)]))
             .get();
@@ -441,24 +451,16 @@ class DriftPostingRepository
             ),
           );
     }
-    final detailsByTx = <String, List<TransactionDetailRecord>>{};
-    for (final row in detailRows) {
-      detailsByTx
-          .putIfAbsent(row.transactionId, () => <TransactionDetailRecord>[])
-          .add(
-            TransactionDetailRecord(
-              id: row.id,
-              transactionId: row.transactionId,
-              lineNo: row.lineNo,
-              type: row.detailType,
-              amount: Money(minorUnits: row.amountMinor),
-            ),
-          );
+    final linesByTx = <String, List<TransactionLine>>{};
+    for (final row in lineRows) {
+      linesByTx
+          .putIfAbsent(row.transactionId, () => <TransactionLine>[])
+          .add(mapTransactionLine(row));
     }
     return [
       for (final row in rows)
         mapTransaction(row).copyWith(
-          details: List.unmodifiable(detailsByTx[row.id] ?? const []),
+          lines: List.unmodifiable(linesByTx[row.id] ?? const []),
           entries: List.unmodifiable(entriesByTx[row.id] ?? const []),
         ),
     ];

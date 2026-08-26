@@ -23,30 +23,21 @@ class TransactionGroup {
     return null;
   }
 
-  Money refundedTotal() {
-    return childTransactions
-        .where(
-          (transaction) =>
-              transaction.businessPurpose == BusinessPurpose.refund,
-        )
-        .fold(
-          Money.zero(),
-          (sum, transaction) => sum + transaction.primaryAmount,
-        );
+  Money refundedTotal({String? excludingTransactionId}) {
+    return _sumChildren(
+      purposes: const {BusinessPurpose.refund},
+      excludingTransactionId: excludingTransactionId,
+    );
   }
 
-  Money reimbursementReceivedTotal() {
-    return childTransactions
-        .where(
-          (transaction) =>
-              transaction.businessPurpose ==
-                  BusinessPurpose.reimbursementReceipt ||
-              transaction.businessPurpose == BusinessPurpose.reimbursementClose,
-        )
-        .fold(
-          Money.zero(),
-          (sum, transaction) => sum + transaction.primaryAmount,
-        );
+  Money reimbursementReceivedTotal({String? excludingTransactionId}) {
+    return _sumChildren(
+      purposes: const {
+        BusinessPurpose.reimbursementReceipt,
+        BusinessPurpose.reimbursementClose,
+      },
+      excludingTransactionId: excludingTransactionId,
+    );
   }
 
   Money reimbursementOutstanding() {
@@ -54,6 +45,34 @@ class TransactionGroup {
     return parentTransaction.primaryAmount -
         refundedTotal() -
         reimbursementReceivedTotal();
+  }
+
+  /// 排除某笔子交易后的待核销额。
+  ///
+  /// 重建该子交易时用它推导待核销与报销差额,避免把子交易自己的派生分项读回来
+  /// 当输入。
+  Money reimbursementOutstandingExcluding(String childTransactionId) {
+    return parentTransaction.primaryAmount -
+        refundedTotal(excludingTransactionId: childTransactionId) -
+        reimbursementReceivedTotal(
+          excludingTransactionId: childTransactionId,
+        );
+  }
+
+  Money _sumChildren({
+    required Set<BusinessPurpose> purposes,
+    String? excludingTransactionId,
+  }) {
+    return childTransactions
+        .where(
+          (transaction) =>
+              purposes.contains(transaction.businessPurpose) &&
+              transaction.id != excludingTransactionId,
+        )
+        .fold(
+          Money.zero(),
+          (sum, transaction) => sum + transaction.primaryAmount,
+        );
   }
 
   bool get reimbursementClosed => childTransactions.any(

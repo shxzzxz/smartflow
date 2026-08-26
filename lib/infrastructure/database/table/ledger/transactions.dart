@@ -18,8 +18,6 @@ class Transactions extends Table {
   TextColumn get note => text().nullable()();
   TextColumn get parentTransactionId =>
       text().named('parent_transaction_id').nullable()();
-  TextColumn get reimbursementExpenseAccountId =>
-      text().named('reimbursement_expense_account_id').nullable()();
   BoolColumn get isExcludedFromStats =>
       boolean()
           .named('is_excluded_from_stats')

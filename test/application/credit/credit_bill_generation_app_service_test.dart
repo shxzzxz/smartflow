@@ -24,7 +24,7 @@ import 'package:smartflow/infrastructure/ledger/repository/drift_ledger_metrics_
 import 'package:smartflow/infrastructure/ledger/repository/drift_entry_read_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_posting_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_system_account_resolver.dart';
-import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_detail_read_repository.dart';
+import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_line_read_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 
 import '../../helper/sequential_id_generator.dart';
@@ -835,7 +835,7 @@ class _Fixture {
       TransactionQueryServiceImpl(
         transactionRead: DriftTransactionReadRepository(database),
         entryRead: DriftEntryReadRepository(database),
-        detailRead: DriftTransactionDetailReadRepository(database),
+        lineRead: DriftTransactionLineReadRepository(database),
         accountQuery: accountQueryService,
         metricsSource: DriftLedgerMetricsSource(database),
       );
