@@ -203,7 +203,7 @@ void main() {
   });
 }
 
-TransactionDetail _detail({
+TransactionReadModel _detail({
   required BusinessPurpose purpose,
   required List<Entry> entries,
   List<TransactionLine> lines = const [],
@@ -220,6 +220,21 @@ TransactionDetail _detail({
         accountId: reimbursementExpenseAccountId,
         amount: primaryAmount,
       ),
+    for (var index = 0; index < entries.length; index++)
+      TransactionLine(
+        id: 'role-$index',
+        transactionId: 'tx-1',
+        lineNo: index + 10,
+        role: switch (purpose) {
+          BusinessPurpose.dailyIncome => entries[index].direction == EntryDirection.credit ? TransactionRole.category : TransactionRole.settlementIn,
+          BusinessPurpose.dailyExpense => entries[index].direction == EntryDirection.debit ? TransactionRole.category : TransactionRole.settlementOut,
+          BusinessPurpose.reimbursementAdvance => entries[index].direction == EntryDirection.debit ? TransactionRole.receivable : TransactionRole.settlementOut,
+          BusinessPurpose.transfer => entries[index].direction == EntryDirection.debit ? TransactionRole.settlementIn : TransactionRole.settlementOut,
+          _ => entries[index].direction == EntryDirection.debit ? TransactionRole.settlementIn : TransactionRole.settlementOut,
+        },
+        accountId: entries[index].accountId,
+        amount: entries[index].amount,
+      ),
     ...lines,
   ];
   final transaction = Transaction(
@@ -232,13 +247,11 @@ TransactionDetail _detail({
     sourceKind: SourceKind.manual,
     note: 'note',
     lines: allLines,
-    entries: entries,
   );
-  return TransactionDetail(
+  return TransactionReadModel.fromTransaction(
     transaction: transaction,
     createdAt: DateTime(2026, 1, 2, 8, 30),
     lines: allLines,
-    entries: entries,
   );
 }
 

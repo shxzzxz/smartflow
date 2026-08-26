@@ -1200,11 +1200,11 @@ credit.RepaymentTransactionInfo _transactionInfo() {
   );
 }
 
-ledger_query.TransactionDetail _transactionDetail({
+ledger_query.TransactionReadModel _transactionDetail({
   required String transactionId,
   required DateTime occurredAt,
 }) {
-  return ledger_query.TransactionDetail(
+  return ledger_query.TransactionReadModel.fromTransaction(
     transaction: ledger_query.Transaction(
       id: transactionId,
       businessPurpose: ledger_query.BusinessPurpose.debtRepayment,
@@ -1216,7 +1216,6 @@ ledger_query.TransactionDetail _transactionDetail({
     ),
     createdAt: occurredAt,
     lines: const [],
-    entries: const [],
   );
 }
 
@@ -1538,8 +1537,8 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
     );
     if (detail == null) return null;
     return CreditLedgerTransactionSnapshot(
-      transactionId: detail.transaction.id,
-      occurredAt: detail.transaction.occurredAt,
+      transactionId: detail.id,
+      occurredAt: detail.occurredAt,
     );
   }
 
@@ -1643,17 +1642,17 @@ class _FakeUpdateService implements ledger.TransactionUpdateAppService {
 
 class _FakeTransactionQueryService
     implements ledger_query.TransactionQueryService {
-  final details = <String, ledger_query.TransactionDetail>{};
+  final details = <String, ledger_query.TransactionReadModel>{};
 
   @override
-  Future<ledger_query.TransactionDetail?> findTransactionDetail(
+  Future<ledger_query.TransactionReadModel?> findTransactionDetail(
     String transactionId,
   ) async {
     return details[transactionId];
   }
 
   @override
-  Future<ledger_query.TransactionDetail?> findParentTransactionDetail(
+  Future<ledger_query.TransactionReadModel?> findParentTransactionDetail(
     String transactionId,
   ) async {
     return details[transactionId];

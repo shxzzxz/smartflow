@@ -73,7 +73,7 @@ final class TransactionFormViewModelProvider
 }
 
 String _$transactionFormViewModelHash() =>
-    r'3626896d4656a61c00230f7c014d87f5816376e8';
+    r'4f33bdc05283e161913b0df61f9c4db4af466645';
 
 final class TransactionFormViewModelFamily extends $Family
     with

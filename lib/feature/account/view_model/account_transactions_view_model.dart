@@ -19,7 +19,7 @@ class AccountTransactionPaging extends _$AccountTransactionPaging {
 
 @riverpod
 class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
-  List<TransactionListReadModel> _previousItems = const [];
+  List<TransactionReadModel> _previousItems = const [];
 
   @override
   AccountTransactionsState build(String accountId) {
@@ -98,7 +98,7 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
   }
 
   AccountTransactionsLoaded _loaded({
-    required List<TransactionListReadModel> items,
+    required List<TransactionReadModel> items,
     required AccountLookup accountLookup,
     required bool hasMore,
     required bool isLoadingMore,

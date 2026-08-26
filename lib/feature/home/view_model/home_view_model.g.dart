@@ -119,13 +119,13 @@ final homeTransactionsProvider = HomeTransactionsFamily._();
 final class HomeTransactionsProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<TransactionListReadModel>>,
-          List<TransactionListReadModel>,
-          Stream<List<TransactionListReadModel>>
+          AsyncValue<List<TransactionReadModel>>,
+          List<TransactionReadModel>,
+          Stream<List<TransactionReadModel>>
         >
     with
-        $FutureModifier<List<TransactionListReadModel>>,
-        $StreamProvider<List<TransactionListReadModel>> {
+        $FutureModifier<List<TransactionReadModel>>,
+        $StreamProvider<List<TransactionReadModel>> {
   HomeTransactionsProvider._({
     required HomeTransactionsFamily super.from,
     required DateTime super.argument,
@@ -149,12 +149,12 @@ final class HomeTransactionsProvider
 
   @$internal
   @override
-  $StreamProviderElement<List<TransactionListReadModel>> $createElement(
+  $StreamProviderElement<List<TransactionReadModel>> $createElement(
     $ProviderPointer pointer,
   ) => $StreamProviderElement(pointer);
 
   @override
-  Stream<List<TransactionListReadModel>> create(Ref ref) {
+  Stream<List<TransactionReadModel>> create(Ref ref) {
     final argument = this.argument as DateTime;
     return homeTransactions(ref, argument);
   }
@@ -170,12 +170,12 @@ final class HomeTransactionsProvider
   }
 }
 
-String _$homeTransactionsHash() => r'961e9f80475537107f1e2acdc51e6201dcc588ee';
+String _$homeTransactionsHash() => r'8a4bbc67810677dc86af4cd777d9e46b284c894a';
 
 final class HomeTransactionsFamily extends $Family
     with
         $FunctionalFamilyOverride<
-          Stream<List<TransactionListReadModel>>,
+          Stream<List<TransactionReadModel>>,
           DateTime
         > {
   HomeTransactionsFamily._()
@@ -250,7 +250,7 @@ final class HomeTransactionFeedViewModelProvider
 }
 
 String _$homeTransactionFeedViewModelHash() =>
-    r'40565fda7c7ddfe9bfbb4b1635949ae78ee5f14a';
+    r'9c2208bbd9964ca7d8dc413dffd3ee16ce5992cc';
 
 final class HomeTransactionFeedViewModelFamily extends $Family
     with

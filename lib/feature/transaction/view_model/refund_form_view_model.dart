@@ -74,11 +74,11 @@ class RefundFormViewModel extends _$RefundFormViewModel {
 
   Future<RefundFormState> _buildEditState({
     required String transactionId,
-    required TransactionDetail detail,
+    required TransactionReadModel detail,
     required List<Account> accounts,
     required Map<String, Account> accountsById,
   }) async {
-    final transaction = detail.transaction;
+    final transaction = detail;
     final parentTransactionId = transaction.parentTransactionId;
     if (transaction.businessPurpose != BusinessPurpose.refund ||
         parentTransactionId == null) {
@@ -332,40 +332,31 @@ class RefundFormState {
   }
 }
 
-Money _refundedTotal(TransactionDetail detail) {
-  final refundChildren = detail.children.where(
-    (child) => child.businessPurpose == BusinessPurpose.refund,
-  );
-  if (refundChildren.isNotEmpty) {
-    return refundChildren.fold(
-      Money.zero(),
-      (sum, child) => sum + child.primaryAmount,
-    );
-  }
-  return detail.refundedTotal ?? Money.zero();
+Money _refundedTotal(TransactionReadModel detail) {
+  return detail.refundedTotal;
 }
 
-Money _remainingForNewRefund(TransactionDetail detail, Money refunded) {
+Money _remainingForNewRefund(TransactionReadModel detail, Money refunded) {
   final summary = detail.reimbursementSummary;
-  if (detail.transaction.businessPurpose ==
+  if (detail.businessPurpose ==
           BusinessPurpose.reimbursementAdvance &&
       summary is ReimbursementSummary) {
     return summary.outstanding;
   }
-  return detail.transaction.primaryAmount - refunded;
+  return detail.primaryAmount - refunded;
 }
 
 Money _remainingForEditedRefund(
-  TransactionDetail parentDetail,
-  Transaction refund,
+  TransactionReadModel parentDetail,
+  TransactionReadModel refund,
 ) {
   final summary = parentDetail.reimbursementSummary;
-  if (parentDetail.transaction.businessPurpose ==
+  if (parentDetail.businessPurpose ==
           BusinessPurpose.reimbursementAdvance &&
       summary is ReimbursementSummary) {
     return summary.outstanding + refund.primaryAmount;
   }
-  return parentDetail.transaction.primaryAmount -
+  return parentDetail.primaryAmount -
       _refundedTotal(parentDetail) +
       refund.primaryAmount;
 }

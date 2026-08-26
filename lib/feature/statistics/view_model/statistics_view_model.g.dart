@@ -536,13 +536,13 @@ final statisticsTransactionsProvider = StatisticsTransactionsFamily._();
 final class StatisticsTransactionsProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<TransactionListReadModel>>,
-          List<TransactionListReadModel>,
-          Stream<List<TransactionListReadModel>>
+          AsyncValue<List<TransactionReadModel>>,
+          List<TransactionReadModel>,
+          Stream<List<TransactionReadModel>>
         >
     with
-        $FutureModifier<List<TransactionListReadModel>>,
-        $StreamProvider<List<TransactionListReadModel>> {
+        $FutureModifier<List<TransactionReadModel>>,
+        $StreamProvider<List<TransactionReadModel>> {
   StatisticsTransactionsProvider._({
     required StatisticsTransactionsFamily super.from,
     required ({
@@ -575,12 +575,12 @@ final class StatisticsTransactionsProvider
 
   @$internal
   @override
-  $StreamProviderElement<List<TransactionListReadModel>> $createElement(
+  $StreamProviderElement<List<TransactionReadModel>> $createElement(
     $ProviderPointer pointer,
   ) => $StreamProviderElement(pointer);
 
   @override
-  Stream<List<TransactionListReadModel>> create(Ref ref) {
+  Stream<List<TransactionReadModel>> create(Ref ref) {
     final argument =
         this.argument
             as ({
@@ -617,12 +617,12 @@ final class StatisticsTransactionsProvider
 }
 
 String _$statisticsTransactionsHash() =>
-    r'e5f9f103b44007a4666fab1dd9a36e997c601aa5';
+    r'92f8ff76dfc65919264724bf8cadbb8536dbb5b6';
 
 final class StatisticsTransactionsFamily extends $Family
     with
         $FunctionalFamilyOverride<
-          Stream<List<TransactionListReadModel>>,
+          Stream<List<TransactionReadModel>>,
           ({
             CategorySelection? category,
             String? settlementAccountId,

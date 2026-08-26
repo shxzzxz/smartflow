@@ -983,7 +983,7 @@ credit_query.CreditAccountOverviewReadModel _creditOverview() {
   );
 }
 
-TransactionDetail _detail() {
+TransactionReadModel _detail() {
   final transaction = Transaction(
     id: 'parent',
     businessPurpose: BusinessPurpose.reimbursementAdvance,
@@ -1001,6 +1001,8 @@ TransactionDetail _detail() {
         accountId: 'expense',
         amount: Money(minorUnits: 1000),
       ),
+      TransactionLine(id: 'advance-out', transactionId: 'parent', lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: Money(minorUnits: 1000)),
+      TransactionLine(id: 'advance-receivable', transactionId: 'parent', lineNo: 3, role: TransactionRole.receivable, accountId: 'company', amount: Money(minorUnits: 1000)),
     ],
     entries: [
       Entry(
@@ -1019,17 +1021,12 @@ TransactionDetail _detail() {
       ),
     ],
   );
-  return TransactionDetail(
+  return TransactionReadModel.fromTransaction(
     transaction: transaction,
     createdAt: DateTime(2026),
-    entries: transaction.entries,
-    lines: const <TransactionLine>[],
-    refundedTotal: const Money(minorUnits: 200),
-    reimbursementSummary: const ReimbursementSummary(
-      advanceAmount: Money(minorUnits: 1000),
-      receivedAmount: Money(minorUnits: 200),
-      outstanding: Money(minorUnits: 800),
-      isClosed: false,
-    ),
+    lines: transaction.lines,
+    children: [
+      TransactionReadModel(id: 'refund', parentTransactionId: 'parent', businessPurpose: BusinessPurpose.refund, occurredAt: DateTime(2026), primaryAmount: const Money(minorUnits: 200), isExcludedFromStats: false, isExcludedFromBudget: false),
+    ],
   );
 }

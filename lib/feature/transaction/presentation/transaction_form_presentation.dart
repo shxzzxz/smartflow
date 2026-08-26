@@ -63,12 +63,12 @@ bool supportsTransactionFormEdit(BusinessPurpose purpose) {
 }
 
 TransactionFormEditSnapshot transactionFormEditSnapshot({
-  required TransactionDetail detail,
+  required TransactionReadModel detail,
   required List<CategoryNode> expenseTree,
   required List<CategoryNode> incomeTree,
   required Map<String, Account> accountsById,
 }) {
-  final transaction = detail.transaction;
+  final transaction = detail;
   final amountText = formatMoney(
     transaction.primaryAmount,
     style: MoneyFormatStyle.plain,
@@ -116,11 +116,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
           accountsById,
           EntryDirection.credit,
         ),
-        reimbursementAccountId: settlementAccountId(
-          detail,
-          accountsById,
-          EntryDirection.debit,
-        ),
+        reimbursementAccountId: detail.accountOf(TransactionRole.receivable),
       );
     case BusinessPurpose.dailyIncome:
       final categoryId = _firstAccountId(
@@ -215,13 +211,13 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
     case BusinessPurpose.debtRelief:
       throw ArgumentError.value(
         transaction.businessPurpose,
-        'detail.transaction.businessPurpose',
+        'detail.businessPurpose',
         '该交易类型不支持通用交易编辑表单',
       );
   }
 }
 
-String _lineAmountText(TransactionDetail detail, TransactionRole role) {
+String _lineAmountText(TransactionReadModel detail, TransactionRole role) {
   final amount = sumTransactionLineAmount(detail, role);
   if (amount.minorUnits <= 0) return '';
   return formatMoney(amount, style: MoneyFormatStyle.plain);
@@ -253,7 +249,7 @@ String? effectiveRefundToAccountId({
 }
 
 String? parentSettlementAccountIdForRefund(
-  TransactionDetail? detail,
+  TransactionReadModel? detail,
   Map<String, Account> accountsById,
 ) {
   if (detail == null) return null;
@@ -261,17 +257,11 @@ String? parentSettlementAccountIdForRefund(
 }
 
 String? reimbursementReceivableAccountId(
-  TransactionDetail? detail,
+  TransactionReadModel? detail,
   Map<String, Account> accountsById,
 ) {
   if (detail == null) return null;
-  for (final entry in detail.entries) {
-    if (accountsById[entry.accountId]?.type == AccountType.asset &&
-        entry.direction == EntryDirection.debit) {
-      return entry.accountId;
-    }
-  }
-  return null;
+  return detail.accountOf(TransactionRole.receivable);
 }
 
 bool _containsAccountId(List<Account> accounts, String? accountId) {
@@ -280,31 +270,27 @@ bool _containsAccountId(List<Account> accounts, String? accountId) {
 }
 
 String? _firstAccountId(
-  TransactionDetail detail,
+  TransactionReadModel detail,
   Map<String, Account> accountsById,
   AccountType type,
   EntryDirection direction,
 ) {
-  for (final entry in detail.entries) {
-    if (accountsById[entry.accountId]?.type == type &&
-        entry.direction == direction) {
-      return entry.accountId;
-    }
-  }
-  return null;
+  final role = switch (type) {
+    AccountType.expense || AccountType.income => TransactionRole.category,
+    AccountType.asset => TransactionRole.receivable,
+    AccountType.liability => TransactionRole.liability,
+    AccountType.equity => null,
+  };
+  return role == null ? null : detail.accountOf(role);
 }
 
 String? settlementAccountId(
-  TransactionDetail detail,
+  TransactionReadModel detail,
   Map<String, Account> accountsById,
   EntryDirection direction,
 ) {
-  for (final entry in detail.entries) {
-    final type = accountsById[entry.accountId]?.type;
-    if ((type == AccountType.asset || type == AccountType.liability) &&
-        entry.direction == direction) {
-      return entry.accountId;
-    }
-  }
-  return null;
+  final role = direction == EntryDirection.debit
+      ? TransactionRole.settlementIn
+      : TransactionRole.settlementOut;
+  return detail.accountOf(role);
 }

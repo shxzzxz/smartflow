@@ -214,7 +214,7 @@ class _DetailBody extends ConsumerWidget {
       case DetailEditAllowed():
         break;
     }
-    final current = state.detail.transaction.occurredAt;
+    final current = state.detail.occurredAt;
     final updated = await showAppDateTimePicker(
       context: context,
       initialDateTime: current,
@@ -236,7 +236,7 @@ class _DetailBody extends ConsumerWidget {
       case DetailEditAllowed():
         break;
     }
-    final current = state.detail.transaction.postedAt;
+    final current = state.detail.postedAt;
     final updated = await showAppDateTimePicker(
       context: context,
       initialDateTime: current,

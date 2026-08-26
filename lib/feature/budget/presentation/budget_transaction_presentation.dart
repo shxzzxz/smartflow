@@ -3,7 +3,7 @@ import '../../shared/presentation/account_lookup.dart';
 import '../../shared/presentation/transaction_list_presentation.dart';
 
 List<TransactionDayGroup> budgetTransactionGroups({
-  required List<TransactionListReadModel> transactions,
+  required List<TransactionReadModel> transactions,
   required AccountLookup accountLookup,
   required String categoryId,
 }) {

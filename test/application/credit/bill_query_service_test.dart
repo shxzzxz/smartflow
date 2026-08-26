@@ -77,7 +77,7 @@ void main() {
 
 class _Fixture {
   _Fixture({
-    Map<String, ledger.TransactionDetail> transactionDetails = const {},
+    Map<String, ledger.TransactionReadModel> transactionDetails = const {},
   }) {
     query = credit_query.BillQueryServiceImpl(
       bills: bills,
@@ -152,7 +152,7 @@ class _Fixture {
   Future<void> close() => database.close();
 }
 
-ledger.TransactionDetail _transactionDetail() {
+ledger.TransactionReadModel _transactionDetail() {
   final transaction = ledger.Transaction(
     id: 'tx-root',
     businessPurpose: ledger.BusinessPurpose.debtRepayment,
@@ -162,24 +162,25 @@ ledger.TransactionDetail _transactionDetail() {
     isExcludedFromBudget: false,
     sourceKind: ledger.SourceKind.manual,
   );
-  return ledger.TransactionDetail(
+  return ledger.TransactionReadModel.fromTransaction(
     transaction: transaction,
     createdAt: DateTime(2026, 6, 20),
-    lines: const [],
-    entries: [
-      ledger.Entry(
-        id: 'entry-1',
+    lines: const [
+      ledger.TransactionLine(
+        id: 'line-1',
         transactionId: 'tx-root',
+        lineNo: 1,
+        role: ledger.TransactionRole.liability,
         accountId: 'credit-1',
-        direction: ledger.EntryDirection.debit,
-        amount: const Money(minorUnits: 1000),
+        amount: Money(minorUnits: 1000),
       ),
-      ledger.Entry(
-        id: 'entry-2',
+      ledger.TransactionLine(
+        id: 'line-2',
         transactionId: 'tx-root',
+        lineNo: 2,
+        role: ledger.TransactionRole.settlementOut,
         accountId: 'cash-1',
-        direction: ledger.EntryDirection.credit,
-        amount: const Money(minorUnits: 1000),
+        amount: Money(minorUnits: 1000),
       ),
     ],
   );
@@ -188,7 +189,7 @@ ledger.TransactionDetail _transactionDetail() {
 class _FakeCreditLedgerPort implements CreditLedgerPort {
   const _FakeCreditLedgerPort(this.details);
 
-  final Map<String, ledger.TransactionDetail> details;
+  final Map<String, ledger.TransactionReadModel> details;
 
   @override
   Future<CreditLedgerTransactionSnapshot?> findParentTransaction(
@@ -197,9 +198,9 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
     final detail = details[transactionId];
     if (detail == null) return null;
     return CreditLedgerTransactionSnapshot(
-      transactionId: detail.transaction.id,
-      occurredAt: detail.transaction.occurredAt,
-      paidFromAccountId: detail.entries.last.accountId,
+      transactionId: detail.id,
+      occurredAt: detail.occurredAt,
+      paidFromAccountId: detail.accountOf(ledger.TransactionRole.settlementOut),
     );
   }
 

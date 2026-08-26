@@ -2191,7 +2191,7 @@ final class TransactionQueryServiceProvider
 }
 
 String _$transactionQueryServiceHash() =>
-    r'1680f82203c8de447429976715bbe1df699e9f49';
+    r'09823b92092186dd5d85c12364cd9078894ac60b';
 
 @ProviderFor(financialMetricsService)
 final financialMetricsServiceProvider = FinancialMetricsServiceProvider._();

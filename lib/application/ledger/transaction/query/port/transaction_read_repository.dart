@@ -4,21 +4,6 @@ import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import '../transaction_queries.dart';
 import '../transaction_read_models.dart';
 
-class TransactionChildAggregate {
-  const TransactionChildAggregate({
-    required this.sumMinor,
-    required this.count,
-  });
-
-  final int sumMinor;
-  final int count;
-
-  static const TransactionChildAggregate empty = TransactionChildAggregate(
-    sumMinor: 0,
-    count: 0,
-  );
-}
-
 /// 数据清理条件命中的一个交易组。
 class TransactionCleanupTarget {
   const TransactionCleanupTarget({
@@ -49,29 +34,15 @@ class CategoryTransactionTarget {
 abstract interface class TransactionReadRepository {
   Future<Transaction?> findById(String id);
 
-  Future<DateTime?> findCreatedAt(String id);
-
   Future<List<Transaction>> findByIds(Set<String> ids);
+
+  Future<Map<String, DateTime>> findCreatedAtByIds(Set<String> ids);
 
   Stream<List<Transaction>> watchPage(TransactionPageQuery query);
 
-  Future<List<Transaction>> findChildren({required String parentId});
-
-  Future<Map<String, TransactionChildAggregate>> aggregateChildren({
-    required Set<String> parentIds,
-    required Set<BusinessPurpose> purposes,
-  });
-
-  Future<Map<String, Map<TransactionRole, int>>> aggregateChildLineAmounts({
-    required Set<String> parentIds,
-    required Set<TransactionRole> roles,
-  });
-
-  Future<Map<String, Map<BusinessPurpose, TransactionChildAggregate>>>
-  aggregateChildrenByPurpose({
-    required Set<String> parentIds,
-    required Set<BusinessPurpose> purposes,
-  });
+  Future<Map<String, List<Transaction>>> findChildrenByParentIds(
+    Set<String> parentIds,
+  );
 
   Stream<TransactionCleanupPreview> watchCleanupPreview(
     TransactionCleanupQuery query,

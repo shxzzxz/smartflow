@@ -336,8 +336,8 @@ final _accounts = <String, Account>{
   'food': _account('food', '午餐', type: AccountType.expense, iconKey: 'meal'),
 };
 
-TransactionDetail _detail() {
-  return TransactionDetail(
+TransactionReadModel _detail() {
+  return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'tx-1',
       businessPurpose: BusinessPurpose.dailyExpense,
@@ -348,28 +348,15 @@ TransactionDetail _detail() {
       sourceKind: SourceKind.manual,
     ),
     createdAt: DateTime(2026, 1, 1, 8, 1),
-    lines: const [],
-    entries: const [
-      Entry(
-        id: 'entry-cash',
-        transactionId: 'tx-1',
-        accountId: 'cash',
-        direction: EntryDirection.credit,
-        amount: Money(minorUnits: 10000),
-      ),
-      Entry(
-        id: 'entry-food',
-        transactionId: 'tx-1',
-        accountId: 'food',
-        direction: EntryDirection.debit,
-        amount: Money(minorUnits: 10000),
-      ),
+    lines: const [
+      TransactionLine(id: 'category', transactionId: 'tx-1', lineNo: 1, role: TransactionRole.category, accountId: 'food', amount: Money(minorUnits: 10000)),
+      TransactionLine(id: 'settlement', transactionId: 'tx-1', lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: Money(minorUnits: 10000)),
     ],
   );
 }
 
-TransactionDetail _transferDetail() {
-  return TransactionDetail(
+TransactionReadModel _transferDetail() {
+  return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'transfer',
       businessPurpose: BusinessPurpose.transfer,
@@ -405,27 +392,11 @@ TransactionDetail _transferDetail() {
         amount: Money(minorUnits: 300),
       ),
     ],
-    entries: const [
-      Entry(
-        id: 'transfer-cash',
-        transactionId: 'transfer',
-        accountId: 'cash',
-        direction: EntryDirection.credit,
-        amount: Money(minorUnits: 2300),
-      ),
-      Entry(
-        id: 'transfer-bank',
-        transactionId: 'transfer',
-        accountId: 'bank',
-        direction: EntryDirection.debit,
-        amount: Money(minorUnits: 2000),
-      ),
-    ],
   );
 }
 
-TransactionDetail _reimbursementDetail() {
-  return TransactionDetail(
+TransactionReadModel _reimbursementDetail() {
+  return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'tx-reimbursement',
       businessPurpose: BusinessPurpose.reimbursementAdvance,
@@ -438,69 +409,34 @@ TransactionDetail _reimbursementDetail() {
     ),
     createdAt: DateTime(2026, 1, 1, 8, 1),
     lines: _reimbursementLines,
-    entries: const [
-      Entry(
-        id: 'entry-cash-reimbursement',
-        transactionId: 'tx-reimbursement',
-        accountId: 'cash',
-        direction: EntryDirection.credit,
-        amount: Money(minorUnits: 10000),
-      ),
-      Entry(
-        id: 'entry-receivable',
-        transactionId: 'tx-reimbursement',
-        accountId: 'receivable',
-        direction: EntryDirection.debit,
-        amount: Money(minorUnits: 10000),
-      ),
-    ],
-    reimbursementSummary: const ReimbursementSummary(
-      advanceAmount: Money(minorUnits: 10000),
-      receivedAmount: Money(minorUnits: 0),
-      outstanding: Money(minorUnits: 10000),
-      isClosed: false,
-    ),
   );
 }
 
-TransactionDetail _combinedReimbursementDetail() {
+TransactionReadModel _combinedReimbursementDetail() {
   final detail = _reimbursementDetail();
-  return TransactionDetail(
-    transaction: detail.transaction,
-    createdAt: detail.createdAt,
-    lines: detail.lines,
-    entries: detail.entries,
+  return detail.copyWith(
     children: [
-      TransactionListReadModel(
+      TransactionReadModel(
         id: 'refund',
+        parentTransactionId: detail.id,
         businessPurpose: BusinessPurpose.refund,
         occurredAt: DateTime(2026, 1, 2, 8),
         primaryAmount: const Money(minorUnits: 2000),
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
-        primaryCategoryId: null,
         impactsByAccountId: const {},
-        adjustments: const [],
       ),
-      TransactionListReadModel(
+      TransactionReadModel(
         id: 'receipt',
+        parentTransactionId: detail.id,
         businessPurpose: BusinessPurpose.reimbursementReceipt,
         occurredAt: DateTime(2026, 1, 3, 8),
         primaryAmount: const Money(minorUnits: 4000),
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
-        primaryCategoryId: null,
         impactsByAccountId: const {},
-        adjustments: const [],
       ),
     ],
-    refundedTotal: const Money(minorUnits: 2000),
-    reimbursementSummary: const ReimbursementSummary(
-      advanceAmount: Money(minorUnits: 10000),
-      receivedAmount: Money(minorUnits: 4000),
-      outstanding: Money(minorUnits: 4000),
-      isClosed: false,
-    ),
   );
 }
 
@@ -575,4 +511,6 @@ const _reimbursementLines = [
     accountId: 'food',
     amount: Money(minorUnits: 10000),
   ),
+  TransactionLine(id: 'advance-out', transactionId: 'tx-reimbursement', lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: Money(minorUnits: 10000)),
+  TransactionLine(id: 'advance-receivable', transactionId: 'tx-reimbursement', lineNo: 3, role: TransactionRole.receivable, accountId: 'receivable', amount: Money(minorUnits: 10000)),
 ];

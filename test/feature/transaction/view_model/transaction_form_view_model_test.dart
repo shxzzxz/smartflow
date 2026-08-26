@@ -129,7 +129,7 @@ void main() {
     });
 
     test('rejects child transaction types in the generic edit form', () {
-      final detail = TransactionDetail(
+      final detail = TransactionReadModel.fromTransaction(
         transaction: Transaction(
           id: 'refund',
           parentTransactionId: 'parent',
@@ -142,7 +142,6 @@ void main() {
         ),
         createdAt: DateTime(2026, 7, 23),
         lines: const [],
-        entries: const [],
       );
       final container = _container(
         editTransactionId: 'refund',
@@ -756,7 +755,7 @@ ProviderContainer _container({
   TransactionEditAppService? editService,
   TransactionQueryService? transactionQueryService,
   String? editTransactionId,
-  TransactionDetail? editDetail,
+  TransactionReadModel? editDetail,
   Map<String, Account> accountsById = const {},
   List<Account> settlementAccounts = const [],
   List<Account> fundAccounts = const [],
@@ -827,12 +826,8 @@ Account _account(String id, {AccountType type = AccountType.asset}) {
   );
 }
 
-TransactionDetail _transactionDetail() {
-  final entries = [
-    _entry('food', EntryDirection.debit),
-    _entry('cash', EntryDirection.credit),
-  ];
-  return TransactionDetail(
+TransactionReadModel _transactionDetail() {
+  return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'tx-1',
       businessPurpose: BusinessPurpose.dailyExpense,
@@ -842,20 +837,17 @@ TransactionDetail _transactionDetail() {
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
       note: 'note',
-      entries: entries,
     ),
     createdAt: DateTime(2026, 1, 2, 8, 30),
-    lines: const [],
-    entries: entries,
+    lines: const [
+      TransactionLine(id: 'category', transactionId: 'tx-1', lineNo: 1, role: TransactionRole.category, accountId: 'food', amount: Money(minorUnits: 1234)),
+      TransactionLine(id: 'settlement', transactionId: 'tx-1', lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: Money(minorUnits: 1234)),
+    ],
   );
 }
 
-TransactionDetail _lendingTransactionDetail() {
-  final entries = [
-    _entry('receivable', EntryDirection.debit),
-    _entry('cash', EntryDirection.credit),
-  ];
-  return TransactionDetail(
+TransactionReadModel _lendingTransactionDetail() {
+  return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'lending-1',
       businessPurpose: BusinessPurpose.lending,
@@ -864,15 +856,16 @@ TransactionDetail _lendingTransactionDetail() {
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
-      entries: entries,
     ),
     createdAt: DateTime(2026, 8, 21),
-    lines: const [],
-    entries: entries,
+    lines: const [
+      TransactionLine(id: 'receivable', transactionId: 'lending-1', lineNo: 1, role: TransactionRole.receivable, accountId: 'receivable', amount: Money(minorUnits: 5000)),
+      TransactionLine(id: 'settlement', transactionId: 'lending-1', lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: Money(minorUnits: 5000)),
+    ],
   );
 }
 
-TransactionDetail _transferTransactionDetail() {
+TransactionReadModel _transferTransactionDetail() {
   const amount = Money(minorUnits: 2000);
   const fee = Money(minorUnits: 300);
   const lines = [
@@ -900,23 +893,7 @@ TransactionDetail _transferTransactionDetail() {
       amount: fee,
     ),
   ];
-  const entries = [
-    Entry(
-      id: 'transfer-to',
-      transactionId: 'transfer-1',
-      accountId: 'bank',
-      direction: EntryDirection.debit,
-      amount: amount,
-    ),
-    Entry(
-      id: 'transfer-from',
-      transactionId: 'transfer-1',
-      accountId: 'cash',
-      direction: EntryDirection.credit,
-      amount: Money(minorUnits: 2300),
-    ),
-  ];
-  return TransactionDetail(
+  return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'transfer-1',
       businessPurpose: BusinessPurpose.transfer,
@@ -926,21 +903,9 @@ TransactionDetail _transferTransactionDetail() {
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
       lines: lines,
-      entries: entries,
     ),
     createdAt: DateTime(2026, 8, 22),
     lines: lines,
-    entries: entries,
-  );
-}
-
-Entry _entry(String accountId, EntryDirection direction) {
-  return Entry(
-    id: 'entry-$accountId',
-    transactionId: 'tx-1',
-    accountId: accountId,
-    direction: direction,
-    amount: const Money(minorUnits: 1234),
   );
 }
 

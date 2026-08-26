@@ -41,10 +41,12 @@ class TransactionGroup {
   }
 
   Money reimbursementOutstanding() {
-    if (reimbursementClosed) return Money.zero();
-    return parentTransaction.primaryAmount -
-        refundedTotal() -
-        reimbursementReceivedTotal();
+    return calculateReimbursementOutstanding(
+      advanceAmount: parentTransaction.primaryAmount,
+      refundedTotal: refundedTotal(),
+      receivedTotal: reimbursementReceivedTotal(),
+      isClosed: reimbursementClosed,
+    );
   }
 
   /// 排除某笔子交易后的待核销额。
@@ -54,9 +56,7 @@ class TransactionGroup {
   Money reimbursementOutstandingExcluding(String childTransactionId) {
     return parentTransaction.primaryAmount -
         refundedTotal(excludingTransactionId: childTransactionId) -
-        reimbursementReceivedTotal(
-          excludingTransactionId: childTransactionId,
-        );
+        reimbursementReceivedTotal(excludingTransactionId: childTransactionId);
   }
 
   Money _sumChildren({
@@ -92,4 +92,15 @@ class TransactionGroup {
       );
     }
   }
+}
+
+/// 读写两侧共享的报销待核销规则。
+Money calculateReimbursementOutstanding({
+  required Money advanceAmount,
+  required Money refundedTotal,
+  required Money receivedTotal,
+  required bool isClosed,
+}) {
+  if (isClosed) return Money.zero();
+  return advanceAmount - refundedTotal - receivedTotal;
 }

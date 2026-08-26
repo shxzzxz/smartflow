@@ -39,7 +39,7 @@ class ReimbursementEditFormViewModel extends _$ReimbursementEditFormViewModel {
       );
     }
 
-    final transaction = detail.transaction;
+    final transaction = detail;
     final kind = switch (transaction.businessPurpose) {
       BusinessPurpose.reimbursementReceipt => ReimbursementEditKind.receipt,
       BusinessPurpose.reimbursementClose => ReimbursementEditKind.close,
@@ -104,11 +104,7 @@ class ReimbursementEditFormViewModel extends _$ReimbursementEditFormViewModel {
       accounts: accounts,
       outstandingBeforeTransaction: outstandingBeforeTransaction,
       receivableAccountId: receivableAccountId,
-      receiveAccountId: settlementAccountId(
-        detail,
-        accountsById,
-        EntryDirection.debit,
-      ),
+      receiveAccountId: _positiveSettlementInAccountId(detail),
       occurredAt: transaction.occurredAt,
       amountText: formatMoney(amount, style: MoneyFormatStyle.plain),
       noteText: transaction.note ?? '',
@@ -220,6 +216,13 @@ class ReimbursementEditFormViewModel extends _$ReimbursementEditFormViewModel {
       ),
     );
   }
+}
+
+String? _positiveSettlementInAccountId(TransactionReadModel detail) {
+  for (final line in detail.linesOf(TransactionRole.settlementIn)) {
+    if (line.amount.minorUnits > 0) return line.accountId;
+  }
+  return null;
 }
 
 enum ReimbursementEditKind { receipt, close }
@@ -353,15 +356,15 @@ class ReimbursementEditFormState {
   }
 }
 
-Money _closeOutstanding(TransactionDetail detail) {
+Money _closeOutstanding(TransactionReadModel detail) {
   return _lineAmount(detail, TransactionRole.receivable) ?? Money.zero();
 }
 
-Money _closeActualAmount(TransactionDetail detail) {
+Money _closeActualAmount(TransactionReadModel detail) {
   return _lineAmount(detail, TransactionRole.settlementIn) ?? Money.zero();
 }
 
-Money? _lineAmount(TransactionDetail detail, TransactionRole role) {
+Money? _lineAmount(TransactionReadModel detail, TransactionRole role) {
   for (final line in detail.lines) {
     if (line.role == role) return line.amount;
   }

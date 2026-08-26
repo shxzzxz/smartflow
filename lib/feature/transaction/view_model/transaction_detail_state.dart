@@ -13,7 +13,7 @@ part 'transaction_detail_state.freezed.dart';
 sealed class TransactionDetailUiState with _$TransactionDetailUiState {
   const factory TransactionDetailUiState.loaded({
     required String transactionId,
-    required TransactionDetail detail,
+    required TransactionReadModel detail,
     required DetailBehaviorConfig behavior,
     required DetailHero hero,
     required String occurredAtText,

@@ -24,7 +24,7 @@ abstract interface class TransactionDetailActionDispatcher {
 }
 
 TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
-  required Transaction transaction,
+  required TransactionReadModel transaction,
   required TransactionEditAppService editService,
   required TransactionUpdateAppService updateService,
   required InstallmentAppService installmentAppService,
@@ -109,7 +109,7 @@ Patch<String?> _nullableStringPatch(String? value) {
 }
 
 Future<UiActionOutcome<void>> _changeTagsForPlainTransaction({
-  required Transaction transaction,
+  required TransactionReadModel transaction,
   required TransactionEditAppService editService,
   required Set<String> tagIds,
 }) {
@@ -203,7 +203,7 @@ Future<UiActionOutcome<void>> _changeTagsForPlainTransaction({
 const String _tagEditDeniedMessage = '当前交易类型不支持修改标签';
 
 Future<UiActionOutcome<void>> _changePostedAt({
-  required Transaction transaction,
+  required TransactionReadModel transaction,
   required TransactionUpdateAppService updateService,
   required DateTime value,
 }) {
@@ -225,7 +225,7 @@ final class _DefaultActionDispatcher
     required this.updateService,
   });
 
-  final Transaction transaction;
+  final TransactionReadModel transaction;
   final TransactionEditAppService editService;
   final TransactionUpdateAppService updateService;
 
@@ -372,7 +372,7 @@ final class _InstallmentActionDispatcher
     required this.contractId,
   });
 
-  final Transaction transaction;
+  final TransactionReadModel transaction;
   final InstallmentAppService installmentAppService;
   final TransactionUpdateAppService updateService;
   final String contractId;
@@ -448,7 +448,7 @@ final class _CreditRepaymentActionDispatcher
     required this.repaymentId,
   });
 
-  final Transaction transaction;
+  final TransactionReadModel transaction;
   final RepaymentAppService repaymentAppService;
   final TransactionUpdateAppService updateService;
   final String repaymentId;
@@ -522,7 +522,7 @@ final class _UnknownActionDispatcher
     required this.updateService,
   });
 
-  final Transaction transaction;
+  final TransactionReadModel transaction;
   final TransactionUpdateAppService updateService;
 
   @override

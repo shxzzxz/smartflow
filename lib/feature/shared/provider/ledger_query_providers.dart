@@ -87,7 +87,7 @@ Stream<MonthlyBudgetReport> monthlyBudgetReport(Ref ref, DateTime month) {
 }
 
 @riverpod
-Stream<List<TransactionListReadModel>> transactionList(
+Stream<List<TransactionReadModel>> transactionList(
   Ref ref, {
   String? settlementAccountId,
   int limit = 50,
@@ -136,7 +136,7 @@ Stream<List<NetAssetTrendPoint>> netAssetTrend(Ref ref, {int months = 6}) {
 }
 
 @riverpod
-Stream<TransactionDetail?> transactionDetail(Ref ref, String transactionId) {
+Stream<TransactionReadModel?> transactionDetail(Ref ref, String transactionId) {
   return ref
       .watch(transactionQueryServiceProvider)
       .watchTransactionDetail(transactionId);

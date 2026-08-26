@@ -75,7 +75,7 @@ class ReceivablePayableFormViewModel extends _$ReceivablePayableFormViewModel {
     final detail = await ref.watch(
       transactionDetailProvider(transactionId).future,
     );
-    if (detail == null || !_matchesKind(detail.transaction.businessPurpose)) {
+    if (detail == null || !_matchesKind(detail.businessPurpose)) {
       return ReceivablePayableFormState.notFound(
         kind: args.kind,
         transactionId: transactionId,
@@ -168,11 +168,11 @@ class ReceivablePayableFormViewModel extends _$ReceivablePayableFormViewModel {
   }
 
   ReceivablePayableFormState _editState(
-    TransactionDetail detail,
+    TransactionReadModel detail,
     Map<String, Account> accountsById,
     List<Account> receiveAccounts,
   ) {
-    final transaction = detail.transaction;
+    final transaction = detail;
     final amount = switch (args.kind) {
       ReceivablePayableFormKind.collection =>
         _lineAmount(detail, TransactionRole.receivable) ??
@@ -489,7 +489,7 @@ class BalanceCrossingConfirmation {
   final String message;
 }
 
-Money? _lineAmount(TransactionDetail detail, TransactionRole role) {
+Money? _lineAmount(TransactionReadModel detail, TransactionRole role) {
   for (final line in detail.lines) {
     if (line.role == role) return line.amount;
   }
@@ -497,17 +497,26 @@ Money? _lineAmount(TransactionDetail detail, TransactionRole role) {
 }
 
 String? _entryForUsage(
-  TransactionDetail detail,
+  TransactionReadModel detail,
   Map<String, Account> accountsById, {
   required EntryDirection direction,
   required AccountUsage usage,
 }) {
+  final role = switch (usage) {
+    AccountUsage.receivable => TransactionRole.receivable,
+    AccountUsage.liability => TransactionRole.liability,
+    AccountUsage.fund || AccountUsage.settlement =>
+      direction == EntryDirection.debit
+          ? TransactionRole.settlementIn
+          : TransactionRole.settlementOut,
+    _ => null,
+  };
+  if (role == null) return null;
   String? result;
-  for (final entry in detail.entries) {
-    final account = accountsById[entry.accountId];
-    if (entry.direction != direction ||
-        account == null ||
-        !accountMatchesUsage(account, usage)) {
+  for (final line in detail.linesOf(role)) {
+    final accountId = line.accountId;
+    final account = accountId == null ? null : accountsById[accountId];
+    if (account == null || !accountMatchesUsage(account, usage)) {
       continue;
     }
     if (result != null) return null;

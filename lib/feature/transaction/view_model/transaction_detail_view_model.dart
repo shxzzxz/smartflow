@@ -29,11 +29,17 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     if (detail == null) {
       return const TransactionDetailUiState.notFound();
     }
+    final parentDetail = detail.parentTransactionId == null
+        ? null
+        : await ref.watch(
+            transactionDetailProvider(detail.parentTransactionId!).future,
+          );
 
     final accountLookup = await ref.watch(accountLookupProvider.future);
     return buildTransactionDetailLoadedState(
       transactionId: transactionId,
       detail: detail,
+      parentDetail: parentDetail,
       accountLookup: accountLookup,
     );
   }
@@ -50,7 +56,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
 
   Future<UiActionOutcome<void>> delete() {
     return _runAction((loaded) {
-      return _actionDispatcherFor(loaded.detail.transaction).delete();
+      return _actionDispatcherFor(loaded.detail).delete();
     });
   }
 
@@ -58,7 +64,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     final normalized = value == null ? null : trimToNull(value);
     return _runAction((loaded) {
       return _actionDispatcherFor(
-        loaded.detail.transaction,
+        loaded.detail,
       ).changeNote(normalized);
     });
   }
@@ -70,7 +76,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
           detailNotEditable(reason),
         ),
         DetailEditAllowed() => _actionDispatcherFor(
-          loaded.detail.transaction,
+          loaded.detail,
         ).changeTags(Set.of(tagIds)),
         _ => Future.value(detailNotEditable('当前交易类型不支持修改标签')),
       },
@@ -80,7 +86,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) {
     return _runAction((loaded) {
       return _actionDispatcherFor(
-        loaded.detail.transaction,
+        loaded.detail,
       ).changeOccurredAt(value);
     });
   }
@@ -88,7 +94,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
   Future<UiActionOutcome<void>> changePostedAt(DateTime value) {
     return _runAction((loaded) {
       return _actionDispatcherFor(
-        loaded.detail.transaction,
+        loaded.detail,
       ).changePostedAt(value);
     });
   }
@@ -103,14 +109,14 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
         case AccountSelectionPurpose.fund:
         case AccountSelectionPurpose.repaymentSource:
           return _actionDispatcherFor(
-            loaded.detail.transaction,
+            loaded.detail,
           ).changeSettlementAccount(accountId);
         case AccountSelectionPurpose.reimbursementReceivable:
           await ref
               .read(transactionEditAppServiceProvider)
               .editReimbursementAdvance(
                 EditReimbursementAdvanceCommand(
-                  transactionId: loaded.detail.transaction.id,
+                  transactionId: loaded.detail.id,
                   receivableAccountId: accountId,
                 ),
               );
@@ -127,14 +133,14 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
 
   Future<UiActionOutcome<void>> toggleExcludeStats(bool value) {
     return _runAction((loaded) async {
-      if (!isPlainTransaction(loaded.detail.transaction)) {
+      if (!isPlainTransaction(loaded.detail)) {
         return detailNotEditable('该交易当前不可修改统计口径');
       }
       await ref
           .read(transactionUpdateAppServiceProvider)
           .updateReportingFlag(
             UpdateTransactionReportingFlagCommand(
-              transactionId: loaded.detail.transaction.id,
+              transactionId: loaded.detail.id,
               isExcludedFromStats: value,
             ),
           );
@@ -144,14 +150,14 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
 
   Future<UiActionOutcome<void>> toggleExcludeBudget(bool value) {
     return _runAction((loaded) async {
-      if (!isPlainTransaction(loaded.detail.transaction)) {
+      if (!isPlainTransaction(loaded.detail)) {
         return detailNotEditable('该交易当前不可修改统计口径');
       }
       await ref
           .read(transactionUpdateAppServiceProvider)
           .updateReportingFlag(
             UpdateTransactionReportingFlagCommand(
-              transactionId: loaded.detail.transaction.id,
+              transactionId: loaded.detail.id,
               isExcludedFromBudget: value,
             ),
           );
@@ -180,7 +186,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
         await service.closeReimbursement(
           CloseReimbursementCommand(
             actualReceivedAmount: input.amount,
-            advanceTransactionId: loaded.detail.transaction.id,
+            advanceTransactionId: loaded.detail.id,
             receivableAccountId: receivableAccountId,
             receiveAccountId: receiveAccountId,
             occurredAt: input.occurredAt,
@@ -191,7 +197,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
         await service.createReimbursementReceipt(
           CreateReimbursementReceiptCommand(
             amount: input.amount,
-            advanceTransactionId: loaded.detail.transaction.id,
+            advanceTransactionId: loaded.detail.id,
             receivableAccountId: receivableAccountId,
             receiveAccountId: receiveAccountId,
             occurredAt: input.occurredAt,
@@ -204,7 +210,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
   }
 
   TransactionDetailActionDispatcher _actionDispatcherFor(
-    Transaction transaction,
+    TransactionReadModel transaction,
   ) {
     return createTransactionDetailActionDispatcher(
       transaction: transaction,
@@ -248,14 +254,8 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
 }
 
 String? _receivableAccountId(
-  TransactionDetail detail,
+  TransactionReadModel detail,
   AccountLookup accountLookup,
 ) {
-  for (final entry in detail.entries) {
-    if (accountLookup.typeOf(entry.accountId) == AccountType.asset &&
-        entry.direction == EntryDirection.debit) {
-      return entry.accountId;
-    }
-  }
-  return null;
+  return detail.accountOf(TransactionRole.receivable);
 }

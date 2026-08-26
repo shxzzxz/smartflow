@@ -120,7 +120,7 @@ return notFound(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String transactionId,  TransactionDetail detail,  DetailBehaviorConfig behavior,  DetailHero hero,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailReimbursement? reimbursement,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)?  loaded,TResult Function()?  notFound,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String transactionId,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailReimbursement? reimbursement,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)?  loaded,TResult Function()?  notFound,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case TransactionDetailLoaded() when loaded != null:
 return loaded(_that.transactionId,_that.detail,_that.behavior,_that.hero,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.reimbursement,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound() when notFound != null:
@@ -142,7 +142,7 @@ return notFound();case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String transactionId,  TransactionDetail detail,  DetailBehaviorConfig behavior,  DetailHero hero,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailReimbursement? reimbursement,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)  loaded,required TResult Function()  notFound,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String transactionId,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailReimbursement? reimbursement,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)  loaded,required TResult Function()  notFound,}) {final _that = this;
 switch (_that) {
 case TransactionDetailLoaded():
 return loaded(_that.transactionId,_that.detail,_that.behavior,_that.hero,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.reimbursement,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound():
@@ -160,7 +160,7 @@ return notFound();}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String transactionId,  TransactionDetail detail,  DetailBehaviorConfig behavior,  DetailHero hero,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailReimbursement? reimbursement,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)?  loaded,TResult? Function()?  notFound,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String transactionId,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailReimbursement? reimbursement,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)?  loaded,TResult? Function()?  notFound,}) {final _that = this;
 switch (_that) {
 case TransactionDetailLoaded() when loaded != null:
 return loaded(_that.transactionId,_that.detail,_that.behavior,_that.hero,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.reimbursement,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound() when notFound != null:
@@ -180,7 +180,7 @@ class TransactionDetailLoaded implements TransactionDetailUiState {
   
 
  final  String transactionId;
- final  TransactionDetail detail;
+ final  TransactionReadModel detail;
  final  DetailBehaviorConfig behavior;
  final  DetailHero hero;
  final  String occurredAtText;
@@ -239,7 +239,7 @@ abstract mixin class $TransactionDetailLoadedCopyWith<$Res> implements $Transact
   factory $TransactionDetailLoadedCopyWith(TransactionDetailLoaded value, $Res Function(TransactionDetailLoaded) _then) = _$TransactionDetailLoadedCopyWithImpl;
 @useResult
 $Res call({
- String transactionId, TransactionDetail detail, DetailBehaviorConfig behavior, DetailHero hero, String occurredAtText, String postedAtText, String createdAtText, List<DetailAccountRow> accountRows, DetailRefund? refund, DetailReimbursement? reimbursement, bool showExcludeStats, bool showExcludeBudget, bool excludeStats, bool excludeBudget, List<DetailActionButton> actionButtons, bool submitting, String? noteText
+ String transactionId, TransactionReadModel detail, DetailBehaviorConfig behavior, DetailHero hero, String occurredAtText, String postedAtText, String createdAtText, List<DetailAccountRow> accountRows, DetailRefund? refund, DetailReimbursement? reimbursement, bool showExcludeStats, bool showExcludeBudget, bool excludeStats, bool excludeBudget, List<DetailActionButton> actionButtons, bool submitting, String? noteText
 });
 
 
@@ -260,7 +260,7 @@ class _$TransactionDetailLoadedCopyWithImpl<$Res>
   return _then(TransactionDetailLoaded(
 transactionId: null == transactionId ? _self.transactionId : transactionId // ignore: cast_nullable_to_non_nullable
 as String,detail: null == detail ? _self.detail : detail // ignore: cast_nullable_to_non_nullable
-as TransactionDetail,behavior: null == behavior ? _self.behavior : behavior // ignore: cast_nullable_to_non_nullable
+as TransactionReadModel,behavior: null == behavior ? _self.behavior : behavior // ignore: cast_nullable_to_non_nullable
 as DetailBehaviorConfig,hero: null == hero ? _self.hero : hero // ignore: cast_nullable_to_non_nullable
 as DetailHero,occurredAtText: null == occurredAtText ? _self.occurredAtText : occurredAtText // ignore: cast_nullable_to_non_nullable
 as String,postedAtText: null == postedAtText ? _self.postedAtText : postedAtText // ignore: cast_nullable_to_non_nullable

@@ -249,7 +249,7 @@ void main() {
   testWidgets(
     'shows edit loading, initializes controllers, and preserves edited text',
     (tester) async {
-      final details = StreamController<TransactionDetail?>();
+      final details = StreamController<TransactionReadModel?>();
       addTearDown(details.close);
       final accounts = {'cash': _account('cash'), 'food': _category('food')};
       final container = ProviderContainer(
@@ -481,28 +481,12 @@ Account _category(String id) {
   );
 }
 
-TransactionDetail _transactionDetail(
+TransactionReadModel _transactionDetail(
   String id, {
   Money amount = const Money(minorUnits: 1234),
   String note = 'note',
 }) {
-  final entries = [
-    Entry(
-      id: '$id-food',
-      transactionId: id,
-      accountId: 'food',
-      direction: EntryDirection.debit,
-      amount: amount,
-    ),
-    Entry(
-      id: '$id-cash',
-      transactionId: id,
-      accountId: 'cash',
-      direction: EntryDirection.credit,
-      amount: amount,
-    ),
-  ];
-  return TransactionDetail(
+  return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: id,
       businessPurpose: BusinessPurpose.dailyExpense,
@@ -512,11 +496,12 @@ TransactionDetail _transactionDetail(
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
       note: note,
-      entries: entries,
     ),
     createdAt: DateTime(2026, 1, 2, 8, 30),
-    lines: const [],
-    entries: entries,
+    lines: [
+      TransactionLine(id: '$id-category', transactionId: id, lineNo: 1, role: TransactionRole.category, accountId: 'food', amount: amount),
+      TransactionLine(id: '$id-settlement', transactionId: id, lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: amount),
+    ],
   );
 }
 

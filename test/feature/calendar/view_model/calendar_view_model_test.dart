@@ -314,17 +314,15 @@ Future<void> _flush() async {
   await Future<void>.delayed(Duration.zero);
 }
 
-TransactionListReadModel _item(DateTime occurredAt, {String id = 'tx-1'}) {
-  return TransactionListReadModel(
+TransactionReadModel _item(DateTime occurredAt, {String id = 'tx-1'}) {
+  return TransactionReadModel(
     id: id,
     businessPurpose: BusinessPurpose.dailyIncome,
     occurredAt: occurredAt,
     primaryAmount: const Money(minorUnits: 10000),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    primaryCategoryId: null,
     impactsByAccountId: const {},
-    adjustments: const [],
   );
 }
 
@@ -347,32 +345,32 @@ CashflowComparison _comparison() {
 
 class _FakeTransactionQueryService implements TransactionQueryService {
   _FakeTransactionQueryService({
-    List<TransactionListReadModel> nextPage = const [],
+    List<TransactionReadModel> nextPage = const [],
   }) : _nextPage = nextPage;
 
-  final List<TransactionListReadModel> _nextPage;
+  final List<TransactionReadModel> _nextPage;
   final queries = <TransactionListQuery>[];
-  final _streams = <_ReplayStream<List<TransactionListReadModel>>>[];
+  final _streams = <_ReplayStream<List<TransactionReadModel>>>[];
 
   @override
-  Stream<List<TransactionListReadModel>> watchTransactions(
+  Stream<List<TransactionReadModel>> watchTransactions(
     TransactionListQuery query,
   ) {
     queries.add(query);
-    final stream = _ReplayStream<List<TransactionListReadModel>>();
+    final stream = _ReplayStream<List<TransactionReadModel>>();
     _streams.add(stream);
     return stream.watch();
   }
 
   @override
-  Future<List<TransactionListReadModel>> findTransactions(
+  Future<List<TransactionReadModel>> findTransactions(
     TransactionListQuery query,
   ) async {
     queries.add(query);
     return _nextPage;
   }
 
-  void emit(List<TransactionListReadModel> items) {
+  void emit(List<TransactionReadModel> items) {
     _streams.last.add(items);
   }
 

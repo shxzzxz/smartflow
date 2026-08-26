@@ -215,7 +215,7 @@ void main() {
 ProviderContainer _container({
   _FakePostingService? posting,
   _FakeEditService? editing,
-  TransactionDetail? detail,
+  TransactionReadModel? detail,
 }) {
   final receivable = Account(
     id: 'receivable',
@@ -272,7 +272,7 @@ ProviderContainer _container({
   return container;
 }
 
-TransactionDetail _badDebtDetail() => TransactionDetail(
+TransactionReadModel _badDebtDetail() => TransactionReadModel.fromTransaction(
   transaction: Transaction(
     id: 'collection',
     businessPurpose: BusinessPurpose.badDebt,
@@ -293,16 +293,13 @@ TransactionDetail _badDebtDetail() => TransactionDetail(
       transactionId: 'collection',
       lineNo: 1,
       role: TransactionRole.receivable,
+      accountId: 'receivable',
       amount: Money(minorUnits: 1000),
     ),
   ],
-  entries: [
-    _entry('interest', EntryDirection.debit, 1000),
-    _entry('receivable', EntryDirection.credit, 1000),
-  ],
 );
 
-TransactionDetail _debtReliefDetail() => TransactionDetail(
+TransactionReadModel _debtReliefDetail() => TransactionReadModel.fromTransaction(
   transaction: Transaction(
     id: 'collection',
     businessPurpose: BusinessPurpose.debtRelief,
@@ -323,22 +320,14 @@ TransactionDetail _debtReliefDetail() => TransactionDetail(
       transactionId: 'collection',
       lineNo: 1,
       role: TransactionRole.liability,
+      accountId: 'payable',
       amount: Money(minorUnits: 1000),
     ),
   ],
-  entries: [
-    _entry('payable', EntryDirection.debit, 1000),
-    _entry('interest', EntryDirection.credit, 1000),
-  ],
 );
 
-TransactionDetail _collectionDetail() {
-  final entries = [
-    _entry('fund', EntryDirection.debit, 20000),
-    _entry('interest', EntryDirection.credit, 10000),
-    _entry('receivable', EntryDirection.credit, 10000),
-  ];
-  return TransactionDetail(
+TransactionReadModel _collectionDetail() {
+  return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'collection',
       businessPurpose: BusinessPurpose.receivableCollection,
@@ -347,7 +336,6 @@ TransactionDetail _collectionDetail() {
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
-      entries: entries,
     ),
     createdAt: DateTime(2026, 8, 20),
     lines: const [
@@ -356,6 +344,7 @@ TransactionDetail _collectionDetail() {
         transactionId: 'collection',
         lineNo: 1,
         role: TransactionRole.receivable,
+        accountId: 'receivable',
         amount: Money(minorUnits: 10000),
       ),
       TransactionLine(
@@ -365,8 +354,8 @@ TransactionDetail _collectionDetail() {
         role: TransactionRole.interest,
         amount: Money(minorUnits: 10000),
       ),
+      TransactionLine(id: 'settlement', transactionId: 'collection', lineNo: 3, role: TransactionRole.settlementIn, accountId: 'fund', amount: Money(minorUnits: 20000)),
     ],
-    entries: entries,
   );
 }
 

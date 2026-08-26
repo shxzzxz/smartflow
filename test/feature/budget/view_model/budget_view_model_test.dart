@@ -467,7 +467,7 @@ class _RecordingTransactionQueryService implements TransactionQueryService {
   final queries = <TransactionListQuery>[];
 
   @override
-  Stream<List<TransactionListReadModel>> watchTransactions(
+  Stream<List<TransactionReadModel>> watchTransactions(
     TransactionListQuery query,
   ) {
     queries.add(query);

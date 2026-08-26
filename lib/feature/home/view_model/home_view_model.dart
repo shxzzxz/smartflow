@@ -89,7 +89,7 @@ class HomeBatchMode extends _$HomeBatchMode {
 }
 
 @riverpod
-Stream<List<TransactionListReadModel>> homeTransactions(
+Stream<List<TransactionReadModel>> homeTransactions(
   Ref ref,
   DateTime visibleMonth,
 ) {
@@ -145,7 +145,7 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
     };
   }
 
-  void _applyFirstPage(AsyncValue<List<TransactionListReadModel>> next) {
+  void _applyFirstPage(AsyncValue<List<TransactionReadModel>> next) {
     final current = state;
     switch (next) {
       case AsyncData(:final value):
@@ -159,7 +159,7 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
 
   void _applyFirstPageData(
     HomeTransactionFeedState current,
-    List<TransactionListReadModel> items,
+    List<TransactionReadModel> items,
   ) {
     if (_refreshRequested ||
         current is! HomeTransactionFeedLoaded ||
@@ -532,7 +532,7 @@ sealed class HomeTransactionFeedState {
       HomeTransactionFeedError;
 
   const factory HomeTransactionFeedState.loaded({
-    required List<TransactionListReadModel> items,
+    required List<TransactionReadModel> items,
     required bool hasMore,
     bool isLoadingMore,
     String? loadMoreErrorMessage,
@@ -563,7 +563,7 @@ final class HomeTransactionFeedLoaded extends HomeTransactionFeedState {
     this.refreshErrorMessage,
   });
 
-  final List<TransactionListReadModel> items;
+  final List<TransactionReadModel> items;
   final bool hasMore;
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
@@ -572,7 +572,7 @@ final class HomeTransactionFeedLoaded extends HomeTransactionFeedState {
   final String? refreshErrorMessage;
 
   HomeTransactionFeedLoaded copyWith({
-    List<TransactionListReadModel>? items,
+    List<TransactionReadModel>? items,
     bool? hasMore,
     bool? isLoadingMore,
     String? loadMoreErrorMessage,

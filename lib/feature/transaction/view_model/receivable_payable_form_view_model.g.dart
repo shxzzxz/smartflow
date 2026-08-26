@@ -57,7 +57,7 @@ final class ReceivablePayableFormViewModelProvider
 }
 
 String _$receivablePayableFormViewModelHash() =>
-    r'c2b566c2e9cf1aeb593f157e9786cc048e1f2d45';
+    r'66c0394be58880485a65fd4398955d126241e771';
 
 final class ReceivablePayableFormViewModelFamily extends $Family
     with

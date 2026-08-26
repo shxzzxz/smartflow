@@ -2,7 +2,7 @@ import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
 
 Money sumTransactionLineAmount(
-  TransactionDetail detail,
+  TransactionReadModel detail,
   TransactionRole role,
 ) {
   var amountMinor = 0;

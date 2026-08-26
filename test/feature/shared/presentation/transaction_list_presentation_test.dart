@@ -291,7 +291,6 @@ void main() {
       () {
         final item = _item(
           businessPurpose: BusinessPurpose.transfer,
-          primaryCategoryId: null,
           impactsByAccountId: const {
             'cash': TransactionAccountImpact(
               debitAmount: Money(minorUnits: 0),
@@ -435,7 +434,7 @@ final _accounts = <String, Account>{
 };
 final _lookup = AccountLookup(_accounts);
 
-TransactionListReadModel _item({
+TransactionReadModel _item({
   String id = 'tx-1',
   DateTime? occurredAt,
   BusinessPurpose businessPurpose = BusinessPurpose.dailyExpense,
@@ -443,18 +442,34 @@ TransactionListReadModel _item({
   bool isExcludedFromStats = false,
   Money? refundedTotal,
   Money? reimbursementReceivedTotal,
-  String? primaryCategoryId = 'food',
+  String? categoryAccountId = 'food',
   Map<String, TransactionAccountImpact>? impactsByAccountId,
   List<TransactionAdjustment> adjustments = const [],
 }) {
-  return TransactionListReadModel(
+  return TransactionReadModel(
     id: id,
     businessPurpose: businessPurpose,
     occurredAt: occurredAt ?? DateTime(2026, 1, 1, 8, 30),
     primaryAmount: primaryAmount,
     isExcludedFromStats: isExcludedFromStats,
     isExcludedFromBudget: false,
-    primaryCategoryId: primaryCategoryId,
+    lines: [
+      if (categoryAccountId != null)
+        TransactionLine(id: '$id-category', transactionId: id, lineNo: 1, role: businessPurpose == BusinessPurpose.reimbursementAdvance ? TransactionRole.reimbursementExpenseCategory : TransactionRole.category, accountId: categoryAccountId, amount: primaryAmount),
+      if (impactsByAccountId?.isNotEmpty ?? true)
+        TransactionLine(id: '$id-out', transactionId: id, lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: primaryAmount),
+      if (impactsByAccountId?.isNotEmpty ?? true)
+        TransactionLine(id: '$id-in', transactionId: id, lineNo: 3, role: TransactionRole.settlementIn, accountId: 'card', amount: primaryAmount),
+      for (final adjustment in adjustments)
+        if (switch (adjustment.kind) {
+          TransactionAdjustmentKind.transferFee || TransactionAdjustmentKind.repaymentFee => TransactionRole.fee,
+          TransactionAdjustmentKind.repaymentInterest || TransactionAdjustmentKind.receivableCollectionInterest => TransactionRole.interest,
+          TransactionAdjustmentKind.repaymentDiscount => TransactionRole.discount,
+          TransactionAdjustmentKind.receivableCollectionPrincipal => TransactionRole.receivable,
+          _ => null,
+        } case final role?)
+          TransactionLine(id: '$id-${adjustment.kind.name}', transactionId: id, lineNo: 4, role: role, accountId: role == TransactionRole.receivable ? 'cash' : null, amount: adjustment.amount),
+    ],
     impactsByAccountId:
         impactsByAccountId ??
         {
@@ -469,18 +484,11 @@ TransactionListReadModel _item({
             netChange: Money(minorUnits: -primaryAmount.minorUnits),
           ),
         },
-    adjustments: [
+    children: [
       if (refundedTotal != null)
-        TransactionAdjustment(
-          kind: TransactionAdjustmentKind.refund,
-          amount: refundedTotal,
-        ),
+        TransactionReadModel(id: '$id-refund', parentTransactionId: id, businessPurpose: BusinessPurpose.refund, occurredAt: occurredAt ?? DateTime(2026, 1, 1), primaryAmount: refundedTotal, isExcludedFromStats: false, isExcludedFromBudget: false),
       if (reimbursementReceivedTotal != null)
-        TransactionAdjustment(
-          kind: TransactionAdjustmentKind.reimbursementReceived,
-          amount: reimbursementReceivedTotal,
-        ),
-      ...adjustments,
+        TransactionReadModel(id: '$id-receipt', parentTransactionId: id, businessPurpose: BusinessPurpose.reimbursementReceipt, occurredAt: occurredAt ?? DateTime(2026, 1, 1), primaryAmount: reimbursementReceivedTotal, isExcludedFromStats: false, isExcludedFromBudget: false),
     ],
   );
 }

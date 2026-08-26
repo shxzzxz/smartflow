@@ -212,15 +212,18 @@ final _accounts = <String, Account>{
   'food': _account('food', '餐饮', type: AccountType.expense, iconKey: 'meal'),
 };
 
-TransactionListReadModel _item(String id, {DateTime? occurredAt}) {
-  return TransactionListReadModel(
+TransactionReadModel _item(String id, {DateTime? occurredAt}) {
+  return TransactionReadModel(
     id: id,
     businessPurpose: BusinessPurpose.dailyExpense,
     occurredAt: occurredAt ?? DateTime(2026, 1, 1, 8, 30),
     primaryAmount: const Money(minorUnits: 1234),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    primaryCategoryId: 'food',
+    lines: const [
+      TransactionLine(id: 'category', transactionId: 'item', lineNo: 1, role: TransactionRole.category, accountId: 'food', amount: Money(minorUnits: 1234)),
+      TransactionLine(id: 'settlement', transactionId: 'item', lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: Money(minorUnits: 1234)),
+    ],
     impactsByAccountId: const {
       'food': TransactionAccountImpact(
         debitAmount: Money(minorUnits: 1234),
@@ -233,7 +236,6 @@ TransactionListReadModel _item(String id, {DateTime? occurredAt}) {
         netChange: Money(minorUnits: -1234),
       ),
     },
-    adjustments: const [],
   );
 }
 
@@ -254,19 +256,19 @@ Account _account(
 
 class _FakeTransactionQueryService implements TransactionQueryService {
   final queries = <TransactionListQuery>[];
-  final _streams = <_ReplayStream<List<TransactionListReadModel>>>[];
+  final _streams = <_ReplayStream<List<TransactionReadModel>>>[];
 
   @override
-  Stream<List<TransactionListReadModel>> watchTransactions(
+  Stream<List<TransactionReadModel>> watchTransactions(
     TransactionListQuery query,
   ) {
     queries.add(query);
-    final stream = _ReplayStream<List<TransactionListReadModel>>();
+    final stream = _ReplayStream<List<TransactionReadModel>>();
     _streams.add(stream);
     return stream.watch();
   }
 
-  void emit(List<TransactionListReadModel> items) {
+  void emit(List<TransactionReadModel> items) {
     _streams.last.add(items);
   }
 

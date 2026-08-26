@@ -85,18 +85,15 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
       ledger_command.EditRepaymentCommand(
         transactionId: command.transactionId,
         principal: amount?.principal,
-        interest:
-            amount == null
-                ? null
-                : Patch<Money?>.set(_positiveOrNull(amount.interest)),
-        fee:
-            amount == null
-                ? null
-                : Patch<Money?>.set(_positiveOrNull(amount.fee)),
-        discount:
-            amount == null
-                ? null
-                : Patch<Money?>.set(_positiveOrNull(amount.discount)),
+        interest: amount == null
+            ? null
+            : Patch<Money?>.set(_positiveOrNull(amount.interest)),
+        fee: amount == null
+            ? null
+            : Patch<Money?>.set(_positiveOrNull(amount.fee)),
+        discount: amount == null
+            ? null
+            : Patch<Money?>.set(_positiveOrNull(amount.discount)),
         liabilityAccountId: command.liabilityAccountId,
         paidFromAccountId: command.paidFromAccountId,
         occurredAt: command.occurredAt,
@@ -158,9 +155,11 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
     );
     if (detail == null) return null;
     return CreditLedgerTransactionSnapshot(
-      transactionId: detail.transaction.id,
-      occurredAt: detail.transaction.occurredAt,
-      paidFromAccountId: _paidFromAccountId(detail),
+      transactionId: detail.id,
+      occurredAt: detail.occurredAt,
+      paidFromAccountId: detail.accountOf(
+        ledger_query.TransactionRole.settlementOut,
+      ),
     );
   }
 
@@ -174,18 +173,20 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
     if (detail == null) return null;
 
     final accountKinds = <String, CreditLedgerAccountKind>{};
-    for (final entry in detail.entries) {
-      accountKinds[entry.accountId] = await _accountKind(entry.accountId);
+    for (final line in detail.lines) {
+      final accountId = line.accountId;
+      if (accountId != null) {
+        accountKinds[accountId] = await _accountKind(accountId);
+      }
     }
 
     return CreditLedgerRepaymentSnapshot(
-      transactionId: detail.transaction.id,
+      transactionId: detail.id,
       isDebtRepayment:
-          detail.transaction.businessPurpose ==
-          ledger_query.BusinessPurpose.debtRepayment,
-      occurredAt: detail.transaction.occurredAt,
-      ownerType: detail.transaction.ownership?.ownerType,
-      note: detail.transaction.note,
+          detail.businessPurpose == ledger_query.BusinessPurpose.debtRepayment,
+      occurredAt: detail.occurredAt,
+      ownerType: detail.ownership?.ownerType,
+      note: detail.note,
       details: [
         for (final line in detail.lines)
           if (_repaymentDetailType(line.role) != null)
@@ -195,18 +196,15 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
             ),
       ],
       entries: [
-        for (final entry in detail.entries)
-          CreditLedgerRepaymentEntry(
-            accountId: entry.accountId,
-            accountKind:
-                accountKinds[entry.accountId] ?? CreditLedgerAccountKind.other,
-            direction: switch (entry.direction) {
-              ledger_query.EntryDirection.debit =>
-                CreditLedgerEntryDirection.debit,
-              ledger_query.EntryDirection.credit =>
-                CreditLedgerEntryDirection.credit,
-            },
-          ),
+        for (final line in detail.lines)
+          if (_repaymentEntryDirection(line.role) case final direction?)
+            if (line.accountId case final accountId?)
+              CreditLedgerRepaymentEntry(
+                accountId: accountId,
+                accountKind:
+                    accountKinds[accountId] ?? CreditLedgerAccountKind.other,
+                direction: direction,
+              ),
       ],
     );
   }
@@ -260,14 +258,15 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
     return value.minorUnits > 0 ? value : null;
   }
 
-  String? _paidFromAccountId(ledger_query.TransactionDetail detail) {
-    final paidAmount = detail.transaction.primaryAmount;
-    for (final entry in detail.entries.reversed) {
-      if (entry.direction == ledger_query.EntryDirection.credit &&
-          entry.amount == paidAmount) {
-        return entry.accountId;
-      }
-    }
-    return null;
+  CreditLedgerEntryDirection? _repaymentEntryDirection(
+    ledger_query.TransactionRole role,
+  ) {
+    return switch (role) {
+      ledger_query.TransactionRole.liability =>
+        CreditLedgerEntryDirection.debit,
+      ledger_query.TransactionRole.settlementOut =>
+        CreditLedgerEntryDirection.credit,
+      _ => null,
+    };
   }
 }

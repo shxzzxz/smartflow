@@ -203,7 +203,7 @@ StatisticsContentState statisticsContent(Ref ref, DateTime visibleMonth) {
 }
 
 @riverpod
-Stream<List<TransactionListReadModel>> statisticsTransactions(
+Stream<List<TransactionReadModel>> statisticsTransactions(
   Ref ref, {
   required CategorySelection? category,
   required String? settlementAccountId,
