@@ -19,10 +19,10 @@ analyzer:
     - build/**
     - android/**
     - ios/**
-    - web/**
     - windows/**
     - macos/**
     - linux/**
+    - web/**
 
 plugins:
   riverpod_lint: 3.1.8

@@ -290,7 +290,10 @@ final class _DefaultActionDispatcher
           return editService.editExpense(
             EditExpenseCommand(
               transactionId: transaction.id,
-              paidFromAccountId: accountId,
+              settlementAllocations: singleAllocation(
+                accountId: accountId,
+                amount: transaction.primaryAmount,
+              ),
             ),
           );
         });
@@ -308,7 +311,10 @@ final class _DefaultActionDispatcher
           return editService.editReimbursementAdvance(
             EditReimbursementAdvanceCommand(
               transactionId: transaction.id,
-              paidFromAccountId: accountId,
+              settlementAllocations: singleAllocation(
+                accountId: accountId,
+                amount: transaction.primaryAmount,
+              ),
             ),
           );
         });
@@ -392,10 +398,9 @@ final class _InstallmentActionDispatcher
       return installmentAppService.updateContract(
         UpdateContractCommand(
           contractId: contractId,
-          note:
-              value == null
-                  ? const Patch<String>.clear()
-                  : Patch<String>.set(value),
+          note: value == null
+              ? const Patch<String>.clear()
+              : Patch<String>.set(value),
         ),
       );
     });

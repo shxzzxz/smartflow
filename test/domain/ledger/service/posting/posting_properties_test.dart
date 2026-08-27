@@ -9,6 +9,7 @@ import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
 import '../../../../helper/sequential_id_generator.dart';
+import '../../../../helper/posting_instruction_fixtures.dart';
 
 void main() {
   final occurredAt = DateTime(2026, 8, 1, 9);
@@ -40,7 +41,7 @@ void main() {
     );
     const resolver = DefaultPostingInstructionResolver();
     final instructions = <PostingInstruction>[
-      ExpenseInstruction(
+      singleExpenseInstruction(
         amount: const Money(minorUnits: 1200),
         paidFromAccountId: 'cash',
         expenseAccountId: 'food',
@@ -63,7 +64,7 @@ void main() {
         isExcludedFromStats: true,
         sourceKind: SourceKind.import,
       ),
-      ReimbursementAdvanceInstruction(
+      singleReimbursementAdvanceInstruction(
         amount: const Money(minorUnits: 3400),
         receivableAccountId: 'receivable',
         paidFromAccountId: 'cash',
@@ -184,7 +185,7 @@ void main() {
       idGenerator: SequentialIdGenerator(prefix: 'replay'),
     );
     final expense = engine.createExpense(
-      ExpenseInstruction(
+      singleExpenseInstruction(
         amount: const Money(minorUnits: 10000),
         paidFromAccountId: 'cash',
         expenseAccountId: 'food',
@@ -192,7 +193,7 @@ void main() {
       ),
     );
     final advance = engine.createReimbursementAdvance(
-      ReimbursementAdvanceInstruction(
+      singleReimbursementAdvanceInstruction(
         amount: const Money(minorUnits: 10000),
         receivableAccountId: 'receivable',
         paidFromAccountId: 'cash',
@@ -227,18 +228,17 @@ void main() {
         systemAccountIds: systemAccountIds,
       ),
       engine.createRefund(
-        instruction: RefundInstruction(
+        instruction: singleRefundInstruction(
           parentTransactionId: expense.id,
           amount: const Money(minorUnits: 500),
           refundToAccountId: 'cash',
           occurredAt: occurredAt,
         ),
         parent: expense,
-        refundOffsetAccountId: 'food',
       ),
       advance,
       engine.createReimbursementReceipt(
-        instruction: ReimbursementReceiptInstruction(
+        instruction: singleReimbursementReceiptInstruction(
           advanceTransactionId: advance.id,
           amount: const Money(minorUnits: 2000),
           receivableAccountId: 'receivable',
@@ -248,7 +248,7 @@ void main() {
         advance: advance,
       ),
       engine.createReimbursementClose(
-        instruction: ReimbursementCloseInstruction(
+        instruction: singleReimbursementCloseInstruction(
           advanceTransactionId: advance.id,
           actualReceivedAmount: const Money(minorUnits: 8500),
           receivableAccountId: 'receivable',

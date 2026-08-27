@@ -180,12 +180,110 @@ void main() {
       expect(container.read(_provider()).requireValue!.submitting, false);
       final command = posting.expenseCommands.single;
       expect(command.amount, const Money(minorUnits: 1234));
-      expect(command.paidFromAccountId, 'cash');
-      expect(command.expenseAccountId, 'lunch');
+      expect(command.settlementAllocations.single.accountId, 'cash');
+      expect(command.categoryAllocations.single.accountId, 'lunch');
       expect(command.occurredAt, DateTime(2026, 1, 2, 8, 30));
       expect(command.note, 'lunch');
       expect(command.isExcludedFromStats, true);
       expect(command.isExcludedFromBudget, true);
+    });
+
+    test('uses explicit category-led allocations in allocated mode', () async {
+      final posting = _FakeTransactionPostingAppService();
+      final container = _container(
+        postingService: posting,
+        settlementAccounts: [_account('cash'), _account('bank')],
+      );
+      final viewModel = container.read(_provider().notifier);
+
+      viewModel
+        ..setExpenseCategory(rootId: 'food', categoryId: 'food')
+        ..setFromAccountId('cash')
+        ..useAllocatedExpenseEntry(const Money(minorUnits: 1000))
+        ..setCategoryAllocations(const [
+          AccountAmountAllocation(
+            accountId: 'food',
+            amount: Money(minorUnits: 800),
+          ),
+          AccountAmountAllocation(
+            accountId: 'travel',
+            amount: Money(minorUnits: 700),
+          ),
+        ])
+        ..setSettlementAllocations(const [
+          AccountAmountAllocation(
+            accountId: 'cash',
+            amount: Money(minorUnits: 900),
+          ),
+          AccountAmountAllocation(
+            accountId: 'bank',
+            amount: Money(minorUnits: 600),
+          ),
+        ]);
+
+      final outcome = await viewModel.submit(amountText: '15', noteText: '');
+
+      expect(outcome, isA<SubmitSuccess>());
+      final command = posting.expenseCommands.single;
+      expect(command.amount, const Money(minorUnits: 1500));
+      expect(
+        command.categoryAllocations.map((item) => item.amount.minorUnits),
+        [800, 700],
+      );
+      expect(
+        command.settlementAllocations.map((item) => item.amount.minorUnits),
+        [900, 600],
+      );
+    });
+
+    test(
+      'rejects allocated payment totals that do not match categories',
+      () async {
+        final posting = _FakeTransactionPostingAppService();
+        final container = _container(
+          postingService: posting,
+          settlementAccounts: [_account('cash')],
+        );
+        final viewModel = container.read(_provider().notifier);
+
+        viewModel
+          ..useAllocatedExpenseEntry(Money.zero())
+          ..setCategoryAllocations(const [
+            AccountAmountAllocation(
+              accountId: 'food',
+              amount: Money(minorUnits: 1500),
+            ),
+          ])
+          ..setSettlementAllocations(const [
+            AccountAmountAllocation(
+              accountId: 'cash',
+              amount: Money(minorUnits: 1400),
+            ),
+          ]);
+
+        final outcome = await viewModel.submit(amountText: '15', noteText: '');
+
+        expect(outcome, isA<SubmitFailure>());
+        expect(posting.expenseCommands, isEmpty);
+      },
+    );
+
+    test('switching allocated expense back to normal clears selections', () {
+      final container = _container(settlementAccounts: [_account('cash')]);
+      final viewModel = container.read(_provider().notifier);
+
+      viewModel
+        ..setExpenseCategory(rootId: 'food', categoryId: 'food')
+        ..setFromAccountId('cash')
+        ..useAllocatedExpenseEntry(const Money(minorUnits: 1000))
+        ..useNormalExpenseEntry();
+
+      final state = container.read(_provider()).requireValue!;
+      expect(state.expenseEntryMode, ExpenseEntryMode.normal);
+      expect(state.expenseCategoryId, isNull);
+      expect(state.fromAccountId, isNull);
+      expect(state.categoryAllocations, isEmpty);
+      expect(state.settlementAllocations, isEmpty);
     });
 
     test(
@@ -302,9 +400,9 @@ void main() {
         expect(outcome, isA<SubmitSuccess>());
         final command = posting.reimbursementAdvanceCommands.single;
         expect(command.amount, const Money(minorUnits: 2000));
-        expect(command.paidFromAccountId, 'cash');
+        expect(command.settlementAllocations.single.accountId, 'cash');
         expect(command.receivableAccountId, 'company');
-        expect(command.expenseCategoryId, 'taxi');
+        expect(command.categoryAllocations.single.accountId, 'taxi');
       },
     );
 
@@ -698,7 +796,7 @@ void main() {
       final command = editService.reimbursementAdvanceCommands.single;
       expect(command.transactionId, 'tx-1');
       expect(command.receivableAccountId, 'company');
-      expect(command.expenseCategoryId, 'hotel');
+      expect(command.categoryAllocations!.single.accountId, 'hotel');
     });
 
     test('saves a loaded daily expense without changing its fields', () async {
@@ -726,8 +824,8 @@ void main() {
       final command = editService.expenseCommands.single;
       expect(command.transactionId, 'tx-1');
       expect(command.amount, const Money(minorUnits: 1234));
-      expect(command.paidFromAccountId, 'cash');
-      expect(command.expenseAccountId, 'food');
+      expect(command.settlementAllocations!.single.accountId, 'cash');
+      expect(command.categoryAllocations!.single.accountId, 'food');
       expect(command.note, isA<PatchSet<String?>>());
       expect((command.note as PatchSet<String?>).value, 'note');
     });
@@ -840,8 +938,22 @@ TransactionReadModel _transactionDetail() {
     ),
     createdAt: DateTime(2026, 1, 2, 8, 30),
     lines: const [
-      TransactionLine(id: 'category', transactionId: 'tx-1', lineNo: 1, role: TransactionRole.category, accountId: 'food', amount: Money(minorUnits: 1234)),
-      TransactionLine(id: 'settlement', transactionId: 'tx-1', lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: Money(minorUnits: 1234)),
+      TransactionLine(
+        id: 'category',
+        transactionId: 'tx-1',
+        lineNo: 1,
+        role: TransactionRole.category,
+        accountId: 'food',
+        amount: Money(minorUnits: 1234),
+      ),
+      TransactionLine(
+        id: 'settlement',
+        transactionId: 'tx-1',
+        lineNo: 2,
+        role: TransactionRole.settlementOut,
+        accountId: 'cash',
+        amount: Money(minorUnits: 1234),
+      ),
     ],
   );
 }
@@ -859,8 +971,22 @@ TransactionReadModel _lendingTransactionDetail() {
     ),
     createdAt: DateTime(2026, 8, 21),
     lines: const [
-      TransactionLine(id: 'receivable', transactionId: 'lending-1', lineNo: 1, role: TransactionRole.receivable, accountId: 'receivable', amount: Money(minorUnits: 5000)),
-      TransactionLine(id: 'settlement', transactionId: 'lending-1', lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: Money(minorUnits: 5000)),
+      TransactionLine(
+        id: 'receivable',
+        transactionId: 'lending-1',
+        lineNo: 1,
+        role: TransactionRole.receivable,
+        accountId: 'receivable',
+        amount: Money(minorUnits: 5000),
+      ),
+      TransactionLine(
+        id: 'settlement',
+        transactionId: 'lending-1',
+        lineNo: 2,
+        role: TransactionRole.settlementOut,
+        accountId: 'cash',
+        amount: Money(minorUnits: 5000),
+      ),
     ],
   );
 }

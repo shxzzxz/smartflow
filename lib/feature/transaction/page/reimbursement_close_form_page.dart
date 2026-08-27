@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../application/ledger/ledger_command_api.dart';
 import '../../../core/money/money.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
@@ -14,6 +13,7 @@ import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/reimbursement_form_view_model.dart';
+import '../widget/transaction_allocation_fields.dart';
 
 class ReimbursementCloseFormPage extends ConsumerStatefulWidget {
   const ReimbursementCloseFormPage({
@@ -77,11 +77,6 @@ class _ReimbursementCloseFormPageState
       );
       _hydratedAdvanceTransactionId = widget.advanceTransactionId;
     }
-    final receiveAccount = findAccountById(
-      state.receiveAccountId,
-      state.accounts,
-    );
-
     return Form(
       key: _formKey,
       child: Column(
@@ -118,7 +113,7 @@ class _ReimbursementCloseFormPageState
                       child: Text(
                         gap.minorUnits > 0
                             ? '多收 ${gap.format()}（计入报销差额收入）'
-                            : '少收 ${gap.abs().format()}（计入原报销支出分类）',
+                            : '少收 ${gap.abs().format()}（按差额分类分配计入支出）',
                       ),
                     );
                   },
@@ -132,36 +127,12 @@ class _ReimbursementCloseFormPageState
                       hintText: '请输入实收金额',
                       validator: validateNonNegativeMoneyText,
                     ),
-                    AccountPlainFormRow(
-                      label: '到账账户',
-                      account: receiveAccount,
-                      selectedId: state.receiveAccountId,
-                      placeholder: '请选择到账账户',
-                      onTap:
-                          (onSelected) => _pickReceiveAccount(
-                            state.accounts,
-                            selectedId: state.receiveAccountId,
-                            onSelected: onSelected,
-                          ),
-                      onChanged:
-                          ref.read(provider.notifier).setReceiveAccountId,
-                      validator: (value) {
-                        final amount = Money.tryParse(_amountController.text);
-                        if (amount != null &&
-                            amount.minorUnits > 0 &&
-                            value == null) {
-                          return '请选择账户';
-                        }
-                        return null;
-                      },
-                    ),
                     DateTimePlainFormRow(
                       label: '结束时间',
                       dateTime: state.occurredAt,
                       value: _formatDateTime(state.occurredAt),
-                      onTap:
-                          (onSelected) =>
-                              _pickOccurredAt(state.occurredAt, onSelected),
+                      onTap: (onSelected) =>
+                          _pickOccurredAt(state.occurredAt, onSelected),
                       onChanged: (value) {
                         if (value != null) {
                           ref.read(provider.notifier).setOccurredAt(value);
@@ -171,6 +142,9 @@ class _ReimbursementCloseFormPageState
                     NotePlainFormRow(controller: _noteController),
                   ],
                 ),
+                const SizedBox(height: AppSpacing.space14),
+                _buildSettlementAllocations(provider, state),
+                _buildGapAllocations(provider, state),
                 const SizedBox(height: AppSpacing.space24),
                 AppSubmitButton(
                   label: '保存',
@@ -185,19 +159,82 @@ class _ReimbursementCloseFormPageState
     );
   }
 
-  Future<void> _pickReceiveAccount(
-    List<Account> accounts, {
-    required String? selectedId,
-    required ValueChanged<String?> onSelected,
-  }) async {
-    final selected = await showAccountPickerSheet(
-      context: context,
-      title: '选择到账账户',
-      accounts: accounts,
-      selectedId: selectedId,
+  Widget _buildSettlementAllocations(
+    ReimbursementCloseFormViewModelProvider provider,
+    ReimbursementCloseFormState state,
+  ) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _amountController,
+      builder: (context, value, _) {
+        final amount = Money.tryParse(value.text);
+        return TransactionInlineAllocationColumn(
+          key: const ValueKey('reimbursement-close-settlement-allocations'),
+          title: '到账账户',
+          allocations: transactionAllocationFieldValues(
+            allocations: state.settlementAllocations,
+            fallbackAccountId: state.receiveAccountId,
+            total: amount,
+          ),
+          options: transactionAllocationOptionsForAccounts(state.accounts),
+          addLabel: '添加账户',
+          expectedTotal: amount,
+          onSelectOption: (context, selectedId, options) =>
+              selectTransactionAllocationAccount(
+                context,
+                accounts: state.accounts,
+                selectedAccountId: selectedId,
+                options: options,
+              ),
+          onChanged: ref.read(provider.notifier).setSettlementAllocations,
+        );
+      },
     );
-    if (!mounted || selected == null) return;
-    onSelected(selected);
+  }
+
+  Widget _buildGapAllocations(
+    ReimbursementCloseFormViewModelProvider provider,
+    ReimbursementCloseFormState state,
+  ) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _amountController,
+      builder: (context, value, _) {
+        final actual = Money.tryParse(value.text);
+        final outstanding = state.outstanding;
+        if (actual == null ||
+            outstanding == null ||
+            actual.minorUnits >= outstanding.minorUnits) {
+          return const SizedBox.shrink();
+        }
+        final shortfall = outstanding - actual;
+        final fallbackCategoryId =
+            state.availableCategoryAllocations.length == 1
+            ? state.availableCategoryAllocations.single.accountId
+            : null;
+        return Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.space14),
+          child: TransactionAllocationAmountFields(
+            key: const ValueKey('reimbursement-close-gap-allocations'),
+            title: '差额分类',
+            allocations: transactionAllocationFieldValues(
+              allocations: state.gapExpenseAllocations,
+              fallbackAccountId: fallbackCategoryId,
+              total: shortfall,
+            ),
+            options: transactionAllocationOptionsForAccounts(
+              state.categoryAccounts,
+            ),
+            expectedTotal: shortfall,
+            maximumByAccountId: transactionAllocationMaximums(
+              options: transactionAllocationOptionsForAccounts(
+                state.categoryAccounts,
+              ),
+              availableAllocations: state.availableCategoryAllocations,
+            ),
+            onChanged: ref.read(provider.notifier).setGapExpenseAllocations,
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _pickOccurredAt(

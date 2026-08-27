@@ -4,6 +4,7 @@ import '../../entity/account.dart';
 import '../../entity/entry.dart';
 import '../../entity/transaction.dart';
 import '../../entity/transaction_line.dart';
+import '../../valobj/account_amount_allocation.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
@@ -45,16 +46,14 @@ class PostingEngine {
 
     final imbalance = legs.fold(0, (sum, leg) => sum + leg.signedMinor);
     if (imbalance != 0) {
-      legs.add(
-        (
-          accountId: _balancingAccountId(
-            businessPurpose: businessPurpose,
-            lines: lines,
-            systemAccountIds: systemAccountIds,
-          ),
-          signedMinor: -imbalance,
+      legs.add((
+        accountId: _balancingAccountId(
+          businessPurpose: businessPurpose,
+          lines: lines,
+          systemAccountIds: systemAccountIds,
         ),
-      );
+        signedMinor: -imbalance,
+      ));
     }
 
     final netByAccount = <String, int>{};
@@ -73,10 +72,9 @@ class PostingEngine {
           _entry(
             transactionId: transactionId,
             accountId: accountId,
-            direction:
-                netByAccount[accountId]! > 0
-                    ? EntryDirection.debit
-                    : EntryDirection.credit,
+            direction: netByAccount[accountId]! > 0
+                ? EntryDirection.debit
+                : EntryDirection.credit,
             amount: Money(minorUnits: netByAccount[accountId]!.abs()),
           ),
     ];
@@ -138,7 +136,16 @@ class PostingEngine {
         message: 'Expense amount must be positive.',
       );
     }
+    _validateAllocations(
+      total: instruction.amount,
+      allocations: instruction.categoryAllocations,
+    );
+    _validateAllocations(
+      total: instruction.amount,
+      allocations: instruction.settlementAllocations,
+    );
     final transactionId = _idGenerator.newId();
+    var lineNo = 1;
     return _posted(
       Transaction(
         id: transactionId,
@@ -153,20 +160,22 @@ class PostingEngine {
         sourceKind: instruction.sourceKind,
         ownership: instruction.ownership,
         lines: [
-          _line(
-            transactionId: transactionId,
-            lineNo: 1,
-            role: TransactionRole.category,
-            accountId: instruction.expenseAccountId,
-            amount: instruction.amount,
-          ),
-          _line(
-            transactionId: transactionId,
-            lineNo: 2,
-            role: TransactionRole.settlementOut,
-            accountId: instruction.paidFromAccountId,
-            amount: instruction.amount,
-          ),
+          for (final allocation in instruction.categoryAllocations)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: TransactionRole.category,
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
+          for (final allocation in instruction.settlementAllocations)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: TransactionRole.settlementOut,
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
         ],
       ),
     );
@@ -221,7 +230,16 @@ class PostingEngine {
             message: 'Reimbursement advance amount must be positive.',
           );
     }
+    _validateAllocations(
+      total: instruction.amount,
+      allocations: instruction.categoryAllocations,
+    );
+    _validateAllocations(
+      total: instruction.amount,
+      allocations: instruction.settlementAllocations,
+    );
     final transactionId = _idGenerator.newId();
+    var lineNo = 1;
     return _posted(
       Transaction(
         id: transactionId,
@@ -237,27 +255,29 @@ class PostingEngine {
         ownership: instruction.ownership,
         lines: [
           // 支出分类在垫付时不产生分录,它在结束报销少收差额时才被使用。
+          for (final allocation in instruction.categoryAllocations)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: TransactionRole.reimbursementExpenseCategory,
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
           _line(
             transactionId: transactionId,
-            lineNo: 1,
-            role: TransactionRole.reimbursementExpenseCategory,
-            accountId: instruction.expenseAccountId,
-            amount: instruction.amount,
-          ),
-          _line(
-            transactionId: transactionId,
-            lineNo: 2,
+            lineNo: lineNo++,
             role: TransactionRole.receivable,
             accountId: instruction.receivableAccountId,
             amount: instruction.amount,
           ),
-          _line(
-            transactionId: transactionId,
-            lineNo: 3,
-            role: TransactionRole.settlementOut,
-            accountId: instruction.paidFromAccountId,
-            amount: instruction.amount,
-          ),
+          for (final allocation in instruction.settlementAllocations)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: TransactionRole.settlementOut,
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
         ],
       ),
     );
@@ -266,14 +286,34 @@ class PostingEngine {
   Transaction createRefund({
     required RefundInstruction instruction,
     required Transaction parent,
-    required String refundOffsetAccountId,
   }) {
     if (instruction.amount.minorUnits <= 0) {
       return LedgerViolationReason.refundAmountNotPositive.throwException(
         message: 'Refund amount must be positive.',
       );
     }
+    final categoryAllocations = instruction.categoryAllocations.isNotEmpty
+        ? instruction.categoryAllocations
+        : _singleRefundCategoryAllocation(parent, instruction.amount);
+    _validateAllocations(
+      total: instruction.amount,
+      allocations: categoryAllocations,
+    );
+    _validateAllocations(
+      total: instruction.amount,
+      allocations: instruction.settlementAllocations,
+    );
+    final reimbursable =
+        parent.businessPurpose == BusinessPurpose.reimbursementAdvance;
+    final receivableAccountId = reimbursable
+        ? parent.accountOf(TransactionRole.receivable)
+        : null;
+    if (reimbursable && receivableAccountId == null) {
+      return LedgerViolationReason.reimbursementInstructionUnresolvable
+          .throwException(message: 'Refund receivable account is missing.');
+    }
     final transactionId = _idGenerator.newId();
+    var lineNo = 1;
     return _posted(
       Transaction(
         id: transactionId,
@@ -289,20 +329,32 @@ class PostingEngine {
         sourceKind: parent.sourceKind,
         ownership: parent.ownership,
         lines: [
-          _line(
-            transactionId: transactionId,
-            lineNo: 1,
-            role: TransactionRole.settlementIn,
-            accountId: instruction.refundToAccountId,
-            amount: instruction.amount,
-          ),
-          _line(
-            transactionId: transactionId,
-            lineNo: 2,
-            role: TransactionRole.refundOffset,
-            accountId: refundOffsetAccountId,
-            amount: instruction.amount,
-          ),
+          for (final allocation in instruction.settlementAllocations)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: TransactionRole.settlementIn,
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
+          for (final allocation in categoryAllocations)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: reimbursable
+                  ? TransactionRole.reimbursementExpenseCategory
+                  : TransactionRole.refundOffset,
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
+          if (receivableAccountId != null)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: TransactionRole.receivable,
+              accountId: receivableAccountId,
+              amount: instruction.amount,
+            ),
         ],
       ),
     );
@@ -384,7 +436,12 @@ class PostingEngine {
       return LedgerViolationReason.reimbursementAmountNotPositive
           .throwException(message: 'Receipt amount must be positive.');
     }
+    _validateAllocations(
+      total: instruction.amount,
+      allocations: instruction.settlementAllocations,
+    );
     final transactionId = _idGenerator.newId();
+    var lineNo = 1;
     return _posted(
       Transaction(
         id: transactionId,
@@ -400,16 +457,17 @@ class PostingEngine {
         sourceKind: advance.sourceKind,
         ownership: advance.ownership,
         lines: [
+          for (final allocation in instruction.settlementAllocations)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: TransactionRole.settlementIn,
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
           _line(
             transactionId: transactionId,
-            lineNo: 1,
-            role: TransactionRole.settlementIn,
-            accountId: instruction.receiveAccountId,
-            amount: instruction.amount,
-          ),
-          _line(
-            transactionId: transactionId,
-            lineNo: 2,
+            lineNo: lineNo++,
             role: TransactionRole.receivable,
             accountId: instruction.receivableAccountId,
             amount: instruction.amount,
@@ -813,17 +871,25 @@ class PostingEngine {
       return LedgerViolationReason.reimbursementGapIncomeRequired
           .throwException(message: 'Gap income account is required.');
     }
-    final gapExpenseAccountId = advance.accountOf(
-      TransactionRole.reimbursementExpenseCategory,
+    _validateAllocations(
+      total: actual,
+      allocations: instruction.settlementAllocations,
+      allowZeroTotal: true,
     );
-    if (gap.minorUnits < 0 && gapExpenseAccountId == null) {
-      return LedgerViolationReason.reimbursementInstructionUnresolvable
-          .throwException(
-            message: 'Reimbursement advance expense category is missing.',
-          );
+    final gapExpenseAllocations =
+        gap.minorUnits < 0 && instruction.gapExpenseAllocations.isEmpty
+        ? _singleGapExpenseAllocation(advance, -gap)
+        : instruction.gapExpenseAllocations;
+    if (gap.minorUnits < 0) {
+      _validateAllocations(total: -gap, allocations: gapExpenseAllocations);
+    } else if (gapExpenseAllocations.isNotEmpty) {
+      return LedgerViolationReason.allocationTotalMismatch.throwException(
+        message: 'Gap expense allocations require a reimbursement shortfall.',
+      );
     }
 
     final transactionId = _idGenerator.newId();
+    var lineNo = 1;
     return _posted(
       Transaction(
         id: transactionId,
@@ -840,17 +906,18 @@ class PostingEngine {
         ownership: advance.ownership,
         lines: [
           // 一分未收时金额为零,但收款账户仍是用户给出的事实,必须留痕。
-          _line(
-            transactionId: transactionId,
-            lineNo: 1,
-            role: TransactionRole.settlementIn,
-            accountId: instruction.receiveAccountId,
-            amount: actual,
-          ),
+          for (final allocation in instruction.settlementAllocations)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: TransactionRole.settlementIn,
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
           if (outstanding.minorUnits > 0)
             _line(
               transactionId: transactionId,
-              lineNo: 2,
+              lineNo: lineNo++,
               role: TransactionRole.receivable,
               accountId: instruction.receivableAccountId,
               amount: outstanding,
@@ -858,23 +925,73 @@ class PostingEngine {
           if (gap.minorUnits > 0)
             _line(
               transactionId: transactionId,
-              lineNo: 3,
+              lineNo: lineNo++,
               role: TransactionRole.reimbursementGapIncome,
               amount: gap,
             ),
           if (gap.minorUnits < 0)
-            _line(
-              transactionId: transactionId,
-              lineNo: 3,
-              role: TransactionRole.reimbursementGapExpense,
-              accountId: gapExpenseAccountId,
-              amount: -gap,
-            ),
+            for (final allocation in gapExpenseAllocations)
+              _line(
+                transactionId: transactionId,
+                lineNo: lineNo++,
+                role: TransactionRole.reimbursementGapExpense,
+                accountId: allocation.accountId,
+                amount: allocation.amount,
+              ),
         ],
       ),
-      systemAccountIds: {
-        SystemKey.reimbursementGapIncome: ?gapIncomeAccountId,
-      },
+      systemAccountIds: {SystemKey.reimbursementGapIncome: ?gapIncomeAccountId},
+    );
+  }
+
+  void _validateAllocations({
+    required Money total,
+    required List<AccountAmountAllocation> allocations,
+    bool allowZeroTotal = false,
+  }) {
+    if (allocations.isEmpty) {
+      LedgerViolationReason.allocationRequired.throwException();
+    }
+    final zeroTotal = total.minorUnits == 0;
+    for (final allocation in allocations) {
+      final valid = zeroTotal && allowZeroTotal
+          ? allocation.amount.minorUnits == 0 && allocations.length == 1
+          : allocation.amount.minorUnits > 0;
+      if (!valid) {
+        LedgerViolationReason.allocationAmountNotPositive.throwException();
+      }
+    }
+    if (sumAllocations(allocations) != total) {
+      LedgerViolationReason.allocationTotalMismatch.throwException();
+    }
+  }
+
+  List<AccountAmountAllocation> _singleRefundCategoryAllocation(
+    Transaction parent,
+    Money amount,
+  ) {
+    final role = parent.businessPurpose == BusinessPurpose.reimbursementAdvance
+        ? TransactionRole.reimbursementExpenseCategory
+        : TransactionRole.category;
+    final categories = parent.linesOf(role).toList();
+    if (categories.length != 1) return const [];
+    return singleAllocation(
+      accountId: categories.single.accountId!,
+      amount: amount,
+    );
+  }
+
+  List<AccountAmountAllocation> _singleGapExpenseAllocation(
+    Transaction advance,
+    Money amount,
+  ) {
+    final categories = advance
+        .linesOf(TransactionRole.reimbursementExpenseCategory)
+        .toList();
+    if (categories.length != 1) return const [];
+    return singleAllocation(
+      accountId: categories.single.accountId!,
+      amount: amount,
     );
   }
 
@@ -900,13 +1017,12 @@ class PostingEngine {
   }) {
     if (line.amount.minorUnits == 0) return null;
 
-    final accountId =
-        roleCarriesAccount(line.role)
-            ? line.accountId
-            : systemAccountIds[systemKeyForRole(
-              businessPurpose: businessPurpose,
-              role: line.role,
-            )];
+    final accountId = roleCarriesAccount(line.role)
+        ? line.accountId
+        : systemAccountIds[systemKeyForRole(
+            businessPurpose: businessPurpose,
+            role: line.role,
+          )];
     if (accountId == null) {
       return LedgerViolationReason.postingSystemAccountMissing.throwException(
         message: 'No account resolved for role ${line.role.name}.',
@@ -917,7 +1033,8 @@ class PostingEngine {
       final accountType = accountTypes[accountId];
       if (accountType == null) {
         return LedgerViolationReason.postingAccountTypeMissing.throwException(
-          message: 'Account type of $accountId is required for ${line.role.name}.',
+          message:
+              'Account type of $accountId is required for ${line.role.name}.',
         );
       }
       return (

@@ -555,6 +555,7 @@ void main() {
       "('transfer', 'transfer', 2, 2, 1000, NULL, NULL, 'manual'), "
       "('advance', 'reimbursementAdvance', 3, 3, 1000, NULL, "
       "'migration-travel', 'manual'), "
+      "('refund', 'refund', 3, 3, 100, 'advance', NULL, 'manual'), "
       "('receipt', 'reimbursementReceipt', 4, 4, 800, 'advance', NULL, 'manual'), "
       "('close', 'reimbursementClose', 5, 5, 800, 'advance', NULL, 'manual'), "
       "('repayment', 'debtRepayment', 6, 6, 1125, NULL, NULL, 'manual'), "
@@ -569,6 +570,7 @@ void main() {
       "('transfer-main', 'transfer', 1, 'transferMain', 1000), "
       "('transfer-fee', 'transfer', 2, 'transferFee', 50), "
       "('advance-main', 'advance', 1, 'reimbursementAdvanceMain', 1000), "
+      "('refund-main', 'refund', 1, 'refundMain', 100), "
       "('receipt-main', 'receipt', 1, 'reimbursementReceiptMain', 800), "
       "('close-main', 'close', 1, 'reimbursementCloseMain', 1000), "
       "('close-gap', 'close', 2, 'reimbursementGapExpense', 200), "
@@ -591,6 +593,8 @@ void main() {
       "('transfer-credit', 'transfer', 'migration-cash', 'credit', 1050), "
       "('advance-debit', 'advance', 'migration-receivable', 'debit', 1000), "
       "('advance-credit', 'advance', 'migration-cash', 'credit', 1000), "
+      "('refund-debit', 'refund', 'migration-bank', 'debit', 100), "
+      "('refund-credit', 'refund', 'migration-receivable', 'credit', 100), "
       "('receipt-debit', 'receipt', 'migration-bank', 'debit', 800), "
       "('receipt-credit', 'receipt', 'migration-receivable', 'credit', 800), "
       "('close-bank', 'close', 'migration-bank', 'debit', 800), "
@@ -640,6 +644,9 @@ void main() {
         'close:settlementIn:migration-bank:800',
         'close:receivable:migration-receivable:1000',
         'close:reimbursementGapExpense:migration-travel:200',
+        'refund:settlementIn:migration-bank:100',
+        'refund:reimbursementExpenseCategory:migration-travel:100',
+        'refund:receivable:migration-receivable:100',
         'repayment:liability:migration-liability:1000',
         'repayment:interest:-:100',
         'repayment:fee:-:50',

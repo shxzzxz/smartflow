@@ -1,10 +1,12 @@
 import '../../entity/account.dart';
 import '../../entity/transaction_group.dart';
 import '../../entity/transaction.dart';
+import 'package:smartflow/core/money/money.dart';
 import '../../port/account_repository.dart';
 import '../../port/transaction_group_repository.dart';
 import '../../port/system_account_resolver.dart';
 import '../../valobj/ledger_enum.dart';
+import '../../valobj/account_amount_allocation.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import '../../valobj/posting_result.dart';
@@ -40,8 +42,12 @@ class ReimbursementPostingService {
     final roleViolation = await _accountRolePolicy.validate(
       AccountRoleContext.reimbursementAdvance(
         receivableAccountId: instruction.receivableAccountId,
-        paidFromAccountId: instruction.paidFromAccountId,
-        expenseCategoryId: instruction.expenseAccountId,
+        paidFromAccountIds: instruction.settlementAllocations.map(
+          (allocation) => allocation.accountId,
+        ),
+        expenseCategoryIds: instruction.categoryAllocations.map(
+          (allocation) => allocation.accountId,
+        ),
       ),
     );
     if (roleViolation != null) roleViolation.throwException();
@@ -65,7 +71,9 @@ class ReimbursementPostingService {
     final roleViolation = await _accountRolePolicy.validate(
       AccountRoleContext.reimbursementReceipt(
         receivableAccountId: instruction.receivableAccountId,
-        receiveAccountId: instruction.receiveAccountId,
+        receiveAccountIds: instruction.settlementAllocations.map(
+          (allocation) => allocation.accountId,
+        ),
       ),
     );
     if (roleViolation != null) roleViolation.throwException();
@@ -83,15 +91,38 @@ class ReimbursementPostingService {
     final advance = group.parentTransaction;
     final outstanding = group.reimbursementOutstanding();
     final actual = instruction.actualReceivedAmount;
-    final gapIncomeAccountId =
-        actual.minorUnits > outstanding.minorUnits
-            ? await _systemAccountResolver.resolveReimbursementGapIncome()
-            : null;
+    final gapIncomeAccountId = actual.minorUnits > outstanding.minorUnits
+        ? await _systemAccountResolver.resolveReimbursementGapIncome()
+        : null;
+    final gapExpenseAllocations = _gapExpenseAllocations(
+      instruction: instruction,
+      group: group,
+      outstanding: outstanding,
+    );
+    if (!group.allocationsFitRefundableCategories(gapExpenseAllocations)) {
+      LedgerViolationReason.allocationExceedsAvailable.throwException();
+    }
+    final normalizedInstruction = ReimbursementCloseInstruction(
+      advanceTransactionId: instruction.advanceTransactionId,
+      actualReceivedAmount: instruction.actualReceivedAmount,
+      receivableAccountId: instruction.receivableAccountId,
+      settlementAllocations: instruction.settlementAllocations,
+      gapExpenseAllocations: gapExpenseAllocations,
+      occurredAt: instruction.occurredAt,
+      postedAt: instruction.postedAt,
+      counterpartyName: instruction.counterpartyName,
+      note: instruction.note,
+    );
 
     final roleViolation = await _accountRolePolicy.validate(
       AccountRoleContext.reimbursementClose(
         receivableAccountId: instruction.receivableAccountId,
-        receiveAccountId: instruction.receiveAccountId,
+        receiveAccountIds: instruction.settlementAllocations.map(
+          (allocation) => allocation.accountId,
+        ),
+        gapExpenseCategoryIds: gapExpenseAllocations.map(
+          (allocation) => allocation.accountId,
+        ),
         receivesCash: actual.minorUnits > 0,
       ),
     );
@@ -99,12 +130,31 @@ class ReimbursementPostingService {
 
     return _applyPosting(
       _postingEngine.createReimbursementClose(
-        instruction: instruction,
+        instruction: normalizedInstruction,
         advance: advance,
         outstanding: outstanding,
         gapIncomeAccountId: gapIncomeAccountId,
       ),
     );
+  }
+
+  List<AccountAmountAllocation> _gapExpenseAllocations({
+    required ReimbursementCloseInstruction instruction,
+    required TransactionGroup group,
+    required Money outstanding,
+  }) {
+    final shortfall = outstanding - instruction.actualReceivedAmount;
+    if (shortfall.minorUnits <= 0) return const [];
+    if (instruction.gapExpenseAllocations.isNotEmpty) {
+      return instruction.gapExpenseAllocations;
+    }
+    final remaining = group.remainingRefundableCategoryAllocations();
+    if (remaining.length != 1) {
+      LedgerViolationReason.allocationRequired.throwException(
+        message: 'Gap expense category allocations are required.',
+      );
+    }
+    return [remaining.single.copyWith(amount: shortfall)];
   }
 
   Future<TransactionGroup> _loadOpenAdvance(String advanceTransactionId) async {

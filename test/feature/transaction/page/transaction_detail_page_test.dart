@@ -7,6 +7,7 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_form_section.dart';
 import 'package:smartflow/design_system/widget/app_datetime_picker.dart';
 import 'package:smartflow/design_system/widget/app_form_field.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
@@ -15,6 +16,7 @@ import 'package:smartflow/feature/transaction/page/transaction_detail_page.dart'
 import 'package:smartflow/feature/transaction/page/reimbursement_form_page.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
+import 'package:smartflow/widget/business/icon/business_icon.dart';
 
 void main() {
   testWidgets('renders detail state and forwards inline edits', (tester) async {
@@ -70,19 +72,6 @@ void main() {
     expect(find.text('备注已更新'), findsOneWidget);
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
-
-    await tester.tap(find.text('现金'));
-    await tester.pumpAndSettle();
-    expect(find.text('选择收支账户'), findsOneWidget);
-
-    await tester.tap(find.text('银行卡'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-
-    final command = editService.expenseCommands.single;
-    expect(command.transactionId, 'tx-1');
-    expect(command.paidFromAccountId, 'bank');
-    expect(find.text('收支账户已更新'), findsOneWidget);
   });
 
   testWidgets('shows refund and reimbursement information together', (
@@ -132,6 +121,237 @@ void main() {
 
     expect(find.text('手续费'), findsOneWidget);
     expect(find.text('3.00'), findsOneWidget);
+  });
+
+  testWidgets(
+    'shows category and account breakdowns as compact rows above tags',
+    (tester) async {
+      final router = GoRouter(
+        initialLocation: '/transaction/tx-multi',
+        routes: [
+          GoRoute(
+            path: '/transaction/:id',
+            builder: (context, state) => TransactionDetailPage(
+              transactionId: state.pathParameters['id']!,
+            ),
+          ),
+          GoRoute(
+            path: '/transaction/:id/edit',
+            builder: (context, state) => const Scaffold(body: Text('交易编辑页')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            transactionDetailProvider(
+              'tx-multi',
+            ).overrideWith((ref) => Stream.value(_multiDetail())),
+            accountLookupProvider.overrideWith(
+              (ref) => Stream.value(AccountLookup(_accounts)),
+            ),
+            accountQueryServiceProvider.overrideWith(
+              (ref) => _FakeAccountQueryService([
+                _accounts['cash']!,
+                _accounts['bank']!,
+              ]),
+            ),
+            tagListProvider.overrideWithValue(const AsyncData([])),
+            transactionTagIdsProvider(
+              'tx-multi',
+            ).overrideWithValue(const AsyncData({})),
+          ],
+          child: MaterialApp.router(
+            theme: AppTheme.light(),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final categoryCard = find.byKey(const ValueKey('detail-category-card'));
+      expect(categoryCard, findsOneWidget);
+      expect(
+        find.descendant(of: categoryCard, matching: find.text('多分类')),
+        findsOneWidget,
+      );
+      final heroIcon = tester.widget<BusinessIcon>(
+        find.descendant(of: categoryCard, matching: find.byType(BusinessIcon)),
+      );
+      expect(resolveBusinessIconSpec(heroIcon.iconKey).iconKey, 'more-line');
+      expect(find.text('分类构成'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('detail-allocation-card')),
+          matching: find.text('午餐'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('detail-allocation-card')),
+          matching: find.text('交通'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('账户构成'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('detail-allocation-card')),
+          matching: find.text('现金'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('detail-allocation-card')),
+          matching: find.text('银行卡'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('收支账户'), findsNothing);
+      final detailList = tester.widget<ListView>(find.byType(ListView).first);
+      final detailChildren =
+          (detailList.childrenDelegate as SliverChildListDelegate).children;
+      final allocationIndex = detailChildren.indexWhere(
+        (child) => child.key == const ValueKey('detail-allocation-card'),
+      );
+      final tagIndex = detailChildren.indexWhere(
+        (child) => child.key == const ValueKey('detail-tag-card'),
+      );
+      expect(allocationIndex, greaterThanOrEqualTo(0));
+      expect(tagIndex, allocationIndex + 2);
+
+      await tester.tap(
+        find.byKey(const ValueKey('detail-allocation-row-category')),
+      );
+      await tester.pumpAndSettle();
+
+      var sheet = find.byType(BottomSheet);
+      expect(
+        find.descendant(of: sheet, matching: find.text('午餐')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: sheet, matching: find.text('交通')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: sheet, matching: find.text('60.00')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: sheet, matching: find.text('40.00')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byType(ModalBarrier).last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const ValueKey('detail-allocation-row-account')),
+      );
+      await tester.pumpAndSettle();
+
+      sheet = find.byType(BottomSheet);
+      expect(
+        find.descendant(of: sheet, matching: find.text('现金')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: sheet, matching: find.text('银行卡')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byType(ModalBarrier).last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('编辑'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('交易编辑页'), findsOneWidget);
+    },
+  );
+
+  testWidgets('shows icons only when a breakdown has three items', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          transactionDetailProvider(
+            'tx-many',
+          ).overrideWith((ref) => Stream.value(_multiDetail(many: true))),
+          accountLookupProvider.overrideWith(
+            (ref) => Stream.value(AccountLookup(_accounts)),
+          ),
+          tagListProvider.overrideWithValue(const AsyncData([])),
+          transactionTagIdsProvider(
+            'tx-many',
+          ).overrideWithValue(const AsyncData({})),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const TransactionDetailPage(transactionId: 'tx-many'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final categoryRow = find.byKey(
+      const ValueKey('detail-allocation-row-category'),
+    );
+    final accountRow = find.byKey(
+      const ValueKey('detail-allocation-row-account'),
+    );
+    expect(
+      find.descendant(of: categoryRow, matching: find.byType(BusinessIcon)),
+      findsNWidgets(3),
+    );
+    expect(
+      find.descendant(of: accountRow, matching: find.byType(BusinessIcon)),
+      findsNWidgets(3),
+    );
+    expect(
+      find.descendant(of: categoryRow, matching: find.text('午餐')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: categoryRow, matching: find.text('交通')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: categoryRow, matching: find.text('购物')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: accountRow, matching: find.text('现金')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: accountRow, matching: find.text('银行卡')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: accountRow, matching: find.text('信用卡')),
+      findsNothing,
+    );
+
+    await tester.tap(categoryRow);
+    await tester.pumpAndSettle();
+
+    final sheet = find.byType(BottomSheet);
+    expect(
+      find.descendant(of: sheet, matching: find.text('午餐')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheet, matching: find.text('交通')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheet, matching: find.text('购物')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('edits transaction tags from the detail tag row', (tester) async {
@@ -249,13 +469,18 @@ void main() {
       ),
       findsOneWidget,
     );
-    final accountField = find.byWidgetPredicate(
-      (widget) => widget is AppControlledFormField<String>,
+    final settlementCard = find.byKey(
+      const ValueKey('reimbursement-settlement-allocations'),
     );
-    final initialAccountValue = tester
-        .state<FormFieldState<String>>(accountField)
-        .value;
-    expect(initialAccountValue, 'cash');
+    expect(settlementCard, findsOneWidget);
+    expect(
+      find.descendant(of: settlementCard, matching: find.text('现金')),
+      findsOneWidget,
+    );
+    expect(
+      find.ancestor(of: settlementCard, matching: find.byType(AppFormSection)),
+      findsNothing,
+    );
 
     final formPage = find.byType(ReimbursementFormPage);
     final formSwitch = find.descendant(
@@ -297,10 +522,6 @@ void main() {
           find.descendant(of: formPage, matching: find.byType(Form)),
         )
         .reset();
-    expect(
-      tester.state<FormFieldState<String>>(accountField).value,
-      initialAccountValue,
-    );
     await tester.pump();
 
     expect(tester.widget<Switch>(formSwitch).value, isTrue);
@@ -334,6 +555,24 @@ final _accounts = <String, Account>{
     iconKey: 'wallet',
   ),
   'food': _account('food', '午餐', type: AccountType.expense, iconKey: 'meal'),
+  'travel': _account(
+    'travel',
+    '交通',
+    type: AccountType.expense,
+    iconKey: 'taxi',
+  ),
+  'shopping': _account(
+    'shopping',
+    '购物',
+    type: AccountType.expense,
+    iconKey: 'shopping-bag',
+  ),
+  'credit-card': _account(
+    'credit-card',
+    '信用卡',
+    type: AccountType.liability,
+    iconKey: 'credit-card',
+  ),
 };
 
 TransactionReadModel _detail() {
@@ -349,8 +588,22 @@ TransactionReadModel _detail() {
     ),
     createdAt: DateTime(2026, 1, 1, 8, 1),
     lines: const [
-      TransactionLine(id: 'category', transactionId: 'tx-1', lineNo: 1, role: TransactionRole.category, accountId: 'food', amount: Money(minorUnits: 10000)),
-      TransactionLine(id: 'settlement', transactionId: 'tx-1', lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: Money(minorUnits: 10000)),
+      TransactionLine(
+        id: 'category',
+        transactionId: 'tx-1',
+        lineNo: 1,
+        role: TransactionRole.category,
+        accountId: 'food',
+        amount: Money(minorUnits: 10000),
+      ),
+      TransactionLine(
+        id: 'settlement',
+        transactionId: 'tx-1',
+        lineNo: 2,
+        role: TransactionRole.settlementOut,
+        accountId: 'cash',
+        amount: Money(minorUnits: 10000),
+      ),
     ],
   );
 }
@@ -392,6 +645,106 @@ TransactionReadModel _transferDetail() {
         amount: Money(minorUnits: 300),
       ),
     ],
+  );
+}
+
+TransactionReadModel _multiDetail({bool many = false}) {
+  return TransactionReadModel.fromTransaction(
+    transaction: Transaction(
+      id: many ? 'tx-many' : 'tx-multi',
+      businessPurpose: BusinessPurpose.dailyExpense,
+      occurredAt: DateTime(2026, 1, 1, 8),
+      primaryAmount: const Money(minorUnits: 10000),
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+      sourceKind: SourceKind.manual,
+    ),
+    createdAt: DateTime(2026, 1, 1, 8, 1),
+    lines: many
+        ? const [
+            TransactionLine(
+              id: 'food-line',
+              transactionId: 'tx-many',
+              lineNo: 1,
+              role: TransactionRole.category,
+              accountId: 'food',
+              amount: Money(minorUnits: 5000),
+            ),
+            TransactionLine(
+              id: 'travel-line',
+              transactionId: 'tx-many',
+              lineNo: 2,
+              role: TransactionRole.category,
+              accountId: 'travel',
+              amount: Money(minorUnits: 3000),
+            ),
+            TransactionLine(
+              id: 'shopping-line',
+              transactionId: 'tx-many',
+              lineNo: 3,
+              role: TransactionRole.category,
+              accountId: 'shopping',
+              amount: Money(minorUnits: 2000),
+            ),
+            TransactionLine(
+              id: 'cash-line',
+              transactionId: 'tx-many',
+              lineNo: 4,
+              role: TransactionRole.settlementOut,
+              accountId: 'cash',
+              amount: Money(minorUnits: 5000),
+            ),
+            TransactionLine(
+              id: 'bank-line',
+              transactionId: 'tx-many',
+              lineNo: 5,
+              role: TransactionRole.settlementOut,
+              accountId: 'bank',
+              amount: Money(minorUnits: 3000),
+            ),
+            TransactionLine(
+              id: 'credit-card-line',
+              transactionId: 'tx-many',
+              lineNo: 6,
+              role: TransactionRole.settlementOut,
+              accountId: 'credit-card',
+              amount: Money(minorUnits: 2000),
+            ),
+          ]
+        : const [
+            TransactionLine(
+              id: 'food-line',
+              transactionId: 'tx-multi',
+              lineNo: 1,
+              role: TransactionRole.category,
+              accountId: 'food',
+              amount: Money(minorUnits: 6000),
+            ),
+            TransactionLine(
+              id: 'travel-line',
+              transactionId: 'tx-multi',
+              lineNo: 2,
+              role: TransactionRole.category,
+              accountId: 'travel',
+              amount: Money(minorUnits: 4000),
+            ),
+            TransactionLine(
+              id: 'cash-line',
+              transactionId: 'tx-multi',
+              lineNo: 3,
+              role: TransactionRole.settlementOut,
+              accountId: 'cash',
+              amount: Money(minorUnits: 6000),
+            ),
+            TransactionLine(
+              id: 'bank-line',
+              transactionId: 'tx-multi',
+              lineNo: 4,
+              role: TransactionRole.settlementOut,
+              accountId: 'bank',
+              amount: Money(minorUnits: 4000),
+            ),
+          ],
   );
 }
 
@@ -511,6 +864,20 @@ const _reimbursementLines = [
     accountId: 'food',
     amount: Money(minorUnits: 10000),
   ),
-  TransactionLine(id: 'advance-out', transactionId: 'tx-reimbursement', lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: Money(minorUnits: 10000)),
-  TransactionLine(id: 'advance-receivable', transactionId: 'tx-reimbursement', lineNo: 3, role: TransactionRole.receivable, accountId: 'receivable', amount: Money(minorUnits: 10000)),
+  TransactionLine(
+    id: 'advance-out',
+    transactionId: 'tx-reimbursement',
+    lineNo: 2,
+    role: TransactionRole.settlementOut,
+    accountId: 'cash',
+    amount: Money(minorUnits: 10000),
+  ),
+  TransactionLine(
+    id: 'advance-receivable',
+    transactionId: 'tx-reimbursement',
+    lineNo: 3,
+    role: TransactionRole.receivable,
+    accountId: 'receivable',
+    amount: Money(minorUnits: 10000),
+  ),
 ];

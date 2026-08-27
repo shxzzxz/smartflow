@@ -8,45 +8,48 @@ import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 
 void main() {
-  test(
-    'migrates each matched group through the purpose-specific edit',
-    () async {
-      final editService = _RecordingEditService();
-      final service = _service(
-        accounts: [_category('source'), _category('target')],
-        targets: const [
-          CategoryTransactionTarget(
-            transactionId: 'expense-1',
-            businessPurpose: BusinessPurpose.dailyExpense,
-          ),
-          CategoryTransactionTarget(
-            transactionId: 'income-1',
-            businessPurpose: BusinessPurpose.dailyIncome,
-          ),
-          CategoryTransactionTarget(
-            transactionId: 'advance-1',
-            businessPurpose: BusinessPurpose.reimbursementAdvance,
-          ),
-        ],
-        editService: editService,
-      );
-
-      final result = await service.migrate(
-        const CategoryTransactionMigrationCommand(
-          sourceCategoryId: 'source',
-          targetCategoryId: 'target',
+  test('migrates each matched group through category replacement', () async {
+    final editService = _RecordingEditService();
+    final service = _service(
+      accounts: [_category('source'), _category('target')],
+      targets: const [
+        CategoryTransactionTarget(
+          transactionId: 'expense-1',
+          businessPurpose: BusinessPurpose.dailyExpense,
         ),
-      );
+        CategoryTransactionTarget(
+          transactionId: 'income-1',
+          businessPurpose: BusinessPurpose.dailyIncome,
+        ),
+        CategoryTransactionTarget(
+          transactionId: 'advance-1',
+          businessPurpose: BusinessPurpose.reimbursementAdvance,
+        ),
+      ],
+      editService: editService,
+    );
 
-      expect(result.migratedGroupCount, 3);
-      expect(editService.expenseCommands.single.transactionId, 'expense-1');
-      expect(editService.expenseCommands.single.expenseAccountId, 'target');
-      expect(editService.incomeCommands.single.transactionId, 'income-1');
-      expect(editService.incomeCommands.single.incomeAccountId, 'target');
-      expect(editService.advanceCommands.single.transactionId, 'advance-1');
-      expect(editService.advanceCommands.single.expenseCategoryId, 'target');
-    },
-  );
+    final result = await service.migrate(
+      const CategoryTransactionMigrationCommand(
+        sourceCategoryId: 'source',
+        targetCategoryId: 'target',
+      ),
+    );
+
+    expect(result.migratedGroupCount, 3);
+    expect(editService.commands.map((command) => command.transactionId), [
+      'expense-1',
+      'income-1',
+      'advance-1',
+    ]);
+    expect(editService.commands.map((command) => command.businessPurpose), [
+      BusinessPurpose.dailyExpense,
+      BusinessPurpose.dailyIncome,
+      BusinessPurpose.reimbursementAdvance,
+    ]);
+    expect(editService.commands.first.sourceCategoryId, 'source');
+    expect(editService.commands.first.targetCategoryId, 'target');
+  });
 
   test('succeeds with zero migrated groups when nothing matches', () async {
     final service = _service(
@@ -171,7 +174,7 @@ void main() {
       throwsA(_hasCode(LedgerErrorCode.categoryUnavailable)),
     );
     expect(transactionRead.queriedCategoryIds, isEmpty);
-    expect(editService.expenseCommands, isEmpty);
+    expect(editService.commands, isEmpty);
   });
 
   test('rejects a system target before querying or rewriting groups', () async {
@@ -201,7 +204,7 @@ void main() {
       throwsA(_hasCode(LedgerErrorCode.categoryUnavailable)),
     );
     expect(transactionRead.queriedCategoryIds, isEmpty);
-    expect(editService.expenseCommands, isEmpty);
+    expect(editService.commands, isEmpty);
   });
 
   test('propagates a failed group rewrite without continuing', () async {
@@ -234,10 +237,10 @@ void main() {
       ),
       throwsA(_hasCode(LedgerErrorCode.transactionPostingFailed)),
     );
-    expect(
-      editService.expenseCommands.map((command) => command.transactionId),
-      ['expense-1', 'expense-2'],
-    );
+    expect(editService.commands.map((command) => command.transactionId), [
+      'expense-1',
+      'expense-2',
+    ]);
   });
 }
 
@@ -317,27 +320,13 @@ class _RecordingEditService implements TransactionEditAppService {
   _RecordingEditService({this.failOnTransactionId});
 
   final String? failOnTransactionId;
-  final expenseCommands = <EditExpenseCommand>[];
-  final incomeCommands = <EditIncomeCommand>[];
-  final advanceCommands = <EditReimbursementAdvanceCommand>[];
+  final commands = <ReplaceTransactionCategoryCommand>[];
 
   @override
-  Future<PostedTransactionResult> editExpense(EditExpenseCommand command) {
-    expenseCommands.add(command);
-    return _complete(command.transactionId);
-  }
-
-  @override
-  Future<PostedTransactionResult> editIncome(EditIncomeCommand command) {
-    incomeCommands.add(command);
-    return _complete(command.transactionId);
-  }
-
-  @override
-  Future<PostedTransactionResult> editReimbursementAdvance(
-    EditReimbursementAdvanceCommand command,
+  Future<PostedTransactionResult> replaceTransactionCategory(
+    ReplaceTransactionCategoryCommand command,
   ) {
-    advanceCommands.add(command);
+    commands.add(command);
     return _complete(command.transactionId);
   }
 

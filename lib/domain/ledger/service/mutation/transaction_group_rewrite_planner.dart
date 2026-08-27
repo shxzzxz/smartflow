@@ -1,8 +1,8 @@
-import 'package:smartflow/core/money/money.dart';
 import '../../entity/transaction.dart';
 import '../../entity/transaction_group.dart';
 import '../../port/system_account_resolver.dart';
 import '../../valobj/ledger_enum.dart';
+import '../../valobj/account_amount_allocation.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import '../posting/posting_engine.dart';
@@ -93,13 +93,15 @@ class TransactionGroupRewritePlanner {
       }
     }
 
+    final rewrittenGroup = TransactionGroup(
+      parentTransaction: rewrittenParent,
+      childTransactions: rewrittenChildren,
+    );
+    _validateCategoryAllocations(rewrittenGroup);
     return TransactionGroupRewritePlan(
       rewrites: rewrites,
       rowUpdates: rowUpdates,
-      currentGroup: TransactionGroup(
-        parentTransaction: rewrittenParent,
-        childTransactions: rewrittenChildren,
-      ),
+      currentGroup: rewrittenGroup,
     );
   }
 
@@ -118,7 +120,11 @@ class TransactionGroupRewritePlanner {
           parent: parent,
         );
       case BusinessPurpose.refund:
-        return _rebuildRefund(child: child, parent: parent);
+        return _rebuildRefund(
+          child: child,
+          currentGroup: currentGroup,
+          parent: parent,
+        );
       default:
         return child.copyWith(
           isExcludedFromStats: parent.isExcludedFromStats,
@@ -129,26 +135,27 @@ class TransactionGroupRewritePlanner {
 
   Transaction _rebuildRefund({
     required Transaction child,
+    required TransactionGroup currentGroup,
     required Transaction parent,
   }) {
-    final parentInstruction = _postingInstructionResolver.resolve(parent);
-    final offsetAccountId = resolveRefundOffsetAccountId(parentInstruction);
-    if (offsetAccountId == null) {
-      LedgerViolationReason.refundParentNotSupported.throwException();
-    }
     final instruction = _postingInstructionResolver.resolveRefund(child);
+    final categories = _rebaseSingleCategoryAllocations(
+      currentParent: currentGroup.parentTransaction,
+      nextParent: parent,
+      allocations: instruction.categoryAllocations,
+    );
     final candidate = _postingEngine.createRefund(
       instruction: RefundInstruction(
         parentTransactionId: parent.id,
         amount: instruction.amount,
-        refundToAccountId: instruction.refundToAccountId,
+        categoryAllocations: categories,
+        settlementAllocations: instruction.settlementAllocations,
         occurredAt: instruction.occurredAt,
         postedAt: instruction.postedAt,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
       ),
       parent: parent,
-      refundOffsetAccountId: offsetAccountId,
     );
     return _preserveIdentity(original: child, candidate: candidate);
   }
@@ -160,8 +167,8 @@ class TransactionGroupRewritePlanner {
   }) {
     final parentInstruction = _postingInstructionResolver.resolve(parent);
     if (parentInstruction is! ReimbursementAdvanceInstruction) return child;
-    final receiveAccountId = child.accountOf(TransactionRole.settlementIn);
-    if (receiveAccountId == null) {
+    final settlements = _allocationsOf(child, TransactionRole.settlementIn);
+    if (settlements.isEmpty) {
       LedgerViolationReason.reimbursementReceiptAccountsUnresolved
           .throwException();
     }
@@ -170,7 +177,7 @@ class TransactionGroupRewritePlanner {
         advanceTransactionId: parent.id,
         amount: child.primaryAmount,
         receivableAccountId: parentInstruction.receivableAccountId,
-        receiveAccountId: receiveAccountId,
+        settlementAllocations: settlements,
         occurredAt: child.occurredAt,
         postedAt: child.postedAt,
         counterpartyName: child.counterpartyName,
@@ -188,8 +195,8 @@ class TransactionGroupRewritePlanner {
   }) async {
     final parentInstruction = _postingInstructionResolver.resolve(parent);
     if (parentInstruction is! ReimbursementAdvanceInstruction) return child;
-    final receiveAccountId = child.accountOf(TransactionRole.settlementIn);
-    if (receiveAccountId == null) {
+    final settlements = _allocationsOf(child, TransactionRole.settlementIn);
+    if (settlements.isEmpty) {
       LedgerViolationReason.reimbursementCloseAccountsUnresolved
           .throwException();
     }
@@ -198,13 +205,22 @@ class TransactionGroupRewritePlanner {
       parentTransaction: parent,
       childTransactions: currentGroup.childTransactions,
     ).reimbursementOutstandingExcluding(child.id);
-    final actual = child.amountOf(TransactionRole.settlementIn) ?? Money.zero();
+    final actual = sumAllocations(settlements);
+    final gapExpenseAllocations = _rebaseSingleCategoryAllocations(
+      currentParent: currentGroup.parentTransaction,
+      nextParent: parent,
+      allocations: _allocationsOf(
+        child,
+        TransactionRole.reimbursementGapExpense,
+      ),
+    );
     final candidate = _postingEngine.createReimbursementClose(
       instruction: ReimbursementCloseInstruction(
         advanceTransactionId: parent.id,
         actualReceivedAmount: actual,
         receivableAccountId: parentInstruction.receivableAccountId,
-        receiveAccountId: receiveAccountId,
+        settlementAllocations: settlements,
+        gapExpenseAllocations: gapExpenseAllocations,
         occurredAt: child.occurredAt,
         postedAt: child.postedAt,
         counterpartyName: child.counterpartyName,
@@ -212,12 +228,93 @@ class TransactionGroupRewritePlanner {
       ),
       advance: parent,
       outstanding: outstanding,
-      gapIncomeAccountId:
-          actual.minorUnits > outstanding.minorUnits
-              ? await _systemAccountResolver.resolveReimbursementGapIncome()
-              : null,
+      gapIncomeAccountId: actual.minorUnits > outstanding.minorUnits
+          ? await _systemAccountResolver.resolveReimbursementGapIncome()
+          : null,
     );
     return _preserveIdentity(original: child, candidate: candidate);
+  }
+
+  void _validateCategoryAllocations(TransactionGroup group) {
+    for (final child in group.childTransactions) {
+      if (child.businessPurpose == BusinessPurpose.refund &&
+          !group.allocationsFitRefundableCategories(
+            group.refundCategoryAllocations(child),
+            excludingTransactionId: child.id,
+          )) {
+        LedgerViolationReason.allocationExceedsAvailable.throwException();
+      }
+      if (child.businessPurpose == BusinessPurpose.reimbursementClose) {
+        final gaps = _allocationsOf(
+          child,
+          TransactionRole.reimbursementGapExpense,
+        );
+        if (!group.allocationsFitRefundableCategories(gaps)) {
+          LedgerViolationReason.allocationExceedsAvailable.throwException();
+        }
+      }
+    }
+  }
+
+  List<AccountAmountAllocation> _allocationsOf(
+    Transaction transaction,
+    TransactionRole role,
+  ) {
+    return [
+      for (final line in transaction.linesOf(role))
+        AccountAmountAllocation(
+          accountId: line.accountId!,
+          amount: line.amount,
+        ),
+    ];
+  }
+
+  List<AccountAmountAllocation> _rebaseSingleCategoryAllocations({
+    required Transaction currentParent,
+    required Transaction nextParent,
+    required List<AccountAmountAllocation> allocations,
+  }) {
+    final currentCategories = TransactionGroup(
+      parentTransaction: currentParent,
+      childTransactions: const [],
+    ).categoryAllocations;
+    final nextCategories = TransactionGroup(
+      parentTransaction: nextParent,
+      childTransactions: const [],
+    ).categoryAllocations;
+    if (currentCategories.length != 1 || nextCategories.length != 1) {
+      final currentById = {
+        for (final allocation in currentCategories)
+          allocation.accountId: allocation.amount.minorUnits,
+      };
+      final nextById = {
+        for (final allocation in nextCategories)
+          allocation.accountId: allocation.amount.minorUnits,
+      };
+      final removed = currentById.keys
+          .where((accountId) => !nextById.containsKey(accountId))
+          .toList();
+      final increased = nextById.keys
+          .where(
+            (accountId) => nextById[accountId]! > (currentById[accountId] ?? 0),
+          )
+          .toList();
+      if (removed.length != 1 || increased.length != 1) return allocations;
+      return replaceAllocationAccount(
+        allocations: allocations,
+        sourceAccountId: removed.single,
+        targetAccountId: increased.single,
+      );
+    }
+    final currentId = currentCategories.single.accountId;
+    final nextId = nextCategories.single.accountId;
+    if (currentId == nextId) return allocations;
+    return [
+      for (final allocation in allocations)
+        allocation.accountId == currentId
+            ? allocation.copyWith(accountId: nextId)
+            : allocation,
+    ];
   }
 
   Transaction _preserveIdentity({

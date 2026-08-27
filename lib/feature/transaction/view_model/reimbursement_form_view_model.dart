@@ -34,7 +34,8 @@ class ReimbursementReceiptFormViewModel
       accounts: base.accounts,
       outstanding: base.outstanding!,
       receivableAccountId: base.receivableAccountId!,
-      receiveAccountId: base.accounts.isEmpty ? null : base.accounts.first.id,
+      receiveAccountId: base.defaultSettlementAccountId,
+      settlementAllocations: base.defaultSettlementAllocations,
       occurredAt: DateTime.now(),
     );
   }
@@ -42,8 +43,20 @@ class ReimbursementReceiptFormViewModel
   void setOccurredAt(DateTime value) =>
       _update((state) => state.copyWith(occurredAt: value));
 
-  void setReceiveAccountId(String? value) =>
-      _update((state) => state.copyWith(receiveAccountId: value));
+  void setReceiveAccountId(String? value) => _update(
+    (state) =>
+        state.copyWith(receiveAccountId: value, settlementAllocations: null),
+  );
+
+  void setSettlementAllocations(List<AccountAmountAllocation> allocations) =>
+      _update(
+        (state) => state.copyWith(
+          settlementAllocations: allocations,
+          receiveAccountId: allocations.isEmpty
+              ? null
+              : allocations.first.accountId,
+        ),
+      );
 
   Future<SubmitOutcome> submit({
     required String amountText,
@@ -60,6 +73,14 @@ class ReimbursementReceiptFormViewModel
       current.accounts,
     );
     if (receiveAccountId == null) return _invalidCommand('请选择到账账户');
+    final settlements = _resolveSettlementAllocations(
+      current,
+      accountId: receiveAccountId,
+      amount: amount,
+    );
+    if (sumAllocations(settlements) != amount) {
+      return _invalidCommand('请完成到账账户分配');
+    }
 
     _update((state) => state.copyWith(submitting: true));
     try {
@@ -74,7 +95,7 @@ class ReimbursementReceiptFormViewModel
                   amount: amount,
                   advanceTransactionId: advanceTransactionId,
                   receivableAccountId: current.receivableAccountId!,
-                  receiveAccountId: receiveAccountId,
+                  settlementAllocations: settlements,
                   occurredAt: current.occurredAt,
                   note: trimToNull(noteText),
                 ),
@@ -111,9 +132,12 @@ class ReimbursementCloseFormViewModel
     }
     return ReimbursementCloseFormState.loaded(
       accounts: base.accounts,
+      categoryAccounts: base.categoryAccounts,
+      availableCategoryAllocations: base.availableCategoryAllocations,
       outstanding: base.outstanding!,
       receivableAccountId: base.receivableAccountId!,
-      receiveAccountId: base.accounts.isEmpty ? null : base.accounts.first.id,
+      receiveAccountId: base.defaultSettlementAccountId,
+      settlementAllocations: base.defaultSettlementAllocations,
       occurredAt: DateTime.now(),
     );
   }
@@ -121,8 +145,23 @@ class ReimbursementCloseFormViewModel
   void setOccurredAt(DateTime value) =>
       _update((state) => state.copyWith(occurredAt: value));
 
-  void setReceiveAccountId(String? value) =>
-      _update((state) => state.copyWith(receiveAccountId: value));
+  void setReceiveAccountId(String? value) => _update(
+    (state) =>
+        state.copyWith(receiveAccountId: value, settlementAllocations: null),
+  );
+
+  void setSettlementAllocations(List<AccountAmountAllocation> allocations) =>
+      _update(
+        (state) => state.copyWith(
+          settlementAllocations: allocations,
+          receiveAccountId: allocations.isEmpty
+              ? null
+              : allocations.first.accountId,
+        ),
+      );
+
+  void setGapExpenseAllocations(List<AccountAmountAllocation> allocations) =>
+      _update((state) => state.copyWith(gapExpenseAllocations: allocations));
 
   Future<SubmitOutcome> submit({
     required String amountText,
@@ -136,11 +175,20 @@ class ReimbursementCloseFormViewModel
     if (amount == null || amount.minorUnits < 0) {
       return _invalidCommand('请输入有效实收金额');
     }
-    final receiveAccountId =
-        amount.minorUnits > 0
-            ? _selectedId(current.receiveAccountId, current.accounts)
-            : current.receivableAccountId;
+    final receiveAccountId = amount.minorUnits > 0
+        ? _selectedId(current.receiveAccountId, current.accounts)
+        : current.receivableAccountId;
     if (receiveAccountId == null) return _invalidCommand('请选择到账账户');
+    final settlements = _resolveSettlementAllocations(
+      current,
+      accountId: receiveAccountId,
+      amount: amount,
+    );
+    if (sumAllocations(settlements) != amount) {
+      return _invalidCommand('请完成到账账户分配');
+    }
+    final gaps = _resolveGapExpenseAllocations(current, amount);
+    if (gaps == null) return _invalidCommand('请完成差额分类分配');
 
     _update((state) => state.copyWith(submitting: true));
     try {
@@ -152,7 +200,8 @@ class ReimbursementCloseFormViewModel
                 actualReceivedAmount: amount,
                 advanceTransactionId: advanceTransactionId,
                 receivableAccountId: current.receivableAccountId!,
-                receiveAccountId: receiveAccountId,
+                settlementAllocations: settlements,
+                gapExpenseAllocations: gaps,
                 occurredAt: current.occurredAt,
                 note: trimToNull(noteText),
               ),
@@ -186,9 +235,12 @@ class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
     }
     return ReimbursementFormState.loaded(
       accounts: base.accounts,
+      categoryAccounts: base.categoryAccounts,
+      availableCategoryAllocations: base.availableCategoryAllocations,
       outstanding: base.outstanding!,
       receivableAccountId: base.receivableAccountId!,
-      receiveAccountId: base.accounts.isEmpty ? null : base.accounts.first.id,
+      receiveAccountId: base.defaultSettlementAccountId,
+      settlementAllocations: base.defaultSettlementAllocations,
       occurredAt: DateTime.now(),
       mode: ReimbursementFormMode.close,
     );
@@ -204,8 +256,23 @@ class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
   void setOccurredAt(DateTime value) =>
       _update((state) => state.copyWith(occurredAt: value));
 
-  void setReceiveAccountId(String? value) =>
-      _update((state) => state.copyWith(receiveAccountId: value));
+  void setReceiveAccountId(String? value) => _update(
+    (state) =>
+        state.copyWith(receiveAccountId: value, settlementAllocations: null),
+  );
+
+  void setSettlementAllocations(List<AccountAmountAllocation> allocations) =>
+      _update(
+        (state) => state.copyWith(
+          settlementAllocations: allocations,
+          receiveAccountId: allocations.isEmpty
+              ? null
+              : allocations.first.accountId,
+        ),
+      );
+
+  void setGapExpenseAllocations(List<AccountAmountAllocation> allocations) =>
+      _update((state) => state.copyWith(gapExpenseAllocations: allocations));
 
   Future<SubmitOutcome> submit({
     required String amountText,
@@ -228,17 +295,27 @@ class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
       if (amount.minorUnits < 0) {
         return _invalidCommand('请输入有效实收金额');
       }
-      final resolvedAccountId =
-          amount.minorUnits > 0
-              ? receiveAccountId
-              : current.receivableAccountId;
+      final resolvedAccountId = amount.minorUnits > 0
+          ? receiveAccountId
+          : current.receivableAccountId;
       if (resolvedAccountId == null) {
         return _invalidCommand('请选择到账账户');
       }
+      final settlements = _resolveSettlementAllocations(
+        current,
+        accountId: resolvedAccountId,
+        amount: amount,
+      );
+      if (sumAllocations(settlements) != amount) {
+        return _invalidCommand('请完成到账账户分配');
+      }
+      final gaps = _resolveGapExpenseAllocations(current, amount);
+      if (gaps == null) return _invalidCommand('请完成差额分类分配');
       return _submitClose(
         current,
         amount: amount,
-        receiveAccountId: resolvedAccountId,
+        settlementAllocations: settlements,
+        gapExpenseAllocations: gaps,
         noteText: noteText,
       );
     }
@@ -253,10 +330,18 @@ class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
     if (receiveAccountId == null) {
       return _invalidCommand('请选择到账账户');
     }
+    final settlements = _resolveSettlementAllocations(
+      current,
+      accountId: receiveAccountId,
+      amount: amount,
+    );
+    if (sumAllocations(settlements) != amount) {
+      return _invalidCommand('请完成到账账户分配');
+    }
     return _submitReceipt(
       current,
       amount: amount,
-      receiveAccountId: receiveAccountId,
+      settlementAllocations: settlements,
       noteText: noteText,
     );
   }
@@ -264,7 +349,7 @@ class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
   Future<SubmitOutcome> _submitReceipt(
     ReimbursementFormState current, {
     required Money amount,
-    required String receiveAccountId,
+    required List<AccountAmountAllocation> settlementAllocations,
     required String noteText,
   }) async {
     _update((state) => state.copyWith(submitting: true));
@@ -280,7 +365,7 @@ class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
                   amount: amount,
                   advanceTransactionId: advanceTransactionId,
                   receivableAccountId: current.receivableAccountId!,
-                  receiveAccountId: receiveAccountId,
+                  settlementAllocations: settlementAllocations,
                   occurredAt: current.occurredAt,
                   note: trimToNull(noteText),
                 ),
@@ -296,7 +381,8 @@ class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
   Future<SubmitOutcome> _submitClose(
     ReimbursementFormState current, {
     required Money amount,
-    required String receiveAccountId,
+    required List<AccountAmountAllocation> settlementAllocations,
+    required List<AccountAmountAllocation> gapExpenseAllocations,
     required String noteText,
   }) async {
     _update((state) => state.copyWith(submitting: true));
@@ -309,7 +395,8 @@ class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
                 actualReceivedAmount: amount,
                 advanceTransactionId: advanceTransactionId,
                 receivableAccountId: current.receivableAccountId!,
-                receiveAccountId: receiveAccountId,
+                settlementAllocations: settlementAllocations,
+                gapExpenseAllocations: gapExpenseAllocations,
                 occurredAt: current.occurredAt,
                 note: trimToNull(noteText),
               ),
@@ -351,6 +438,10 @@ class ReimbursementFormState extends _ReimbursementFormState {
     super.outstanding,
     super.receivableAccountId,
     super.receiveAccountId,
+    super.categoryAccounts,
+    super.availableCategoryAllocations,
+    super.settlementAllocations,
+    super.gapExpenseAllocations,
   });
 
   factory ReimbursementFormState.loaded({
@@ -360,6 +451,9 @@ class ReimbursementFormState extends _ReimbursementFormState {
     required DateTime occurredAt,
     required ReimbursementFormMode mode,
     String? receiveAccountId,
+    List<AccountAmountAllocation>? settlementAllocations,
+    List<Account> categoryAccounts = const [],
+    List<AccountAmountAllocation> availableCategoryAllocations = const [],
   }) {
     return ReimbursementFormState(
       status: ReimbursementFormStatus.loaded,
@@ -367,6 +461,9 @@ class ReimbursementFormState extends _ReimbursementFormState {
       outstanding: outstanding,
       receivableAccountId: receivableAccountId,
       receiveAccountId: receiveAccountId,
+      settlementAllocations: settlementAllocations,
+      categoryAccounts: categoryAccounts,
+      availableCategoryAllocations: availableCategoryAllocations,
       occurredAt: occurredAt,
       submitting: false,
       mode: mode,
@@ -410,6 +507,8 @@ class ReimbursementFormState extends _ReimbursementFormState {
     ReimbursementFormMode? mode,
     DateTime? occurredAt,
     Object? receiveAccountId = _sentinel,
+    Object? settlementAllocations = _sentinel,
+    Object? gapExpenseAllocations = _sentinel,
     bool? submitting,
   }) {
     return ReimbursementFormState(
@@ -417,10 +516,17 @@ class ReimbursementFormState extends _ReimbursementFormState {
       accounts: accounts,
       outstanding: outstanding,
       receivableAccountId: receivableAccountId,
-      receiveAccountId:
-          receiveAccountId == _sentinel
-              ? this.receiveAccountId
-              : receiveAccountId as String?,
+      receiveAccountId: receiveAccountId == _sentinel
+          ? this.receiveAccountId
+          : receiveAccountId as String?,
+      categoryAccounts: categoryAccounts,
+      availableCategoryAllocations: availableCategoryAllocations,
+      settlementAllocations: settlementAllocations == _sentinel
+          ? this.settlementAllocations
+          : settlementAllocations as List<AccountAmountAllocation>?,
+      gapExpenseAllocations: gapExpenseAllocations == _sentinel
+          ? this.gapExpenseAllocations
+          : gapExpenseAllocations as List<AccountAmountAllocation>?,
       occurredAt: occurredAt ?? this.occurredAt,
       submitting: submitting ?? this.submitting,
       mode: mode ?? this.mode,
@@ -437,6 +543,7 @@ class ReimbursementReceiptFormState extends _ReimbursementFormState {
     super.outstanding,
     super.receivableAccountId,
     super.receiveAccountId,
+    super.settlementAllocations,
   });
 
   factory ReimbursementReceiptFormState.loaded({
@@ -445,6 +552,7 @@ class ReimbursementReceiptFormState extends _ReimbursementFormState {
     required String receivableAccountId,
     required DateTime occurredAt,
     String? receiveAccountId,
+    List<AccountAmountAllocation>? settlementAllocations,
   }) {
     return ReimbursementReceiptFormState(
       status: ReimbursementFormStatus.loaded,
@@ -452,6 +560,7 @@ class ReimbursementReceiptFormState extends _ReimbursementFormState {
       outstanding: outstanding,
       receivableAccountId: receivableAccountId,
       receiveAccountId: receiveAccountId,
+      settlementAllocations: settlementAllocations,
       occurredAt: occurredAt,
       submitting: false,
     );
@@ -490,6 +599,7 @@ class ReimbursementReceiptFormState extends _ReimbursementFormState {
   ReimbursementReceiptFormState copyWith({
     DateTime? occurredAt,
     Object? receiveAccountId = _sentinel,
+    Object? settlementAllocations = _sentinel,
     bool? submitting,
   }) {
     return ReimbursementReceiptFormState(
@@ -497,10 +607,12 @@ class ReimbursementReceiptFormState extends _ReimbursementFormState {
       accounts: accounts,
       outstanding: outstanding,
       receivableAccountId: receivableAccountId,
-      receiveAccountId:
-          receiveAccountId == _sentinel
-              ? this.receiveAccountId
-              : receiveAccountId as String?,
+      receiveAccountId: receiveAccountId == _sentinel
+          ? this.receiveAccountId
+          : receiveAccountId as String?,
+      settlementAllocations: settlementAllocations == _sentinel
+          ? this.settlementAllocations
+          : settlementAllocations as List<AccountAmountAllocation>?,
       occurredAt: occurredAt ?? this.occurredAt,
       submitting: submitting ?? this.submitting,
     );
@@ -516,6 +628,10 @@ class ReimbursementCloseFormState extends _ReimbursementFormState {
     super.outstanding,
     super.receivableAccountId,
     super.receiveAccountId,
+    super.categoryAccounts,
+    super.availableCategoryAllocations,
+    super.settlementAllocations,
+    super.gapExpenseAllocations,
   });
 
   factory ReimbursementCloseFormState.loaded({
@@ -524,6 +640,9 @@ class ReimbursementCloseFormState extends _ReimbursementFormState {
     required String receivableAccountId,
     required DateTime occurredAt,
     String? receiveAccountId,
+    List<AccountAmountAllocation>? settlementAllocations,
+    List<Account> categoryAccounts = const [],
+    List<AccountAmountAllocation> availableCategoryAllocations = const [],
   }) {
     return ReimbursementCloseFormState(
       status: ReimbursementFormStatus.loaded,
@@ -531,6 +650,9 @@ class ReimbursementCloseFormState extends _ReimbursementFormState {
       outstanding: outstanding,
       receivableAccountId: receivableAccountId,
       receiveAccountId: receiveAccountId,
+      settlementAllocations: settlementAllocations,
+      categoryAccounts: categoryAccounts,
+      availableCategoryAllocations: availableCategoryAllocations,
       occurredAt: occurredAt,
       submitting: false,
     );
@@ -569,6 +691,8 @@ class ReimbursementCloseFormState extends _ReimbursementFormState {
   ReimbursementCloseFormState copyWith({
     DateTime? occurredAt,
     Object? receiveAccountId = _sentinel,
+    Object? settlementAllocations = _sentinel,
+    Object? gapExpenseAllocations = _sentinel,
     bool? submitting,
   }) {
     return ReimbursementCloseFormState(
@@ -576,10 +700,17 @@ class ReimbursementCloseFormState extends _ReimbursementFormState {
       accounts: accounts,
       outstanding: outstanding,
       receivableAccountId: receivableAccountId,
-      receiveAccountId:
-          receiveAccountId == _sentinel
-              ? this.receiveAccountId
-              : receiveAccountId as String?,
+      receiveAccountId: receiveAccountId == _sentinel
+          ? this.receiveAccountId
+          : receiveAccountId as String?,
+      categoryAccounts: categoryAccounts,
+      availableCategoryAllocations: availableCategoryAllocations,
+      settlementAllocations: settlementAllocations == _sentinel
+          ? this.settlementAllocations
+          : settlementAllocations as List<AccountAmountAllocation>?,
+      gapExpenseAllocations: gapExpenseAllocations == _sentinel
+          ? this.gapExpenseAllocations
+          : gapExpenseAllocations as List<AccountAmountAllocation>?,
       occurredAt: occurredAt ?? this.occurredAt,
       submitting: submitting ?? this.submitting,
     );
@@ -595,6 +726,10 @@ abstract class _ReimbursementFormState {
     this.outstanding,
     this.receivableAccountId,
     this.receiveAccountId,
+    this.categoryAccounts = const [],
+    this.availableCategoryAllocations = const [],
+    this.settlementAllocations,
+    this.gapExpenseAllocations,
   });
 
   final ReimbursementFormStatus status;
@@ -602,6 +737,10 @@ abstract class _ReimbursementFormState {
   final Money? outstanding;
   final String? receivableAccountId;
   final String? receiveAccountId;
+  final List<Account> categoryAccounts;
+  final List<AccountAmountAllocation> availableCategoryAllocations;
+  final List<AccountAmountAllocation>? settlementAllocations;
+  final List<AccountAmountAllocation>? gapExpenseAllocations;
   final DateTime occurredAt;
   final bool submitting;
 
@@ -613,11 +752,19 @@ class _ReimbursementBase {
     required this.accounts,
     this.outstanding,
     this.receivableAccountId,
+    this.defaultSettlementAccountId,
+    this.defaultSettlementAllocations,
+    this.categoryAccounts = const [],
+    this.availableCategoryAllocations = const [],
   });
 
   final List<Account> accounts;
   final Money? outstanding;
   final String? receivableAccountId;
+  final String? defaultSettlementAccountId;
+  final List<AccountAmountAllocation>? defaultSettlementAllocations;
+  final List<Account> categoryAccounts;
+  final List<AccountAmountAllocation> availableCategoryAllocations;
 }
 
 Future<_ReimbursementBase?> _loadBase(
@@ -638,6 +785,24 @@ Future<_ReimbursementBase?> _loadBase(
     accounts: accounts,
     outstanding: detail.reimbursementSummary?.outstanding,
     receivableAccountId: reimbursementReceivableAccountId(detail, accountsById),
+    defaultSettlementAccountId: effectiveRefundToAccountId(
+      selectedId: null,
+      parentSettlementAccountId: parentSettlementAccountIdForRefund(
+        detail,
+        accountsById,
+      ),
+      accounts: accounts,
+    ),
+    defaultSettlementAllocations: defaultSettlementAllocationsForRefund(
+      detail: detail,
+      accounts: accounts,
+    ),
+    availableCategoryAllocations: detail
+        .remainingRefundableCategoryAllocations(),
+    categoryAccounts: _accountsForAllocations(
+      detail.refundableCategoryAllocations,
+      accountsById,
+    ),
   );
 }
 
@@ -660,6 +825,24 @@ Future<_ReimbursementBase?> _loadUnifiedBase(
     outstanding: detail.reimbursementSummary?.outstanding,
     receivableAccountId: reimbursementReceivableAccountId(
       detail,
+      accountLookup.byId,
+    ),
+    defaultSettlementAccountId: effectiveRefundToAccountId(
+      selectedId: null,
+      parentSettlementAccountId: parentSettlementAccountIdForRefund(
+        detail,
+        accountLookup.byId,
+      ),
+      accounts: accounts,
+    ),
+    defaultSettlementAllocations: defaultSettlementAllocationsForRefund(
+      detail: detail,
+      accounts: accounts,
+    ),
+    availableCategoryAllocations: detail
+        .remainingRefundableCategoryAllocations(),
+    categoryAccounts: _accountsForAllocations(
+      detail.refundableCategoryAllocations,
       accountLookup.byId,
     ),
   );
@@ -690,6 +873,59 @@ String? _selectedId(String? id, List<Account> accounts) {
 Money? _parsePositiveMoney(String value) {
   final money = Money.tryParse(value);
   return money != null && money.minorUnits > 0 ? money : null;
+}
+
+List<AccountAmountAllocation> _resolveSettlementAllocations(
+  _ReimbursementFormState state, {
+  required String accountId,
+  required Money amount,
+}) {
+  final allocations = state.settlementAllocations;
+  if (amount.minorUnits == 0) {
+    return singleAllocation(accountId: accountId, amount: amount);
+  }
+  return allocations == null
+      ? singleAllocation(accountId: accountId, amount: amount)
+      : patchAllocations(current: allocations, total: amount);
+}
+
+List<AccountAmountAllocation>? _resolveGapExpenseAllocations(
+  _ReimbursementFormState state,
+  Money actual,
+) {
+  final outstanding = state.outstanding;
+  if (outstanding == null) return null;
+  final shortfall = outstanding - actual;
+  if (shortfall.minorUnits <= 0) return const [];
+  final allocations = switch (state.gapExpenseAllocations) {
+    final allocations? => patchAllocations(
+      current: allocations,
+      total: shortfall,
+    ),
+    null when state.availableCategoryAllocations.length == 1 => [
+      state.availableCategoryAllocations.single.copyWith(amount: shortfall),
+    ],
+    null => null,
+  };
+  if (allocations == null || sumAllocations(allocations) != shortfall) {
+    return null;
+  }
+  if (!allocationsFitAvailable(
+    requested: allocations,
+    available: state.availableCategoryAllocations,
+  )) {
+    return null;
+  }
+  return allocations;
+}
+
+List<Account> _accountsForAllocations(
+  Iterable<AccountAmountAllocation> allocations,
+  Map<String, Account> accountsById,
+) {
+  return [
+    for (final allocation in allocations) ?accountsById[allocation.accountId],
+  ];
 }
 
 const Object _sentinel = Object();

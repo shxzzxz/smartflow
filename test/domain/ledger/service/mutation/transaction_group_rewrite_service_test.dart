@@ -19,6 +19,7 @@ import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 import 'package:test/test.dart';
 
 import '../../../../helper/sequential_id_generator.dart';
+import '../../../../helper/posting_instruction_fixtures.dart';
 
 void main() {
   test('editing a refund cannot exceed reimbursement outstanding', () async {
@@ -26,7 +27,7 @@ void main() {
       idGenerator: SequentialIdGenerator(prefix: 'tx'),
     );
     final parent = engine.createReimbursementAdvance(
-      ReimbursementAdvanceInstruction(
+      singleReimbursementAdvanceInstruction(
         amount: Money.parse('100.00'),
         receivableAccountId: 'receivable',
         paidFromAccountId: 'cash',
@@ -35,7 +36,7 @@ void main() {
       ),
     );
     final receipt = engine.createReimbursementReceipt(
-      instruction: ReimbursementReceiptInstruction(
+      instruction: singleReimbursementReceiptInstruction(
         advanceTransactionId: parent.id,
         amount: Money.parse('60.00'),
         receivableAccountId: 'receivable',
@@ -45,14 +46,13 @@ void main() {
       advance: parent,
     );
     final refund = engine.createRefund(
-      instruction: RefundInstruction(
+      instruction: singleRefundInstruction(
         parentTransactionId: parent.id,
         amount: Money.parse('20.00'),
         refundToAccountId: 'cash',
         occurredAt: DateTime(2026, 7, 2),
       ),
       parent: parent,
-      refundOffsetAccountId: 'receivable',
     );
     final service = TransactionGroupRewriteService(
       transactionGroupRepository: _TransactionGroupRepository(
@@ -87,7 +87,7 @@ void main() {
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
       final parent = engine.createReimbursementAdvance(
-        ReimbursementAdvanceInstruction(
+        singleReimbursementAdvanceInstruction(
           amount: Money.parse('100.00'),
           receivableAccountId: 'receivable',
           paidFromAccountId: 'cash',
@@ -96,17 +96,16 @@ void main() {
         ),
       );
       final refund = engine.createRefund(
-        instruction: RefundInstruction(
+        instruction: singleRefundInstruction(
           parentTransactionId: parent.id,
           amount: Money.parse('60.00'),
           refundToAccountId: 'cash',
           occurredAt: DateTime(2026, 7, 2),
         ),
         parent: parent,
-        refundOffsetAccountId: 'receivable',
       );
       final receipt = engine.createReimbursementReceipt(
-        instruction: ReimbursementReceiptInstruction(
+        instruction: singleReimbursementReceiptInstruction(
           advanceTransactionId: parent.id,
           amount: Money.parse('20.00'),
           receivableAccountId: 'receivable',
@@ -147,7 +146,7 @@ void main() {
       idGenerator: SequentialIdGenerator(prefix: 'tx'),
     );
     final parent = engine.createReimbursementAdvance(
-      ReimbursementAdvanceInstruction(
+      singleReimbursementAdvanceInstruction(
         amount: Money.parse('100.00'),
         receivableAccountId: 'receivable',
         paidFromAccountId: 'cash',
@@ -156,7 +155,7 @@ void main() {
       ),
     );
     final receipt = engine.createReimbursementReceipt(
-      instruction: ReimbursementReceiptInstruction(
+      instruction: singleReimbursementReceiptInstruction(
         advanceTransactionId: parent.id,
         amount: Money.parse('20.00'),
         receivableAccountId: 'receivable',
@@ -198,7 +197,7 @@ void main() {
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
       final parent = engine.createReimbursementAdvance(
-        ReimbursementAdvanceInstruction(
+        singleReimbursementAdvanceInstruction(
           amount: Money.parse('100.00'),
           receivableAccountId: 'receivable',
           paidFromAccountId: 'cash',
@@ -207,7 +206,7 @@ void main() {
         ),
       );
       final close = engine.createReimbursementClose(
-        instruction: ReimbursementCloseInstruction(
+        instruction: singleReimbursementCloseInstruction(
           advanceTransactionId: parent.id,
           actualReceivedAmount: Money.zero(),
           receivableAccountId: 'receivable',
@@ -267,7 +266,7 @@ void main() {
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
       final parent = engine.createReimbursementAdvance(
-        ReimbursementAdvanceInstruction(
+        singleReimbursementAdvanceInstruction(
           amount: Money.parse('100.00'),
           receivableAccountId: 'receivable',
           paidFromAccountId: 'cash',
@@ -276,7 +275,7 @@ void main() {
         ),
       );
       final receipt = engine.createReimbursementReceipt(
-        instruction: ReimbursementReceiptInstruction(
+        instruction: singleReimbursementReceiptInstruction(
           advanceTransactionId: parent.id,
           amount: Money.parse('40.00'),
           receivableAccountId: 'receivable',
@@ -286,7 +285,7 @@ void main() {
         advance: parent,
       );
       final close = engine.createReimbursementClose(
-        instruction: ReimbursementCloseInstruction(
+        instruction: singleReimbursementCloseInstruction(
           advanceTransactionId: parent.id,
           actualReceivedAmount: Money.parse('60.00'),
           receivableAccountId: 'receivable',

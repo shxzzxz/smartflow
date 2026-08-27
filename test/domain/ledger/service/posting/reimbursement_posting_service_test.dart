@@ -13,9 +13,9 @@ import 'package:smartflow/domain/ledger/service/posting/account_posting_service.
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/reimbursement_posting_service.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
-import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
 import '../../../../helper/sequential_id_generator.dart';
+import '../../../../helper/posting_instruction_fixtures.dart';
 
 void main() {
   test(
@@ -25,7 +25,7 @@ void main() {
 
       await expectLater(
         () => fixture.service.postReceipt(
-          ReimbursementReceiptInstruction(
+          singleReimbursementReceiptInstruction(
             advanceTransactionId: fixture.advance.id,
             amount: Money.parse('40.01'),
             receivableAccountId: 'receivable',
@@ -42,7 +42,7 @@ void main() {
     final fixture = _Fixture(refundAmount: Money.parse('20.00'));
 
     final result = await fixture.service.close(
-      ReimbursementCloseInstruction(
+      singleReimbursementCloseInstruction(
         advanceTransactionId: fixture.advance.id,
         actualReceivedAmount: Money.parse('80.00'),
         receivableAccountId: 'receivable',
@@ -53,10 +53,7 @@ void main() {
 
     expect(
       result.transaction.lines
-          .singleWhere(
-            (detail) =>
-                detail.role == TransactionRole.receivable,
-          )
+          .singleWhere((detail) => detail.role == TransactionRole.receivable)
           .amount,
       Money.parse('80.00'),
     );
@@ -84,7 +81,7 @@ void main() {
 class _Fixture {
   _Fixture({Money? refundAmount}) {
     advance = engine.createReimbursementAdvance(
-      ReimbursementAdvanceInstruction(
+      singleReimbursementAdvanceInstruction(
         amount: Money.parse('100.00'),
         receivableAccountId: 'receivable',
         paidFromAccountId: 'cash',
@@ -93,14 +90,13 @@ class _Fixture {
       ),
     );
     final refund = engine.createRefund(
-      instruction: RefundInstruction(
+      instruction: singleRefundInstruction(
         parentTransactionId: advance.id,
         amount: refundAmount ?? Money.parse('60.00'),
         refundToAccountId: 'cash',
         occurredAt: DateTime(2026, 7, 2),
       ),
       parent: advance,
-      refundOffsetAccountId: 'receivable',
     );
     final accountRepository = _AccountRepository([
       _account('cash', AccountType.asset, subtype: AccountSubtype.fund),

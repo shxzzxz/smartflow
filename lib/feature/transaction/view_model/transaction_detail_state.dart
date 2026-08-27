@@ -16,6 +16,7 @@ sealed class TransactionDetailUiState with _$TransactionDetailUiState {
     required TransactionReadModel detail,
     required DetailBehaviorConfig behavior,
     required DetailHero hero,
+    required List<DetailAllocationBreakdown> allocationBreakdowns,
     required String occurredAtText,
     required String postedAtText,
     required String createdAtText,

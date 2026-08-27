@@ -23,6 +23,32 @@ class DetailHero {
   final bool showSign;
 }
 
+class DetailAllocationBreakdown {
+  const DetailAllocationBreakdown({
+    required this.kind,
+    required this.title,
+    required this.items,
+  });
+
+  final DetailAllocationKind kind;
+  final String title;
+  final List<DetailAllocationItem> items;
+}
+
+enum DetailAllocationKind { category, account }
+
+class DetailAllocationItem {
+  const DetailAllocationItem({
+    required this.title,
+    required this.amount,
+    this.iconKey,
+  });
+
+  final String title;
+  final String? iconKey;
+  final Money amount;
+}
+
 class DetailSheetItem {
   const DetailSheetItem({
     required this.id,
@@ -47,9 +73,12 @@ DetailHero transactionDetailHero({
 }) {
   final transaction = detail;
   final semantic = semanticForTransactionPurpose(transaction.businessPurpose);
+  final categoryLines = detail.categoryLines.toList();
+  final hasMultipleCategories = categoryLines.length > 1;
   final category = _resolveCategoryAccount(detail, accountLookup);
-  final title =
-      category?.name ?? transactionPurposeLabel(transaction.businessPurpose);
+  final title = hasMultipleCategories
+      ? '多分类'
+      : category?.name ?? transactionPurposeLabel(transaction.businessPurpose);
   final counterparty = transaction.counterpartyName;
   final subtitle = counterparty != null && counterparty.isNotEmpty
       ? counterparty
@@ -58,11 +87,48 @@ DetailHero transactionDetailHero({
   return DetailHero(
     title: title,
     subtitle: subtitle,
-    iconKey: category?.iconKey,
+    iconKey: hasMultipleCategories ? null : category?.iconKey,
     amount: signedAmountForSemantic(transaction.primaryAmount, semantic),
     semantic: semantic,
     showSign: semantic == MoneySemantic.income,
   );
+}
+
+List<DetailAllocationBreakdown> transactionDetailAllocationBreakdowns({
+  required TransactionReadModel detail,
+  required AccountLookup accountLookup,
+}) {
+  final result = <DetailAllocationBreakdown>[];
+  final categories = detail.categoryLines.toList();
+  if (categories.length > 1) {
+    result.add(
+      DetailAllocationBreakdown(
+        kind: DetailAllocationKind.category,
+        title: '分类构成',
+        items: [
+          for (final line in categories) _allocationItem(line, accountLookup),
+        ],
+      ),
+    );
+  }
+
+  final settlements = detail.settlementLines.toList();
+  if (settlements.length > 1) {
+    final roles = settlements.map((line) => line.role).toSet();
+    if (roles.length == 1) {
+      result.add(
+        DetailAllocationBreakdown(
+          kind: DetailAllocationKind.account,
+          title: '账户构成',
+          items: [
+            for (final line in settlements)
+              _allocationItem(line, accountLookup),
+          ],
+        ),
+      );
+    }
+  }
+  return result;
 }
 
 List<DetailSheetItem> refundSheetItems(
@@ -146,4 +212,16 @@ Account? _resolveCategoryAccount(
 ) {
   final categoryId = detail.categoryLines.firstOrNull?.accountId;
   return categoryId == null ? null : accountLookup.find(categoryId);
+}
+
+DetailAllocationItem _allocationItem(
+  TransactionLine line,
+  AccountLookup accountLookup,
+) {
+  final account = accountLookup.find(line.accountId!);
+  return DetailAllocationItem(
+    title: account?.name ?? line.accountId!,
+    iconKey: account?.iconKey,
+    amount: line.amount,
+  );
 }

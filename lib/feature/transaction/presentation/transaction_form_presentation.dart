@@ -1,4 +1,5 @@
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../core/money/money.dart';
 import '../../../core/money/money_formatter.dart';
 import '../../shared/presentation/transaction_detail_amount.dart';
 
@@ -22,6 +23,8 @@ class TransactionFormEditSnapshot {
     this.reimbursementAccountId,
     this.ordinaryReceivableAccountId,
     this.liabilityAccountId,
+    this.categoryAllocations,
+    this.settlementAllocations,
   });
 
   final TransactionFormMode mode;
@@ -40,6 +43,8 @@ class TransactionFormEditSnapshot {
   final String? reimbursementAccountId;
   final String? ordinaryReceivableAccountId;
   final String? liabilityAccountId;
+  final List<AccountAmountAllocation>? categoryAllocations;
+  final List<AccountAmountAllocation>? settlementAllocations;
 }
 
 bool supportsTransactionFormEdit(BusinessPurpose purpose) {
@@ -77,6 +82,8 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
 
   switch (transaction.businessPurpose) {
     case BusinessPurpose.dailyExpense:
+      final categories = _allocationsOf(detail, TransactionRole.category);
+      final settlements = _allocationsOf(detail, TransactionRole.settlementOut);
       final categoryId = _firstAccountId(
         detail,
         accountsById,
@@ -97,8 +104,15 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
           accountsById,
           EntryDirection.credit,
         ),
+        categoryAllocations: categories,
+        settlementAllocations: settlements,
       );
     case BusinessPurpose.reimbursementAdvance:
+      final categories = _allocationsOf(
+        detail,
+        TransactionRole.reimbursementExpenseCategory,
+      );
+      final settlements = _allocationsOf(detail, TransactionRole.settlementOut);
       final categoryId = transaction.accountOf(
         TransactionRole.reimbursementExpenseCategory,
       );
@@ -117,6 +131,8 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
           EntryDirection.credit,
         ),
         reimbursementAccountId: detail.accountOf(TransactionRole.receivable),
+        categoryAllocations: categories,
+        settlementAllocations: settlements,
       );
     case BusinessPurpose.dailyIncome:
       final categoryId = _firstAccountId(
@@ -256,6 +272,31 @@ String? parentSettlementAccountIdForRefund(
   return settlementAccountId(detail, accountsById, EntryDirection.credit);
 }
 
+/// Returns empty allocation rows for every eligible account that funded the
+/// original transaction. A single source account keeps the legacy fallback
+/// behavior so its amount can follow the form total automatically.
+List<AccountAmountAllocation>? defaultSettlementAllocationsForRefund({
+  required TransactionReadModel detail,
+  required Iterable<Account> accounts,
+}) {
+  final eligibleIds = accounts.map((account) => account.id).toSet();
+  final sourceAccountIds = <String>[];
+  for (final line in detail.linesOf(TransactionRole.settlementOut)) {
+    final accountId = line.accountId;
+    if (accountId == null ||
+        !eligibleIds.contains(accountId) ||
+        sourceAccountIds.contains(accountId)) {
+      continue;
+    }
+    sourceAccountIds.add(accountId);
+  }
+  final sourceAllocations = [
+    for (final accountId in sourceAccountIds)
+      AccountAmountAllocation(accountId: accountId, amount: Money.zero()),
+  ];
+  return sourceAllocations.length > 1 ? sourceAllocations : null;
+}
+
 String? reimbursementReceivableAccountId(
   TransactionReadModel? detail,
   Map<String, Account> accountsById,
@@ -293,4 +334,14 @@ String? settlementAccountId(
       ? TransactionRole.settlementIn
       : TransactionRole.settlementOut;
   return detail.accountOf(role);
+}
+
+List<AccountAmountAllocation> _allocationsOf(
+  TransactionReadModel detail,
+  TransactionRole role,
+) {
+  return [
+    for (final line in detail.linesOf(role))
+      AccountAmountAllocation(accountId: line.accountId!, amount: line.amount),
+  ];
 }

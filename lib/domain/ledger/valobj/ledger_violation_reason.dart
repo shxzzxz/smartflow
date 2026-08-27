@@ -32,6 +32,22 @@ enum LedgerViolationReason {
     LedgerErrorCode.accountInvalidCommand,
     'This account type cannot be edited here.',
   ),
+  allocationRequired(
+    LedgerErrorCode.transactionInvalidCommand,
+    'At least one allocation is required.',
+  ),
+  allocationAmountNotPositive(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Allocation amounts must be positive.',
+  ),
+  allocationTotalMismatch(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Allocation total must equal the transaction amount.',
+  ),
+  allocationExceedsAvailable(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Allocation exceeds the available amount for its account.',
+  ),
   balanceAdjustmentZeroDelta(
     LedgerErrorCode.transactionInvalidCommand,
     'Balance is already at the target value.',

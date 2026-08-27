@@ -71,8 +71,12 @@ class LedgerPostingService {
     final roleViolation = await _accountRolePolicy.validate(
       switch (instruction) {
         ExpenseInstruction i => AccountRoleContext.expense(
-          paidFromAccountId: i.paidFromAccountId,
-          expenseAccountId: i.expenseAccountId,
+          paidFromAccountIds: i.settlementAllocations.map(
+            (allocation) => allocation.accountId,
+          ),
+          expenseAccountIds: i.categoryAllocations.map(
+            (allocation) => allocation.accountId,
+          ),
         ),
         IncomeInstruction i => AccountRoleContext.income(
           receiveAccountId: i.receiveAccountId,
@@ -81,8 +85,12 @@ class LedgerPostingService {
         ReimbursementAdvanceInstruction i =>
           AccountRoleContext.reimbursementAdvance(
             receivableAccountId: i.receivableAccountId,
-            paidFromAccountId: i.paidFromAccountId,
-            expenseCategoryId: i.expenseAccountId,
+            paidFromAccountIds: i.settlementAllocations.map(
+              (allocation) => allocation.accountId,
+            ),
+            expenseCategoryIds: i.categoryAllocations.map(
+              (allocation) => allocation.accountId,
+            ),
           ),
         TransferInstruction i => AccountRoleContext.transfer(
           fromAccountId: i.fromAccountId,
@@ -160,8 +168,7 @@ class LedgerPostingService {
     };
   }
 
-  bool _isPositive(Money? amount) =>
-      amount != null && amount.minorUnits > 0;
+  bool _isPositive(Money? amount) => amount != null && amount.minorUnits > 0;
 
   Future<void> _assertReducible({
     required String accountId,
@@ -174,8 +181,7 @@ class LedgerPostingService {
       LedgerViolationReason.accountNotFound.throwException();
     }
     final reducible = overrides[account.id] ?? account.balance;
-    if (reducible.minorUnits <= 0 ||
-        amount.minorUnits > reducible.minorUnits) {
+    if (reducible.minorUnits <= 0 || amount.minorUnits > reducible.minorUnits) {
       violation.throwException();
     }
   }
@@ -202,8 +208,8 @@ class LedgerPostingService {
         message: 'This account type does not support opening balance.',
       );
     }
-    final equityAccountId =
-        await _systemAccountResolver.resolveOpeningBalance();
+    final equityAccountId = await _systemAccountResolver
+        .resolveOpeningBalance();
     return _applyPosting(
       _postingEngine.createOpeningBalance(
         instruction: instruction,
@@ -236,8 +242,8 @@ class LedgerPostingService {
     );
     if (adjustmentViolation != null) adjustmentViolation.throwException();
     final signedDelta = account.balanceDeltaTo(instruction.targetBalance);
-    final equityAccountId =
-        await _systemAccountResolver.resolveOpeningBalance();
+    final equityAccountId = await _systemAccountResolver
+        .resolveOpeningBalance();
     return _applyPosting(
       _postingEngine.createBalanceAdjustment(
         instruction: instruction,

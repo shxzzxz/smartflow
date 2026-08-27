@@ -72,3 +72,58 @@ class AccountEndpointView extends StatelessWidget {
     );
   }
 }
+
+class AccountEndpointGroupView extends StatelessWidget {
+  const AccountEndpointGroupView({
+    required this.endpoints,
+    super.key,
+    this.style,
+    this.iconSize = 14,
+    this.maxVisibleIcons = 4,
+  });
+
+  final List<AccountEndpoint> endpoints;
+  final TextStyle? style;
+  final double iconSize;
+  final int maxVisibleIcons;
+
+  @override
+  Widget build(BuildContext context) {
+    if (endpoints.length <= 1) {
+      return AccountEndpointView.compactTrailing(
+        endpoint: endpoints.isEmpty
+            ? const AccountEndpoint(label: '无账户', iconKey: null)
+            : endpoints.single,
+        style: style,
+        iconSize: iconSize,
+      );
+    }
+
+    final visible = endpoints.take(maxVisibleIcons).toList(growable: false);
+    final hiddenCount = endpoints.length - visible.length;
+    return Semantics(
+      label: endpoints.map((endpoint) => endpoint.label).join('、'),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          for (var index = 0; index < visible.length; index++) ...[
+            if (index > 0) const SizedBox(width: AppSpacing.space4),
+            Tooltip(
+              message: visible[index].label,
+              child: BusinessIcon(
+                iconKey: visible[index].iconKey,
+                size: iconSize,
+                usage: BusinessIconUsage.account,
+              ),
+            ),
+          ],
+          if (hiddenCount > 0) ...[
+            const SizedBox(width: AppSpacing.space4),
+            Text('+$hiddenCount', style: style),
+          ],
+        ],
+      ),
+    );
+  }
+}

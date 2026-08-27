@@ -4,32 +4,29 @@ import '../../entity/transaction.dart';
 import '../../port/account_repository.dart';
 import '../../port/transaction_group_repository.dart';
 import '../../valobj/ledger_enum.dart';
+import '../../valobj/account_amount_allocation.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import '../../valobj/posting_result.dart';
 import '../account/account_role_policy.dart';
 import 'account_posting_service.dart';
 import 'posting_engine.dart';
-import 'posting_instruction_resolver.dart';
 
 class RefundPostingService {
   const RefundPostingService({
     required TransactionGroupRepository transactionGroupRepository,
     required AccountRepository accountRepository,
-    required PostingInstructionResolver postingInstructionResolver,
     required PostingEngine postingEngine,
     required AccountPostingService accountPostingService,
     required AccountRolePolicy accountRolePolicy,
   }) : _transactionGroupRepository = transactionGroupRepository,
        _accountRepository = accountRepository,
-       _postingInstructionResolver = postingInstructionResolver,
        _postingEngine = postingEngine,
        _accountPostingService = accountPostingService,
        _accountRolePolicy = accountRolePolicy;
 
   final TransactionGroupRepository _transactionGroupRepository;
   final AccountRepository _accountRepository;
-  final PostingInstructionResolver _postingInstructionResolver;
   final PostingEngine _postingEngine;
   final AccountPostingService _accountPostingService;
   final AccountRolePolicy _accountRolePolicy;
@@ -48,33 +45,63 @@ class RefundPostingService {
 
     final remaining =
         parent.businessPurpose == BusinessPurpose.reimbursementAdvance
-            ? group.reimbursementOutstanding()
-            : parent.primaryAmount - group.refundedTotal();
+        ? group.reimbursementOutstanding()
+        : parent.primaryAmount - group.refundedTotal();
     if (instruction.amount.minorUnits > remaining.minorUnits) {
       LedgerViolationReason.refundExceedsRemaining.throwException();
     }
 
-    final parentInstruction = _postingInstructionResolver.resolve(parent);
-    final refundOffsetAccountId = resolveRefundOffsetAccountId(
-      parentInstruction,
+    final categoryAllocations = _refundCategoryAllocations(
+      instruction: instruction,
+      group: group,
     );
-    if (refundOffsetAccountId == null) {
-      LedgerViolationReason.refundParentNotSupported.throwException();
+    if (!group.allocationsFitRefundableCategories(categoryAllocations)) {
+      LedgerViolationReason.allocationExceedsAvailable.throwException();
     }
+    final normalizedInstruction = RefundInstruction(
+      parentTransactionId: instruction.parentTransactionId,
+      amount: instruction.amount,
+      categoryAllocations: categoryAllocations,
+      settlementAllocations: instruction.settlementAllocations,
+      occurredAt: instruction.occurredAt,
+      postedAt: instruction.postedAt,
+      counterpartyName: instruction.counterpartyName,
+      note: instruction.note,
+    );
 
     final roleViolation = await _accountRolePolicy.validate(
       AccountRoleContext.refund(
-        refundToAccountId: instruction.refundToAccountId,
+        refundToAccountIds: normalizedInstruction.settlementAllocations.map(
+          (allocation) => allocation.accountId,
+        ),
+        categoryAccountIds: normalizedInstruction.categoryAllocations.map(
+          (allocation) => allocation.accountId,
+        ),
       ),
     );
     if (roleViolation != null) roleViolation.throwException();
 
     final transaction = _postingEngine.createRefund(
-      instruction: instruction,
       parent: parent,
-      refundOffsetAccountId: refundOffsetAccountId,
+      instruction: normalizedInstruction,
     );
     return _applyPosting(transaction);
+  }
+
+  List<AccountAmountAllocation> _refundCategoryAllocations({
+    required RefundInstruction instruction,
+    required TransactionGroup group,
+  }) {
+    if (instruction.categoryAllocations.isNotEmpty) {
+      return instruction.categoryAllocations;
+    }
+    final remaining = group.remainingRefundableCategoryAllocations();
+    if (remaining.length != 1) {
+      LedgerViolationReason.allocationRequired.throwException(
+        message: 'Refund category allocations are required.',
+      );
+    }
+    return [remaining.single.copyWith(amount: instruction.amount)];
   }
 
   LedgerViolationReason? _validateRefundParent(

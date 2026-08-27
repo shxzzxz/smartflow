@@ -1,13 +1,14 @@
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
+import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
 
 class CreateExpenseCommand {
-  const CreateExpenseCommand({
+  CreateExpenseCommand({
     required this.amount,
-    required this.paidFromAccountId,
-    required this.expenseAccountId,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
     this.counterpartyName,
@@ -16,11 +17,12 @@ class CreateExpenseCommand {
     this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
     this.tagIds = const {},
-  });
+  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
+       settlementAllocations = List.unmodifiable(settlementAllocations);
 
   final Money amount;
-  final String paidFromAccountId;
-  final String expenseAccountId;
+  final List<AccountAmountAllocation> categoryAllocations;
+  final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final String? counterpartyName;
@@ -88,19 +90,22 @@ class CreateTransferCommand {
 }
 
 class CreateRefundCommand {
-  const CreateRefundCommand({
+  CreateRefundCommand({
     required this.amount,
     required this.parentTransactionId,
-    required this.refundToAccountId,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
     this.counterpartyName,
     this.note,
-  });
+  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
+       settlementAllocations = List.unmodifiable(settlementAllocations);
 
   final Money amount;
   final String parentTransactionId;
-  final String refundToAccountId;
+  final List<AccountAmountAllocation> categoryAllocations;
+  final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final String? counterpartyName;
@@ -108,11 +113,11 @@ class CreateRefundCommand {
 }
 
 class CreateReimbursementAdvanceCommand {
-  const CreateReimbursementAdvanceCommand({
+  CreateReimbursementAdvanceCommand({
     required this.amount,
     required this.receivableAccountId,
-    required this.paidFromAccountId,
-    required this.expenseCategoryId,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
     this.counterpartyName,
@@ -121,12 +126,13 @@ class CreateReimbursementAdvanceCommand {
     this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
     this.tagIds = const {},
-  });
+  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
+       settlementAllocations = List.unmodifiable(settlementAllocations);
 
   final Money amount;
   final String receivableAccountId;
-  final String paidFromAccountId;
-  final String expenseCategoryId;
+  final List<AccountAmountAllocation> categoryAllocations;
+  final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final String? counterpartyName;
@@ -138,21 +144,21 @@ class CreateReimbursementAdvanceCommand {
 }
 
 class CreateReimbursementReceiptCommand {
-  const CreateReimbursementReceiptCommand({
+  CreateReimbursementReceiptCommand({
     required this.amount,
     required this.advanceTransactionId,
     required this.receivableAccountId,
-    required this.receiveAccountId,
+    required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
     this.counterpartyName,
     this.note,
-  });
+  }) : settlementAllocations = List.unmodifiable(settlementAllocations);
 
   final Money amount;
   final String advanceTransactionId;
   final String receivableAccountId;
-  final String receiveAccountId;
+  final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final String? counterpartyName;
@@ -160,21 +166,24 @@ class CreateReimbursementReceiptCommand {
 }
 
 class CloseReimbursementCommand {
-  const CloseReimbursementCommand({
+  CloseReimbursementCommand({
     required this.actualReceivedAmount,
     required this.advanceTransactionId,
     required this.receivableAccountId,
-    required this.receiveAccountId,
+    required List<AccountAmountAllocation> settlementAllocations,
+    required List<AccountAmountAllocation> gapExpenseAllocations,
     required this.occurredAt,
     this.postedAt,
     this.counterpartyName,
     this.note,
-  });
+  }) : settlementAllocations = List.unmodifiable(settlementAllocations),
+       gapExpenseAllocations = List.unmodifiable(gapExpenseAllocations);
 
   final Money actualReceivedAmount;
   final String advanceTransactionId;
   final String receivableAccountId;
-  final String receiveAccountId;
+  final List<AccountAmountAllocation> settlementAllocations;
+  final List<AccountAmountAllocation> gapExpenseAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final String? counterpartyName;
@@ -369,8 +378,8 @@ class EditExpenseCommand {
   const EditExpenseCommand({
     required this.transactionId,
     this.amount,
-    this.paidFromAccountId,
-    this.expenseAccountId,
+    this.categoryAllocations,
+    this.settlementAllocations,
     this.occurredAt,
     this.counterpartyName,
     this.note,
@@ -381,8 +390,8 @@ class EditExpenseCommand {
 
   final String transactionId;
   final Money? amount;
-  final String? paidFromAccountId;
-  final String? expenseAccountId;
+  final List<AccountAmountAllocation>? categoryAllocations;
+  final List<AccountAmountAllocation>? settlementAllocations;
   final DateTime? occurredAt;
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;
@@ -452,8 +461,8 @@ class EditReimbursementAdvanceCommand {
     required this.transactionId,
     this.amount,
     this.receivableAccountId,
-    this.paidFromAccountId,
-    this.expenseCategoryId,
+    this.categoryAllocations,
+    this.settlementAllocations,
     this.occurredAt,
     this.counterpartyName,
     this.note,
@@ -465,8 +474,8 @@ class EditReimbursementAdvanceCommand {
   final String transactionId;
   final Money? amount;
   final String? receivableAccountId;
-  final String? paidFromAccountId;
-  final String? expenseCategoryId;
+  final List<AccountAmountAllocation>? categoryAllocations;
+  final List<AccountAmountAllocation>? settlementAllocations;
   final DateTime? occurredAt;
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;
@@ -477,11 +486,26 @@ class EditReimbursementAdvanceCommand {
   final Set<String>? tagIds;
 }
 
+class ReplaceTransactionCategoryCommand {
+  const ReplaceTransactionCategoryCommand({
+    required this.transactionId,
+    required this.businessPurpose,
+    required this.sourceCategoryId,
+    required this.targetCategoryId,
+  });
+
+  final String transactionId;
+  final BusinessPurpose businessPurpose;
+  final String sourceCategoryId;
+  final String targetCategoryId;
+}
+
 class EditRefundCommand {
   const EditRefundCommand({
     required this.transactionId,
     this.amount,
-    this.refundToAccountId,
+    this.categoryAllocations,
+    this.settlementAllocations,
     this.occurredAt,
     this.counterpartyName,
     this.note,
@@ -489,7 +513,8 @@ class EditRefundCommand {
 
   final String transactionId;
   final Money? amount;
-  final String? refundToAccountId;
+  final List<AccountAmountAllocation>? categoryAllocations;
+  final List<AccountAmountAllocation>? settlementAllocations;
   final DateTime? occurredAt;
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;
@@ -500,7 +525,7 @@ class EditReimbursementReceiptCommand {
     required this.transactionId,
     this.amount,
     this.receivableAccountId,
-    this.receiveAccountId,
+    this.settlementAllocations,
     this.occurredAt,
     this.counterpartyName,
     this.note,
@@ -509,7 +534,7 @@ class EditReimbursementReceiptCommand {
   final String transactionId;
   final Money? amount;
   final String? receivableAccountId;
-  final String? receiveAccountId;
+  final List<AccountAmountAllocation>? settlementAllocations;
   final DateTime? occurredAt;
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;
@@ -520,7 +545,8 @@ class EditReimbursementCloseCommand {
     required this.transactionId,
     this.actualReceivedAmount,
     this.receivableAccountId,
-    this.receiveAccountId,
+    this.settlementAllocations,
+    this.gapExpenseAllocations,
     this.occurredAt,
     this.counterpartyName,
     this.note,
@@ -529,7 +555,8 @@ class EditReimbursementCloseCommand {
   final String transactionId;
   final Money? actualReceivedAmount;
   final String? receivableAccountId;
-  final String? receiveAccountId;
+  final List<AccountAmountAllocation>? settlementAllocations;
+  final List<AccountAmountAllocation>? gapExpenseAllocations;
   final DateTime? occurredAt;
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;

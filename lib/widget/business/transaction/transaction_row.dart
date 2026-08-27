@@ -48,12 +48,11 @@ class TransactionRow extends StatelessWidget {
     final row = Opacity(
       opacity: presentation.dimmed ? AppComponentTokens.staleContentOpacity : 1,
       child: Material(
-        color:
-            presentation.selected
-                ? colors.primary.withValues(
-                  alpha: AppComponentTokens.selectedContainerOpacity,
-                )
-                : Colors.transparent,
+        color: presentation.selected
+            ? colors.primary.withValues(
+                alpha: AppComponentTokens.selectedContainerOpacity,
+              )
+            : Colors.transparent,
         child: SizedBox(
           width: double.infinity,
           height: AppTransactionTokens.rowHeight,
@@ -74,11 +73,9 @@ class TransactionRow extends StatelessWidget {
                       height: AppSpacing.space40,
                       child: Checkbox(
                         value: presentation.selected,
-                        onChanged:
-                            onSelectionChanged == null
-                                ? null
-                                : (value) =>
-                                    onSelectionChanged!(value ?? false),
+                        onChanged: onSelectionChanged == null
+                            ? null
+                            : (value) => onSelectionChanged!(value ?? false),
                       ),
                     )
                   else
@@ -197,15 +194,14 @@ class _PrimaryLine extends StatelessWidget {
             builder: (context, constraints) {
               // Keep long titles from consuming the badge area, while letting
               // any unused part of the title allowance flow to the badges.
-              final titleMaxWidth =
-                  badges.isEmpty
-                      ? AppTransactionTokens.categoryMaxWidth
-                      : ((constraints.maxWidth - AppSpacing.space8) /
-                              _titleBadgeColumnCount)
-                          .clamp(
-                            AppSpacing.space0,
-                            AppTransactionTokens.categoryMaxWidth,
-                          );
+              final titleMaxWidth = badges.isEmpty
+                  ? AppTransactionTokens.categoryMaxWidth
+                  : ((constraints.maxWidth - AppSpacing.space8) /
+                            _titleBadgeColumnCount)
+                        .clamp(
+                          AppSpacing.space0,
+                          AppTransactionTokens.categoryMaxWidth,
+                        );
 
               return Row(
                 children: [
@@ -268,13 +264,15 @@ class _AccountLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (flow.out != null && flow.in_ != null) {
+    final outEndpoints = flow.effectiveOutEndpoints;
+    final inEndpoints = flow.effectiveInEndpoints;
+    if (outEndpoints.isNotEmpty && inEndpoints.isNotEmpty) {
       return Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           Flexible(
-            child: AccountEndpointView.compactTrailing(
-              endpoint: _endpoint(flow.out!),
+            child: AccountEndpointGroupView(
+              endpoints: outEndpoints.map(_endpoint).toList(growable: false),
               style: style,
             ),
           ),
@@ -288,8 +286,8 @@ class _AccountLine extends StatelessWidget {
             ),
           ),
           Flexible(
-            child: AccountEndpointView.compactTrailing(
-              endpoint: _endpoint(flow.in_!),
+            child: AccountEndpointGroupView(
+              endpoints: inEndpoints.map(_endpoint).toList(growable: false),
               style: style,
             ),
           ),
@@ -299,8 +297,10 @@ class _AccountLine extends StatelessWidget {
 
     return Align(
       alignment: Alignment.centerRight,
-      child: AccountEndpointView.compactTrailing(
-        endpoint: _endpoint(flow.singleEndpoint),
+      child: AccountEndpointGroupView(
+        endpoints: (outEndpoints.isNotEmpty ? outEndpoints : inEndpoints)
+            .map(_endpoint)
+            .toList(growable: false),
         style: style,
       ),
     );

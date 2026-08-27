@@ -64,7 +64,11 @@ void main() {
         expect(outcome, isA<UiActionSuccess<void>>());
         final command = editService.expenseCommands.single;
         expect(command.transactionId, 'tx-1');
-        expect(command.paidFromAccountId, 'bank');
+        expect(command.settlementAllocations!.single.accountId, 'bank');
+        expect(
+          command.settlementAllocations!.single.amount,
+          const Money(minorUnits: 10000),
+        );
       },
     );
 
@@ -379,7 +383,7 @@ void main() {
       final command = posting.closeCommands.single;
       expect(command.advanceTransactionId, 'tx-1');
       expect(command.receivableAccountId, 'company');
-      expect(command.receiveAccountId, 'bank');
+      expect(command.settlementAllocations.single.accountId, 'bank');
       expect(command.actualReceivedAmount, const Money(minorUnits: 7000));
       expect(command.note, 'done');
     });
@@ -490,21 +494,44 @@ TransactionReadModel _detail({
   Money? refundedTotal,
   ReimbursementSummary? reimbursementSummary,
 }) {
-  final sourceEntries = entries ?? [_entry('cash', EntryDirection.credit), _entry('food', EntryDirection.debit)];
+  final sourceEntries =
+      entries ??
+      [
+        _entry('cash', EntryDirection.credit),
+        _entry('food', EntryDirection.debit),
+      ];
   final lines = purpose == BusinessPurpose.reimbursementAdvance
       ? _advanceLines
       : [
           for (var index = 0; index < sourceEntries.length; index++)
             TransactionLine(
-              id: 'line-$index', transactionId: 'tx-1', lineNo: index + 1,
+              id: 'line-$index',
+              transactionId: 'tx-1',
+              lineNo: index + 1,
               role: switch (purpose) {
-                BusinessPurpose.dailyExpense => sourceEntries[index].accountId == 'food' ? TransactionRole.category : TransactionRole.settlementOut,
-                BusinessPurpose.dailyIncome => sourceEntries[index].accountId == 'salary' ? TransactionRole.category : TransactionRole.settlementIn,
-                BusinessPurpose.borrowing => sourceEntries[index].accountId == 'loan' ? TransactionRole.liability : TransactionRole.settlementIn,
-                BusinessPurpose.debtRepayment => sourceEntries[index].accountId == 'loan' ? TransactionRole.liability : TransactionRole.settlementOut,
-                _ => sourceEntries[index].direction == EntryDirection.debit ? TransactionRole.settlementIn : TransactionRole.settlementOut,
+                BusinessPurpose.dailyExpense =>
+                  sourceEntries[index].accountId == 'food'
+                      ? TransactionRole.category
+                      : TransactionRole.settlementOut,
+                BusinessPurpose.dailyIncome =>
+                  sourceEntries[index].accountId == 'salary'
+                      ? TransactionRole.category
+                      : TransactionRole.settlementIn,
+                BusinessPurpose.borrowing =>
+                  sourceEntries[index].accountId == 'loan'
+                      ? TransactionRole.liability
+                      : TransactionRole.settlementIn,
+                BusinessPurpose.debtRepayment =>
+                  sourceEntries[index].accountId == 'loan'
+                      ? TransactionRole.liability
+                      : TransactionRole.settlementOut,
+                _ =>
+                  sourceEntries[index].direction == EntryDirection.debit
+                      ? TransactionRole.settlementIn
+                      : TransactionRole.settlementOut,
               },
-              accountId: sourceEntries[index].accountId, amount: sourceEntries[index].amount,
+              accountId: sourceEntries[index].accountId,
+              amount: sourceEntries[index].amount,
             ),
         ];
   return TransactionReadModel.fromTransaction(
@@ -522,9 +549,29 @@ TransactionReadModel _detail({
     createdAt: DateTime(2026, 1, 1, 8, 1),
     lines: lines,
     children: [
-      if (refundedTotal != null) TransactionReadModel(id: 'refund', parentTransactionId: 'tx-1', businessPurpose: BusinessPurpose.refund, occurredAt: DateTime(2026, 1, 2), primaryAmount: refundedTotal, isExcludedFromStats: false, isExcludedFromBudget: false),
-      if (reimbursementSummary != null && reimbursementSummary.receivedAmount.minorUnits > 0)
-        TransactionReadModel(id: reimbursementSummary.isClosed ? 'close' : 'receipt', parentTransactionId: 'tx-1', businessPurpose: reimbursementSummary.isClosed ? BusinessPurpose.reimbursementClose : BusinessPurpose.reimbursementReceipt, occurredAt: DateTime(2026, 1, 2), primaryAmount: reimbursementSummary.receivedAmount, isExcludedFromStats: false, isExcludedFromBudget: false),
+      if (refundedTotal != null)
+        TransactionReadModel(
+          id: 'refund',
+          parentTransactionId: 'tx-1',
+          businessPurpose: BusinessPurpose.refund,
+          occurredAt: DateTime(2026, 1, 2),
+          primaryAmount: refundedTotal,
+          isExcludedFromStats: false,
+          isExcludedFromBudget: false,
+        ),
+      if (reimbursementSummary != null &&
+          reimbursementSummary.receivedAmount.minorUnits > 0)
+        TransactionReadModel(
+          id: reimbursementSummary.isClosed ? 'close' : 'receipt',
+          parentTransactionId: 'tx-1',
+          businessPurpose: reimbursementSummary.isClosed
+              ? BusinessPurpose.reimbursementClose
+              : BusinessPurpose.reimbursementReceipt,
+          occurredAt: DateTime(2026, 1, 2),
+          primaryAmount: reimbursementSummary.receivedAmount,
+          isExcludedFromStats: false,
+          isExcludedFromBudget: false,
+        ),
     ],
   );
 }
@@ -677,6 +724,13 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
 
   @override
   Future<PostedTransactionResult> editTransfer(EditTransferCommand command) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PostedTransactionResult> replaceTransactionCategory(
+    ReplaceTransactionCategoryCommand command,
+  ) {
     throw UnimplementedError();
   }
 }
@@ -848,6 +902,20 @@ const _advanceLines = [
     accountId: 'food',
     amount: Money(minorUnits: 10000),
   ),
-  TransactionLine(id: 'advance-out', transactionId: 'tx-1', lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: Money(minorUnits: 10000)),
-  TransactionLine(id: 'advance-receivable', transactionId: 'tx-1', lineNo: 3, role: TransactionRole.receivable, accountId: 'company', amount: Money(minorUnits: 10000)),
+  TransactionLine(
+    id: 'advance-out',
+    transactionId: 'tx-1',
+    lineNo: 2,
+    role: TransactionRole.settlementOut,
+    accountId: 'cash',
+    amount: Money(minorUnits: 10000),
+  ),
+  TransactionLine(
+    id: 'advance-receivable',
+    transactionId: 'tx-1',
+    lineNo: 3,
+    role: TransactionRole.receivable,
+    accountId: 'company',
+    amount: Money(minorUnits: 10000),
+  ),
 ];

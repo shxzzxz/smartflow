@@ -1,4 +1,5 @@
 import '../../../core/money/money.dart';
+import '../valobj/account_amount_allocation.dart';
 import '../valobj/ledger_enum.dart';
 import 'transaction.dart';
 
@@ -57,6 +58,64 @@ class TransactionGroup {
     return parentTransaction.primaryAmount -
         refundedTotal(excludingTransactionId: childTransactionId) -
         reimbursementReceivedTotal(excludingTransactionId: childTransactionId);
+  }
+
+  List<AccountAmountAllocation> get categoryAllocations {
+    final role = switch (parentTransaction.businessPurpose) {
+      BusinessPurpose.dailyExpense => TransactionRole.category,
+      BusinessPurpose.reimbursementAdvance =>
+        TransactionRole.reimbursementExpenseCategory,
+      _ => null,
+    };
+    if (role == null) return const [];
+    return [
+      for (final line in parentTransaction.linesOf(role))
+        AccountAmountAllocation(
+          accountId: line.accountId!,
+          amount: line.amount,
+        ),
+    ];
+  }
+
+  List<AccountAmountAllocation> refundCategoryAllocations(Transaction refund) {
+    return [
+      for (final line in [
+        ...refund.linesOf(TransactionRole.refundOffset),
+        ...refund.linesOf(TransactionRole.reimbursementExpenseCategory),
+      ])
+        AccountAmountAllocation(
+          accountId: line.accountId!,
+          amount: line.amount,
+        ),
+    ];
+  }
+
+  List<AccountAmountAllocation> remainingRefundableCategoryAllocations({
+    String? excludingTransactionId,
+  }) {
+    return subtractAllocations(
+      base: categoryAllocations,
+      reductions: [
+        for (final refund in childTransactions.where(
+          (child) =>
+              child.businessPurpose == BusinessPurpose.refund &&
+              child.id != excludingTransactionId,
+        ))
+          ...refundCategoryAllocations(refund),
+      ],
+    );
+  }
+
+  bool allocationsFitRefundableCategories(
+    Iterable<AccountAmountAllocation> allocations, {
+    String? excludingTransactionId,
+  }) {
+    return allocationsFitAvailable(
+      requested: allocations,
+      available: remainingRefundableCategoryAllocations(
+        excludingTransactionId: excludingTransactionId,
+      ),
+    );
   }
 
   Money _sumChildren({

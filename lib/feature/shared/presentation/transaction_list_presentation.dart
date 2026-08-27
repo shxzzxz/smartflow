@@ -127,14 +127,32 @@ class TransactionAccountFlowPresentation {
   const TransactionAccountFlowPresentation({
     this.out,
     this.in_,
+    this.outEndpoints = const [],
+    this.inEndpoints = const [],
     this.separator = '->',
     this.fallbackLabel = _noAccountLabel,
   });
 
   final AccountEndpointPresentation? out;
   final AccountEndpointPresentation? in_;
+  final List<AccountEndpointPresentation> outEndpoints;
+  final List<AccountEndpointPresentation> inEndpoints;
   final String separator;
   final String fallbackLabel;
+
+  List<AccountEndpointPresentation> get effectiveOutEndpoints =>
+      outEndpoints.isNotEmpty
+      ? outEndpoints
+      : out == null
+      ? const []
+      : [out!];
+
+  List<AccountEndpointPresentation> get effectiveInEndpoints =>
+      inEndpoints.isNotEmpty
+      ? inEndpoints
+      : in_ == null
+      ? const []
+      : [in_!];
 
   AccountEndpointPresentation get singleEndpoint =>
       out ?? in_ ?? AccountEndpointPresentation(label: fallbackLabel);
@@ -338,8 +356,12 @@ String? _flowAccountId(
   final accountId = item.accountOf(role);
   if (accountId != null) return accountId;
   return switch (item.businessPurpose) {
-    BusinessPurpose.openingBalance => item.accountOf(TransactionRole.openingBalance),
-    BusinessPurpose.balanceAdjustment => item.accountOf(TransactionRole.balanceAdjustment),
+    BusinessPurpose.openingBalance => item.accountOf(
+      TransactionRole.openingBalance,
+    ),
+    BusinessPurpose.balanceAdjustment => item.accountOf(
+      TransactionRole.balanceAdjustment,
+    ),
     _ => null,
   };
 }
@@ -357,40 +379,50 @@ TransactionAccountFlowPresentation resolveAccountFlow(
     );
   }
 
-  final out = endpointOf(
-    _flowAccountId(
-      item,
-      direction: EntryDirection.credit,
-    ),
+  List<AccountEndpointPresentation> endpointsOf(TransactionRole role) {
+    return [
+      for (final line in item.linesOf(role))
+        if (line.accountId != null) endpointOf(line.accountId)!,
+    ];
+  }
+
+  final outEndpoints = endpointsOf(TransactionRole.settlementOut);
+  final inEndpoints = endpointsOf(TransactionRole.settlementIn);
+  final out =
+      outEndpoints.firstOrNull ??
+      endpointOf(_flowAccountId(item, direction: EntryDirection.credit));
+  final in_ =
+      inEndpoints.firstOrNull ??
+      endpointOf(_flowAccountId(item, direction: EntryDirection.debit));
+  final reimbursementReceivable = endpointOf(
+    item.accountOf(TransactionRole.receivable),
   );
-  final in_ = endpointOf(
-    _flowAccountId(
-      item,
-      direction: EntryDirection.debit,
-    ),
-  );
-  final reimbursementReceivable = endpointOf(item.accountOf(TransactionRole.receivable));
   final fallbackText = transactionAccountLabel(item, accountLookup);
   final fallbackLabel = fallbackText.isEmpty ? _noAccountLabel : fallbackText;
 
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense => TransactionAccountFlowPresentation(
       out: out,
+      outEndpoints: outEndpoints,
       fallbackLabel: fallbackLabel,
     ),
     BusinessPurpose.reimbursementAdvance => TransactionAccountFlowPresentation(
       out: out,
       in_: reimbursementReceivable,
+      outEndpoints: outEndpoints,
       separator: '|',
       fallbackLabel: fallbackLabel,
     ),
     BusinessPurpose.dailyIncome => TransactionAccountFlowPresentation(
       in_: in_,
+      inEndpoints: inEndpoints,
       fallbackLabel: fallbackLabel,
     ),
     _ => TransactionAccountFlowPresentation(
       out: out,
       in_: in_,
+      outEndpoints: outEndpoints,
+      inEndpoints: inEndpoints,
       fallbackLabel: fallbackLabel,
     ),
   };
@@ -554,8 +586,12 @@ String transactionPrimaryLabel(
       : null;
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense || BusinessPurpose.dailyIncome =>
-      categoryLines.length > 1 ? '多类别' : _cleanText(category?.name) ?? transactionPurposeLabel(item.businessPurpose),
-    BusinessPurpose.reimbursementAdvance => categoryLines.length > 1 ? '多类别' : _cleanText(category?.name) ?? '支出',
+      categoryLines.length > 1
+          ? '多类别'
+          : _cleanText(category?.name) ??
+                transactionPurposeLabel(item.businessPurpose),
+    BusinessPurpose.reimbursementAdvance =>
+      categoryLines.length > 1 ? '多类别' : _cleanText(category?.name) ?? '支出',
     _ => transactionPurposeLabel(item.businessPurpose),
   };
 }
@@ -565,10 +601,7 @@ String transactionAccountLabel(
   AccountLookup accountLookup,
 ) {
   String? nameOf(EntryDirection direction) {
-    final accountId = _flowAccountId(
-      item,
-      direction: direction,
-    );
+    final accountId = _flowAccountId(item, direction: direction);
     return _cleanText(
       accountId == null ? null : accountLookup.find(accountId)?.name,
     );
@@ -587,10 +620,7 @@ String _flowAccountLabel(
   AccountLookup accountLookup,
 ) {
   String? nameOf(EntryDirection direction) {
-    final accountId = _flowAccountId(
-      item,
-      direction: direction,
-    );
+    final accountId = _flowAccountId(item, direction: direction);
     return _cleanText(
       accountId == null ? null : accountLookup.find(accountId)?.name,
     );
@@ -725,27 +755,57 @@ List<TransactionAdjustment> transactionAdjustments(TransactionReadModel item) {
   if (item.parentTransactionId != null) return const [];
   final result = <TransactionAdjustment>[];
   void add(TransactionAdjustmentKind kind, Money amount) {
-    if (amount.minorUnits > 0) result.add(TransactionAdjustment(kind: kind, amount: amount));
+    if (amount.minorUnits > 0) {
+      result.add(TransactionAdjustment(kind: kind, amount: amount));
+    }
   }
+
   switch (item.businessPurpose) {
     case BusinessPurpose.transfer:
-      add(TransactionAdjustmentKind.transferFee, item.amountOf(TransactionRole.fee));
+      add(
+        TransactionAdjustmentKind.transferFee,
+        item.amountOf(TransactionRole.fee),
+      );
     case BusinessPurpose.dailyExpense:
       add(TransactionAdjustmentKind.refund, item.refundedTotal);
     case BusinessPurpose.reimbursementAdvance:
       add(TransactionAdjustmentKind.refund, item.refundedTotal);
-      add(TransactionAdjustmentKind.reimbursementReceived, item.reimbursementReceivedTotal);
+      add(
+        TransactionAdjustmentKind.reimbursementReceived,
+        item.reimbursementReceivedTotal,
+      );
       for (final child in item.children) {
-        add(TransactionAdjustmentKind.reimbursementGapIncome, child.amountOf(TransactionRole.reimbursementGapIncome));
-        add(TransactionAdjustmentKind.reimbursementGapExpense, child.amountOf(TransactionRole.reimbursementGapExpense));
+        add(
+          TransactionAdjustmentKind.reimbursementGapIncome,
+          child.amountOf(TransactionRole.reimbursementGapIncome),
+        );
+        add(
+          TransactionAdjustmentKind.reimbursementGapExpense,
+          child.amountOf(TransactionRole.reimbursementGapExpense),
+        );
       }
     case BusinessPurpose.debtRepayment:
-      add(TransactionAdjustmentKind.repaymentInterest, item.amountOf(TransactionRole.interest));
-      add(TransactionAdjustmentKind.repaymentFee, item.amountOf(TransactionRole.fee));
-      add(TransactionAdjustmentKind.repaymentDiscount, item.amountOf(TransactionRole.discount));
+      add(
+        TransactionAdjustmentKind.repaymentInterest,
+        item.amountOf(TransactionRole.interest),
+      );
+      add(
+        TransactionAdjustmentKind.repaymentFee,
+        item.amountOf(TransactionRole.fee),
+      );
+      add(
+        TransactionAdjustmentKind.repaymentDiscount,
+        item.amountOf(TransactionRole.discount),
+      );
     case BusinessPurpose.receivableCollection:
-      add(TransactionAdjustmentKind.receivableCollectionPrincipal, item.amountOf(TransactionRole.receivable));
-      add(TransactionAdjustmentKind.receivableCollectionInterest, item.amountOf(TransactionRole.interest));
+      add(
+        TransactionAdjustmentKind.receivableCollectionPrincipal,
+        item.amountOf(TransactionRole.receivable),
+      );
+      add(
+        TransactionAdjustmentKind.receivableCollectionInterest,
+        item.amountOf(TransactionRole.interest),
+      );
     default:
       break;
   }

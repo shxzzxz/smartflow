@@ -57,17 +57,19 @@ Future<void> _backfillTransactionLines(AppDatabase database) async {
   final legacyAmountsByTransaction = await _loadLegacyAmounts(database);
   const engine = PostingEngine(idGenerator: _MigrationIdGenerator());
 
-  final transactionRows =
-      await database
-          .customSelect('''
-SELECT id,
-       business_purpose,
-       primary_amount_minor,
-       reimbursement_expense_account_id
-FROM transactions
-ORDER BY id
-''')
-          .get();
+  final transactionRows = await database.customSelect('''
+SELECT transaction_row.id,
+       transaction_row.business_purpose,
+       transaction_row.primary_amount_minor,
+       transaction_row.reimbursement_expense_account_id,
+       parent_row.business_purpose AS parent_business_purpose,
+       parent_row.reimbursement_expense_account_id
+         AS parent_reimbursement_expense_account_id
+FROM transactions AS transaction_row
+LEFT JOIN transactions AS parent_row
+  ON parent_row.id = transaction_row.parent_transaction_id
+ORDER BY transaction_row.id
+''').get();
 
   final companions = <TransactionLinesCompanion>[];
   for (final row in transactionRows) {
@@ -82,6 +84,15 @@ ORDER BY id
       primaryAmount: Money(minorUnits: row.read<int>('primary_amount_minor')),
       reimbursementExpenseAccountId: row.readNullable<String>(
         'reimbursement_expense_account_id',
+      ),
+      parentBusinessPurpose: switch (row.readNullable<String>(
+        'parent_business_purpose',
+      )) {
+        final value? => BusinessPurpose.values.byName(value),
+        null => null,
+      },
+      parentReimbursementExpenseAccountId: row.readNullable<String>(
+        'parent_reimbursement_expense_account_id',
       ),
       entries: entries,
       legacyAmounts:
@@ -171,10 +182,9 @@ String _describeLines(List<TransactionLine> lines) {
 }
 
 Future<Map<String, AccountType>> _loadAccountTypes(AppDatabase database) async {
-  final rows =
-      await database
-          .customSelect('SELECT id, account_type FROM accounts')
-          .get();
+  final rows = await database
+      .customSelect('SELECT id, account_type FROM accounts')
+      .get();
   return {
     for (final row in rows)
       row.read<String>('id'): AccountType.values.byName(
@@ -186,12 +196,11 @@ Future<Map<String, AccountType>> _loadAccountTypes(AppDatabase database) async {
 Future<Map<SystemKey, String>> _loadSystemAccountIds(
   AppDatabase database,
 ) async {
-  final rows =
-      await database
-          .customSelect(
-            'SELECT id, system_key FROM accounts WHERE system_key IS NOT NULL',
-          )
-          .get();
+  final rows = await database
+      .customSelect(
+        'SELECT id, system_key FROM accounts WHERE system_key IS NOT NULL',
+      )
+      .get();
   return {
     for (final row in rows)
       SystemKey.values.byName(row.read<String>('system_key')): row.read<String>(
@@ -201,13 +210,12 @@ Future<Map<SystemKey, String>> _loadSystemAccountIds(
 }
 
 Future<Map<String, List<Entry>>> _loadEntries(AppDatabase database) async {
-  final rows =
-      await database
-          .customSelect(
-            'SELECT id, transaction_id, account_id, direction, amount_minor '
-            'FROM entries ORDER BY transaction_id, id',
-          )
-          .get();
+  final rows = await database
+      .customSelect(
+        'SELECT id, transaction_id, account_id, direction, amount_minor '
+        'FROM entries ORDER BY transaction_id, id',
+      )
+      .get();
   final result = <String, List<Entry>>{};
   for (final row in rows) {
     final transactionId = row.read<String>('transaction_id');
@@ -232,20 +240,20 @@ Future<Map<String, List<Entry>>> _loadEntries(AppDatabase database) async {
 Future<Map<String, Map<String, int>>> _loadLegacyAmounts(
   AppDatabase database,
 ) async {
-  final rows =
-      await database
-          .customSelect(
-            'SELECT transaction_id, detail_type, SUM(amount_minor) AS total '
-            'FROM transaction_details GROUP BY transaction_id, detail_type',
-          )
-          .get();
+  final rows = await database
+      .customSelect(
+        'SELECT transaction_id, detail_type, SUM(amount_minor) AS total '
+        'FROM transaction_details GROUP BY transaction_id, detail_type',
+      )
+      .get();
   final result = <String, Map<String, int>>{};
   for (final row in rows) {
     result.putIfAbsent(
-          row.read<String>('transaction_id'),
-          () => <String, int>{},
-        )[row.read<String>('detail_type')] =
-        row.read<int>('total');
+      row.read<String>('transaction_id'),
+      () => <String, int>{},
+    )[row.read<String>('detail_type')] = row.read<int>(
+      'total',
+    );
   }
   return result;
 }
@@ -298,6 +306,8 @@ List<TransactionLine> _linesFor({
   required BusinessPurpose businessPurpose,
   required Money primaryAmount,
   required String? reimbursementExpenseAccountId,
+  required BusinessPurpose? parentBusinessPurpose,
+  required String? parentReimbursementExpenseAccountId,
   required List<Entry> entries,
   required Map<String, int> legacyAmounts,
   required Map<String, AccountType> accountTypes,
@@ -340,20 +350,44 @@ List<TransactionLine> _linesFor({
       final fee = legacy('transferFee');
       if (fee.minorUnits > 0) builder.add(TransactionRole.fee, fee, null);
     case BusinessPurpose.refund:
-      builder
-        ..add(TransactionRole.settlementIn, primaryAmount, builder.onlyDebit())
-        ..add(
+      builder.add(
+        TransactionRole.settlementIn,
+        primaryAmount,
+        builder.onlyDebit(),
+      );
+      if (parentBusinessPurpose == BusinessPurpose.reimbursementAdvance) {
+        if (parentReimbursementExpenseAccountId == null) {
+          throw TransactionLineMigrationError(
+            transactionId: transactionId,
+            reason: TransactionLineMigrationFailureReason
+                .missingReimbursementExpenseCategory,
+            businessPurpose: businessPurpose.name,
+          );
+        }
+        builder
+          ..add(
+            TransactionRole.reimbursementExpenseCategory,
+            primaryAmount,
+            parentReimbursementExpenseAccountId,
+          )
+          ..add(
+            TransactionRole.receivable,
+            primaryAmount,
+            builder.onlyCredit(),
+          );
+      } else {
+        builder.add(
           TransactionRole.refundOffset,
           primaryAmount,
           builder.onlyCredit(),
         );
+      }
     case BusinessPurpose.reimbursementAdvance:
       if (reimbursementExpenseAccountId == null) {
         throw TransactionLineMigrationError(
           transactionId: transactionId,
-          reason:
-              TransactionLineMigrationFailureReason
-                  .missingReimbursementExpenseCategory,
+          reason: TransactionLineMigrationFailureReason
+              .missingReimbursementExpenseCategory,
           businessPurpose: businessPurpose.name,
         );
       }
@@ -553,7 +587,9 @@ class _LineBuilder {
       if (typeIs != null && type != typeIs) continue;
       if (typeIsNot != null && type == typeIsNot) continue;
       if (found != null) {
-        throw _shapeError(_describeSelector(direction, typeIs, typeIsNot, 'ambiguous'));
+        throw _shapeError(
+          _describeSelector(direction, typeIs, typeIsNot, 'ambiguous'),
+        );
       }
       found = entry;
     }

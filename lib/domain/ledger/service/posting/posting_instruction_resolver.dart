@@ -1,5 +1,6 @@
 import 'package:smartflow/core/money/money.dart';
 import '../../entity/transaction.dart';
+import '../../valobj/account_amount_allocation.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
@@ -30,12 +31,13 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       BusinessPurpose.receivableCollection => _resolveCollection(transaction),
       BusinessPurpose.badDebt => _resolveBadDebt(transaction),
       BusinessPurpose.debtRelief => _resolveDebtRelief(transaction),
-      _ => LedgerViolationReason.unsupportedPostingInstructionResolution
-          .throwException(
-            message:
-                'Cannot resolve ${transaction.businessPurpose.name} as a '
-                'posting instruction.',
-          ),
+      _ =>
+        LedgerViolationReason.unsupportedPostingInstructionResolution
+            .throwException(
+              message:
+                  'Cannot resolve ${transaction.businessPurpose.name} as a '
+                  'posting instruction.',
+            ),
     };
   }
 
@@ -47,16 +49,31 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
         message: 'A refund transaction is required.',
       );
     }
-    final refundTo = transaction.accountOf(TransactionRole.settlementIn);
-    if (refundTo == null) {
+    final settlements = _allocationsOf(
+      transaction,
+      TransactionRole.settlementIn,
+    );
+    final refundCategories = _allocationsOf(
+      transaction,
+      TransactionRole.refundOffset,
+    );
+    final reimbursementCategories = _allocationsOf(
+      transaction,
+      TransactionRole.reimbursementExpenseCategory,
+    );
+    final categories = refundCategories.isNotEmpty
+        ? refundCategories
+        : reimbursementCategories;
+    if (settlements.isEmpty || categories.isEmpty) {
       return LedgerViolationReason.refundToAccountNotFound.throwException(
-        message: 'Refund receiving account cannot be resolved.',
+        message: 'Refund allocations cannot be resolved.',
       );
     }
     return RefundInstruction(
       parentTransactionId: transaction.parentTransactionId!,
       amount: transaction.primaryAmount,
-      refundToAccountId: refundTo,
+      categoryAllocations: categories,
+      settlementAllocations: settlements,
       occurredAt: transaction.occurredAt,
       postedAt: transaction.postedAt,
       counterpartyName: transaction.counterpartyName,
@@ -65,18 +82,19 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
   }
 
   ExpenseInstruction _resolveExpense(Transaction transaction) {
-    final expenseAccountId = transaction.accountOf(TransactionRole.category);
-    final paidFromAccountId = transaction.accountOf(
+    final categories = _allocationsOf(transaction, TransactionRole.category);
+    final settlements = _allocationsOf(
+      transaction,
       TransactionRole.settlementOut,
     );
-    if (expenseAccountId == null || paidFromAccountId == null) {
+    if (categories.isEmpty || settlements.isEmpty) {
       return LedgerViolationReason.expenseInstructionUnresolvable
           .throwException(message: 'Expense accounts cannot be resolved.');
     }
     return ExpenseInstruction(
       amount: transaction.primaryAmount,
-      paidFromAccountId: paidFromAccountId,
-      expenseAccountId: expenseAccountId,
+      categoryAllocations: categories,
+      settlementAllocations: settlements,
       occurredAt: transaction.occurredAt,
       postedAt: transaction.postedAt,
       counterpartyName: transaction.counterpartyName,
@@ -116,18 +134,20 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
   ReimbursementAdvanceInstruction _resolveReimbursementAdvance(
     Transaction transaction,
   ) {
-    final expenseAccountId = transaction.accountOf(
+    final categories = _allocationsOf(
+      transaction,
       TransactionRole.reimbursementExpenseCategory,
     );
     final receivableAccountId = transaction.accountOf(
       TransactionRole.receivable,
     );
-    final paidFromAccountId = transaction.accountOf(
+    final settlements = _allocationsOf(
+      transaction,
       TransactionRole.settlementOut,
     );
-    if (expenseAccountId == null ||
+    if (categories.isEmpty ||
         receivableAccountId == null ||
-        paidFromAccountId == null) {
+        settlements.isEmpty) {
       return LedgerViolationReason.reimbursementInstructionUnresolvable
           .throwException(
             message: 'Reimbursement advance accounts cannot be resolved.',
@@ -136,8 +156,8 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
     return ReimbursementAdvanceInstruction(
       amount: transaction.primaryAmount,
       receivableAccountId: receivableAccountId,
-      paidFromAccountId: paidFromAccountId,
-      expenseAccountId: expenseAccountId,
+      categoryAllocations: categories,
+      settlementAllocations: settlements,
       occurredAt: transaction.occurredAt,
       postedAt: transaction.postedAt,
       counterpartyName: transaction.counterpartyName,
@@ -309,4 +329,14 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       sourceKind: transaction.sourceKind,
     );
   }
+}
+
+List<AccountAmountAllocation> _allocationsOf(
+  Transaction transaction,
+  TransactionRole role,
+) {
+  return [
+    for (final line in transaction.linesOf(role))
+      AccountAmountAllocation(accountId: line.accountId!, amount: line.amount),
+  ];
 }

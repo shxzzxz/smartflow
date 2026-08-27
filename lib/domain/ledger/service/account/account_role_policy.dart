@@ -24,18 +24,20 @@ class AccountRoleContext {
   final List<AccountRoleRequirement> requirements;
 
   factory AccountRoleContext.expense({
-    required String paidFromAccountId,
-    required String expenseAccountId,
+    required Iterable<String> paidFromAccountIds,
+    required Iterable<String> expenseAccountIds,
   }) {
     return AccountRoleContext([
-      AccountRoleRequirement(
-        accountId: paidFromAccountId,
-        requiredUsage: AccountUsage.settlement,
-      ),
-      AccountRoleRequirement(
-        accountId: expenseAccountId,
-        expectedTypes: {AccountType.expense},
-      ),
+      for (final accountId in paidFromAccountIds)
+        AccountRoleRequirement(
+          accountId: accountId,
+          requiredUsage: AccountUsage.settlement,
+        ),
+      for (final accountId in expenseAccountIds)
+        AccountRoleRequirement(
+          accountId: accountId,
+          expectedTypes: {AccountType.expense},
+        ),
     ]);
   }
 
@@ -71,45 +73,57 @@ class AccountRoleContext {
     ]);
   }
 
-  factory AccountRoleContext.refund({required String refundToAccountId}) {
+  factory AccountRoleContext.refund({
+    required Iterable<String> refundToAccountIds,
+    required Iterable<String> categoryAccountIds,
+  }) {
     return AccountRoleContext([
-      AccountRoleRequirement(
-        accountId: refundToAccountId,
-        requiredUsage: AccountUsage.settlement,
-      ),
+      for (final accountId in refundToAccountIds)
+        AccountRoleRequirement(
+          accountId: accountId,
+          requiredUsage: AccountUsage.settlement,
+        ),
+      for (final accountId in categoryAccountIds)
+        AccountRoleRequirement(
+          accountId: accountId,
+          expectedTypes: {AccountType.expense},
+        ),
     ]);
   }
 
   factory AccountRoleContext.reimbursementAdvance({
     required String receivableAccountId,
-    required String paidFromAccountId,
-    required String expenseCategoryId,
+    required Iterable<String> paidFromAccountIds,
+    required Iterable<String> expenseCategoryIds,
   }) {
     return AccountRoleContext([
       AccountRoleRequirement(
         accountId: receivableAccountId,
         requiredUsage: AccountUsage.receivable,
       ),
-      AccountRoleRequirement(
-        accountId: paidFromAccountId,
-        requiredUsage: AccountUsage.settlement,
-      ),
-      AccountRoleRequirement(
-        accountId: expenseCategoryId,
-        expectedTypes: {AccountType.expense},
-      ),
+      for (final accountId in paidFromAccountIds)
+        AccountRoleRequirement(
+          accountId: accountId,
+          requiredUsage: AccountUsage.settlement,
+        ),
+      for (final accountId in expenseCategoryIds)
+        AccountRoleRequirement(
+          accountId: accountId,
+          expectedTypes: {AccountType.expense},
+        ),
     ]);
   }
 
   factory AccountRoleContext.reimbursementReceipt({
     required String receivableAccountId,
-    required String receiveAccountId,
+    required Iterable<String> receiveAccountIds,
   }) {
     return AccountRoleContext([
-      AccountRoleRequirement(
-        accountId: receiveAccountId,
-        requiredUsage: AccountUsage.settlement,
-      ),
+      for (final accountId in receiveAccountIds)
+        AccountRoleRequirement(
+          accountId: accountId,
+          requiredUsage: AccountUsage.settlement,
+        ),
       AccountRoleRequirement(
         accountId: receivableAccountId,
         requiredUsage: AccountUsage.receivable,
@@ -119,19 +133,26 @@ class AccountRoleContext {
 
   factory AccountRoleContext.reimbursementClose({
     required String receivableAccountId,
-    required String receiveAccountId,
+    required Iterable<String> receiveAccountIds,
+    required Iterable<String> gapExpenseCategoryIds,
     required bool receivesCash,
   }) {
     return AccountRoleContext([
       if (receivesCash)
-        AccountRoleRequirement(
-          accountId: receiveAccountId,
-          requiredUsage: AccountUsage.settlement,
-        ),
+        for (final accountId in receiveAccountIds)
+          AccountRoleRequirement(
+            accountId: accountId,
+            requiredUsage: AccountUsage.settlement,
+          ),
       AccountRoleRequirement(
         accountId: receivableAccountId,
         requiredUsage: AccountUsage.receivable,
       ),
+      for (final accountId in gapExpenseCategoryIds)
+        AccountRoleRequirement(
+          accountId: accountId,
+          expectedTypes: {AccountType.expense},
+        ),
     ]);
   }
 

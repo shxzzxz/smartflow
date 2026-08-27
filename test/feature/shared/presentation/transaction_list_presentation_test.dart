@@ -121,6 +121,53 @@ void main() {
       expect(row.canQuickEdit, true);
     });
 
+    test('keeps every combined payment account for icon-only rendering', () {
+      final item = TransactionReadModel(
+        id: 'combined-payment',
+        businessPurpose: BusinessPurpose.dailyExpense,
+        occurredAt: DateTime(2026, 1, 1, 8, 30),
+        primaryAmount: const Money(minorUnits: 10000),
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+        lines: const [
+          TransactionLine(
+            id: 'category',
+            transactionId: 'combined-payment',
+            lineNo: 1,
+            role: TransactionRole.category,
+            accountId: 'food',
+            amount: Money(minorUnits: 10000),
+          ),
+          TransactionLine(
+            id: 'cash',
+            transactionId: 'combined-payment',
+            lineNo: 2,
+            role: TransactionRole.settlementOut,
+            accountId: 'cash',
+            amount: Money(minorUnits: 6000),
+          ),
+          TransactionLine(
+            id: 'card',
+            transactionId: 'combined-payment',
+            lineNo: 3,
+            role: TransactionRole.settlementOut,
+            accountId: 'card',
+            amount: Money(minorUnits: 4000),
+          ),
+        ],
+      );
+
+      final row = buildTransactionRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+      );
+
+      expect(row.accountFlow.outEndpoints.map((endpoint) => endpoint.label), [
+        '现金',
+        '银行卡',
+      ]);
+    });
+
     test('uses expense and income signs for bad debt and debt relief', () {
       final badDebt = buildTransactionRowPresentation(
         item: _item(businessPurpose: BusinessPurpose.badDebt),
@@ -455,20 +502,56 @@ TransactionReadModel _item({
     isExcludedFromBudget: false,
     lines: [
       if (categoryAccountId != null)
-        TransactionLine(id: '$id-category', transactionId: id, lineNo: 1, role: businessPurpose == BusinessPurpose.reimbursementAdvance ? TransactionRole.reimbursementExpenseCategory : TransactionRole.category, accountId: categoryAccountId, amount: primaryAmount),
+        TransactionLine(
+          id: '$id-category',
+          transactionId: id,
+          lineNo: 1,
+          role: businessPurpose == BusinessPurpose.reimbursementAdvance
+              ? TransactionRole.reimbursementExpenseCategory
+              : TransactionRole.category,
+          accountId: categoryAccountId,
+          amount: primaryAmount,
+        ),
       if (impactsByAccountId?.isNotEmpty ?? true)
-        TransactionLine(id: '$id-out', transactionId: id, lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: primaryAmount),
+        TransactionLine(
+          id: '$id-out',
+          transactionId: id,
+          lineNo: 2,
+          role: TransactionRole.settlementOut,
+          accountId: 'cash',
+          amount: primaryAmount,
+        ),
       if (impactsByAccountId?.isNotEmpty ?? true)
-        TransactionLine(id: '$id-in', transactionId: id, lineNo: 3, role: TransactionRole.settlementIn, accountId: 'card', amount: primaryAmount),
+        TransactionLine(
+          id: '$id-in',
+          transactionId: id,
+          lineNo: 3,
+          role: TransactionRole.settlementIn,
+          accountId: 'card',
+          amount: primaryAmount,
+        ),
       for (final adjustment in adjustments)
         if (switch (adjustment.kind) {
-          TransactionAdjustmentKind.transferFee || TransactionAdjustmentKind.repaymentFee => TransactionRole.fee,
-          TransactionAdjustmentKind.repaymentInterest || TransactionAdjustmentKind.receivableCollectionInterest => TransactionRole.interest,
-          TransactionAdjustmentKind.repaymentDiscount => TransactionRole.discount,
-          TransactionAdjustmentKind.receivableCollectionPrincipal => TransactionRole.receivable,
-          _ => null,
-        } case final role?)
-          TransactionLine(id: '$id-${adjustment.kind.name}', transactionId: id, lineNo: 4, role: role, accountId: role == TransactionRole.receivable ? 'cash' : null, amount: adjustment.amount),
+              TransactionAdjustmentKind.transferFee ||
+              TransactionAdjustmentKind.repaymentFee => TransactionRole.fee,
+              TransactionAdjustmentKind.repaymentInterest ||
+              TransactionAdjustmentKind.receivableCollectionInterest =>
+                TransactionRole.interest,
+              TransactionAdjustmentKind.repaymentDiscount =>
+                TransactionRole.discount,
+              TransactionAdjustmentKind.receivableCollectionPrincipal =>
+                TransactionRole.receivable,
+              _ => null,
+            }
+            case final role?)
+          TransactionLine(
+            id: '$id-${adjustment.kind.name}',
+            transactionId: id,
+            lineNo: 4,
+            role: role,
+            accountId: role == TransactionRole.receivable ? 'cash' : null,
+            amount: adjustment.amount,
+          ),
     ],
     impactsByAccountId:
         impactsByAccountId ??
@@ -486,9 +569,25 @@ TransactionReadModel _item({
         },
     children: [
       if (refundedTotal != null)
-        TransactionReadModel(id: '$id-refund', parentTransactionId: id, businessPurpose: BusinessPurpose.refund, occurredAt: occurredAt ?? DateTime(2026, 1, 1), primaryAmount: refundedTotal, isExcludedFromStats: false, isExcludedFromBudget: false),
+        TransactionReadModel(
+          id: '$id-refund',
+          parentTransactionId: id,
+          businessPurpose: BusinessPurpose.refund,
+          occurredAt: occurredAt ?? DateTime(2026, 1, 1),
+          primaryAmount: refundedTotal,
+          isExcludedFromStats: false,
+          isExcludedFromBudget: false,
+        ),
       if (reimbursementReceivedTotal != null)
-        TransactionReadModel(id: '$id-receipt', parentTransactionId: id, businessPurpose: BusinessPurpose.reimbursementReceipt, occurredAt: occurredAt ?? DateTime(2026, 1, 1), primaryAmount: reimbursementReceivedTotal, isExcludedFromStats: false, isExcludedFromBudget: false),
+        TransactionReadModel(
+          id: '$id-receipt',
+          parentTransactionId: id,
+          businessPurpose: BusinessPurpose.reimbursementReceipt,
+          occurredAt: occurredAt ?? DateTime(2026, 1, 1),
+          primaryAmount: reimbursementReceivedTotal,
+          isExcludedFromStats: false,
+          isExcludedFromBudget: false,
+        ),
     ],
   );
 }

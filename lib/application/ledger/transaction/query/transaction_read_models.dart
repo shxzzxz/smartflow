@@ -3,6 +3,7 @@ import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
 import 'package:smartflow/domain/ledger/entity/transaction_line.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
+import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
 
 class CashflowSummary {
@@ -164,6 +165,38 @@ class TransactionReadModel {
   String? accountOf(TransactionRole role) =>
       linesOf(role).firstOrNull?.accountId;
 
+  List<AccountAmountAllocation> get refundableCategoryAllocations {
+    final role = switch (businessPurpose) {
+      BusinessPurpose.dailyExpense => TransactionRole.category,
+      BusinessPurpose.reimbursementAdvance =>
+        TransactionRole.reimbursementExpenseCategory,
+      _ => null,
+    };
+    if (role == null) return const [];
+    return _allocationsOf(role);
+  }
+
+  List<AccountAmountAllocation> remainingRefundableCategoryAllocations({
+    String? excludingTransactionId,
+  }) {
+    return subtractAllocations(
+      base: refundableCategoryAllocations,
+      reductions: [
+        for (final child in children.where(
+          (child) =>
+              child.businessPurpose == BusinessPurpose.refund &&
+              child.id != excludingTransactionId,
+        ))
+          ...child.refundCategoryAllocations,
+      ],
+    );
+  }
+
+  List<AccountAmountAllocation> get refundCategoryAllocations => [
+    ..._allocationsOf(TransactionRole.refundOffset),
+    ..._allocationsOf(TransactionRole.reimbursementExpenseCategory),
+  ];
+
   Money get refundedTotal {
     if (parentTransactionId != null) return Money.zero();
     return _childrenAmount(const {BusinessPurpose.refund});
@@ -212,6 +245,16 @@ class TransactionReadModel {
     return children
         .where((child) => purposes.contains(child.businessPurpose))
         .fold(Money.zero(), (total, child) => total + child.primaryAmount);
+  }
+
+  List<AccountAmountAllocation> _allocationsOf(TransactionRole role) {
+    return [
+      for (final line in linesOf(role))
+        AccountAmountAllocation(
+          accountId: line.accountId!,
+          amount: line.amount,
+        ),
+    ];
   }
 }
 

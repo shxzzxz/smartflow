@@ -135,6 +135,7 @@ const _allowedPurposesByRole = <TransactionRole, Set<BusinessPurpose>>{
   },
   TransactionRole.receivable: {
     BusinessPurpose.reimbursementAdvance,
+    BusinessPurpose.refund,
     BusinessPurpose.reimbursementReceipt,
     BusinessPurpose.reimbursementClose,
     BusinessPurpose.lending,
@@ -158,6 +159,7 @@ const _allowedPurposesByRole = <TransactionRole, Set<BusinessPurpose>>{
   TransactionRole.refundOffset: {BusinessPurpose.refund},
   TransactionRole.reimbursementExpenseCategory: {
     BusinessPurpose.reimbursementAdvance,
+    BusinessPurpose.refund,
   },
   TransactionRole.reimbursementGapIncome: {BusinessPurpose.reimbursementClose},
   TransactionRole.reimbursementGapExpense: {BusinessPurpose.reimbursementClose},
@@ -246,8 +248,7 @@ EntryDirection? entryDirectionFor({
           : EntryDirection.debit,
     // 报销垫付时支出分类只是业务事实,不产生分录;它在结束报销少收时才被使用。
     TransactionRole.reimbursementExpenseCategory => null,
-    TransactionRole.openingBalance ||
-    TransactionRole.balanceAdjustment => null,
+    TransactionRole.openingBalance || TransactionRole.balanceAdjustment => null,
   };
 }
 
@@ -281,10 +282,8 @@ PostingBalancingAccount? balancingAccountFor(BusinessPurpose businessPurpose) {
     BusinessPurpose.debtRelief => const SystemBalancingAccount(
       SystemKey.debtReliefIncome,
     ),
-    BusinessPurpose.openingBalance ||
-    BusinessPurpose.balanceAdjustment => const SystemBalancingAccount(
-      SystemKey.openingBalance,
-    ),
+    BusinessPurpose.openingBalance || BusinessPurpose.balanceAdjustment =>
+      const SystemBalancingAccount(SystemKey.openingBalance),
     _ => null,
   };
 }

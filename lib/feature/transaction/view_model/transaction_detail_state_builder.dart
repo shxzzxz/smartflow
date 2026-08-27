@@ -19,9 +19,11 @@ TransactionDetailUiState buildTransactionDetailLoadedState({
     detail: detail,
     behavior: behavior,
     hero: transactionDetailHero(detail: detail, accountLookup: accountLookup),
-    occurredAtText: formatTransactionDetailDateTime(
-      detail.occurredAt,
+    allocationBreakdowns: transactionDetailAllocationBreakdowns(
+      detail: detail,
+      accountLookup: accountLookup,
     ),
+    occurredAtText: formatTransactionDetailDateTime(detail.occurredAt),
     postedAtText: formatTransactionDetailDateTime(detail.postedAt),
     createdAtText: formatTransactionDetailDateTime(
       detail.createdAt ?? detail.occurredAt,
@@ -96,9 +98,13 @@ List<DetailAccountRow> _accountRows(
       final out = detail.linesOf(TransactionRole.settlementOut).toList();
       final incoming = detail.linesOf(TransactionRole.settlementIn).toList();
       return [
-        if (out.isEmpty) placeholder('转出账户') else
+        if (out.isEmpty)
+          placeholder('转出账户')
+        else
           for (final line in out) info('转出账户', line),
-        if (incoming.isEmpty) placeholder('转入账户') else
+        if (incoming.isEmpty)
+          placeholder('转入账户')
+        else
           for (final line in incoming) info('转入账户', line),
       ];
     case BusinessPurpose.dailyIncome:
@@ -109,63 +115,93 @@ List<DetailAccountRow> _accountRows(
     case BusinessPurpose.receivableCollection:
       final editPurpose =
           purpose == BusinessPurpose.dailyIncome ||
-                  purpose == BusinessPurpose.borrowing
-              ? purpose == BusinessPurpose.borrowing
-                  ? AccountSelectionPurpose.fund
-                  : AccountSelectionPurpose.settlement
-              : null;
+              purpose == BusinessPurpose.borrowing
+          ? purpose == BusinessPurpose.borrowing
+                ? AccountSelectionPurpose.fund
+                : AccountSelectionPurpose.settlement
+          : null;
       final incoming = detail.linesOf(TransactionRole.settlementIn).toList();
+      final usesBreakdown =
+          incoming.length > 1 &&
+          (purpose == BusinessPurpose.refund ||
+              purpose == BusinessPurpose.reimbursementReceipt ||
+              purpose == BusinessPurpose.reimbursementClose);
+      if (usesBreakdown) return const [];
       if (incoming.isEmpty) {
         return [placeholder('收支账户', editPurpose: editPurpose)];
       }
-      return [for (final line in incoming) info('收支账户', line, editPurpose: editPurpose)];
+      return [
+        for (final line in incoming)
+          info('收支账户', line, editPurpose: editPurpose),
+      ];
     case BusinessPurpose.dailyExpense:
     case BusinessPurpose.debtRepayment:
     case BusinessPurpose.lending:
-      final label =
-          purpose == BusinessPurpose.debtRepayment
-              ? '还款账户'
-              : purpose == BusinessPurpose.lending
-              ? '付款账户'
-              : '收支账户';
-      final editPurpose =
-          purpose == BusinessPurpose.debtRepayment
-              ? AccountSelectionPurpose.repaymentSource
-              : purpose == BusinessPurpose.lending
-              ? AccountSelectionPurpose.fund
-              : AccountSelectionPurpose.settlement;
+      final label = purpose == BusinessPurpose.debtRepayment
+          ? '还款账户'
+          : purpose == BusinessPurpose.lending
+          ? '付款账户'
+          : '收支账户';
+      final editPurpose = purpose == BusinessPurpose.debtRepayment
+          ? AccountSelectionPurpose.repaymentSource
+          : purpose == BusinessPurpose.lending
+          ? AccountSelectionPurpose.fund
+          : AccountSelectionPurpose.settlement;
       final outgoing = detail.linesOf(TransactionRole.settlementOut).toList();
+      if (purpose == BusinessPurpose.dailyExpense && outgoing.length > 1) {
+        return const [];
+      }
       if (outgoing.isEmpty) {
         return [placeholder(label, editPurpose: editPurpose)];
       }
-      return [for (final line in outgoing) info(label, line, editPurpose: editPurpose)];
+      return [
+        for (final line in outgoing)
+          info(label, line, editPurpose: editPurpose),
+      ];
     case BusinessPurpose.reimbursementAdvance:
       final outgoing = detail.linesOf(TransactionRole.settlementOut).toList();
       final receivables = detail.linesOf(TransactionRole.receivable).toList();
       return [
-        if (outgoing.isEmpty)
+        if (outgoing.length > 1)
+          ...const []
+        else if (outgoing.isEmpty)
           placeholder('收支账户', editPurpose: AccountSelectionPurpose.settlement)
         else
           for (final line in outgoing)
             info('收支账户', line, editPurpose: AccountSelectionPurpose.settlement),
         if (receivables.isEmpty)
-          placeholder('报销账户', editPurpose: AccountSelectionPurpose.reimbursementReceivable)
+          placeholder(
+            '报销账户',
+            editPurpose: AccountSelectionPurpose.reimbursementReceivable,
+          )
         else
           for (final line in receivables)
-            info('报销账户', line, editPurpose: AccountSelectionPurpose.reimbursementReceivable),
+            info(
+              '报销账户',
+              line,
+              editPurpose: AccountSelectionPurpose.reimbursementReceivable,
+            ),
       ];
     case BusinessPurpose.openingBalance:
       final lines = detail.linesOf(TransactionRole.openingBalance).toList();
-      return lines.isEmpty ? [placeholder('账户')] : [for (final line in lines) info('账户', line)];
+      return lines.isEmpty
+          ? [placeholder('账户')]
+          : [for (final line in lines) info('账户', line)];
     case BusinessPurpose.balanceAdjustment:
       final lines = detail.linesOf(TransactionRole.balanceAdjustment).toList();
-      return lines.isEmpty ? [placeholder('账户')] : [for (final line in lines) info('账户', line)];
+      return lines.isEmpty
+          ? [placeholder('账户')]
+          : [for (final line in lines) info('账户', line)];
     case BusinessPurpose.badDebt:
       final lines = detail.linesOf(TransactionRole.receivable).toList();
-      return lines.isEmpty ? [placeholder('账户')] : [for (final line in lines) info('账户', line)];
+      return lines.isEmpty
+          ? [placeholder('账户')]
+          : [for (final line in lines) info('账户', line)];
     case BusinessPurpose.debtRelief:
       final lines = detail.linesOf(TransactionRole.liability).toList();
-      return lines.isEmpty ? [placeholder('账户')] : [for (final line in lines) info('账户', line)];
+      return lines.isEmpty
+          ? [placeholder('账户')]
+          : [for (final line in lines) info('账户', line)];
   }
 }
 
@@ -193,14 +229,13 @@ DetailReimbursement? _reimbursementState(TransactionReadModel detail) {
   }
   final summary = detail.reimbursementSummary;
   final hasActivity = summary != null && summary.receivedAmount.minorUnits > 0;
-  final summaryText =
-      summary == null
-          ? '未报销'
-          : summary.isClosed
-          ? '已结束 · 实收 ${summary.receivedAmount.format()}'
-          : hasActivity
-          ? '已收 ${summary.receivedAmount.format()} / 应收 ${summary.advanceAmount.format()}'
-          : '未报销';
+  final summaryText = summary == null
+      ? '未报销'
+      : summary.isClosed
+      ? '已结束 · 实收 ${summary.receivedAmount.format()}'
+      : hasActivity
+      ? '已收 ${summary.receivedAmount.format()} / 应收 ${summary.advanceAmount.format()}'
+      : '未报销';
   return DetailReimbursement(
     summaryText: summaryText,
     hasActivity: hasActivity,
@@ -277,8 +312,8 @@ DetailEditPermission _accountEditPermission(
     null => const DetailEditPermission.allowed(),
     AccountSelectionPurpose.settlement ||
     AccountSelectionPurpose.fund ||
-    AccountSelectionPurpose
-        .repaymentSource => behavior.canEditSettlementAccount,
+    AccountSelectionPurpose.repaymentSource =>
+      behavior.canEditSettlementAccount,
     AccountSelectionPurpose.reimbursementReceivable =>
       const DetailEditPermission.allowed(),
     AccountSelectionPurpose.ordinaryReceivable ||
@@ -291,19 +326,21 @@ DetailEditPermission _accountEditPermission(
   };
 }
 
-DetailBehaviorConfig _behaviorConfigFor(TransactionReadModel detail, TransactionReadModel? parentDetail) {
+DetailBehaviorConfig _behaviorConfigFor(
+  TransactionReadModel detail,
+  TransactionReadModel? parentDetail,
+) {
   final transaction = detail;
   const postedAtPermission = DetailEditPermission.allowed();
   final editLocked = _isEarlierReimbursementChildLocked(detail, parentDetail);
   if (transaction.businessPurpose == BusinessPurpose.refund ||
       transaction.businessPurpose == BusinessPurpose.reimbursementReceipt ||
       transaction.businessPurpose == BusinessPurpose.reimbursementClose) {
-    final editPermission =
-        editLocked
-            ? const DetailEditPermission.denied(
-              reason: _reimbursementClosedEditReason,
-            )
-            : const DetailEditPermission.allowed();
+    final editPermission = editLocked
+        ? const DetailEditPermission.denied(
+            reason: _reimbursementClosedEditReason,
+          )
+        : const DetailEditPermission.allowed();
     return DetailBehaviorConfig(
       editRoute: switch (transaction.businessPurpose) {
         BusinessPurpose.refund => '/transaction/${transaction.id}/refund/edit',
@@ -374,11 +411,10 @@ DetailBehaviorConfig _behaviorConfigFor(TransactionReadModel detail, Transaction
     if (repaymentType != null) {
       return DetailBehaviorConfig(
         bannerText: '此为信贷${repaymentType.label}交易，金额调整请在信贷页面处理',
-        editRoute:
-            repaymentType == RepaymentType.bill
-                ? '/repayments/${ownership.ownerId}/edit'
-                    '?transactionId=${transaction.id}'
-                : null,
+        editRoute: repaymentType == RepaymentType.bill
+            ? '/repayments/${ownership.ownerId}/edit'
+                  '?transactionId=${transaction.id}'
+            : null,
         canEditOccurredAt: const DetailEditPermission.allowed(),
         canEditPostedAt: postedAtPermission,
         canEditNote: const DetailEditPermission.allowed(),
@@ -429,7 +465,10 @@ DetailEditPermission _tagEditPermissionFor(TransactionReadModel transaction) {
   };
 }
 
-bool _isEarlierReimbursementChildLocked(TransactionReadModel detail, TransactionReadModel? parentDetail) {
+bool _isEarlierReimbursementChildLocked(
+  TransactionReadModel detail,
+  TransactionReadModel? parentDetail,
+) {
   final purpose = detail.businessPurpose;
   if (purpose != BusinessPurpose.refund &&
       purpose != BusinessPurpose.reimbursementReceipt) {

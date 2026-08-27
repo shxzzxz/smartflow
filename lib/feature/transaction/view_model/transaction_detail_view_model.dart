@@ -63,9 +63,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
   Future<UiActionOutcome<void>> changeNote(String? value) {
     final normalized = value == null ? null : trimToNull(value);
     return _runAction((loaded) {
-      return _actionDispatcherFor(
-        loaded.detail,
-      ).changeNote(normalized);
+      return _actionDispatcherFor(loaded.detail).changeNote(normalized);
     });
   }
 
@@ -85,17 +83,13 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
 
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) {
     return _runAction((loaded) {
-      return _actionDispatcherFor(
-        loaded.detail,
-      ).changeOccurredAt(value);
+      return _actionDispatcherFor(loaded.detail).changeOccurredAt(value);
     });
   }
 
   Future<UiActionOutcome<void>> changePostedAt(DateTime value) {
     return _runAction((loaded) {
-      return _actionDispatcherFor(
-        loaded.detail,
-      ).changePostedAt(value);
+      return _actionDispatcherFor(loaded.detail).changePostedAt(value);
     });
   }
 
@@ -188,7 +182,11 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
             actualReceivedAmount: input.amount,
             advanceTransactionId: loaded.detail.id,
             receivableAccountId: receivableAccountId,
-            receiveAccountId: receiveAccountId,
+            settlementAllocations: singleAllocation(
+              accountId: receiveAccountId,
+              amount: input.amount,
+            ),
+            gapExpenseAllocations: const [],
             occurredAt: input.occurredAt,
             note: note,
           ),
@@ -199,7 +197,10 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
             amount: input.amount,
             advanceTransactionId: loaded.detail.id,
             receivableAccountId: receivableAccountId,
-            receiveAccountId: receiveAccountId,
+            settlementAllocations: singleAllocation(
+              accountId: receiveAccountId,
+              amount: input.amount,
+            ),
             occurredAt: input.occurredAt,
             note: note,
           ),
