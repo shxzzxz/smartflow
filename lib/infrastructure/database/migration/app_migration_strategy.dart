@@ -96,7 +96,7 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
       if (from < 29) {
         try {
           // 分项回填需要按 system_key 复现分录。跨多个版本直接升级时，
-          // 先把内置账户补到当前版本，再执行逐笔重放校验。
+          // 先把内置账户补到当前版本，再执行 v29 快照规则的逐笔校验。
           await ensureBuiltinData(database);
           await migrateTransactionLines(database, migrator);
           await _createTransactionRowIndexes(database);

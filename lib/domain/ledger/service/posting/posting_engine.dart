@@ -80,23 +80,6 @@ class PostingEngine {
     ];
   }
 
-  /// 用交易当前的分项重新过账,替换其分录。迁移回填与性质测试的复现入口。
-  Transaction repost(
-    Transaction transaction, {
-    Map<SystemKey, String> systemAccountIds = const {},
-    Map<String, AccountType> accountTypes = const {},
-  }) {
-    return transaction.copyWith(
-      entries: postEntries(
-        transactionId: transaction.id,
-        businessPurpose: transaction.businessPurpose,
-        lines: transaction.lines,
-        systemAccountIds: systemAccountIds,
-        accountTypes: accountTypes,
-      ),
-    );
-  }
-
   Transaction create(
     PostingInstruction instruction, {
     Map<SystemKey, String> systemAccountIds = const {},
@@ -1001,10 +984,14 @@ class PostingEngine {
     Map<SystemKey, String> systemAccountIds = const {},
     Map<String, AccountType> accountTypes = const {},
   }) {
-    final transaction = repost(
-      draft,
-      systemAccountIds: systemAccountIds,
-      accountTypes: accountTypes,
+    final transaction = draft.copyWith(
+      entries: postEntries(
+        transactionId: draft.id,
+        businessPurpose: draft.businessPurpose,
+        lines: draft.lines,
+        systemAccountIds: systemAccountIds,
+        accountTypes: accountTypes,
+      ),
     );
     transaction.validateSelf();
     return transaction;
