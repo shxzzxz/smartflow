@@ -2,6 +2,10 @@ import '../../entity/entry.dart';
 import '../../entity/transaction_line.dart';
 import '../../valobj/ledger_enum.dart';
 
+/// 交易主金额的正数约束。结束报销的主金额表达实际到账,允许一分未收。
+bool primaryAmountAllowsZero(BusinessPurpose businessPurpose) =>
+    businessPurpose == BusinessPurpose.reimbursementClose;
+
 /// 账户余额按借贷的净增量。
 ///
 /// - 资产 / 费用账户:借方为正

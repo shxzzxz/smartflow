@@ -558,6 +558,7 @@ void main() {
       "('refund', 'refund', 3, 3, 100, 'advance', NULL, 'manual'), "
       "('receipt', 'reimbursementReceipt', 4, 4, 800, 'advance', NULL, 'manual'), "
       "('close', 'reimbursementClose', 5, 5, 800, 'advance', NULL, 'manual'), "
+      "('close-zero', 'reimbursementClose', 5, 5, 1000, 'advance', NULL, 'manual'), "
       "('repayment', 'debtRepayment', 6, 6, 1125, NULL, NULL, 'manual'), "
       "('borrowing', 'borrowing', 7, 7, 1000, NULL, NULL, 'manual'), "
       "('opening', 'openingBalance', 8, 8, 1000, NULL, NULL, 'manual'), "
@@ -574,6 +575,8 @@ void main() {
       "('receipt-main', 'receipt', 1, 'reimbursementReceiptMain', 800), "
       "('close-main', 'close', 1, 'reimbursementCloseMain', 1000), "
       "('close-gap', 'close', 2, 'reimbursementGapExpense', 200), "
+      "('close-zero-main', 'close-zero', 1, 'reimbursementCloseMain', 1000), "
+      "('close-zero-gap', 'close-zero', 2, 'reimbursementGapExpense', 1000), "
       "('repayment-principal', 'repayment', 1, 'repaymentPrincipal', 1000), "
       "('repayment-interest', 'repayment', 2, 'repaymentInterest', 100), "
       "('repayment-fee', 'repayment', 3, 'repaymentFee', 50), "
@@ -600,6 +603,8 @@ void main() {
       "('close-bank', 'close', 'migration-bank', 'debit', 800), "
       "('close-gap', 'close', 'migration-travel', 'debit', 200), "
       "('close-receivable', 'close', 'migration-receivable', 'credit', 1000), "
+      "('close-zero-gap', 'close-zero', 'migration-travel', 'debit', 1000), "
+      "('close-zero-receivable', 'close-zero', 'migration-receivable', 'credit', 1000), "
       "('repayment-liability', 'repayment', 'migration-liability', 'debit', 1000), "
       "('repayment-interest-entry', 'repayment', "
       "(SELECT id FROM accounts WHERE system_key = 'interestExpense'), 'debit', 100), "
@@ -644,6 +649,8 @@ void main() {
         'close:settlementIn:migration-bank:800',
         'close:receivable:migration-receivable:1000',
         'close:reimbursementGapExpense:migration-travel:200',
+        'close-zero:receivable:migration-receivable:1000',
+        'close-zero:reimbursementGapExpense:migration-travel:1000',
         'refund:settlementIn:migration-bank:100',
         'refund:reimbursementExpenseCategory:migration-travel:100',
         'refund:receivable:migration-receivable:100',
@@ -656,6 +663,29 @@ void main() {
         'adjustment:balanceAdjustment:migration-bank:-500',
       }),
     );
+    final closePrimary = await upgraded
+        .customSelect(
+          "SELECT primary_amount_minor FROM transactions WHERE id = 'close'",
+        )
+        .getSingle();
+    expect(closePrimary.read<int>('primary_amount_minor'), 800);
+    final closeZeroPrimary = await upgraded
+        .customSelect(
+          "SELECT primary_amount_minor FROM transactions WHERE id = 'close-zero'",
+        )
+        .getSingle();
+    expect(closeZeroPrimary.read<int>('primary_amount_minor'), 0);
+    final closeZeroSettlement = await upgraded
+        .customSelect(
+          "SELECT account_id, amount_minor FROM transaction_lines "
+          "WHERE transaction_id = 'close-zero' AND role = 'settlementIn'",
+        )
+        .getSingle();
+    expect(
+      closeZeroSettlement.readNullable<String>('account_id') != null,
+      isTrue,
+    );
+    expect(closeZeroSettlement.read<int>('amount_minor'), 0);
     final oldDetails = await upgraded
         .customSelect(
           "SELECT name FROM sqlite_master "

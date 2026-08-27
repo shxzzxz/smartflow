@@ -28,6 +28,31 @@ void main() {
     expect(detail.reimbursementSummary?.outstanding.minorUnits, 2000);
   });
 
+  test(
+    'zero-cash reimbursement close contributes zero received amount',
+    () async {
+      final parent = _transaction(
+        'parent',
+        BusinessPurpose.reimbursementAdvance,
+        10000,
+      );
+      final close = _transaction(
+        'close',
+        BusinessPurpose.reimbursementClose,
+        0,
+        parentId: parent.id,
+      );
+      final service = _service(
+        transactions: {parent.id: parent, close.id: close},
+      );
+
+      final detail = await service.findTransactionDetail(parent.id);
+
+      expect(detail!.reimbursementReceivedTotal, Money.zero());
+      expect(detail.reimbursementSummary?.isClosed, isTrue);
+    },
+  );
+
   test('topLevelOnly false returns children both flat and nested', () async {
     final parent = _transaction('parent', BusinessPurpose.dailyExpense, 1000);
     final child = _transaction('child', BusinessPurpose.refund, 200, parentId: 'parent');

@@ -122,7 +122,9 @@ class Transaction {
         message: 'A transaction must have at least two entries.',
       );
     }
-    if (primaryAmount.minorUnits <= 0) {
+    if (primaryAmount.minorUnits < 0 ||
+        (primaryAmount.minorUnits == 0 &&
+            !primaryAmountAllowsZero(businessPurpose))) {
       LedgerViolationReason.primaryAmountNotPositive.throwException(
         message: 'Primary amount has an invalid sign.',
       );

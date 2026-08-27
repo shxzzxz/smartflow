@@ -72,11 +72,21 @@ ORDER BY transaction_row.id
 ''').get();
 
   final companions = <TransactionLinesCompanion>[];
+  final primaryAmountCorrections = <String, int>{};
   for (final row in transactionRows) {
     final transactionId = row.read<String>('id');
     final businessPurpose = BusinessPurpose.values.byName(
       row.read<String>('business_purpose'),
     );
+    if (businessPurpose == BusinessPurpose.reimbursementClose) {
+      final legacyAmounts =
+          legacyAmountsByTransaction[transactionId] ?? const <String, int>{};
+      final actual =
+          (legacyAmounts['reimbursementCloseMain'] ?? 0) +
+          (legacyAmounts['reimbursementGapIncome'] ?? 0) -
+          (legacyAmounts['reimbursementGapExpense'] ?? 0);
+      primaryAmountCorrections[transactionId] = actual;
+    }
     final entries = entriesByTransaction[transactionId] ?? const <Entry>[];
     final lines = _linesFor(
       transactionId: transactionId,
@@ -124,10 +134,17 @@ ORDER BY transaction_row.id
     ]);
   }
 
-  if (companions.isEmpty) return;
-  await database.batch(
-    (batch) => batch.insertAll(database.transactionLines, companions),
-  );
+  if (companions.isNotEmpty) {
+    await database.batch(
+      (batch) => batch.insertAll(database.transactionLines, companions),
+    );
+  }
+  for (final correction in primaryAmountCorrections.entries) {
+    await database.customStatement(
+      'UPDATE transactions SET primary_amount_minor = ? WHERE id = ?',
+      [correction.value, correction.key],
+    );
+  }
 }
 
 void _verifyPostingReplay({

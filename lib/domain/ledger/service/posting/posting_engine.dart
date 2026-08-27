@@ -897,7 +897,8 @@ class PostingEngine {
         businessPurpose: BusinessPurpose.reimbursementClose,
         occurredAt: instruction.occurredAt,
         postedAt: instruction.postedAt,
-        primaryAmount: actual.minorUnits > 0 ? actual : outstanding,
+        // 主金额表达结束报销的实际到账,未收到现金时就是 0。
+        primaryAmount: actual,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
         isExcludedFromStats: advance.isExcludedFromStats,

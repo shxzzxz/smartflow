@@ -365,5 +365,46 @@ void main() {
       expect(close.isExcludedFromStats, isTrue);
       expect(close.isExcludedFromBudget, isTrue);
     });
+
+    test('zero-cash reimbursement close keeps zero primary amount', () {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final advance = engine.createReimbursementAdvance(
+        singleReimbursementAdvanceInstruction(
+          amount: Money.parse('100.00'),
+          receivableAccountId: 'receivable',
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'travel',
+          occurredAt: DateTime(2026, 5, 1),
+        ),
+      );
+
+      final close = engine.createReimbursementClose(
+        instruction: singleReimbursementCloseInstruction(
+          advanceTransactionId: advance.id,
+          actualReceivedAmount: Money.zero(),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'bank',
+          occurredAt: DateTime(2026, 5, 2),
+        ),
+        advance: advance,
+        outstanding: Money.parse('100.00'),
+        gapIncomeAccountId: null,
+      );
+
+      expect(close.primaryAmount, Money.zero());
+      expect(
+        close.lines
+            .singleWhere((line) => line.role == TransactionRole.settlementIn)
+            .amount,
+        Money.zero(),
+      );
+      expect(close.entries.any((entry) => entry.accountId == 'bank'), isFalse);
+      expect(
+        close.entries.every((entry) => entry.amount != Money.zero()),
+        isTrue,
+      );
+    });
   });
 }

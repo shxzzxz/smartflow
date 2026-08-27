@@ -243,6 +243,7 @@ void main() {
       final rewritten = result.currentTransaction;
       expect(rewritten.note, 'metadata only');
       expect(rewritten.postedAt, close.postedAt);
+      expect(rewritten.primaryAmount, Money.zero());
       expect(
         rewritten.entries.where((entry) => entry.accountId == 'bank'),
         isEmpty,
