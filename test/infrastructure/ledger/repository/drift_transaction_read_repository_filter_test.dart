@@ -9,6 +9,73 @@ import '../../../helper/test_app_database.dart';
 
 void main() {
   test(
+    'fact and impact matches use different storage representations',
+    () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      await database.batch((batch) {
+        batch.insertAll(database.transactions, [
+          _transactionCompanion('line-only'),
+          _transactionCompanion('entry-only'),
+        ]);
+        batch.insert(
+          database.transactionLines,
+          TransactionLinesCompanion.insert(
+            id: 'line-only-category',
+            transactionId: 'line-only',
+            lineNo: 1,
+            role: TransactionRole.category,
+            accountId: const Value('food'),
+            amountMinor: 100,
+          ),
+        );
+        batch.insert(
+          database.transactionLines,
+          TransactionLinesCompanion.insert(
+            id: 'line-only-receivable',
+            transactionId: 'line-only',
+            lineNo: 2,
+            role: TransactionRole.receivable,
+            accountId: const Value('cash'),
+            amountMinor: 100,
+          ),
+        );
+        batch.insert(
+          database.entries,
+          _entryCompanion('entry-only-category', 'entry-only', 'food'),
+        );
+      });
+
+      final repository = DriftTransactionReadRepository(database);
+      final factPage = await repository
+          .watchPage(
+            const TransactionPageQuery(
+              match: TransactionFactMatch(categoryAccountIds: {'food'}),
+            ),
+          )
+          .first;
+      final impactPage = await repository
+          .watchPage(
+            const TransactionPageQuery(
+              match: TransactionImpactMatch(categoryAccountIds: {'food'}),
+            ),
+          )
+          .first;
+      final settlementFactPage = await repository
+          .watchPage(
+            const TransactionPageQuery(
+              match: TransactionFactMatch(settlementAccountIds: {'cash'}),
+            ),
+          )
+          .first;
+
+      expect(factPage.map((transaction) => transaction.id), ['line-only']);
+      expect(impactPage.map((transaction) => transaction.id), ['entry-only']);
+      expect(settlementFactPage, isEmpty);
+    },
+  );
+
+  test(
     'intersects independent category and settlement-entry filters',
     () async {
       final database = createTestDatabase();
@@ -33,8 +100,10 @@ void main() {
           await DriftTransactionReadRepository(database)
               .watchPage(
                 const TransactionPageQuery(
-                  categoryAccountIds: {'food'},
-                  settlementAccountIds: {'cash'},
+                  match: TransactionImpactMatch(
+                    categoryAccountIds: {'food'},
+                    settlementAccountIds: {'cash'},
+                  ),
                 ),
               )
               .first;
@@ -68,8 +137,10 @@ void main() {
         await DriftTransactionReadRepository(database)
             .watchPage(
               const TransactionPageQuery(
-                categoryAccountIds: {'food', 'travel'},
-                settlementAccountIds: {'cash', 'bank'},
+                match: TransactionImpactMatch(
+                  categoryAccountIds: {'food', 'travel'},
+                  settlementAccountIds: {'cash', 'bank'},
+                ),
                 limit: 2,
               ),
             )

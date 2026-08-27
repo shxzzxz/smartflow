@@ -77,8 +77,25 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
                 table.id.isSmallerThanValue(before.id)),
       );
     }
-    _andEntryMatch(select, query.categoryAccountIds);
-    _andEntryMatch(select, query.settlementAccountIds);
+    final match = query.match;
+    _andMatch(
+      select,
+      match,
+      match.categoryAccountIds,
+      factRoles: const {
+        TransactionRole.category,
+        TransactionRole.reimbursementExpenseCategory,
+      },
+    );
+    _andMatch(
+      select,
+      match,
+      match.settlementAccountIds,
+      factRoles: const {
+        TransactionRole.settlementIn,
+        TransactionRole.settlementOut,
+      },
+    );
     _andTagMatch(select, query);
     select.orderBy([
       (table) => OrderingTerm.desc(table.occurredAt),
@@ -91,13 +108,20 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
     return select.watch().map((rows) => rows.map(mapTransaction).toList());
   }
 
-  /// 每个筛选维度一个独立分录子查询；多个维度叠加即分录条件取交集。
-  void _andEntryMatch(
+  /// Each dimension is an independent subquery; dimensions intersect.
+  void _andMatch(
     SimpleSelectStatement<$TransactionsTable, TransactionRow> select,
-    Set<String>? accountIds,
-  ) {
+    TransactionMatch match,
+    Set<String>? accountIds, {
+    required Set<TransactionRole> factRoles,
+  }) {
     if (accountIds == null) return;
-    select.where((_) => _entryAccountMatch(accountIds));
+    select.where(
+      (_) => switch (match) {
+        TransactionFactMatch() => _lineAccountMatch(accountIds, factRoles),
+        TransactionImpactMatch() => _entryAccountMatch(accountIds),
+      },
+    );
   }
 
   /// 标签维度：事件级匹配。标签只挂在顶层交易上，子交易经
@@ -308,23 +332,51 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
           expression &
           _db.transactions.occurredAt.isSmallerThanValue(occurredUntil);
     }
-    expression = _andEntryAccountMatch(expression, query.categoryIds);
-    expression = _andEntryAccountMatch(expression, query.accountIds);
+    expression = _andFactAccountMatch(
+      expression,
+      query.categoryIds,
+      const {
+        TransactionRole.category,
+        TransactionRole.reimbursementExpenseCategory,
+      },
+    );
+    expression = _andFactAccountMatch(
+      expression,
+      query.accountIds,
+      const {TransactionRole.settlementIn, TransactionRole.settlementOut},
+    );
     return expression;
   }
 
-  Expression<bool> _andEntryAccountMatch(
+  /// Cleanup is a transaction-fact query. Existing rows may predate
+  /// transaction_lines, so entries remain a compatibility source as well.
+  Expression<bool> _andFactAccountMatch(
     Expression<bool> expression,
     Set<String>? accountIds,
+    Set<TransactionRole> roles,
   ) {
     if (accountIds == null) return expression;
-    return expression & _entryAccountMatch(accountIds);
+    return expression &
+        (_entryAccountMatch(accountIds) | _lineAccountMatch(accountIds, roles));
   }
 
   Expression<bool> _entryAccountMatch(Set<String> accountIds) {
     final subquery = _db.selectOnly(_db.entries, distinct: true)
       ..addColumns([_db.entries.transactionId])
       ..where(_db.entries.accountId.isIn(accountIds));
+    return _db.transactions.id.isInQuery(subquery);
+  }
+
+  Expression<bool> _lineAccountMatch(
+    Set<String> accountIds,
+    Set<TransactionRole> roles,
+  ) {
+    final subquery = _db.selectOnly(_db.transactionLines, distinct: true)
+      ..addColumns([_db.transactionLines.transactionId])
+      ..where(
+        _db.transactionLines.accountId.isIn(accountIds) &
+            _db.transactionLines.role.isInValues(roles),
+      );
     return _db.transactions.id.isInQuery(subquery);
   }
 

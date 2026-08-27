@@ -236,8 +236,9 @@ void main() {
     await container.read(balanceProvider.future);
 
     final cashflow = service.queries[0];
-    expect(cashflow.categoryAccountIds, {'dining'});
-    expect(cashflow.settlementAccountIds, isNull);
+    expect(cashflow.match, isA<TransactionImpactMatch>());
+    expect(cashflow.match.categoryAccountIds, {'dining'});
+    expect(cashflow.match.settlementAccountIds, isNull);
     expect(cashflow.occurredFrom, from);
     expect(cashflow.occurredUntil, until);
     expect(cashflow.scope, same(TransactionScopeFilter.stats));
@@ -245,12 +246,14 @@ void main() {
     expect(cashflow.limit, isNull);
 
     final unsubdivided = service.queries[1];
-    expect(unsubdivided.categoryAccountIds, {'food'});
+    expect(unsubdivided.match, isA<TransactionImpactMatch>());
+    expect(unsubdivided.match.categoryAccountIds, {'food'});
     expect(unsubdivided.scope, same(TransactionScopeFilter.stats));
 
     final balance = service.queries[2];
-    expect(balance.settlementAccountIds, {'cash'});
-    expect(balance.categoryAccountIds, isNull);
+    expect(balance.match, isA<TransactionImpactMatch>());
+    expect(balance.match.settlementAccountIds, {'cash'});
+    expect(balance.match.categoryAccountIds, isNull);
     expect(balance.occurredFrom, isNull);
     expect(balance.occurredUntil, until);
     expect(balance.scope, same(TransactionScopeFilter.assetLiability));
@@ -292,7 +295,7 @@ void main() {
       }),
     );
     await _waitFor(() => service.queries.isNotEmpty);
-    expect(service.queries.last.categoryAccountIds, {'food', 'dining'});
+    expect(service.queries.last.match.categoryAccountIds, {'food', 'dining'});
 
     accountLookups.add(
       AccountLookup({
@@ -307,7 +310,7 @@ void main() {
       }),
     );
     await _waitFor(() => service.queries.length >= 2);
-    expect(service.queries.last.categoryAccountIds, {'food', 'hotpot'});
+    expect(service.queries.last.match.categoryAccountIds, {'food', 'hotpot'});
   });
 }
 

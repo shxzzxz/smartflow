@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_port_api.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -71,6 +72,26 @@ void main() {
         ownership: const TransactionOwnership(ownerType: 'installment'),
       ),
     ]);
+    await database.batch((batch) {
+      batch.insertAll(database.transactionLines, [
+        TransactionLinesCompanion.insert(
+          id: 'food-bank-category-fact',
+          transactionId: 'food-bank',
+          lineNo: 1,
+          role: TransactionRole.reimbursementExpenseCategory,
+          accountId: const Value('cat-line-only'),
+          amountMinor: 1000,
+        ),
+        TransactionLinesCompanion.insert(
+          id: 'food-bank-settlement-fact',
+          transactionId: 'food-bank',
+          lineNo: 2,
+          role: TransactionRole.settlementOut,
+          accountId: const Value('acc-line-only'),
+          amountMinor: 1000,
+        ),
+      ]);
+    });
   });
 
   tearDown(() async {
@@ -121,6 +142,24 @@ void main() {
       targets.map((target) => target.transactionId),
       unorderedEquals(['food-cash', 'parent-of-owned-child']),
     );
+  });
+
+  test('分类与账户条件可命中仅存在于顶层交易分项的事实', () async {
+    final targets = await repository.findCleanupTargets(
+      const TransactionCleanupQuery(
+        categoryIds: {'cat-line-only'},
+        accountIds: {'acc-line-only'},
+      ),
+    );
+
+    expect(targets.map((target) => target.transactionId), ['food-bank']);
+
+    final preview = await repository
+        .watchCleanupPreview(
+          const TransactionCleanupQuery(categoryIds: {'cat-line-only'}),
+        )
+        .first;
+    expect(preview.matchedGroupCount, 1);
   });
 
   test('时间范围含起点、不含终点', () async {

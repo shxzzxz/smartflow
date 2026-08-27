@@ -97,8 +97,11 @@ Stream<List<TransactionReadModel>> transactionList(
       .watch(transactionQueryServiceProvider)
       .watchTransactions(
         TransactionListQuery(
-          settlementAccountIds:
-              settlementAccountId == null ? null : {settlementAccountId},
+          match: TransactionImpactMatch(
+            settlementAccountIds: settlementAccountId == null
+                ? null
+                : {settlementAccountId},
+          ),
           topLevelOnly: settlementAccountId == null,
           limit: limit,
           offset: offset,

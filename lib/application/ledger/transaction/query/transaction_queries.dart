@@ -39,6 +39,33 @@ class CategorySelection {
   int get hashCode => Object.hash(id, matchOwnOnly);
 }
 
+/// Defines which persisted representation a transaction filter matches.
+sealed class TransactionMatch {
+  const TransactionMatch({this.categoryAccountIds, this.settlementAccountIds});
+
+  /// `null` means this dimension is not filtered; an empty set matches none.
+  final Set<String>? categoryAccountIds;
+
+  /// `null` means this dimension is not filtered; an empty set matches none.
+  final Set<String>? settlementAccountIds;
+}
+
+/// Matches user-visible transaction facts stored in `transaction_lines`.
+final class TransactionFactMatch extends TransactionMatch {
+  const TransactionFactMatch({
+    super.categoryAccountIds,
+    super.settlementAccountIds,
+  });
+}
+
+/// Matches actual ledger impact stored in `entries`.
+final class TransactionImpactMatch extends TransactionMatch {
+  const TransactionImpactMatch({
+    super.categoryAccountIds,
+    super.settlementAccountIds,
+  });
+}
+
 /// 将语义分类选择解析为当前账户快照中的物理分类账户 ID。
 Set<String> resolveCategoryAccountIds(
   Iterable<CategorySelection> selections,
@@ -68,8 +95,7 @@ Set<String> resolveCategoryAccountIds(
 
 class TransactionListQuery {
   const TransactionListQuery({
-    this.categoryAccountIds,
-    this.settlementAccountIds,
+    this.match = const TransactionFactMatch(),
     this.occurredFrom,
     this.occurredUntil,
     this.topLevelOnly = true,
@@ -83,11 +109,7 @@ class TransactionListQuery {
        assert(before == null || offset == 0),
        assert(!untaggedOnly || tagIds == null);
 
-  /// `null` 表示不筛选，空集合表示筛选维度已启用但无有效物理账户。
-  final Set<String>? categoryAccountIds;
-
-  /// `null` 表示不筛选，空集合表示筛选维度已启用但无有效物理账户。
-  final Set<String>? settlementAccountIds;
+  final TransactionMatch match;
 
   /// 标签维度：`null` 表示不筛选，空集合表示维度已启用但无有效标签；
   /// 匹配语义为任一命中（OR），子交易按所属顶层交易的标签继承命中。
@@ -107,13 +129,13 @@ class TransactionListQuery {
 
 /// 仓储层翻页查询。分类树已由查询层展开为物理分类 ID 集合，仓储不理解分类树。
 ///
-/// 两个账户维度各自独立匹配分录后取交集；`null` 表示该维度缺省，
-/// 空集合表示该维度无可匹配项，结果恒为空。标签维度按事件级语义匹配：
+/// [match] 决定两个账户维度匹配交易分项事实还是账务影响分录；两个维度
+/// 各自独立匹配后取交集。`null` 表示该维度缺省，空集合表示该维度无可匹配项，
+/// 结果恒为空。标签维度按事件级语义匹配：
 /// 标签挂在顶层交易上，子交易经 `parent_transaction_id` 继承命中。
 class TransactionPageQuery {
   const TransactionPageQuery({
-    this.categoryAccountIds,
-    this.settlementAccountIds,
+    this.match = const TransactionFactMatch(),
     this.occurredFrom,
     this.occurredUntil,
     this.topLevelOnly = true,
@@ -125,8 +147,7 @@ class TransactionPageQuery {
     this.untaggedOnly = false,
   }) : assert(!untaggedOnly || tagIds == null);
 
-  final Set<String>? categoryAccountIds;
-  final Set<String>? settlementAccountIds;
+  final TransactionMatch match;
   final Set<String>? tagIds;
   final bool untaggedOnly;
   final DateTime? occurredFrom;
@@ -159,7 +180,8 @@ class CashflowSummaryQuery {
 /// 数据清理的条件口径，匹配单位是交易组（顶层交易）。
 ///
 /// 条件类型之间取交集，集合内取并集；`null` 表示该条件不限，集合不允许为空。
-/// 分类与账户都按顶层交易分录触达的账户匹配；时间按顶层交易的交易时间匹配，
+/// 分类与账户优先按顶层交易的分类/结算分项事实匹配，同时纳入历史分录作为
+/// 旧数据兼容来源；不匹配子交易。时间按顶层交易的交易时间匹配，
 /// `occurredUntil` 为排他端点。
 class TransactionCleanupQuery {
   const TransactionCleanupQuery({

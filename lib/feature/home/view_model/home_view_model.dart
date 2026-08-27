@@ -101,8 +101,10 @@ Stream<List<TransactionReadModel>> homeTransactions(
       .watch(transactionQueryServiceProvider)
       .watchTransactions(
         TransactionListQuery(
-          categoryAccountIds: filter.categoryAccountIds,
-          settlementAccountIds: filter.settlementAccountIds,
+          match: TransactionFactMatch(
+            categoryAccountIds: filter.categoryAccountIds,
+            settlementAccountIds: filter.settlementAccountIds,
+          ),
           tagIds: filter.tagIds,
           untaggedOnly: filter.untaggedOnly,
           topLevelOnly: true,
@@ -217,8 +219,10 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
           .read(transactionQueryServiceProvider)
           .findTransactions(
             TransactionListQuery(
-              categoryAccountIds: filter.categoryAccountIds,
-              settlementAccountIds: filter.settlementAccountIds,
+              match: TransactionFactMatch(
+                categoryAccountIds: filter.categoryAccountIds,
+                settlementAccountIds: filter.settlementAccountIds,
+              ),
               tagIds: filter.tagIds,
               untaggedOnly: filter.untaggedOnly,
               topLevelOnly: true,

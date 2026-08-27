@@ -213,8 +213,9 @@ void main() {
         await container.pump();
 
         final query = transactionService.queries.last;
-        expect(query.categoryAccountIds, {'cat-food', 'cat-lunch'});
-        expect(query.settlementAccountIds, {'acc-cash', 'acc-card'});
+        expect(query.match, isA<TransactionFactMatch>());
+        expect(query.match.categoryAccountIds, {'cat-food', 'cat-lunch'});
+        expect(query.match.settlementAccountIds, {'acc-cash', 'acc-card'});
         expect(metricsService.comparisonQueries, hasLength(1));
         expect(metricsService.dailyQueries, hasLength(1));
       },
@@ -269,8 +270,9 @@ void main() {
 
         final query = transactionService.queries.last;
         expect(query.limit, homeTransactionPageSize);
-        expect(query.categoryAccountIds, {'cat-food'});
-        expect(query.settlementAccountIds, {'acc-cash'});
+        expect(query.match, isA<TransactionFactMatch>());
+        expect(query.match.categoryAccountIds, {'cat-food'});
+        expect(query.match.settlementAccountIds, {'acc-cash'});
         expect(query.before?.id, firstPage.last.id);
         expect(query.before?.occurredAt, firstPage.last.occurredAt);
         final state = container.read(

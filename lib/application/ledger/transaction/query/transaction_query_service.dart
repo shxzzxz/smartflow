@@ -90,8 +90,9 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   ) async {
     final accountsById = await _accountQuery.findAccountsById();
     final pageQuery = _normalizeQuery(query, accountsById);
-    final categoryAccountIds = pageQuery.categoryAccountIds;
-    final settlementAccountIds = pageQuery.settlementAccountIds;
+    final match = pageQuery.match;
+    final categoryAccountIds = match.categoryAccountIds;
+    final settlementAccountIds = match.settlementAccountIds;
     final tagIds = pageQuery.tagIds;
     if ((categoryAccountIds != null && categoryAccountIds.isEmpty) ||
         (settlementAccountIds != null && settlementAccountIds.isEmpty) ||
@@ -106,12 +107,9 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     TransactionListQuery query,
     Map<String, Account> accountsById,
   ) {
+    final requestedMatch = query.match;
     return TransactionPageQuery(
-      categoryAccountIds: _expandCategoryFilter(query, accountsById),
-      settlementAccountIds: _validateSettlementAccountFilter(
-        query.settlementAccountIds,
-        accountsById,
-      ),
+      match: _normalizeMatch(requestedMatch, accountsById),
       occurredFrom: query.occurredFrom,
       occurredUntil: query.occurredUntil,
       topLevelOnly: query.topLevelOnly,
@@ -122,6 +120,30 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
       tagIds: query.tagIds,
       untaggedOnly: query.untaggedOnly,
     );
+  }
+
+  TransactionMatch _normalizeMatch(
+    TransactionMatch match,
+    Map<String, Account> accountsById,
+  ) {
+    final categoryAccountIds = _expandCategoryFilter(
+      match.categoryAccountIds,
+      accountsById,
+    );
+    final settlementAccountIds = _validateSettlementAccountFilter(
+      match.settlementAccountIds,
+      accountsById,
+    );
+    return switch (match) {
+      TransactionFactMatch() => TransactionFactMatch(
+        categoryAccountIds: categoryAccountIds,
+        settlementAccountIds: settlementAccountIds,
+      ),
+      TransactionImpactMatch() => TransactionImpactMatch(
+        categoryAccountIds: categoryAccountIds,
+        settlementAccountIds: settlementAccountIds,
+      ),
+    };
   }
 
   Set<String>? _validateSettlementAccountFilter(
@@ -138,10 +160,9 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   }
 
   Set<String>? _expandCategoryFilter(
-    TransactionListQuery query,
+    Set<String>? accountIds,
     Map<String, Account> accountsById,
   ) {
-    final accountIds = query.categoryAccountIds;
     if (accountIds == null) return null;
     return {
       for (final accountId in accountIds)

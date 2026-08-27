@@ -235,7 +235,9 @@ Stream<List<TransactionReadModel>> budgetCategoryTransactions(
       .watch(transactionQueryServiceProvider)
       .watchTransactions(
         TransactionListQuery(
-          categoryAccountIds: categoryIds.toSet(),
+          match: TransactionImpactMatch(
+            categoryAccountIds: categoryIds.toSet(),
+          ),
           occurredFrom: visibleMonth.start,
           occurredUntil: visibleMonth.nextMonthStart,
           topLevelOnly: true,

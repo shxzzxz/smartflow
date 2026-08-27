@@ -82,6 +82,7 @@ TransactionListQuery _dayQuery(
 }) {
   final day = normalizeDate(selectedDate);
   return TransactionListQuery(
+    match: const TransactionFactMatch(),
     topLevelOnly: true,
     occurredFrom: day,
     occurredUntil: DateTime(day.year, day.month, day.day + 1),
