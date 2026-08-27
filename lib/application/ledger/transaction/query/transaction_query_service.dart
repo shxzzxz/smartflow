@@ -2,6 +2,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/entity/entry.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
+import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
 import 'package:smartflow/domain/ledger/entity/transaction_line.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_rule.dart';
 import 'package:smartflow/domain/ledger/valobj/account_usage.dart';
@@ -201,10 +202,28 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     TransactionReadModel build(
       Transaction transaction, {
       List<TransactionReadModel> children = const [],
+      List<Transaction> childTransactions = const [],
     }) {
       final lines = List<TransactionLine>.of(
         linesByTransaction[transaction.id] ?? const [],
       )..sort((left, right) => left.lineNo.compareTo(right.lineNo));
+      final transactionWithLines = transaction.copyWith(lines: lines);
+      final group = transaction.parentTransactionId == null
+          ? TransactionGroup(
+              parentTransaction: transactionWithLines,
+              childTransactions: [
+                for (final child in childTransactions)
+                  child.copyWith(
+                    lines:
+                        List<TransactionLine>.of(
+                          linesByTransaction[child.id] ?? const [],
+                        )..sort(
+                          (left, right) => left.lineNo.compareTo(right.lineNo),
+                        ),
+                  ),
+              ],
+            )
+          : null;
       return TransactionReadModel(
         id: transaction.id,
         parentTransactionId: transaction.parentTransactionId,
@@ -226,6 +245,8 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
           accountsById,
         ),
         children: children,
+        refundSummary: group?.refundSummary,
+        reimbursementSummary: group?.reimbursementSummary,
       );
     }
 
@@ -238,6 +259,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
         build(
           transaction,
           children: childModelsByParent[transaction.id] ?? const [],
+          childTransactions: childrenByParent[transaction.id] ?? const [],
         ),
     ];
   }

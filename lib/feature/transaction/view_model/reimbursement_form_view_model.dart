@@ -797,10 +797,10 @@ Future<_ReimbursementBase?> _loadBase(
       detail: detail,
       accounts: accounts,
     ),
-    availableCategoryAllocations: detail
-        .remainingRefundableCategoryAllocations(),
+    availableCategoryAllocations:
+        detail.refundSummary?.remainingCategoryAllocations ?? const [],
     categoryAccounts: _accountsForAllocations(
-      detail.refundableCategoryAllocations,
+      detail.refundSummary?.originalCategoryAllocations ?? const [],
       accountsById,
     ),
   );
@@ -839,10 +839,10 @@ Future<_ReimbursementBase?> _loadUnifiedBase(
       detail: detail,
       accounts: accounts,
     ),
-    availableCategoryAllocations: detail
-        .remainingRefundableCategoryAllocations(),
+    availableCategoryAllocations:
+        detail.refundSummary?.remainingCategoryAllocations ?? const [],
     categoryAccounts: _accountsForAllocations(
-      detail.refundableCategoryAllocations,
+      detail.refundSummary?.originalCategoryAllocations ?? const [],
       accountLookup.byId,
     ),
   );

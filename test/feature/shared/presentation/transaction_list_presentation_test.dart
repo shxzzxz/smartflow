@@ -493,6 +493,34 @@ TransactionReadModel _item({
   Map<String, TransactionAccountImpact>? impactsByAccountId,
   List<TransactionAdjustment> adjustments = const [],
 }) {
+  final refundSummary = refundedTotal == null
+      ? null
+      : RefundSummary(
+          refundedTotal: refundedTotal,
+          originalCategoryAllocations: categoryAccountId == null
+              ? const []
+              : [
+                  AccountAmountAllocation(
+                    accountId: categoryAccountId,
+                    amount: primaryAmount,
+                  ),
+                ],
+          refundedCategoryAllocations: const [],
+        );
+  final reimbursementSummary =
+      businessPurpose == BusinessPurpose.reimbursementAdvance &&
+          (refundedTotal != null || reimbursementReceivedTotal != null)
+      ? ReimbursementSummary(
+          advanceAmount: primaryAmount,
+          refundedAmount: refundedTotal ?? Money.zero(),
+          receivedAmount: reimbursementReceivedTotal ?? Money.zero(),
+          outstanding:
+              primaryAmount -
+              (refundedTotal ?? Money.zero()) -
+              (reimbursementReceivedTotal ?? Money.zero()),
+          isClosed: false,
+        )
+      : null;
   return TransactionReadModel(
     id: id,
     businessPurpose: businessPurpose,
@@ -609,6 +637,8 @@ TransactionReadModel _item({
           ],
         ),
     ],
+    refundSummary: refundSummary,
+    reimbursementSummary: reimbursementSummary,
   );
 }
 

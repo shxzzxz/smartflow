@@ -90,16 +90,21 @@ class ReimbursementEditFormViewModel extends _$ReimbursementEditFormViewModel {
 
     final outstandingBeforeTransaction = switch (kind) {
       ReimbursementEditKind.receipt =>
-        summary.outstanding + transaction.primaryAmount,
+        summary.outstanding +
+            transaction.amountOf(TransactionRole.settlementIn),
       ReimbursementEditKind.close => _closeOutstanding(detail),
     };
     final amount = switch (kind) {
-      ReimbursementEditKind.receipt => transaction.primaryAmount,
+      ReimbursementEditKind.receipt => transaction.amountOf(
+        TransactionRole.settlementIn,
+      ),
       ReimbursementEditKind.close => _closeActualAmount(detail),
     };
-    final availableCategories = parentDetail
-        .remainingRefundableCategoryAllocations();
-    final parentCategories = parentDetail.refundableCategoryAllocations;
+    final parentSummary = parentDetail.refundSummary;
+    final availableCategories =
+        parentSummary?.remainingCategoryAllocations ?? const [];
+    final parentCategories =
+        parentSummary?.originalCategoryAllocations ?? const [];
     return ReimbursementEditFormState.loaded(
       transactionId: transactionId,
       parentTransactionId: parentTransactionId,

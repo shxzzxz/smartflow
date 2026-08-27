@@ -1,10 +1,13 @@
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
+import 'package:smartflow/domain/ledger/entity/transaction_group.dart'
+    show RefundSummary, ReimbursementSummary;
 import 'package:smartflow/domain/ledger/entity/transaction_line.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
-import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
+
+export 'package:smartflow/domain/ledger/entity/transaction_group.dart'
+    show RefundSummary, RefundCategorySummary, ReimbursementSummary;
 
 class CashflowSummary {
   const CashflowSummary({required this.income, required this.expense});
@@ -70,10 +73,14 @@ class TransactionReadModel {
     List<TransactionLine> lines = const [],
     Map<String, TransactionAccountImpact> impactsByAccountId = const {},
     List<TransactionReadModel> children = const [],
+    RefundSummary? refundSummary,
+    ReimbursementSummary? reimbursementSummary,
   }) : postedAt = postedAt ?? occurredAt,
        lines = List.unmodifiable(lines),
        impactsByAccountId = Map.unmodifiable(impactsByAccountId),
-       children = List.unmodifiable(children);
+       children = List.unmodifiable(children),
+       refundSummary = refundSummary,
+       reimbursementSummary = reimbursementSummary;
 
   factory TransactionReadModel.fromTransaction({
     required Transaction transaction,
@@ -81,6 +88,8 @@ class TransactionReadModel {
     List<TransactionLine>? lines,
     Map<String, TransactionAccountImpact> impactsByAccountId = const {},
     List<TransactionReadModel> children = const [],
+    RefundSummary? refundSummary,
+    ReimbursementSummary? reimbursementSummary,
   }) {
     return TransactionReadModel(
       id: transaction.id,
@@ -99,6 +108,8 @@ class TransactionReadModel {
       lines: lines ?? transaction.lines,
       impactsByAccountId: impactsByAccountId,
       children: children,
+      refundSummary: refundSummary,
+      reimbursementSummary: reimbursementSummary,
     );
   }
 
@@ -118,11 +129,15 @@ class TransactionReadModel {
   final List<TransactionLine> lines;
   final Map<String, TransactionAccountImpact> impactsByAccountId;
   final List<TransactionReadModel> children;
+  final RefundSummary? refundSummary;
+  final ReimbursementSummary? reimbursementSummary;
 
   TransactionReadModel copyWith({
     List<TransactionLine>? lines,
     Map<String, TransactionAccountImpact>? impactsByAccountId,
     List<TransactionReadModel>? children,
+    RefundSummary? refundSummary,
+    ReimbursementSummary? reimbursementSummary,
   }) {
     return TransactionReadModel(
       id: id,
@@ -141,6 +156,8 @@ class TransactionReadModel {
       lines: lines ?? this.lines,
       impactsByAccountId: impactsByAccountId ?? this.impactsByAccountId,
       children: children ?? this.children,
+      refundSummary: refundSummary ?? this.refundSummary,
+      reimbursementSummary: reimbursementSummary ?? this.reimbursementSummary,
     );
   }
 
@@ -164,114 +181,4 @@ class TransactionReadModel {
 
   String? accountOf(TransactionRole role) =>
       linesOf(role).firstOrNull?.accountId;
-
-  List<AccountAmountAllocation> get refundableCategoryAllocations {
-    final role = switch (businessPurpose) {
-      BusinessPurpose.dailyExpense => TransactionRole.category,
-      BusinessPurpose.reimbursementAdvance =>
-        TransactionRole.reimbursementExpenseCategory,
-      _ => null,
-    };
-    if (role == null) return const [];
-    return _allocationsOf(role);
-  }
-
-  List<AccountAmountAllocation> remainingRefundableCategoryAllocations({
-    String? excludingTransactionId,
-  }) {
-    return subtractAllocations(
-      base: refundableCategoryAllocations,
-      reductions: [
-        for (final child in children.where(
-          (child) =>
-              child.businessPurpose == BusinessPurpose.refund &&
-              child.id != excludingTransactionId,
-        ))
-          ...child.refundCategoryAllocations,
-      ],
-    );
-  }
-
-  List<AccountAmountAllocation> get refundCategoryAllocations => [
-    ..._allocationsOf(TransactionRole.refundOffset),
-    ..._allocationsOf(TransactionRole.reimbursementExpenseCategory),
-  ];
-
-  Money get refundedTotal {
-    if (parentTransactionId != null) return Money.zero();
-    return _childrenAmount(const {BusinessPurpose.refund});
-  }
-
-  Money get reimbursementReceivedTotal {
-    if (parentTransactionId != null) return Money.zero();
-    return _childrenAmount(const {
-      BusinessPurpose.reimbursementReceipt,
-      BusinessPurpose.reimbursementClose,
-    });
-  }
-
-  Money get reimbursementGapAmount {
-    if (parentTransactionId != null) return Money.zero();
-    return children.fold(Money.zero(), (total, child) {
-      return total +
-          child.amountOf(TransactionRole.reimbursementGapIncome) -
-          child.amountOf(TransactionRole.reimbursementGapExpense);
-    });
-  }
-
-  ReimbursementSummary? get reimbursementSummary {
-    if (parentTransactionId != null ||
-        businessPurpose != BusinessPurpose.reimbursementAdvance) {
-      return null;
-    }
-    final received = reimbursementReceivedTotal;
-    final isClosed = children.any(
-      (child) => child.businessPurpose == BusinessPurpose.reimbursementClose,
-    );
-    return ReimbursementSummary(
-      advanceAmount: primaryAmount,
-      receivedAmount: received,
-      outstanding: calculateReimbursementOutstanding(
-        advanceAmount: primaryAmount,
-        refundedTotal: refundedTotal,
-        receivedTotal: received,
-        isClosed: isClosed,
-      ),
-      isClosed: isClosed,
-    );
-  }
-
-  Money _childrenAmount(Set<BusinessPurpose> purposes) {
-    return children
-        .where((child) => purposes.contains(child.businessPurpose))
-        .fold(
-          Money.zero(),
-          (total, child) =>
-              total + child.amountOf(TransactionRole.settlementIn),
-        );
-  }
-
-  List<AccountAmountAllocation> _allocationsOf(TransactionRole role) {
-    return [
-      for (final line in linesOf(role))
-        AccountAmountAllocation(
-          accountId: line.accountId!,
-          amount: line.amount,
-        ),
-    ];
-  }
-}
-
-class ReimbursementSummary {
-  const ReimbursementSummary({
-    required this.advanceAmount,
-    required this.receivedAmount,
-    required this.outstanding,
-    required this.isClosed,
-  });
-
-  final Money advanceAmount;
-  final Money receivedAmount;
-  final Money outstanding;
-  final bool isClosed;
 }

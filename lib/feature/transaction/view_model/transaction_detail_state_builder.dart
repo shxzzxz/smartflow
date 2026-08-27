@@ -1,5 +1,6 @@
 import '../../../application/credit/credit_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../core/money/money.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
@@ -211,7 +212,7 @@ DetailRefund? _refundState(TransactionReadModel detail) {
       purpose != BusinessPurpose.reimbursementAdvance) {
     return null;
   }
-  final refunded = detail.refundedTotal;
+  final refunded = detail.refundSummary?.refundedTotal ?? Money.zero();
   final hasRefund = refunded.minorUnits > 0;
   if (purpose == BusinessPurpose.reimbursementAdvance && !hasRefund) {
     return null;

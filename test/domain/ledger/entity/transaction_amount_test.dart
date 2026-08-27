@@ -53,6 +53,19 @@ void main() {
 
       expect(group.refundedTotal(), const Money(minorUnits: 2000));
       expect(group.reimbursementReceivedTotal(), const Money(minorUnits: 6000));
+      expect(group.refundSummary?.refundedTotal, const Money(minorUnits: 2000));
+      expect(
+        group.reimbursementSummary?.refundedAmount,
+        const Money(minorUnits: 2000),
+      );
+      expect(
+        group.reimbursementSummary?.receivedAmount,
+        const Money(minorUnits: 6000),
+      );
+      expect(
+        group.reimbursementSummary?.outstanding,
+        const Money(minorUnits: 2000),
+      );
     },
   );
 }

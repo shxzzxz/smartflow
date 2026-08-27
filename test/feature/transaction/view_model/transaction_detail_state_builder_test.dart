@@ -167,7 +167,8 @@ TransactionDetailLoaded _build({
       parentTransactionId: parentTransactionId,
       businessPurpose: purpose,
       occurredAt: DateTime(2026, 7, 23),
-      primaryAmount: reimbursementSummary?.advanceAmount ??
+      primaryAmount:
+          reimbursementSummary?.advanceAmount ??
           (purpose == BusinessPurpose.reimbursementAdvance
               ? const Money(minorUnits: 10000)
               : const Money(minorUnits: 1000)),
@@ -178,27 +179,54 @@ TransactionDetailLoaded _build({
     createdAt: DateTime(2026, 7, 23),
     lines: [
       TransactionLine(
-        id: 'account-line', transactionId: 'child', lineNo: 1,
+        id: 'account-line',
+        transactionId: 'child',
+        lineNo: 1,
         role: switch (purpose) {
-          BusinessPurpose.dailyExpense || BusinessPurpose.debtRepayment || BusinessPurpose.lending => TransactionRole.settlementOut,
+          BusinessPurpose.dailyExpense ||
+          BusinessPurpose.debtRepayment ||
+          BusinessPurpose.lending => TransactionRole.settlementOut,
           BusinessPurpose.badDebt => TransactionRole.receivable,
           BusinessPurpose.debtRelief => TransactionRole.liability,
           _ => TransactionRole.settlementIn,
         },
-        accountId: 'cash', amount: const Money(minorUnits: 1000),
+        accountId: 'cash',
+        amount: const Money(minorUnits: 1000),
       ),
     ],
     children: children,
+    refundSummary: refundedTotal == null
+        ? null
+        : RefundSummary(
+            refundedTotal: refundedTotal,
+            originalCategoryAllocations: const [],
+            refundedCategoryAllocations: const [],
+          ),
+    reimbursementSummary: reimbursementSummary,
   );
-  final parentDetail = reimbursementSummary == null ? null : TransactionReadModel(
-    id: 'parent', businessPurpose: BusinessPurpose.reimbursementAdvance,
-    occurredAt: DateTime(2026, 7, 22), primaryAmount: reimbursementSummary.advanceAmount,
-    isExcludedFromStats: false, isExcludedFromBudget: false,
-    children: [
-      if (reimbursementSummary.isClosed)
-        TransactionReadModel(id: 'close', parentTransactionId: 'parent', businessPurpose: BusinessPurpose.reimbursementClose, occurredAt: DateTime(2026, 7, 22), primaryAmount: reimbursementSummary.receivedAmount, isExcludedFromStats: false, isExcludedFromBudget: false),
-    ],
-  );
+  final parentDetail = reimbursementSummary == null
+      ? null
+      : TransactionReadModel(
+          id: 'parent',
+          businessPurpose: BusinessPurpose.reimbursementAdvance,
+          occurredAt: DateTime(2026, 7, 22),
+          primaryAmount: reimbursementSummary.advanceAmount,
+          isExcludedFromStats: false,
+          isExcludedFromBudget: false,
+          reimbursementSummary: reimbursementSummary,
+          children: [
+            if (reimbursementSummary.isClosed)
+              TransactionReadModel(
+                id: 'close',
+                parentTransactionId: 'parent',
+                businessPurpose: BusinessPurpose.reimbursementClose,
+                occurredAt: DateTime(2026, 7, 22),
+                primaryAmount: reimbursementSummary.receivedAmount,
+                isExcludedFromStats: false,
+                isExcludedFromBudget: false,
+              ),
+          ],
+        );
   final accounts = <String, Account>{
     'cash': Account(
       id: 'cash',

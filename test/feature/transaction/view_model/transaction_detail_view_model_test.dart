@@ -548,6 +548,14 @@ TransactionReadModel _detail({
     ),
     createdAt: DateTime(2026, 1, 1, 8, 1),
     lines: lines,
+    refundSummary: refundedTotal == null
+        ? null
+        : RefundSummary(
+            refundedTotal: refundedTotal,
+            originalCategoryAllocations: const [],
+            refundedCategoryAllocations: const [],
+          ),
+    reimbursementSummary: reimbursementSummary,
     children: [
       if (refundedTotal != null)
         TransactionReadModel(

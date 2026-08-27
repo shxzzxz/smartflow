@@ -91,13 +91,11 @@ void main() {
         unified.settlementAllocations!,
       ]) {
         expect(
-          allocations?.map((allocation) => allocation.accountId).toList(),
+          allocations.map((allocation) => allocation.accountId).toList(),
           ['cash', 'bank'],
         );
         expect(
-          allocations
-              ?.map((allocation) => allocation.amount.minorUnits)
-              .toList(),
+          allocations.map((allocation) => allocation.amount.minorUnits).toList(),
           [0, 0],
         );
       }
@@ -264,6 +262,29 @@ TransactionReadModel _parentDetail({
     ),
     createdAt: DateTime(2026, 7, 1),
     lines: combinedPayment ? _combinedAdvanceLines : _advanceLines,
+    refundSummary: RefundSummary(
+      refundedTotal: const Money(minorUnits: 4000),
+      originalCategoryAllocations: [
+        const AccountAmountAllocation(
+          accountId: 'expense',
+          amount: Money(minorUnits: 10000),
+        ),
+      ],
+      refundedCategoryAllocations: const [],
+    ),
+    reimbursementSummary: ReimbursementSummary(
+      advanceAmount: const Money(minorUnits: 10000),
+      refundedAmount: const Money(minorUnits: 4000),
+      receivedAmount:
+          Money(minorUnits: includeReceipt ? 2000 : 0) +
+          (closed ? const Money(minorUnits: 6000) : Money.zero()),
+      outstanding: closed
+          ? Money.zero()
+          : const Money(minorUnits: 10000) -
+                const Money(minorUnits: 4000) -
+                (includeReceipt ? const Money(minorUnits: 2000) : Money.zero()),
+      isClosed: closed,
+    ),
     children: [
       _child('refund', BusinessPurpose.refund, 3000),
       _child('other-refund', BusinessPurpose.refund, 1000),

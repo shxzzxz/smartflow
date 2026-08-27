@@ -762,6 +762,24 @@ TransactionReadModel _reimbursementDetail() {
     ),
     createdAt: DateTime(2026, 1, 1, 8, 1),
     lines: _reimbursementLines,
+    refundSummary: const RefundSummary(
+      refundedTotal: Money(minorUnits: 0),
+      originalCategoryAllocations: [
+        AccountAmountAllocation(
+          accountId: 'food',
+          amount: Money(minorUnits: 10000),
+        ),
+      ],
+      refundedCategoryAllocations: [],
+    ),
+    reimbursementSummary: const ReimbursementSummary(
+      advanceAmount: Money(minorUnits: 10000),
+      refundedAmount: Money(minorUnits: 0),
+      receivedAmount: Money(minorUnits: 0),
+      gapAmount: Money(minorUnits: 0),
+      outstanding: Money(minorUnits: 10000),
+      isClosed: false,
+    ),
   );
 }
 
@@ -810,6 +828,24 @@ TransactionReadModel _combinedReimbursementDetail() {
         ],
       ),
     ],
+    refundSummary: const RefundSummary(
+      refundedTotal: Money(minorUnits: 2000),
+      originalCategoryAllocations: [
+        AccountAmountAllocation(
+          accountId: 'food',
+          amount: Money(minorUnits: 10000),
+        ),
+      ],
+      refundedCategoryAllocations: [],
+    ),
+    reimbursementSummary: const ReimbursementSummary(
+      advanceAmount: Money(minorUnits: 10000),
+      refundedAmount: Money(minorUnits: 2000),
+      receivedAmount: Money(minorUnits: 4000),
+      gapAmount: Money(minorUnits: 0),
+      outstanding: Money(minorUnits: 4000),
+      isClosed: false,
+    ),
   );
 }
 

@@ -238,6 +238,25 @@ TransactionReadModel _parentDetail({
     ),
     createdAt: DateTime(2026, 7, 1),
     lines: _advanceLines,
+    refundSummary: RefundSummary(
+      refundedTotal: Money(minorUnits: includeRefund ? 2000 : 0),
+      originalCategoryAllocations: const [
+        AccountAmountAllocation(
+          accountId: 'expense',
+          amount: Money(minorUnits: 10000),
+        ),
+      ],
+      refundedCategoryAllocations: const [],
+    ),
+    reimbursementSummary: ReimbursementSummary(
+      advanceAmount: const Money(minorUnits: 10000),
+      refundedAmount: Money(minorUnits: includeRefund ? 2000 : 0),
+      receivedAmount: closed ? Money.zero() : const Money(minorUnits: 4000),
+      outstanding: closed
+          ? Money.zero()
+          : Money(minorUnits: 10000 - (includeRefund ? 2000 : 0) - 4000),
+      isClosed: closed,
+    ),
     children: [
       if (!closed)
         TransactionReadModel(

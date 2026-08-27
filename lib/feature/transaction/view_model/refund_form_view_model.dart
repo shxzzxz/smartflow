@@ -62,9 +62,12 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       detail: detail,
       accounts: accounts,
     );
-    final refunded = _refundedTotal(detail);
-    final availableCategories = detail.remainingRefundableCategoryAllocations();
-    final categoryAllocations = detail.refundableCategoryAllocations;
+    final refundSummary = detail.refundSummary;
+    final refunded = refundSummary?.refundedTotal ?? Money.zero();
+    final availableCategories =
+        refundSummary?.remainingCategoryAllocations ?? const [];
+    final categoryAllocations =
+        refundSummary?.originalCategoryAllocations ?? const [];
     return RefundFormState.loaded(
       transactionId: transactionId,
       parentTransactionId: transactionId,
@@ -131,12 +134,16 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       accounts: accounts,
     );
     final remaining = _remainingForEditedRefund(parentDetail, transaction);
-    final availableCategories = parentDetail
-        .remainingRefundableCategoryAllocations(
-          excludingTransactionId: transaction.id,
-        );
-    final parentCategories = parentDetail.refundableCategoryAllocations;
-    final categoryAllocations = transaction.refundCategoryAllocations;
+    final parentSummary = parentDetail.refundSummary;
+    final availableCategories = parentSummary == null
+        ? const <AccountAmountAllocation>[]
+        : _addAllocations(
+            parentSummary.remainingCategoryAllocations,
+            _refundCategoryAllocations(transaction),
+          );
+    final parentCategories =
+        parentSummary?.originalCategoryAllocations ?? const [];
+    final categoryAllocations = _refundCategoryAllocations(transaction);
     final settlementAllocations = _allocationsOf(
       transaction,
       TransactionRole.settlementIn,
@@ -437,10 +444,6 @@ class RefundFormState {
   }
 }
 
-Money _refundedTotal(TransactionReadModel detail) {
-  return detail.refundedTotal;
-}
-
 Money _remainingForNewRefund(TransactionReadModel detail, Money refunded) {
   final summary = detail.reimbursementSummary;
   if (detail.businessPurpose == BusinessPurpose.reimbursementAdvance &&
@@ -455,13 +458,14 @@ Money _remainingForEditedRefund(
   TransactionReadModel refund,
 ) {
   final summary = parentDetail.reimbursementSummary;
+  final refundAmount = refund.amountOf(TransactionRole.settlementIn);
   if (parentDetail.businessPurpose == BusinessPurpose.reimbursementAdvance &&
       summary is ReimbursementSummary) {
-    return summary.outstanding + refund.primaryAmount;
+    return summary.outstanding + refundAmount;
   }
   return parentDetail.primaryAmount -
-      _refundedTotal(parentDetail) +
-      refund.primaryAmount;
+      (parentDetail.refundSummary?.refundedTotal ?? Money.zero()) +
+      refundAmount;
 }
 
 Patch<String?> _stringPatch(String? value) {
@@ -487,6 +491,41 @@ List<AccountAmountAllocation> _allocationsOf(
   return [
     for (final line in transaction.linesOf(role))
       AccountAmountAllocation(accountId: line.accountId!, amount: line.amount),
+  ];
+}
+
+List<AccountAmountAllocation> _refundCategoryAllocations(
+  TransactionReadModel transaction,
+) {
+  return [
+    for (final line in [
+      ...transaction.linesOf(TransactionRole.refundOffset),
+      ...transaction.linesOf(TransactionRole.reimbursementExpenseCategory),
+    ])
+      AccountAmountAllocation(accountId: line.accountId!, amount: line.amount),
+  ];
+}
+
+List<AccountAmountAllocation> _addAllocations(
+  Iterable<AccountAmountAllocation> first,
+  Iterable<AccountAmountAllocation> second,
+) {
+  final amounts = <String, int>{};
+  final order = <String>[];
+  for (final allocation in [...first, ...second]) {
+    if (!amounts.containsKey(allocation.accountId)) {
+      order.add(allocation.accountId);
+    }
+    amounts[allocation.accountId] =
+        (amounts[allocation.accountId] ?? 0) + allocation.amount.minorUnits;
+  }
+  return [
+    for (final accountId in order)
+      if ((amounts[accountId] ?? 0) > 0)
+        AccountAmountAllocation(
+          accountId: accountId,
+          amount: Money(minorUnits: amounts[accountId]!),
+        ),
   ];
 }
 

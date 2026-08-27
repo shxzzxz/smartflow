@@ -767,12 +767,18 @@ List<TransactionAdjustment> transactionAdjustments(TransactionReadModel item) {
         item.amountOf(TransactionRole.fee),
       );
     case BusinessPurpose.dailyExpense:
-      add(TransactionAdjustmentKind.refund, item.refundedTotal);
+      add(
+        TransactionAdjustmentKind.refund,
+        item.refundSummary?.refundedTotal ?? Money.zero(),
+      );
     case BusinessPurpose.reimbursementAdvance:
-      add(TransactionAdjustmentKind.refund, item.refundedTotal);
+      add(
+        TransactionAdjustmentKind.refund,
+        item.refundSummary?.refundedTotal ?? Money.zero(),
+      );
       add(
         TransactionAdjustmentKind.reimbursementReceived,
-        item.reimbursementReceivedTotal,
+        item.reimbursementSummary?.receivedAmount ?? Money.zero(),
       );
       for (final child in item.children) {
         add(
