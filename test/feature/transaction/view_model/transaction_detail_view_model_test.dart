@@ -558,6 +558,16 @@ TransactionReadModel _detail({
           primaryAmount: refundedTotal,
           isExcludedFromStats: false,
           isExcludedFromBudget: false,
+          lines: [
+            TransactionLine(
+              id: 'refund-settlement',
+              transactionId: 'refund',
+              lineNo: 1,
+              role: TransactionRole.settlementIn,
+              accountId: 'cash',
+              amount: refundedTotal,
+            ),
+          ],
         ),
       if (reimbursementSummary != null &&
           reimbursementSummary.receivedAmount.minorUnits > 0)
@@ -571,6 +581,18 @@ TransactionReadModel _detail({
           primaryAmount: reimbursementSummary.receivedAmount,
           isExcludedFromStats: false,
           isExcludedFromBudget: false,
+          lines: [
+            TransactionLine(
+              id: 'reimbursement-settlement',
+              transactionId: reimbursementSummary.isClosed
+                  ? 'close'
+                  : 'receipt',
+              lineNo: 1,
+              role: TransactionRole.settlementIn,
+              accountId: 'cash',
+              amount: reimbursementSummary.receivedAmount,
+            ),
+          ],
         ),
     ],
   );

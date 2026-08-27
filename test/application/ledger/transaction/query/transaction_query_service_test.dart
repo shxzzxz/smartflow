@@ -6,14 +6,23 @@ import 'package:smartflow/core/money/money.dart';
 void main() {
   test('unified model fills children and derives reimbursement summary', () async {
     final parent = _transaction('parent', BusinessPurpose.reimbursementAdvance, 10000);
-    final refund = _transaction('refund', BusinessPurpose.refund, 2000, parentId: 'parent');
-    final receipt = _transaction('receipt', BusinessPurpose.reimbursementReceipt, 6000, parentId: 'parent');
+    // Child headers are not the cumulative source; settlement lines are.
+    final refund = _transaction('refund', BusinessPurpose.refund, 9999, parentId: 'parent');
+    final receipt = _transaction('receipt', BusinessPurpose.reimbursementReceipt, 8888, parentId: 'parent');
     final service = _service(
       transactions: {parent.id: parent, refund.id: refund, receipt.id: receipt},
       lines: {
         parent.id: [
           _line(parent.id, 2, TransactionRole.receivable, 10000, 'receivable'),
           _line(parent.id, 1, TransactionRole.settlementOut, 10000, 'card'),
+        ],
+        refund.id: [
+          _line(refund.id, 1, TransactionRole.settlementIn, 1200, 'cash'),
+          _line(refund.id, 2, TransactionRole.settlementIn, 800, 'bank'),
+        ],
+        receipt.id: [
+          _line(receipt.id, 1, TransactionRole.settlementIn, 2500, 'cash'),
+          _line(receipt.id, 2, TransactionRole.settlementIn, 3500, 'bank'),
         ],
       },
     );
@@ -44,6 +53,11 @@ void main() {
       );
       final service = _service(
         transactions: {parent.id: parent, close.id: close},
+        lines: {
+          close.id: [
+            _line(close.id, 1, TransactionRole.settlementIn, 0, 'cash'),
+          ],
+        },
       );
 
       final detail = await service.findTransactionDetail(parent.id);

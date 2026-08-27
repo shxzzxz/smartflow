@@ -284,8 +284,24 @@ TransactionReadModel _child(String id, BusinessPurpose purpose, int amount) {
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
     impactsByAccountId: const {},
+    lines: [_line(id, 1, TransactionRole.settlementIn, amount, 'bank')],
   );
 }
+
+TransactionLine _line(
+  String transactionId,
+  int lineNo,
+  TransactionRole role,
+  int amount,
+  String accountId,
+) => TransactionLine(
+  id: '$transactionId-$lineNo',
+  transactionId: transactionId,
+  lineNo: lineNo,
+  role: role,
+  accountId: accountId,
+  amount: Money(minorUnits: amount),
+);
 
 Account _account(String id, {AccountType type = AccountType.asset}) {
   return Account(id: id, name: id, type: type, balance: Money.zero());

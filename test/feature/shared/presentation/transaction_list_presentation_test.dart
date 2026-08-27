@@ -577,6 +577,16 @@ TransactionReadModel _item({
           primaryAmount: refundedTotal,
           isExcludedFromStats: false,
           isExcludedFromBudget: false,
+          lines: [
+            TransactionLine(
+              id: '$id-refund-settlement',
+              transactionId: '$id-refund',
+              lineNo: 1,
+              role: TransactionRole.settlementIn,
+              accountId: 'cash',
+              amount: refundedTotal,
+            ),
+          ],
         ),
       if (reimbursementReceivedTotal != null)
         TransactionReadModel(
@@ -587,6 +597,16 @@ TransactionReadModel _item({
           primaryAmount: reimbursementReceivedTotal,
           isExcludedFromStats: false,
           isExcludedFromBudget: false,
+          lines: [
+            TransactionLine(
+              id: '$id-receipt-settlement',
+              transactionId: '$id-receipt',
+              lineNo: 1,
+              role: TransactionRole.settlementIn,
+              accountId: 'cash',
+              amount: reimbursementReceivedTotal,
+            ),
+          ],
         ),
     ],
   );

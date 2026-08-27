@@ -48,7 +48,19 @@ class Transaction {
   TransactionLine? lineOf(TransactionRole role) =>
       linesOf(role).firstOrNull;
 
-  Money? amountOf(TransactionRole role) => lineOf(role)?.amount;
+  /// Returns the sum of all lines for [role], or null when the role is absent.
+  ///
+  /// A role may be represented by multiple allocations (for example, a
+  /// reimbursement can be received into several settlement accounts), so
+  /// callers must not use only the first matching line as the role amount.
+  Money? amountOf(TransactionRole role) {
+    final matchingLines = linesOf(role);
+    if (matchingLines.isEmpty) return null;
+    return matchingLines.fold<Money>(
+      Money.zero(),
+      (total, line) => total + line.amount,
+    );
+  }
 
   String? accountOf(TransactionRole role) => lineOf(role)?.accountId;
 

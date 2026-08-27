@@ -248,6 +248,15 @@ TransactionReadModel _parentDetail({
           primaryAmount: const Money(minorUnits: 4000),
           isExcludedFromStats: false,
           isExcludedFromBudget: false,
+          lines: [
+            _line(
+              'receipt-child',
+              1,
+              TransactionRole.settlementIn,
+              4000,
+              'bank',
+            ),
+          ],
         ),
       if (includeRefund)
         TransactionReadModel(
@@ -258,6 +267,15 @@ TransactionReadModel _parentDetail({
           primaryAmount: const Money(minorUnits: 2000),
           isExcludedFromStats: false,
           isExcludedFromBudget: false,
+          lines: [
+            _line(
+              'refund-child',
+              1,
+              TransactionRole.settlementIn,
+              2000,
+              'bank',
+            ),
+          ],
         ),
       if (closed)
         TransactionReadModel(
@@ -265,9 +283,12 @@ TransactionReadModel _parentDetail({
           parentTransactionId: 'parent',
           businessPurpose: BusinessPurpose.reimbursementClose,
           occurredAt: DateTime(2026, 7, 3),
-          primaryAmount: const Money(minorUnits: 10000),
+          primaryAmount: Money.zero(),
           isExcludedFromStats: false,
           isExcludedFromBudget: false,
+          lines: [
+            _line('close-child', 1, TransactionRole.settlementIn, 0, 'bank'),
+          ],
         ),
     ],
   );

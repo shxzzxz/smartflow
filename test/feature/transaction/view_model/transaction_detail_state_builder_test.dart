@@ -236,5 +236,15 @@ TransactionReadModel _child({
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
     impactsByAccountId: const {},
+    lines: [
+      TransactionLine(
+        id: '$id-settlement',
+        transactionId: id,
+        lineNo: 1,
+        role: TransactionRole.settlementIn,
+        accountId: 'cash',
+        amount: Money(minorUnits: amountMinor),
+      ),
+    ],
   );
 }

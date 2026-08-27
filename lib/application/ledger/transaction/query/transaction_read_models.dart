@@ -244,7 +244,11 @@ class TransactionReadModel {
   Money _childrenAmount(Set<BusinessPurpose> purposes) {
     return children
         .where((child) => purposes.contains(child.businessPurpose))
-        .fold(Money.zero(), (total, child) => total + child.primaryAmount);
+        .fold(
+          Money.zero(),
+          (total, child) =>
+              total + child.amountOf(TransactionRole.settlementIn),
+        );
   }
 
   List<AccountAmountAllocation> _allocationsOf(TransactionRole role) {

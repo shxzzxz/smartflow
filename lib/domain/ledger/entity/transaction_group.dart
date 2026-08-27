@@ -130,7 +130,10 @@ class TransactionGroup {
         )
         .fold(
           Money.zero(),
-          (sum, transaction) => sum + transaction.primaryAmount,
+          (sum, transaction) =>
+              sum +
+              (transaction.amountOf(TransactionRole.settlementIn) ??
+                  Money.zero()),
         );
   }
 

@@ -778,6 +778,16 @@ TransactionReadModel _combinedReimbursementDetail() {
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
         impactsByAccountId: const {},
+        lines: const [
+          TransactionLine(
+            id: 'refund-settlement',
+            transactionId: 'refund',
+            lineNo: 1,
+            role: TransactionRole.settlementIn,
+            accountId: 'cash',
+            amount: Money(minorUnits: 2000),
+          ),
+        ],
       ),
       TransactionReadModel(
         id: 'receipt',
@@ -788,6 +798,16 @@ TransactionReadModel _combinedReimbursementDetail() {
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
         impactsByAccountId: const {},
+        lines: const [
+          TransactionLine(
+            id: 'receipt-settlement',
+            transactionId: 'receipt',
+            lineNo: 1,
+            role: TransactionRole.settlementIn,
+            accountId: 'cash',
+            amount: Money(minorUnits: 4000),
+          ),
+        ],
       ),
     ],
   );
