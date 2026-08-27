@@ -617,7 +617,7 @@ final class StatisticsTransactionsProvider
 }
 
 String _$statisticsTransactionsHash() =>
-    r'92f8ff76dfc65919264724bf8cadbb8536dbb5b6';
+    r'8ae12d444ffd303e981d1be415b0e2f2d47e8253';
 
 final class StatisticsTransactionsFamily extends $Family
     with

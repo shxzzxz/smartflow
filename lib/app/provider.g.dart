@@ -1225,11 +1225,11 @@ final class EntryReadRepositoryProvider
 String _$entryReadRepositoryHash() =>
     r'd442bce4570560b2547b35040221f47281dcb923';
 
-@ProviderFor(transactionDetailReadRepository)
-final transactionDetailReadRepositoryProvider =
-    TransactionDetailReadRepositoryProvider._();
+@ProviderFor(transactionLineReadRepository)
+final transactionLineReadRepositoryProvider =
+    TransactionLineReadRepositoryProvider._();
 
-final class TransactionDetailReadRepositoryProvider
+final class TransactionLineReadRepositoryProvider
     extends
         $FunctionalProvider<
           TransactionLineReadRepository,
@@ -1237,19 +1237,19 @@ final class TransactionDetailReadRepositoryProvider
           TransactionLineReadRepository
         >
     with $Provider<TransactionLineReadRepository> {
-  TransactionDetailReadRepositoryProvider._()
+  TransactionLineReadRepositoryProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'transactionDetailReadRepositoryProvider',
+        name: r'transactionLineReadRepositoryProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$transactionDetailReadRepositoryHash();
+  String debugGetCreateSourceHash() => _$transactionLineReadRepositoryHash();
 
   @$internal
   @override
@@ -1259,7 +1259,7 @@ final class TransactionDetailReadRepositoryProvider
 
   @override
   TransactionLineReadRepository create(Ref ref) {
-    return transactionDetailReadRepository(ref);
+    return transactionLineReadRepository(ref);
   }
 
   /// {@macro riverpod.override_with_value}
@@ -1273,8 +1273,8 @@ final class TransactionDetailReadRepositoryProvider
   }
 }
 
-String _$transactionDetailReadRepositoryHash() =>
-    r'724408d1d8008044f426c754fda7fed4a0efc7f5';
+String _$transactionLineReadRepositoryHash() =>
+    r'6c40011961d6ffaf5d0d633e7d8f24514669d39f';
 
 @ProviderFor(ledgerMetricsSource)
 final ledgerMetricsSourceProvider = LedgerMetricsSourceProvider._();
@@ -2191,7 +2191,7 @@ final class TransactionQueryServiceProvider
 }
 
 String _$transactionQueryServiceHash() =>
-    r'09823b92092186dd5d85c12364cd9078894ac60b';
+    r'89ea3263216911c370f71e4470b7ee022f547bf4';
 
 @ProviderFor(financialMetricsService)
 final financialMetricsServiceProvider = FinancialMetricsServiceProvider._();

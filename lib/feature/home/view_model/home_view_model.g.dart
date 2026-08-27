@@ -170,7 +170,7 @@ final class HomeTransactionsProvider
   }
 }
 
-String _$homeTransactionsHash() => r'8a4bbc67810677dc86af4cd777d9e46b284c894a';
+String _$homeTransactionsHash() => r'3215ce253edddab94ceef2a6d6b3c567c21c50e1';
 
 final class HomeTransactionsFamily extends $Family
     with
@@ -250,7 +250,7 @@ final class HomeTransactionFeedViewModelProvider
 }
 
 String _$homeTransactionFeedViewModelHash() =>
-    r'9c2208bbd9964ca7d8dc413dffd3ee16ce5992cc';
+    r'd73c723240673baebbbab90fbb1716c5dc0653b1';
 
 final class HomeTransactionFeedViewModelFamily extends $Family
     with

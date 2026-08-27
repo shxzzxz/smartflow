@@ -602,7 +602,7 @@ final class TransactionListProvider
   }
 }
 
-String _$transactionListHash() => r'3ee23cac1043e07a62ec17535664c55366b0eec4';
+String _$transactionListHash() => r'd75701971d05191b3d46b0547342da47738c5497';
 
 final class TransactionListFamily extends $Family
     with

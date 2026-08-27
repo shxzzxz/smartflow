@@ -243,7 +243,7 @@ final class BudgetCategoryTransactionsProvider
 }
 
 String _$budgetCategoryTransactionsHash() =>
-    r'983580d512b59abf60b02a983ac4124030a829b5';
+    r'bdbb9da033b9350bbf4ad0cc32cb2fd5f733e27c';
 
 final class BudgetCategoryTransactionsFamily extends $Family
     with

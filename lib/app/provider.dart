@@ -235,7 +235,7 @@ EntryReadRepository entryReadRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-TransactionLineReadRepository transactionDetailReadRepository(Ref ref) {
+TransactionLineReadRepository transactionLineReadRepository(Ref ref) {
   return DriftTransactionLineReadRepository(ref.watch(appDatabaseProvider));
 }
 
@@ -406,7 +406,7 @@ TransactionQueryService transactionQueryService(Ref ref) {
   return TransactionQueryServiceImpl(
     transactionRead: ref.watch(transactionReadRepositoryProvider),
     entryRead: ref.watch(entryReadRepositoryProvider),
-    lineRead: ref.watch(transactionDetailReadRepositoryProvider),
+    lineRead: ref.watch(transactionLineReadRepositoryProvider),
     accountQuery: ref.watch(accountQueryServiceProvider),
     metricsSource: ref.watch(ledgerMetricsSourceProvider),
   );
