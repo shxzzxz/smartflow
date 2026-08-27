@@ -833,7 +833,9 @@ class _ExpenseEntryArea extends StatelessWidget {
             key: const ValueKey('expense-settlement-allocations'),
             title: '组合支付',
             allocations: state.settlementAllocations,
-            options: _accountOptions(state.settlementAccounts),
+            options: transactionAllocationOptionsForAccounts(
+              state.settlementAccounts,
+            ),
             addLabel: '添加账户',
             expectedTotal: total,
             statusInHeader: true,
@@ -1790,16 +1792,5 @@ List<TransactionAllocationOption> _categoryOptions(List<CategoryNode> tree) {
           iconKey: child.iconKey,
         ),
     ],
-  ];
-}
-
-List<TransactionAllocationOption> _accountOptions(List<Account> accounts) {
-  return [
-    for (final account in accounts)
-      TransactionAllocationOption(
-        accountId: account.id,
-        label: account.name,
-        iconKey: account.iconKey,
-      ),
   ];
 }
