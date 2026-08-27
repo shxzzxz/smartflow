@@ -47,7 +47,9 @@ import '../feature/transaction/page/reimbursement_form_page.dart';
 import '../feature/transaction/page/reimbursement_receipt_form_page.dart';
 import '../feature/transaction/page/receivable_payable_form_pages.dart';
 import '../feature/transaction/page/transaction_detail_page.dart';
+import '../feature/transaction/page/filtered_transactions_page.dart';
 import '../feature/transaction/page/transaction_form_page.dart';
+import '../feature/transaction/view_model/filtered_transactions_view_model.dart';
 
 final appRouter = GoRouter(
   routes: [
@@ -75,10 +77,8 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/budget',
-      builder:
-          (context, state) => BudgetPage(
-            initialMonth: _monthFromQuery(state.uri.queryParameters),
-          ),
+      builder: (context, state) =>
+          BudgetPage(initialMonth: _monthFromQuery(state.uri.queryParameters)),
       routes: [
         GoRoute(
           path: ':id',
@@ -106,12 +106,11 @@ final appRouter = GoRouter(
           _ => StatisticsDrilldownScope.cashflow,
         };
         final categoryId = query['categoryId'];
-        final category =
-            categoryId == null
-                ? null
-                : query['categoryScope'] == 'own'
-                ? CategorySelection.ownOnly(categoryId)
-                : CategorySelection.withDescendants(categoryId);
+        final category = categoryId == null
+            ? null
+            : query['categoryScope'] == 'own'
+            ? CategorySelection.ownOnly(categoryId)
+            : CategorySelection.withDescendants(categoryId);
         final settlementAccountId = query['accountId'];
         final tagId = query['tagId'];
         final untaggedOnly = query['untagged'] == '1';
@@ -161,10 +160,9 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/import/process/:source',
-      builder:
-          (context, state) => ImportProcessPage(
-            source: importEntrySourceFromRoute(state.pathParameters['source']),
-          ),
+      builder: (context, state) => ImportProcessPage(
+        source: importEntrySourceFromRoute(state.pathParameters['source']),
+      ),
     ),
     GoRoute(
       path: '/profile/import',
@@ -203,83 +201,68 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/transaction/:id',
-      builder:
-          (context, state) =>
-              TransactionDetailPage(transactionId: state.pathParameters['id']!),
+      builder: (context, state) =>
+          TransactionDetailPage(transactionId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/transaction/:id/edit',
-      builder:
-          (context, state) => TransactionFormPage(
-            editTransactionId: state.pathParameters['id']!,
-          ),
+      builder: (context, state) =>
+          TransactionFormPage(editTransactionId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/transaction/:id/repayment/edit',
-      builder:
-          (context, state) => RepaymentFormPage.edit(
-            editTransactionId: state.pathParameters['id']!,
-          ),
+      builder: (context, state) => RepaymentFormPage.edit(
+        editTransactionId: state.pathParameters['id']!,
+      ),
     ),
     GoRoute(
       path: '/transaction/:id/receivable-collection/edit',
-      builder:
-          (context, state) => ReceivableCollectionFormPage(
-            transactionId: state.pathParameters['id']!,
-          ),
+      builder: (context, state) => ReceivableCollectionFormPage(
+        transactionId: state.pathParameters['id']!,
+      ),
     ),
     GoRoute(
       path: '/transaction/:id/bad-debt/edit',
-      builder:
-          (context, state) =>
-              BadDebtFormPage(transactionId: state.pathParameters['id']!),
+      builder: (context, state) =>
+          BadDebtFormPage(transactionId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/transaction/:id/debt-relief/edit',
-      builder:
-          (context, state) =>
-              DebtReliefFormPage(transactionId: state.pathParameters['id']!),
+      builder: (context, state) =>
+          DebtReliefFormPage(transactionId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/transaction/:id/refund',
-      builder:
-          (context, state) =>
-              RefundFormPage(parentTransactionId: state.pathParameters['id']!),
+      builder: (context, state) =>
+          RefundFormPage(parentTransactionId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/transaction/:id/refund/edit',
-      builder:
-          (context, state) => RefundFormPage.edit(
-            editTransactionId: state.pathParameters['id']!,
-          ),
+      builder: (context, state) =>
+          RefundFormPage.edit(editTransactionId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/transaction/:id/reimbursement',
-      builder:
-          (context, state) => ReimbursementFormPage(
-            advanceTransactionId: state.pathParameters['id']!,
-          ),
+      builder: (context, state) => ReimbursementFormPage(
+        advanceTransactionId: state.pathParameters['id']!,
+      ),
     ),
     GoRoute(
       path: '/transaction/:id/reimburse-receipt',
-      builder:
-          (context, state) => ReimbursementReceiptFormPage(
-            advanceTransactionId: state.pathParameters['id']!,
-          ),
+      builder: (context, state) => ReimbursementReceiptFormPage(
+        advanceTransactionId: state.pathParameters['id']!,
+      ),
     ),
     GoRoute(
       path: '/transaction/:id/reimburse-close',
-      builder:
-          (context, state) => ReimbursementCloseFormPage(
-            advanceTransactionId: state.pathParameters['id']!,
-          ),
+      builder: (context, state) => ReimbursementCloseFormPage(
+        advanceTransactionId: state.pathParameters['id']!,
+      ),
     ),
     GoRoute(
       path: '/transaction/:id/reimbursement/edit',
-      builder:
-          (context, state) => ReimbursementEditFormPage(
-            transactionId: state.pathParameters['id']!,
-          ),
+      builder: (context, state) =>
+          ReimbursementEditFormPage(transactionId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/account/new',
@@ -287,61 +270,49 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/account/archived',
-      builder:
-          (context, state) =>
-              ArchivedAccountsPage(initiallyHideBalances: state.extra == true),
+      builder: (context, state) =>
+          ArchivedAccountsPage(initiallyHideBalances: state.extra == true),
     ),
     GoRoute(
       path: '/account/:id',
-      builder:
-          (context, state) =>
-              AccountDetailPage(accountId: state.pathParameters['id']!),
+      builder: (context, state) =>
+          AccountDetailPage(accountId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/account/:id/edit',
-      builder:
-          (context, state) =>
-              AccountFormPage(accountId: state.pathParameters['id']!),
+      builder: (context, state) =>
+          AccountFormPage(accountId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/account/:id/bills',
-      builder:
-          (context, state) =>
-              AccountBillsPage(accountId: state.pathParameters['id']!),
+      builder: (context, state) =>
+          AccountBillsPage(accountId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/account/:id/repayment',
-      builder:
-          (context, state) => RepaymentFormPage(
-            liabilityAccountId: state.pathParameters['id']!,
-          ),
+      builder: (context, state) =>
+          RepaymentFormPage(liabilityAccountId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/account/:id/receivable-collection',
-      builder:
-          (context, state) => ReceivableCollectionFormPage(
-            receivableAccountId: state.pathParameters['id']!,
-          ),
+      builder: (context, state) => ReceivableCollectionFormPage(
+        receivableAccountId: state.pathParameters['id']!,
+      ),
     ),
     GoRoute(
       path: '/account/:id/bad-debt',
-      builder:
-          (context, state) =>
-              BadDebtFormPage(receivableAccountId: state.pathParameters['id']!),
+      builder: (context, state) =>
+          BadDebtFormPage(receivableAccountId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/account/:id/debt-relief',
-      builder:
-          (context, state) => DebtReliefFormPage(
-            liabilityAccountId: state.pathParameters['id']!,
-          ),
+      builder: (context, state) =>
+          DebtReliefFormPage(liabilityAccountId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/account/:id/unattributed-repayment',
-      builder:
-          (context, state) => UnattributedRepaymentFormPage(
-            accountId: state.pathParameters['id']!,
-          ),
+      builder: (context, state) =>
+          UnattributedRepaymentFormPage(accountId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/account/:id/installments/new',
@@ -358,63 +329,62 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/bills/:billId',
-      builder:
-          (context, state) =>
-              BillDetailPage(billId: state.pathParameters['billId']!),
+      builder: (context, state) =>
+          BillDetailPage(billId: state.pathParameters['billId']!),
     ),
     GoRoute(
       path: '/bills/:billId/edit',
-      builder:
-          (context, state) =>
-              BillEditPage(billId: state.pathParameters['billId']!),
+      builder: (context, state) =>
+          BillEditPage(billId: state.pathParameters['billId']!),
     ),
     GoRoute(
       path: '/bills/:billId/repay',
-      builder:
-          (context, state) =>
-              BillRepaymentFormPage(billId: state.pathParameters['billId']!),
+      builder: (context, state) =>
+          BillRepaymentFormPage(billId: state.pathParameters['billId']!),
     ),
     GoRoute(
       path: '/repayments/:repaymentId/edit',
-      builder:
-          (context, state) => BillRepaymentFormPage.edit(
-            repaymentId: state.pathParameters['repaymentId']!,
-            resultTransactionId: state.uri.queryParameters['transactionId'],
-          ),
+      builder: (context, state) => BillRepaymentFormPage.edit(
+        repaymentId: state.pathParameters['repaymentId']!,
+        resultTransactionId: state.uri.queryParameters['transactionId'],
+      ),
     ),
     GoRoute(
       path: '/bills/:billId/installment',
-      builder:
-          (context, state) => BillConversionInstallmentFormPage(
-            billId: state.pathParameters['billId']!,
-          ),
+      builder: (context, state) => BillConversionInstallmentFormPage(
+        billId: state.pathParameters['billId']!,
+      ),
     ),
     GoRoute(
       path: '/installments/:contractId',
-      builder:
-          (context, state) => InstallmentDetailPage(
-            contractId: state.pathParameters['contractId']!,
-          ),
+      builder: (context, state) => InstallmentDetailPage(
+        contractId: state.pathParameters['contractId']!,
+      ),
     ),
     GoRoute(
       path: '/installments/:contractId/edit',
-      builder:
-          (context, state) => InstallmentContractEditPage(
-            contractId: state.pathParameters['contractId']!,
-          ),
+      builder: (context, state) => InstallmentContractEditPage(
+        contractId: state.pathParameters['contractId']!,
+      ),
     ),
     GoRoute(
       path: '/installments/:contractId/repay',
-      builder:
-          (context, state) => InstallmentRepaymentFormPage(
-            contractId: state.pathParameters['contractId']!,
-          ),
+      builder: (context, state) => InstallmentRepaymentFormPage(
+        contractId: state.pathParameters['contractId']!,
+      ),
     ),
     GoRoute(
       path: '/category',
       builder: (context, state) => const CategoriesPage(),
     ),
     GoRoute(path: '/tags', builder: (context, state) => const TagsPage()),
+    GoRoute(
+      path: '/tags/:id/transactions',
+      builder: (context, state) => FilteredTransactionsPage(
+        target: FilteredTransactionTarget.tag,
+        targetId: state.pathParameters['id']!,
+      ),
+    ),
     GoRoute(
       path: '/profile/settings',
       builder: (context, state) => const SettingsPage(),
@@ -425,8 +395,8 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/profile/installment-guide',
-      builder:
-          (context, state) => const ManualArticlePage(slug: 'credit-metrics'),
+      builder: (context, state) =>
+          const ManualArticlePage(slug: 'credit-metrics'),
     ),
     GoRoute(
       path: '/profile/manual',
@@ -434,9 +404,8 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/profile/manual/:slug',
-      builder:
-          (context, state) =>
-              ManualArticlePage(slug: state.pathParameters['slug']!),
+      builder: (context, state) =>
+          ManualArticlePage(slug: state.pathParameters['slug']!),
     ),
     GoRoute(
       path: '/profile/data-cleanup',
@@ -456,9 +425,15 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/category/:id/edit',
-      builder:
-          (context, state) =>
-              CategoryFormPage(categoryId: state.pathParameters['id']!),
+      builder: (context, state) =>
+          CategoryFormPage(categoryId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/category/:id/transactions',
+      builder: (context, state) => FilteredTransactionsPage(
+        target: FilteredTransactionTarget.category,
+        targetId: state.pathParameters['id']!,
+      ),
     ),
   ],
 );

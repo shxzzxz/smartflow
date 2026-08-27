@@ -57,7 +57,10 @@ class _CategoryHeader extends StatelessWidget {
         dividerColor: Colors.transparent,
         labelStyle: textStyles.largeTabLabel(selected: true),
         unselectedLabelStyle: textStyles.largeTabLabel(selected: false),
-        tabs: const [Tab(text: '支出'), Tab(text: '收入')],
+        tabs: const [
+          Tab(text: '支出'),
+          Tab(text: '收入'),
+        ],
       ),
       actions: [
         AppHeaderIconButton(
@@ -109,21 +112,21 @@ class _CategoryManageTabState extends ConsumerState<_CategoryManageTab> {
                     _RootCategoryRow(
                       node: nodes[i],
                       expanded: _expandedIds.contains(nodes[i].account.id),
-                      onToggleExpanded:
-                          () => setState(() {
-                            final id = nodes[i].account.id;
-                            _expandedIds.contains(id)
-                                ? _expandedIds.remove(id)
-                                : _expandedIds.add(id);
-                          }),
+                      onTap: () =>
+                          _openCategoryTransactions(nodes[i].account.id),
+                      onToggleExpanded: () => setState(() {
+                        final id = nodes[i].account.id;
+                        _expandedIds.contains(id)
+                            ? _expandedIds.remove(id)
+                            : _expandedIds.add(id);
+                      }),
                       onMore: () => _openActionSheet(nodes[i].account, nodes),
                     ),
                     if (_expandedIds.contains(nodes[i].account.id)) ...[
                       for (final child in nodes[i].children)
                         _ChildCategoryRow(
                           category: child,
-                          onTap:
-                              () => context.push('/category/${child.id}/edit'),
+                          onTap: () => _openCategoryTransactions(child.id),
                           onMore: () => _openActionSheet(child, nodes),
                         ),
                       _AddChildRow(
@@ -174,18 +177,25 @@ class _CategoryManageTabState extends ConsumerState<_CategoryManageTab> {
     );
     context.push(uri.toString());
   }
+
+  void _openCategoryTransactions(String categoryId) {
+    final uri = Uri(path: '/category/$categoryId/transactions');
+    context.push(uri.toString());
+  }
 }
 
 class _RootCategoryRow extends StatelessWidget {
   const _RootCategoryRow({
     required this.node,
     required this.expanded,
+    required this.onTap,
     required this.onToggleExpanded,
     required this.onMore,
   });
 
   final CategoryNode node;
   final bool expanded;
+  final VoidCallback onTap;
   final VoidCallback onToggleExpanded;
   final VoidCallback onMore;
 
@@ -196,7 +206,7 @@ class _RootCategoryRow extends StatelessWidget {
     final childCount = node.children.length;
 
     return InkWell(
-      onTap: onToggleExpanded,
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space16,
@@ -218,23 +228,29 @@ class _RootCategoryRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.space12),
-            if (childCount > 0)
+            if (childCount > 0) ...[
               Text(
                 '$childCount 个子分类',
                 style: textStyles.listSupporting.copyWith(
                   color: colors.onSurfaceVariant,
                 ),
               ),
-            const SizedBox(width: AppSpacing.space6),
-            AnimatedRotation(
-              turns: expanded ? 0 : -0.25,
-              duration: const Duration(milliseconds: 150),
-              child: Icon(
-                RemixIcons.arrow_down_s_line,
-                size: 18,
-                color: colors.onSurfaceVariant,
+              IconButton(
+                onPressed: onToggleExpanded,
+                icon: AnimatedRotation(
+                  turns: expanded ? 0 : -0.25,
+                  duration: const Duration(milliseconds: 150),
+                  child: Icon(
+                    RemixIcons.arrow_down_s_line,
+                    size: 18,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+                visualDensity: VisualDensity.compact,
+                tooltip: expanded ? '收起子分类' : '展开子分类',
               ),
-            ),
+            ] else
+              const SizedBox(width: AppSpacing.space8),
             const SizedBox(width: AppSpacing.space4),
             _MoreButton(onPressed: onMore),
           ],
