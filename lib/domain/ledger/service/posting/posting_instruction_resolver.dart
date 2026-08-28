@@ -53,7 +53,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       transaction,
       TransactionRole.settlementIn,
     );
-    final refundCategories = _allocationsOf(
+    final refundOffsets = _allocationsOf(
       transaction,
       TransactionRole.refundOffset,
     );
@@ -61,9 +61,12 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       transaction,
       TransactionRole.reimbursementExpenseCategory,
     );
-    final categories = refundCategories.isNotEmpty
-        ? refundCategories
-        : reimbursementCategories;
+    // Reimbursement refunds have two independent facts: category allocations
+    // and the parent receivable account stored in refundOffset. The latter
+    // must never be interpreted as a refunded category.
+    final categories = reimbursementCategories.isNotEmpty
+        ? reimbursementCategories
+        : refundOffsets;
     if (settlements.isEmpty || categories.isEmpty) {
       return LedgerViolationReason.refundToAccountNotFound.throwException(
         message: 'Refund allocations cannot be resolved.',

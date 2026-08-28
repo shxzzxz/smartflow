@@ -64,11 +64,13 @@ class TransactionGroup {
   }
 
   List<AccountAmountAllocation> refundCategoryAllocations(Transaction refund) {
+    final role =
+        parentTransaction.businessPurpose ==
+            BusinessPurpose.reimbursementAdvance
+        ? TransactionRole.reimbursementExpenseCategory
+        : TransactionRole.refundOffset;
     return [
-      for (final line in [
-        ...refund.linesOf(TransactionRole.refundOffset),
-        ...refund.linesOf(TransactionRole.reimbursementExpenseCategory),
-      ])
+      for (final line in refund.linesOf(role))
         AccountAmountAllocation(
           accountId: line.accountId!,
           amount: line.amount,

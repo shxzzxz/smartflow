@@ -201,6 +201,15 @@ void main() {
         occurredAt: occurredAt,
       ),
     );
+    final reimbursementRefund = engine.createRefund(
+      instruction: singleRefundInstruction(
+        parentTransactionId: advance.id,
+        amount: const Money(minorUnits: 500),
+        refundToAccountId: 'cash',
+        occurredAt: occurredAt,
+      ),
+      parent: advance,
+    );
     final asset = Account(
       id: 'bank',
       name: 'bank',
@@ -237,6 +246,7 @@ void main() {
         parent: expense,
       ),
       advance,
+      reimbursementRefund,
       engine.createReimbursementReceipt(
         instruction: singleReimbursementReceiptInstruction(
           advanceTransactionId: advance.id,

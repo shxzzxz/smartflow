@@ -4,6 +4,7 @@ import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
+import 'package:smartflow/domain/ledger/service/posting/posting_rule.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
@@ -111,45 +112,101 @@ void main() {
     expect(_shape(resolved.settlementAllocations), ['card:20', 'cash:30']);
   });
 
-  test('advance refund keeps category facts but credits receivable', () {
-    final advance = _advance(engine, occurredAt);
-    final refund = engine.createRefund(
-      instruction: RefundInstruction(
-        parentTransactionId: advance.id,
-        amount: _money(40),
-        categoryAllocations: [
-          _allocation('travel', 25),
-          _allocation('meal', 15),
-        ],
-        settlementAllocations: [
-          _allocation('card', 10),
-          _allocation('cash', 30),
-        ],
-        occurredAt: occurredAt,
-      ),
-      parent: advance,
-    );
+  test(
+    'advance refund keeps category facts and offsets the parent receivable',
+    () {
+      final advance = _advance(engine, occurredAt);
+      final refund = engine.createRefund(
+        instruction: RefundInstruction(
+          parentTransactionId: advance.id,
+          amount: _money(40),
+          categoryAllocations: [
+            _allocation('travel', 25),
+            _allocation('meal', 15),
+          ],
+          settlementAllocations: [
+            _allocation('card', 10),
+            _allocation('cash', 30),
+          ],
+          occurredAt: occurredAt,
+        ),
+        parent: advance,
+      );
 
-    expect(
-      refund.lines
-          .where(
-            (line) => line.role == TransactionRole.reimbursementExpenseCategory,
-          )
-          .map((line) => '${line.accountId}:${line.amount.minorUnits}'),
-      ['travel:25', 'meal:15'],
-    );
-    expect(
-      refund.entries.map(
-        (entry) => (entry.accountId, entry.direction, entry.amount),
-      ),
-      containsAll([
-        ('card', EntryDirection.debit, _money(10)),
-        ('cash', EntryDirection.debit, _money(30)),
-        ('receivable', EntryDirection.credit, _money(40)),
-      ]),
-    );
-    expect(refund.entries.any((entry) => entry.accountId == 'travel'), isFalse);
-  });
+      expect(
+        refund.lines
+            .where(
+              (line) =>
+                  line.role == TransactionRole.reimbursementExpenseCategory,
+            )
+            .map((line) => '${line.accountId}:${line.amount.minorUnits}'),
+        ['travel:25', 'meal:15'],
+      );
+      expect(
+        refund.lines
+            .where((line) => line.role == TransactionRole.refundOffset)
+            .map((line) => '${line.accountId}:${line.amount.minorUnits}'),
+        ['receivable:40'],
+      );
+      expect(
+        refund.lines.where((line) => line.role == TransactionRole.receivable),
+        isEmpty,
+      );
+      final resolved = const DefaultPostingInstructionResolver().resolveRefund(
+        refund,
+      );
+      final recreated = engine.createRefund(
+        instruction: resolved,
+        parent: advance,
+      );
+      expect(sameLines(recreated.lines, refund.lines), isTrue);
+      expect(
+        refund.entries.map(
+          (entry) => (entry.accountId, entry.direction, entry.amount),
+        ),
+        containsAll([
+          ('card', EntryDirection.debit, _money(10)),
+          ('cash', EntryDirection.debit, _money(30)),
+          ('receivable', EntryDirection.credit, _money(40)),
+        ]),
+      );
+      expect(
+        refund.entries
+            .where(
+              (entry) =>
+                  entry.accountId == 'receivable' &&
+                  entry.direction == EntryDirection.credit,
+            )
+            .length,
+        1,
+      );
+      expect(
+        refund.entries.any((entry) => entry.accountId == 'travel'),
+        isFalse,
+      );
+
+      final replay = engine.postEntries(
+        transactionId: refund.id,
+        businessPurpose: refund.businessPurpose,
+        lines: refund.lines,
+        accountTypes: const {
+          'card': AccountType.asset,
+          'cash': AccountType.asset,
+          'receivable': AccountType.asset,
+        },
+      );
+      expect(sameEntries(replay, refund.entries), isTrue);
+
+      final group = TransactionGroup(
+        parentTransaction: advance,
+        childTransactions: [refund],
+      );
+      expect(_shape(group.refundSummary!.refundedCategoryAllocations), [
+        'travel:25',
+        'meal:15',
+      ]);
+    },
+  );
 
   test('receipt supports multiple receiving accounts', () {
     final advance = _advance(engine, occurredAt);

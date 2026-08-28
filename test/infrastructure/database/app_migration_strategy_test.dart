@@ -653,7 +653,7 @@ void main() {
         'close-zero:reimbursementGapExpense:migration-travel:1000',
         'refund:settlementIn:migration-bank:100',
         'refund:reimbursementExpenseCategory:migration-travel:100',
-        'refund:receivable:migration-receivable:100',
+        'refund:refundOffset:migration-receivable:100',
         'repayment:liability:migration-liability:1000',
         'repayment:interest:-:100',
         'repayment:fee:-:50',

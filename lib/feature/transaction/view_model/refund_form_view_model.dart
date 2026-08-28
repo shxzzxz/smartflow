@@ -497,11 +497,14 @@ List<AccountAmountAllocation> _allocationsOf(
 List<AccountAmountAllocation> _refundCategoryAllocations(
   TransactionReadModel transaction,
 ) {
+  final reimbursementCategories = transaction.linesOf(
+    TransactionRole.reimbursementExpenseCategory,
+  );
+  final lines = reimbursementCategories.isNotEmpty
+      ? reimbursementCategories
+      : transaction.linesOf(TransactionRole.refundOffset);
   return [
-    for (final line in [
-      ...transaction.linesOf(TransactionRole.refundOffset),
-      ...transaction.linesOf(TransactionRole.reimbursementExpenseCategory),
-    ])
+    for (final line in lines)
       AccountAmountAllocation(accountId: line.accountId!, amount: line.amount),
   ];
 }

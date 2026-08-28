@@ -288,10 +288,10 @@ class PostingEngine {
     );
     final reimbursable =
         parent.businessPurpose == BusinessPurpose.reimbursementAdvance;
-    final receivableAccountId = reimbursable
+    final refundOffsetAccountId = reimbursable
         ? parent.accountOf(TransactionRole.receivable)
         : null;
-    if (reimbursable && receivableAccountId == null) {
+    if (reimbursable && refundOffsetAccountId == null) {
       return LedgerViolationReason.reimbursementInstructionUnresolvable
           .throwException(message: 'Refund receivable account is missing.');
     }
@@ -330,12 +330,12 @@ class PostingEngine {
               accountId: allocation.accountId,
               amount: allocation.amount,
             ),
-          if (receivableAccountId != null)
+          if (refundOffsetAccountId != null)
             _line(
               transactionId: transactionId,
               lineNo: lineNo++,
-              role: TransactionRole.receivable,
-              accountId: receivableAccountId,
+              role: TransactionRole.refundOffset,
+              accountId: refundOffsetAccountId,
               amount: instruction.amount,
             ),
         ],

@@ -139,7 +139,6 @@ const _allowedPurposesByRole = <TransactionRole, Set<BusinessPurpose>>{
   },
   TransactionRole.receivable: {
     BusinessPurpose.reimbursementAdvance,
-    BusinessPurpose.refund,
     BusinessPurpose.reimbursementReceipt,
     BusinessPurpose.reimbursementClose,
     BusinessPurpose.lending,

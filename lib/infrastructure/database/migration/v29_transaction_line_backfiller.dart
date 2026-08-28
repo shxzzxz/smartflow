@@ -143,7 +143,7 @@ final class V29TransactionLineBackfiller {
               accountId,
             )
             ..add(
-              TransactionRole.receivable,
+              TransactionRole.refundOffset,
               primaryAmount,
               builder.onlyCredit(),
             );
