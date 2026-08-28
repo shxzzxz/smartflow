@@ -1025,6 +1025,28 @@ TransactionReadModel _detail() {
     transaction: transaction,
     createdAt: DateTime(2026),
     lines: transaction.lines,
+    refundSummary: const RefundSummary(
+      refundedTotal: Money(minorUnits: 200),
+      originalCategoryAllocations: [
+        AccountAmountAllocation(
+          accountId: 'expense',
+          amount: Money(minorUnits: 1000),
+        ),
+      ],
+      refundedCategoryAllocations: [
+        AccountAmountAllocation(
+          accountId: 'expense',
+          amount: Money(minorUnits: 200),
+        ),
+      ],
+    ),
+    reimbursementSummary: const ReimbursementSummary(
+      advanceAmount: Money(minorUnits: 1000),
+      refundedAmount: Money(minorUnits: 200),
+      receivedAmount: Money(minorUnits: 0),
+      outstanding: Money(minorUnits: 800),
+      isClosed: false,
+    ),
     children: [
       TransactionReadModel(id: 'refund', parentTransactionId: 'parent', businessPurpose: BusinessPurpose.refund, occurredAt: DateTime(2026), primaryAmount: const Money(minorUnits: 200), isExcludedFromStats: false, isExcludedFromBudget: false),
     ],
