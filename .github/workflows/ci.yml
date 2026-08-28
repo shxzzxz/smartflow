@@ -20,6 +20,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          problem-matcher: true
+
       - name: Setup Flutter
         uses: ./.github/actions/setup-flutter
 

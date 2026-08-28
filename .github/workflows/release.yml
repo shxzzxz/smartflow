@@ -38,6 +38,11 @@ jobs:
           ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
 
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          problem-matcher: true
+
       - name: Setup Flutter
         uses: ./.github/actions/setup-flutter
 
