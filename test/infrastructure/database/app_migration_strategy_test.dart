@@ -560,6 +560,7 @@ void main() {
       "('close', 'reimbursementClose', 5, 5, 800, 'advance', NULL, 'manual'), "
       "('close-zero', 'reimbursementClose', 5, 5, 1000, 'advance', NULL, 'manual'), "
       "('repayment', 'debtRepayment', 6, 6, 1125, NULL, NULL, 'manual'), "
+      "('repayment-interest-only', 'debtRepayment', 10, 10, 14690, NULL, NULL, 'manual'), "
       "('borrowing', 'borrowing', 7, 7, 1000, NULL, NULL, 'manual'), "
       "('opening', 'openingBalance', 8, 8, 1000, NULL, NULL, 'manual'), "
       "('adjustment', 'balanceAdjustment', 9, 9, 500, NULL, NULL, 'manual')",
@@ -581,6 +582,8 @@ void main() {
       "('repayment-interest', 'repayment', 2, 'repaymentInterest', 100), "
       "('repayment-fee', 'repayment', 3, 'repaymentFee', 50), "
       "('repayment-discount', 'repayment', 4, 'repaymentDiscount', 25), "
+      "('repayment-interest-only-principal', 'repayment-interest-only', 1, 'repaymentPrincipal', 0), "
+      "('repayment-interest-only-interest', 'repayment-interest-only', 2, 'repaymentInterest', 14690), "
       "('borrowing-main', 'borrowing', 1, 'borrowingPrincipal', 1000), "
       "('opening-main', 'opening', 1, 'openingBalanceMain', 1000), "
       "('adjustment-main', 'adjustment', 1, 'balanceAdjustmentMain', 500)",
@@ -613,6 +616,10 @@ void main() {
       "('repayment-discount-entry', 'repayment', "
       "(SELECT id FROM accounts WHERE system_key = 'discountIncome'), 'credit', 25), "
       "('repayment-cash', 'repayment', 'migration-cash', 'credit', 1125), "
+      "('repayment-interest-only-liability', 'repayment-interest-only', 'migration-liability', 'debit', 0), "
+      "('repayment-interest-only-interest-entry', 'repayment-interest-only', "
+      "(SELECT id FROM accounts WHERE system_key = 'interestExpense'), 'debit', 14690), "
+      "('repayment-interest-only-cash', 'repayment-interest-only', 'migration-cash', 'credit', 14690), "
       "('borrowing-debit', 'borrowing', 'migration-bank', 'debit', 1000), "
       "('borrowing-credit', 'borrowing', 'migration-liability', 'credit', 1000), "
       "('opening-debit', 'opening', 'migration-bank', 'debit', 1000), "
@@ -659,6 +666,9 @@ void main() {
         'repayment:fee:-:50',
         'repayment:discount:-:25',
         'repayment:settlementOut:migration-cash:1125',
+        'repayment-interest-only:liability:migration-liability:0',
+        'repayment-interest-only:interest:-:14690',
+        'repayment-interest-only:settlementOut:migration-cash:14690',
         'opening:openingBalance:migration-bank:1000',
         'adjustment:balanceAdjustment:migration-bank:-500',
       }),

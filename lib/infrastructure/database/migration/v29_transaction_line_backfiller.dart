@@ -650,8 +650,20 @@ int _signed(EntryDirection direction, int amountMinor) =>
     direction == EntryDirection.debit ? amountMinor : -amountMinor;
 
 bool _sameEntries(Iterable<Entry> left, Iterable<Entry> right) {
-  final leftShape = left.map(_entryShape).toList()..sort();
-  final rightShape = right.map(_entryShape).toList()..sort();
+  // Older posting persisted zero-value legs; the v29 posting engine omits
+  // them. They are semantically equivalent for replay verification.
+  final leftShape =
+      left
+          .where((entry) => entry.amount.minorUnits != 0)
+          .map(_entryShape)
+          .toList()
+        ..sort();
+  final rightShape =
+      right
+          .where((entry) => entry.amount.minorUnits != 0)
+          .map(_entryShape)
+          .toList()
+        ..sort();
   if (leftShape.length != rightShape.length) return false;
   for (var i = 0; i < leftShape.length; i++) {
     if (leftShape[i] != rightShape[i]) return false;
