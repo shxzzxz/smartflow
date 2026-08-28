@@ -24,7 +24,7 @@ import 'package:smartflow/infrastructure/ledger/repository/drift_ledger_metrics_
 import 'package:smartflow/infrastructure/ledger/repository/drift_entry_read_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_posting_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_system_account_resolver.dart';
-import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_detail_read_repository.dart';
+import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_line_read_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 
 import '../../helper/sequential_id_generator.dart';
@@ -530,10 +530,9 @@ void main() {
           ),
         ],
       );
-      final schedule =
-          (await fixture.installmentRepository.listSchedules(
-            contractId,
-          )).single;
+      final schedule = (await fixture.installmentRepository.listSchedules(
+        contractId,
+      )).single;
 
       await fixture.generation.generateDueBills(now: DateTime(2026, 7, 15));
       final july = (await fixture.billRepository.listBillsByAccount(
@@ -600,8 +599,9 @@ void main() {
       );
       await fixture.installmentRepository.insertAggregate(contract, [schedule]);
       await fixture.generation.generateDueBills(now: DateTime(2026, 7, 15));
-      final bill =
-          (await fixture.billRepository.listBillsByAccount(account.id)).single;
+      final bill = (await fixture.billRepository.listBillsByAccount(
+        account.id,
+      )).single;
       final billItem = bill.items.single;
       final repaymentId = fixture.ids.newId();
       final repayment = Repayment(
@@ -640,8 +640,8 @@ void main() {
         contract.id,
       );
       schedules.single.markPaid();
-      final persistedContract =
-          (await fixture.installmentRepository.findContract(contract.id))!;
+      final persistedContract = (await fixture.installmentRepository
+          .findContract(contract.id))!;
       persistedContract.refreshStatusFromSchedules(schedules);
       await fixture.installmentRepository.saveAggregate(
         persistedContract,
@@ -835,7 +835,7 @@ class _Fixture {
       TransactionQueryServiceImpl(
         transactionRead: DriftTransactionReadRepository(database),
         entryRead: DriftEntryReadRepository(database),
-        detailRead: DriftTransactionDetailReadRepository(database),
+        lineRead: DriftTransactionLineReadRepository(database),
         accountQuery: accountQueryService,
         metricsSource: DriftLedgerMetricsSource(database),
       );
@@ -942,8 +942,14 @@ class _Fixture {
     return postingAppService.createExpense(
       CreateExpenseCommand(
         amount: amount,
-        paidFromAccountId: accountId,
-        expenseAccountId: 'expense-food',
+        categoryAllocations: singleAllocation(
+          accountId: 'expense-food',
+          amount: amount,
+        ),
+        settlementAllocations: singleAllocation(
+          accountId: accountId,
+          amount: amount,
+        ),
         occurredAt: occurredAt,
       ),
     );
@@ -959,7 +965,11 @@ class _Fixture {
       CreateRefundCommand(
         amount: amount,
         parentTransactionId: parentTransactionId,
-        refundToAccountId: accountId,
+        categoryAllocations: const [],
+        settlementAllocations: singleAllocation(
+          accountId: accountId,
+          amount: amount,
+        ),
         occurredAt: occurredAt,
       ),
     );

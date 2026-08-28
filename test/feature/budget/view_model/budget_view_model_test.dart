@@ -340,7 +340,8 @@ void main() {
 
       expect(service.queries, isNotEmpty);
       final query = service.queries.last;
-      expect(query.categoryAccountIds, {root.id, child.id});
+      expect(query.match, isA<TransactionImpactMatch>());
+      expect(query.match.categoryAccountIds, {root.id, child.id});
       expect(query.scope, TransactionScopeFilter.budget);
       expect(
         container.read(budgetDetailPageProvider(progress.id, month)),
@@ -467,7 +468,7 @@ class _RecordingTransactionQueryService implements TransactionQueryService {
   final queries = <TransactionListQuery>[];
 
   @override
-  Stream<List<TransactionListReadModel>> watchTransactions(
+  Stream<List<TransactionReadModel>> watchTransactions(
     TransactionListQuery query,
   ) {
     queries.add(query);

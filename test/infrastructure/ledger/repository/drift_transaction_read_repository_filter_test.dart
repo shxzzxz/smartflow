@@ -9,6 +9,83 @@ import '../../../helper/test_app_database.dart';
 
 void main() {
   test(
+    'fact and impact matches use different storage representations',
+    () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      await database.batch((batch) {
+        batch.insertAll(database.transactions, [
+          _transactionCompanion('line-only'),
+          _transactionCompanion('entry-only'),
+        ]);
+        batch.insert(
+          database.transactionLines,
+          TransactionLinesCompanion.insert(
+            id: 'line-only-category',
+            transactionId: 'line-only',
+            lineNo: 1,
+            role: TransactionRole.category,
+            accountId: const Value('food'),
+            amountMinor: 100,
+          ),
+        );
+        batch.insert(
+          database.transactionLines,
+          TransactionLinesCompanion.insert(
+            id: 'line-only-receivable',
+            transactionId: 'line-only',
+            lineNo: 2,
+            role: TransactionRole.receivable,
+            accountId: const Value('cash'),
+            amountMinor: 100,
+          ),
+        );
+        batch.insert(
+          database.entries,
+          _entryCompanion('entry-only-category', 'entry-only', 'food'),
+        );
+      });
+
+      final repository = DriftTransactionReadRepository(database);
+      final factPage = await repository
+          .watchPage(
+            const TransactionPageQuery(
+              match: TransactionFactMatch(categoryAccountIds: {'food'}),
+            ),
+          )
+          .first;
+      final impactPage = await repository
+          .watchPage(
+            const TransactionPageQuery(
+              match: TransactionImpactMatch(categoryAccountIds: {'food'}),
+            ),
+          )
+          .first;
+      final settlementFactPage = await repository
+          .watchPage(
+            const TransactionPageQuery(
+              match: TransactionFactMatch(settlementAccountIds: {'cash'}),
+            ),
+          )
+          .first;
+      final latestFact = await repository.findLatestByCategory(
+        const CategoryTransactionQuery(categoryId: 'food'),
+      );
+      final migrationTargets = await repository.findCategoryTransactionTargets(
+        'food',
+      );
+
+      expect(factPage.map((transaction) => transaction.id), ['line-only']);
+      expect(impactPage.map((transaction) => transaction.id), ['entry-only']);
+      expect(settlementFactPage, isEmpty);
+      expect(latestFact?.id, 'line-only');
+      expect(migrationTargets.map((target) => target.transactionId), [
+        'line-only',
+      ]);
+    },
+  );
+
+  test(
     'intersects independent category and settlement-entry filters',
     () async {
       final database = createTestDatabase();
@@ -29,15 +106,16 @@ void main() {
         ]);
       });
 
-      final page =
-          await DriftTransactionReadRepository(database)
-              .watchPage(
-                const TransactionPageQuery(
-                  categoryAccountIds: {'food'},
-                  settlementAccountIds: {'cash'},
-                ),
-              )
-              .first;
+      final page = await DriftTransactionReadRepository(database)
+          .watchPage(
+            const TransactionPageQuery(
+              match: TransactionImpactMatch(
+                categoryAccountIds: {'food'},
+                settlementAccountIds: {'cash'},
+              ),
+            ),
+          )
+          .first;
 
       expect(page.map((transaction) => transaction.id), ['matches-both']);
     },
@@ -64,16 +142,17 @@ void main() {
       ]);
     });
 
-    final page =
-        await DriftTransactionReadRepository(database)
-            .watchPage(
-              const TransactionPageQuery(
-                categoryAccountIds: {'food', 'travel'},
-                settlementAccountIds: {'cash', 'bank'},
-                limit: 2,
-              ),
-            )
-            .first;
+    final page = await DriftTransactionReadRepository(database)
+        .watchPage(
+          const TransactionPageQuery(
+            match: TransactionImpactMatch(
+              categoryAccountIds: {'food', 'travel'},
+              settlementAccountIds: {'cash', 'bank'},
+            ),
+            limit: 2,
+          ),
+        )
+        .first;
 
     expect(page.map((transaction) => transaction.id), [
       'food-cash',
@@ -95,7 +174,6 @@ void main() {
           'latest-reimbursement',
           DateTime(2026, 4, 4),
           businessPurpose: BusinessPurpose.reimbursementAdvance,
-          reimbursementExpenseAccountId: 'food',
         ),
         _transactionCompanionAt('newer-unrelated', DateTime(2026, 4, 3)),
         _transactionCompanionAt('old-expense', DateTime(2026, 4, 2)),
@@ -114,16 +192,27 @@ void main() {
         _entryCompanion('old-food', 'old-expense', 'food'),
         _entryCompanion('old-cash', 'old-expense', 'cash'),
       ]);
+      // 报销垫付的支出分类只在分项上,不产生分录。
+      batch.insert(
+        database.transactionLines,
+        TransactionLinesCompanion.insert(
+          id: 'latest-category-line',
+          transactionId: 'latest-reimbursement',
+          lineNo: 1,
+          role: TransactionRole.reimbursementExpenseCategory,
+          accountId: const Value('food'),
+          amountMinor: 100,
+        ),
+      );
     });
 
-    final transaction = await DriftTransactionReadRepository(
-      database,
-    ).findLatestByCategory(
-      const CategoryTransactionQuery(
-        categoryId: 'food',
-        hierarchy: TransactionHierarchyFilter.topLevel,
-      ),
-    );
+    final transaction = await DriftTransactionReadRepository(database)
+        .findLatestByCategory(
+          const CategoryTransactionQuery(
+            categoryId: 'food',
+            hierarchy: TransactionHierarchyFilter.topLevel,
+          ),
+        );
 
     expect(transaction?.id, 'latest-reimbursement');
   });
@@ -152,16 +241,33 @@ void main() {
         _entryCompanion('new-food', 'new-refund', 'food'),
         _entryCompanion('old-food', 'old-refund', 'food'),
       ]);
+      batch.insertAll(database.transactionLines, [
+        TransactionLinesCompanion.insert(
+          id: 'new-refund-category',
+          transactionId: 'new-refund',
+          lineNo: 1,
+          role: TransactionRole.category,
+          accountId: const Value('food'),
+          amountMinor: 100,
+        ),
+        TransactionLinesCompanion.insert(
+          id: 'old-refund-category',
+          transactionId: 'old-refund',
+          lineNo: 1,
+          role: TransactionRole.category,
+          accountId: const Value('food'),
+          amountMinor: 100,
+        ),
+      ]);
     });
 
-    final transaction = await DriftTransactionReadRepository(
-      database,
-    ).findLatestByCategory(
-      const CategoryTransactionQuery(
-        categoryId: 'food',
-        hierarchy: TransactionHierarchyFilter.child,
-      ),
-    );
+    final transaction = await DriftTransactionReadRepository(database)
+        .findLatestByCategory(
+          const CategoryTransactionQuery(
+            categoryId: 'food',
+            hierarchy: TransactionHierarchyFilter.child,
+          ),
+        );
 
     expect(transaction?.id, 'new-refund');
   });
@@ -179,13 +285,29 @@ void main() {
         _entryCompanion('same-time-a-food', 'same-time-a', 'food'),
         _entryCompanion('same-time-z-food', 'same-time-z', 'food'),
       ]);
+      batch.insertAll(database.transactionLines, [
+        TransactionLinesCompanion.insert(
+          id: 'same-time-a-category',
+          transactionId: 'same-time-a',
+          lineNo: 1,
+          role: TransactionRole.category,
+          accountId: const Value('food'),
+          amountMinor: 100,
+        ),
+        TransactionLinesCompanion.insert(
+          id: 'same-time-z-category',
+          transactionId: 'same-time-z',
+          lineNo: 1,
+          role: TransactionRole.category,
+          accountId: const Value('food'),
+          amountMinor: 100,
+        ),
+      ]);
     });
 
     final transaction = await DriftTransactionReadRepository(
       database,
-    ).findLatestByCategory(
-      const CategoryTransactionQuery(categoryId: 'food'),
-    );
+    ).findLatestByCategory(const CategoryTransactionQuery(categoryId: 'food'));
 
     expect(transaction?.id, 'same-time-z');
   });
@@ -199,7 +321,6 @@ TransactionsCompanion _transactionCompanionAt(
   DateTime occurredAt, {
   BusinessPurpose businessPurpose = BusinessPurpose.dailyExpense,
   String? parentTransactionId,
-  String? reimbursementExpenseAccountId,
 }) => TransactionsCompanion.insert(
   id: id,
   businessPurpose: businessPurpose,
@@ -208,7 +329,6 @@ TransactionsCompanion _transactionCompanionAt(
   primaryAmountMinor: 100,
   sourceKind: SourceKind.manual,
   parentTransactionId: Value(parentTransactionId),
-  reimbursementExpenseAccountId: Value(reimbursementExpenseAccountId),
 );
 
 EntriesCompanion _entryCompanion(

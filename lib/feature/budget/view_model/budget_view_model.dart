@@ -218,7 +218,7 @@ BudgetPageState budgetPage(Ref ref, DateTime? initialMonth) {
 }
 
 @riverpod
-Stream<List<TransactionListReadModel>> budgetCategoryTransactions(
+Stream<List<TransactionReadModel>> budgetCategoryTransactions(
   Ref ref,
   String categoryId,
   DateTime month,
@@ -235,7 +235,9 @@ Stream<List<TransactionListReadModel>> budgetCategoryTransactions(
       .watch(transactionQueryServiceProvider)
       .watchTransactions(
         TransactionListQuery(
-          categoryAccountIds: categoryIds.toSet(),
+          match: TransactionImpactMatch(
+            categoryAccountIds: categoryIds.toSet(),
+          ),
           occurredFrom: visibleMonth.start,
           occurredUntil: visibleMonth.nextMonthStart,
           topLevelOnly: true,
@@ -372,7 +374,7 @@ sealed class BudgetDetailPageState {
   const factory BudgetDetailPageState.loaded({
     required MonthKey month,
     required BudgetProgress progress,
-    required List<TransactionListReadModel> transactions,
+    required List<TransactionReadModel> transactions,
     required AccountLookup accountLookup,
   }) = BudgetDetailPageLoaded;
 }
@@ -401,6 +403,6 @@ final class BudgetDetailPageLoaded extends BudgetDetailPageState {
 
   final MonthKey month;
   final BudgetProgress progress;
-  final List<TransactionListReadModel> transactions;
+  final List<TransactionReadModel> transactions;
   final AccountLookup accountLookup;
 }

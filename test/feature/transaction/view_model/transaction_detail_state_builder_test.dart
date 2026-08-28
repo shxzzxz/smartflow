@@ -159,43 +159,74 @@ TransactionDetailLoaded _build({
   String? parentTransactionId = 'parent',
   Money? refundedTotal,
   ReimbursementSummary? reimbursementSummary,
-  List<TransactionListReadModel> children = const [],
+  List<TransactionReadModel> children = const [],
 }) {
-  final entries = [
-    Entry(
-      id: 'cash-entry',
-      transactionId: 'child',
-      accountId: 'cash',
-      direction: EntryDirection.debit,
-      amount: const Money(minorUnits: 1000),
-    ),
-    Entry(
-      id: 'offset-entry',
-      transactionId: 'child',
-      accountId: 'expense',
-      direction: EntryDirection.credit,
-      amount: const Money(minorUnits: 1000),
-    ),
-  ];
-  final detail = TransactionDetail(
+  final detail = TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'child',
       parentTransactionId: parentTransactionId,
       businessPurpose: purpose,
       occurredAt: DateTime(2026, 7, 23),
-      primaryAmount: const Money(minorUnits: 1000),
+      primaryAmount:
+          reimbursementSummary?.advanceAmount ??
+          (purpose == BusinessPurpose.reimbursementAdvance
+              ? const Money(minorUnits: 10000)
+              : const Money(minorUnits: 1000)),
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
-      entries: entries,
     ),
     createdAt: DateTime(2026, 7, 23),
-    details: const [],
-    entries: entries,
+    lines: [
+      TransactionLine(
+        id: 'account-line',
+        transactionId: 'child',
+        lineNo: 1,
+        role: switch (purpose) {
+          BusinessPurpose.dailyExpense ||
+          BusinessPurpose.debtRepayment ||
+          BusinessPurpose.lending => TransactionRole.settlementOut,
+          BusinessPurpose.badDebt => TransactionRole.receivable,
+          BusinessPurpose.debtRelief => TransactionRole.liability,
+          _ => TransactionRole.settlementIn,
+        },
+        accountId: 'cash',
+        amount: const Money(minorUnits: 1000),
+      ),
+    ],
     children: children,
-    refundedTotal: refundedTotal,
+    refundSummary: refundedTotal == null
+        ? null
+        : RefundSummary(
+            refundedTotal: refundedTotal,
+            originalCategoryAllocations: const [],
+            refundedCategoryAllocations: const [],
+          ),
     reimbursementSummary: reimbursementSummary,
   );
+  final parentDetail = reimbursementSummary == null
+      ? null
+      : TransactionReadModel(
+          id: 'parent',
+          businessPurpose: BusinessPurpose.reimbursementAdvance,
+          occurredAt: DateTime(2026, 7, 22),
+          primaryAmount: reimbursementSummary.advanceAmount,
+          isExcludedFromStats: false,
+          isExcludedFromBudget: false,
+          reimbursementSummary: reimbursementSummary,
+          children: [
+            if (reimbursementSummary.isClosed)
+              TransactionReadModel(
+                id: 'close',
+                parentTransactionId: 'parent',
+                businessPurpose: BusinessPurpose.reimbursementClose,
+                occurredAt: DateTime(2026, 7, 22),
+                primaryAmount: reimbursementSummary.receivedAmount,
+                isExcludedFromStats: false,
+                isExcludedFromBudget: false,
+              ),
+          ],
+        );
   final accounts = <String, Account>{
     'cash': Account(
       id: 'cash',
@@ -213,25 +244,35 @@ TransactionDetailLoaded _build({
   return buildTransactionDetailLoadedState(
         transactionId: 'child',
         detail: detail,
+        parentDetail: parentDetail,
         accountLookup: AccountLookup(accounts),
       )
       as TransactionDetailLoaded;
 }
 
-TransactionListReadModel _child({
+TransactionReadModel _child({
   required String id,
   required BusinessPurpose purpose,
   required int amountMinor,
 }) {
-  return TransactionListReadModel(
+  return TransactionReadModel(
     id: id,
+    parentTransactionId: 'child',
     businessPurpose: purpose,
     occurredAt: DateTime(2026, 7, 23),
     primaryAmount: Money(minorUnits: amountMinor),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    primaryCategoryId: null,
     impactsByAccountId: const {},
-    adjustments: const [],
+    lines: [
+      TransactionLine(
+        id: '$id-settlement',
+        transactionId: id,
+        lineNo: 1,
+        role: TransactionRole.settlementIn,
+        accountId: 'cash',
+        amount: Money(minorUnits: amountMinor),
+      ),
+    ],
   );
 }

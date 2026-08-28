@@ -1,16 +1,13 @@
 import 'package:smartflow/core/money/money.dart';
-import '../../entity/account.dart';
 import '../../entity/transaction.dart';
-import '../../valobj/account_usage.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 
+/// `Instruction → 分项` 的逆。分项是过账输入的持久化形态,因此这里是纯查表:
+/// 不读分录,也不依赖分录顺序。
 abstract interface class PostingInstructionResolver {
-  PostingInstruction resolve(
-    Transaction transaction, {
-    Map<String, Account> accountsById = const {},
-  });
+  PostingInstruction resolve(Transaction transaction);
 
   RefundInstruction resolveRefund(Transaction transaction);
 }
@@ -19,10 +16,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
   const DefaultPostingInstructionResolver();
 
   @override
-  PostingInstruction resolve(
-    Transaction transaction, {
-    Map<String, Account> accountsById = const {},
-  }) {
+  PostingInstruction resolve(Transaction transaction) {
     return switch (transaction.businessPurpose) {
       BusinessPurpose.dailyExpense => _resolveExpense(transaction),
       BusinessPurpose.dailyIncome => _resolveIncome(transaction),
@@ -33,18 +27,16 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       BusinessPurpose.debtRepayment => _resolveRepayment(transaction),
       BusinessPurpose.borrowing => _resolveBorrowing(transaction),
       BusinessPurpose.lending => _resolveLending(transaction),
-      BusinessPurpose.receivableCollection => _resolveCollection(
-        transaction,
-        accountsById,
-      ),
+      BusinessPurpose.receivableCollection => _resolveCollection(transaction),
       BusinessPurpose.badDebt => _resolveBadDebt(transaction),
       BusinessPurpose.debtRelief => _resolveDebtRelief(transaction),
-      _ => LedgerViolationReason.unsupportedPostingInstructionResolution
-          .throwException(
-            message:
-                'Cannot resolve ${transaction.businessPurpose.name} as a '
-                'posting instruction.',
-          ),
+      _ =>
+        LedgerViolationReason.unsupportedPostingInstructionResolution
+            .throwException(
+              message:
+                  'Cannot resolve ${transaction.businessPurpose.name} as a '
+                  'posting instruction.',
+            ),
     };
   }
 
@@ -56,19 +48,31 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
         message: 'A refund transaction is required.',
       );
     }
-    final refundTo = _firstEntryAccount(
-      transaction,
-      direction: EntryDirection.debit,
+    final settlements = transaction.accountAllocationsOf(
+      TransactionRole.settlementIn,
     );
-    if (refundTo == null) {
+    final refundOffsets = transaction.accountAllocationsOf(
+      TransactionRole.refundOffset,
+    );
+    final reimbursementCategories = transaction.accountAllocationsOf(
+      TransactionRole.reimbursementExpenseCategory,
+    );
+    // Reimbursement refunds have two independent facts: category allocations
+    // and the parent receivable account stored in refundOffset. The latter
+    // must never be interpreted as a refunded category.
+    final categories = reimbursementCategories.isNotEmpty
+        ? reimbursementCategories
+        : refundOffsets;
+    if (settlements.isEmpty || categories.isEmpty) {
       return LedgerViolationReason.refundToAccountNotFound.throwException(
-        message: 'Refund receiving account cannot be resolved.',
+        message: 'Refund allocations cannot be resolved.',
       );
     }
     return RefundInstruction(
       parentTransactionId: transaction.parentTransactionId!,
       amount: transaction.primaryAmount,
-      refundToAccountId: refundTo,
+      categoryAllocations: categories,
+      settlementAllocations: settlements,
       occurredAt: transaction.occurredAt,
       postedAt: transaction.postedAt,
       counterpartyName: transaction.counterpartyName,
@@ -77,22 +81,20 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
   }
 
   ExpenseInstruction _resolveExpense(Transaction transaction) {
-    final expenseAccountId = _firstEntryAccount(
-      transaction,
-      direction: EntryDirection.debit,
+    final categories = transaction.accountAllocationsOf(
+      TransactionRole.category,
     );
-    final paidFromAccountId = _firstEntryAccount(
-      transaction,
-      direction: EntryDirection.credit,
+    final settlements = transaction.accountAllocationsOf(
+      TransactionRole.settlementOut,
     );
-    if (expenseAccountId == null || paidFromAccountId == null) {
+    if (categories.isEmpty || settlements.isEmpty) {
       return LedgerViolationReason.expenseInstructionUnresolvable
           .throwException(message: 'Expense accounts cannot be resolved.');
     }
     return ExpenseInstruction(
       amount: transaction.primaryAmount,
-      paidFromAccountId: paidFromAccountId,
-      expenseAccountId: expenseAccountId,
+      categoryAllocations: categories,
+      settlementAllocations: settlements,
       occurredAt: transaction.occurredAt,
       postedAt: transaction.postedAt,
       counterpartyName: transaction.counterpartyName,
@@ -105,13 +107,9 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
   }
 
   IncomeInstruction _resolveIncome(Transaction transaction) {
-    final receiveAccountId = _firstEntryAccount(
-      transaction,
-      direction: EntryDirection.debit,
-    );
-    final incomeAccountId = _firstEntryAccount(
-      transaction,
-      direction: EntryDirection.credit,
+    final incomeAccountId = transaction.accountOf(TransactionRole.category);
+    final receiveAccountId = transaction.accountOf(
+      TransactionRole.settlementIn,
     );
     if (receiveAccountId == null || incomeAccountId == null) {
       return LedgerViolationReason.incomeInstructionUnresolvable.throwException(
@@ -136,20 +134,18 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
   ReimbursementAdvanceInstruction _resolveReimbursementAdvance(
     Transaction transaction,
   ) {
-    final expenseAccountId = transaction.reimbursementExpenseAccountId;
-    final receivableAccountId = _firstEntryAccount(
-      transaction,
-      direction: EntryDirection.debit,
-      excludeAccountId: expenseAccountId,
+    final categories = transaction.accountAllocationsOf(
+      TransactionRole.reimbursementExpenseCategory,
     );
-    final paidFromAccountId = _firstEntryAccount(
-      transaction,
-      direction: EntryDirection.credit,
-      excludeAccountId: expenseAccountId,
+    final receivableAccountId = transaction.accountOf(
+      TransactionRole.receivable,
     );
-    if (expenseAccountId == null ||
+    final settlements = transaction.accountAllocationsOf(
+      TransactionRole.settlementOut,
+    );
+    if (categories.isEmpty ||
         receivableAccountId == null ||
-        paidFromAccountId == null) {
+        settlements.isEmpty) {
       return LedgerViolationReason.reimbursementInstructionUnresolvable
           .throwException(
             message: 'Reimbursement advance accounts cannot be resolved.',
@@ -158,8 +154,8 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
     return ReimbursementAdvanceInstruction(
       amount: transaction.primaryAmount,
       receivableAccountId: receivableAccountId,
-      paidFromAccountId: paidFromAccountId,
-      expenseAccountId: expenseAccountId,
+      categoryAllocations: categories,
+      settlementAllocations: settlements,
       occurredAt: transaction.occurredAt,
       postedAt: transaction.postedAt,
       counterpartyName: transaction.counterpartyName,
@@ -172,19 +168,8 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
   }
 
   TransferInstruction _resolveTransfer(Transaction transaction) {
-    final fromAccountId = _firstEntryAccount(
-      transaction,
-      direction: EntryDirection.credit,
-    );
-    final toAccountId = _entryForDetailAmount(
-      transaction,
-      detailType: TransactionDetailType.transferMain,
-      direction: EntryDirection.debit,
-    );
-    final feeAmount = _detailAmount(
-      transaction,
-      TransactionDetailType.transferFee,
-    );
+    final fromAccountId = transaction.accountOf(TransactionRole.settlementOut);
+    final toAccountId = transaction.accountOf(TransactionRole.settlementIn);
     if (fromAccountId == null || toAccountId == null) {
       return LedgerViolationReason.transferInstructionUnresolvable
           .throwException(message: 'Transfer accounts cannot be resolved.');
@@ -193,7 +178,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       amount: transaction.primaryAmount,
       fromAccountId: fromAccountId,
       toAccountId: toAccountId,
-      feeAmount: feeAmount,
+      feeAmount: transaction.amountOf(TransactionRole.fee),
       occurredAt: transaction.occurredAt,
       postedAt: transaction.postedAt,
       counterpartyName: transaction.counterpartyName,
@@ -203,13 +188,9 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
   }
 
   BorrowingInstruction _resolveBorrowing(Transaction transaction) {
-    final receiveAccountId = _firstEntryAccount(
-      transaction,
-      direction: EntryDirection.debit,
-    );
-    final liabilityAccountId = _firstEntryAccount(
-      transaction,
-      direction: EntryDirection.credit,
+    final liabilityAccountId = transaction.accountOf(TransactionRole.liability);
+    final receiveAccountId = transaction.accountOf(
+      TransactionRole.settlementIn,
     );
     if (receiveAccountId == null || liabilityAccountId == null) {
       return LedgerViolationReason.borrowingInstructionUnresolvable
@@ -229,34 +210,22 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
   }
 
   RepaymentInstruction _resolveRepayment(Transaction transaction) {
-    final principal = _detailAmount(
-      transaction,
-      TransactionDetailType.repaymentPrincipal,
+    final principal = transaction.amountOf(TransactionRole.liability);
+    final liabilityAccountId = transaction.accountOf(TransactionRole.liability);
+    final paidFromAccountId = transaction.accountOf(
+      TransactionRole.settlementOut,
     );
-    final liabilityAccountId = _entryForDetailAmount(
-      transaction,
-      detailType: TransactionDetailType.repaymentPrincipal,
-      direction: EntryDirection.debit,
-    );
-    final paidFromAccountId = transaction.entries.last.accountId;
-    if (principal == null || liabilityAccountId == null) {
+    if (principal == null ||
+        liabilityAccountId == null ||
+        paidFromAccountId == null) {
       return LedgerViolationReason.repaymentInstructionUnresolvable
           .throwException(message: 'Repayment accounts cannot be resolved.');
     }
-    final interest = _detailAmount(
-      transaction,
-      TransactionDetailType.repaymentInterest,
-    );
-    final fee = _detailAmount(transaction, TransactionDetailType.repaymentFee);
-    final discount = _detailAmount(
-      transaction,
-      TransactionDetailType.repaymentDiscount,
-    );
     return RepaymentInstruction(
       principal: principal,
-      interest: interest,
-      fee: fee,
-      discount: discount,
+      interest: transaction.amountOf(TransactionRole.interest),
+      fee: transaction.amountOf(TransactionRole.fee),
+      discount: transaction.amountOf(TransactionRole.discount),
       liabilityAccountId: liabilityAccountId,
       paidFromAccountId: paidFromAccountId,
       occurredAt: transaction.occurredAt,
@@ -268,158 +237,94 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
     );
   }
 
-  LendingInstruction _resolveLending(Transaction transaction) =>
-      LendingInstruction(
-        amount: transaction.primaryAmount,
-        receivableAccountId:
-            _entryForDetailAmount(
-              transaction,
-              detailType: TransactionDetailType.lendingPrincipal,
-              direction: EntryDirection.debit,
-            )!,
-        paidFromAccountId:
-            _entryForDetailAmount(
-              transaction,
-              detailType: TransactionDetailType.lendingPrincipal,
-              direction: EntryDirection.credit,
-            )!,
-        occurredAt: transaction.occurredAt,
-        postedAt: transaction.postedAt,
-        counterpartyName: transaction.counterpartyName,
-        note: transaction.note,
-        sourceKind: transaction.sourceKind,
-      );
-
-  ReceivableCollectionInstruction _resolveCollection(
-    Transaction transaction,
-    Map<String, Account> accountsById,
-  ) => ReceivableCollectionInstruction(
-    principal:
-        _detailAmount(
-          transaction,
-          TransactionDetailType.receivableCollectionPrincipal,
-        )!,
-    interest:
-        _detailAmount(
-          transaction,
-          TransactionDetailType.receivableCollectionInterest,
-        ) ??
-        Money.zero(),
-    receivableAccountId:
-        _entryForUsage(
-          transaction,
-          accountsById: accountsById,
-          direction: EntryDirection.credit,
-          usage: AccountUsage.receivable,
-        ) ??
-        _entryForDetailAmount(
-          transaction,
-          detailType: TransactionDetailType.receivableCollectionPrincipal,
-          direction: EntryDirection.credit,
-        )!,
-    receiveAccountId:
-        _entryForUsage(
-          transaction,
-          accountsById: accountsById,
-          direction: EntryDirection.debit,
-          usage: AccountUsage.fund,
-        ) ??
-        _firstEntryAccount(transaction, direction: EntryDirection.debit)!,
-    occurredAt: transaction.occurredAt,
-    postedAt: transaction.postedAt,
-    counterpartyName: transaction.counterpartyName,
-    note: transaction.note,
-    sourceKind: transaction.sourceKind,
-  );
-
-  String? _entryForUsage(
-    Transaction transaction, {
-    required Map<String, Account> accountsById,
-    required EntryDirection direction,
-    required AccountUsage usage,
-  }) {
-    if (accountsById.isEmpty) return null;
-    String? match;
-    for (final entry in transaction.entries) {
-      final account = accountsById[entry.accountId];
-      if (entry.direction != direction ||
-          account == null ||
-          !accountMatchesUsage(account, usage)) {
-        continue;
-      }
-      if (match != null) return null;
-      match = entry.accountId;
+  LendingInstruction _resolveLending(Transaction transaction) {
+    final receivableAccountId = transaction.accountOf(
+      TransactionRole.receivable,
+    );
+    final paidFromAccountId = transaction.accountOf(
+      TransactionRole.settlementOut,
+    );
+    if (receivableAccountId == null || paidFromAccountId == null) {
+      return LedgerViolationReason.lendingInstructionUnresolvable
+          .throwException(message: 'Lending accounts cannot be resolved.');
     }
-    return match;
+    return LendingInstruction(
+      amount: transaction.primaryAmount,
+      receivableAccountId: receivableAccountId,
+      paidFromAccountId: paidFromAccountId,
+      occurredAt: transaction.occurredAt,
+      postedAt: transaction.postedAt,
+      counterpartyName: transaction.counterpartyName,
+      note: transaction.note,
+      sourceKind: transaction.sourceKind,
+    );
   }
 
-  BadDebtInstruction _resolveBadDebt(Transaction transaction) =>
-      BadDebtInstruction(
-        amount: transaction.primaryAmount,
-        receivableAccountId:
-            _entryForDetailAmount(
-              transaction,
-              detailType: TransactionDetailType.badDebtMain,
-              direction: EntryDirection.credit,
-            )!,
-        occurredAt: transaction.occurredAt,
-        postedAt: transaction.postedAt,
-        counterpartyName: transaction.counterpartyName,
-        note: transaction.note,
-        isExcludedFromStats: transaction.isExcludedFromStats,
-        isExcludedFromBudget: transaction.isExcludedFromBudget,
-        sourceKind: transaction.sourceKind,
-      );
-
-  DebtReliefInstruction _resolveDebtRelief(Transaction transaction) =>
-      DebtReliefInstruction(
-        amount: transaction.primaryAmount,
-        liabilityAccountId:
-            _entryForDetailAmount(
-              transaction,
-              detailType: TransactionDetailType.debtReliefMain,
-              direction: EntryDirection.debit,
-            )!,
-        occurredAt: transaction.occurredAt,
-        postedAt: transaction.postedAt,
-        counterpartyName: transaction.counterpartyName,
-        note: transaction.note,
-        isExcludedFromStats: transaction.isExcludedFromStats,
-        sourceKind: transaction.sourceKind,
-      );
-
-  Money? _detailAmount(Transaction transaction, TransactionDetailType type) {
-    for (final detail in transaction.details) {
-      if (detail.type == type) return detail.amount;
+  ReceivableCollectionInstruction _resolveCollection(Transaction transaction) {
+    final principal = transaction.amountOf(TransactionRole.receivable);
+    final receivableAccountId = transaction.accountOf(
+      TransactionRole.receivable,
+    );
+    final receiveAccountId = transaction.accountOf(
+      TransactionRole.settlementIn,
+    );
+    if (principal == null ||
+        receivableAccountId == null ||
+        receiveAccountId == null) {
+      return LedgerViolationReason.receivableCollectionInstructionUnresolvable
+          .throwException(
+            message: 'Receivable collection accounts cannot be resolved.',
+          );
     }
-    return null;
+    return ReceivableCollectionInstruction(
+      principal: principal,
+      interest: transaction.amountOf(TransactionRole.interest) ?? Money.zero(),
+      receivableAccountId: receivableAccountId,
+      receiveAccountId: receiveAccountId,
+      occurredAt: transaction.occurredAt,
+      postedAt: transaction.postedAt,
+      counterpartyName: transaction.counterpartyName,
+      note: transaction.note,
+      sourceKind: transaction.sourceKind,
+    );
   }
 
-  String? _entryForDetailAmount(
-    Transaction transaction, {
-    required TransactionDetailType detailType,
-    required EntryDirection direction,
-  }) {
-    final amount = _detailAmount(transaction, detailType);
-    if (amount == null) return null;
-    for (final entry in transaction.entries) {
-      if (entry.direction == direction && entry.amount == amount) {
-        return entry.accountId;
-      }
+  BadDebtInstruction _resolveBadDebt(Transaction transaction) {
+    final receivableAccountId = transaction.accountOf(
+      TransactionRole.receivable,
+    );
+    if (receivableAccountId == null) {
+      return LedgerViolationReason.badDebtInstructionUnresolvable
+          .throwException(message: 'Bad debt accounts cannot be resolved.');
     }
-    return null;
+    return BadDebtInstruction(
+      amount: transaction.primaryAmount,
+      receivableAccountId: receivableAccountId,
+      occurredAt: transaction.occurredAt,
+      postedAt: transaction.postedAt,
+      counterpartyName: transaction.counterpartyName,
+      note: transaction.note,
+      isExcludedFromStats: transaction.isExcludedFromStats,
+      isExcludedFromBudget: transaction.isExcludedFromBudget,
+      sourceKind: transaction.sourceKind,
+    );
   }
 
-  String? _firstEntryAccount(
-    Transaction transaction, {
-    required EntryDirection direction,
-    String? excludeAccountId,
-  }) {
-    for (final entry in transaction.entries) {
-      if (entry.direction != direction) continue;
-      if (entry.accountId == excludeAccountId) continue;
-      return entry.accountId;
+  DebtReliefInstruction _resolveDebtRelief(Transaction transaction) {
+    final liabilityAccountId = transaction.accountOf(TransactionRole.liability);
+    if (liabilityAccountId == null) {
+      return LedgerViolationReason.debtReliefInstructionUnresolvable
+          .throwException(message: 'Debt relief accounts cannot be resolved.');
     }
-    return null;
+    return DebtReliefInstruction(
+      amount: transaction.primaryAmount,
+      liabilityAccountId: liabilityAccountId,
+      occurredAt: transaction.occurredAt,
+      postedAt: transaction.postedAt,
+      counterpartyName: transaction.counterpartyName,
+      note: transaction.note,
+      isExcludedFromStats: transaction.isExcludedFromStats,
+      sourceKind: transaction.sourceKind,
+    );
   }
 }

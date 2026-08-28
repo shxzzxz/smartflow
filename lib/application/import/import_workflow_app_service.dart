@@ -69,11 +69,10 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     final defaults = {
       for (final mapping in stored)
         ImportMappingKey(
-              source: mapping.source,
-              entityKind: mapping.entityKind,
-              sourceEntityKey: mapping.sourceEntityKey,
-            ):
-            mapping.targetAccountId,
+          source: mapping.source,
+          entityKind: mapping.entityKind,
+          sourceEntityKey: mapping.sourceEntityKey,
+        ): mapping.targetAccountId,
     };
     final compatibleTargetDescriptors = _compatibleTargetDescriptors(plan);
     final compatibleTargetKinds = _compatibleTargetKinds(plan);
@@ -137,8 +136,9 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     for (var index = 0; index < plan.groups.length; index++) {
       final group = plan.groups[index];
       final issues = [...group.issues];
-      final groupSourceEntityKeys =
-          group.transactions.expand((draft) => draft.sourceEntityKeys).toSet();
+      final groupSourceEntityKeys = group.transactions
+          .expand((draft) => draft.sourceEntityKeys)
+          .toSet();
       for (final sourceEntityKey in groupSourceEntityKeys) {
         final entity = sourceEntitiesBySourceKey[sourceEntityKey];
         if (entity?.hasTargetDescriptorConflict == true &&
@@ -631,24 +631,23 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         continue;
       }
       final normalized = _normalizeName(entity.displayName);
-      final candidates =
-          targets.where((target) {
-            if (target.isArchived || !_targetSupportsEntity(target, entity)) {
-              return false;
-            }
-            final allowedKinds = compatibleTargetKinds[key];
-            if (allowedKinds != null &&
-                !allowedKinds.contains(_mapTarget(target).kind)) {
-              return false;
-            }
-            final allowedDescriptors = compatibleTargetDescriptors[key];
-            if (allowedDescriptors != null &&
-                !allowedDescriptors.contains(target.effectiveDescriptor)) {
-              return false;
-            }
-            return _normalizeName(target.displayPath) == normalized ||
-                _normalizeName(target.name) == normalized;
-          }).toList();
+      final candidates = targets.where((target) {
+        if (target.isArchived || !_targetSupportsEntity(target, entity)) {
+          return false;
+        }
+        final allowedKinds = compatibleTargetKinds[key];
+        if (allowedKinds != null &&
+            !allowedKinds.contains(_mapTarget(target).kind)) {
+          return false;
+        }
+        final allowedDescriptors = compatibleTargetDescriptors[key];
+        if (allowedDescriptors != null &&
+            !allowedDescriptors.contains(target.effectiveDescriptor)) {
+          return false;
+        }
+        return _normalizeName(target.displayPath) == normalized ||
+            _normalizeName(target.name) == normalized;
+      }).toList();
       if (candidates.length == 1) {
         final targetId = candidates.single.id;
         effectiveMappings[key] = targetId;
@@ -735,18 +734,17 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         name: entity.displayName,
         kind: _legacyKindForDescriptor(descriptor),
         descriptor: descriptor,
-        pathSegments:
-            entity.kind == ImportEntityKind.category
-                ? entity.displayName
-                    .split('/')
-                    .map((segment) => segment.trim())
-                    .where((segment) => segment.isNotEmpty)
-                    .toList(growable: false)
-                : const [],
+        pathSegments: entity.kind == ImportEntityKind.category
+            ? entity.displayName
+                  .split('/')
+                  .map((segment) => segment.trim())
+                  .where((segment) => segment.isNotEmpty)
+                  .toList(growable: false)
+            : const [],
         defaultParametersHint:
             descriptor == ImportTargetDescriptor.creditAccount
-                ? '账单日和还款日使用导入默认值，可在导入后编辑。'
-                : null,
+            ? '账单日和还款日使用导入默认值，可在导入后编辑。'
+            : null,
       );
     }
     return result;
@@ -825,12 +823,11 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           key: key,
           sourceName: entity.displayName,
           sourceDescription: importSourceDescription(entity),
-          action:
-              target != null
-                  ? ImportMappingAction.map
-                  : creation != null
-                  ? ImportMappingAction.create
-                  : ImportMappingAction.unresolved,
+          action: target != null
+              ? ImportMappingAction.map
+              : creation != null
+              ? ImportMappingAction.create
+              : ImportMappingAction.unresolved,
           targetName: target?.name ?? creation?.name,
           targetId: mappedId,
           targetPath:
@@ -840,36 +837,31 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
                   : creation.pathSegments.isEmpty
                   ? creation.name
                   : creation.pathSegments.join(' / ')),
-          targetDescription:
-              target == null
-                  ? creation == null
-                      ? null
-                      : importTargetDescription(creation.effectiveDescriptor)
-                  : importTargetDescription(target.effectiveDescriptor),
+          targetDescription: target == null
+              ? creation == null
+                    ? null
+                    : importTargetDescription(creation.effectiveDescriptor)
+              : importTargetDescription(target.effectiveDescriptor),
           existingTargetOptions: options,
           creationOptions: creationOptions,
-          issues:
-              entity.hasTargetDescriptorConflict || hasCompatibilityConflict
-                  ? [
-                    ImportIssue(
-                      code:
-                          entity.hasTargetDescriptorConflict
-                              ? 'source_entity_target_descriptor_conflict'
-                              : 'mapping_target_descriptor_conflict',
-                      message:
-                          entity.hasTargetDescriptorConflict
-                              ? '${entity.displayName} 的目标账户画像要求互相冲突。'
-                              : '${entity.displayName} 在不同交易中的目标角色要求互相冲突。',
-                      severity: ImportIssueSeverity.blocking,
-                    ),
-                  ]
-                  : const [],
-          decision:
-              target != null
-                  ? ExistingTargetDecision(target.id)
-                  : creation != null
-                  ? PlannedCreationDecision(creation)
-                  : const UnresolvedDecision('当前映射尚未完成。'),
+          issues: entity.hasTargetDescriptorConflict || hasCompatibilityConflict
+              ? [
+                  ImportIssue(
+                    code: entity.hasTargetDescriptorConflict
+                        ? 'source_entity_target_descriptor_conflict'
+                        : 'mapping_target_descriptor_conflict',
+                    message: entity.hasTargetDescriptorConflict
+                        ? '${entity.displayName} 的目标账户画像要求互相冲突。'
+                        : '${entity.displayName} 在不同交易中的目标角色要求互相冲突。',
+                    severity: ImportIssueSeverity.blocking,
+                  ),
+                ]
+              : const [],
+          decision: target != null
+              ? ExistingTargetDecision(target.id)
+              : creation != null
+              ? PlannedCreationDecision(creation)
+              : const UnresolvedDecision('当前映射尚未完成。'),
         ),
       );
     }
@@ -881,25 +873,24 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     Set<ImportTargetDescriptor>? allowed,
   ) {
     if (entity.hasTargetDescriptorConflict) return const [];
-    final descriptors =
-        entity.kind == ImportEntityKind.category
-            ? [
-              switch (entity.categoryKind) {
-                ImportCategoryKind.income =>
-                  ImportTargetDescriptor.incomeCategory,
-                ImportCategoryKind.expense =>
-                  ImportTargetDescriptor.expenseCategory,
-                null => ImportTargetDescriptor.unsupported,
-              },
-            ]
-            : const [
-              ImportTargetDescriptor.fundAccount,
-              ImportTargetDescriptor.reimbursementAccount,
-              ImportTargetDescriptor.receivableAccount,
-              ImportTargetDescriptor.payableAccount,
-              ImportTargetDescriptor.creditAccount,
-              ImportTargetDescriptor.loanAccount,
-            ];
+    final descriptors = entity.kind == ImportEntityKind.category
+        ? [
+            switch (entity.categoryKind) {
+              ImportCategoryKind.income =>
+                ImportTargetDescriptor.incomeCategory,
+              ImportCategoryKind.expense =>
+                ImportTargetDescriptor.expenseCategory,
+              null => ImportTargetDescriptor.unsupported,
+            },
+          ]
+        : const [
+            ImportTargetDescriptor.fundAccount,
+            ImportTargetDescriptor.reimbursementAccount,
+            ImportTargetDescriptor.receivableAccount,
+            ImportTargetDescriptor.payableAccount,
+            ImportTargetDescriptor.creditAccount,
+            ImportTargetDescriptor.loanAccount,
+          ];
     return [
       for (final descriptor in descriptors)
         if (descriptor != ImportTargetDescriptor.unsupported &&
@@ -908,18 +899,17 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
             name: entity.displayName,
             kind: _legacyKindForDescriptor(descriptor),
             descriptor: descriptor,
-            pathSegments:
-                entity.kind == ImportEntityKind.category
-                    ? entity.displayName
-                        .split('/')
-                        .map((segment) => segment.trim())
-                        .where((segment) => segment.isNotEmpty)
-                        .toList(growable: false)
-                    : const [],
+            pathSegments: entity.kind == ImportEntityKind.category
+                ? entity.displayName
+                      .split('/')
+                      .map((segment) => segment.trim())
+                      .where((segment) => segment.isNotEmpty)
+                      .toList(growable: false)
+                : const [],
             defaultParametersHint:
                 descriptor == ImportTargetDescriptor.creditAccount
-                    ? '账单日和还款日使用导入默认值，可在导入后编辑。'
-                    : null,
+                ? '账单日和还款日使用导入默认值，可在导入后编辑。'
+                : null,
           ),
     ];
   }
@@ -1013,8 +1003,9 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       _ => null,
     };
     if (entityKind == null) return false;
-    final groupKeys =
-        group.transactions.expand((draft) => draft.sourceEntityKeys).toSet();
+    final groupKeys = group.transactions
+        .expand((draft) => draft.sourceEntityKeys)
+        .toSet();
     final repairEntities = placeholders.values.where(
       (entity) =>
           entity.kind == entityKind &&
@@ -1085,10 +1076,12 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       descriptor: descriptor,
       pathSegments: creation.pathSegments,
       billingDay: isCredit ? _accountCreationDefaults.creditBillingDay : null,
-      repaymentDay:
-          isCredit ? _accountCreationDefaults.creditRepaymentDay : null,
-      billingDayToNext:
-          isCredit ? _accountCreationDefaults.creditBillingDayToNext : true,
+      repaymentDay: isCredit
+          ? _accountCreationDefaults.creditRepaymentDay
+          : null,
+      billingDayToNext: isCredit
+          ? _accountCreationDefaults.creditBillingDayToNext
+          : true,
     );
   }
 
@@ -1103,12 +1096,13 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     if (!isCategory) {
       return _ledger.createTarget(_mapCreation(creation));
     }
-    final segments = (creation.pathSegments.isEmpty
-            ? creation.name.split('/')
-            : creation.pathSegments)
-        .map((segment) => segment.trim())
-        .where((segment) => segment.isNotEmpty)
-        .toList(growable: false);
+    final segments =
+        (creation.pathSegments.isEmpty
+                ? creation.name.split('/')
+                : creation.pathSegments)
+            .map((segment) => segment.trim())
+            .where((segment) => segment.isNotEmpty)
+            .toList(growable: false);
     if (segments.isEmpty) {
       return _ledger.createTarget(_mapCreation(creation));
     }
@@ -1125,10 +1119,9 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       final id = await _ledger.createTarget(
         ImportLedgerTargetCreation(
           name: segment,
-          kind:
-              descriptor == ImportTargetDescriptor.incomeCategory
-                  ? ImportLedgerTargetKind.incomeCategory
-                  : ImportLedgerTargetKind.expenseCategory,
+          kind: descriptor == ImportTargetDescriptor.incomeCategory
+              ? ImportLedgerTargetKind.incomeCategory
+              : ImportLedgerTargetKind.expenseCategory,
           descriptor: descriptor,
           pathSegments: path,
           parentTargetId: parentId,
@@ -1242,11 +1235,10 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     required ImportSource source,
   }) {
     return {
-      for (final entry
-          in _compatibleTargetDescriptorsForGroup(
-            group,
-            source: source,
-          ).entries)
+      for (final entry in _compatibleTargetDescriptorsForGroup(
+        group,
+        source: source,
+      ).entries)
         entry.key: _legacyKinds(entry.value),
     };
   }
@@ -1495,8 +1487,21 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       groupIndex,
       context,
     );
+    final gapExpenseCategoryId = switch (group.topLevel) {
+      ImportReimbursementAdvanceDraft draft => await context.category(
+        draft.category,
+        groupIndex: groupIndex,
+      ),
+      _ => null,
+    };
     for (final child in group.children) {
-      await _createChild(child, topLevelId, groupIndex, context);
+      await _createChild(
+        child,
+        topLevelId,
+        groupIndex,
+        context,
+        gapExpenseCategoryId: gapExpenseCategoryId,
+      );
     }
     return topLevelId;
   }
@@ -1560,30 +1565,30 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         feeAmount: draft.feeAmount,
         note: draft.note,
       ),
-      ImportReimbursementAdvanceDraft draft => _ledger
-          .createReimbursementAdvance(
-            amount: draft.amount,
-            receivableAccountId: await context.account(
-              draft.receivableAccount,
-              _TargetUsage.reimbursement,
-              groupIndex: groupIndex,
-            ),
-            paidFromAccountId: await context.account(
-              draft.paidFrom,
-              _TargetUsage.settlement,
-              groupIndex: groupIndex,
-              allowExplicitNone: true,
-            ),
-            expenseCategoryId: await context.category(
-              draft.category,
-              groupIndex: groupIndex,
-            ),
-            occurredAt: draft.occurredAt,
-            postedAt: draft.postedAt,
-            note: draft.note,
-            isExcludedFromStats: draft.isExcludedFromStats,
-            isExcludedFromBudget: draft.isExcludedFromBudget,
+      ImportReimbursementAdvanceDraft draft =>
+        _ledger.createReimbursementAdvance(
+          amount: draft.amount,
+          receivableAccountId: await context.account(
+            draft.receivableAccount,
+            _TargetUsage.reimbursement,
+            groupIndex: groupIndex,
           ),
+          paidFromAccountId: await context.account(
+            draft.paidFrom,
+            _TargetUsage.settlement,
+            groupIndex: groupIndex,
+            allowExplicitNone: true,
+          ),
+          expenseCategoryId: await context.category(
+            draft.category,
+            groupIndex: groupIndex,
+          ),
+          occurredAt: draft.occurredAt,
+          postedAt: draft.postedAt,
+          note: draft.note,
+          isExcludedFromStats: draft.isExcludedFromStats,
+          isExcludedFromBudget: draft.isExcludedFromBudget,
+        ),
       ImportRepaymentDraft draft => _ledger.createRepayment(
         principal: draft.principal,
         liabilityAccountId: await context.account(
@@ -1646,24 +1651,24 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         postedAt: draft.postedAt,
         note: draft.note,
       ),
-      ImportReceivableCollectionDraft draft => _ledger
-          .createReceivableCollection(
-            principal: draft.principal,
-            interest: draft.interest,
-            receivableAccountId: await context.account(
-              draft.receivableAccount,
-              _TargetUsage.receivable,
-              groupIndex: groupIndex,
-            ),
-            receiveAccountId: await context.account(
-              draft.receiveAccount,
-              _TargetUsage.fund,
-              groupIndex: groupIndex,
-            ),
-            occurredAt: draft.occurredAt,
-            postedAt: draft.postedAt,
-            note: draft.note,
+      ImportReceivableCollectionDraft draft =>
+        _ledger.createReceivableCollection(
+          principal: draft.principal,
+          interest: draft.interest,
+          receivableAccountId: await context.account(
+            draft.receivableAccount,
+            _TargetUsage.receivable,
+            groupIndex: groupIndex,
           ),
+          receiveAccountId: await context.account(
+            draft.receiveAccount,
+            _TargetUsage.fund,
+            groupIndex: groupIndex,
+          ),
+          occurredAt: draft.occurredAt,
+          postedAt: draft.postedAt,
+          note: draft.note,
+        ),
       ImportOpeningBalanceDraft draft => _ledger.createOpeningBalance(
         amount: draft.amount,
         accountId: await context.account(
@@ -1677,11 +1682,10 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         postedAt: draft.postedAt,
         note: draft.note,
       ),
-      _ =>
-        throw ImportWorkflowException(
-          ImportErrorCode.invalidDraftStructure,
-          groupIndex: groupIndex,
-        ),
+      _ => throw ImportWorkflowException(
+        ImportErrorCode.invalidDraftStructure,
+        groupIndex: groupIndex,
+      ),
     };
   }
 
@@ -1689,8 +1693,9 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     ImportTransactionDraft draft,
     String topLevelId,
     int groupIndex,
-    _ResolutionContext context,
-  ) async {
+    _ResolutionContext context, {
+    String? gapExpenseCategoryId,
+  }) async {
     return switch (draft) {
       ImportRefundDraft draft => _ledger.createRefund(
         topLevelTransactionId: topLevelId,
@@ -1705,24 +1710,24 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         postedAt: draft.postedAt,
         note: draft.note,
       ),
-      ImportReimbursementReceiptDraft draft => _ledger
-          .createReimbursementReceipt(
-            topLevelTransactionId: topLevelId,
-            amount: draft.amount,
-            receivableAccountId: await context.account(
-              draft.receivableAccount,
-              _TargetUsage.reimbursement,
-              groupIndex: groupIndex,
-            ),
-            receiveAccountId: await context.account(
-              draft.receiveAccount,
-              _TargetUsage.settlement,
-              groupIndex: groupIndex,
-            ),
-            occurredAt: draft.occurredAt,
-            postedAt: draft.postedAt,
-            note: draft.note,
+      ImportReimbursementReceiptDraft draft =>
+        _ledger.createReimbursementReceipt(
+          topLevelTransactionId: topLevelId,
+          amount: draft.amount,
+          receivableAccountId: await context.account(
+            draft.receivableAccount,
+            _TargetUsage.reimbursement,
+            groupIndex: groupIndex,
           ),
+          receiveAccountId: await context.account(
+            draft.receiveAccount,
+            _TargetUsage.settlement,
+            groupIndex: groupIndex,
+          ),
+          occurredAt: draft.occurredAt,
+          postedAt: draft.postedAt,
+          note: draft.note,
+        ),
       ImportReimbursementCloseDraft draft => _ledger.closeReimbursement(
         topLevelTransactionId: topLevelId,
         actualReceivedAmount: draft.actualReceivedAmount,
@@ -1731,27 +1736,26 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           _TargetUsage.reimbursement,
           groupIndex: groupIndex,
         ),
-        receiveAccountId:
-            draft.actualReceivedAmount.minorUnits == 0
-                ? await context.account(
-                  draft.receivableAccount,
-                  _TargetUsage.reimbursement,
-                  groupIndex: groupIndex,
-                )
-                : await context.account(
-                  draft.receiveAccount,
-                  _TargetUsage.settlement,
-                  groupIndex: groupIndex,
-                ),
+        receiveAccountId: draft.actualReceivedAmount.minorUnits == 0
+            ? await context.account(
+                draft.receivableAccount,
+                _TargetUsage.reimbursement,
+                groupIndex: groupIndex,
+              )
+            : await context.account(
+                draft.receiveAccount,
+                _TargetUsage.settlement,
+                groupIndex: groupIndex,
+              ),
+        gapExpenseCategoryId: gapExpenseCategoryId,
         occurredAt: draft.occurredAt,
         postedAt: draft.postedAt,
         note: draft.note,
       ),
-      _ =>
-        throw ImportWorkflowException(
-          ImportErrorCode.invalidDraftStructure,
-          groupIndex: groupIndex,
-        ),
+      _ => throw ImportWorkflowException(
+        ImportErrorCode.invalidDraftStructure,
+        groupIndex: groupIndex,
+      ),
     };
   }
 }

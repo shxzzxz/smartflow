@@ -30,11 +30,10 @@ void main() {
 
       final upgradedDatabase = _openDatabase(file);
       addTearDown(upgradedDatabase.close);
-      final version =
-          await upgradedDatabase
-              .customSelect('PRAGMA user_version')
-              .getSingle();
-      expect(version.read<int>('user_version'), 28);
+      final version = await upgradedDatabase
+          .customSelect('PRAGMA user_version')
+          .getSingle();
+      expect(version.read<int>('user_version'), 29);
       await _insertNoTransactionContract(upgradedDatabase);
     },
   );
@@ -51,6 +50,7 @@ void main() {
       );
 
       final staleDatabase = _openDatabase(file);
+      await _prepareV28TransactionSchema(staleDatabase);
       await staleDatabase.customStatement('DROP TABLE transactions');
       await staleDatabase.customStatement('DROP TABLE repayments');
       await staleDatabase.customStatement(_v19TransactionsSql);
@@ -63,24 +63,38 @@ void main() {
         "VALUES ('tx-1', 'tx-1', 'dailyExpense', 1735689600, 1234, "
         "'preserve me', 'original', 'current', 0, 0, 'manual')",
       );
+      await staleDatabase.customStatement(
+        "INSERT INTO accounts (id, name, account_type) VALUES "
+        "('migration-food', '迁移支出', 'expense'), "
+        "('migration-cash', '迁移现金', 'asset')",
+      );
+      await staleDatabase.customStatement(
+        "INSERT INTO transaction_details "
+        "(id, transaction_id, line_no, detail_type, amount_minor) "
+        "VALUES ('tx-1-detail', 'tx-1', 1, 'primaryExpense', 1234)",
+      );
+      await staleDatabase.customStatement(
+        "INSERT INTO entries "
+        "(id, transaction_id, account_id, direction, amount_minor) VALUES "
+        "('tx-1-debit', 'tx-1', 'migration-food', 'debit', 1234), "
+        "('tx-1-credit', 'tx-1', 'migration-cash', 'credit', 1234)",
+      );
       await staleDatabase.customStatement('PRAGMA user_version = 19');
       await staleDatabase.close();
 
       final upgradedDatabase = _openDatabase(file);
       addTearDown(upgradedDatabase.close);
-      final version =
-          await upgradedDatabase
-              .customSelect('PRAGMA user_version')
-              .getSingle();
-      expect(version.read<int>('user_version'), 28);
+      final version = await upgradedDatabase
+          .customSelect('PRAGMA user_version')
+          .getSingle();
+      expect(version.read<int>('user_version'), 29);
 
-      final row =
-          await upgradedDatabase
-              .customSelect(
-                'SELECT occurred_at, posted_at, primary_amount_minor, note '
-                "FROM transactions WHERE id = 'tx-1'",
-              )
-              .getSingle();
+      final row = await upgradedDatabase
+          .customSelect(
+            'SELECT occurred_at, posted_at, primary_amount_minor, note '
+            "FROM transactions WHERE id = 'tx-1'",
+          )
+          .getSingle();
       expect(row.read<int>('posted_at'), row.read<int>('occurred_at'));
       expect(row.read<int>('primary_amount_minor'), 1234);
       expect(row.read<String>('note'), 'preserve me');
@@ -99,18 +113,19 @@ void main() {
       );
 
       final staleDatabase = _openDatabase(file);
+      await _prepareV28TransactionSchema(staleDatabase);
       await staleDatabase.customStatement(
         "INSERT INTO accounts (id, name, account_type, balance_minor) "
-        "VALUES ('asset-1', '测试账户', 'asset', 77777)",
+        "VALUES ('asset-1', '测试账户', 'asset', 77777), "
+        "('expense-1', '测试分类', 'expense', 0)",
       );
       await staleDatabase.customStatement('DROP TABLE transactions');
       await staleDatabase.customStatement('DROP TABLE repayments');
       await staleDatabase.customStatement(_v20TransactionsSql);
       await staleDatabase.customStatement(_v20RepaymentsSql);
-      final staleRepaymentColumns =
-          await staleDatabase
-              .customSelect('PRAGMA table_info(repayments)')
-              .get();
+      final staleRepaymentColumns = await staleDatabase
+          .customSelect('PRAGMA table_info(repayments)')
+          .get();
       expect(
         staleRepaymentColumns.map((row) => row.read<String>('name')),
         contains('root_transaction_id'),
@@ -151,9 +166,13 @@ void main() {
         "INSERT INTO entries "
         "(id, transaction_id, account_id, direction, amount_minor) VALUES "
         "('entry-old', 'parent-old', 'asset-1', 'credit', 1000), "
+        "('entry-old-category', 'parent-old', 'expense-1', 'debit', 1000), "
         "('entry-parent', 'parent-current', 'asset-1', 'credit', 1200), "
+        "('entry-parent-category', 'parent-current', 'expense-1', 'debit', 1200), "
         "('entry-refund', 'refund-current', 'asset-1', 'debit', 200), "
-        "('entry-deleted', 'deleted-only', 'asset-1', 'credit', 500)",
+        "('entry-refund-offset', 'refund-current', 'expense-1', 'credit', 200), "
+        "('entry-deleted', 'deleted-only', 'asset-1', 'credit', 500), "
+        "('entry-deleted-category', 'deleted-only', 'expense-1', 'debit', 500)",
       );
       await staleDatabase.customStatement(
         "INSERT INTO repayments "
@@ -176,21 +195,19 @@ void main() {
       final upgradedDatabase = _openDatabase(file);
       addTearDown(upgradedDatabase.close);
 
-      final version =
-          await upgradedDatabase
-              .customSelect('PRAGMA user_version')
-              .getSingle();
-      expect(version.read<int>('user_version'), 28);
+      final version = await upgradedDatabase
+          .customSelect('PRAGMA user_version')
+          .getSingle();
+      expect(version.read<int>('user_version'), 29);
 
-      final transactions =
-          await upgradedDatabase
-              .customSelect(
-                'SELECT id, parent_transaction_id, note, '
-                'is_excluded_from_stats, is_excluded_from_budget, '
-                'created_at, updated_at '
-                'FROM transactions ORDER BY id',
-              )
-              .get();
+      final transactions = await upgradedDatabase
+          .customSelect(
+            'SELECT id, parent_transaction_id, note, '
+            'is_excluded_from_stats, is_excluded_from_budget, '
+            'created_at, updated_at '
+            'FROM transactions ORDER BY id',
+          )
+          .get();
       expect(transactions.map((row) => row.read<String>('id')).toList(), [
         'parent-old',
         'refund-current',
@@ -205,10 +222,9 @@ void main() {
         'parent-old',
       );
 
-      final transactionColumns =
-          await upgradedDatabase
-              .customSelect('PRAGMA table_info(transactions)')
-              .get();
+      final transactionColumns = await upgradedDatabase
+          .customSelect('PRAGMA table_info(transactions)')
+          .get();
       final transactionColumnNames = {
         for (final row in transactionColumns) row.read<String>('name'),
       };
@@ -216,22 +232,24 @@ void main() {
       expect(transactionColumnNames, isNot(contains('mutation_kind')));
       expect(transactionColumnNames, isNot(contains('business_state')));
 
-      final detailTransactionIds =
-          await upgradedDatabase
-              .customSelect(
-                'SELECT transaction_id FROM transaction_details ORDER BY id',
-              )
-              .get();
+      final lineTransactionIds = await upgradedDatabase
+          .customSelect(
+            'SELECT DISTINCT transaction_id FROM transaction_lines '
+            'ORDER BY transaction_id',
+          )
+          .get();
       expect(
-        detailTransactionIds
+        lineTransactionIds
             .map((row) => row.read<String>('transaction_id'))
             .toList(),
         ['parent-old', 'refund-current'],
       );
-      final entryTransactionIds =
-          await upgradedDatabase
-              .customSelect('SELECT transaction_id FROM entries ORDER BY id')
-              .get();
+      final entryTransactionIds = await upgradedDatabase
+          .customSelect(
+            'SELECT DISTINCT transaction_id FROM entries '
+            'ORDER BY transaction_id',
+          )
+          .get();
       expect(
         entryTransactionIds
             .map((row) => row.read<String>('transaction_id'))
@@ -239,39 +257,35 @@ void main() {
         ['parent-old', 'refund-current'],
       );
 
-      final repayment =
-          await upgradedDatabase
-              .customSelect(
-                "SELECT transaction_id FROM repayments WHERE id = 'repayment-1'",
-              )
-              .getSingle();
+      final repayment = await upgradedDatabase
+          .customSelect(
+            "SELECT transaction_id FROM repayments WHERE id = 'repayment-1'",
+          )
+          .getSingle();
       expect(repayment.read<String>('transaction_id'), 'parent-old');
-      final repaymentColumns =
-          await upgradedDatabase
-              .customSelect('PRAGMA table_info(repayments)')
-              .get();
+      final repaymentColumns = await upgradedDatabase
+          .customSelect('PRAGMA table_info(repayments)')
+          .get();
       expect(
         repaymentColumns.map((row) => row.read<String>('name')),
         isNot(contains('root_transaction_id')),
       );
 
-      final contract =
-          await upgradedDatabase
-              .customSelect(
-                "SELECT disbursement_transaction_id "
-                "FROM installment_contracts WHERE id = 'contract-1'",
-              )
-              .getSingle();
+      final contract = await upgradedDatabase
+          .customSelect(
+            "SELECT disbursement_transaction_id "
+            "FROM installment_contracts WHERE id = 'contract-1'",
+          )
+          .getSingle();
       expect(
         contract.read<String>('disbursement_transaction_id'),
         'parent-old',
       );
-      final account =
-          await upgradedDatabase
-              .customSelect(
-                "SELECT balance_minor FROM accounts WHERE id = 'asset-1'",
-              )
-              .getSingle();
+      final account = await upgradedDatabase
+          .customSelect(
+            "SELECT balance_minor FROM accounts WHERE id = 'asset-1'",
+          )
+          .getSingle();
       expect(account.read<int>('balance_minor'), 77777);
     },
   );
@@ -288,6 +302,7 @@ void main() {
       );
 
       final staleDatabase = _openDatabase(file);
+      await _prepareV28TransactionSchema(staleDatabase);
       await staleDatabase.customStatement('DROP TABLE transactions');
       await staleDatabase.customStatement('DROP TABLE repayments');
       await staleDatabase.customStatement(_v20TransactionsSql);
@@ -326,6 +341,7 @@ void main() {
       );
 
       final staleDatabase = _openDatabase(file);
+      await _prepareV28TransactionSchema(staleDatabase);
       await staleDatabase.customStatement(
         'DROP INDEX IF EXISTS import_entity_mapping_unique',
       );
@@ -346,35 +362,31 @@ void main() {
 
       final upgradedDatabase = _openDatabase(file);
       addTearDown(upgradedDatabase.close);
-      final version =
-          await upgradedDatabase
-              .customSelect('PRAGMA user_version')
-              .getSingle();
-      expect(version.read<int>('user_version'), 28);
+      final version = await upgradedDatabase
+          .customSelect('PRAGMA user_version')
+          .getSingle();
+      expect(version.read<int>('user_version'), 29);
 
       for (final table in [
         'import_entity_mappings',
         'import_batches',
         'import_batch_items',
       ]) {
-        final row =
-            await upgradedDatabase
-                .customSelect(
-                  "SELECT name FROM sqlite_master WHERE type = 'table' AND name = '$table'",
-                )
-                .getSingle();
+        final row = await upgradedDatabase
+            .customSelect(
+              "SELECT name FROM sqlite_master WHERE type = 'table' AND name = '$table'",
+            )
+            .getSingle();
         expect(row.read<String>('name'), table);
-        final foreignKeys =
-            await upgradedDatabase
-                .customSelect('PRAGMA foreign_key_list($table)')
-                .get();
+        final foreignKeys = await upgradedDatabase
+            .customSelect('PRAGMA foreign_key_list($table)')
+            .get();
         expect(foreignKeys, isEmpty);
       }
 
-      final mappingIndexes =
-          await upgradedDatabase
-              .customSelect('PRAGMA index_list(import_entity_mappings)')
-              .get();
+      final mappingIndexes = await upgradedDatabase
+          .customSelect('PRAGMA index_list(import_entity_mappings)')
+          .get();
       expect(
         mappingIndexes.map((row) => row.read<String>('name')),
         contains('import_entity_mapping_unique'),
@@ -394,6 +406,7 @@ void main() {
       );
 
       final staleDatabase = _openDatabase(file);
+      await _prepareV28TransactionSchema(staleDatabase);
       await staleDatabase.customStatement('DROP TABLE budgets');
       await staleDatabase.customStatement(_v25BudgetsSql);
       await staleDatabase.customStatement(
@@ -405,13 +418,12 @@ void main() {
 
       final upgradedDatabase = _openDatabase(file);
       addTearDown(upgradedDatabase.close);
-      final row =
-          await upgradedDatabase
-              .customSelect(
-                "SELECT amount_minor, sort_order FROM budgets "
-                "WHERE id = 'food-budget'",
-              )
-              .getSingle();
+      final row = await upgradedDatabase
+          .customSelect(
+            "SELECT amount_minor, sort_order FROM budgets "
+            "WHERE id = 'food-budget'",
+          )
+          .getSingle();
       expect(row.read<int>('amount_minor'), 100000);
       expect(row.read<int>('sort_order'), 0);
     },
@@ -427,6 +439,7 @@ void main() {
     );
 
     final staleDatabase = _openDatabase(file);
+    await _prepareV28TransactionSchema(staleDatabase);
     await staleDatabase.customStatement(
       "INSERT INTO accounts "
       "(id, name, account_type, balance_minor) VALUES "
@@ -466,53 +479,246 @@ void main() {
 
     final upgradedDatabase = _openDatabase(file);
     addTearDown(upgradedDatabase.close);
-    final entry =
-        await upgradedDatabase
-            .customSelect(
-              "SELECT account_id FROM entries WHERE id = 'category-entry'",
-            )
-            .getSingle();
+    final entry = await upgradedDatabase
+        .customSelect(
+          "SELECT account_id FROM entries WHERE id = 'category-entry'",
+        )
+        .getSingle();
     expect(entry.read<String>('account_id'), 'food');
-    final transaction =
-        await upgradedDatabase
-            .customSelect(
-              'SELECT reimbursement_expense_account_id FROM transactions '
-              "WHERE id = 'advance'",
-            )
-            .getSingle();
-    expect(
-      transaction.read<String>('reimbursement_expense_account_id'),
-      'food',
-    );
-    final archived =
-        await upgradedDatabase
-            .customSelect("SELECT id FROM accounts WHERE id = 'old-dining'")
-            .get();
+    final transactionLine = await upgradedDatabase
+        .customSelect(
+          "SELECT account_id FROM transaction_lines "
+          "WHERE transaction_id = 'advance' "
+          "AND role = 'reimbursementExpenseCategory'",
+        )
+        .getSingle();
+    expect(transactionLine.read<String>('account_id'), 'food');
+    final archived = await upgradedDatabase
+        .customSelect("SELECT id FROM accounts WHERE id = 'old-dining'")
+        .get();
     expect(archived, isEmpty);
-    final mapping =
-        await upgradedDatabase
-            .customSelect(
-              "SELECT target_account_id FROM import_entity_mappings "
-              "WHERE id = 'mapping'",
-            )
-            .getSingle();
+    final mapping = await upgradedDatabase
+        .customSelect(
+          "SELECT target_account_id FROM import_entity_mappings "
+          "WHERE id = 'mapping'",
+        )
+        .getSingle();
     expect(mapping.read<String>('target_account_id'), 'food');
-    final budget =
-        await upgradedDatabase
-            .customSelect(
-              "SELECT account_id FROM budgets "
-              "WHERE id = 'old-dining-budget'",
-            )
-            .getSingle();
+    final budget = await upgradedDatabase
+        .customSelect(
+          "SELECT account_id FROM budgets "
+          "WHERE id = 'old-dining-budget'",
+        )
+        .getSingle();
     expect(budget.read<String>('account_id'), 'old-dining');
-    final target =
-        await upgradedDatabase
-            .customSelect(
-              "SELECT balance_minor, version FROM accounts WHERE id = 'food'",
-            )
-            .getSingle();
+    final target = await upgradedDatabase
+        .customSelect(
+          "SELECT balance_minor, version FROM accounts WHERE id = 'food'",
+        )
+        .getSingle();
     expect(target.read<int>('balance_minor'), 1200);
     expect(target.read<int>('version'), 1);
+  });
+
+  test('opening a v28 database backfills replayable transaction lines', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'smartflow-transaction-line-migration-test-',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File(
+      '${directory.path}${Platform.pathSeparator}smartflow.sqlite',
+    );
+    final staleDatabase = _openDatabase(file);
+    await _prepareV28TransactionSchema(staleDatabase);
+    await staleDatabase.customStatement(
+      "DELETE FROM accounts WHERE system_key = 'ghostAccount'",
+    );
+    await staleDatabase.customStatement(
+      "UPDATE app_metadata SET value = '5' "
+      "WHERE key = 'builtin_data_version'",
+    );
+    await staleDatabase.customStatement(
+      "INSERT INTO accounts (id, name, account_type) VALUES "
+      "('migration-cash', '现金', 'asset'), "
+      "('migration-bank', '银行', 'asset'), "
+      "('migration-receivable', '应收', 'asset'), "
+      "('migration-liability', '负债', 'liability'), "
+      "('migration-travel', '差旅', 'expense'), "
+      "('migration-salary', '工资', 'income')",
+    );
+    await staleDatabase.customStatement(
+      "INSERT INTO transactions "
+      "(id, business_purpose, occurred_at, posted_at, primary_amount_minor, "
+      "parent_transaction_id, reimbursement_expense_account_id, source_kind) "
+      "VALUES "
+      "('income', 'dailyIncome', 1, 1, 1000, NULL, NULL, 'manual'), "
+      "('transfer', 'transfer', 2, 2, 1000, NULL, NULL, 'manual'), "
+      "('advance', 'reimbursementAdvance', 3, 3, 1000, NULL, "
+      "'migration-travel', 'manual'), "
+      "('refund', 'refund', 3, 3, 100, 'advance', NULL, 'manual'), "
+      "('receipt', 'reimbursementReceipt', 4, 4, 800, 'advance', NULL, 'manual'), "
+      "('close', 'reimbursementClose', 5, 5, 800, 'advance', NULL, 'manual'), "
+      "('close-zero', 'reimbursementClose', 5, 5, 1000, 'advance', NULL, 'manual'), "
+      "('repayment', 'debtRepayment', 6, 6, 1125, NULL, NULL, 'manual'), "
+      "('borrowing', 'borrowing', 7, 7, 1000, NULL, NULL, 'manual'), "
+      "('opening', 'openingBalance', 8, 8, 1000, NULL, NULL, 'manual'), "
+      "('adjustment', 'balanceAdjustment', 9, 9, 500, NULL, NULL, 'manual')",
+    );
+    await staleDatabase.customStatement(
+      "INSERT INTO transaction_details "
+      "(id, transaction_id, line_no, detail_type, amount_minor) VALUES "
+      "('income-main', 'income', 1, 'primaryIncome', 1000), "
+      "('transfer-main', 'transfer', 1, 'transferMain', 1000), "
+      "('transfer-fee', 'transfer', 2, 'transferFee', 50), "
+      "('advance-main', 'advance', 1, 'reimbursementAdvanceMain', 1000), "
+      "('refund-main', 'refund', 1, 'refundMain', 100), "
+      "('receipt-main', 'receipt', 1, 'reimbursementReceiptMain', 800), "
+      "('close-main', 'close', 1, 'reimbursementCloseMain', 1000), "
+      "('close-gap', 'close', 2, 'reimbursementGapExpense', 200), "
+      "('close-zero-main', 'close-zero', 1, 'reimbursementCloseMain', 1000), "
+      "('close-zero-gap', 'close-zero', 2, 'reimbursementGapExpense', 1000), "
+      "('repayment-principal', 'repayment', 1, 'repaymentPrincipal', 1000), "
+      "('repayment-interest', 'repayment', 2, 'repaymentInterest', 100), "
+      "('repayment-fee', 'repayment', 3, 'repaymentFee', 50), "
+      "('repayment-discount', 'repayment', 4, 'repaymentDiscount', 25), "
+      "('borrowing-main', 'borrowing', 1, 'borrowingPrincipal', 1000), "
+      "('opening-main', 'opening', 1, 'openingBalanceMain', 1000), "
+      "('adjustment-main', 'adjustment', 1, 'balanceAdjustmentMain', 500)",
+    );
+    await staleDatabase.customStatement(
+      "INSERT INTO entries "
+      "(id, transaction_id, account_id, direction, amount_minor) VALUES "
+      "('income-debit', 'income', 'migration-bank', 'debit', 1000), "
+      "('income-credit', 'income', 'migration-salary', 'credit', 1000), "
+      "('transfer-debit', 'transfer', 'migration-bank', 'debit', 1000), "
+      "('transfer-fee-debit', 'transfer', "
+      "(SELECT id FROM accounts WHERE system_key = 'feeExpense'), 'debit', 50), "
+      "('transfer-credit', 'transfer', 'migration-cash', 'credit', 1050), "
+      "('advance-debit', 'advance', 'migration-receivable', 'debit', 1000), "
+      "('advance-credit', 'advance', 'migration-cash', 'credit', 1000), "
+      "('refund-debit', 'refund', 'migration-bank', 'debit', 100), "
+      "('refund-credit', 'refund', 'migration-receivable', 'credit', 100), "
+      "('receipt-debit', 'receipt', 'migration-bank', 'debit', 800), "
+      "('receipt-credit', 'receipt', 'migration-receivable', 'credit', 800), "
+      "('close-bank', 'close', 'migration-bank', 'debit', 800), "
+      "('close-gap', 'close', 'migration-travel', 'debit', 200), "
+      "('close-receivable', 'close', 'migration-receivable', 'credit', 1000), "
+      "('close-zero-gap', 'close-zero', 'migration-travel', 'debit', 1000), "
+      "('close-zero-receivable', 'close-zero', 'migration-receivable', 'credit', 1000), "
+      "('repayment-liability', 'repayment', 'migration-liability', 'debit', 1000), "
+      "('repayment-interest-entry', 'repayment', "
+      "(SELECT id FROM accounts WHERE system_key = 'interestExpense'), 'debit', 100), "
+      "('repayment-fee-entry', 'repayment', "
+      "(SELECT id FROM accounts WHERE system_key = 'feeExpense'), 'debit', 50), "
+      "('repayment-discount-entry', 'repayment', "
+      "(SELECT id FROM accounts WHERE system_key = 'discountIncome'), 'credit', 25), "
+      "('repayment-cash', 'repayment', 'migration-cash', 'credit', 1125), "
+      "('borrowing-debit', 'borrowing', 'migration-bank', 'debit', 1000), "
+      "('borrowing-credit', 'borrowing', 'migration-liability', 'credit', 1000), "
+      "('opening-debit', 'opening', 'migration-bank', 'debit', 1000), "
+      "('opening-credit', 'opening', "
+      "(SELECT id FROM accounts WHERE system_key = 'openingBalance'), 'credit', 1000), "
+      "('adjustment-debit', 'adjustment', "
+      "(SELECT id FROM accounts WHERE system_key = 'openingBalance'), 'debit', 500), "
+      "('adjustment-credit', 'adjustment', 'migration-bank', 'credit', 500)",
+    );
+    await staleDatabase.customStatement('PRAGMA user_version = 28');
+    await staleDatabase.close();
+
+    final upgraded = _openDatabase(file);
+    addTearDown(upgraded.close);
+    final lines = await upgraded
+        .customSelect(
+          'SELECT transaction_id, role, account_id, amount_minor '
+          'FROM transaction_lines ORDER BY transaction_id, line_no',
+        )
+        .get();
+    final shapes = {
+      for (final row in lines)
+        '${row.read<String>('transaction_id')}:'
+            '${row.read<String>('role')}:'
+            '${row.readNullable<String>('account_id') ?? '-'}:'
+            '${row.read<int>('amount_minor')}',
+    };
+    expect(
+      shapes,
+      containsAll(<String>{
+        'transfer:settlementOut:migration-cash:1000',
+        'transfer:settlementIn:migration-bank:1000',
+        'transfer:fee:-:50',
+        'close:settlementIn:migration-bank:800',
+        'close:receivable:migration-receivable:1000',
+        'close:reimbursementGapExpense:migration-travel:200',
+        'close-zero:receivable:migration-receivable:1000',
+        'close-zero:reimbursementGapExpense:migration-travel:1000',
+        'refund:settlementIn:migration-bank:100',
+        'refund:reimbursementExpenseCategory:migration-travel:100',
+        'refund:refundOffset:migration-receivable:100',
+        'repayment:liability:migration-liability:1000',
+        'repayment:interest:-:100',
+        'repayment:fee:-:50',
+        'repayment:discount:-:25',
+        'repayment:settlementOut:migration-cash:1125',
+        'opening:openingBalance:migration-bank:1000',
+        'adjustment:balanceAdjustment:migration-bank:-500',
+      }),
+    );
+    final closePrimary = await upgraded
+        .customSelect(
+          "SELECT primary_amount_minor FROM transactions WHERE id = 'close'",
+        )
+        .getSingle();
+    expect(closePrimary.read<int>('primary_amount_minor'), 800);
+    final closeZeroPrimary = await upgraded
+        .customSelect(
+          "SELECT primary_amount_minor FROM transactions WHERE id = 'close-zero'",
+        )
+        .getSingle();
+    expect(closeZeroPrimary.read<int>('primary_amount_minor'), 0);
+    final closeZeroSettlement = await upgraded
+        .customSelect(
+          "SELECT account_id, amount_minor FROM transaction_lines "
+          "WHERE transaction_id = 'close-zero' AND role = 'settlementIn'",
+        )
+        .getSingle();
+    expect(
+      closeZeroSettlement.readNullable<String>('account_id') != null,
+      isTrue,
+    );
+    expect(closeZeroSettlement.read<int>('amount_minor'), 0);
+    final oldDetails = await upgraded
+        .customSelect(
+          "SELECT name FROM sqlite_master "
+          "WHERE type = 'table' AND name = 'transaction_details'",
+        )
+        .get();
+    expect(oldDetails, isEmpty);
+    final transactionColumns = await upgraded
+        .customSelect('PRAGMA table_info(transactions)')
+        .get();
+    expect(
+      transactionColumns.map((row) => row.read<String>('name')),
+      isNot(contains('reimbursement_expense_account_id')),
+    );
+    final transactionIndexes = await upgraded
+        .customSelect('PRAGMA index_list(transactions)')
+        .get();
+    expect(
+      transactionIndexes.map((row) => row.read<String>('name')),
+      containsAll(<String>{
+        'transactions_top_level_occurred_idx',
+        'transactions_parent_purpose_idx',
+        'transactions_occurred_stats_idx',
+        'transactions_posted_billing_idx',
+        'transactions_owner_idx',
+      }),
+    );
+    final ghostAccount = await upgraded
+        .customSelect(
+          "SELECT id FROM accounts WHERE system_key = 'ghostAccount'",
+        )
+        .getSingle();
+    expect(ghostAccount.read<String>('id'), isNotEmpty);
   });
 
   test('opening a v27 database standardizes account classifications', () async {
@@ -524,6 +730,7 @@ void main() {
       '${directory.path}${Platform.pathSeparator}smartflow.sqlite',
     );
     final staleDatabase = _openDatabase(file);
+    await _prepareV28TransactionSchema(staleDatabase);
     await staleDatabase.customStatement(
       "INSERT INTO accounts "
       "(id, name, account_type, account_subtype, account_profile_key, "
@@ -540,14 +747,13 @@ void main() {
 
     final upgraded = _openDatabase(file);
     addTearDown(upgraded.close);
-    final rows =
-        await upgraded
-            .customSelect(
-              'SELECT id, account_type, account_subtype, account_profile_key, '
-              'balance_minor FROM accounts '
-              "WHERE id LIKE '%-old' ORDER BY id",
-            )
-            .get();
+    final rows = await upgraded
+        .customSelect(
+          'SELECT id, account_type, account_subtype, account_profile_key, '
+          'balance_minor FROM accounts '
+          "WHERE id LIKE '%-old' ORDER BY id",
+        )
+        .get();
     final byId = {for (final row in rows) row.read<String>('id'): row};
     expect(
       byId['reimbursement-old']!.read<String>('account_subtype'),
@@ -587,6 +793,7 @@ void main() {
       '${directory.path}${Platform.pathSeparator}smartflow.sqlite',
     );
     final staleDatabase = _openDatabase(file);
+    await _prepareV28TransactionSchema(staleDatabase);
     await staleDatabase.customStatement(
       "INSERT INTO accounts "
       "(id, name, account_type, account_subtype, account_profile_key, source) "
@@ -627,6 +834,13 @@ void main() {
       '${directory.path}${Platform.pathSeparator}smartflow.sqlite',
     );
     final staleDatabase = _openDatabase(file);
+    await _prepareV28TransactionSchema(staleDatabase);
+    await staleDatabase.customStatement(
+      "INSERT INTO accounts (id, name, account_type) VALUES "
+      "('migration-cash', '迁移现金', 'asset'), "
+      "('migration-receivable', '迁移应收', 'asset'), "
+      "('migration-liability', '迁移应付', 'liability')",
+    );
     await staleDatabase.customStatement(
       "INSERT INTO transactions "
       "(id, business_purpose, occurred_at, posted_at, primary_amount_minor, "
@@ -636,18 +850,39 @@ void main() {
       "('bad-debt', 'badDebt', 1, 1, 1000, 1, 'manual'), "
       "('debt-relief', 'debtRelief', 1, 1, 1000, 1, 'manual')",
     );
+    await staleDatabase.customStatement(
+      "INSERT INTO transaction_details "
+      "(id, transaction_id, line_no, detail_type, amount_minor) "
+      "VALUES ('collection-principal', 'collection', 1, "
+      "'receivableCollectionPrincipal', 1000)",
+    );
+    await staleDatabase.customStatement(
+      "INSERT INTO entries "
+      "(id, transaction_id, account_id, direction, amount_minor) VALUES "
+      "('lending-debit', 'lending', 'migration-receivable', 'debit', 1000), "
+      "('lending-credit', 'lending', 'migration-cash', 'credit', 1000), "
+      "('collection-debit', 'collection', 'migration-cash', 'debit', 1000), "
+      "('collection-credit', 'collection', 'migration-receivable', 'credit', 1000), "
+      "('bad-debt-debit', 'bad-debt', "
+      "(SELECT id FROM accounts WHERE system_key = 'badDebtExpense'), "
+      "'debit', 1000), "
+      "('bad-debt-credit', 'bad-debt', 'migration-receivable', 'credit', 1000), "
+      "('debt-relief-debit', 'debt-relief', 'migration-liability', 'debit', 1000), "
+      "('debt-relief-credit', 'debt-relief', "
+      "(SELECT id FROM accounts WHERE system_key = 'debtReliefIncome'), "
+      "'credit', 1000)",
+    );
     await staleDatabase.customStatement('PRAGMA user_version = 27');
     await staleDatabase.close();
 
     final upgraded = _openDatabase(file);
     addTearDown(upgraded.close);
-    final rows =
-        await upgraded
-            .customSelect(
-              'SELECT id, is_excluded_from_budget FROM transactions '
-              'ORDER BY id',
-            )
-            .get();
+    final rows = await upgraded
+        .customSelect(
+          'SELECT id, is_excluded_from_budget FROM transactions '
+          'ORDER BY id',
+        )
+        .get();
     final flags = {
       for (final row in rows)
         row.read<String>('id'): row.read<int>('is_excluded_from_budget'),
@@ -665,6 +900,31 @@ AppDatabase _openDatabase(File file) {
   return AppDatabase(
     DatabaseConnection(NativeDatabase(file), closeStreamsSynchronously: true),
   );
+}
+
+/// 测试先用当前 Drift schema 建库，再显式还原 v28 的交易相关结构。
+/// 这样设置旧 user_version 后，升级输入与真实历史数据库一致。
+Future<void> _prepareV28TransactionSchema(AppDatabase database) async {
+  await database.customStatement(
+    'DROP INDEX IF EXISTS transaction_lines_transaction_idx',
+  );
+  await database.customStatement(
+    'DROP INDEX IF EXISTS transaction_lines_account_role_idx',
+  );
+  await database.customStatement('DROP TABLE transaction_lines');
+  await database.customStatement(_v28TransactionDetailsSql);
+  final transactionColumns = await database
+      .customSelect('PRAGMA table_info(transactions)')
+      .get();
+  final hasReimbursementExpenseAccountId = transactionColumns.any(
+    (row) => row.read<String>('name') == 'reimbursement_expense_account_id',
+  );
+  if (!hasReimbursementExpenseAccountId) {
+    await database.customStatement(
+      'ALTER TABLE transactions '
+      'ADD COLUMN reimbursement_expense_account_id TEXT NULL',
+    );
+  }
 }
 
 Future<void> _insertNoTransactionContract(AppDatabase database) {
@@ -720,6 +980,19 @@ CREATE TABLE budgets (
   amount_minor INTEGER NOT NULL CHECK (amount_minor >= 0),
   created_at INTEGER NOT NULL DEFAULT (strftime('%s', CURRENT_TIMESTAMP)),
   updated_at INTEGER NOT NULL DEFAULT (strftime('%s', CURRENT_TIMESTAMP))
+)
+''';
+
+const _v28TransactionDetailsSql = '''
+CREATE TABLE transaction_details (
+  id TEXT NOT NULL PRIMARY KEY,
+  transaction_id TEXT NOT NULL,
+  line_no INTEGER NOT NULL,
+  detail_type TEXT NOT NULL,
+  amount_minor INTEGER NOT NULL,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', CURRENT_TIMESTAMP)),
+  updated_at INTEGER NOT NULL DEFAULT (strftime('%s', CURRENT_TIMESTAMP)),
+  UNIQUE (transaction_id, line_no)
 )
 ''';
 

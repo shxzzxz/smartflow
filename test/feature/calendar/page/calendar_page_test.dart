@@ -205,7 +205,7 @@ void main() {
 
 Future<void> _pumpCalendar(
   WidgetTester tester, {
-  required List<TransactionListReadModel> dayTransactions,
+  required List<TransactionReadModel> dayTransactions,
   _FakeTransactionQueryService? transactionService,
   AppSettingsStore? settingsStore,
   List<CreditDueCalendarItemReadModel> dueItems = const [],
@@ -342,17 +342,15 @@ BoxDecoration? _dayCellDecoration(WidgetTester tester, String dayLabel) {
   return container.decoration as BoxDecoration?;
 }
 
-TransactionListReadModel _item(DateTime occurredAt, {String id = 'tx-1'}) {
-  return TransactionListReadModel(
+TransactionReadModel _item(DateTime occurredAt, {String id = 'tx-1'}) {
+  return TransactionReadModel(
     id: id,
     businessPurpose: BusinessPurpose.dailyIncome,
     occurredAt: occurredAt,
     primaryAmount: const Money(minorUnits: 10000),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    primaryCategoryId: null,
     impactsByAccountId: const {},
-    adjustments: const [],
   );
 }
 
@@ -389,14 +387,14 @@ class _InMemoryAppSettingsStore implements AppSettingsStore {
 
 class _FakeTransactionQueryService implements TransactionQueryService {
   _FakeTransactionQueryService({
-    List<TransactionListReadModel> nextPage = const [],
+    List<TransactionReadModel> nextPage = const [],
   }) : _nextPage = nextPage;
 
-  final List<TransactionListReadModel> _nextPage;
+  final List<TransactionReadModel> _nextPage;
   final queries = <TransactionListQuery>[];
 
   @override
-  Stream<List<TransactionListReadModel>> watchTransactions(
+  Stream<List<TransactionReadModel>> watchTransactions(
     TransactionListQuery query,
   ) {
     queries.add(query);
@@ -404,7 +402,7 @@ class _FakeTransactionQueryService implements TransactionQueryService {
   }
 
   @override
-  Future<List<TransactionListReadModel>> findTransactions(
+  Future<List<TransactionReadModel>> findTransactions(
     TransactionListQuery query,
   ) async {
     queries.add(query);

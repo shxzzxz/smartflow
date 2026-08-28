@@ -12,6 +12,7 @@ import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 import 'package:test/test.dart';
 
 import '../../../../helper/sequential_id_generator.dart';
+import '../../../../helper/posting_instruction_fixtures.dart';
 
 void main() {
   test(
@@ -21,7 +22,7 @@ void main() {
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
       final parent = engine.createReimbursementAdvance(
-        ReimbursementAdvanceInstruction(
+        singleReimbursementAdvanceInstruction(
           amount: Money.parse('100.00'),
           receivableAccountId: 'receivable',
           paidFromAccountId: 'cash',
@@ -30,7 +31,7 @@ void main() {
         ),
       );
       final receipt = engine.createReimbursementReceipt(
-        instruction: ReimbursementReceiptInstruction(
+        instruction: singleReimbursementReceiptInstruction(
           advanceTransactionId: parent.id,
           amount: Money.parse('60.00'),
           receivableAccountId: 'receivable',
@@ -40,7 +41,7 @@ void main() {
         advance: parent,
       );
       final close = engine.createReimbursementClose(
-        instruction: ReimbursementCloseInstruction(
+        instruction: singleReimbursementCloseInstruction(
           advanceTransactionId: parent.id,
           actualReceivedAmount: Money.parse('40.00'),
           receivableAccountId: 'receivable',
@@ -118,6 +119,10 @@ class _MemoryTransactionRepository
 
   @override
   Future<void> saveAll(Iterable<Transaction> transactions) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> updateAll(Iterable<Transaction> transactions) =>
       throw UnimplementedError();
 
   @override

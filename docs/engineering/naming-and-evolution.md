@@ -16,7 +16,7 @@
 ## 演进规则
 
 - **新增字段**：先改 `docs/domains/ledger/数据模型`，再改 Drift table 与迁移，同步领域模型、application DTO 与 UI。
-- **新增账务核心场景（流图原语）**：先改 `docs/domains/ledger/核心业务规则` 和 `docs/domains/ledger/业务场景流程示例`；扩展 `BusinessPurpose` / `TransactionDetailType` / `SystemKey`；落地账务领域规则；按需补 application 用例和查询投影。
+- **新增账务核心场景（流图原语）**：先改 `docs/domains/ledger/核心业务规则` 和 `docs/domains/ledger/业务场景流程示例`；扩展 `BusinessPurpose` / `TransactionRole` / `SystemKey`；落地账务领域规则；按需补 application 用例和查询投影。
 - **新增独立业务域**：按 [ADR-0001](../adr/0001-业务域划分与账务核心独立性.md) 的归类判断；先建 domain 规则和 port，再按业务复杂度决定是否补 application / infrastructure 完整结构。
 - **新增跨域用例**：放 application 层，由最外层用例编排多个领域；不要把一个领域的 application use case 当作另一个用例的领域能力复用。
 - **新增 feature**：优先只建 `page / widget / provider / view_model / presentation`；领域规则不得放入 feature。

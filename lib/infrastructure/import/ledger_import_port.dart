@@ -14,6 +14,7 @@ import '../../domain/import/port/import_ledger_port.dart';
 import '../../domain/import/import_models.dart';
 import '../../domain/ledger/entity/account.dart';
 import '../../domain/ledger/port/system_account_resolver.dart';
+import '../../domain/ledger/valobj/account_amount_allocation.dart';
 import '../../domain/ledger/valobj/ledger_enum.dart';
 import '../../domain/credit/valobj/credit_account_enums.dart';
 import '../../shared/account_profile/account_profile_kind.dart';
@@ -48,8 +49,9 @@ class LedgerImportPort implements ImportLedgerPort {
 
   @override
   Future<List<ImportLedgerTarget>> listTargets() async {
-    final accounts =
-        await _accounts.watchAccounts(AccountType.values.toSet()).first;
+    final accounts = await _accounts
+        .watchAccounts(AccountType.values.toSet())
+        .first;
     final byId = {for (final account in accounts) account.id: account};
     return [
       for (final account in accounts)
@@ -130,12 +132,11 @@ class LedgerImportPort implements ImportLedgerPort {
           ),
         )).id,
       ImportTargetDescriptor.ghostAccount ||
-      ImportTargetDescriptor.unsupported =>
-        throw ArgumentError.value(
-          creation.kind,
-          'creation.kind',
-          'The requested mapping target kind cannot be created.',
-        ),
+      ImportTargetDescriptor.unsupported => throw ArgumentError.value(
+        creation.kind,
+        'creation.kind',
+        'The requested mapping target kind cannot be created.',
+      ),
     };
   }
 
@@ -157,8 +158,14 @@ class LedgerImportPort implements ImportLedgerPort {
     final result = await _posting.createExpense(
       CreateExpenseCommand(
         amount: amount,
-        paidFromAccountId: paidFromAccountId,
-        expenseAccountId: expenseCategoryId,
+        categoryAllocations: singleAllocation(
+          accountId: expenseCategoryId,
+          amount: amount,
+        ),
+        settlementAllocations: singleAllocation(
+          accountId: paidFromAccountId,
+          amount: amount,
+        ),
         occurredAt: occurredAt,
         postedAt: postedAt,
         note: note,
@@ -235,7 +242,11 @@ class LedgerImportPort implements ImportLedgerPort {
       CreateRefundCommand(
         amount: amount,
         parentTransactionId: topLevelTransactionId,
-        refundToAccountId: refundToAccountId,
+        categoryAllocations: const [],
+        settlementAllocations: singleAllocation(
+          accountId: refundToAccountId,
+          amount: amount,
+        ),
         occurredAt: occurredAt,
         postedAt: postedAt,
         note: note,
@@ -260,8 +271,14 @@ class LedgerImportPort implements ImportLedgerPort {
       CreateReimbursementAdvanceCommand(
         amount: amount,
         receivableAccountId: receivableAccountId,
-        paidFromAccountId: paidFromAccountId,
-        expenseCategoryId: expenseCategoryId,
+        categoryAllocations: singleAllocation(
+          accountId: expenseCategoryId,
+          amount: amount,
+        ),
+        settlementAllocations: singleAllocation(
+          accountId: paidFromAccountId,
+          amount: amount,
+        ),
         occurredAt: occurredAt,
         postedAt: postedAt,
         note: note,
@@ -288,7 +305,10 @@ class LedgerImportPort implements ImportLedgerPort {
         amount: amount,
         advanceTransactionId: topLevelTransactionId,
         receivableAccountId: receivableAccountId,
-        receiveAccountId: receiveAccountId,
+        settlementAllocations: singleAllocation(
+          accountId: receiveAccountId,
+          amount: amount,
+        ),
         occurredAt: occurredAt,
         postedAt: postedAt,
         note: note,
@@ -303,22 +323,48 @@ class LedgerImportPort implements ImportLedgerPort {
     required Money actualReceivedAmount,
     required String receivableAccountId,
     required String receiveAccountId,
+    String? gapExpenseCategoryId,
     required DateTime occurredAt,
     required DateTime postedAt,
     String? note,
   }) async {
+    final gapExpenseAllocations = await _importGapExpenseAllocations(
+      topLevelTransactionId: topLevelTransactionId,
+      actualReceivedAmount: actualReceivedAmount,
+      categoryId: gapExpenseCategoryId,
+    );
     final result = await _posting.closeReimbursement(
       CloseReimbursementCommand(
         actualReceivedAmount: actualReceivedAmount,
         advanceTransactionId: topLevelTransactionId,
         receivableAccountId: receivableAccountId,
-        receiveAccountId: receiveAccountId,
+        settlementAllocations: singleAllocation(
+          accountId: receiveAccountId,
+          amount: actualReceivedAmount,
+        ),
+        gapExpenseAllocations: gapExpenseAllocations,
         occurredAt: occurredAt,
         postedAt: postedAt,
         note: note,
       ),
     );
     return result.transactionId;
+  }
+
+  Future<List<AccountAmountAllocation>> _importGapExpenseAllocations({
+    required String topLevelTransactionId,
+    required Money actualReceivedAmount,
+    required String? categoryId,
+  }) async {
+    if (categoryId == null) return const [];
+    final detail = await _transactions.findTransactionDetail(
+      topLevelTransactionId,
+    );
+    final outstanding = detail?.reimbursementSummary?.outstanding;
+    if (outstanding == null) return const [];
+    final shortfall = outstanding - actualReceivedAmount;
+    if (shortfall.minorUnits <= 0) return const [];
+    return singleAllocation(accountId: categoryId, amount: shortfall);
   }
 
   @override
@@ -403,15 +449,15 @@ class LedgerImportPort implements ImportLedgerPort {
   }) async {
     final result = await (_posting as ReceivableTransactionPostingAppService)
         .createLending(
-      CreateLendingCommand(
-        amount: amount,
-        receivableAccountId: receivableAccountId,
-        paidFromAccountId: paidFromAccountId,
-        occurredAt: occurredAt,
-        postedAt: postedAt,
-        note: note,
-      ),
-    );
+          CreateLendingCommand(
+            amount: amount,
+            receivableAccountId: receivableAccountId,
+            paidFromAccountId: paidFromAccountId,
+            occurredAt: occurredAt,
+            postedAt: postedAt,
+            note: note,
+          ),
+        );
     return result.transactionId;
   }
 
@@ -427,16 +473,16 @@ class LedgerImportPort implements ImportLedgerPort {
   }) async {
     final result = await (_posting as ReceivableTransactionPostingAppService)
         .createReceivableCollection(
-      CreateReceivableCollectionCommand(
-        principal: principal,
-        interest: interest ?? Money.zero(),
-        receivableAccountId: receivableAccountId,
-        receiveAccountId: receiveAccountId,
-        occurredAt: occurredAt,
-        postedAt: postedAt,
-        note: note,
-      ),
-    );
+          CreateReceivableCollectionCommand(
+            principal: principal,
+            interest: interest ?? Money.zero(),
+            receivableAccountId: receivableAccountId,
+            receiveAccountId: receiveAccountId,
+            occurredAt: occurredAt,
+            postedAt: postedAt,
+            note: note,
+          ),
+        );
     return result.transactionId;
   }
 
@@ -490,8 +536,9 @@ class LedgerImportPort implements ImportLedgerPort {
     return ImportLedgerTarget(
       id: account.id,
       name: account.name,
-      displayPath:
-          parentName == null ? account.name : '$parentName / ${account.name}',
+      displayPath: parentName == null
+          ? account.name
+          : '$parentName / ${account.name}',
       kind: kind,
       isArchived: account.isArchived,
       descriptor: _descriptorForAccount(account),
@@ -512,14 +559,12 @@ class LedgerImportPort implements ImportLedgerPort {
       CreateCreditLiabilityAccountCommand(
         name: creation.name,
         kind: kind,
-        billingDay:
-            kind == CreditLiabilityAccountKind.credit
-                ? creation.billingDay
-                : null,
-        repaymentDay:
-            kind == CreditLiabilityAccountKind.credit
-                ? creation.repaymentDay
-                : null,
+        billingDay: kind == CreditLiabilityAccountKind.credit
+            ? creation.billingDay
+            : null,
+        repaymentDay: kind == CreditLiabilityAccountKind.credit
+            ? creation.repaymentDay
+            : null,
         billingDayToNext: creation.billingDayToNext,
       ),
     );

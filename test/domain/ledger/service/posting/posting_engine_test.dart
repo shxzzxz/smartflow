@@ -1,13 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_rule.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
+import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
 import '../../../../helper/sequential_id_generator.dart';
+import '../../../../helper/posting_instruction_fixtures.dart';
 
 void main() {
   group('PostingEngine', () {
@@ -17,7 +20,7 @@ void main() {
       );
 
       final transaction = engine.createExpense(
-        ExpenseInstruction(
+        singleExpenseInstruction(
           amount: Money.parse('12.30'),
           paidFromAccountId: 'cash',
           expenseAccountId: 'food',
@@ -27,10 +30,10 @@ void main() {
 
       expect(transaction.businessPurpose, BusinessPurpose.dailyExpense);
       expect(transaction.postedAt, transaction.occurredAt);
-      expect(
-        transaction.details.single.type,
-        TransactionDetailType.primaryExpense,
-      );
+      expect(transaction.lines.map((line) => line.role), [
+        TransactionRole.category,
+        TransactionRole.settlementOut,
+      ]);
       expect(entriesAreBalanced(transaction.entries), isTrue);
       expect(
         transaction.entries.map((entry) => (entry.accountId, entry.direction)),
@@ -49,7 +52,7 @@ void main() {
       final postedAt = DateTime(2026, 5, 3, 18);
 
       final transaction = engine.createExpense(
-        ExpenseInstruction(
+        singleExpenseInstruction(
           amount: Money.parse('12.30'),
           paidFromAccountId: 'cash',
           expenseAccountId: 'food',
@@ -69,7 +72,7 @@ void main() {
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
       final advance = engine.createReimbursementAdvance(
-        ReimbursementAdvanceInstruction(
+        singleReimbursementAdvanceInstruction(
           amount: Money.parse('100.00'),
           receivableAccountId: 'receivable',
           paidFromAccountId: 'cash',
@@ -80,7 +83,7 @@ void main() {
         ),
       );
       final receipt = engine.createReimbursementReceipt(
-        instruction: ReimbursementReceiptInstruction(
+        instruction: singleReimbursementReceiptInstruction(
           advanceTransactionId: advance.id,
           amount: Money.parse('100.00'),
           receivableAccountId: 'receivable',
@@ -137,16 +140,13 @@ void main() {
           paidFromAccountId: 'cash',
           occurredAt: DateTime(2026, 5, 1),
         ),
-        interestExpenseAccountId: 'interest-expense',
+        systemAccountIds: const {SystemKey.interestExpense: 'interest-expense'},
       );
 
       expect(transaction.businessPurpose, BusinessPurpose.debtRepayment);
       expect(entriesAreBalanced(transaction.entries), isTrue);
-      expect(
-        transaction.details.first.type,
-        TransactionDetailType.repaymentPrincipal,
-      );
-      expect(transaction.details.first.amount, Money.zero());
+      expect(transaction.lines.first.role, TransactionRole.liability);
+      expect(transaction.lines.first.amount, Money.zero());
       final resolved = const DefaultPostingInstructionResolver().resolve(
         transaction,
       );
@@ -161,7 +161,7 @@ void main() {
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
       final parent = engine.createExpense(
-        ExpenseInstruction(
+        singleExpenseInstruction(
           amount: Money.parse('20.00'),
           paidFromAccountId: 'cash',
           expenseAccountId: 'food',
@@ -172,14 +172,13 @@ void main() {
       );
 
       final refund = engine.createRefund(
-        instruction: RefundInstruction(
+        instruction: singleRefundInstruction(
           parentTransactionId: parent.id,
           amount: Money.parse('8.00'),
           refundToAccountId: 'cash',
           occurredAt: DateTime(2026, 5, 2),
         ),
         parent: parent,
-        refundOffsetAccountId: 'food',
       );
 
       expect(refund.parentTransactionId, parent.id);
@@ -194,7 +193,7 @@ void main() {
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
       final transaction = engine.createExpense(
-        ExpenseInstruction(
+        singleExpenseInstruction(
           amount: Money.parse('12.30'),
           paidFromAccountId: 'cash',
           expenseAccountId: 'food',
@@ -210,7 +209,7 @@ void main() {
     });
 
     test('expense edit patch converts a reimbursement advance to expense', () {
-      final current = ReimbursementAdvanceInstruction(
+      final current = singleReimbursementAdvanceInstruction(
         amount: Money.parse('12.30'),
         receivableAccountId: 'receivable',
         paidFromAccountId: 'cash',
@@ -224,15 +223,15 @@ void main() {
       final edited = const ExpenseEditPatch().applyTo(current);
 
       expect(edited.amount, current.amount);
-      expect(edited.paidFromAccountId, 'cash');
-      expect(edited.expenseAccountId, 'food');
+      expect(edited.settlementAllocations.single.accountId, 'cash');
+      expect(edited.categoryAllocations.single.accountId, 'food');
       expect(edited.postedAt, current.postedAt);
       expect(edited.isExcludedFromStats, isTrue);
       expect(edited.isExcludedFromBudget, isTrue);
     });
 
     test('advance edit patch converts an expense to reimbursement advance', () {
-      final current = ExpenseInstruction(
+      final current = singleExpenseInstruction(
         amount: Money.parse('12.30'),
         paidFromAccountId: 'cash',
         expenseAccountId: 'food',
@@ -248,8 +247,8 @@ void main() {
 
       expect(edited.amount, current.amount);
       expect(edited.receivableAccountId, 'receivable');
-      expect(edited.paidFromAccountId, 'cash');
-      expect(edited.expenseAccountId, 'food');
+      expect(edited.settlementAllocations.single.accountId, 'cash');
+      expect(edited.categoryAllocations.single.accountId, 'food');
       expect(edited.postedAt, current.postedAt);
       expect(edited.isExcludedFromStats, isTrue);
       expect(edited.isExcludedFromBudget, isTrue);
@@ -299,7 +298,16 @@ void main() {
       final current = RefundInstruction(
         parentTransactionId: 'parent',
         amount: Money.parse('12.30'),
-        refundToAccountId: 'cash',
+        categoryAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'food',
+            amount: Money(minorUnits: 1230),
+          ),
+        ],
+        settlementAllocations: singleAllocation(
+          accountId: 'cash',
+          amount: Money.parse('12.30'),
+        ),
         occurredAt: DateTime(2026, 5, 1),
         postedAt: DateTime(2026, 5, 2),
       );
@@ -309,6 +317,8 @@ void main() {
       ).applyTo(current);
 
       expect(edited.amount, Money.parse('10.00'));
+      expect(edited.categoryAllocations.single.amount, Money.parse('10.00'));
+      expect(edited.settlementAllocations.single.amount, Money.parse('10.00'));
       expect(edited.postedAt, current.postedAt);
     });
 
@@ -317,7 +327,7 @@ void main() {
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
       final advance = engine.createReimbursementAdvance(
-        ReimbursementAdvanceInstruction(
+        singleReimbursementAdvanceInstruction(
           amount: Money.parse('100.00'),
           receivableAccountId: 'receivable',
           paidFromAccountId: 'cash',
@@ -329,7 +339,7 @@ void main() {
       );
 
       final receipt = engine.createReimbursementReceipt(
-        instruction: ReimbursementReceiptInstruction(
+        instruction: singleReimbursementReceiptInstruction(
           advanceTransactionId: advance.id,
           amount: Money.parse('20.00'),
           receivableAccountId: 'receivable',
@@ -339,7 +349,7 @@ void main() {
         advance: advance,
       );
       final close = engine.createReimbursementClose(
-        instruction: ReimbursementCloseInstruction(
+        instruction: singleReimbursementCloseInstruction(
           advanceTransactionId: advance.id,
           actualReceivedAmount: Money.parse('80.00'),
           receivableAccountId: 'receivable',
@@ -355,6 +365,126 @@ void main() {
       expect(receipt.isExcludedFromBudget, isTrue);
       expect(close.isExcludedFromStats, isTrue);
       expect(close.isExcludedFromBudget, isTrue);
+    });
+
+    test('zero-cash reimbursement close keeps zero primary amount', () {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final advance = engine.createReimbursementAdvance(
+        singleReimbursementAdvanceInstruction(
+          amount: Money.parse('100.00'),
+          receivableAccountId: 'receivable',
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'travel',
+          occurredAt: DateTime(2026, 5, 1),
+        ),
+      );
+
+      final close = engine.createReimbursementClose(
+        instruction: singleReimbursementCloseInstruction(
+          advanceTransactionId: advance.id,
+          actualReceivedAmount: Money.zero(),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'bank',
+          occurredAt: DateTime(2026, 5, 2),
+          gapExpenseAllocations: singleAllocation(
+            accountId: 'travel',
+            amount: Money.parse('100.00'),
+          ),
+        ),
+        advance: advance,
+        outstanding: Money.parse('100.00'),
+        gapIncomeAccountId: null,
+      );
+
+      expect(close.primaryAmount, Money.zero());
+      expect(
+        close.lines
+            .singleWhere((line) => line.role == TransactionRole.settlementIn)
+            .amount,
+        Money.zero(),
+      );
+      expect(close.entries.any((entry) => entry.accountId == 'bank'), isFalse);
+      expect(
+        close.entries.every((entry) => entry.amount != Money.zero()),
+        isTrue,
+      );
+    });
+
+    test('requires explicit gap allocations when a close is short', () {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final advance = engine.createReimbursementAdvance(
+        ReimbursementAdvanceInstruction(
+          amount: Money.parse('100.00'),
+          receivableAccountId: 'receivable',
+          categoryAllocations: const [
+            AccountAmountAllocation(
+              accountId: 'food',
+              amount: Money(minorUnits: 5000),
+            ),
+            AccountAmountAllocation(
+              accountId: 'travel',
+              amount: Money(minorUnits: 5000),
+            ),
+          ],
+          settlementAllocations: singleAllocation(
+            accountId: 'cash',
+            amount: Money.parse('100.00'),
+          ),
+          occurredAt: DateTime(2026, 5, 1),
+        ),
+      );
+
+      expect(
+        () => engine.createReimbursementClose(
+          instruction: singleReimbursementCloseInstruction(
+            advanceTransactionId: advance.id,
+            actualReceivedAmount: Money.parse('80.00'),
+            receivableAccountId: 'receivable',
+            receiveAccountId: 'bank',
+            occurredAt: DateTime(2026, 5, 2),
+          ),
+          advance: advance,
+          outstanding: Money.parse('100.00'),
+          gapIncomeAccountId: null,
+        ),
+        throwsA(isA<BusinessException>()),
+      );
+
+      final close = engine.createReimbursementClose(
+        instruction: singleReimbursementCloseInstruction(
+          advanceTransactionId: advance.id,
+          actualReceivedAmount: Money.parse('80.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'bank',
+          occurredAt: DateTime(2026, 5, 2),
+          gapExpenseAllocations: const [
+            AccountAmountAllocation(
+              accountId: 'food',
+              amount: Money(minorUnits: 1000),
+            ),
+            AccountAmountAllocation(
+              accountId: 'travel',
+              amount: Money(minorUnits: 1000),
+            ),
+          ],
+        ),
+        advance: advance,
+        outstanding: Money.parse('100.00'),
+        gapIncomeAccountId: null,
+      );
+
+      expect(
+        close.lines
+            .where(
+              (line) => line.role == TransactionRole.reimbursementGapExpense,
+            )
+            .map((line) => line.accountId),
+        ['food', 'travel'],
+      );
     });
   });
 }

@@ -1,7 +1,8 @@
 import '../../entity/transaction.dart';
 import '../../entity/transaction_group.dart';
-import '../../entity/entry.dart';
+import '../../port/system_account_resolver.dart';
 import '../../valobj/ledger_enum.dart';
+import '../../valobj/account_amount_allocation.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import '../posting/posting_engine.dart';
@@ -12,11 +13,14 @@ class TransactionGroupRewritePlanner {
   const TransactionGroupRewritePlanner({
     required PostingEngine postingEngine,
     required PostingInstructionResolver postingInstructionResolver,
+    required SystemAccountResolver systemAccountResolver,
   }) : _postingEngine = postingEngine,
-       _postingInstructionResolver = postingInstructionResolver;
+       _postingInstructionResolver = postingInstructionResolver,
+       _systemAccountResolver = systemAccountResolver;
 
   final PostingEngine _postingEngine;
   final PostingInstructionResolver _postingInstructionResolver;
+  final SystemAccountResolver _systemAccountResolver;
 
   Future<TransactionGroupRewritePlan> planParentRewrite({
     required TransactionGroup currentGroup,
@@ -74,9 +78,9 @@ class TransactionGroupRewritePlanner {
       );
     }
     for (final child in currentGroup.childTransactions) {
-      final rewritten = _rewriteChild(
+      final rewritten = await _rewriteChild(
         child: child,
-        currentParent: currentParent,
+        currentGroup: currentGroup,
         parent: rewrittenParent,
       );
       rewrittenChildren.add(rewritten);
@@ -89,116 +93,229 @@ class TransactionGroupRewritePlanner {
       }
     }
 
+    final rewrittenGroup = TransactionGroup(
+      parentTransaction: rewrittenParent,
+      childTransactions: rewrittenChildren,
+    );
+    _validateCategoryAllocations(rewrittenGroup);
     return TransactionGroupRewritePlan(
       rewrites: rewrites,
       rowUpdates: rowUpdates,
-      currentGroup: TransactionGroup(
-        parentTransaction: rewrittenParent,
-        childTransactions: rewrittenChildren,
-      ),
+      currentGroup: rewrittenGroup,
     );
   }
 
-  Transaction _rewriteChild({
+  Future<Transaction> _rewriteChild({
     required Transaction child,
-    required Transaction currentParent,
+    required TransactionGroup currentGroup,
+    required Transaction parent,
+  }) async {
+    switch (child.businessPurpose) {
+      case BusinessPurpose.reimbursementReceipt:
+        return _rebuildReceipt(child: child, parent: parent);
+      case BusinessPurpose.reimbursementClose:
+        return _rebuildClose(
+          child: child,
+          currentGroup: currentGroup,
+          parent: parent,
+        );
+      case BusinessPurpose.refund:
+        return _rebuildRefund(
+          child: child,
+          currentGroup: currentGroup,
+          parent: parent,
+        );
+      default:
+        return child.copyWith(
+          isExcludedFromStats: parent.isExcludedFromStats,
+          isExcludedFromBudget: parent.isExcludedFromBudget,
+        );
+    }
+  }
+
+  Transaction _rebuildRefund({
+    required Transaction child,
+    required TransactionGroup currentGroup,
     required Transaction parent,
   }) {
-    if (child.businessPurpose == BusinessPurpose.reimbursementReceipt ||
-        child.businessPurpose == BusinessPurpose.reimbursementClose) {
-      return _rebaseReimbursementChild(
-        child: child,
-        currentParent: currentParent,
-        parent: parent,
-      );
-    }
-    if (child.businessPurpose != BusinessPurpose.refund) {
-      return child.copyWith(
-        isExcludedFromStats: parent.isExcludedFromStats,
-        isExcludedFromBudget: parent.isExcludedFromBudget,
-      );
-    }
-    final parentInstruction = _postingInstructionResolver.resolve(parent);
-    final offsetAccountId = resolveRefundOffsetAccountId(parentInstruction);
-    if (offsetAccountId == null) {
-      LedgerViolationReason.refundParentNotSupported.throwException();
-    }
     final instruction = _postingInstructionResolver.resolveRefund(child);
+    final categories = _rebaseSingleCategoryAllocations(
+      currentParent: currentGroup.parentTransaction,
+      nextParent: parent,
+      allocations: instruction.categoryAllocations,
+    );
     final candidate = _postingEngine.createRefund(
       instruction: RefundInstruction(
         parentTransactionId: parent.id,
         amount: instruction.amount,
-        refundToAccountId: instruction.refundToAccountId,
+        categoryAllocations: categories,
+        settlementAllocations: instruction.settlementAllocations,
         occurredAt: instruction.occurredAt,
         postedAt: instruction.postedAt,
         counterpartyName: instruction.counterpartyName,
         note: instruction.note,
       ),
       parent: parent,
-      refundOffsetAccountId: offsetAccountId,
     );
-    return candidate.copyWith(
-      id: child.id,
-      parentTransactionId: parent.id,
-      sourceKind: child.sourceKind,
-      ownership: child.ownership,
-    );
+    return _preserveIdentity(original: child, candidate: candidate);
   }
 
-  Transaction _rebaseReimbursementChild({
+  /// 报销到账跟随父交易的应收科目重建:重算分项后重新过账,而不是改写既有分录。
+  Transaction _rebuildReceipt({
     required Transaction child,
-    required Transaction currentParent,
     required Transaction parent,
   }) {
-    final currentParentInstruction = _postingInstructionResolver.resolve(
-      currentParent,
-    );
     final parentInstruction = _postingInstructionResolver.resolve(parent);
-    if (currentParentInstruction is! ReimbursementAdvanceInstruction ||
-        parentInstruction is! ReimbursementAdvanceInstruction) {
-      return child;
-    }
-    final currentReceivableAccountId =
-        currentParentInstruction.receivableAccountId;
-    return child.copyWith(
-      parentTransactionId: parent.id,
-      isExcludedFromStats: parent.isExcludedFromStats,
-      isExcludedFromBudget: parent.isExcludedFromBudget,
-      entries: [
-        for (final entry in child.entries)
-          Entry(
-            id: entry.id,
-            transactionId: child.id,
-            accountId: _rebaseReimbursementAccount(
-              accountId: entry.accountId,
-              childPurpose: child.businessPurpose,
-              currentParent: currentParent,
-              parent: parent,
-              currentReceivableAccountId: currentReceivableAccountId,
-              receivableAccountId: parentInstruction.receivableAccountId,
-            ),
-            direction: entry.direction,
-            amount: entry.amount,
-          ),
-      ],
+    if (parentInstruction is! ReimbursementAdvanceInstruction) return child;
+    final settlements = child.accountAllocationsOf(
+      TransactionRole.settlementIn,
     );
+    if (settlements.isEmpty) {
+      LedgerViolationReason.reimbursementReceiptAccountsUnresolved
+          .throwException();
+    }
+    final candidate = _postingEngine.createReimbursementReceipt(
+      instruction: ReimbursementReceiptInstruction(
+        advanceTransactionId: parent.id,
+        amount: child.primaryAmount,
+        receivableAccountId: parentInstruction.receivableAccountId,
+        settlementAllocations: settlements,
+        occurredAt: child.occurredAt,
+        postedAt: child.postedAt,
+        counterpartyName: child.counterpartyName,
+        note: child.note,
+      ),
+      advance: parent,
+    );
+    return _preserveIdentity(original: child, candidate: candidate);
   }
 
-  String _rebaseReimbursementAccount({
-    required String accountId,
-    required BusinessPurpose childPurpose,
-    required Transaction currentParent,
+  Future<Transaction> _rebuildClose({
+    required Transaction child,
+    required TransactionGroup currentGroup,
     required Transaction parent,
-    required String currentReceivableAccountId,
-    required String receivableAccountId,
-  }) {
-    if (accountId == currentReceivableAccountId) return receivableAccountId;
-    if (childPurpose == BusinessPurpose.reimbursementClose &&
-        currentParent.reimbursementExpenseAccountId != null &&
-        accountId == currentParent.reimbursementExpenseAccountId) {
-      return parent.reimbursementExpenseAccountId!;
+  }) async {
+    final parentInstruction = _postingInstructionResolver.resolve(parent);
+    if (parentInstruction is! ReimbursementAdvanceInstruction) return child;
+    final settlements = child.accountAllocationsOf(
+      TransactionRole.settlementIn,
+    );
+    if (settlements.isEmpty) {
+      LedgerViolationReason.reimbursementCloseAccountsUnresolved
+          .throwException();
     }
-    return accountId;
+    // 待核销由交易组推导,不读结束报销自己的派生分项。
+    final outstanding = TransactionGroup(
+      parentTransaction: parent,
+      childTransactions: currentGroup.childTransactions,
+    ).reimbursementOutstandingExcluding(child.id);
+    final actual = sumAllocations(settlements);
+    final gapExpenseAllocations = _rebaseSingleCategoryAllocations(
+      currentParent: currentGroup.parentTransaction,
+      nextParent: parent,
+      allocations: child.accountAllocationsOf(
+        TransactionRole.reimbursementGapExpense,
+      ),
+    );
+    final candidate = _postingEngine.createReimbursementClose(
+      instruction: ReimbursementCloseInstruction(
+        advanceTransactionId: parent.id,
+        actualReceivedAmount: actual,
+        receivableAccountId: parentInstruction.receivableAccountId,
+        settlementAllocations: settlements,
+        gapExpenseAllocations: gapExpenseAllocations,
+        occurredAt: child.occurredAt,
+        postedAt: child.postedAt,
+        counterpartyName: child.counterpartyName,
+        note: child.note,
+      ),
+      advance: parent,
+      outstanding: outstanding,
+      gapIncomeAccountId: actual.minorUnits > outstanding.minorUnits
+          ? await _systemAccountResolver.resolveReimbursementGapIncome()
+          : null,
+    );
+    return _preserveIdentity(original: child, candidate: candidate);
+  }
+
+  void _validateCategoryAllocations(TransactionGroup group) {
+    for (final child in group.childTransactions) {
+      if (child.businessPurpose == BusinessPurpose.refund &&
+          !group.allocationsFitRefundableCategories(
+            group.refundCategoryAllocations(child),
+            excludingTransactionId: child.id,
+          )) {
+        LedgerViolationReason.allocationExceedsAvailable.throwException();
+      }
+      if (child.businessPurpose == BusinessPurpose.reimbursementClose) {
+        final gaps = child.accountAllocationsOf(
+          TransactionRole.reimbursementGapExpense,
+        );
+        if (!group.allocationsFitRefundableCategories(gaps)) {
+          LedgerViolationReason.allocationExceedsAvailable.throwException();
+        }
+      }
+    }
+  }
+
+  List<AccountAmountAllocation> _rebaseSingleCategoryAllocations({
+    required Transaction currentParent,
+    required Transaction nextParent,
+    required List<AccountAmountAllocation> allocations,
+  }) {
+    final currentCategories = TransactionGroup(
+      parentTransaction: currentParent,
+      childTransactions: const [],
+    ).categoryAllocations;
+    final nextCategories = TransactionGroup(
+      parentTransaction: nextParent,
+      childTransactions: const [],
+    ).categoryAllocations;
+    if (currentCategories.length != 1 || nextCategories.length != 1) {
+      final currentById = {
+        for (final allocation in currentCategories)
+          allocation.accountId: allocation.amount.minorUnits,
+      };
+      final nextById = {
+        for (final allocation in nextCategories)
+          allocation.accountId: allocation.amount.minorUnits,
+      };
+      final removed = currentById.keys
+          .where((accountId) => !nextById.containsKey(accountId))
+          .toList();
+      final increased = nextById.keys
+          .where(
+            (accountId) => nextById[accountId]! > (currentById[accountId] ?? 0),
+          )
+          .toList();
+      if (removed.length != 1 || increased.length != 1) return allocations;
+      return replaceAllocationAccount(
+        allocations: allocations,
+        sourceAccountId: removed.single,
+        targetAccountId: increased.single,
+      );
+    }
+    final currentId = currentCategories.single.accountId;
+    final nextId = nextCategories.single.accountId;
+    if (currentId == nextId) return allocations;
+    return [
+      for (final allocation in allocations)
+        allocation.accountId == currentId
+            ? allocation.copyWith(accountId: nextId)
+            : allocation,
+    ];
+  }
+
+  Transaction _preserveIdentity({
+    required Transaction original,
+    required Transaction candidate,
+  }) {
+    return candidate.copyWith(
+      id: original.id,
+      postedAt: original.postedAt,
+      sourceKind: original.sourceKind,
+      ownership: original.ownership,
+    );
   }
 
   void _ensurePurposeChangeSupported({

@@ -3,6 +3,7 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/entity/entry.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
+import 'package:smartflow/domain/ledger/entity/transaction_line.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_account_repository.dart';
@@ -96,6 +97,7 @@ void main() {
         amountMinor: 500,
         debitAccountId: 'acc-cash',
         creditAccountId: 'acc-bank',
+        businessPurpose: BusinessPurpose.transfer,
         ownership: const TransactionOwnership(ownerType: 'credit_repayment'),
       ),
     ]);
@@ -113,15 +115,13 @@ void main() {
     expect(result.deletedGroupCount, 2);
     expect(result.skippedGroupCount, 0);
 
-    final remaining =
-        await database
-            .customSelect('SELECT id FROM transactions ORDER BY id')
-            .get();
+    final remaining = await database
+        .customSelect('SELECT id FROM transactions ORDER BY id')
+        .get();
     expect(remaining.map((row) => row.read<String>('id')), ['owned-transfer']);
-    final remainingEntries =
-        await database
-            .customSelect('SELECT COUNT(*) AS count FROM entries')
-            .getSingle();
+    final remainingEntries = await database
+        .customSelect('SELECT COUNT(*) AS count FROM entries')
+        .getSingle();
     expect(remainingEntries.read<int>('count'), 2);
 
     // 现金：+1000（删支出贷方）-300（删退款借方）；银行卡（负债）：-2000（删贷方）；
@@ -148,10 +148,9 @@ void main() {
     expect(result.deletedGroupCount, 2);
     expect(result.skippedGroupCount, 1);
 
-    final remaining =
-        await database
-            .customSelect('SELECT id FROM transactions ORDER BY id')
-            .get();
+    final remaining = await database
+        .customSelect('SELECT id FROM transactions ORDER BY id')
+        .get();
     expect(remaining.map((row) => row.read<String>('id')), ['owned-transfer']);
     expect(
       (await accounts.findById('acc-cash'))!.balance,
@@ -166,16 +165,19 @@ Transaction _transaction({
   required int amountMinor,
   required String debitAccountId,
   required String creditAccountId,
+  BusinessPurpose? businessPurpose,
   String? parentId,
   TransactionOwnership? ownership,
 }) {
   final amount = Money(minorUnits: amountMinor);
+  final purpose =
+      businessPurpose ??
+      (parentId == null
+          ? BusinessPurpose.dailyExpense
+          : BusinessPurpose.refund);
   return Transaction(
     id: id,
-    businessPurpose:
-        parentId == null
-            ? BusinessPurpose.dailyExpense
-            : BusinessPurpose.refund,
+    businessPurpose: purpose,
     occurredAt: occurredAt,
     primaryAmount: amount,
     parentTransactionId: parentId,
@@ -183,6 +185,28 @@ Transaction _transaction({
     isExcludedFromBudget: false,
     sourceKind: SourceKind.manual,
     ownership: ownership,
+    lines: [
+      TransactionLine(
+        id: 'line-$id-first',
+        transactionId: id,
+        lineNo: 1,
+        role: purpose == BusinessPurpose.dailyExpense
+            ? TransactionRole.category
+            : TransactionRole.settlementIn,
+        accountId: debitAccountId,
+        amount: amount,
+      ),
+      TransactionLine(
+        id: 'line-$id-second',
+        transactionId: id,
+        lineNo: 2,
+        role: purpose == BusinessPurpose.refund
+            ? TransactionRole.refundOffset
+            : TransactionRole.settlementOut,
+        accountId: creditAccountId,
+        amount: amount,
+      ),
+    ],
     entries: [
       Entry(
         id: 'entry-$id-debit',

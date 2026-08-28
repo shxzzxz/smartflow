@@ -10,6 +10,7 @@ import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
 import 'package:smartflow/widget/business/account/account_endpoint_view.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
@@ -138,8 +139,16 @@ class _DetailBody extends ConsumerWidget {
                 onAccountTap: (row) => _handleAccountTap(context, ref, row),
                 onNoteTap: () => _editNote(context, ref),
               ),
+              if (state.allocationBreakdowns.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.space12),
+                _AllocationBreakdownCard(
+                  key: const ValueKey('detail-allocation-card'),
+                  breakdowns: state.allocationBreakdowns,
+                ),
+              ],
               const SizedBox(height: AppSpacing.space12),
               _TagCard(
+                key: const ValueKey('detail-tag-card'),
                 transactionId: state.transactionId,
                 permission: state.behavior.canEditTags,
               ),
@@ -214,7 +223,7 @@ class _DetailBody extends ConsumerWidget {
       case DetailEditAllowed():
         break;
     }
-    final current = state.detail.transaction.occurredAt;
+    final current = state.detail.occurredAt;
     final updated = await showAppDateTimePicker(
       context: context,
       initialDateTime: current,
@@ -236,7 +245,7 @@ class _DetailBody extends ConsumerWidget {
       case DetailEditAllowed():
         break;
     }
-    final current = state.detail.transaction.postedAt;
+    final current = state.detail.postedAt;
     final updated = await showAppDateTimePicker(
       context: context,
       initialDateTime: current,
@@ -263,6 +272,14 @@ class _DetailBody extends ConsumerWidget {
         return;
       case DetailEditAllowed():
         break;
+    }
+    if (row.editPurpose == AccountSelectionPurpose.settlement &&
+        (state.detail.businessPurpose == BusinessPurpose.dailyExpense ||
+            state.detail.businessPurpose ==
+                BusinessPurpose.reimbursementAdvance) &&
+        state.behavior.editRoute != null) {
+      context.push(state.behavior.editRoute!);
+      return;
     }
     final viewModel = ref.read(
       transactionDetailViewModelProvider(state.transactionId).notifier,
@@ -291,6 +308,7 @@ class _HeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textStyles = context.appTextStyles;
     return AppSurface(
+      key: const ValueKey('detail-category-card'),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space16),
         child: Row(
@@ -330,6 +348,84 @@ class _HeroCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AllocationBreakdownCard extends StatelessWidget {
+  const _AllocationBreakdownCard({required this.breakdowns, super.key});
+
+  final List<DetailAllocationBreakdown> breakdowns;
+
+  @override
+  Widget build(BuildContext context) {
+    return _RowCard(
+      rows: [
+        for (final breakdown in breakdowns)
+          AppPlainValueRow(
+            key: ValueKey('detail-allocation-row-${breakdown.kind.name}'),
+            label: breakdown.title,
+            onTap: () => _showAllocationSheet(context, breakdown),
+            child: _AllocationSummary(breakdown: breakdown),
+          ),
+      ],
+    );
+  }
+}
+
+class _AllocationSummary extends StatelessWidget {
+  const _AllocationSummary({required this.breakdown});
+
+  final DetailAllocationBreakdown breakdown;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = breakdown.items;
+    final showNames = items.length < 3;
+    final visibleItems = items.take(4).toList(growable: false);
+    final hiddenCount = items.length - visibleItems.length;
+    final usage = _allocationIconUsage(breakdown.kind);
+    return Semantics(
+      label: items.map((item) => item.title).join('、'),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          for (var index = 0; index < visibleItems.length; index++) ...[
+            if (index > 0) const SizedBox(width: AppSpacing.space8),
+            Flexible(
+              child: Tooltip(
+                message: visibleItems[index].title,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    BusinessIcon(
+                      iconKey: visibleItems[index].iconKey,
+                      size: AppSpacing.space18,
+                      usage: usage,
+                    ),
+                    if (showNames) ...[
+                      const SizedBox(width: AppSpacing.space4),
+                      Flexible(
+                        child: Text(
+                          visibleItems[index].title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.appTextStyles.formValue,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+          if (hiddenCount > 0) ...[
+            const SizedBox(width: AppSpacing.space4),
+            Text('+$hiddenCount', style: context.appTextStyles.formValue),
+          ],
+        ],
       ),
     );
   }
@@ -423,15 +519,20 @@ class _PrimaryMetaCard extends StatelessWidget {
           onTap: onPostedAtTap,
         ),
         AppPlainValueRow(label: '创建时间', value: state.createdAtText),
-        for (final row in state.accountRows)
+        for (final rows in _groupAccountRows(state.accountRows))
           AppPlainValueRow(
-            label: row.label,
-            onTap: row.editPurpose == null ? null : () => onAccountTap(row),
-            child: AccountEndpointView(
-              endpoint: AccountEndpoint(
-                label: row.endpoint.label,
-                iconKey: row.endpoint.iconKey,
-              ),
+            label: rows.first.label,
+            onTap: rows.first.editPurpose == null
+                ? null
+                : () => onAccountTap(rows.first),
+            child: AccountEndpointGroupView(
+              endpoints: [
+                for (final row in rows)
+                  AccountEndpoint(
+                    label: row.endpoint.label,
+                    iconKey: row.endpoint.iconKey,
+                  ),
+              ],
               style: context.appTextStyles.formValue,
             ),
           ),
@@ -453,11 +554,30 @@ class _PrimaryMetaCard extends StatelessWidget {
       ],
     );
   }
+
+  List<List<DetailAccountRow>> _groupAccountRows(List<DetailAccountRow> rows) {
+    final groups = <List<DetailAccountRow>>[];
+    for (final row in rows) {
+      final existing = groups
+          .where((group) => group.first.label == row.label)
+          .firstOrNull;
+      if (existing == null) {
+        groups.add([row]);
+      } else {
+        existing.add(row);
+      }
+    }
+    return groups;
+  }
 }
 
 /// 标签展示卡。顶层交易支持在详情页直接修改，子交易展示所属交易组的标签。
 class _TagCard extends ConsumerWidget {
-  const _TagCard({required this.transactionId, required this.permission});
+  const _TagCard({
+    required this.transactionId,
+    required this.permission,
+    super.key,
+  });
 
   final String transactionId;
   final DetailEditPermission permission;
@@ -601,6 +721,60 @@ class _RowCard extends StatelessWidget {
       ),
     );
   }
+}
+
+BusinessIconUsage _allocationIconUsage(DetailAllocationKind kind) {
+  return switch (kind) {
+    DetailAllocationKind.category => BusinessIconUsage.expenseCategory,
+    DetailAllocationKind.account => BusinessIconUsage.account,
+  };
+}
+
+void _showAllocationSheet(
+  BuildContext context,
+  DetailAllocationBreakdown breakdown,
+) {
+  if (breakdown.items.isEmpty) return;
+  final usage = _allocationIconUsage(breakdown.kind);
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (ctx) {
+      return SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.space16,
+                0,
+                AppSpacing.space16,
+                AppSpacing.space8,
+              ),
+              child: Text(
+                breakdown.title,
+                style: ctx.appTextStyles.subsectionTitle,
+              ),
+            ),
+            for (final item in breakdown.items)
+              ListTile(
+                leading: BusinessIcon(
+                  iconKey: item.iconKey,
+                  size: AppSpacing.space20,
+                  usage: usage,
+                ),
+                title: Text(item.title),
+                trailing: MoneyText(
+                  money: item.amount,
+                  semantic: MoneySemantic.neutral,
+                  style: ctx.appTextStyles.formValueEmphasis,
+                ),
+              ),
+          ],
+        ),
+      );
+    },
+  );
 }
 
 class _ActionBar extends StatelessWidget {

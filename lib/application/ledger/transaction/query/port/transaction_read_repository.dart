@@ -4,21 +4,6 @@ import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import '../transaction_queries.dart';
 import '../transaction_read_models.dart';
 
-class TransactionChildAggregate {
-  const TransactionChildAggregate({
-    required this.sumMinor,
-    required this.count,
-  });
-
-  final int sumMinor;
-  final int count;
-
-  static const TransactionChildAggregate empty = TransactionChildAggregate(
-    sumMinor: 0,
-    count: 0,
-  );
-}
-
 /// 数据清理条件命中的一个交易组。
 class TransactionCleanupTarget {
   const TransactionCleanupTarget({
@@ -49,30 +34,15 @@ class CategoryTransactionTarget {
 abstract interface class TransactionReadRepository {
   Future<Transaction?> findById(String id);
 
-  Future<DateTime?> findCreatedAt(String id);
-
   Future<List<Transaction>> findByIds(Set<String> ids);
+
+  Future<Map<String, DateTime>> findCreatedAtByIds(Set<String> ids);
 
   Stream<List<Transaction>> watchPage(TransactionPageQuery query);
 
-  Future<List<Transaction>> findChildren({required String parentId});
-
-  Future<Map<String, TransactionChildAggregate>> aggregateChildren({
-    required Set<String> parentIds,
-    required Set<BusinessPurpose> purposes,
-  });
-
-  Future<Map<String, Map<TransactionDetailType, int>>>
-  aggregateChildDetailAmounts({
-    required Set<String> parentIds,
-    required Set<TransactionDetailType> detailTypes,
-  });
-
-  Future<Map<String, Map<BusinessPurpose, TransactionChildAggregate>>>
-  aggregateChildrenByPurpose({
-    required Set<String> parentIds,
-    required Set<BusinessPurpose> purposes,
-  });
+  Future<Map<String, List<Transaction>>> findChildrenByParentIds(
+    Set<String> parentIds,
+  );
 
   Stream<TransactionCleanupPreview> watchCleanupPreview(
     TransactionCleanupQuery query,
@@ -82,18 +52,17 @@ abstract interface class TransactionReadRepository {
     TransactionCleanupQuery query,
   );
 
-  /// 命中 [categoryId] 的顶层交易组：组内任一分录触达该分类，
-  /// 或顶层交易行 reimbursement_expense_account_id 引用该分类。
+  /// 命中 [categoryId] 的顶层交易组：组内分类事实分项引用该分类。
   Future<List<CategoryTransactionTarget>> findCategoryTransactionTargets(
     String categoryId,
   );
 
   /// 按交易列表稳定排序返回最近一笔命中分类的交易。
   ///
-  /// 分类既可能由分录引用，也可能由报销垫付的显式支出分类字段引用。
+  /// 分类事实来自分类分项，包括报销垫付的支出分类分项。
   Future<Transaction?> findLatestByCategory(CategoryTransactionQuery query);
 
-  /// 响应 transactions / entries / transaction_details / accounts 表变化；
+  /// 响应 transactions / entries / transaction_lines / accounts 表变化；
   /// 账户与分类快照变化需要触发列表重新投影。
   Stream<void> watchChanges();
 }

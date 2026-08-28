@@ -9,14 +9,65 @@ import 'package:smartflow/domain/ledger/service/account/account_role_policy.dart
 import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_plan.dart';
 import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
-import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
 import 'package:smartflow/domain/ledger/service/posting/refund_posting_service.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
-import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
 import '../../../../helper/sequential_id_generator.dart';
+import '../../../../helper/posting_instruction_fixtures.dart';
 
 void main() {
+  test(
+    'reimbursement refund validates its non-posting expense category',
+    () async {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final advance = engine.createReimbursementAdvance(
+        singleReimbursementAdvanceInstruction(
+          amount: Money.parse('100.00'),
+          receivableAccountId: 'receivable',
+          paidFromAccountId: 'cash',
+          expenseAccountId: 'travel',
+          occurredAt: DateTime(2026, 7, 1),
+        ),
+      );
+      final accountRepository = _AccountRepository([
+        _account('cash', AccountType.asset),
+        _account(
+          'receivable',
+          AccountType.asset,
+          subtype: AccountSubtype.receivable,
+        ),
+      ]);
+      final service = RefundPostingService(
+        transactionGroupRepository: _TransactionGroupRepository(
+          TransactionGroup(
+            parentTransaction: advance,
+            childTransactions: const [],
+          ),
+        ),
+        accountRepository: accountRepository,
+        postingEngine: engine,
+        accountPostingService: const DefaultAccountPostingService(),
+        accountRolePolicy: AccountRolePolicy(
+          accountRepository: accountRepository,
+        ),
+      );
+
+      await expectLater(
+        () => service.postRefund(
+          singleRefundInstruction(
+            parentTransactionId: advance.id,
+            amount: Money.parse('10.00'),
+            refundToAccountId: 'cash',
+            occurredAt: DateTime(2026, 7, 2),
+          ),
+        ),
+        throwsA(isA<BusinessException>()),
+      );
+    },
+  );
+
   test(
     'refund cannot exceed reimbursement outstanding after receipts',
     () async {
@@ -24,7 +75,7 @@ void main() {
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
       final advance = engine.createReimbursementAdvance(
-        ReimbursementAdvanceInstruction(
+        singleReimbursementAdvanceInstruction(
           amount: Money.parse('100.00'),
           receivableAccountId: 'receivable',
           paidFromAccountId: 'cash',
@@ -33,7 +84,7 @@ void main() {
         ),
       );
       final receipt = engine.createReimbursementReceipt(
-        instruction: ReimbursementReceiptInstruction(
+        instruction: singleReimbursementReceiptInstruction(
           advanceTransactionId: advance.id,
           amount: Money.parse('60.00'),
           receivableAccountId: 'receivable',
@@ -58,7 +109,6 @@ void main() {
           ),
         ),
         accountRepository: accountRepository,
-        postingInstructionResolver: const DefaultPostingInstructionResolver(),
         postingEngine: engine,
         accountPostingService: const DefaultAccountPostingService(),
         accountRolePolicy: AccountRolePolicy(
@@ -68,7 +118,7 @@ void main() {
 
       await expectLater(
         () => service.postRefund(
-          RefundInstruction(
+          singleRefundInstruction(
             parentTransactionId: advance.id,
             amount: Money.parse('40.01'),
             refundToAccountId: 'cash',

@@ -23,6 +23,32 @@ class DetailHero {
   final bool showSign;
 }
 
+class DetailAllocationBreakdown {
+  const DetailAllocationBreakdown({
+    required this.kind,
+    required this.title,
+    required this.items,
+  });
+
+  final DetailAllocationKind kind;
+  final String title;
+  final List<DetailAllocationItem> items;
+}
+
+enum DetailAllocationKind { category, account }
+
+class DetailAllocationItem {
+  const DetailAllocationItem({
+    required this.title,
+    required this.amount,
+    this.iconKey,
+  });
+
+  final String title;
+  final String? iconKey;
+  final Money amount;
+}
+
 class DetailSheetItem {
   const DetailSheetItem({
     required this.id,
@@ -42,14 +68,17 @@ class DetailSheetItem {
 }
 
 DetailHero transactionDetailHero({
-  required TransactionDetail detail,
+  required TransactionReadModel detail,
   required AccountLookup accountLookup,
 }) {
-  final transaction = detail.transaction;
+  final transaction = detail;
   final semantic = semanticForTransactionPurpose(transaction.businessPurpose);
+  final categoryLines = detail.categoryLines.toList();
+  final hasMultipleCategories = categoryLines.length > 1;
   final category = _resolveCategoryAccount(detail, accountLookup);
-  final title =
-      category?.name ?? transactionPurposeLabel(transaction.businessPurpose);
+  final title = hasMultipleCategories
+      ? '多分类'
+      : category?.name ?? transactionPurposeLabel(transaction.businessPurpose);
   final counterparty = transaction.counterpartyName;
   final subtitle = counterparty != null && counterparty.isNotEmpty
       ? counterparty
@@ -58,15 +87,52 @@ DetailHero transactionDetailHero({
   return DetailHero(
     title: title,
     subtitle: subtitle,
-    iconKey: category?.iconKey,
+    iconKey: hasMultipleCategories ? null : category?.iconKey,
     amount: signedAmountForSemantic(transaction.primaryAmount, semantic),
     semantic: semantic,
     showSign: semantic == MoneySemantic.income,
   );
 }
 
+List<DetailAllocationBreakdown> transactionDetailAllocationBreakdowns({
+  required TransactionReadModel detail,
+  required AccountLookup accountLookup,
+}) {
+  final result = <DetailAllocationBreakdown>[];
+  final categories = detail.categoryLines.toList();
+  if (categories.length > 1) {
+    result.add(
+      DetailAllocationBreakdown(
+        kind: DetailAllocationKind.category,
+        title: '分类构成',
+        items: [
+          for (final line in categories) _allocationItem(line, accountLookup),
+        ],
+      ),
+    );
+  }
+
+  final settlements = detail.settlementLines.toList();
+  if (settlements.length > 1) {
+    final roles = settlements.map((line) => line.role).toSet();
+    if (roles.length == 1) {
+      result.add(
+        DetailAllocationBreakdown(
+          kind: DetailAllocationKind.account,
+          title: '账户构成',
+          items: [
+            for (final line in settlements)
+              _allocationItem(line, accountLookup),
+          ],
+        ),
+      );
+    }
+  }
+  return result;
+}
+
 List<DetailSheetItem> refundSheetItems(
-  Iterable<TransactionListReadModel> children,
+  Iterable<TransactionReadModel> children,
 ) {
   return children
       .where((child) => child.businessPurpose == BusinessPurpose.refund)
@@ -75,7 +141,7 @@ List<DetailSheetItem> refundSheetItems(
 }
 
 List<DetailSheetItem> reimbursementSheetItems(
-  Iterable<TransactionListReadModel> children,
+  Iterable<TransactionReadModel> children,
 ) {
   return children
       .where(
@@ -93,14 +159,11 @@ String formatTransactionDetailDateTime(DateTime value) {
       '${two(value.hour)}:${two(value.minute)}';
 }
 
-Money? transactionTransferFee(TransactionDetail detail) {
-  if (detail.transaction.businessPurpose != BusinessPurpose.transfer) {
+Money? transactionTransferFee(TransactionReadModel detail) {
+  if (detail.businessPurpose != BusinessPurpose.transfer) {
     return null;
   }
-  final amount = sumTransactionDetailAmount(
-    detail,
-    TransactionDetailType.transferFee,
-  );
+  final amount = sumTransactionLineAmount(detail, TransactionRole.fee);
   return amount.minorUnits > 0 ? amount : null;
 }
 
@@ -131,7 +194,7 @@ Money signedAmountForSemantic(Money money, MoneySemantic semantic) {
   return money;
 }
 
-DetailSheetItem _listItemToSheetItem(TransactionListReadModel item) {
+DetailSheetItem _listItemToSheetItem(TransactionReadModel item) {
   final semantic = semanticForTransactionPurpose(item.businessPurpose);
   return DetailSheetItem(
     id: item.id,
@@ -144,32 +207,21 @@ DetailSheetItem _listItemToSheetItem(TransactionListReadModel item) {
 }
 
 Account? _resolveCategoryAccount(
-  TransactionDetail detail,
+  TransactionReadModel detail,
   AccountLookup accountLookup,
 ) {
-  final purpose = detail.transaction.businessPurpose;
-  if (purpose == BusinessPurpose.dailyExpense ||
-      purpose == BusinessPurpose.refund ||
-      purpose == BusinessPurpose.badDebt) {
-    final entry = accountLookup.firstEntryByType(
-      detail.entries,
-      accountType: AccountType.expense,
-    );
-    return entry == null ? null : accountLookup.accountOf(entry);
-  }
-  if (purpose == BusinessPurpose.dailyIncome ||
-      purpose == BusinessPurpose.debtRelief) {
-    final entry = accountLookup.firstEntryByType(
-      detail.entries,
-      accountType: AccountType.income,
-    );
-    return entry == null ? null : accountLookup.accountOf(entry);
-  }
-  if (purpose == BusinessPurpose.reimbursementAdvance) {
-    final expenseId = detail.transaction.reimbursementExpenseAccountId;
-    if (expenseId != null) {
-      return accountLookup.find(expenseId);
-    }
-  }
-  return null;
+  final categoryId = detail.categoryLines.firstOrNull?.accountId;
+  return categoryId == null ? null : accountLookup.find(categoryId);
+}
+
+DetailAllocationItem _allocationItem(
+  TransactionLine line,
+  AccountLookup accountLookup,
+) {
+  final account = accountLookup.find(line.accountId!);
+  return DetailAllocationItem(
+    title: account?.name ?? line.accountId!,
+    iconKey: account?.iconKey,
+    amount: line.amount,
+  );
 }

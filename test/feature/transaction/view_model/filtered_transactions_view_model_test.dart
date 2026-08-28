@@ -32,7 +32,7 @@ void main() {
       await container.read(provider.future);
 
       final query = service.queries.single;
-      expect(query.categoryAccountIds, {'food', 'breakfast'});
+      expect(query.match.categoryAccountIds, {'food', 'breakfast'});
       expect(query.tagIds, isNull);
       expect(query.topLevelOnly, isTrue);
       expect(query.limit, filteredTransactionPageSize);
@@ -61,7 +61,7 @@ void main() {
     await container.read(provider.future);
 
     final query = service.queries.single;
-    expect(query.categoryAccountIds, isNull);
+    expect(query.match.categoryAccountIds, isNull);
     expect(query.tagIds, {'travel'});
     expect(query.topLevelOnly, isTrue);
   });
@@ -86,7 +86,7 @@ class _RecordingTransactionQueryService implements TransactionQueryService {
   final queries = <TransactionListQuery>[];
 
   @override
-  Stream<List<TransactionListReadModel>> watchTransactions(
+  Stream<List<TransactionReadModel>> watchTransactions(
     TransactionListQuery query,
   ) {
     queries.add(query);

@@ -67,7 +67,7 @@ class CalendarViewModel extends _$CalendarViewModel {
 }
 
 @riverpod
-Stream<List<TransactionListReadModel>> calendarTransactions(
+Stream<List<TransactionReadModel>> calendarTransactions(
   Ref ref,
   DateTime selectedDate,
 ) {
@@ -82,6 +82,7 @@ TransactionListQuery _dayQuery(
 }) {
   final day = normalizeDate(selectedDate);
   return TransactionListQuery(
+    match: const TransactionFactMatch(),
     topLevelOnly: true,
     occurredFrom: day,
     occurredUntil: DateTime(day.year, day.month, day.day + 1),
@@ -105,7 +106,7 @@ class CalendarTransactionFeedViewModel
   }
 
   CalendarTransactionFeedState _firstPageState(
-    AsyncValue<List<TransactionListReadModel>> value,
+    AsyncValue<List<TransactionReadModel>> value,
   ) {
     return switch (value) {
       AsyncData(:final value) => CalendarTransactionFeedState.loaded(
@@ -119,7 +120,7 @@ class CalendarTransactionFeedViewModel
     };
   }
 
-  void _applyFirstPage(AsyncValue<List<TransactionListReadModel>> next) {
+  void _applyFirstPage(AsyncValue<List<TransactionReadModel>> next) {
     if (next is AsyncLoading && state is CalendarTransactionFeedLoaded) return;
     _requestGeneration += 1;
     state = _firstPageState(next);
@@ -367,7 +368,7 @@ sealed class CalendarTransactionFeedState {
       CalendarTransactionFeedError;
 
   const factory CalendarTransactionFeedState.loaded({
-    required List<TransactionListReadModel> items,
+    required List<TransactionReadModel> items,
     required bool hasMore,
     bool isLoadingMore,
     String? loadMoreErrorMessage,
@@ -393,13 +394,13 @@ final class CalendarTransactionFeedLoaded extends CalendarTransactionFeedState {
     this.loadMoreErrorMessage,
   });
 
-  final List<TransactionListReadModel> items;
+  final List<TransactionReadModel> items;
   final bool hasMore;
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
 
   CalendarTransactionFeedLoaded copyWith({
-    List<TransactionListReadModel>? items,
+    List<TransactionReadModel>? items,
     bool? hasMore,
     bool? isLoadingMore,
     String? loadMoreErrorMessage,

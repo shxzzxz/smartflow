@@ -203,7 +203,7 @@ StatisticsContentState statisticsContent(Ref ref, DateTime visibleMonth) {
 }
 
 @riverpod
-Stream<List<TransactionListReadModel>> statisticsTransactions(
+Stream<List<TransactionReadModel>> statisticsTransactions(
   Ref ref, {
   required CategorySelection? category,
   required String? settlementAccountId,
@@ -222,9 +222,11 @@ Stream<List<TransactionListReadModel>> statisticsTransactions(
       .watch(transactionQueryServiceProvider)
       .watchTransactions(
         TransactionListQuery(
-          categoryAccountIds: categoryAccountIds,
-          settlementAccountIds:
-              settlementAccountId == null ? null : {settlementAccountId},
+          match: TransactionImpactMatch(
+            categoryAccountIds: categoryAccountIds,
+            settlementAccountIds:
+                settlementAccountId == null ? null : {settlementAccountId},
+          ),
           tagIds: tagId == null ? null : {tagId},
           untaggedOnly: untaggedOnly,
           occurredFrom: occurredFrom,

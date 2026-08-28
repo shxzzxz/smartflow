@@ -5,136 +5,158 @@ import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/transaction/presentation/transaction_detail_presentation.dart';
 
 void main() {
-  test('bad debt detail uses the bad debt expense system category', () {
-    final category = _account(
-      'bad-debt',
-      '坏账损失',
-      AccountType.expense,
-      systemKey: SystemKey.badDebtExpense,
+  test('detail title reads category lines instead of entries', () {
+    final detail = _detail(BusinessPurpose.dailyIncome, const [
+      TransactionLine(
+        id: 'category',
+        transactionId: 'tx',
+        lineNo: 1,
+        role: TransactionRole.category,
+        accountId: 'salary',
+        amount: Money(minorUnits: 10000),
+      ),
+    ]);
+    final salary = Account(
+      id: 'salary',
+      name: '工资',
+      type: AccountType.income,
+      balance: Money.zero(),
     );
-    final receivable = _account('receivable', '应收', AccountType.asset);
-    final detail = _detail(
-      purpose: BusinessPurpose.badDebt,
-      entries: [
-        _entry(category.id, EntryDirection.debit),
-        _entry(receivable.id, EntryDirection.credit),
-      ],
-    );
-
     final hero = transactionDetailHero(
       detail: detail,
-      accountLookup: AccountLookup({
-        category.id: category,
-        receivable.id: receivable,
-      }),
+      accountLookup: AccountLookup({'salary': salary}),
     );
-
-    expect(hero.title, '坏账损失');
-    expect(hero.amount, const Money(minorUnits: -10000));
+    expect(hero.title, '工资');
   });
 
-  test('debt relief detail uses the debt relief income system category', () {
-    final category = _account(
-      'debt-relief',
-      '债务减免',
-      AccountType.income,
-      systemKey: SystemKey.debtReliefIncome,
-    );
-    final payable = _account('payable', '应付', AccountType.liability);
-    final detail = _detail(
-      purpose: BusinessPurpose.debtRelief,
-      entries: [
-        _entry(payable.id, EntryDirection.debit),
-        _entry(category.id, EntryDirection.credit),
-      ],
-    );
-
+  test('bad debt falls back to its purpose label', () {
     final hero = transactionDetailHero(
+      detail: _detail(BusinessPurpose.badDebt),
+      accountLookup: const AccountLookup({}),
+    );
+    expect(hero.title, '坏账');
+    expect(hero.amount.minorUnits, -10000);
+  });
+
+  test('builds separately priced category breakdown items', () {
+    final detail = _detail(BusinessPurpose.dailyExpense, const [
+      TransactionLine(
+        id: 'food-line',
+        transactionId: 'tx',
+        lineNo: 1,
+        role: TransactionRole.category,
+        accountId: 'food',
+        amount: Money(minorUnits: 6000),
+      ),
+      TransactionLine(
+        id: 'travel-line',
+        transactionId: 'tx',
+        lineNo: 2,
+        role: TransactionRole.category,
+        accountId: 'travel',
+        amount: Money(minorUnits: 4000),
+      ),
+    ]);
+    final lookup = AccountLookup({
+      'food': Account(
+        id: 'food',
+        name: '餐饮',
+        type: AccountType.expense,
+        iconKey: 'meal',
+        balance: Money.zero(),
+      ),
+      'travel': Account(
+        id: 'travel',
+        name: '交通',
+        type: AccountType.expense,
+        iconKey: 'taxi',
+        balance: Money.zero(),
+      ),
+    });
+    final hero = transactionDetailHero(detail: detail, accountLookup: lookup);
+    final breakdowns = transactionDetailAllocationBreakdowns(
       detail: detail,
-      accountLookup: AccountLookup({
-        category.id: category,
-        payable.id: payable,
-      }),
+      accountLookup: lookup,
     );
 
-    expect(hero.title, '债务减免');
-    expect(hero.amount, const Money(minorUnits: 10000));
+    expect(hero.title, '多分类');
+    expect(hero.iconKey, isNull);
+    expect(breakdowns.single.kind, DetailAllocationKind.category);
+    expect(breakdowns.single.title, '分类构成');
+    expect(breakdowns.single.items.map((item) => item.title), ['餐饮', '交通']);
+    expect(breakdowns.single.items.map((item) => item.amount.minorUnits), [
+      6000,
+      4000,
+    ]);
   });
 
-  test('transfer detail exposes a positive transfer fee', () {
-    final detail = _detail(
-      purpose: BusinessPurpose.transfer,
-      entries: const [],
-      details: const [
-        TransactionDetailRecord(
-          id: 'fee',
-          transactionId: 'transaction',
-          lineNo: 2,
-          type: TransactionDetailType.transferFee,
-          amount: Money(minorUnits: 300),
-        ),
-      ],
-    );
+  test('uses a shared account breakdown label for settlement allocations', () {
+    final detail = _detail(BusinessPurpose.dailyExpense, const [
+      TransactionLine(
+        id: 'cash-line',
+        transactionId: 'tx',
+        lineNo: 1,
+        role: TransactionRole.settlementOut,
+        accountId: 'cash',
+        amount: Money(minorUnits: 6000),
+      ),
+      TransactionLine(
+        id: 'bank-line',
+        transactionId: 'tx',
+        lineNo: 2,
+        role: TransactionRole.settlementOut,
+        accountId: 'bank',
+        amount: Money(minorUnits: 4000),
+      ),
+    ]);
+    final lookup = AccountLookup({
+      'cash': Account(
+        id: 'cash',
+        name: '现金',
+        type: AccountType.asset,
+        balance: Money.zero(),
+      ),
+      'bank': Account(
+        id: 'bank',
+        name: '银行卡',
+        type: AccountType.asset,
+        balance: Money.zero(),
+      ),
+    });
 
-    expect(transactionTransferFee(detail), const Money(minorUnits: 300));
+    final breakdown = transactionDetailAllocationBreakdowns(
+      detail: detail,
+      accountLookup: lookup,
+    ).single;
+
+    expect(breakdown.kind, DetailAllocationKind.account);
+    expect(breakdown.title, '账户构成');
+    expect(breakdown.items.map((item) => item.title), ['现金', '银行卡']);
   });
 
-  test('transfer detail hides a zero transfer fee', () {
-    final detail = _detail(
-      purpose: BusinessPurpose.transfer,
-      entries: const [],
-      details: const [
-        TransactionDetailRecord(
-          id: 'fee',
-          transactionId: 'transaction',
-          lineNo: 2,
-          type: TransactionDetailType.transferFee,
-          amount: Money(minorUnits: 0),
-        ),
-      ],
-    );
-
-    expect(transactionTransferFee(detail), isNull);
+  test('transfer fee is read from the fee line', () {
+    final detail = _detail(BusinessPurpose.transfer, const [
+      TransactionLine(
+        id: 'fee',
+        transactionId: 'tx',
+        lineNo: 1,
+        role: TransactionRole.fee,
+        amount: Money(minorUnits: 300),
+      ),
+    ]);
+    expect(transactionTransferFee(detail)?.minorUnits, 300);
   });
 }
 
-Account _account(
-  String id,
-  String name,
-  AccountType type, {
-  SystemKey? systemKey,
-}) => Account(
-  id: id,
-  name: name,
-  type: type,
-  balance: Money.zero(),
-  systemKey: systemKey,
-);
-
-TransactionDetail _detail({
-  required BusinessPurpose purpose,
-  required List<Entry> entries,
-  List<TransactionDetailRecord> details = const [],
-}) => TransactionDetail(
-  transaction: Transaction(
-    id: 'transaction',
-    businessPurpose: purpose,
-    occurredAt: DateTime(2026, 8, 20),
-    primaryAmount: const Money(minorUnits: 10000),
-    isExcludedFromStats: false,
-    isExcludedFromBudget: false,
-    sourceKind: SourceKind.manual,
-    entries: entries,
-  ),
-  createdAt: DateTime(2026, 8, 20),
-  details: details,
-  entries: entries,
-);
-
-Entry _entry(String accountId, EntryDirection direction) => Entry(
-  id: '$accountId-entry',
-  transactionId: 'transaction',
-  accountId: accountId,
-  direction: direction,
-  amount: const Money(minorUnits: 10000),
+TransactionReadModel _detail(
+  BusinessPurpose purpose, [
+  List<TransactionLine> lines = const [],
+]) => TransactionReadModel(
+  id: 'tx',
+  businessPurpose: purpose,
+  occurredAt: DateTime(2026, 8, 20),
+  primaryAmount: const Money(minorUnits: 10000),
+  isExcludedFromStats: false,
+  isExcludedFromBudget: false,
+  lines: lines,
 );

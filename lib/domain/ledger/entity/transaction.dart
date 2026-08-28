@@ -3,9 +3,10 @@ import '../../../core/patch/patch.dart';
 import '../service/posting/posting_rule.dart';
 import '../valobj/ledger_enum.dart';
 import '../valobj/ledger_violation_reason.dart';
+import '../valobj/account_amount_allocation.dart';
 import '../valobj/transaction_ownership.dart';
 import 'entry.dart';
-import 'transaction_detail_record.dart';
+import 'transaction_line.dart';
 
 class Transaction {
   Transaction({
@@ -21,8 +22,7 @@ class Transaction {
     this.counterpartyName,
     this.note,
     this.parentTransactionId,
-    this.reimbursementExpenseAccountId,
-    this.details = const [],
+    this.lines = const [],
     this.entries = const [],
   }) : postedAt = postedAt ?? occurredAt;
 
@@ -34,39 +34,63 @@ class Transaction {
   String? counterpartyName;
   String? note;
   final String? parentTransactionId;
-  final String? reimbursementExpenseAccountId;
   bool isExcludedFromStats;
   bool isExcludedFromBudget;
   final SourceKind sourceKind;
   TransactionOwnership? ownership;
-  final List<TransactionDetailRecord> details;
+  final List<TransactionLine> lines;
   final List<Entry> entries;
 
   Set<String> get accountIds => entries.map((entry) => entry.accountId).toSet();
 
+  Iterable<TransactionLine> linesOf(TransactionRole role) =>
+      lines.where((line) => line.role == role);
+
+  /// Reads all account-bearing lines for a role without collapsing multiple
+  /// allocations into the first line.
+  ///
+  /// Account-bearing roles are required to carry an account ID. Persisted
+  /// malformed lines are rejected consistently instead of failing with a
+  /// nullable force-unwrap in each caller.
+  List<AccountAmountAllocation> accountAllocationsOf(TransactionRole role) {
+    return [
+      for (final line in linesOf(role))
+        AccountAmountAllocation(
+          accountId:
+              line.accountId ??
+              LedgerViolationReason.lineAccountExpectationViolated
+                  .throwException(
+                    message: '${role.name} allocation is missing an account.',
+                  ),
+          amount: line.amount,
+        ),
+    ];
+  }
+
+  TransactionLine? lineOf(TransactionRole role) => linesOf(role).firstOrNull;
+
+  /// Returns the sum of all lines for [role], or null when the role is absent.
+  ///
+  /// A role may be represented by multiple allocations (for example, a
+  /// reimbursement can be received into several settlement accounts), so
+  /// callers must not use only the first matching line as the role amount.
+  Money? amountOf(TransactionRole role) {
+    final matchingLines = linesOf(role);
+    if (matchingLines.isEmpty) return null;
+    return matchingLines.fold<Money>(
+      Money.zero(),
+      (total, line) => total + line.amount,
+    );
+  }
+
+  String? accountOf(TransactionRole role) => lineOf(role)?.accountId;
+
   bool hasSameAccountingExpressionAs(Transaction other) {
-    if (businessPurpose != other.businessPurpose ||
-        primaryAmount != other.primaryAmount ||
-        parentTransactionId != other.parentTransactionId ||
-        details.length != other.details.length ||
-        entries.length != other.entries.length) {
-      return false;
-    }
-    for (var index = 0; index < details.length; index++) {
-      final left = details[index];
-      final right = other.details[index];
-      if (left.type != right.type || left.amount != right.amount) return false;
-    }
-    for (var index = 0; index < entries.length; index++) {
-      final left = entries[index];
-      final right = other.entries[index];
-      if (left.accountId != right.accountId ||
-          left.direction != right.direction ||
-          left.amount != right.amount) {
-        return false;
-      }
-    }
-    return true;
+    return businessPurpose == other.businessPurpose &&
+        primaryAmount == other.primaryAmount &&
+        parentTransactionId == other.parentTransactionId &&
+        sameLines(lines, other.lines) &&
+        sameEntries(entries, other.entries);
   }
 
   /// 基础信息(occurredAt / postedAt / settlement / reimbursement account)更新路径。
@@ -120,10 +144,10 @@ class Transaction {
     this.ownership = ownership;
   }
 
-  void validateSelf({bool allowNegativeAmounts = false}) {
-    if (details.isEmpty) {
-      LedgerViolationReason.detailsRequired.throwException(
-        message: 'A transaction must have at least one detail.',
+  void validateSelf() {
+    if (lines.isEmpty) {
+      LedgerViolationReason.linesRequired.throwException(
+        message: 'A transaction must have at least one line.',
       );
     }
     if (entries.length < 2) {
@@ -131,66 +155,55 @@ class Transaction {
         message: 'A transaction must have at least two entries.',
       );
     }
-    if ((!allowNegativeAmounts && primaryAmount.minorUnits <= 0) ||
-        (allowNegativeAmounts && primaryAmount.minorUnits == 0)) {
+    if (primaryAmount.minorUnits < 0 ||
+        (primaryAmount.minorUnits == 0 &&
+            !primaryAmountAllowsZero(businessPurpose))) {
       LedgerViolationReason.primaryAmountNotPositive.throwException(
         message: 'Primary amount has an invalid sign.',
       );
     }
-    for (final detail in details) {
-      final isZeroRepaymentPrincipal =
-          businessPurpose == BusinessPurpose.debtRepayment &&
-          detail.type == TransactionDetailType.repaymentPrincipal &&
-          detail.amount.minorUnits == 0;
-      if (!isZeroRepaymentPrincipal &&
-          !_amountSignIsValid(
-            amountMinor: detail.amount.minorUnits,
-            expectsNegative: allowNegativeAmounts,
-          )) {
-        LedgerViolationReason.detailAmountSignInvalid.throwException(
-          message:
-              'Detail amount must be '
-              '${allowNegativeAmounts ? 'negative' : 'positive'}.',
-        );
-      }
-      if (!detailTypeAllowedForPurpose(
-        detailType: detail.type,
-        businessPurpose: businessPurpose,
-      )) {
-        LedgerViolationReason.detailTypeNotAllowed.throwException(
-          message:
-              '${detail.type.name} is not allowed for '
-              '${businessPurpose.name}.',
-        );
-      }
+    for (final line in lines) {
+      _validateLine(line);
     }
-    final hasZeroRepaymentPrincipal =
-        businessPurpose == BusinessPurpose.debtRepayment &&
-        details.any(
-          (detail) =>
-              detail.type == TransactionDetailType.repaymentPrincipal &&
-              detail.amount.minorUnits == 0,
-        );
     for (final entry in entries) {
-      final isZeroRepaymentEntry =
-          hasZeroRepaymentPrincipal &&
-          entry.direction == EntryDirection.debit &&
-          entry.amount.minorUnits == 0;
-      if (!isZeroRepaymentEntry &&
-          !_amountSignIsValid(
-            amountMinor: entry.amount.minorUnits,
-            expectsNegative: allowNegativeAmounts,
-          )) {
+      if (entry.amount.minorUnits <= 0) {
         LedgerViolationReason.entryAmountSignInvalid.throwException(
-          message:
-              'Entry amount must be '
-              '${allowNegativeAmounts ? 'negative' : 'positive'}.',
+          message: 'Entry amount must be positive.',
         );
       }
     }
     if (!entriesAreBalanced(entries)) {
       LedgerViolationReason.entriesNotBalanced.throwException(
         message: 'Debit and credit entries must be balanced.',
+      );
+    }
+  }
+
+  void _validateLine(TransactionLine line) {
+    if (!roleAllowedForPurpose(
+      role: line.role,
+      businessPurpose: businessPurpose,
+    )) {
+      LedgerViolationReason.lineRoleNotAllowed.throwException(
+        message:
+            '${line.role.name} is not allowed for ${businessPurpose.name}.',
+      );
+    }
+    if (roleCarriesAccount(line.role) != (line.accountId != null)) {
+      LedgerViolationReason.lineAccountExpectationViolated.throwException(
+        message:
+            '${line.role.name} must '
+            '${roleCarriesAccount(line.role) ? 'carry' : 'omit'} an account.',
+      );
+    }
+    // 结算腿允许为零:结束报销可以一分未收,还款可以只付利息。
+    final signValid =
+        roleAmountIsSigned(line.role)
+            ? line.amount.minorUnits != 0
+            : line.amount.minorUnits >= 0;
+    if (!signValid) {
+      LedgerViolationReason.lineAmountSignInvalid.throwException(
+        message: '${line.role.name} amount has an invalid sign.',
       );
     }
   }
@@ -226,12 +239,11 @@ class Transaction {
     String? counterpartyName,
     Patch<String>? notePatch,
     String? parentTransactionId,
-    String? reimbursementExpenseAccountId,
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
     SourceKind? sourceKind,
     TransactionOwnership? ownership,
-    List<TransactionDetailRecord>? details,
+    List<TransactionLine>? lines,
     List<Entry>? entries,
   }) {
     final nextId = id ?? this.id;
@@ -248,25 +260,22 @@ class Transaction {
         PatchClear<String>() => null,
       },
       parentTransactionId: parentTransactionId ?? this.parentTransactionId,
-      reimbursementExpenseAccountId:
-          reimbursementExpenseAccountId ?? this.reimbursementExpenseAccountId,
       isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
       isExcludedFromBudget: isExcludedFromBudget ?? this.isExcludedFromBudget,
       sourceKind: sourceKind ?? this.sourceKind,
       ownership: ownership ?? this.ownership,
-      details:
-          details ??
+      lines:
+          lines ??
           [
-            for (final detail in this.details)
-              TransactionDetailRecord(
-                id: detail.id,
+            for (final line in this.lines)
+              TransactionLine(
+                id: line.id,
                 transactionId:
-                    detail.transactionId == this.id
-                        ? nextId
-                        : detail.transactionId,
-                lineNo: detail.lineNo,
-                type: detail.type,
-                amount: detail.amount,
+                    line.transactionId == this.id ? nextId : line.transactionId,
+                lineNo: line.lineNo,
+                role: line.role,
+                accountId: line.accountId,
+                amount: line.amount,
               ),
           ],
       entries:
@@ -285,13 +294,6 @@ class Transaction {
               ),
           ],
     );
-  }
-
-  static bool _amountSignIsValid({
-    required int amountMinor,
-    required bool expectsNegative,
-  }) {
-    return expectsNegative ? amountMinor < 0 : amountMinor > 0;
   }
 
   static String? _blankToNull(String? value) {

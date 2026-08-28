@@ -14,6 +14,7 @@ import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_form_page.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
+import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
 
@@ -105,6 +106,250 @@ void main() {
     expect(find.byType(TransactionAmountInput), findsOneWidget);
   });
 
+  testWidgets('switches category and account panes to inline allocation mode', (
+    tester,
+  ) async {
+    await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
+
+    await tester.tap(find.text('分项'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('expense-entry-allocated')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('expense-category-allocations')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('expense-settlement-allocations')),
+      findsOneWidget,
+    );
+    expect(find.text('添加分类'), findsOneWidget);
+    expect(find.text('添加账户'), findsOneWidget);
+    expect(find.text('多分类'), findsOneWidget);
+    expect(find.text('组合支付'), findsOneWidget);
+    expect(find.text('分项'), findsOneWidget);
+    expect(find.text('普通'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('expense-primary-account-option')),
+      findsNothing,
+    );
+    final categoryPane = tester.getRect(
+      find.byKey(const ValueKey('expense-category-allocations')),
+    );
+    final accountPane = tester.getRect(
+      find.byKey(const ValueKey('expense-settlement-allocations')),
+    );
+    expect(accountPane.top, greaterThan(categoryPane.bottom));
+    expect(find.text('7'), findsOneWidget);
+    expect(
+      find.ancestor(of: find.text('普通'), matching: find.byType(TextButton)),
+      findsNothing,
+    );
+  });
+
+  testWidgets('shows allocation totals in each card header', (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await _pumpTransactionForm(
+      tester,
+      _FakeTransactionPostingAppService(),
+      textScaler: const TextScaler.linear(1.3),
+    );
+
+    await tester.tap(find.text('food'));
+    await tester.tap(find.text('7'));
+    await tester.tap(find.text('分项'));
+    await tester.pumpAndSettle();
+
+    final categoryCard = find.byKey(
+      const ValueKey('expense-category-allocations'),
+    );
+    final settlementCard = find.byKey(
+      const ValueKey('expense-settlement-allocations'),
+    );
+
+    _expectAllocationHeaderOrder(
+      tester,
+      card: categoryCard,
+      title: '多分类',
+      itemCount: '1项',
+      status: '合计 7',
+    );
+    _expectAllocationHeaderOrder(
+      tester,
+      card: settlementCard,
+      title: '组合支付',
+      itemCount: '1项',
+      status: '已匹配',
+    );
+  });
+
+  testWidgets(
+    'edits allocation amounts inline and switches each row directly',
+    (tester) async {
+      await _pumpTransactionForm(
+        tester,
+        _FakeTransactionPostingAppService(),
+        settlementAccounts: [_account('cash'), _account('card')],
+        expenseTree: [
+          CategoryNode(account: _category('food')),
+          CategoryNode(account: _category('drink')),
+        ],
+      );
+
+      await tester.tap(find.text('food'));
+      await tester.tap(find.text('7'));
+      await tester.tap(find.text('分项'));
+      await tester.pumpAndSettle();
+
+      final categoryAmount = find.descendant(
+        of: find.byKey(const ValueKey('allocation-amount-food')),
+        matching: find.byType(TextFormField),
+      );
+      await tester.enterText(categoryAmount, '70');
+      await tester.pump();
+      expect(find.byType(AlertDialog), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('allocation-option-food')));
+      await tester.pumpAndSettle();
+      expect(find.byType(CategoryGridPicker), findsOneWidget);
+      await tester.tap(find.text('drink'));
+      await tester.tap(find.widgetWithText(FilledButton, '确定'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('allocation-option-drink')),
+        findsOneWidget,
+      );
+      final switchedCategoryAmount = tester.widget<TextFormField>(
+        find.descendant(
+          of: find.byKey(const ValueKey('allocation-amount-drink')),
+          matching: find.byType(TextFormField),
+        ),
+      );
+      expect(switchedCategoryAmount.controller?.text, '70');
+      expect(find.byType(AlertDialog), findsNothing);
+
+      tester.testTextInput.hide();
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      final accountLabel = find.text('cash');
+      await tester.dragUntilVisible(
+        accountLabel,
+        find.byType(ListView).first,
+        const Offset(0, -100),
+      );
+      await tester.drag(find.byType(ListView).first, const Offset(0, -80));
+      await tester.pumpAndSettle();
+      await tester.tap(accountLabel);
+      await tester.pumpAndSettle();
+      expect(find.text('选择账户'), findsOneWidget);
+      await tester.tap(find.text('card'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('allocation-option-card')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('expense-primary-account-option')),
+        findsNothing,
+      );
+      expect(find.byType(AlertDialog), findsNothing);
+    },
+  );
+
+  testWidgets('adds category and account rows before entering amounts', (
+    tester,
+  ) async {
+    await _pumpTransactionForm(
+      tester,
+      _FakeTransactionPostingAppService(),
+      settlementAccounts: [_account('cash'), _account('card')],
+      expenseTree: [CategoryNode(account: _category('food'))],
+    );
+
+    await tester.tap(find.text('分项'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('添加分类'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CategoryGridPicker), findsOneWidget);
+    await tester.tap(find.text('food'));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, '确定'));
+    await tester.pumpAndSettle();
+
+    final categoryAmount = find.descendant(
+      of: find.byKey(const ValueKey('allocation-amount-food')),
+      matching: find.byType(TextFormField),
+    );
+    expect(tester.widget<TextFormField>(categoryAmount).controller?.text, '');
+    expect(find.byType(AlertDialog), findsNothing);
+    await tester.enterText(categoryAmount, '60');
+    await tester.pump();
+
+    tester.testTextInput.hide();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    final addAccount = find.text('添加账户');
+    await tester.dragUntilVisible(
+      addAccount,
+      find.byType(ListView).first,
+      const Offset(0, -100),
+    );
+    await tester.drag(find.byType(ListView).first, const Offset(0, -80));
+    await tester.pumpAndSettle();
+    await tester.tap(addAccount);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('card'));
+    await tester.pumpAndSettle();
+
+    final accountAmount = find.descendant(
+      of: find.byKey(const ValueKey('allocation-amount-card')),
+      matching: find.byType(TextFormField),
+    );
+    expect(tester.widget<TextFormField>(accountAmount).controller?.text, '');
+    expect(find.byType(AlertDialog), findsNothing);
+    await tester.enterText(accountAmount, '40');
+    await tester.pump();
+    expect(tester.widget<TextFormField>(accountAmount).controller?.text, '40');
+  });
+
+  testWidgets('keeps category full width and expense account on option row', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
+
+    expect(
+      tester.getSize(find.byType(CategoryGridPicker)).width,
+      greaterThan(300),
+    );
+    final dateText = find.byWidgetPredicate(
+      (widget) =>
+          widget is Text &&
+          RegExp(
+            r'^(今天|\d{1,2}/\d{1,2}) \d{2}:\d{2}$',
+          ).hasMatch(widget.data ?? ''),
+    );
+    expect(dateText, findsOneWidget);
+    expect(find.text('cash'), findsOneWidget);
+    expect(
+      (tester.getCenter(find.text('cash')).dy - tester.getCenter(dateText).dy)
+          .abs(),
+      lessThan(8),
+    );
+  });
+
   testWidgets(
     'places a direct fee input below transfer accounts without overlapping the amount panel',
     (tester) async {
@@ -156,7 +401,7 @@ void main() {
     },
   );
 
-  testWidgets('places the tag action on the row below other options', (
+  testWidgets('places the tag and allocation action above amount options', (
     tester,
   ) async {
     await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
@@ -172,8 +417,28 @@ void main() {
     expect(find.text('标签'), findsOneWidget);
     expect(
       tester.getTopLeft(find.text('标签')).dy,
-      greaterThan(tester.getTopLeft(dateText).dy),
+      lessThan(tester.getTopLeft(dateText).dy),
     );
+    expect(
+      tester.getTopLeft(find.text('标签')).dy,
+      lessThan(tester.getTopLeft(find.byType(TransactionAmountInput)).dy),
+    );
+  });
+
+  testWidgets('keeps the tag row above amount for every transaction mode', (
+    tester,
+  ) async {
+    await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
+
+    for (final mode in const ['支出', '收入', '转账', '借入', '借出']) {
+      await tester.tap(find.text(mode));
+      await tester.pumpAndSettle();
+      expect(find.text('标签'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('标签')).dy,
+        lessThan(tester.getTopLeft(find.byType(TransactionAmountInput)).dy),
+      );
+    }
   });
 
   testWidgets('renders selected tags as badges that can be edited', (
@@ -249,7 +514,7 @@ void main() {
   testWidgets(
     'shows edit loading, initializes controllers, and preserves edited text',
     (tester) async {
-      final details = StreamController<TransactionDetail?>();
+      final details = StreamController<TransactionReadModel?>();
       addTearDown(details.close);
       final accounts = {'cash': _account('cash'), 'food': _category('food')};
       final container = ProviderContainer(
@@ -399,6 +664,8 @@ Future<void> _pumpTransactionForm(
   ThemeMode themeMode = ThemeMode.light,
   TextScaler textScaler = TextScaler.noScaling,
   List<TagView> tags = const [],
+  List<Account>? settlementAccounts,
+  List<CategoryNode>? expenseTree,
 }) async {
   final router = GoRouter(
     routes: [
@@ -425,7 +692,9 @@ Future<void> _pumpTransactionForm(
         transactionPostingAppServiceProvider.overrideWithValue(fakeService),
         accountsForSelectionPurposeProvider(
           AccountSelectionPurpose.settlement,
-        ).overrideWith((ref) => Stream.value([_account('cash')])),
+        ).overrideWith(
+          (ref) => Stream.value(settlementAccounts ?? [_account('cash')]),
+        ),
         accountsForSelectionPurposeProvider(
           AccountSelectionPurpose.fund,
         ).overrideWith((ref) => Stream.value(const <Account>[])),
@@ -439,7 +708,9 @@ Future<void> _pumpTransactionForm(
           AccountSelectionPurpose.ordinaryReceivable,
         ).overrideWith((ref) => Stream.value(const <Account>[])),
         categoryTreeProvider(AccountType.expense).overrideWith(
-          (ref) => Stream.value([CategoryNode(account: _category('food'))]),
+          (ref) => Stream.value(
+            expenseTree ?? [CategoryNode(account: _category('food'))],
+          ),
         ),
         categoryTreeProvider(
           AccountType.income,
@@ -481,28 +752,12 @@ Account _category(String id) {
   );
 }
 
-TransactionDetail _transactionDetail(
+TransactionReadModel _transactionDetail(
   String id, {
   Money amount = const Money(minorUnits: 1234),
   String note = 'note',
 }) {
-  final entries = [
-    Entry(
-      id: '$id-food',
-      transactionId: id,
-      accountId: 'food',
-      direction: EntryDirection.debit,
-      amount: amount,
-    ),
-    Entry(
-      id: '$id-cash',
-      transactionId: id,
-      accountId: 'cash',
-      direction: EntryDirection.credit,
-      amount: amount,
-    ),
-  ];
-  return TransactionDetail(
+  return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: id,
       businessPurpose: BusinessPurpose.dailyExpense,
@@ -512,12 +767,50 @@ TransactionDetail _transactionDetail(
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
       note: note,
-      entries: entries,
     ),
     createdAt: DateTime(2026, 1, 2, 8, 30),
-    details: const [],
-    entries: entries,
+    lines: [
+      TransactionLine(
+        id: '$id-category',
+        transactionId: id,
+        lineNo: 1,
+        role: TransactionRole.category,
+        accountId: 'food',
+        amount: amount,
+      ),
+      TransactionLine(
+        id: '$id-settlement',
+        transactionId: id,
+        lineNo: 2,
+        role: TransactionRole.settlementOut,
+        accountId: 'cash',
+        amount: amount,
+      ),
+    ],
   );
+}
+
+void _expectAllocationHeaderOrder(
+  WidgetTester tester, {
+  required Finder card,
+  required String title,
+  required String itemCount,
+  required String status,
+}) {
+  final titleCenter = tester.getCenter(
+    find.descendant(of: card, matching: find.text(title)),
+  );
+  final countCenter = tester.getCenter(
+    find.descendant(of: card, matching: find.text(itemCount)),
+  );
+  final statusCenter = tester.getCenter(
+    find.descendant(of: card, matching: find.text(status)),
+  );
+
+  expect((countCenter.dy - titleCenter.dy).abs(), lessThan(4));
+  expect((statusCenter.dy - titleCenter.dy).abs(), lessThan(4));
+  expect(countCenter.dx, greaterThan(titleCenter.dx));
+  expect(statusCenter.dx, greaterThan(countCenter.dx));
 }
 
 class _FakeTransactionPostingAppService

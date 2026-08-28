@@ -67,13 +67,13 @@ final calendarTransactionsProvider = CalendarTransactionsFamily._();
 final class CalendarTransactionsProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<TransactionListReadModel>>,
-          List<TransactionListReadModel>,
-          Stream<List<TransactionListReadModel>>
+          AsyncValue<List<TransactionReadModel>>,
+          List<TransactionReadModel>,
+          Stream<List<TransactionReadModel>>
         >
     with
-        $FutureModifier<List<TransactionListReadModel>>,
-        $StreamProvider<List<TransactionListReadModel>> {
+        $FutureModifier<List<TransactionReadModel>>,
+        $StreamProvider<List<TransactionReadModel>> {
   CalendarTransactionsProvider._({
     required CalendarTransactionsFamily super.from,
     required DateTime super.argument,
@@ -97,12 +97,12 @@ final class CalendarTransactionsProvider
 
   @$internal
   @override
-  $StreamProviderElement<List<TransactionListReadModel>> $createElement(
+  $StreamProviderElement<List<TransactionReadModel>> $createElement(
     $ProviderPointer pointer,
   ) => $StreamProviderElement(pointer);
 
   @override
-  Stream<List<TransactionListReadModel>> create(Ref ref) {
+  Stream<List<TransactionReadModel>> create(Ref ref) {
     final argument = this.argument as DateTime;
     return calendarTransactions(ref, argument);
   }
@@ -119,12 +119,12 @@ final class CalendarTransactionsProvider
 }
 
 String _$calendarTransactionsHash() =>
-    r'2f460caecf89f589b913f50659b23f8550eceb02';
+    r'bd89c114baa4089d279094e22dc2074f3ee5501e';
 
 final class CalendarTransactionsFamily extends $Family
     with
         $FunctionalFamilyOverride<
-          Stream<List<TransactionListReadModel>>,
+          Stream<List<TransactionReadModel>>,
           DateTime
         > {
   CalendarTransactionsFamily._()
@@ -207,7 +207,7 @@ final class CalendarTransactionFeedViewModelProvider
 }
 
 String _$calendarTransactionFeedViewModelHash() =>
-    r'8a604defc6a7410f057f8dde8c22c79980624868';
+    r'dcf91cd32eb17dad87cd9c921ae57dd29452aa95';
 
 /// 选中日的交易分页。首页数据由 [calendarTransactions] 订阅推送，
 /// 后续页按游标补拉；任何交易变更都会把列表重置回第一页。

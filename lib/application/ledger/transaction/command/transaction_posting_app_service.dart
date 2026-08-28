@@ -6,9 +6,9 @@ import 'package:smartflow/domain/ledger/service/account/account_role_policy.dart
 import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
-import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
 import 'package:smartflow/domain/ledger/service/posting/refund_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/reimbursement_posting_service.dart';
+import 'package:smartflow/domain/ledger/service/posting/posting_application_service.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
 import 'transaction_command.dart';
@@ -73,12 +73,45 @@ class TransactionPostingAppServiceImpl
     required IdGenerator idGenerator,
     AccountRolePolicy? accountRolePolicy,
     PostingEngine? postingEngine,
-    PostingInstructionResolver? postingInstructionResolver,
     AccountPostingService accountPostingService =
         const DefaultAccountPostingService(),
     LedgerPostingService? ledgerPostingService,
     RefundPostingService? refundPostingService,
     ReimbursementPostingService? reimbursementPostingService,
+    PostingApplicationService? postingApplicationService,
+  }) : this._withPostingApplication(
+         accountRepository: accountRepository,
+         transactionGroupRepository: transactionGroupRepository,
+         systemAccountResolver: systemAccountResolver,
+         ledgerWriter: ledgerWriter,
+         idGenerator: idGenerator,
+         accountRolePolicy: accountRolePolicy,
+         postingEngine: postingEngine,
+         accountPostingService: accountPostingService,
+         ledgerPostingService: ledgerPostingService,
+         refundPostingService: refundPostingService,
+         reimbursementPostingService: reimbursementPostingService,
+         postingApplicationService:
+             postingApplicationService ??
+             PostingApplicationService(
+               accountRepository: accountRepository,
+               accountPostingService: accountPostingService,
+             ),
+       );
+
+  TransactionPostingAppServiceImpl._withPostingApplication({
+    required AccountRepository accountRepository,
+    required TransactionGroupRepository transactionGroupRepository,
+    required SystemAccountResolver systemAccountResolver,
+    required TransactionLedgerWriter ledgerWriter,
+    required IdGenerator idGenerator,
+    AccountRolePolicy? accountRolePolicy,
+    PostingEngine? postingEngine,
+    required AccountPostingService accountPostingService,
+    LedgerPostingService? ledgerPostingService,
+    RefundPostingService? refundPostingService,
+    ReimbursementPostingService? reimbursementPostingService,
+    required PostingApplicationService postingApplicationService,
   }) : _ledgerWriter = ledgerWriter,
        _ledgerPostingService =
            ledgerPostingService ??
@@ -91,21 +124,20 @@ class TransactionPostingAppServiceImpl
              accountRolePolicy:
                  accountRolePolicy ??
                  AccountRolePolicy(accountRepository: accountRepository),
+             postingApplicationService: postingApplicationService,
            ),
        _refundPostingService =
            refundPostingService ??
            RefundPostingService(
              transactionGroupRepository: transactionGroupRepository,
              accountRepository: accountRepository,
-             postingInstructionResolver:
-                 postingInstructionResolver ??
-                 const DefaultPostingInstructionResolver(),
              postingEngine:
                  postingEngine ?? PostingEngine(idGenerator: idGenerator),
              accountPostingService: accountPostingService,
              accountRolePolicy:
                  accountRolePolicy ??
                  AccountRolePolicy(accountRepository: accountRepository),
+             postingApplicationService: postingApplicationService,
            ),
        _reimbursementPostingService =
            reimbursementPostingService ??
@@ -119,6 +151,7 @@ class TransactionPostingAppServiceImpl
              accountRolePolicy:
                  accountRolePolicy ??
                  AccountRolePolicy(accountRepository: accountRepository),
+             postingApplicationService: postingApplicationService,
            );
 
   final TransactionLedgerWriter _ledgerWriter;
@@ -134,8 +167,8 @@ class TransactionPostingAppServiceImpl
       await _ledgerPostingService.postExpense(
         ExpenseInstruction(
           amount: command.amount,
-          paidFromAccountId: command.paidFromAccountId,
-          expenseAccountId: command.expenseAccountId,
+          categoryAllocations: command.categoryAllocations,
+          settlementAllocations: command.settlementAllocations,
           occurredAt: command.occurredAt,
           postedAt: command.postedAt,
           counterpartyName: command.counterpartyName,
@@ -203,7 +236,8 @@ class TransactionPostingAppServiceImpl
         RefundInstruction(
           parentTransactionId: command.parentTransactionId,
           amount: command.amount,
-          refundToAccountId: command.refundToAccountId,
+          categoryAllocations: command.categoryAllocations,
+          settlementAllocations: command.settlementAllocations,
           occurredAt: command.occurredAt,
           postedAt: command.postedAt,
           counterpartyName: command.counterpartyName,
@@ -222,8 +256,8 @@ class TransactionPostingAppServiceImpl
         ReimbursementAdvanceInstruction(
           amount: command.amount,
           receivableAccountId: command.receivableAccountId,
-          paidFromAccountId: command.paidFromAccountId,
-          expenseAccountId: command.expenseCategoryId,
+          categoryAllocations: command.categoryAllocations,
+          settlementAllocations: command.settlementAllocations,
           occurredAt: command.occurredAt,
           postedAt: command.postedAt,
           counterpartyName: command.counterpartyName,
@@ -247,7 +281,7 @@ class TransactionPostingAppServiceImpl
           advanceTransactionId: command.advanceTransactionId,
           amount: command.amount,
           receivableAccountId: command.receivableAccountId,
-          receiveAccountId: command.receiveAccountId,
+          settlementAllocations: command.settlementAllocations,
           occurredAt: command.occurredAt,
           postedAt: command.postedAt,
           counterpartyName: command.counterpartyName,
@@ -267,7 +301,8 @@ class TransactionPostingAppServiceImpl
           advanceTransactionId: command.advanceTransactionId,
           actualReceivedAmount: command.actualReceivedAmount,
           receivableAccountId: command.receivableAccountId,
-          receiveAccountId: command.receiveAccountId,
+          settlementAllocations: command.settlementAllocations,
+          gapExpenseAllocations: command.gapExpenseAllocations,
           occurredAt: command.occurredAt,
           postedAt: command.postedAt,
           counterpartyName: command.counterpartyName,

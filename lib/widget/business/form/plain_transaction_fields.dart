@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:remixicon/remixicon.dart';
 
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/token/form.dart';
@@ -420,6 +421,8 @@ Future<String?> showAccountPickerSheet({
   required String title,
   required List<Account> accounts,
   required String? selectedId,
+  String? topActionLabel,
+  VoidCallback? onTopAction,
 }) {
   return showModalBottomSheet<String>(
     context: context,
@@ -429,6 +432,8 @@ Future<String?> showAccountPickerSheet({
         title: title,
         accounts: accounts,
         selectedId: selectedId,
+        topActionLabel: topActionLabel,
+        onTopAction: onTopAction,
         onAccountTap: (account) => Navigator.of(context).pop(account.id),
       );
     },
@@ -474,6 +479,8 @@ class _AccountPickerSheet extends StatelessWidget {
     required this.onAccountTap,
     this.noneLabel,
     this.onNoneTap,
+    this.topActionLabel,
+    this.onTopAction,
   });
 
   final String title;
@@ -481,6 +488,8 @@ class _AccountPickerSheet extends StatelessWidget {
   final String? selectedId;
   final String? noneLabel;
   final VoidCallback? onNoneTap;
+  final String? topActionLabel;
+  final VoidCallback? onTopAction;
   final ValueChanged<Account> onAccountTap;
 
   @override
@@ -499,6 +508,15 @@ class _AccountPickerSheet extends StatelessWidget {
             ),
             child: Text(title, style: context.appTextStyles.subsectionTitle),
           ),
+          if (topActionLabel != null)
+            ListTile(
+              leading: const Icon(RemixIcons.bank_card_line),
+              title: Text(topActionLabel!),
+              onTap: () {
+                Navigator.of(context).pop();
+                onTopAction?.call();
+              },
+            ),
           if (noneLabel != null)
             _AccountPickerRow(
               label: noneLabel,

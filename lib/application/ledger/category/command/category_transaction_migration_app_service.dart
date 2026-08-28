@@ -67,7 +67,7 @@ class CategoryTransactionMigrationAppServiceImpl
         source.id,
       );
       for (final transactionTarget in targets) {
-        await _migrateGroup(transactionTarget, target.id);
+        await _migrateGroup(transactionTarget, source.id, target.id);
       }
       return CategoryTransactionMigrationResult(
         migratedGroupCount: targets.length,
@@ -83,35 +83,16 @@ class CategoryTransactionMigrationAppServiceImpl
 
   Future<void> _migrateGroup(
     CategoryTransactionTarget target,
+    String sourceCategoryId,
     String targetCategoryId,
-  ) {
-    return switch (target.businessPurpose) {
-      BusinessPurpose.dailyExpense => _editService.editExpense(
-        EditExpenseCommand(
-          transactionId: target.transactionId,
-          expenseAccountId: targetCategoryId,
-        ),
-      ),
-      BusinessPurpose.dailyIncome => _editService.editIncome(
-        EditIncomeCommand(
-          transactionId: target.transactionId,
-          incomeAccountId: targetCategoryId,
-        ),
-      ),
-      BusinessPurpose.reimbursementAdvance => _editService
-          .editReimbursementAdvance(
-            EditReimbursementAdvanceCommand(
-              transactionId: target.transactionId,
-              expenseCategoryId: targetCategoryId,
-            ),
-          ),
-      _ =>
-        throw StateError(
-          'Unexpected purpose ${target.businessPurpose.name} '
-          'for category migration.',
-        ),
-    };
-  }
+  ) => _editService.replaceTransactionCategory(
+    ReplaceTransactionCategoryCommand(
+      transactionId: target.transactionId,
+      businessPurpose: target.businessPurpose,
+      sourceCategoryId: sourceCategoryId,
+      targetCategoryId: targetCategoryId,
+    ),
+  );
 
   Future<Account> _loadActiveManageableCategory(String categoryId) async {
     final category = await _accountRepository.findById(categoryId);

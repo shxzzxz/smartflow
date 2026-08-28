@@ -13,9 +13,10 @@ part 'transaction_detail_state.freezed.dart';
 sealed class TransactionDetailUiState with _$TransactionDetailUiState {
   const factory TransactionDetailUiState.loaded({
     required String transactionId,
-    required TransactionDetail detail,
+    required TransactionReadModel detail,
     required DetailBehaviorConfig behavior,
     required DetailHero hero,
+    required List<DetailAllocationBreakdown> allocationBreakdowns,
     required String occurredAtText,
     required String postedAtText,
     required String createdAtText,
@@ -106,6 +107,7 @@ class ReimbursementSubmitInput {
     required this.occurredAt,
     required this.closeReimbursement,
     this.receiveAccountId,
+    this.gapExpenseAllocations,
     this.noteText,
   });
 
@@ -113,5 +115,6 @@ class ReimbursementSubmitInput {
   final DateTime occurredAt;
   final bool closeReimbursement;
   final String? receiveAccountId;
+  final List<AccountAmountAllocation>? gapExpenseAllocations;
   final String? noteText;
 }

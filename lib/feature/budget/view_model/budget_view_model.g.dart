@@ -190,13 +190,13 @@ final budgetCategoryTransactionsProvider = BudgetCategoryTransactionsFamily._();
 final class BudgetCategoryTransactionsProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<TransactionListReadModel>>,
-          List<TransactionListReadModel>,
-          Stream<List<TransactionListReadModel>>
+          AsyncValue<List<TransactionReadModel>>,
+          List<TransactionReadModel>,
+          Stream<List<TransactionReadModel>>
         >
     with
-        $FutureModifier<List<TransactionListReadModel>>,
-        $StreamProvider<List<TransactionListReadModel>> {
+        $FutureModifier<List<TransactionReadModel>>,
+        $StreamProvider<List<TransactionReadModel>> {
   BudgetCategoryTransactionsProvider._({
     required BudgetCategoryTransactionsFamily super.from,
     required (String, DateTime) super.argument,
@@ -220,12 +220,12 @@ final class BudgetCategoryTransactionsProvider
 
   @$internal
   @override
-  $StreamProviderElement<List<TransactionListReadModel>> $createElement(
+  $StreamProviderElement<List<TransactionReadModel>> $createElement(
     $ProviderPointer pointer,
   ) => $StreamProviderElement(pointer);
 
   @override
-  Stream<List<TransactionListReadModel>> create(Ref ref) {
+  Stream<List<TransactionReadModel>> create(Ref ref) {
     final argument = this.argument as (String, DateTime);
     return budgetCategoryTransactions(ref, argument.$1, argument.$2);
   }
@@ -243,12 +243,12 @@ final class BudgetCategoryTransactionsProvider
 }
 
 String _$budgetCategoryTransactionsHash() =>
-    r'dd44ce048ab5ea3d32b102cd0606da0579e2e2d2';
+    r'bdbb9da033b9350bbf4ad0cc32cb2fd5f733e27c';
 
 final class BudgetCategoryTransactionsFamily extends $Family
     with
         $FunctionalFamilyOverride<
-          Stream<List<TransactionListReadModel>>,
+          Stream<List<TransactionReadModel>>,
           (String, DateTime)
         > {
   BudgetCategoryTransactionsFamily._()

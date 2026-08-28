@@ -120,13 +120,13 @@ final filteredTransactionsProvider = FilteredTransactionsFamily._();
 final class FilteredTransactionsProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<TransactionListReadModel>>,
-          List<TransactionListReadModel>,
-          Stream<List<TransactionListReadModel>>
+          AsyncValue<List<TransactionReadModel>>,
+          List<TransactionReadModel>,
+          Stream<List<TransactionReadModel>>
         >
     with
-        $FutureModifier<List<TransactionListReadModel>>,
-        $StreamProvider<List<TransactionListReadModel>> {
+        $FutureModifier<List<TransactionReadModel>>,
+        $StreamProvider<List<TransactionReadModel>> {
   FilteredTransactionsProvider._({
     required FilteredTransactionsFamily super.from,
     required (FilteredTransactionTarget, String, int) super.argument,
@@ -150,12 +150,12 @@ final class FilteredTransactionsProvider
 
   @$internal
   @override
-  $StreamProviderElement<List<TransactionListReadModel>> $createElement(
+  $StreamProviderElement<List<TransactionReadModel>> $createElement(
     $ProviderPointer pointer,
   ) => $StreamProviderElement(pointer);
 
   @override
-  Stream<List<TransactionListReadModel>> create(Ref ref) {
+  Stream<List<TransactionReadModel>> create(Ref ref) {
     final argument = this.argument as (FilteredTransactionTarget, String, int);
     return filteredTransactions(ref, argument.$1, argument.$2, argument.$3);
   }
@@ -172,12 +172,12 @@ final class FilteredTransactionsProvider
 }
 
 String _$filteredTransactionsHash() =>
-    r'8715cb98d2ed05c2dc088c5c15cc1320a1013edc';
+    r'ea609d3de592f3e937293298dda508c8eca10351';
 
 final class FilteredTransactionsFamily extends $Family
     with
         $FunctionalFamilyOverride<
-          Stream<List<TransactionListReadModel>>,
+          Stream<List<TransactionReadModel>>,
           (FilteredTransactionTarget, String, int)
         > {
   FilteredTransactionsFamily._()
@@ -258,7 +258,7 @@ final class FilteredTransactionsViewModelProvider
 }
 
 String _$filteredTransactionsViewModelHash() =>
-    r'6c56f16ca96bfe0d7689ffc1d52f8ef4afcb6cf8';
+    r'21a4a2e95d04126e1197e54b289b78a5d28e9082';
 
 final class FilteredTransactionsViewModelFamily extends $Family
     with

@@ -38,6 +38,10 @@ abstract interface class TransactionEditAppService {
 
   Future<PostedTransactionResult> editRepayment(EditRepaymentCommand command);
 
+  Future<PostedTransactionResult> replaceTransactionCategory(
+    ReplaceTransactionCategoryCommand command,
+  );
+
   Future<void> deleteTransaction(DeleteTransactionCommand command);
 }
 
@@ -98,8 +102,8 @@ class TransactionEditAppServiceImpl
           isExcludedFromBudget: cmd.isExcludedFromBudget,
           editPatch: ExpenseEditPatch(
             amount: cmd.amount,
-            paidFromAccountId: cmd.paidFromAccountId,
-            expenseAccountId: cmd.expenseAccountId,
+            categoryAllocations: cmd.categoryAllocations,
+            settlementAllocations: cmd.settlementAllocations,
           ),
         ),
       ),
@@ -165,12 +169,30 @@ class TransactionEditAppServiceImpl
           editPatch: ReimbursementAdvanceEditPatch(
             amount: cmd.amount,
             receivableAccountId: cmd.receivableAccountId,
-            paidFromAccountId: cmd.paidFromAccountId,
-            expenseAccountId: cmd.expenseCategoryId,
+            categoryAllocations: cmd.categoryAllocations,
+            settlementAllocations: cmd.settlementAllocations,
           ),
         ),
       ),
       tagIds: cmd.tagIds,
+    );
+  }
+
+  @override
+  Future<PostedTransactionResult> replaceTransactionCategory(
+    ReplaceTransactionCategoryCommand cmd,
+  ) {
+    return _ledgerWriter.planAndPersistRewrite(
+      () => _transactionGroupRewriteService.rewriteParentTransaction(
+        EditParentTransactionInstruction(
+          transactionId: cmd.transactionId,
+          editPatch: CategoryReplacementEditPatch(
+            businessPurpose: cmd.businessPurpose,
+            sourceCategoryId: cmd.sourceCategoryId,
+            targetCategoryId: cmd.targetCategoryId,
+          ),
+        ),
+      ),
     );
   }
 
@@ -185,7 +207,8 @@ class TransactionEditAppServiceImpl
           note: cmd.note,
           editPatch: RefundEditPatch(
             amount: cmd.amount,
-            refundToAccountId: cmd.refundToAccountId,
+            categoryAllocations: cmd.categoryAllocations,
+            settlementAllocations: cmd.settlementAllocations,
           ),
         ),
       ),
@@ -202,7 +225,7 @@ class TransactionEditAppServiceImpl
           transactionId: cmd.transactionId,
           amount: cmd.amount,
           receivableAccountId: cmd.receivableAccountId,
-          receiveAccountId: cmd.receiveAccountId,
+          settlementAllocations: cmd.settlementAllocations,
           occurredAt: cmd.occurredAt,
           counterpartyName: cmd.counterpartyName,
           note: cmd.note,
@@ -221,7 +244,8 @@ class TransactionEditAppServiceImpl
           transactionId: cmd.transactionId,
           actualReceivedAmount: cmd.actualReceivedAmount,
           receivableAccountId: cmd.receivableAccountId,
-          receiveAccountId: cmd.receiveAccountId,
+          settlementAllocations: cmd.settlementAllocations,
+          gapExpenseAllocations: cmd.gapExpenseAllocations,
           occurredAt: cmd.occurredAt,
           counterpartyName: cmd.counterpartyName,
           note: cmd.note,

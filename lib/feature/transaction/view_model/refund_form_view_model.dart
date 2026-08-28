@@ -58,14 +58,29 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       ),
       accounts: accounts,
     );
-    final refunded = _refundedTotal(detail);
+    final defaultSettlementAllocations = defaultSettlementAllocationsForRefund(
+      detail: detail,
+      accounts: accounts,
+    );
+    final refundSummary = detail.refundSummary;
+    final refunded = refundSummary?.refundedTotal ?? Money.zero();
+    final availableCategories =
+        refundSummary?.remainingCategoryAllocations ?? const [];
+    final categoryAllocations =
+        refundSummary?.originalCategoryAllocations ?? const [];
     return RefundFormState.loaded(
       transactionId: transactionId,
       parentTransactionId: transactionId,
       editing: false,
       accounts: accounts,
+      categoryAccounts: _accountsForAllocations(
+        categoryAllocations,
+        accountsById,
+      ),
+      availableCategoryAllocations: availableCategories,
       remaining: _remainingForNewRefund(detail, refunded),
       refundToAccountId: defaultAccountId,
+      settlementAllocations: defaultSettlementAllocations,
       occurredAt: DateTime.now(),
       amountText: '',
       noteText: '',
@@ -74,11 +89,11 @@ class RefundFormViewModel extends _$RefundFormViewModel {
 
   Future<RefundFormState> _buildEditState({
     required String transactionId,
-    required TransactionDetail detail,
+    required TransactionReadModel detail,
     required List<Account> accounts,
     required Map<String, Account> accountsById,
   }) async {
-    final transaction = detail.transaction;
+    final transaction = detail;
     final parentTransactionId = transaction.parentTransactionId;
     if (transaction.businessPurpose != BusinessPurpose.refund ||
         parentTransactionId == null) {
@@ -119,11 +134,29 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       accounts: accounts,
     );
     final remaining = _remainingForEditedRefund(parentDetail, transaction);
+    final parentSummary = parentDetail.refundSummary;
+    final availableCategories = parentSummary == null
+        ? const <AccountAmountAllocation>[]
+        : _addAllocations(
+            parentSummary.remainingCategoryAllocations,
+            _refundCategoryAllocations(transaction),
+          );
+    final parentCategories =
+        parentSummary?.originalCategoryAllocations ?? const [];
+    final categoryAllocations = _refundCategoryAllocations(transaction);
+    final settlementAllocations = _allocationsOf(
+      transaction,
+      TransactionRole.settlementIn,
+    );
     return RefundFormState.loaded(
       transactionId: transactionId,
       parentTransactionId: parentTransactionId,
       editing: true,
       accounts: accounts,
+      categoryAccounts: _accountsForAllocations(parentCategories, accountsById),
+      availableCategoryAllocations: availableCategories,
+      categoryAllocations: categoryAllocations,
+      settlementAllocations: settlementAllocations,
       remaining: remaining,
       refundToAccountId: refundToAccountId,
       occurredAt: transaction.occurredAt,
@@ -138,8 +171,23 @@ class RefundFormViewModel extends _$RefundFormViewModel {
   void setOccurredAt(DateTime value) =>
       _update((state) => state.copyWith(occurredAt: value));
 
-  void setRefundToAccountId(String? value) =>
-      _update((state) => state.copyWith(refundToAccountId: value));
+  void setRefundToAccountId(String? value) => _update(
+    (state) =>
+        state.copyWith(refundToAccountId: value, settlementAllocations: null),
+  );
+
+  void setCategoryAllocations(List<AccountAmountAllocation> allocations) =>
+      _update((state) => state.copyWith(categoryAllocations: allocations));
+
+  void setSettlementAllocations(List<AccountAmountAllocation> allocations) =>
+      _update(
+        (state) => state.copyWith(
+          settlementAllocations: allocations,
+          refundToAccountId: allocations.isEmpty
+              ? null
+              : allocations.first.accountId,
+        ),
+      );
 
   Future<SubmitOutcome> submit({
     required String amountText,
@@ -156,6 +204,35 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       current.accounts,
     );
     if (refundToAccountId == null) return _invalidCommand('请选择退款账户');
+    final categoryAllocations = switch (current.categoryAllocations) {
+      final allocations? => patchAllocations(
+        current: allocations,
+        total: amount,
+      ),
+      null when current.availableCategoryAllocations.length == 1 => [
+        current.availableCategoryAllocations.single.copyWith(amount: amount),
+      ],
+      null => null,
+    };
+    if (categoryAllocations == null ||
+        sumAllocations(categoryAllocations) != amount) {
+      return _invalidCommand('请完成退款分类分配');
+    }
+    if (!allocationsFitAvailable(
+      requested: categoryAllocations,
+      available: current.availableCategoryAllocations,
+    )) {
+      return _invalidCommand('分类退款金额超过剩余可退金额');
+    }
+    final settlementAllocations = current.settlementAllocations == null
+        ? singleAllocation(accountId: refundToAccountId, amount: amount)
+        : patchAllocations(
+            current: current.settlementAllocations!,
+            total: amount,
+          );
+    if (sumAllocations(settlementAllocations) != amount) {
+      return _invalidCommand('请完成退款到账分配');
+    }
 
     _update((state) => state.copyWith(submitting: true));
     try {
@@ -167,7 +244,8 @@ class RefundFormViewModel extends _$RefundFormViewModel {
                 EditRefundCommand(
                   transactionId: current.transactionId,
                   amount: amount,
-                  refundToAccountId: refundToAccountId,
+                  categoryAllocations: categoryAllocations,
+                  settlementAllocations: settlementAllocations,
                   occurredAt: current.occurredAt,
                   note: _stringPatch(trimToNull(noteText)),
                 ),
@@ -179,7 +257,8 @@ class RefundFormViewModel extends _$RefundFormViewModel {
                 CreateRefundCommand(
                   amount: amount,
                   parentTransactionId: current.parentTransactionId,
-                  refundToAccountId: refundToAccountId,
+                  categoryAllocations: categoryAllocations,
+                  settlementAllocations: settlementAllocations,
                   occurredAt: current.occurredAt,
                   note: trimToNull(noteText),
                 ),
@@ -224,24 +303,36 @@ class RefundFormState {
     required this.parentTransactionId,
     required this.editing,
     required List<Account> accounts,
+    required List<Account> categoryAccounts,
+    required List<AccountAmountAllocation> availableCategoryAllocations,
     required this.occurredAt,
     required this.submitting,
     required this.amountText,
     required this.noteText,
     this.remaining,
     this.refundToAccountId,
-  }) : accounts = List.unmodifiable(accounts);
+    this.categoryAllocations,
+    this.settlementAllocations,
+  }) : accounts = List.unmodifiable(accounts),
+       categoryAccounts = List.unmodifiable(categoryAccounts),
+       availableCategoryAllocations = List.unmodifiable(
+         availableCategoryAllocations,
+       );
 
   factory RefundFormState.loaded({
     required String transactionId,
     required String parentTransactionId,
     required bool editing,
     required List<Account> accounts,
+    required List<Account> categoryAccounts,
+    required List<AccountAmountAllocation> availableCategoryAllocations,
     required Money remaining,
     required DateTime occurredAt,
     required String amountText,
     required String noteText,
     String? refundToAccountId,
+    List<AccountAmountAllocation>? categoryAllocations,
+    List<AccountAmountAllocation>? settlementAllocations,
   }) {
     return RefundFormState(
       status: RefundFormStatus.loaded,
@@ -249,9 +340,13 @@ class RefundFormState {
       parentTransactionId: parentTransactionId,
       editing: editing,
       accounts: accounts,
+      categoryAccounts: categoryAccounts,
+      availableCategoryAllocations: availableCategoryAllocations,
       remaining: remaining,
       occurredAt: occurredAt,
       refundToAccountId: refundToAccountId,
+      categoryAllocations: categoryAllocations,
+      settlementAllocations: settlementAllocations,
       submitting: false,
       amountText: amountText,
       noteText: noteText,
@@ -269,6 +364,8 @@ class RefundFormState {
       parentTransactionId: transactionId,
       editing: editing,
       accounts: accounts,
+      categoryAccounts: const [],
+      availableCategoryAllocations: const [],
       occurredAt: DateTime.now(),
       submitting: false,
       amountText: '',
@@ -287,6 +384,8 @@ class RefundFormState {
       parentTransactionId: parentTransactionId,
       editing: true,
       accounts: accounts,
+      categoryAccounts: const [],
+      availableCategoryAllocations: const [],
       occurredAt: DateTime.now(),
       submitting: false,
       amountText: '',
@@ -299,9 +398,13 @@ class RefundFormState {
   final String parentTransactionId;
   final bool editing;
   final List<Account> accounts;
+  final List<Account> categoryAccounts;
+  final List<AccountAmountAllocation> availableCategoryAllocations;
   final Money? remaining;
   final DateTime occurredAt;
   final String? refundToAccountId;
+  final List<AccountAmountAllocation>? categoryAllocations;
+  final List<AccountAmountAllocation>? settlementAllocations;
   final bool submitting;
   final String amountText;
   final String noteText;
@@ -311,6 +414,8 @@ class RefundFormState {
   RefundFormState copyWith({
     DateTime? occurredAt,
     Object? refundToAccountId = _sentinel,
+    Object? categoryAllocations = _sentinel,
+    Object? settlementAllocations = _sentinel,
     bool? submitting,
   }) {
     return RefundFormState(
@@ -319,12 +424,19 @@ class RefundFormState {
       parentTransactionId: parentTransactionId,
       editing: editing,
       accounts: accounts,
+      categoryAccounts: categoryAccounts,
+      availableCategoryAllocations: availableCategoryAllocations,
       remaining: remaining,
       occurredAt: occurredAt ?? this.occurredAt,
-      refundToAccountId:
-          refundToAccountId == _sentinel
-              ? this.refundToAccountId
-              : refundToAccountId as String?,
+      refundToAccountId: refundToAccountId == _sentinel
+          ? this.refundToAccountId
+          : refundToAccountId as String?,
+      categoryAllocations: categoryAllocations == _sentinel
+          ? this.categoryAllocations
+          : categoryAllocations as List<AccountAmountAllocation>?,
+      settlementAllocations: settlementAllocations == _sentinel
+          ? this.settlementAllocations
+          : settlementAllocations as List<AccountAmountAllocation>?,
       submitting: submitting ?? this.submitting,
       amountText: amountText,
       noteText: noteText,
@@ -332,42 +444,28 @@ class RefundFormState {
   }
 }
 
-Money _refundedTotal(TransactionDetail detail) {
-  final refundChildren = detail.children.where(
-    (child) => child.businessPurpose == BusinessPurpose.refund,
-  );
-  if (refundChildren.isNotEmpty) {
-    return refundChildren.fold(
-      Money.zero(),
-      (sum, child) => sum + child.primaryAmount,
-    );
-  }
-  return detail.refundedTotal ?? Money.zero();
-}
-
-Money _remainingForNewRefund(TransactionDetail detail, Money refunded) {
+Money _remainingForNewRefund(TransactionReadModel detail, Money refunded) {
   final summary = detail.reimbursementSummary;
-  if (detail.transaction.businessPurpose ==
-          BusinessPurpose.reimbursementAdvance &&
+  if (detail.businessPurpose == BusinessPurpose.reimbursementAdvance &&
       summary is ReimbursementSummary) {
     return summary.outstanding;
   }
-  return detail.transaction.primaryAmount - refunded;
+  return detail.primaryAmount - refunded;
 }
 
 Money _remainingForEditedRefund(
-  TransactionDetail parentDetail,
-  Transaction refund,
+  TransactionReadModel parentDetail,
+  TransactionReadModel refund,
 ) {
   final summary = parentDetail.reimbursementSummary;
-  if (parentDetail.transaction.businessPurpose ==
-          BusinessPurpose.reimbursementAdvance &&
+  final refundAmount = refund.amountOf(TransactionRole.settlementIn);
+  if (parentDetail.businessPurpose == BusinessPurpose.reimbursementAdvance &&
       summary is ReimbursementSummary) {
-    return summary.outstanding + refund.primaryAmount;
+    return summary.outstanding + refundAmount;
   }
-  return parentDetail.transaction.primaryAmount -
-      _refundedTotal(parentDetail) +
-      refund.primaryAmount;
+  return parentDetail.primaryAmount -
+      (parentDetail.refundSummary?.refundedTotal ?? Money.zero()) +
+      refundAmount;
 }
 
 Patch<String?> _stringPatch(String? value) {
@@ -384,6 +482,63 @@ String? _selectedId(String? id, List<Account> accounts) {
 Money? _parsePositiveMoney(String value) {
   final money = Money.tryParse(value);
   return money != null && money.minorUnits > 0 ? money : null;
+}
+
+List<AccountAmountAllocation> _allocationsOf(
+  TransactionReadModel transaction,
+  TransactionRole role,
+) {
+  return [
+    for (final line in transaction.linesOf(role))
+      AccountAmountAllocation(accountId: line.accountId!, amount: line.amount),
+  ];
+}
+
+List<AccountAmountAllocation> _refundCategoryAllocations(
+  TransactionReadModel transaction,
+) {
+  final reimbursementCategories = transaction.linesOf(
+    TransactionRole.reimbursementExpenseCategory,
+  );
+  final lines = reimbursementCategories.isNotEmpty
+      ? reimbursementCategories
+      : transaction.linesOf(TransactionRole.refundOffset);
+  return [
+    for (final line in lines)
+      AccountAmountAllocation(accountId: line.accountId!, amount: line.amount),
+  ];
+}
+
+List<AccountAmountAllocation> _addAllocations(
+  Iterable<AccountAmountAllocation> first,
+  Iterable<AccountAmountAllocation> second,
+) {
+  final amounts = <String, int>{};
+  final order = <String>[];
+  for (final allocation in [...first, ...second]) {
+    if (!amounts.containsKey(allocation.accountId)) {
+      order.add(allocation.accountId);
+    }
+    amounts[allocation.accountId] =
+        (amounts[allocation.accountId] ?? 0) + allocation.amount.minorUnits;
+  }
+  return [
+    for (final accountId in order)
+      if ((amounts[accountId] ?? 0) > 0)
+        AccountAmountAllocation(
+          accountId: accountId,
+          amount: Money(minorUnits: amounts[accountId]!),
+        ),
+  ];
+}
+
+List<Account> _accountsForAllocations(
+  Iterable<AccountAmountAllocation> allocations,
+  Map<String, Account> accountsById,
+) {
+  return [
+    for (final allocation in allocations) ?accountsById[allocation.accountId],
+  ];
 }
 
 const Object _sentinel = Object();

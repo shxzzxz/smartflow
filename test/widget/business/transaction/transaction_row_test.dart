@@ -487,15 +487,18 @@ TransactionRowPresentation _presentationWithBadgeLabels(
   );
 }
 
-TransactionListReadModel _item() {
-  return TransactionListReadModel(
+TransactionReadModel _item() {
+  return TransactionReadModel(
     id: 'tx-1',
     businessPurpose: BusinessPurpose.dailyExpense,
     occurredAt: DateTime(2026, 1, 1, 8, 30),
     primaryAmount: const Money(minorUnits: 1234),
     isExcludedFromStats: true,
     isExcludedFromBudget: false,
-    primaryCategoryId: 'food',
+    lines: const [
+      TransactionLine(id: 'category', transactionId: 'tx-1', lineNo: 1, role: TransactionRole.category, accountId: 'food', amount: Money(minorUnits: 1234)),
+      TransactionLine(id: 'settlement', transactionId: 'tx-1', lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: Money(minorUnits: 1234)),
+    ],
     impactsByAccountId: const {
       'food': TransactionAccountImpact(
         debitAmount: Money(minorUnits: 1234),
@@ -508,7 +511,6 @@ TransactionListReadModel _item() {
         netChange: Money(minorUnits: -1234),
       ),
     },
-    adjustments: const [],
   );
 }
 

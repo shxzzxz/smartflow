@@ -50,9 +50,8 @@ void main() {
         ),
         GoRoute(
           path: '/repayment',
-          builder:
-              (context, state) =>
-                  const RepaymentFormPage(liabilityAccountId: 'payable'),
+          builder: (context, state) =>
+              const RepaymentFormPage(liabilityAccountId: 'payable'),
         ),
       ],
     );
@@ -74,14 +73,14 @@ void main() {
 
     await tester.tap(find.widgetWithText(TextButton, '取消'));
     await tester.pumpAndSettle();
-    expect(viewModel.submitCount, 0);
+    expect(viewModel.submittedTimes(), 0);
 
     await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, '继续提交'));
     await tester.pumpAndSettle();
 
-    expect(viewModel.submitCount, 1);
+    expect(viewModel.submittedTimes(), 1);
     expect(find.text('账户详情'), findsOneWidget);
   });
 }
@@ -90,7 +89,9 @@ class _FixedRepaymentFormViewModel extends RepaymentFormViewModel {
   _FixedRepaymentFormViewModel(this.fixedState);
 
   final RepaymentFormState fixedState;
-  int submitCount = 0;
+  int _submitCount = 0;
+
+  int submittedTimes() => _submitCount;
 
   @override
   Future<RepaymentFormState> build(RepaymentFormArgs args) async => fixedState;
@@ -103,7 +104,7 @@ class _FixedRepaymentFormViewModel extends RepaymentFormViewModel {
     required String discountText,
     required String noteText,
   }) async {
-    submitCount += 1;
+    _submitCount += 1;
     return const SubmitOutcome.success();
   }
 }

@@ -106,7 +106,9 @@ void main() {
         await DriftTransactionReadRepository(database)
             .watchPage(
               const TransactionPageQuery(
-                categoryAccountIds: {'travel'},
+                match: TransactionImpactMatch(
+                  categoryAccountIds: {'travel'},
+                ),
                 tagIds: {'tag-travel'},
               ),
             )

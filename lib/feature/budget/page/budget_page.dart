@@ -423,7 +423,7 @@ class _BudgetDetailContent extends ConsumerWidget {
 
   final MonthKey month;
   final BudgetProgress progress;
-  final List<TransactionListReadModel> transactions;
+  final List<TransactionReadModel> transactions;
   final AccountLookup accountLookup;
   final BudgetViewModelProvider viewModelProvider;
 

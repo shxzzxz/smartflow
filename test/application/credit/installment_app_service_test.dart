@@ -1661,9 +1661,9 @@ class _FakeUpdateService implements TransactionUpdateAppService {
 
 class _FakeTransactionQueryService implements TransactionQueryService {
   @override
-  Future<int> getDetailAmountSum({
+  Future<int> getLineAmountSum({
     required Iterable<String> transactionIds,
-    required TransactionDetailType detailType,
+    required TransactionRole role,
   }) async {
     return 0;
   }

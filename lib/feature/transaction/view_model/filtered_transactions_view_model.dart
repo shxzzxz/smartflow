@@ -23,7 +23,7 @@ class FilteredTransactionPaging extends _$FilteredTransactionPaging {
 }
 
 @riverpod
-Stream<List<TransactionListReadModel>> filteredTransactions(
+Stream<List<TransactionReadModel>> filteredTransactions(
   Ref ref,
   FilteredTransactionTarget target,
   String targetId,
@@ -42,7 +42,7 @@ Stream<List<TransactionListReadModel>> filteredTransactions(
       .watch(transactionQueryServiceProvider)
       .watchTransactions(
         TransactionListQuery(
-          categoryAccountIds: categoryIds,
+          match: TransactionFactMatch(categoryAccountIds: categoryIds),
           tagIds: target == FilteredTransactionTarget.tag ? {targetId} : null,
           topLevelOnly: true,
           limit: limit,
@@ -52,7 +52,7 @@ Stream<List<TransactionListReadModel>> filteredTransactions(
 
 @riverpod
 class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
-  List<TransactionListReadModel> _previousItems = const [];
+  List<TransactionReadModel> _previousItems = const [];
 
   @override
   FilteredTransactionsState build(
@@ -152,7 +152,7 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
 
   FilteredTransactionsLoaded _loaded({
     required _FilteredTransactionMetadata metadata,
-    required List<TransactionListReadModel> items,
+    required List<TransactionReadModel> items,
     required AccountLookup accountLookup,
     required bool hasMore,
     required bool isLoadingMore,

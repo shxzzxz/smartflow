@@ -44,7 +44,7 @@ void main() {
       expect(command.transactionId, 'receipt');
       expect(command.amount, const Money(minorUnits: 4500));
       expect(command.receivableAccountId, 'receivable');
-      expect(command.receiveAccountId, 'bank');
+      expect(command.settlementAllocations!.single.accountId, 'bank');
       expect(command.occurredAt, DateTime(2026, 7, 2, 9));
       expect(command.note, isA<PatchClear<String?>>());
     },
@@ -102,7 +102,7 @@ void main() {
       expect(command.transactionId, 'close');
       expect(command.actualReceivedAmount, Money.zero());
       expect(command.receivableAccountId, 'receivable');
-      expect(command.receiveAccountId, 'receivable');
+      expect(command.settlementAllocations!.single.accountId, 'receivable');
       expect(command.note, isA<PatchSet<String?>>());
     },
   );
@@ -131,7 +131,7 @@ void main() {
       expect(outcome, isA<SubmitSuccess>());
       final command = editService.closeCommands.single;
       expect(command.actualReceivedAmount, Money.zero());
-      expect(command.receiveAccountId, 'receivable');
+      expect(command.settlementAllocations!.single.accountId, 'receivable');
     },
   );
 
@@ -198,9 +198,7 @@ ProviderContainer _container({
         AccountSelectionPurpose.settlement,
       ).overrideWithValue(AsyncData([cash, bank])),
       accountsByIdProvider.overrideWithValue(AsyncData(accounts)),
-      transactionDetailProvider(
-        'parent',
-      ).overrideWithValue(
+      transactionDetailProvider('parent').overrideWithValue(
         AsyncData(_parentDetail(closed: closed, includeRefund: includeRefund)),
       ),
       transactionDetailProvider(
@@ -223,15 +221,11 @@ ProviderContainer _container({
   return container;
 }
 
-TransactionDetail _parentDetail({
+TransactionReadModel _parentDetail({
   required bool closed,
   bool includeRefund = false,
 }) {
-  final entries = [
-    _entry('parent', 'receivable', EntryDirection.debit, 10000),
-    _entry('parent', 'cash', EntryDirection.credit, 10000),
-  ];
-  return TransactionDetail(
+  return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'parent',
       businessPurpose: BusinessPurpose.reimbursementAdvance,
@@ -240,29 +234,87 @@ TransactionDetail _parentDetail({
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
-      reimbursementExpenseAccountId: 'expense',
-      entries: entries,
+      lines: _advanceLines,
     ),
     createdAt: DateTime(2026, 7, 1),
-    details: const [],
-    entries: entries,
+    lines: _advanceLines,
+    refundSummary: RefundSummary(
+      refundedTotal: Money(minorUnits: includeRefund ? 2000 : 0),
+      originalCategoryAllocations: const [
+        AccountAmountAllocation(
+          accountId: 'expense',
+          amount: Money(minorUnits: 10000),
+        ),
+      ],
+      refundedCategoryAllocations: const [],
+    ),
     reimbursementSummary: ReimbursementSummary(
       advanceAmount: const Money(minorUnits: 10000),
-      receivedAmount: Money(minorUnits: closed ? 10000 : 4000),
-      outstanding: Money(
-        minorUnits: closed ? 0 : includeRefund ? 4000 : 6000,
-      ),
+      refundedAmount: Money(minorUnits: includeRefund ? 2000 : 0),
+      receivedAmount: closed ? Money.zero() : const Money(minorUnits: 4000),
+      outstanding: closed
+          ? Money.zero()
+          : Money(minorUnits: 10000 - (includeRefund ? 2000 : 0) - 4000),
       isClosed: closed,
     ),
+    children: [
+      if (!closed)
+        TransactionReadModel(
+          id: 'receipt-child',
+          parentTransactionId: 'parent',
+          businessPurpose: BusinessPurpose.reimbursementReceipt,
+          occurredAt: DateTime(2026, 7, 2),
+          primaryAmount: const Money(minorUnits: 4000),
+          isExcludedFromStats: false,
+          isExcludedFromBudget: false,
+          lines: [
+            _line(
+              'receipt-child',
+              1,
+              TransactionRole.settlementIn,
+              4000,
+              'bank',
+            ),
+          ],
+        ),
+      if (includeRefund)
+        TransactionReadModel(
+          id: 'refund-child',
+          parentTransactionId: 'parent',
+          businessPurpose: BusinessPurpose.refund,
+          occurredAt: DateTime(2026, 7, 2),
+          primaryAmount: const Money(minorUnits: 2000),
+          isExcludedFromStats: false,
+          isExcludedFromBudget: false,
+          lines: [
+            _line(
+              'refund-child',
+              1,
+              TransactionRole.settlementIn,
+              2000,
+              'bank',
+            ),
+          ],
+        ),
+      if (closed)
+        TransactionReadModel(
+          id: 'close-child',
+          parentTransactionId: 'parent',
+          businessPurpose: BusinessPurpose.reimbursementClose,
+          occurredAt: DateTime(2026, 7, 3),
+          primaryAmount: Money.zero(),
+          isExcludedFromStats: false,
+          isExcludedFromBudget: false,
+          lines: [
+            _line('close-child', 1, TransactionRole.settlementIn, 0, 'bank'),
+          ],
+        ),
+    ],
   );
 }
 
-TransactionDetail _receiptDetail() {
-  final entries = [
-    _entry('receipt', 'bank', EntryDirection.debit, 4000),
-    _entry('receipt', 'receivable', EntryDirection.credit, 4000),
-  ];
-  return TransactionDetail(
+TransactionReadModel _receiptDetail() {
+  return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'receipt',
       parentTransactionId: 'parent',
@@ -273,34 +325,50 @@ TransactionDetail _receiptDetail() {
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
       note: 'original receipt',
-      entries: entries,
     ),
     createdAt: DateTime(2026, 7, 2, 9),
-    details: const [],
-    entries: entries,
+    lines: const [
+      TransactionLine(
+        id: 'receipt-in',
+        transactionId: 'receipt',
+        lineNo: 1,
+        role: TransactionRole.settlementIn,
+        accountId: 'bank',
+        amount: Money(minorUnits: 4000),
+      ),
+      TransactionLine(
+        id: 'receipt-receivable',
+        transactionId: 'receipt',
+        lineNo: 2,
+        role: TransactionRole.receivable,
+        accountId: 'receivable',
+        amount: Money(minorUnits: 4000),
+      ),
+    ],
   );
 }
 
-TransactionDetail _closeDetail({required int actualReceivedMinorUnits}) {
+TransactionReadModel _closeDetail({required int actualReceivedMinorUnits}) {
   final gapExpenseMinorUnits = 6000 - actualReceivedMinorUnits;
-  final entries = [
-    if (actualReceivedMinorUnits > 0)
-      _entry('close', 'bank', EntryDirection.debit, actualReceivedMinorUnits),
-    _entry('close', 'receivable', EntryDirection.credit, 6000),
+  final lines = [
+    _line(
+      'close',
+      1,
+      TransactionRole.settlementIn,
+      actualReceivedMinorUnits,
+      'bank',
+    ),
+    _line('close', 2, TransactionRole.receivable, 6000, 'receivable'),
     if (gapExpenseMinorUnits > 0)
-      _entry('close', 'expense', EntryDirection.debit, gapExpenseMinorUnits),
-  ];
-  final details = [
-    _detail('close', 1, TransactionDetailType.reimbursementCloseMain, 6000),
-    if (gapExpenseMinorUnits > 0)
-      _detail(
+      _line(
         'close',
-        2,
-        TransactionDetailType.reimbursementGapExpense,
+        3,
+        TransactionRole.reimbursementGapExpense,
         gapExpenseMinorUnits,
+        'expense',
       ),
   ];
-  return TransactionDetail(
+  return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'close',
       parentTransactionId: 'parent',
@@ -311,41 +379,26 @@ TransactionDetail _closeDetail({required int actualReceivedMinorUnits}) {
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
       note: 'original close',
-      details: details,
-      entries: entries,
+      lines: lines,
     ),
     createdAt: DateTime(2026, 7, 3, 10),
-    details: details,
-    entries: entries,
+    lines: lines,
   );
 }
 
-Entry _entry(
-  String transactionId,
-  String accountId,
-  EntryDirection direction,
-  int amount,
-) {
-  return Entry(
-    id: '$transactionId-$accountId',
-    transactionId: transactionId,
-    accountId: accountId,
-    direction: direction,
-    amount: Money(minorUnits: amount),
-  );
-}
-
-TransactionDetailRecord _detail(
+TransactionLine _line(
   String transactionId,
   int lineNo,
-  TransactionDetailType type,
-  int amount,
-) {
-  return TransactionDetailRecord(
+  TransactionRole type,
+  int amount, [
+  String? accountId,
+]) {
+  return TransactionLine(
     id: '$transactionId-$lineNo',
     transactionId: transactionId,
     lineNo: lineNo,
-    type: type,
+    role: type,
+    accountId: accountId,
     amount: Money(minorUnits: amount),
   );
 }
@@ -411,4 +464,36 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
   @override
   Future<PostedTransactionResult> editTransfer(EditTransferCommand command) =>
       throw UnimplementedError();
+
+  @override
+  Future<PostedTransactionResult> replaceTransactionCategory(
+    ReplaceTransactionCategoryCommand command,
+  ) => throw UnimplementedError();
 }
+
+const _advanceLines = [
+  TransactionLine(
+    id: 'advance-category',
+    transactionId: 'parent',
+    lineNo: 1,
+    role: TransactionRole.reimbursementExpenseCategory,
+    accountId: 'expense',
+    amount: Money(minorUnits: 10000),
+  ),
+  TransactionLine(
+    id: 'advance-out',
+    transactionId: 'parent',
+    lineNo: 2,
+    role: TransactionRole.settlementOut,
+    accountId: 'cash',
+    amount: Money(minorUnits: 10000),
+  ),
+  TransactionLine(
+    id: 'advance-receivable',
+    transactionId: 'parent',
+    lineNo: 3,
+    role: TransactionRole.receivable,
+    accountId: 'receivable',
+    amount: Money(minorUnits: 10000),
+  ),
+];

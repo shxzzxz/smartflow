@@ -409,19 +409,19 @@ InstallmentContractReadModel _contract() {
 
 class _FakeTransactionQueryService implements TransactionQueryService {
   final queries = <TransactionListQuery>[];
-  final _streams = <_ReplayStream<List<TransactionListReadModel>>>[];
+  final _streams = <_ReplayStream<List<TransactionReadModel>>>[];
 
   @override
-  Stream<List<TransactionListReadModel>> watchTransactions(
+  Stream<List<TransactionReadModel>> watchTransactions(
     TransactionListQuery query,
   ) {
     queries.add(query);
-    final stream = _ReplayStream<List<TransactionListReadModel>>();
+    final stream = _ReplayStream<List<TransactionReadModel>>();
     _streams.add(stream);
     return stream.watch();
   }
 
-  void emit(List<TransactionListReadModel> items) {
+  void emit(List<TransactionReadModel> items) {
     _streams.last.add(items);
   }
 

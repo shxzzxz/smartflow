@@ -10,6 +10,7 @@ import 'package:smartflow/domain/ledger/port/transaction_repository.dart';
 import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_plan.dart';
 import 'package:smartflow/domain/ledger/service/mutation/transaction_deletion_result.dart';
 import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_result.dart';
+import 'package:smartflow/domain/ledger/service/mutation/transaction_update_result.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:test/test.dart';
 import '../../../helper/fake_transaction_tag_repository.dart';
@@ -83,6 +84,36 @@ void main() {
       expect(runner.inTransaction, isFalse);
     },
   );
+
+  test(
+    'persists lightweight updates through the row-only repository path',
+    () async {
+      final runner = _TrackingRunner();
+      final transactions = _FakeTransactionRepository(runner);
+      final accounts = _FakeAccountRepository(runner);
+      final writer = TransactionLedgerWriter(
+        transactionRunner: runner,
+        transactionRepository: transactions,
+        transactionGroupRepository: transactions,
+        accountRepository: accounts,
+        transactionTagRepository: FakeTransactionTagRepository(),
+      );
+      final transaction = _transaction('tx-1');
+
+      final result = await writer.persistUpdate(
+        TransactionUpdateResult(
+          transactions: [transaction],
+          accounts: const [],
+          currentTransaction: transaction,
+        ),
+      );
+
+      expect(result.transactionId, 'tx-1');
+      expect(transactions.updatedIds, ['tx-1']);
+      expect(accounts.saveAllCalls, 1);
+      expect(runner.inTransaction, isFalse);
+    },
+  );
 }
 
 Transaction _transaction(String id, {int amount = 1000}) {
@@ -118,6 +149,7 @@ class _FakeTransactionRepository
 
   final _TrackingRunner runner;
   final rewrittenIds = <String>[];
+  final updatedIds = <String>[];
   Set<String> deletedIds = const {};
 
   @override
@@ -136,6 +168,12 @@ class _FakeTransactionRepository
   Future<void> deleteChild(String childTransactionId) async {
     expect(runner.inTransaction, isTrue);
     deletedIds = {childTransactionId};
+  }
+
+  @override
+  Future<void> updateAll(Iterable<Transaction> transactions) async {
+    expect(runner.inTransaction, isTrue);
+    updatedIds.addAll(transactions.map((transaction) => transaction.id));
   }
 
   @override

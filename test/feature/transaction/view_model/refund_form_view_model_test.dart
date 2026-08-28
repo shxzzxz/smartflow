@@ -8,8 +8,10 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
+import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/view_model/refund_form_view_model.dart';
+import 'package:smartflow/feature/transaction/view_model/reimbursement_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {
@@ -37,9 +39,104 @@ void main() {
     final command = editService.refundCommands.single;
     expect(command.transactionId, 'refund');
     expect(command.amount, const Money(minorUnits: 3500));
-    expect(command.refundToAccountId, 'bank');
+    expect(command.settlementAllocations!.single.accountId, 'bank');
     expect(command.occurredAt, DateTime(2026, 7, 2, 9));
     expect(command.note, isA<PatchClear<String?>>());
+  });
+
+  test('prefills every original settlement account for a new refund', () async {
+    final container = _container(combinedPayment: true);
+
+    final state = await container.read(
+      refundFormViewModelProvider('parent').future,
+    );
+
+    expect(state.status, RefundFormStatus.loaded);
+    expect(state.refundToAccountId, 'cash');
+    expect(
+      state.settlementAllocations
+          ?.map((allocation) => allocation.accountId)
+          .toList(),
+      ['cash', 'bank'],
+    );
+    expect(
+      state.settlementAllocations
+          ?.map((allocation) => allocation.amount.minorUnits)
+          .toList(),
+      [0, 0],
+    );
+  });
+
+  test(
+    'prefills every original settlement account for reimbursement forms',
+    () async {
+      final container = _container(combinedPayment: true);
+
+      final receipt = await container.read(
+        reimbursementReceiptFormViewModelProvider('parent').future,
+      );
+      final close = await container.read(
+        reimbursementCloseFormViewModelProvider('parent').future,
+      );
+      final unified = await container.read(
+        reimbursementFormViewModelProvider('parent').future,
+      );
+
+      expect(receipt.settlementAllocations, isNotNull);
+      expect(close.settlementAllocations, isNotNull);
+      expect(unified.settlementAllocations, isNotNull);
+      for (final allocations in [
+        receipt.settlementAllocations!,
+        close.settlementAllocations!,
+        unified.settlementAllocations!,
+      ]) {
+        expect(allocations.map((allocation) => allocation.accountId).toList(), [
+          'cash',
+          'bank',
+        ]);
+        expect(
+          allocations
+              .map((allocation) => allocation.amount.minorUnits)
+              .toList(),
+          [0, 0],
+        );
+      }
+    },
+  );
+
+  test(
+    'submits a visible single-category default for reimbursement close',
+    () async {
+      final posting = _FakeTransactionPostingAppService();
+      final container = _container(posting: posting);
+      final provider = reimbursementCloseFormViewModelProvider('parent');
+      await container.read(provider.future);
+
+      final outcome = await container
+          .read(provider.notifier)
+          .submit(amountText: '50', noteText: '');
+
+      expect(outcome, isA<SubmitSuccess>());
+      final gaps = posting.closeCommands.single.gapExpenseAllocations;
+      expect(gaps, hasLength(1));
+      expect(gaps.single.accountId, 'expense');
+      expect(gaps.single.amount, const Money(minorUnits: 1000));
+    },
+  );
+
+  test('does not recreate a cleared single-category default', () async {
+    final posting = _FakeTransactionPostingAppService();
+    final container = _container(posting: posting);
+    final provider = reimbursementCloseFormViewModelProvider('parent');
+    await container.read(provider.future);
+    container.read(provider.notifier).setGapExpenseAllocations(const []);
+
+    final outcome = await container
+        .read(provider.notifier)
+        .submit(amountText: '50', noteText: '');
+
+    expect(outcome, isA<SubmitFailure>());
+    expect(posting.closeCommands, isEmpty);
   });
 
   test('marks refund edit unavailable after reimbursement close', () async {
@@ -106,28 +203,46 @@ void main() {
 ProviderContainer _container({
   bool closed = false,
   bool includeReceipt = false,
+  bool combinedPayment = false,
   _FakeTransactionEditAppService? editService,
+  _FakeTransactionPostingAppService? posting,
 }) {
   final cash = _account('cash');
   final bank = _account('bank');
+  final receivable = _account('receivable');
   final expense = _account('expense', type: AccountType.expense);
-  final accounts = {'cash': cash, 'bank': bank, 'expense': expense};
+  final accounts = {
+    'cash': cash,
+    'bank': bank,
+    'receivable': receivable,
+    'expense': expense,
+  };
   final container = ProviderContainer(
     overrides: [
       accountsForSelectionPurposeProvider(
         AccountSelectionPurpose.settlement,
       ).overrideWithValue(AsyncData([cash, bank])),
       accountsByIdProvider.overrideWithValue(AsyncData(accounts)),
+      accountLookupProvider.overrideWithValue(
+        AsyncData(AccountLookup(accounts)),
+      ),
       transactionDetailProvider(
         'refund',
       ).overrideWithValue(AsyncData(_refundDetail())),
       transactionDetailProvider('parent').overrideWithValue(
         AsyncData(
-          _parentDetail(closed: closed, includeReceipt: includeReceipt),
+          _parentDetail(
+            closed: closed,
+            includeReceipt: includeReceipt,
+            combinedPayment: combinedPayment,
+          ),
         ),
       ),
       transactionEditAppServiceProvider.overrideWithValue(
         editService ?? _FakeTransactionEditAppService(),
+      ),
+      transactionPostingAppServiceProvider.overrideWithValue(
+        posting ?? _FakeTransactionPostingAppService(),
       ),
     ],
   );
@@ -135,12 +250,25 @@ ProviderContainer _container({
   return container;
 }
 
-TransactionDetail _refundDetail() {
-  final entries = [
-    _entry('refund', 'bank', EntryDirection.debit, 3000),
-    _entry('refund', 'expense', EntryDirection.credit, 3000),
-  ];
-  return TransactionDetail(
+class _FakeTransactionPostingAppService
+    implements TransactionPostingAppService {
+  final closeCommands = <CloseReimbursementCommand>[];
+
+  @override
+  Future<PostedTransactionResult> closeReimbursement(
+    CloseReimbursementCommand command,
+  ) async {
+    closeCommands.add(command);
+    return const PostedTransactionResult(transactionId: 'close');
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
+}
+
+TransactionReadModel _refundDetail() {
+  return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'refund',
       parentTransactionId: 'parent',
@@ -151,23 +279,35 @@ TransactionDetail _refundDetail() {
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
       note: 'original',
-      entries: entries,
     ),
     createdAt: DateTime(2026, 7, 2, 9),
-    details: const [],
-    entries: entries,
+    lines: const [
+      TransactionLine(
+        id: 'refund-in',
+        transactionId: 'refund',
+        lineNo: 1,
+        role: TransactionRole.settlementIn,
+        accountId: 'bank',
+        amount: Money(minorUnits: 3000),
+      ),
+      TransactionLine(
+        id: 'refund-offset',
+        transactionId: 'refund',
+        lineNo: 2,
+        role: TransactionRole.refundOffset,
+        accountId: 'expense',
+        amount: Money(minorUnits: 3000),
+      ),
+    ],
   );
 }
 
-TransactionDetail _parentDetail({
+TransactionReadModel _parentDetail({
   required bool closed,
   bool includeReceipt = false,
+  bool combinedPayment = false,
 }) {
-  final entries = [
-    _entry('parent', 'cash', EntryDirection.credit, 10000),
-    _entry('parent', 'expense', EntryDirection.debit, 10000),
-  ];
-  return TransactionDetail(
+  return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'parent',
       businessPurpose: BusinessPurpose.reimbursementAdvance,
@@ -176,12 +316,33 @@ TransactionDetail _parentDetail({
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
-      reimbursementExpenseAccountId: 'expense',
-      entries: entries,
+      lines: combinedPayment ? _combinedAdvanceLines : _advanceLines,
     ),
     createdAt: DateTime(2026, 7, 1),
-    details: const [],
-    entries: entries,
+    lines: combinedPayment ? _combinedAdvanceLines : _advanceLines,
+    refundSummary: RefundSummary(
+      refundedTotal: const Money(minorUnits: 4000),
+      originalCategoryAllocations: [
+        const AccountAmountAllocation(
+          accountId: 'expense',
+          amount: Money(minorUnits: 10000),
+        ),
+      ],
+      refundedCategoryAllocations: const [],
+    ),
+    reimbursementSummary: ReimbursementSummary(
+      advanceAmount: const Money(minorUnits: 10000),
+      refundedAmount: const Money(minorUnits: 4000),
+      receivedAmount:
+          Money(minorUnits: includeReceipt ? 2000 : 0) +
+          (closed ? const Money(minorUnits: 6000) : Money.zero()),
+      outstanding: closed
+          ? Money.zero()
+          : const Money(minorUnits: 10000) -
+                const Money(minorUnits: 4000) -
+                (includeReceipt ? const Money(minorUnits: 2000) : Money.zero()),
+      isClosed: closed,
+    ),
     children: [
       _child('refund', BusinessPurpose.refund, 3000),
       _child('other-refund', BusinessPurpose.refund, 1000),
@@ -189,61 +350,37 @@ TransactionDetail _parentDetail({
         _child('receipt', BusinessPurpose.reimbursementReceipt, 2000),
       if (closed) _child('close', BusinessPurpose.reimbursementClose, 6000),
     ],
-    reimbursementSummary: ReimbursementSummary(
-      advanceAmount: const Money(minorUnits: 10000),
-      receivedAmount: Money(
-        minorUnits:
-            closed
-                ? 6000
-                : includeReceipt
-                ? 2000
-                : 0,
-      ),
-      outstanding: Money(
-        minorUnits:
-            closed
-                ? 0
-                : includeReceipt
-                ? 4000
-                : 6000,
-      ),
-      isClosed: closed,
-    ),
   );
 }
 
-TransactionListReadModel _child(
-  String id,
-  BusinessPurpose purpose,
-  int amount,
-) {
-  return TransactionListReadModel(
+TransactionReadModel _child(String id, BusinessPurpose purpose, int amount) {
+  return TransactionReadModel(
     id: id,
+    parentTransactionId: 'parent',
     businessPurpose: purpose,
     occurredAt: DateTime(2026, 7, 2),
     primaryAmount: Money(minorUnits: amount),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    primaryCategoryId: null,
     impactsByAccountId: const {},
-    adjustments: const [],
+    lines: [_line(id, 1, TransactionRole.settlementIn, amount, 'bank')],
   );
 }
 
-Entry _entry(
+TransactionLine _line(
   String transactionId,
-  String accountId,
-  EntryDirection direction,
+  int lineNo,
+  TransactionRole role,
   int amount,
-) {
-  return Entry(
-    id: '$transactionId-$accountId',
-    transactionId: transactionId,
-    accountId: accountId,
-    direction: direction,
-    amount: Money(minorUnits: amount),
-  );
-}
+  String accountId,
+) => TransactionLine(
+  id: '$transactionId-$lineNo',
+  transactionId: transactionId,
+  lineNo: lineNo,
+  role: role,
+  accountId: accountId,
+  amount: Money(minorUnits: amount),
+);
 
 Account _account(String id, {AccountType type = AccountType.asset}) {
   return Account(id: id, name: id, type: type, balance: Money.zero());
@@ -300,4 +437,71 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
   @override
   Future<PostedTransactionResult> editTransfer(EditTransferCommand command) =>
       throw UnimplementedError();
+
+  @override
+  Future<PostedTransactionResult> replaceTransactionCategory(
+    ReplaceTransactionCategoryCommand command,
+  ) => throw UnimplementedError();
 }
+
+const _advanceLines = [
+  TransactionLine(
+    id: 'advance-category',
+    transactionId: 'parent',
+    lineNo: 1,
+    role: TransactionRole.reimbursementExpenseCategory,
+    accountId: 'expense',
+    amount: Money(minorUnits: 10000),
+  ),
+  TransactionLine(
+    id: 'advance-out',
+    transactionId: 'parent',
+    lineNo: 2,
+    role: TransactionRole.settlementOut,
+    accountId: 'cash',
+    amount: Money(minorUnits: 10000),
+  ),
+  TransactionLine(
+    id: 'advance-receivable',
+    transactionId: 'parent',
+    lineNo: 3,
+    role: TransactionRole.receivable,
+    accountId: 'receivable',
+    amount: Money(minorUnits: 10000),
+  ),
+];
+
+const _combinedAdvanceLines = [
+  TransactionLine(
+    id: 'advance-category',
+    transactionId: 'parent',
+    lineNo: 1,
+    role: TransactionRole.reimbursementExpenseCategory,
+    accountId: 'expense',
+    amount: Money(minorUnits: 10000),
+  ),
+  TransactionLine(
+    id: 'advance-out-cash',
+    transactionId: 'parent',
+    lineNo: 2,
+    role: TransactionRole.settlementOut,
+    accountId: 'cash',
+    amount: Money(minorUnits: 6000),
+  ),
+  TransactionLine(
+    id: 'advance-out-bank',
+    transactionId: 'parent',
+    lineNo: 3,
+    role: TransactionRole.settlementOut,
+    accountId: 'bank',
+    amount: Money(minorUnits: 4000),
+  ),
+  TransactionLine(
+    id: 'advance-receivable',
+    transactionId: 'parent',
+    lineNo: 4,
+    role: TransactionRole.receivable,
+    accountId: 'receivable',
+    amount: Money(minorUnits: 10000),
+  ),
+];

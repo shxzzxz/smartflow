@@ -2,7 +2,8 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/entity/entry.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
-import 'package:smartflow/domain/ledger/entity/transaction_detail_record.dart';
+import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
+import 'package:smartflow/domain/ledger/entity/transaction_line.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_rule.dart';
 import 'package:smartflow/domain/ledger/valobj/account_usage.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
@@ -10,7 +11,7 @@ import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import '../../account/query/account_query_service.dart';
 import '../../metrics/query/port/ledger_metrics_source.dart';
 import 'port/entry_read_repository.dart';
-import 'port/transaction_detail_read_repository.dart';
+import 'port/transaction_line_read_repository.dart';
 import 'port/transaction_read_repository.dart';
 import 'transaction_queries.dart';
 import 'transaction_read_models.dart';
@@ -19,26 +20,22 @@ import 'transaction_scope.dart';
 abstract interface class TransactionQueryService {
   /// 交易列表订阅同时响应交易事实与账户快照变化：
   /// 分类改名、换图标或调整二级归属后重新规范化查询并重新投影。
-  Stream<List<TransactionListReadModel>> watchTransactions(
+  Stream<List<TransactionReadModel>> watchTransactions(
     TransactionListQuery query,
   );
 
-  Future<List<TransactionListReadModel>> findTransactions(
+  Future<List<TransactionReadModel>> findTransactions(
     TransactionListQuery query,
   );
 
   Stream<CashflowSummary> watchCashflowSummary(CashflowSummaryQuery query);
 
-  Stream<TransactionDetail?> watchTransactionDetail(String transactionId);
+  Stream<TransactionReadModel?> watchTransactionDetail(String transactionId);
 
-  Future<TransactionDetail?> findTransactionDetail(String transactionId);
+  Future<TransactionReadModel?> findTransactionDetail(String transactionId);
 
-  Future<TransactionDetail?> findParentTransactionDetail(
+  Future<TransactionReadModel?> findParentTransactionDetail(
     String parentTransactionId,
-  );
-
-  Future<List<TransactionDetail>> findTransactionFacts(
-    Set<String> transactionIds,
   );
 
   Future<Transaction?> findTransactionById(String transactionId);
@@ -46,15 +43,9 @@ abstract interface class TransactionQueryService {
   /// 查询该收支分类最近一笔交易使用的唯一有效结算账户。
   Future<String?> findLastUsedSettlementAccountId(String categoryId);
 
-  Future<Money> getRefundedTotal(String parentTransactionId);
-
-  Future<ReimbursementSummary?> getReimbursementSummary(
-    String parentTransactionId,
-  );
-
-  Future<int> getDetailAmountSum({
+  Future<int> getLineAmountSum({
     required Iterable<String> transactionIds,
-    required TransactionDetailType detailType,
+    required TransactionRole role,
   });
 
   Stream<TransactionCleanupPreview> watchCleanupPreview(
@@ -66,42 +57,43 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   const TransactionQueryServiceImpl({
     required TransactionReadRepository transactionRead,
     required EntryReadRepository entryRead,
-    required TransactionDetailReadRepository detailRead,
+    required TransactionLineReadRepository lineRead,
     required AccountQueryService accountQuery,
     required LedgerMetricsSource metricsSource,
   }) : _txRead = transactionRead,
        _entryRead = entryRead,
-       _detailRead = detailRead,
+       _lineRead = lineRead,
        _accountQuery = accountQuery,
        _metricsSource = metricsSource;
 
   final TransactionReadRepository _txRead;
   final EntryReadRepository _entryRead;
-  final TransactionDetailReadRepository _detailRead;
+  final TransactionLineReadRepository _lineRead;
   final AccountQueryService _accountQuery;
   final LedgerMetricsSource _metricsSource;
 
   @override
-  Stream<List<TransactionListReadModel>> watchTransactions(
+  Stream<List<TransactionReadModel>> watchTransactions(
     TransactionListQuery query,
   ) {
     return _txRead.watchChanges().asyncMap((_) => _loadTransactions(query));
   }
 
   @override
-  Future<List<TransactionListReadModel>> findTransactions(
+  Future<List<TransactionReadModel>> findTransactions(
     TransactionListQuery query,
   ) {
     return _loadTransactions(query);
   }
 
-  Future<List<TransactionListReadModel>> _loadTransactions(
+  Future<List<TransactionReadModel>> _loadTransactions(
     TransactionListQuery query,
   ) async {
     final accountsById = await _accountQuery.findAccountsById();
     final pageQuery = _normalizeQuery(query, accountsById);
-    final categoryAccountIds = pageQuery.categoryAccountIds;
-    final settlementAccountIds = pageQuery.settlementAccountIds;
+    final match = pageQuery.match;
+    final categoryAccountIds = match.categoryAccountIds;
+    final settlementAccountIds = match.settlementAccountIds;
     final tagIds = pageQuery.tagIds;
     if ((categoryAccountIds != null && categoryAccountIds.isEmpty) ||
         (settlementAccountIds != null && settlementAccountIds.isEmpty) ||
@@ -109,19 +101,16 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
       return const [];
     }
     final page = await _txRead.watchPage(pageQuery).first;
-    return _projectListItems(page, accountsById);
+    return _projectTransactions(page, accountsById);
   }
 
   TransactionPageQuery _normalizeQuery(
     TransactionListQuery query,
     Map<String, Account> accountsById,
   ) {
+    final requestedMatch = query.match;
     return TransactionPageQuery(
-      categoryAccountIds: _expandCategoryFilter(query, accountsById),
-      settlementAccountIds: _validateSettlementAccountFilter(
-        query.settlementAccountIds,
-        accountsById,
-      ),
+      match: _normalizeMatch(requestedMatch, accountsById),
       occurredFrom: query.occurredFrom,
       occurredUntil: query.occurredUntil,
       topLevelOnly: query.topLevelOnly,
@@ -134,8 +123,30 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     );
   }
 
-  /// 结算账户只能是当前活跃的 asset / liability 用户账户。
-  /// 不存在、归档或系统账户返回空集合，表达“无可匹配项”。
+  TransactionMatch _normalizeMatch(
+    TransactionMatch match,
+    Map<String, Account> accountsById,
+  ) {
+    final categoryAccountIds = _expandCategoryFilter(
+      match.categoryAccountIds,
+      accountsById,
+    );
+    final settlementAccountIds = _validateSettlementAccountFilter(
+      match.settlementAccountIds,
+      accountsById,
+    );
+    return switch (match) {
+      TransactionFactMatch() => TransactionFactMatch(
+        categoryAccountIds: categoryAccountIds,
+        settlementAccountIds: settlementAccountIds,
+      ),
+      TransactionImpactMatch() => TransactionImpactMatch(
+        categoryAccountIds: categoryAccountIds,
+        settlementAccountIds: settlementAccountIds,
+      ),
+    };
+  }
+
   Set<String>? _validateSettlementAccountFilter(
     Set<String>? accountIds,
     Map<String, Account> accountsById,
@@ -149,12 +160,10 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     };
   }
 
-  /// 只保留当前账户快照中的活跃收入/支出分类。
   Set<String>? _expandCategoryFilter(
-    TransactionListQuery query,
+    Set<String>? accountIds,
     Map<String, Account> accountsById,
   ) {
-    final accountIds = query.categoryAccountIds;
     if (accountIds == null) return null;
     return {
       for (final accountId in accountIds)
@@ -164,183 +173,95 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     };
   }
 
-  Future<List<TransactionListReadModel>> _projectListItems(
-    List<Transaction> page,
+  Future<List<TransactionReadModel>> _projectTransactions(
+    List<Transaction> transactions,
     Map<String, Account> accountsById,
   ) async {
-    if (page.isEmpty) return const [];
-    final pageIds = page.map((transaction) => transaction.id).toSet();
-    final refundParentIds = page
-        .where(
-          (transaction) =>
-              transaction.parentTransactionId == null &&
-              (transaction.businessPurpose == BusinessPurpose.dailyExpense ||
-                  transaction.businessPurpose ==
-                      BusinessPurpose.reimbursementAdvance),
-        )
-        .map((transaction) => transaction.id)
-        .toSet();
-    final reimbursementParentIds = page
-        .where(
-          (transaction) =>
-              transaction.parentTransactionId == null &&
-              transaction.businessPurpose ==
-                  BusinessPurpose.reimbursementAdvance,
-        )
-        .map((transaction) => transaction.id)
-        .toSet();
-    final detailTransactionIds = page
-        .where(
-          (transaction) =>
-              transaction.businessPurpose == BusinessPurpose.transfer ||
-              transaction.businessPurpose == BusinessPurpose.debtRepayment ||
-              transaction.businessPurpose ==
-                  BusinessPurpose.receivableCollection,
-        )
-        .map((transaction) => transaction.id)
-        .toSet();
+    if (transactions.isEmpty) return const [];
 
+    final parentIds = {
+      for (final transaction in transactions)
+        if (transaction.parentTransactionId == null) transaction.id,
+    };
+    final childrenByParent = await _txRead.findChildrenByParentIds(parentIds);
+    final allById = <String, Transaction>{
+      for (final transaction in transactions) transaction.id: transaction,
+      for (final children in childrenByParent.values)
+        for (final child in children) child.id: child,
+    };
+    final allIds = allById.keys.toSet();
     final results = await Future.wait([
-      _txRead.aggregateChildren(
-        parentIds: refundParentIds,
-        purposes: const {BusinessPurpose.refund},
-      ),
-      _txRead.aggregateChildren(
-        parentIds: reimbursementParentIds,
-        purposes: const {
-          BusinessPurpose.reimbursementReceipt,
-          BusinessPurpose.reimbursementClose,
-        },
-      ),
-      _txRead.aggregateChildDetailAmounts(
-        parentIds: reimbursementParentIds,
-        detailTypes: const {
-          TransactionDetailType.reimbursementGapIncome,
-          TransactionDetailType.reimbursementGapExpense,
-        },
-      ),
-      _entryRead.findByTransactionIds(pageIds),
-      _detailRead.findByTransactionIds(detailTransactionIds),
+      _entryRead.findByTransactionIds(allIds),
+      _lineRead.findByTransactionIds(allIds),
+      _txRead.findCreatedAtByIds(allIds),
     ]);
-    final refundAgg = results[0] as Map<String, TransactionChildAggregate>;
-    final reimbursementAgg =
-        results[1] as Map<String, TransactionChildAggregate>;
-    final gapAgg = results[2] as Map<String, Map<TransactionDetailType, int>>;
-    final entriesByTransaction = results[3] as Map<String, List<Entry>>;
-    final detailsByTransaction =
-        results[4] as Map<String, List<TransactionDetailRecord>>;
+    final entriesByTransaction = results[0] as Map<String, List<Entry>>;
+    final linesByTransaction = results[1] as Map<String, List<TransactionLine>>;
+    final createdAtByTransaction = results[2] as Map<String, DateTime>;
 
+    TransactionReadModel build(
+      Transaction transaction, {
+      List<TransactionReadModel> children = const [],
+      List<Transaction> childTransactions = const [],
+    }) {
+      final lines = List<TransactionLine>.of(
+        linesByTransaction[transaction.id] ?? const [],
+      )..sort((left, right) => left.lineNo.compareTo(right.lineNo));
+      final transactionWithLines = transaction.copyWith(lines: lines);
+      final group = transaction.parentTransactionId == null
+          ? TransactionGroup(
+              parentTransaction: transactionWithLines,
+              childTransactions: [
+                for (final child in childTransactions)
+                  child.copyWith(
+                    lines:
+                        List<TransactionLine>.of(
+                          linesByTransaction[child.id] ?? const [],
+                        )..sort(
+                          (left, right) => left.lineNo.compareTo(right.lineNo),
+                        ),
+                  ),
+              ],
+            )
+          : null;
+      return TransactionReadModel(
+        id: transaction.id,
+        parentTransactionId: transaction.parentTransactionId,
+        businessPurpose: transaction.businessPurpose,
+        occurredAt: transaction.occurredAt,
+        postedAt: transaction.postedAt,
+        primaryAmount: transaction.primaryAmount,
+        counterpartyName: transaction.counterpartyName,
+        note: transaction.note,
+        sourceKind: transaction.sourceKind,
+        ownership: transaction.ownership,
+        isExcludedFromStats: transaction.isExcludedFromStats,
+        isExcludedFromBudget: transaction.isExcludedFromBudget,
+        createdAt:
+            createdAtByTransaction[transaction.id] ?? transaction.occurredAt,
+        lines: lines,
+        impactsByAccountId: _accountImpacts(
+          entriesByTransaction[transaction.id] ?? const [],
+          accountsById,
+        ),
+        children: children,
+        refundSummary: group?.refundSummary,
+        reimbursementSummary: group?.reimbursementSummary,
+      );
+    }
+
+    final childModelsByParent = <String, List<TransactionReadModel>>{
+      for (final entry in childrenByParent.entries)
+        entry.key: [for (final child in entry.value) build(child)],
+    };
     return [
-      for (final transaction in page)
-        TransactionListReadModel(
-          id: transaction.id,
-          businessPurpose: transaction.businessPurpose,
-          occurredAt: transaction.occurredAt,
-          primaryAmount: transaction.primaryAmount,
-          isExcludedFromStats: transaction.isExcludedFromStats,
-          isExcludedFromBudget: transaction.isExcludedFromBudget,
-          primaryCategoryId: _primaryCategoryId(
-            transaction,
-            entriesByTransaction[transaction.id] ?? const [],
-            accountsById,
-          ),
-          impactsByAccountId: _accountImpacts(
-            entriesByTransaction[transaction.id] ?? const [],
-            accountsById,
-          ),
-          adjustments: _adjustments(
-            transaction: transaction,
-            details: detailsByTransaction[transaction.id] ?? const [],
-            refundAgg: refundAgg,
-            reimbursementAgg: reimbursementAgg,
-            gapAgg: gapAgg,
-          ),
+      for (final transaction in transactions)
+        build(
+          transaction,
+          children: childModelsByParent[transaction.id] ?? const [],
+          childTransactions: childrenByParent[transaction.id] ?? const [],
         ),
     ];
-  }
-
-  String? _primaryCategoryId(
-    Transaction transaction,
-    List<Entry> entries,
-    Map<String, Account> accountsById,
-  ) {
-    final reimbursementCategoryId = transaction.reimbursementExpenseAccountId;
-    final category = switch (transaction.businessPurpose) {
-      BusinessPurpose.dailyExpense => _uniqueRoleAccount(
-        entries,
-        accountsById,
-        type: AccountType.expense,
-        direction: EntryDirection.debit,
-        amount: transaction.primaryAmount,
-      ),
-      BusinessPurpose.dailyIncome => _uniqueRoleAccount(
-        entries,
-        accountsById,
-        type: AccountType.income,
-        direction: EntryDirection.credit,
-        amount: transaction.primaryAmount,
-      ),
-      BusinessPurpose.reimbursementAdvance =>
-        reimbursementCategoryId == null
-            ? null
-            : accountsById[reimbursementCategoryId],
-      BusinessPurpose.badDebt => _uniqueRoleAccount(
-        entries,
-        accountsById,
-        type: AccountType.expense,
-        direction: EntryDirection.debit,
-        amount: transaction.primaryAmount,
-      ),
-      BusinessPurpose.debtRelief => _uniqueRoleAccount(
-        entries,
-        accountsById,
-        type: AccountType.income,
-        direction: EntryDirection.credit,
-        amount: transaction.primaryAmount,
-      ),
-      BusinessPurpose.receivableCollection => _firstRoleAccount(
-        entries,
-        accountsById,
-        type: AccountType.income,
-        direction: EntryDirection.credit,
-      ),
-      _ => null,
-    };
-    return category?.id;
-  }
-
-  Account? _firstRoleAccount(
-    List<Entry> entries,
-    Map<String, Account> accountsById, {
-    required AccountType type,
-    required EntryDirection direction,
-  }) {
-    for (final entry in entries) {
-      final account = accountsById[entry.accountId];
-      if (account?.type == type && entry.direction == direction) return account;
-    }
-    return null;
-  }
-
-  Account? _uniqueRoleAccount(
-    List<Entry> entries,
-    Map<String, Account> accountsById, {
-    required AccountType type,
-    required EntryDirection direction,
-    required Money amount,
-  }) {
-    Account? candidate;
-    for (final entry in entries) {
-      final account = accountsById[entry.accountId];
-      if (account?.type != type ||
-          entry.direction != direction ||
-          entry.amount.minorUnits != amount.minorUnits) {
-        continue;
-      }
-      if (candidate != null) return null;
-      candidate = account;
-    }
-    return candidate;
   }
 
   Map<String, TransactionAccountImpact> _accountImpacts(
@@ -382,102 +303,6 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     });
   }
 
-  List<TransactionAdjustment> _adjustments({
-    required Transaction transaction,
-    required List<TransactionDetailRecord> details,
-    required Map<String, TransactionChildAggregate> refundAgg,
-    required Map<String, TransactionChildAggregate> reimbursementAgg,
-    required Map<String, Map<TransactionDetailType, int>> gapAgg,
-  }) {
-    if (transaction.parentTransactionId != null) return const [];
-    final adjustments = <TransactionAdjustment>[];
-    void add(TransactionAdjustmentKind kind, int amountMinor) {
-      if (amountMinor <= 0) return;
-      adjustments.add(
-        TransactionAdjustment(
-          kind: kind,
-          amount: Money(minorUnits: amountMinor),
-        ),
-      );
-    }
-
-    switch (transaction.businessPurpose) {
-      case BusinessPurpose.transfer:
-        add(
-          TransactionAdjustmentKind.transferFee,
-          _detailAmount(details, TransactionDetailType.transferFee),
-        );
-      case BusinessPurpose.dailyExpense:
-        add(
-          TransactionAdjustmentKind.refund,
-          refundAgg[transaction.id]?.sumMinor ?? 0,
-        );
-      case BusinessPurpose.reimbursementAdvance:
-        add(
-          TransactionAdjustmentKind.refund,
-          refundAgg[transaction.id]?.sumMinor ?? 0,
-        );
-        add(
-          TransactionAdjustmentKind.reimbursementReceived,
-          reimbursementAgg[transaction.id]?.sumMinor ?? 0,
-        );
-        add(
-          TransactionAdjustmentKind.reimbursementGapIncome,
-          gapAgg[transaction.id]?[TransactionDetailType
-                  .reimbursementGapIncome] ??
-              0,
-        );
-        add(
-          TransactionAdjustmentKind.reimbursementGapExpense,
-          gapAgg[transaction.id]?[TransactionDetailType
-                  .reimbursementGapExpense] ??
-              0,
-        );
-      case BusinessPurpose.debtRepayment:
-        add(
-          TransactionAdjustmentKind.repaymentInterest,
-          _detailAmount(details, TransactionDetailType.repaymentInterest),
-        );
-        add(
-          TransactionAdjustmentKind.repaymentFee,
-          _detailAmount(details, TransactionDetailType.repaymentFee),
-        );
-        add(
-          TransactionAdjustmentKind.repaymentDiscount,
-          _detailAmount(details, TransactionDetailType.repaymentDiscount),
-        );
-      case BusinessPurpose.receivableCollection:
-        add(
-          TransactionAdjustmentKind.receivableCollectionPrincipal,
-          _detailAmount(
-            details,
-            TransactionDetailType.receivableCollectionPrincipal,
-          ),
-        );
-        add(
-          TransactionAdjustmentKind.receivableCollectionInterest,
-          _detailAmount(
-            details,
-            TransactionDetailType.receivableCollectionInterest,
-          ),
-        );
-      default:
-        break;
-    }
-    return List.unmodifiable(adjustments);
-  }
-
-  int _detailAmount(
-    List<TransactionDetailRecord> details,
-    TransactionDetailType type,
-  ) {
-    var total = 0;
-    for (final detail in details) {
-      if (detail.type == type) total += detail.amount.minorUnits;
-    }
-    return total;
-  }
-
   @override
   Stream<CashflowSummary> watchCashflowSummary(CashflowSummaryQuery query) {
     return Stream.fromFuture(_loadCashflowSummary(query)).asBroadcastStream();
@@ -501,103 +326,29 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   }
 
   @override
-  Stream<TransactionDetail?> watchTransactionDetail(String transactionId) {
+  Stream<TransactionReadModel?> watchTransactionDetail(String transactionId) {
     return _txRead.watchChanges().asyncMap((_) => _loadDetail(transactionId));
   }
 
   @override
-  Future<TransactionDetail?> findTransactionDetail(String transactionId) {
+  Future<TransactionReadModel?> findTransactionDetail(String transactionId) {
     return _loadDetail(transactionId);
   }
 
   @override
-  Future<TransactionDetail?> findParentTransactionDetail(
+  Future<TransactionReadModel?> findParentTransactionDetail(
     String parentTransactionId,
   ) {
     return _loadDetail(parentTransactionId);
   }
 
-  @override
-  Future<List<TransactionDetail>> findTransactionFacts(
-    Set<String> transactionIds,
-  ) async {
-    if (transactionIds.isEmpty) return const [];
-    final transactions = await _txRead.findByIds(transactionIds);
-    final fetchedIds = transactions
-        .map((transaction) => transaction.id)
-        .toSet();
-    final entriesByTransaction = await _entryRead.findByTransactionIds(
-      fetchedIds,
-    );
-    final detailsByTransaction = await _detailRead.findByTransactionIds(
-      fetchedIds,
-    );
-    return [
-      for (final transaction in transactions)
-        TransactionDetail(
-          transaction: transaction,
-          createdAt: DateTime.fromMillisecondsSinceEpoch(0),
-          entries: List.unmodifiable(
-            entriesByTransaction[transaction.id] ?? const [],
-          ),
-          details: List.unmodifiable(
-            detailsByTransaction[transaction.id] ?? const [],
-          ),
-        ),
-    ];
-  }
-
-  Future<TransactionDetail?> _loadDetail(String transactionId) async {
+  Future<TransactionReadModel?> _loadDetail(String transactionId) async {
     final transaction = await _txRead.findById(transactionId);
     if (transaction == null) return null;
-    final entriesByTransaction = await _entryRead.findByTransactionIds({
-      transactionId,
-    });
-    final detailsByTransaction = await _detailRead.findByTransactionIds({
-      transactionId,
-    });
-    final children = transaction.parentTransactionId == null
-        ? await _txRead.findChildren(parentId: transaction.id)
-        : const <Transaction>[];
-    final createdAt =
-        await _txRead.findCreatedAt(transactionId) ?? transaction.occurredAt;
-    final childModels = children.isEmpty
-        ? const <TransactionListReadModel>[]
-        : await _projectListItems(
-            children,
-            await _accountQuery.findAccountsById(),
-          );
-    final refundedTotal =
-        (transaction.businessPurpose == BusinessPurpose.dailyExpense ||
-            transaction.businessPurpose == BusinessPurpose.reimbursementAdvance)
-        ? await getRefundedTotal(transaction.id)
-        : null;
-    final reimbursementSummary =
-        transaction.businessPurpose == BusinessPurpose.reimbursementAdvance
-        ? await getReimbursementSummary(transaction.id)
-        : _shouldLoadParentReimbursementSummary(transaction.businessPurpose) &&
-              transaction.parentTransactionId != null
-        ? await getReimbursementSummary(transaction.parentTransactionId!)
-        : null;
-    return TransactionDetail(
-      transaction: transaction,
-      createdAt: createdAt,
-      entries: List.unmodifiable(
-        entriesByTransaction[transactionId] ?? const [],
-      ),
-      details: List.unmodifiable(
-        detailsByTransaction[transactionId] ?? const [],
-      ),
-      children: childModels,
-      refundedTotal: refundedTotal,
-      reimbursementSummary: reimbursementSummary,
-    );
-  }
-
-  bool _shouldLoadParentReimbursementSummary(BusinessPurpose purpose) {
-    return purpose == BusinessPurpose.refund ||
-        purpose == BusinessPurpose.reimbursementReceipt ||
-        purpose == BusinessPurpose.reimbursementClose;
+    final models = await _projectTransactions([
+      transaction,
+    ], await _accountQuery.findAccountsById());
+    return models.single;
   }
 
   @override
@@ -619,87 +370,41 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
       ),
     );
     if (transaction == null) return null;
-    final entriesByTransaction = await _entryRead.findByTransactionIds({
+    final linesByTransaction = await _lineRead.findByTransactionIds({
       transaction.id,
     });
-    final accountIds =
-        entriesByTransaction[transaction.id]
-            ?.map((entry) => entry.accountId)
-            .toSet() ??
-        const <String>{};
-    final candidates = {
-      for (final accountId in accountIds)
-        if (accountsById[accountId] case final account?
-            when account.type.isUserAccount &&
-                accountMatchesUsage(account, AccountUsage.settlement))
-          account.id,
-    };
+    final candidates = <String>{};
+    for (final line in linesByTransaction[transaction.id] ?? const []) {
+      if (line.role != TransactionRole.settlementIn &&
+          line.role != TransactionRole.settlementOut) {
+        continue;
+      }
+      final accountId = line.accountId;
+      if (accountId == null) continue;
+      final account = accountsById[accountId];
+      if (account != null &&
+          account.type.isUserAccount &&
+          accountMatchesUsage(account, AccountUsage.settlement)) {
+        candidates.add(account.id);
+      }
+    }
     return candidates.length == 1 ? candidates.single : null;
   }
 
   @override
-  Future<Money> getRefundedTotal(String parentTransactionId) async {
-    final result = await _txRead.aggregateChildren(
-      parentIds: {parentTransactionId},
-      purposes: const {BusinessPurpose.refund},
-    );
-    return Money(minorUnits: result[parentTransactionId]?.sumMinor ?? 0);
-  }
-
-  @override
-  Future<ReimbursementSummary?> getReimbursementSummary(
-    String parentTransactionId,
-  ) async {
-    final advance = await _txRead.findById(parentTransactionId);
-    if (advance == null ||
-        advance.businessPurpose != BusinessPurpose.reimbursementAdvance) {
-      return null;
-    }
-    final byPurpose = await _txRead.aggregateChildrenByPurpose(
-      parentIds: {parentTransactionId},
-      purposes: const {
-        BusinessPurpose.refund,
-        BusinessPurpose.reimbursementReceipt,
-        BusinessPurpose.reimbursementClose,
-      },
-    );
-    final bucket = byPurpose[parentTransactionId] ?? const {};
-    final refund =
-        bucket[BusinessPurpose.refund] ?? TransactionChildAggregate.empty;
-    final receipt =
-        bucket[BusinessPurpose.reimbursementReceipt] ??
-        TransactionChildAggregate.empty;
-    final close =
-        bucket[BusinessPurpose.reimbursementClose] ??
-        TransactionChildAggregate.empty;
-    final received = Money(minorUnits: receipt.sumMinor + close.sumMinor);
-    final isClosed = close.count > 0;
-    return ReimbursementSummary(
-      advanceAmount: advance.primaryAmount,
-      receivedAmount: received,
-      outstanding: isClosed
-          ? Money.zero()
-          : advance.primaryAmount -
-                received -
-                Money(minorUnits: refund.sumMinor),
-      isClosed: isClosed,
-    );
-  }
-
-  @override
-  Future<int> getDetailAmountSum({
+  Future<int> getLineAmountSum({
     required Iterable<String> transactionIds,
-    required TransactionDetailType detailType,
+    required TransactionRole role,
   }) async {
     final ids = transactionIds.toSet();
     if (ids.isEmpty) return 0;
-    final result = await _detailRead.sumOwnByType(
+    final result = await _lineRead.sumOwnByRole(
       transactionIds: ids,
-      detailTypes: {detailType},
+      roles: {role},
     );
     var total = 0;
-    for (final byType in result.values) {
-      total += byType[detailType] ?? 0;
+    for (final byRole in result.values) {
+      total += byRole[role] ?? 0;
     }
     return total;
   }

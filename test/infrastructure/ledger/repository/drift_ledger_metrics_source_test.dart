@@ -61,7 +61,9 @@ void main() {
           await repository
               .watchPage(
                 TransactionPageQuery(
-                  categoryAccountIds: const {'dining'},
+                  match: const TransactionImpactMatch(
+                    categoryAccountIds: {'dining'},
+                  ),
                   occurredFrom: DateTime(2026, 1),
                   occurredUntil: DateTime(2026, 2),
                   topLevelOnly: false,

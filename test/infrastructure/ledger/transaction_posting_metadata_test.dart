@@ -5,6 +5,7 @@ import 'package:smartflow/application/ledger/transaction/command/transaction_led
 import 'package:smartflow/application/ledger/transaction/command/transaction_posting_app_service.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
+import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_account_repository.dart';
@@ -44,8 +45,14 @@ void main() {
     final expense = await service.createExpense(
       CreateExpenseCommand(
         amount: Money.parse('25.00'),
-        paidFromAccountId: 'cash',
-        expenseAccountId: 'food',
+        categoryAllocations: singleAllocation(
+          accountId: 'food',
+          amount: Money.parse('25.00'),
+        ),
+        settlementAllocations: singleAllocation(
+          accountId: 'cash',
+          amount: Money.parse('25.00'),
+        ),
         occurredAt: DateTime(2026, 4, 1, 9),
         postedAt: DateTime(2026, 4, 2, 18),
         sourceKind: SourceKind.import,

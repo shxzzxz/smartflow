@@ -64,7 +64,11 @@ void main() {
         expect(outcome, isA<UiActionSuccess<void>>());
         final command = editService.expenseCommands.single;
         expect(command.transactionId, 'tx-1');
-        expect(command.paidFromAccountId, 'bank');
+        expect(command.settlementAllocations!.single.accountId, 'bank');
+        expect(
+          command.settlementAllocations!.single.amount,
+          const Money(minorUnits: 10000),
+        );
       },
     );
 
@@ -379,10 +383,63 @@ void main() {
       final command = posting.closeCommands.single;
       expect(command.advanceTransactionId, 'tx-1');
       expect(command.receivableAccountId, 'company');
-      expect(command.receiveAccountId, 'bank');
+      expect(command.settlementAllocations.single.accountId, 'bank');
       expect(command.actualReceivedAmount, const Money(minorUnits: 7000));
       expect(command.note, 'done');
     });
+
+    test(
+      'submits a single remaining category for a reimbursement shortfall',
+      () async {
+        final posting = _FakeTransactionPostingAppService();
+        final detail = _detail(
+          purpose: BusinessPurpose.reimbursementAdvance,
+          entries: [
+            _entry('cash', EntryDirection.credit),
+            _entry('company', EntryDirection.debit),
+            _entry('food', EntryDirection.debit),
+          ],
+          refundSummary: const RefundSummary(
+            refundedTotal: Money(minorUnits: 0),
+            originalCategoryAllocations: [
+              AccountAmountAllocation(
+                accountId: 'food',
+                amount: Money(minorUnits: 10000),
+              ),
+            ],
+            refundedCategoryAllocations: [],
+          ),
+          reimbursementSummary: const ReimbursementSummary(
+            advanceAmount: Money(minorUnits: 10000),
+            receivedAmount: Money(minorUnits: 0),
+            outstanding: Money(minorUnits: 7000),
+            isClosed: false,
+          ),
+        );
+        final container = _container(detail: detail, posting: posting);
+        await _readState(container);
+
+        final outcome = await container
+            .read(transactionDetailViewModelProvider('tx-1').notifier)
+            .submitReimbursement(
+              ReimbursementSubmitInput(
+                amount: const Money(minorUnits: 6000),
+                receiveAccountId: 'bank',
+                occurredAt: DateTime(2026, 1, 2, 9),
+                closeReimbursement: true,
+              ),
+            );
+
+        expect(outcome, isA<UiActionSuccess<void>>());
+        final command = posting.closeCommands.single;
+        expect(command.gapExpenseAllocations, hasLength(1));
+        expect(command.gapExpenseAllocations.single.accountId, 'food');
+        expect(
+          command.gapExpenseAllocations.single.amount,
+          const Money(minorUnits: 1000),
+        );
+      },
+    );
 
     test('unknown owner still allows note and posted time edits', () async {
       final update = _FakeTransactionUpdateAppService();
@@ -422,7 +479,7 @@ void main() {
 }
 
 ProviderContainer _container({
-  required TransactionDetail detail,
+  required TransactionReadModel detail,
   _FakeTransactionUpdateAppService? update,
   _FakeTransactionEditAppService? editService,
   _FakeTransactionPostingAppService? posting,
@@ -483,14 +540,55 @@ Future<TransactionDetailUiState> _readState(ProviderContainer container) {
   return container.read(transactionDetailViewModelProvider('tx-1').future);
 }
 
-TransactionDetail _detail({
+TransactionReadModel _detail({
   BusinessPurpose purpose = BusinessPurpose.dailyExpense,
   TransactionOwnership? ownership,
   List<Entry>? entries,
   Money? refundedTotal,
+  RefundSummary? refundSummary,
   ReimbursementSummary? reimbursementSummary,
 }) {
-  return TransactionDetail(
+  final sourceEntries =
+      entries ??
+      [
+        _entry('cash', EntryDirection.credit),
+        _entry('food', EntryDirection.debit),
+      ];
+  final lines = purpose == BusinessPurpose.reimbursementAdvance
+      ? _advanceLines
+      : [
+          for (var index = 0; index < sourceEntries.length; index++)
+            TransactionLine(
+              id: 'line-$index',
+              transactionId: 'tx-1',
+              lineNo: index + 1,
+              role: switch (purpose) {
+                BusinessPurpose.dailyExpense =>
+                  sourceEntries[index].accountId == 'food'
+                      ? TransactionRole.category
+                      : TransactionRole.settlementOut,
+                BusinessPurpose.dailyIncome =>
+                  sourceEntries[index].accountId == 'salary'
+                      ? TransactionRole.category
+                      : TransactionRole.settlementIn,
+                BusinessPurpose.borrowing =>
+                  sourceEntries[index].accountId == 'loan'
+                      ? TransactionRole.liability
+                      : TransactionRole.settlementIn,
+                BusinessPurpose.debtRepayment =>
+                  sourceEntries[index].accountId == 'loan'
+                      ? TransactionRole.liability
+                      : TransactionRole.settlementOut,
+                _ =>
+                  sourceEntries[index].direction == EntryDirection.debit
+                      ? TransactionRole.settlementIn
+                      : TransactionRole.settlementOut,
+              },
+              accountId: sourceEntries[index].accountId,
+              amount: sourceEntries[index].amount,
+            ),
+        ];
+  return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'tx-1',
       businessPurpose: purpose,
@@ -500,19 +598,67 @@ TransactionDetail _detail({
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
       ownership: ownership,
-      reimbursementExpenseAccountId:
-          purpose == BusinessPurpose.reimbursementAdvance ? 'food' : null,
+      lines: lines,
     ),
     createdAt: DateTime(2026, 1, 1, 8, 1),
-    details: const [],
-    entries:
-        entries ??
-        [
-          _entry('cash', EntryDirection.credit),
-          _entry('food', EntryDirection.debit),
-        ],
-    refundedTotal: refundedTotal,
+    lines: lines,
+    refundSummary:
+        refundSummary ??
+        (refundedTotal == null
+            ? null
+            : RefundSummary(
+                refundedTotal: refundedTotal,
+                originalCategoryAllocations: const [],
+                refundedCategoryAllocations: const [],
+              )),
     reimbursementSummary: reimbursementSummary,
+    children: [
+      if (refundedTotal != null)
+        TransactionReadModel(
+          id: 'refund',
+          parentTransactionId: 'tx-1',
+          businessPurpose: BusinessPurpose.refund,
+          occurredAt: DateTime(2026, 1, 2),
+          primaryAmount: refundedTotal,
+          isExcludedFromStats: false,
+          isExcludedFromBudget: false,
+          lines: [
+            TransactionLine(
+              id: 'refund-settlement',
+              transactionId: 'refund',
+              lineNo: 1,
+              role: TransactionRole.settlementIn,
+              accountId: 'cash',
+              amount: refundedTotal,
+            ),
+          ],
+        ),
+      if (reimbursementSummary != null &&
+          reimbursementSummary.receivedAmount.minorUnits > 0)
+        TransactionReadModel(
+          id: reimbursementSummary.isClosed ? 'close' : 'receipt',
+          parentTransactionId: 'tx-1',
+          businessPurpose: reimbursementSummary.isClosed
+              ? BusinessPurpose.reimbursementClose
+              : BusinessPurpose.reimbursementReceipt,
+          occurredAt: DateTime(2026, 1, 2),
+          primaryAmount: reimbursementSummary.receivedAmount,
+          isExcludedFromStats: false,
+          isExcludedFromBudget: false,
+          lines: [
+            TransactionLine(
+              id: 'reimbursement-settlement',
+              transactionId: reimbursementSummary.isClosed
+                  ? 'close'
+                  : 'receipt',
+              lineNo: 1,
+              role: TransactionRole.settlementIn,
+              accountId: 'cash',
+              amount: reimbursementSummary.receivedAmount,
+            ),
+          ],
+        ),
+    ],
   );
 }
 
@@ -664,6 +810,13 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
 
   @override
   Future<PostedTransactionResult> editTransfer(EditTransferCommand command) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PostedTransactionResult> replaceTransactionCategory(
+    ReplaceTransactionCategoryCommand command,
+  ) {
     throw UnimplementedError();
   }
 }
@@ -825,3 +978,30 @@ class _FakeRepaymentAppService implements RepaymentAppService {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
+
+const _advanceLines = [
+  TransactionLine(
+    id: 'advance-category',
+    transactionId: 'tx-1',
+    lineNo: 1,
+    role: TransactionRole.reimbursementExpenseCategory,
+    accountId: 'food',
+    amount: Money(minorUnits: 10000),
+  ),
+  TransactionLine(
+    id: 'advance-out',
+    transactionId: 'tx-1',
+    lineNo: 2,
+    role: TransactionRole.settlementOut,
+    accountId: 'cash',
+    amount: Money(minorUnits: 10000),
+  ),
+  TransactionLine(
+    id: 'advance-receivable',
+    transactionId: 'tx-1',
+    lineNo: 3,
+    role: TransactionRole.receivable,
+    accountId: 'company',
+    amount: Money(minorUnits: 10000),
+  ),
+];

@@ -213,8 +213,9 @@ void main() {
         await container.pump();
 
         final query = transactionService.queries.last;
-        expect(query.categoryAccountIds, {'cat-food', 'cat-lunch'});
-        expect(query.settlementAccountIds, {'acc-cash', 'acc-card'});
+        expect(query.match, isA<TransactionFactMatch>());
+        expect(query.match.categoryAccountIds, {'cat-food', 'cat-lunch'});
+        expect(query.match.settlementAccountIds, {'acc-cash', 'acc-card'});
         expect(metricsService.comparisonQueries, hasLength(1));
         expect(metricsService.dailyQueries, hasLength(1));
       },
@@ -269,8 +270,9 @@ void main() {
 
         final query = transactionService.queries.last;
         expect(query.limit, homeTransactionPageSize);
-        expect(query.categoryAccountIds, {'cat-food'});
-        expect(query.settlementAccountIds, {'acc-cash'});
+        expect(query.match, isA<TransactionFactMatch>());
+        expect(query.match.categoryAccountIds, {'cat-food'});
+        expect(query.match.settlementAccountIds, {'acc-cash'});
         expect(query.before?.id, firstPage.last.id);
         expect(query.before?.occurredAt, firstPage.last.occurredAt);
         final state = container.read(
@@ -360,7 +362,7 @@ void main() {
         for (var i = 0; i < homeTransactionPageSize; i++) _item(id: 'old-$i'),
       ]);
       await _flush();
-      final oldPage = Completer<List<TransactionListReadModel>>();
+      final oldPage = Completer<List<TransactionReadModel>>();
       transactionService.nextPageFuture = oldPage.future;
 
       final loadMore =
@@ -447,17 +449,15 @@ Future<void> _flush() async {
   await Future<void>.delayed(Duration.zero);
 }
 
-TransactionListReadModel _item({String id = 'tx-1', DateTime? occurredAt}) {
-  return TransactionListReadModel(
+TransactionReadModel _item({String id = 'tx-1', DateTime? occurredAt}) {
+  return TransactionReadModel(
     id: id,
     businessPurpose: BusinessPurpose.dailyIncome,
     occurredAt: occurredAt ?? DateTime(2026, 1, 1, 8),
     primaryAmount: const Money(minorUnits: 10000),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
-    primaryCategoryId: null,
     impactsByAccountId: const {},
-    adjustments: const [],
   );
 }
 
@@ -480,22 +480,22 @@ CashflowComparison _comparison() {
 
 class _FakeTransactionQueryService implements TransactionQueryService {
   final queries = <TransactionListQuery>[];
-  final _streams = <_ReplayStream<List<TransactionListReadModel>>>[];
-  List<TransactionListReadModel>? nextPage;
-  Future<List<TransactionListReadModel>>? nextPageFuture;
+  final _streams = <_ReplayStream<List<TransactionReadModel>>>[];
+  List<TransactionReadModel>? nextPage;
+  Future<List<TransactionReadModel>>? nextPageFuture;
 
   @override
-  Stream<List<TransactionListReadModel>> watchTransactions(
+  Stream<List<TransactionReadModel>> watchTransactions(
     TransactionListQuery query,
   ) {
     queries.add(query);
-    final stream = _ReplayStream<List<TransactionListReadModel>>();
+    final stream = _ReplayStream<List<TransactionReadModel>>();
     _streams.add(stream);
     return stream.watch();
   }
 
   @override
-  Future<List<TransactionListReadModel>> findTransactions(
+  Future<List<TransactionReadModel>> findTransactions(
     TransactionListQuery query,
   ) async {
     queries.add(query);
@@ -503,7 +503,7 @@ class _FakeTransactionQueryService implements TransactionQueryService {
     return nextPage ?? const [];
   }
 
-  void emit(List<TransactionListReadModel> items) {
+  void emit(List<TransactionReadModel> items) {
     _streams.last.add(items);
   }
 

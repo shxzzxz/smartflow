@@ -1,5 +1,6 @@
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
+import 'account_amount_allocation.dart';
 import 'ledger_enum.dart';
 import 'ledger_violation_reason.dart';
 import 'transaction_ownership.dart';
@@ -13,10 +14,10 @@ sealed class PostingInstruction {
 }
 
 class ExpenseInstruction extends PostingInstruction {
-  const ExpenseInstruction({
+  ExpenseInstruction({
     required this.amount,
-    required this.paidFromAccountId,
-    required this.expenseAccountId,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
     this.counterpartyName,
@@ -25,11 +26,12 @@ class ExpenseInstruction extends PostingInstruction {
     this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
     this.ownership,
-  });
+  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
+       settlementAllocations = List.unmodifiable(settlementAllocations);
 
   final Money amount;
-  final String paidFromAccountId;
-  final String expenseAccountId;
+  final List<AccountAmountAllocation> categoryAllocations;
+  final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final String? counterpartyName;
@@ -43,12 +45,15 @@ class ExpenseInstruction extends PostingInstruction {
   BusinessPurpose get businessPurpose => BusinessPurpose.dailyExpense;
 
   @override
-  Set<String> get accountIds => {paidFromAccountId, expenseAccountId};
+  Set<String> get accountIds => {
+    for (final allocation in categoryAllocations) allocation.accountId,
+    for (final allocation in settlementAllocations) allocation.accountId,
+  };
 
   ExpenseInstruction copyWith({
     Money? amount,
-    String? paidFromAccountId,
-    String? expenseAccountId,
+    List<AccountAmountAllocation>? categoryAllocations,
+    List<AccountAmountAllocation>? settlementAllocations,
     DateTime? occurredAt,
     DateTime? postedAt,
     String? counterpartyName,
@@ -58,10 +63,19 @@ class ExpenseInstruction extends PostingInstruction {
     SourceKind? sourceKind,
     TransactionOwnership? ownership,
   }) {
+    final nextAmount = amount ?? this.amount;
     return ExpenseInstruction(
-      amount: amount ?? this.amount,
-      paidFromAccountId: paidFromAccountId ?? this.paidFromAccountId,
-      expenseAccountId: expenseAccountId ?? this.expenseAccountId,
+      amount: nextAmount,
+      categoryAllocations: patchAllocations(
+        current: this.categoryAllocations,
+        total: nextAmount,
+        explicit: categoryAllocations,
+      ),
+      settlementAllocations: patchAllocations(
+        current: this.settlementAllocations,
+        total: nextAmount,
+        explicit: settlementAllocations,
+      ),
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,
       counterpartyName: counterpartyName ?? this.counterpartyName,
@@ -137,11 +151,11 @@ class IncomeInstruction extends PostingInstruction {
 }
 
 class ReimbursementAdvanceInstruction extends PostingInstruction {
-  const ReimbursementAdvanceInstruction({
+  ReimbursementAdvanceInstruction({
     required this.amount,
     required this.receivableAccountId,
-    required this.paidFromAccountId,
-    required this.expenseAccountId,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
     this.counterpartyName,
@@ -150,12 +164,13 @@ class ReimbursementAdvanceInstruction extends PostingInstruction {
     this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
     this.ownership,
-  });
+  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
+       settlementAllocations = List.unmodifiable(settlementAllocations);
 
   final Money amount;
   final String receivableAccountId;
-  final String paidFromAccountId;
-  final String expenseAccountId;
+  final List<AccountAmountAllocation> categoryAllocations;
+  final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final String? counterpartyName;
@@ -171,15 +186,15 @@ class ReimbursementAdvanceInstruction extends PostingInstruction {
   @override
   Set<String> get accountIds => {
     receivableAccountId,
-    paidFromAccountId,
-    expenseAccountId,
+    for (final allocation in categoryAllocations) allocation.accountId,
+    for (final allocation in settlementAllocations) allocation.accountId,
   };
 
   ReimbursementAdvanceInstruction copyWith({
     Money? amount,
     String? receivableAccountId,
-    String? paidFromAccountId,
-    String? expenseAccountId,
+    List<AccountAmountAllocation>? categoryAllocations,
+    List<AccountAmountAllocation>? settlementAllocations,
     DateTime? occurredAt,
     DateTime? postedAt,
     String? counterpartyName,
@@ -189,11 +204,20 @@ class ReimbursementAdvanceInstruction extends PostingInstruction {
     SourceKind? sourceKind,
     TransactionOwnership? ownership,
   }) {
+    final nextAmount = amount ?? this.amount;
     return ReimbursementAdvanceInstruction(
-      amount: amount ?? this.amount,
+      amount: nextAmount,
       receivableAccountId: receivableAccountId ?? this.receivableAccountId,
-      paidFromAccountId: paidFromAccountId ?? this.paidFromAccountId,
-      expenseAccountId: expenseAccountId ?? this.expenseAccountId,
+      categoryAllocations: patchAllocations(
+        current: this.categoryAllocations,
+        total: nextAmount,
+        explicit: categoryAllocations,
+      ),
+      settlementAllocations: patchAllocations(
+        current: this.settlementAllocations,
+        total: nextAmount,
+        explicit: settlementAllocations,
+      ),
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,
       counterpartyName: counterpartyName ?? this.counterpartyName,
@@ -207,19 +231,22 @@ class ReimbursementAdvanceInstruction extends PostingInstruction {
 }
 
 class RefundInstruction {
-  const RefundInstruction({
+  RefundInstruction({
     required this.parentTransactionId,
     required this.amount,
-    required this.refundToAccountId,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
     this.counterpartyName,
     this.note,
-  });
+  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
+       settlementAllocations = List.unmodifiable(settlementAllocations);
 
   final String parentTransactionId;
   final Money amount;
-  final String refundToAccountId;
+  final List<AccountAmountAllocation> categoryAllocations;
+  final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final String? counterpartyName;
@@ -227,21 +254,24 @@ class RefundInstruction {
 }
 
 class ReimbursementCloseInstruction {
-  const ReimbursementCloseInstruction({
+  ReimbursementCloseInstruction({
     required this.advanceTransactionId,
     required this.actualReceivedAmount,
     required this.receivableAccountId,
-    required this.receiveAccountId,
+    required List<AccountAmountAllocation> settlementAllocations,
+    required List<AccountAmountAllocation> gapExpenseAllocations,
     required this.occurredAt,
     this.postedAt,
     this.counterpartyName,
     this.note,
-  });
+  }) : settlementAllocations = List.unmodifiable(settlementAllocations),
+       gapExpenseAllocations = List.unmodifiable(gapExpenseAllocations);
 
   final String advanceTransactionId;
   final Money actualReceivedAmount;
   final String receivableAccountId;
-  final String receiveAccountId;
+  final List<AccountAmountAllocation> settlementAllocations;
+  final List<AccountAmountAllocation> gapExpenseAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final String? counterpartyName;
@@ -303,21 +333,21 @@ class TransferInstruction extends PostingInstruction {
 }
 
 class ReimbursementReceiptInstruction {
-  const ReimbursementReceiptInstruction({
+  ReimbursementReceiptInstruction({
     required this.advanceTransactionId,
     required this.amount,
     required this.receivableAccountId,
-    required this.receiveAccountId,
+    required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
     this.counterpartyName,
     this.note,
-  });
+  }) : settlementAllocations = List.unmodifiable(settlementAllocations);
 
   final String advanceTransactionId;
   final Money amount;
   final String receivableAccountId;
-  final String receiveAccountId;
+  final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final String? counterpartyName;
@@ -637,7 +667,7 @@ class EditReimbursementReceiptTransactionInstruction {
     required this.transactionId,
     this.amount,
     this.receivableAccountId,
-    this.receiveAccountId,
+    this.settlementAllocations,
     this.occurredAt,
     this.counterpartyName,
     this.note,
@@ -646,7 +676,7 @@ class EditReimbursementReceiptTransactionInstruction {
   final String transactionId;
   final Money? amount;
   final String? receivableAccountId;
-  final String? receiveAccountId;
+  final List<AccountAmountAllocation>? settlementAllocations;
   final DateTime? occurredAt;
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;
@@ -657,7 +687,8 @@ class EditReimbursementCloseTransactionInstruction {
     required this.transactionId,
     this.actualReceivedAmount,
     this.receivableAccountId,
-    this.receiveAccountId,
+    this.settlementAllocations,
+    this.gapExpenseAllocations,
     this.occurredAt,
     this.counterpartyName,
     this.note,
@@ -666,7 +697,8 @@ class EditReimbursementCloseTransactionInstruction {
   final String transactionId;
   final Money? actualReceivedAmount;
   final String? receivableAccountId;
-  final String? receiveAccountId;
+  final List<AccountAmountAllocation>? settlementAllocations;
+  final List<AccountAmountAllocation>? gapExpenseAllocations;
   final DateTime? occurredAt;
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;
@@ -724,16 +756,64 @@ sealed class PostingEditPatch {
   PostingInstruction applyTo(PostingInstruction current);
 }
 
+class CategoryReplacementEditPatch extends PostingEditPatch {
+  const CategoryReplacementEditPatch({
+    required this.businessPurpose,
+    required this.sourceCategoryId,
+    required this.targetCategoryId,
+  });
+
+  final BusinessPurpose businessPurpose;
+  final String sourceCategoryId;
+  final String targetCategoryId;
+
+  @override
+  BusinessPurpose get targetPurpose => businessPurpose;
+
+  @override
+  PostingInstruction applyTo(PostingInstruction current) {
+    final allocations = switch (current) {
+      ExpenseInstruction instruction => instruction.categoryAllocations,
+      ReimbursementAdvanceInstruction instruction =>
+        instruction.categoryAllocations,
+      _ => null,
+    };
+    if (allocations != null) {
+      final replaced = replaceAllocationAccount(
+        allocations: allocations,
+        sourceAccountId: sourceCategoryId,
+        targetAccountId: targetCategoryId,
+      );
+      return switch (current) {
+        ExpenseInstruction instruction => instruction.copyWith(
+          categoryAllocations: replaced,
+        ),
+        ReimbursementAdvanceInstruction instruction => instruction.copyWith(
+          categoryAllocations: replaced,
+        ),
+        _ => throw StateError('Unreachable category replacement source.'),
+      };
+    }
+    if (current is IncomeInstruction &&
+        current.incomeAccountId == sourceCategoryId) {
+      return current.copyWith(incomeAccountId: targetCategoryId);
+    }
+    return LedgerViolationReason.unsupportedEditSource.throwException(
+      message: 'This transaction does not reference the source category.',
+    );
+  }
+}
+
 class ExpenseEditPatch extends PostingEditPatch {
   const ExpenseEditPatch({
     this.amount,
-    this.paidFromAccountId,
-    this.expenseAccountId,
+    this.categoryAllocations,
+    this.settlementAllocations,
   });
 
   final Money? amount;
-  final String? paidFromAccountId;
-  final String? expenseAccountId;
+  final List<AccountAmountAllocation>? categoryAllocations;
+  final List<AccountAmountAllocation>? settlementAllocations;
 
   @override
   BusinessPurpose get targetPurpose => BusinessPurpose.dailyExpense;
@@ -743,15 +823,24 @@ class ExpenseEditPatch extends PostingEditPatch {
     if (current is ExpenseInstruction) {
       return current.copyWith(
         amount: amount,
-        paidFromAccountId: paidFromAccountId,
-        expenseAccountId: expenseAccountId,
+        categoryAllocations: categoryAllocations,
+        settlementAllocations: settlementAllocations,
       );
     }
     if (current is ReimbursementAdvanceInstruction) {
+      final nextAmount = amount ?? current.amount;
       return ExpenseInstruction(
-        amount: amount ?? current.amount,
-        paidFromAccountId: paidFromAccountId ?? current.paidFromAccountId,
-        expenseAccountId: expenseAccountId ?? current.expenseAccountId,
+        amount: nextAmount,
+        categoryAllocations: patchAllocations(
+          current: current.categoryAllocations,
+          total: nextAmount,
+          explicit: categoryAllocations,
+        ),
+        settlementAllocations: patchAllocations(
+          current: current.settlementAllocations,
+          total: nextAmount,
+          explicit: settlementAllocations,
+        ),
         occurredAt: current.occurredAt,
         postedAt: current.postedAt,
         counterpartyName: current.counterpartyName,
@@ -840,14 +929,14 @@ class ReimbursementAdvanceEditPatch extends PostingEditPatch {
   const ReimbursementAdvanceEditPatch({
     this.amount,
     this.receivableAccountId,
-    this.paidFromAccountId,
-    this.expenseAccountId,
+    this.categoryAllocations,
+    this.settlementAllocations,
   });
 
   final Money? amount;
   final String? receivableAccountId;
-  final String? paidFromAccountId;
-  final String? expenseAccountId;
+  final List<AccountAmountAllocation>? categoryAllocations;
+  final List<AccountAmountAllocation>? settlementAllocations;
 
   @override
   BusinessPurpose get targetPurpose => BusinessPurpose.reimbursementAdvance;
@@ -858,8 +947,8 @@ class ReimbursementAdvanceEditPatch extends PostingEditPatch {
       return current.copyWith(
         amount: amount,
         receivableAccountId: receivableAccountId,
-        paidFromAccountId: paidFromAccountId,
-        expenseAccountId: expenseAccountId,
+        categoryAllocations: categoryAllocations,
+        settlementAllocations: settlementAllocations,
       );
     }
     if (current is ExpenseInstruction) {
@@ -868,11 +957,20 @@ class ReimbursementAdvanceEditPatch extends PostingEditPatch {
         return LedgerViolationReason.reimbursementAdvanceReceivableRequired
             .throwException();
       }
+      final nextAmount = amount ?? current.amount;
       return ReimbursementAdvanceInstruction(
-        amount: amount ?? current.amount,
+        amount: nextAmount,
         receivableAccountId: receivable,
-        paidFromAccountId: paidFromAccountId ?? current.paidFromAccountId,
-        expenseAccountId: expenseAccountId ?? current.expenseAccountId,
+        categoryAllocations: patchAllocations(
+          current: current.categoryAllocations,
+          total: nextAmount,
+          explicit: categoryAllocations,
+        ),
+        settlementAllocations: patchAllocations(
+          current: current.settlementAllocations,
+          total: nextAmount,
+          explicit: settlementAllocations,
+        ),
         occurredAt: current.occurredAt,
         postedAt: current.postedAt,
         counterpartyName: current.counterpartyName,
@@ -1073,31 +1171,37 @@ class DebtReliefEditPatch extends PostingEditPatch {
 }
 
 class RefundEditPatch {
-  const RefundEditPatch({this.amount, this.refundToAccountId});
+  const RefundEditPatch({
+    this.amount,
+    this.categoryAllocations,
+    this.settlementAllocations,
+  });
 
   final Money? amount;
-  final String? refundToAccountId;
+  final List<AccountAmountAllocation>? categoryAllocations;
+  final List<AccountAmountAllocation>? settlementAllocations;
 
   RefundInstruction applyTo(RefundInstruction current) {
+    final nextAmount = amount ?? current.amount;
     return RefundInstruction(
       parentTransactionId: current.parentTransactionId,
-      amount: amount ?? current.amount,
-      refundToAccountId: refundToAccountId ?? current.refundToAccountId,
+      amount: nextAmount,
+      categoryAllocations: patchAllocations(
+        current: current.categoryAllocations,
+        total: nextAmount,
+        explicit: categoryAllocations,
+      ),
+      settlementAllocations: patchAllocations(
+        current: current.settlementAllocations,
+        total: nextAmount,
+        explicit: settlementAllocations,
+      ),
       occurredAt: current.occurredAt,
       postedAt: current.postedAt,
       counterpartyName: current.counterpartyName,
       note: current.note,
     );
   }
-}
-
-String? resolveRefundOffsetAccountId(PostingInstruction parentInstruction) {
-  return switch (parentInstruction) {
-    ExpenseInstruction(:final expenseAccountId) => expenseAccountId,
-    ReimbursementAdvanceInstruction(:final receivableAccountId) =>
-      receivableAccountId,
-    _ => null,
-  };
 }
 
 T _applyPatch<T>(Patch<T>? patch, T current) {

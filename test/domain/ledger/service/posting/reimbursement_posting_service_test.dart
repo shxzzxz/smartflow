@@ -12,10 +12,11 @@ import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewri
 import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/reimbursement_posting_service.dart';
+import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
-import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
 import '../../../../helper/sequential_id_generator.dart';
+import '../../../../helper/posting_instruction_fixtures.dart';
 
 void main() {
   test(
@@ -25,7 +26,7 @@ void main() {
 
       await expectLater(
         () => fixture.service.postReceipt(
-          ReimbursementReceiptInstruction(
+          singleReimbursementReceiptInstruction(
             advanceTransactionId: fixture.advance.id,
             amount: Money.parse('40.01'),
             receivableAccountId: 'receivable',
@@ -42,7 +43,7 @@ void main() {
     final fixture = _Fixture(refundAmount: Money.parse('20.00'));
 
     final result = await fixture.service.close(
-      ReimbursementCloseInstruction(
+      singleReimbursementCloseInstruction(
         advanceTransactionId: fixture.advance.id,
         actualReceivedAmount: Money.parse('80.00'),
         receivableAccountId: 'receivable',
@@ -52,19 +53,16 @@ void main() {
     );
 
     expect(
-      result.transaction.details
-          .singleWhere(
-            (detail) =>
-                detail.type == TransactionDetailType.reimbursementCloseMain,
-          )
+      result.transaction.lines
+          .singleWhere((detail) => detail.role == TransactionRole.receivable)
           .amount,
       Money.parse('80.00'),
     );
     expect(
-      result.transaction.details.where(
+      result.transaction.lines.where(
         (detail) =>
-            detail.type == TransactionDetailType.reimbursementGapExpense ||
-            detail.type == TransactionDetailType.reimbursementGapIncome,
+            detail.role == TransactionRole.reimbursementGapExpense ||
+            detail.role == TransactionRole.reimbursementGapIncome,
       ),
       isEmpty,
     );
@@ -79,12 +77,83 @@ void main() {
       Money.parse('80.00'),
     );
   });
+
+  test('close shortfall requires an explicit gap expense allocation', () async {
+    final fixture = _Fixture();
+
+    await expectLater(
+      () => fixture.service.close(
+        singleReimbursementCloseInstruction(
+          advanceTransactionId: fixture.advance.id,
+          actualReceivedAmount: Money.parse('20.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'cash',
+          occurredAt: DateTime(2026, 7, 3),
+        ),
+      ),
+      throwsA(isA<BusinessException>()),
+    );
+  });
+
+  test(
+    'close accepts an explicit shortfall allocation within the remainder',
+    () async {
+      final fixture = _Fixture();
+
+      final result = await fixture.service.close(
+        singleReimbursementCloseInstruction(
+          advanceTransactionId: fixture.advance.id,
+          actualReceivedAmount: Money.parse('20.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'cash',
+          occurredAt: DateTime(2026, 7, 3),
+          gapExpenseAllocations: singleAllocation(
+            accountId: 'travel',
+            amount: Money.parse('20.00'),
+          ),
+        ),
+      );
+
+      expect(
+        result.transaction.lines
+            .singleWhere(
+              (line) => line.role == TransactionRole.reimbursementGapExpense,
+            )
+            .amount,
+        Money.parse('20.00'),
+      );
+    },
+  );
+
+  test(
+    'close rejects a gap allocation above the remaining category amount',
+    () async {
+      final fixture = _Fixture();
+
+      await expectLater(
+        () => fixture.service.close(
+          singleReimbursementCloseInstruction(
+            advanceTransactionId: fixture.advance.id,
+            actualReceivedAmount: Money.parse('20.00'),
+            receivableAccountId: 'receivable',
+            receiveAccountId: 'cash',
+            occurredAt: DateTime(2026, 7, 3),
+            gapExpenseAllocations: singleAllocation(
+              accountId: 'travel',
+              amount: Money.parse('101.00'),
+            ),
+          ),
+        ),
+        throwsA(isA<BusinessException>()),
+      );
+    },
+  );
 }
 
 class _Fixture {
   _Fixture({Money? refundAmount}) {
     advance = engine.createReimbursementAdvance(
-      ReimbursementAdvanceInstruction(
+      singleReimbursementAdvanceInstruction(
         amount: Money.parse('100.00'),
         receivableAccountId: 'receivable',
         paidFromAccountId: 'cash',
@@ -93,14 +162,13 @@ class _Fixture {
       ),
     );
     final refund = engine.createRefund(
-      instruction: RefundInstruction(
+      instruction: singleRefundInstruction(
         parentTransactionId: advance.id,
         amount: refundAmount ?? Money.parse('60.00'),
         refundToAccountId: 'cash',
         occurredAt: DateTime(2026, 7, 2),
       ),
       parent: advance,
-      refundOffsetAccountId: 'receivable',
     );
     final accountRepository = _AccountRepository([
       _account('cash', AccountType.asset, subtype: AccountSubtype.fund),

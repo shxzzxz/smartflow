@@ -39,7 +39,7 @@ class ReimbursementEditFormViewModel extends _$ReimbursementEditFormViewModel {
       );
     }
 
-    final transaction = detail.transaction;
+    final transaction = detail;
     final kind = switch (transaction.businessPurpose) {
       BusinessPurpose.reimbursementReceipt => ReimbursementEditKind.receipt,
       BusinessPurpose.reimbursementClose => ReimbursementEditKind.close,
@@ -90,25 +90,39 @@ class ReimbursementEditFormViewModel extends _$ReimbursementEditFormViewModel {
 
     final outstandingBeforeTransaction = switch (kind) {
       ReimbursementEditKind.receipt =>
-        summary.outstanding + transaction.primaryAmount,
+        summary.outstanding +
+            transaction.amountOf(TransactionRole.settlementIn),
       ReimbursementEditKind.close => _closeOutstanding(detail),
     };
     final amount = switch (kind) {
-      ReimbursementEditKind.receipt => transaction.primaryAmount,
+      ReimbursementEditKind.receipt => transaction.amountOf(
+        TransactionRole.settlementIn,
+      ),
       ReimbursementEditKind.close => _closeActualAmount(detail),
     };
+    final parentSummary = parentDetail.refundSummary;
+    final availableCategories =
+        parentSummary?.remainingCategoryAllocations ?? const [];
+    final parentCategories =
+        parentSummary?.originalCategoryAllocations ?? const [];
     return ReimbursementEditFormState.loaded(
       transactionId: transactionId,
       parentTransactionId: parentTransactionId,
       kind: kind,
       accounts: accounts,
+      categoryAccounts: _accountsForAllocations(parentCategories, accountsById),
+      availableCategoryAllocations: availableCategories,
+      settlementAllocations: _allocationsOf(
+        detail,
+        TransactionRole.settlementIn,
+      ),
+      gapExpenseAllocations: _allocationsOf(
+        detail,
+        TransactionRole.reimbursementGapExpense,
+      ),
       outstandingBeforeTransaction: outstandingBeforeTransaction,
       receivableAccountId: receivableAccountId,
-      receiveAccountId: settlementAccountId(
-        detail,
-        accountsById,
-        EntryDirection.debit,
-      ),
+      receiveAccountId: _positiveSettlementInAccountId(detail),
       occurredAt: transaction.occurredAt,
       amountText: formatMoney(amount, style: MoneyFormatStyle.plain),
       noteText: transaction.note ?? '',
@@ -118,8 +132,23 @@ class ReimbursementEditFormViewModel extends _$ReimbursementEditFormViewModel {
   void setOccurredAt(DateTime value) =>
       _update((state) => state.copyWith(occurredAt: value));
 
-  void setReceiveAccountId(String? value) =>
-      _update((state) => state.copyWith(receiveAccountId: value));
+  void setReceiveAccountId(String? value) => _update(
+    (state) =>
+        state.copyWith(receiveAccountId: value, settlementAllocations: null),
+  );
+
+  void setSettlementAllocations(List<AccountAmountAllocation> allocations) =>
+      _update(
+        (state) => state.copyWith(
+          settlementAllocations: allocations,
+          receiveAccountId: allocations.isEmpty
+              ? null
+              : allocations.first.accountId,
+        ),
+      );
+
+  void setGapExpenseAllocations(List<AccountAmountAllocation> allocations) =>
+      _update((state) => state.copyWith(gapExpenseAllocations: allocations));
 
   Future<SubmitOutcome> submit({
     required String amountText,
@@ -148,12 +177,50 @@ class ReimbursementEditFormViewModel extends _$ReimbursementEditFormViewModel {
     if (requiresReceiveAccount && receiveAccountId == null) {
       return _invalidCommand('请选择到账账户');
     }
-    final resolvedReceiveAccountId =
-        requiresReceiveAccount
-            ? receiveAccountId!
-            : current.receivableAccountId;
+    final resolvedReceiveAccountId = requiresReceiveAccount
+        ? receiveAccountId!
+        : current.receivableAccountId;
     if (resolvedReceiveAccountId == null) {
       return _invalidCommand('无法定位报销账户');
+    }
+    final settlements = !requiresReceiveAccount
+        ? singleAllocation(accountId: resolvedReceiveAccountId, amount: amount)
+        : current.settlementAllocations == null
+        ? singleAllocation(accountId: resolvedReceiveAccountId, amount: amount)
+        : patchAllocations(
+            current: current.settlementAllocations!,
+            total: amount,
+          );
+    if (sumAllocations(settlements) != amount) {
+      return _invalidCommand('请完成到账账户分配');
+    }
+    final shortfall =
+        (current.outstandingBeforeTransaction ?? Money.zero()) - amount;
+    final gaps = kind == ReimbursementEditKind.close && shortfall.minorUnits > 0
+        ? switch (current.gapExpenseAllocations) {
+            final allocations? => patchAllocations(
+              current: allocations,
+              total: shortfall,
+            ),
+            null when current.availableCategoryAllocations.length == 1 => [
+              current.availableCategoryAllocations.single.copyWith(
+                amount: shortfall,
+              ),
+            ],
+            null => null,
+          }
+        : const <AccountAmountAllocation>[];
+    final requiredGap =
+        kind == ReimbursementEditKind.close && shortfall.minorUnits > 0
+        ? shortfall
+        : Money.zero();
+    if (gaps == null ||
+        sumAllocations(gaps) != requiredGap ||
+        !allocationsFitAvailable(
+          requested: gaps,
+          available: current.availableCategoryAllocations,
+        )) {
+      return _invalidCommand('请完成差额分类分配');
     }
 
     _update((state) => state.copyWith(submitting: true));
@@ -170,7 +237,7 @@ class ReimbursementEditFormViewModel extends _$ReimbursementEditFormViewModel {
                   transactionId: current.transactionId,
                   amount: amount,
                   receivableAccountId: current.receivableAccountId,
-                  receiveAccountId: resolvedReceiveAccountId,
+                  settlementAllocations: settlements,
                   occurredAt: current.occurredAt,
                   note: _stringPatch(trimToNull(noteText)),
                 ),
@@ -181,7 +248,8 @@ class ReimbursementEditFormViewModel extends _$ReimbursementEditFormViewModel {
                   transactionId: current.transactionId,
                   actualReceivedAmount: amount,
                   receivableAccountId: current.receivableAccountId,
-                  receiveAccountId: resolvedReceiveAccountId,
+                  settlementAllocations: settlements,
+                  gapExpenseAllocations: gaps,
                   occurredAt: current.occurredAt,
                   note: _stringPatch(trimToNull(noteText)),
                 ),
@@ -222,6 +290,13 @@ class ReimbursementEditFormViewModel extends _$ReimbursementEditFormViewModel {
   }
 }
 
+String? _positiveSettlementInAccountId(TransactionReadModel detail) {
+  for (final line in detail.linesOf(TransactionRole.settlementIn)) {
+    if (line.amount.minorUnits > 0) return line.accountId;
+  }
+  return null;
+}
+
 enum ReimbursementEditKind { receipt, close }
 
 enum ReimbursementEditFormStatus { loaded, notFound, notEditable }
@@ -233,6 +308,10 @@ class ReimbursementEditFormState {
     required this.parentTransactionId,
     required this.kind,
     required List<Account> accounts,
+    required List<Account> categoryAccounts,
+    required List<AccountAmountAllocation> availableCategoryAllocations,
+    required List<AccountAmountAllocation>? settlementAllocations,
+    required List<AccountAmountAllocation>? gapExpenseAllocations,
     required this.occurredAt,
     required this.amountText,
     required this.noteText,
@@ -241,13 +320,27 @@ class ReimbursementEditFormState {
     this.receivableAccountId,
     this.receiveAccountId,
     this.unavailableReason,
-  }) : accounts = List.unmodifiable(accounts);
+  }) : accounts = List.unmodifiable(accounts),
+       categoryAccounts = List.unmodifiable(categoryAccounts),
+       availableCategoryAllocations = List.unmodifiable(
+         availableCategoryAllocations,
+       ),
+       settlementAllocations = settlementAllocations == null
+           ? null
+           : List.unmodifiable(settlementAllocations),
+       gapExpenseAllocations = gapExpenseAllocations == null
+           ? null
+           : List.unmodifiable(gapExpenseAllocations);
 
   factory ReimbursementEditFormState.loaded({
     required String transactionId,
     required String parentTransactionId,
     required ReimbursementEditKind kind,
     required List<Account> accounts,
+    required List<Account> categoryAccounts,
+    required List<AccountAmountAllocation> availableCategoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
+    required List<AccountAmountAllocation> gapExpenseAllocations,
     required Money outstandingBeforeTransaction,
     required String receivableAccountId,
     required DateTime occurredAt,
@@ -261,6 +354,10 @@ class ReimbursementEditFormState {
       parentTransactionId: parentTransactionId,
       kind: kind,
       accounts: accounts,
+      categoryAccounts: categoryAccounts,
+      availableCategoryAllocations: availableCategoryAllocations,
+      settlementAllocations: settlementAllocations,
+      gapExpenseAllocations: gapExpenseAllocations,
       outstandingBeforeTransaction: outstandingBeforeTransaction,
       receivableAccountId: receivableAccountId,
       receiveAccountId: receiveAccountId,
@@ -283,6 +380,10 @@ class ReimbursementEditFormState {
       parentTransactionId: parentTransactionId ?? transactionId,
       kind: kind,
       accounts: accounts,
+      categoryAccounts: const [],
+      availableCategoryAllocations: const [],
+      settlementAllocations: const [],
+      gapExpenseAllocations: const [],
       occurredAt: DateTime.now(),
       amountText: '',
       noteText: '',
@@ -303,6 +404,10 @@ class ReimbursementEditFormState {
       parentTransactionId: parentTransactionId,
       kind: kind,
       accounts: accounts,
+      categoryAccounts: const [],
+      availableCategoryAllocations: const [],
+      settlementAllocations: const [],
+      gapExpenseAllocations: const [],
       unavailableReason: reason,
       occurredAt: DateTime.now(),
       amountText: '',
@@ -316,6 +421,10 @@ class ReimbursementEditFormState {
   final String parentTransactionId;
   final ReimbursementEditKind? kind;
   final List<Account> accounts;
+  final List<Account> categoryAccounts;
+  final List<AccountAmountAllocation> availableCategoryAllocations;
+  final List<AccountAmountAllocation>? settlementAllocations;
+  final List<AccountAmountAllocation>? gapExpenseAllocations;
   final Money? outstandingBeforeTransaction;
   final String? receivableAccountId;
   final String? receiveAccountId;
@@ -330,6 +439,8 @@ class ReimbursementEditFormState {
   ReimbursementEditFormState copyWith({
     DateTime? occurredAt,
     Object? receiveAccountId = _sentinel,
+    Object? settlementAllocations = _sentinel,
+    Object? gapExpenseAllocations = _sentinel,
     bool? submitting,
   }) {
     return ReimbursementEditFormState(
@@ -338,12 +449,19 @@ class ReimbursementEditFormState {
       parentTransactionId: parentTransactionId,
       kind: kind,
       accounts: accounts,
+      categoryAccounts: categoryAccounts,
+      availableCategoryAllocations: availableCategoryAllocations,
+      settlementAllocations: settlementAllocations == _sentinel
+          ? this.settlementAllocations
+          : settlementAllocations as List<AccountAmountAllocation>?,
+      gapExpenseAllocations: gapExpenseAllocations == _sentinel
+          ? this.gapExpenseAllocations
+          : gapExpenseAllocations as List<AccountAmountAllocation>?,
       outstandingBeforeTransaction: outstandingBeforeTransaction,
       receivableAccountId: receivableAccountId,
-      receiveAccountId:
-          receiveAccountId == _sentinel
-              ? this.receiveAccountId
-              : receiveAccountId as String?,
+      receiveAccountId: receiveAccountId == _sentinel
+          ? this.receiveAccountId
+          : receiveAccountId as String?,
       unavailableReason: unavailableReason,
       occurredAt: occurredAt ?? this.occurredAt,
       amountText: amountText,
@@ -353,25 +471,17 @@ class ReimbursementEditFormState {
   }
 }
 
-Money _closeOutstanding(TransactionDetail detail) {
-  return _detailAmount(detail, TransactionDetailType.reimbursementCloseMain) ??
-      Money.zero();
+Money _closeOutstanding(TransactionReadModel detail) {
+  return _lineAmount(detail, TransactionRole.receivable) ?? Money.zero();
 }
 
-Money _closeActualAmount(TransactionDetail detail) {
-  final outstanding = _closeOutstanding(detail);
-  final gapIncome =
-      _detailAmount(detail, TransactionDetailType.reimbursementGapIncome) ??
-      Money.zero();
-  final gapExpense =
-      _detailAmount(detail, TransactionDetailType.reimbursementGapExpense) ??
-      Money.zero();
-  return outstanding + gapIncome - gapExpense;
+Money _closeActualAmount(TransactionReadModel detail) {
+  return detail.amountOf(TransactionRole.settlementIn);
 }
 
-Money? _detailAmount(TransactionDetail detail, TransactionDetailType type) {
-  for (final record in detail.details) {
-    if (record.type == type) return record.amount;
+Money? _lineAmount(TransactionReadModel detail, TransactionRole role) {
+  for (final line in detail.lines) {
+    if (line.role == role) return line.amount;
   }
   return null;
 }
@@ -385,6 +495,25 @@ Patch<String?> _stringPatch(String? value) {
 String? _selectedId(String? id, List<Account> accounts) {
   if (id != null && accounts.any((account) => account.id == id)) return id;
   return null;
+}
+
+List<AccountAmountAllocation> _allocationsOf(
+  TransactionReadModel transaction,
+  TransactionRole role,
+) {
+  return [
+    for (final line in transaction.linesOf(role))
+      AccountAmountAllocation(accountId: line.accountId!, amount: line.amount),
+  ];
+}
+
+List<Account> _accountsForAllocations(
+  Iterable<AccountAmountAllocation> allocations,
+  Map<String, Account> accountsById,
+) {
+  return [
+    for (final allocation in allocations) ?accountsById[allocation.accountId],
+  ];
 }
 
 const Object _sentinel = Object();

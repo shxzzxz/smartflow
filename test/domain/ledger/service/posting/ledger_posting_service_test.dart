@@ -10,9 +10,9 @@ import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.d
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
-import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
 import '../../../../helper/sequential_id_generator.dart';
+import '../../../../helper/posting_instruction_fixtures.dart';
 
 void main() {
   group('LedgerPostingService.postExpense', () {
@@ -24,7 +24,7 @@ void main() {
       final service = _service(accountRepository);
 
       final result = await service.postExpense(
-        ExpenseInstruction(
+        singleExpenseInstruction(
           amount: const Money(minorUnits: 1234),
           paidFromAccountId: 'cash',
           expenseAccountId: 'food',
@@ -48,7 +48,7 @@ void main() {
 
       await expectLater(
         () => service.postExpense(
-          ExpenseInstruction(
+          singleExpenseInstruction(
             amount: const Money(minorUnits: 1234),
             paidFromAccountId: 'cash',
             expenseAccountId: 'food',
@@ -82,7 +82,7 @@ void main() {
 
       await expectLater(
         () => service.postExpense(
-          ExpenseInstruction(
+          singleExpenseInstruction(
             amount: const Money(minorUnits: 1234),
             paidFromAccountId: 'cash',
             expenseAccountId: 'food',
@@ -115,7 +115,7 @@ void main() {
         final service = _service(accountRepository);
 
         final result = await service.postExpense(
-          ExpenseInstruction(
+          singleExpenseInstruction(
             amount: Money.parse('12.00'),
             paidFromAccountId: 'ghost',
             expenseAccountId: 'food',
@@ -137,7 +137,7 @@ void main() {
 
       await expectLater(
         () => service.postExpense(
-          ExpenseInstruction(
+          singleExpenseInstruction(
             amount: Money.parse('12.00'),
             paidFromAccountId: 'equity',
             expenseAccountId: 'food',

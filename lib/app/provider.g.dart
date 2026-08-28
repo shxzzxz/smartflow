@@ -1225,56 +1225,56 @@ final class EntryReadRepositoryProvider
 String _$entryReadRepositoryHash() =>
     r'd442bce4570560b2547b35040221f47281dcb923';
 
-@ProviderFor(transactionDetailReadRepository)
-final transactionDetailReadRepositoryProvider =
-    TransactionDetailReadRepositoryProvider._();
+@ProviderFor(transactionLineReadRepository)
+final transactionLineReadRepositoryProvider =
+    TransactionLineReadRepositoryProvider._();
 
-final class TransactionDetailReadRepositoryProvider
+final class TransactionLineReadRepositoryProvider
     extends
         $FunctionalProvider<
-          TransactionDetailReadRepository,
-          TransactionDetailReadRepository,
-          TransactionDetailReadRepository
+          TransactionLineReadRepository,
+          TransactionLineReadRepository,
+          TransactionLineReadRepository
         >
-    with $Provider<TransactionDetailReadRepository> {
-  TransactionDetailReadRepositoryProvider._()
+    with $Provider<TransactionLineReadRepository> {
+  TransactionLineReadRepositoryProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'transactionDetailReadRepositoryProvider',
+        name: r'transactionLineReadRepositoryProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$transactionDetailReadRepositoryHash();
+  String debugGetCreateSourceHash() => _$transactionLineReadRepositoryHash();
 
   @$internal
   @override
-  $ProviderElement<TransactionDetailReadRepository> $createElement(
+  $ProviderElement<TransactionLineReadRepository> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  TransactionDetailReadRepository create(Ref ref) {
-    return transactionDetailReadRepository(ref);
+  TransactionLineReadRepository create(Ref ref) {
+    return transactionLineReadRepository(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(TransactionDetailReadRepository value) {
+  Override overrideWithValue(TransactionLineReadRepository value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<TransactionDetailReadRepository>(
+      providerOverride: $SyncValueProvider<TransactionLineReadRepository>(
         value,
       ),
     );
   }
 }
 
-String _$transactionDetailReadRepositoryHash() =>
-    r'da8e89f2b6c9563e8f6d4440db8bc7bc2fdd0d26';
+String _$transactionLineReadRepositoryHash() =>
+    r'6c40011961d6ffaf5d0d633e7d8f24514669d39f';
 
 @ProviderFor(ledgerMetricsSource)
 final ledgerMetricsSourceProvider = LedgerMetricsSourceProvider._();
@@ -2191,7 +2191,7 @@ final class TransactionQueryServiceProvider
 }
 
 String _$transactionQueryServiceHash() =>
-    r'1680f82203c8de447429976715bbe1df699e9f49';
+    r'89ea3263216911c370f71e4470b7ee022f547bf4';
 
 @ProviderFor(financialMetricsService)
 final financialMetricsServiceProvider = FinancialMetricsServiceProvider._();

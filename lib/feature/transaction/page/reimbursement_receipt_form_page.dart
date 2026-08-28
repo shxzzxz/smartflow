@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../application/ledger/ledger_command_api.dart';
+import '../../../core/money/money.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_section.dart';
@@ -12,6 +12,7 @@ import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/reimbursement_form_view_model.dart';
+import '../widget/transaction_allocation_fields.dart';
 
 class ReimbursementReceiptFormPage extends ConsumerStatefulWidget {
   const ReimbursementReceiptFormPage({
@@ -67,11 +68,6 @@ class _ReimbursementReceiptFormPageState
     if (state.status == ReimbursementFormStatus.notEditable) {
       return const Center(child: Text('该报销记录不可继续到账'));
     }
-    final receiveAccount = findAccountById(
-      state.receiveAccountId,
-      state.accounts,
-    );
-
     return Form(
       key: _formKey,
       child: Column(
@@ -100,28 +96,12 @@ class _ReimbursementReceiptFormPageState
                       hintText: '请输入到账金额',
                       validator: validatePositiveMoneyText,
                     ),
-                    AccountPlainFormRow(
-                      label: '到账账户',
-                      account: receiveAccount,
-                      selectedId: state.receiveAccountId,
-                      placeholder: '请选择到账账户',
-                      onTap:
-                          (onSelected) => _pickReceiveAccount(
-                            state.accounts,
-                            selectedId: state.receiveAccountId,
-                            onSelected: onSelected,
-                          ),
-                      onChanged:
-                          ref.read(provider.notifier).setReceiveAccountId,
-                      validator: (value) => value == null ? '请选择账户' : null,
-                    ),
                     DateTimePlainFormRow(
                       label: '到账时间',
                       dateTime: state.occurredAt,
                       value: _formatDateTime(state.occurredAt),
-                      onTap:
-                          (onSelected) =>
-                              _pickOccurredAt(state.occurredAt, onSelected),
+                      onTap: (onSelected) =>
+                          _pickOccurredAt(state.occurredAt, onSelected),
                       onChanged: (value) {
                         if (value != null) {
                           ref.read(provider.notifier).setOccurredAt(value);
@@ -130,6 +110,39 @@ class _ReimbursementReceiptFormPageState
                     ),
                     NotePlainFormRow(controller: _noteController),
                   ],
+                ),
+                const SizedBox(height: AppSpacing.space14),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _amountController,
+                  builder: (context, value, _) {
+                    final amount = Money.tryParse(value.text);
+                    return TransactionInlineAllocationColumn(
+                      key: const ValueKey(
+                        'reimbursement-receipt-settlement-allocations',
+                      ),
+                      title: '到账账户',
+                      allocations: transactionAllocationFieldValues(
+                        allocations: state.settlementAllocations,
+                        fallbackAccountId: state.receiveAccountId,
+                        total: amount,
+                      ),
+                      options: transactionAllocationOptionsForAccounts(
+                        state.accounts,
+                      ),
+                      addLabel: '添加账户',
+                      expectedTotal: amount,
+                      onSelectOption: (context, selectedId, options) =>
+                          selectTransactionAllocationAccount(
+                            context,
+                            accounts: state.accounts,
+                            selectedAccountId: selectedId,
+                            options: options,
+                          ),
+                      onChanged: ref
+                          .read(provider.notifier)
+                          .setSettlementAllocations,
+                    );
+                  },
                 ),
                 const SizedBox(height: AppSpacing.space24),
                 AppSubmitButton(
@@ -143,21 +156,6 @@ class _ReimbursementReceiptFormPageState
         ],
       ),
     );
-  }
-
-  Future<void> _pickReceiveAccount(
-    List<Account> accounts, {
-    required String? selectedId,
-    required ValueChanged<String?> onSelected,
-  }) async {
-    final selected = await showAccountPickerSheet(
-      context: context,
-      title: '选择到账账户',
-      accounts: accounts,
-      selectedId: selectedId,
-    );
-    if (!mounted || selected == null) return;
-    onSelected(selected);
   }
 
   Future<void> _pickOccurredAt(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../application/ledger/ledger_command_api.dart';
+import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
@@ -15,6 +15,7 @@ import 'package:smartflow/widget/business/finance/money_text.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/refund_form_view_model.dart';
+import '../widget/transaction_allocation_fields.dart';
 
 class RefundFormPage extends ConsumerWidget {
   const RefundFormPage({required String parentTransactionId, Key? key})
@@ -109,11 +110,6 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
   Widget build(BuildContext context) {
     final provider = widget.provider;
     final state = widget.state;
-    final refundToAccount = findAccountById(
-      state.refundToAccountId,
-      state.accounts,
-    );
-
     return Form(
       key: _formKey,
       child: Column(
@@ -145,21 +141,6 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
                       hintText: '请输入退款金额',
                       validator: validatePositiveMoneyText,
                     ),
-                    AccountPlainFormRow(
-                      label: '退款账户',
-                      account: refundToAccount,
-                      selectedId: state.refundToAccountId,
-                      placeholder: '请选择退款账户',
-                      onTap: (onSelected) => _pickRefundAccount(
-                        state.accounts,
-                        selectedId: state.refundToAccountId,
-                        onSelected: onSelected,
-                      ),
-                      onChanged: ref
-                          .read(provider.notifier)
-                          .setRefundToAccountId,
-                      validator: (value) => value == null ? '请选择账户' : null,
-                    ),
                     DateTimePlainFormRow(
                       label: '退款时间',
                       dateTime: state.occurredAt,
@@ -175,6 +156,10 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
                     NotePlainFormRow(controller: _noteController),
                   ],
                 ),
+                const SizedBox(height: AppSpacing.space14),
+                _buildCategoryAllocations(provider, state),
+                const SizedBox(height: AppSpacing.space14),
+                _buildSettlementAllocations(provider, state),
                 const SizedBox(height: AppSpacing.space24),
                 AppSubmitButton(
                   label: '保存',
@@ -189,19 +174,72 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
     );
   }
 
-  Future<void> _pickRefundAccount(
-    List<Account> accounts, {
-    required String? selectedId,
-    required ValueChanged<String?> onSelected,
-  }) async {
-    final selected = await showAccountPickerSheet(
-      context: context,
-      title: '选择退款账户',
-      accounts: accounts,
-      selectedId: selectedId,
+  Widget _buildCategoryAllocations(
+    RefundFormViewModelProvider provider,
+    RefundFormState state,
+  ) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _amountController,
+      builder: (context, value, _) {
+        final amount = Money.tryParse(value.text);
+        final fallbackCategoryId =
+            state.availableCategoryAllocations.length == 1
+            ? state.availableCategoryAllocations.single.accountId
+            : null;
+        return TransactionAllocationAmountFields(
+          key: const ValueKey('refund-category-allocations'),
+          title: '退款分类',
+          allocations: transactionAllocationFieldValues(
+            allocations: state.categoryAllocations,
+            fallbackAccountId: fallbackCategoryId,
+            total: amount,
+          ),
+          options: transactionAllocationOptionsForAccounts(
+            state.categoryAccounts,
+          ),
+          expectedTotal: amount,
+          maximumByAccountId: transactionAllocationMaximums(
+            options: transactionAllocationOptionsForAccounts(
+              state.categoryAccounts,
+            ),
+            availableAllocations: state.availableCategoryAllocations,
+          ),
+          onChanged: ref.read(provider.notifier).setCategoryAllocations,
+        );
+      },
     );
-    if (!mounted || selected == null) return;
-    onSelected(selected);
+  }
+
+  Widget _buildSettlementAllocations(
+    RefundFormViewModelProvider provider,
+    RefundFormState state,
+  ) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _amountController,
+      builder: (context, value, _) {
+        final amount = Money.tryParse(value.text);
+        return TransactionInlineAllocationColumn(
+          key: const ValueKey('refund-settlement-allocations'),
+          title: '到账账户',
+          allocations: transactionAllocationFieldValues(
+            allocations: state.settlementAllocations,
+            fallbackAccountId: state.refundToAccountId,
+            total: amount,
+          ),
+          options: transactionAllocationOptionsForAccounts(state.accounts),
+          addLabel: '添加账户',
+          expectedTotal: amount,
+          onSelectOption: (context, selectedId, options) =>
+              selectTransactionAllocationAccount(
+                context,
+                accounts: state.accounts,
+                selectedAccountId: selectedId,
+                options: options,
+              ),
+          onChanged: ref.read(provider.notifier).setSettlementAllocations,
+        );
+      },
+    );
   }
 
   Future<void> _pickOccurredAt(

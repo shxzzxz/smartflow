@@ -20,6 +20,8 @@ part 'transaction_form_view_model.g.dart';
 
 final _logger = Logger('feature.transaction.form');
 
+enum ExpenseEntryMode { normal, allocated }
+
 @riverpod
 class TransactionFormViewModel extends _$TransactionFormViewModel {
   TransactionFormState? _initializedState;
@@ -143,7 +145,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 
     final detail = editDetailAsync!.requireValue;
     if (detail == null) return const AsyncValue.data(null);
-    if (!supportsTransactionFormEdit(detail.transaction.businessPurpose)) {
+    if (!supportsTransactionFormEdit(detail.businessPurpose)) {
       return const AsyncValue.data(null);
     }
     final snapshot = transactionFormEditSnapshot(
@@ -173,6 +175,9 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       if (current.mode == value) return current;
       return current.copyWith(
         mode: value,
+        expenseEntryMode: ExpenseEntryMode.normal,
+        categoryAllocations: const [],
+        settlementAllocations: const [],
         reimbursementAccountId: null,
         ordinaryReceivableAccountId: null,
         excludeStats:
@@ -272,6 +277,51 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     _update((current) => current.copyWith(toAccountId: value));
   }
 
+  void setCategoryAllocations(List<AccountAmountAllocation> allocations) {
+    _update((current) => current.copyWith(categoryAllocations: allocations));
+  }
+
+  void setSettlementAllocations(List<AccountAmountAllocation> allocations) {
+    _update((current) => current.copyWith(settlementAllocations: allocations));
+  }
+
+  void useAllocatedExpenseEntry(Money amount) {
+    _defaultAccountRequestRevision += 1;
+    _update((current) {
+      final categoryId = current.expenseCategoryId;
+      final settlementId = _effectiveId(
+        current.fromAccountId,
+        current.settlementAccounts,
+      );
+      return current.copyWith(
+        expenseEntryMode: ExpenseEntryMode.allocated,
+        categoryAllocations: categoryId == null
+            ? const []
+            : singleAllocation(accountId: categoryId, amount: amount),
+        settlementAllocations: settlementId == null
+            ? const []
+            : singleAllocation(accountId: settlementId, amount: amount),
+        expenseCategoryId: null,
+        expenseRootId: null,
+        fromAccountId: null,
+      );
+    });
+  }
+
+  void useNormalExpenseEntry() {
+    _defaultAccountRequestRevision += 1;
+    _update(
+      (current) => current.copyWith(
+        expenseEntryMode: ExpenseEntryMode.normal,
+        categoryAllocations: const [],
+        settlementAllocations: const [],
+        expenseCategoryId: null,
+        expenseRootId: null,
+        fromAccountId: null,
+      ),
+    );
+  }
+
   void setReimbursementAccountId(String? value) {
     _update((current) => current.copyWith(reimbursementAccountId: value));
   }
@@ -299,6 +349,14 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   void clearForNext({DateTime? occurredAt}) {
     _update(
       (current) => current.copyWith(
+        categoryAllocations:
+            current.expenseEntryMode == ExpenseEntryMode.allocated
+            ? const []
+            : current.categoryAllocations,
+        settlementAllocations:
+            current.expenseEntryMode == ExpenseEntryMode.allocated
+            ? const []
+            : current.settlementAllocations,
         reimbursementAccountId: null,
         ordinaryReceivableAccountId: null,
         excludeStats: false,
@@ -380,17 +438,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 
     switch (formState.mode) {
       case TransactionFormMode.expense:
-        final expenseCategoryId = formState.expenseCategoryId;
-        if (expenseCategoryId == null) {
-          throw _invalidCommandException('请选择支出分类');
-        }
-        final paidFromAccountId = _effectiveId(
-          formState.fromAccountId,
-          formState.settlementAccounts,
-        );
-        if (paidFromAccountId == null) {
-          throw _invalidCommandException('请选择支出账户');
-        }
+        final allocations = _expenseAllocations(formState, amount);
         final reimbursementAccountId = _selectedId(
           formState.reimbursementAccountId,
           formState.reimbursementAccounts,
@@ -399,8 +447,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           await postingService.createExpense(
             CreateExpenseCommand(
               amount: amount,
-              paidFromAccountId: paidFromAccountId,
-              expenseAccountId: expenseCategoryId,
+              categoryAllocations: allocations.categories,
+              settlementAllocations: allocations.settlements,
               occurredAt: formState.occurredAt,
               note: note,
               isExcludedFromStats: formState.excludeStats,
@@ -413,8 +461,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             CreateReimbursementAdvanceCommand(
               amount: amount,
               receivableAccountId: reimbursementAccountId,
-              paidFromAccountId: paidFromAccountId,
-              expenseCategoryId: expenseCategoryId,
+              categoryAllocations: allocations.categories,
+              settlementAllocations: allocations.settlements,
               occurredAt: formState.occurredAt,
               note: note,
               isExcludedFromStats: formState.excludeStats,
@@ -526,17 +574,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 
     switch (formState.mode) {
       case TransactionFormMode.expense:
-        final expenseCategoryId = formState.expenseCategoryId;
-        if (expenseCategoryId == null) {
-          throw _invalidCommandException('请选择支出分类');
-        }
-        final paidFromAccountId = _effectiveId(
-          formState.fromAccountId,
-          formState.settlementAccounts,
-        );
-        if (paidFromAccountId == null) {
-          throw _invalidCommandException('请选择支出账户');
-        }
+        final allocations = _expenseAllocations(formState, amount);
         final reimbursementAccountId = _selectedId(
           formState.reimbursementAccountId,
           formState.reimbursementAccounts,
@@ -546,8 +584,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             EditExpenseCommand(
               transactionId: transactionId,
               amount: amount,
-              paidFromAccountId: paidFromAccountId,
-              expenseAccountId: expenseCategoryId,
+              categoryAllocations: allocations.categories,
+              settlementAllocations: allocations.settlements,
               occurredAt: formState.occurredAt,
               note: note,
               isExcludedFromStats: formState.excludeStats,
@@ -561,8 +599,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               transactionId: transactionId,
               amount: amount,
               receivableAccountId: reimbursementAccountId,
-              paidFromAccountId: paidFromAccountId,
-              expenseCategoryId: expenseCategoryId,
+              categoryAllocations: allocations.categories,
+              settlementAllocations: allocations.settlements,
               occurredAt: formState.occurredAt,
               note: note,
               isExcludedFromStats: formState.excludeStats,
@@ -735,12 +773,53 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   Patch<String?> _stringPatch(String? value) {
     return value == null ? const Patch<String?>.clear() : Patch.set(value);
   }
+
+  ({
+    List<AccountAmountAllocation> categories,
+    List<AccountAmountAllocation> settlements,
+  })
+  _expenseAllocations(TransactionFormState formState, Money amount) {
+    if (formState.expenseEntryMode == ExpenseEntryMode.normal) {
+      final categoryId = formState.expenseCategoryId;
+      if (categoryId == null) {
+        throw _invalidCommandException('请选择支出分类');
+      }
+      final settlementId = _effectiveId(
+        formState.fromAccountId,
+        formState.settlementAccounts,
+      );
+      if (settlementId == null) {
+        throw _invalidCommandException('请选择支出账户');
+      }
+      return (
+        categories: singleAllocation(accountId: categoryId, amount: amount),
+        settlements: singleAllocation(accountId: settlementId, amount: amount),
+      );
+    }
+
+    final categories = formState.categoryAllocations;
+    final settlements = formState.settlementAllocations;
+    if (categories.isEmpty) {
+      throw _invalidCommandException('请至少添加一个支出分类');
+    }
+    if (settlements.isEmpty) {
+      throw _invalidCommandException('请至少添加一个支出账户');
+    }
+    if (sumAllocations(categories) != amount) {
+      throw _invalidCommandException('分类分配合计必须等于交易金额');
+    }
+    if (sumAllocations(settlements) != amount) {
+      throw _invalidCommandException('支付分配合计必须等于交易金额');
+    }
+    return (categories: categories, settlements: settlements);
+  }
 }
 
 class TransactionFormState {
   TransactionFormState({
     required this.initialValues,
     required this.mode,
+    required this.expenseEntryMode,
     required this.occurredAt,
     required this.excludeStats,
     required this.excludeBudget,
@@ -763,6 +842,8 @@ class TransactionFormState {
     this.reimbursementAccountId,
     this.ordinaryReceivableAccountId,
     this.liabilityAccountId,
+    List<AccountAmountAllocation> categoryAllocations = const [],
+    List<AccountAmountAllocation> settlementAllocations = const [],
   }) : settlementAccounts = List.unmodifiable(settlementAccounts),
        fundAccounts = List.unmodifiable(fundAccounts),
        liabilityAccounts = List.unmodifiable(liabilityAccounts),
@@ -772,7 +853,9 @@ class TransactionFormState {
        ),
        expenseTree = List.unmodifiable(expenseTree),
        incomeTree = List.unmodifiable(incomeTree),
-       tags = List.unmodifiable(tags);
+       tags = List.unmodifiable(tags),
+       categoryAllocations = List.unmodifiable(categoryAllocations),
+       settlementAllocations = List.unmodifiable(settlementAllocations);
 
   factory TransactionFormState.initial({
     required TransactionFormMode mode,
@@ -791,6 +874,7 @@ class TransactionFormState {
     return TransactionFormState(
       initialValues: const TransactionFormInitialValues(),
       mode: mode,
+      expenseEntryMode: ExpenseEntryMode.normal,
       occurredAt: DateTime.now(),
       excludeStats: false,
       excludeBudget: false,
@@ -830,20 +914,32 @@ class TransactionFormState {
     required List<TagView> tags,
     required Set<String> initialTagIds,
   }) {
+    final categoryAllocations = snapshot.categoryAllocations ?? const [];
+    final settlementAllocations = snapshot.settlementAllocations ?? const [];
+    final usesAllocatedEntry =
+        snapshot.mode == TransactionFormMode.expense &&
+        (categoryAllocations.length > 1 || settlementAllocations.length > 1);
     return TransactionFormState(
       initialValues: TransactionFormInitialValues.fromSnapshot(snapshot),
       mode: snapshot.mode,
+      expenseEntryMode: usesAllocatedEntry
+          ? ExpenseEntryMode.allocated
+          : ExpenseEntryMode.normal,
       occurredAt: snapshot.occurredAt,
       selectedTagIds: initialTagIds,
-      expenseCategoryId: snapshot.expenseCategoryId,
-      expenseRootId: snapshot.expenseRootId,
+      expenseCategoryId: usesAllocatedEntry ? null : snapshot.expenseCategoryId,
+      expenseRootId: usesAllocatedEntry ? null : snapshot.expenseRootId,
       incomeCategoryId: snapshot.incomeCategoryId,
       incomeRootId: snapshot.incomeRootId,
-      fromAccountId: snapshot.fromAccountId,
+      fromAccountId: usesAllocatedEntry ? null : snapshot.fromAccountId,
       toAccountId: snapshot.toAccountId,
       reimbursementAccountId: snapshot.reimbursementAccountId,
       ordinaryReceivableAccountId: snapshot.ordinaryReceivableAccountId,
       liabilityAccountId: snapshot.liabilityAccountId,
+      categoryAllocations: usesAllocatedEntry ? categoryAllocations : const [],
+      settlementAllocations: usesAllocatedEntry
+          ? settlementAllocations
+          : const [],
       excludeStats: snapshot.excludeStats,
       excludeBudget: snapshot.excludeBudget,
       submitting: false,
@@ -860,6 +956,7 @@ class TransactionFormState {
 
   final TransactionFormInitialValues initialValues;
   final TransactionFormMode mode;
+  final ExpenseEntryMode expenseEntryMode;
   final DateTime occurredAt;
   final String? expenseCategoryId;
   final String? expenseRootId;
@@ -870,6 +967,8 @@ class TransactionFormState {
   final String? reimbursementAccountId;
   final String? ordinaryReceivableAccountId;
   final String? liabilityAccountId;
+  final List<AccountAmountAllocation> categoryAllocations;
+  final List<AccountAmountAllocation> settlementAllocations;
   final bool excludeStats;
   final bool excludeBudget;
   final bool submitting;
@@ -886,6 +985,7 @@ class TransactionFormState {
   TransactionFormState copyWith({
     TransactionFormInitialValues? initialValues,
     TransactionFormMode? mode,
+    ExpenseEntryMode? expenseEntryMode,
     DateTime? occurredAt,
     Object? expenseCategoryId = _sentinel,
     Object? expenseRootId = _sentinel,
@@ -896,6 +996,8 @@ class TransactionFormState {
     Object? reimbursementAccountId = _sentinel,
     Object? ordinaryReceivableAccountId = _sentinel,
     Object? liabilityAccountId = _sentinel,
+    List<AccountAmountAllocation>? categoryAllocations,
+    List<AccountAmountAllocation>? settlementAllocations,
     bool? excludeStats,
     bool? excludeBudget,
     bool? submitting,
@@ -912,6 +1014,7 @@ class TransactionFormState {
     return TransactionFormState(
       initialValues: initialValues ?? this.initialValues,
       mode: mode ?? this.mode,
+      expenseEntryMode: expenseEntryMode ?? this.expenseEntryMode,
       occurredAt: occurredAt ?? this.occurredAt,
       expenseCategoryId: expenseCategoryId == _sentinel
           ? this.expenseCategoryId
@@ -940,6 +1043,9 @@ class TransactionFormState {
       liabilityAccountId: liabilityAccountId == _sentinel
           ? this.liabilityAccountId
           : liabilityAccountId as String?,
+      categoryAllocations: categoryAllocations ?? this.categoryAllocations,
+      settlementAllocations:
+          settlementAllocations ?? this.settlementAllocations,
       excludeStats: excludeStats ?? this.excludeStats,
       excludeBudget: excludeBudget ?? this.excludeBudget,
       submitting: submitting ?? this.submitting,

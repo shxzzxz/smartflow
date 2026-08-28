@@ -76,12 +76,12 @@ void main() {
           _entry('bank', EntryDirection.debit),
           _entry('cash', EntryDirection.credit),
         ],
-        details: const [
-          TransactionDetailRecord(
+        lines: const [
+          TransactionLine(
             id: 'fee',
             transactionId: 'tx-1',
             lineNo: 2,
-            type: TransactionDetailType.transferFee,
+            role: TransactionRole.fee,
             amount: Money(minorUnits: 300),
           ),
         ],
@@ -203,13 +203,40 @@ void main() {
   });
 }
 
-TransactionDetail _detail({
+TransactionReadModel _detail({
   required BusinessPurpose purpose,
   required List<Entry> entries,
-  List<TransactionDetailRecord> details = const [],
+  List<TransactionLine> lines = const [],
   Money primaryAmount = const Money(minorUnits: 1234),
   String? reimbursementExpenseAccountId,
 }) {
+  final allLines = [
+    if (reimbursementExpenseAccountId != null)
+      TransactionLine(
+        id: 'expense-category',
+        transactionId: 'tx-1',
+        lineNo: 1,
+        role: TransactionRole.reimbursementExpenseCategory,
+        accountId: reimbursementExpenseAccountId,
+        amount: primaryAmount,
+      ),
+    for (var index = 0; index < entries.length; index++)
+      TransactionLine(
+        id: 'role-$index',
+        transactionId: 'tx-1',
+        lineNo: index + 10,
+        role: switch (purpose) {
+          BusinessPurpose.dailyIncome => entries[index].direction == EntryDirection.credit ? TransactionRole.category : TransactionRole.settlementIn,
+          BusinessPurpose.dailyExpense => entries[index].direction == EntryDirection.debit ? TransactionRole.category : TransactionRole.settlementOut,
+          BusinessPurpose.reimbursementAdvance => entries[index].direction == EntryDirection.debit ? TransactionRole.receivable : TransactionRole.settlementOut,
+          BusinessPurpose.transfer => entries[index].direction == EntryDirection.debit ? TransactionRole.settlementIn : TransactionRole.settlementOut,
+          _ => entries[index].direction == EntryDirection.debit ? TransactionRole.settlementIn : TransactionRole.settlementOut,
+        },
+        accountId: entries[index].accountId,
+        amount: entries[index].amount,
+      ),
+    ...lines,
+  ];
   final transaction = Transaction(
     id: 'tx-1',
     businessPurpose: purpose,
@@ -219,15 +246,12 @@ TransactionDetail _detail({
     isExcludedFromBudget: false,
     sourceKind: SourceKind.manual,
     note: 'note',
-    reimbursementExpenseAccountId: reimbursementExpenseAccountId,
-    details: details,
-    entries: entries,
+    lines: allLines,
   );
-  return TransactionDetail(
+  return TransactionReadModel.fromTransaction(
     transaction: transaction,
     createdAt: DateTime(2026, 1, 2, 8, 30),
-    details: details,
-    entries: entries,
+    lines: allLines,
   );
 }
 
