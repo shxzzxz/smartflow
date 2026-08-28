@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
@@ -387,6 +388,10 @@ void main() {
           receivableAccountId: 'receivable',
           receiveAccountId: 'bank',
           occurredAt: DateTime(2026, 5, 2),
+          gapExpenseAllocations: singleAllocation(
+            accountId: 'travel',
+            amount: Money.parse('100.00'),
+          ),
         ),
         advance: advance,
         outstanding: Money.parse('100.00'),
@@ -404,6 +409,81 @@ void main() {
       expect(
         close.entries.every((entry) => entry.amount != Money.zero()),
         isTrue,
+      );
+    });
+
+    test('requires explicit gap allocations when a close is short', () {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final advance = engine.createReimbursementAdvance(
+        ReimbursementAdvanceInstruction(
+          amount: Money.parse('100.00'),
+          receivableAccountId: 'receivable',
+          categoryAllocations: const [
+            AccountAmountAllocation(
+              accountId: 'food',
+              amount: Money(minorUnits: 5000),
+            ),
+            AccountAmountAllocation(
+              accountId: 'travel',
+              amount: Money(minorUnits: 5000),
+            ),
+          ],
+          settlementAllocations: singleAllocation(
+            accountId: 'cash',
+            amount: Money.parse('100.00'),
+          ),
+          occurredAt: DateTime(2026, 5, 1),
+        ),
+      );
+
+      expect(
+        () => engine.createReimbursementClose(
+          instruction: singleReimbursementCloseInstruction(
+            advanceTransactionId: advance.id,
+            actualReceivedAmount: Money.parse('80.00'),
+            receivableAccountId: 'receivable',
+            receiveAccountId: 'bank',
+            occurredAt: DateTime(2026, 5, 2),
+          ),
+          advance: advance,
+          outstanding: Money.parse('100.00'),
+          gapIncomeAccountId: null,
+        ),
+        throwsA(isA<BusinessException>()),
+      );
+
+      final close = engine.createReimbursementClose(
+        instruction: singleReimbursementCloseInstruction(
+          advanceTransactionId: advance.id,
+          actualReceivedAmount: Money.parse('80.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'bank',
+          occurredAt: DateTime(2026, 5, 2),
+          gapExpenseAllocations: const [
+            AccountAmountAllocation(
+              accountId: 'food',
+              amount: Money(minorUnits: 1000),
+            ),
+            AccountAmountAllocation(
+              accountId: 'travel',
+              amount: Money(minorUnits: 1000),
+            ),
+          ],
+        ),
+        advance: advance,
+        outstanding: Money.parse('100.00'),
+        gapIncomeAccountId: null,
+      );
+
+      expect(
+        close.lines
+            .where(
+              (line) => line.role == TransactionRole.reimbursementGapExpense,
+            )
+            .map((line) => line.accountId),
+        ['food', 'travel'],
       );
     });
   });

@@ -107,6 +107,7 @@ class ReimbursementSubmitInput {
     required this.occurredAt,
     required this.closeReimbursement,
     this.receiveAccountId,
+    this.gapExpenseAllocations,
     this.noteText,
   });
 
@@ -114,5 +115,6 @@ class ReimbursementSubmitInput {
   final DateTime occurredAt;
   final bool closeReimbursement;
   final String? receiveAccountId;
+  final List<AccountAmountAllocation>? gapExpenseAllocations;
   final String? noteText;
 }

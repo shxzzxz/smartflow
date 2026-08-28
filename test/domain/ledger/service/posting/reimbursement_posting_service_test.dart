@@ -12,6 +12,7 @@ import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewri
 import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/reimbursement_posting_service.dart';
+import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 import '../../../../helper/sequential_id_generator.dart';
@@ -76,6 +77,77 @@ void main() {
       Money.parse('80.00'),
     );
   });
+
+  test('close shortfall requires an explicit gap expense allocation', () async {
+    final fixture = _Fixture();
+
+    await expectLater(
+      () => fixture.service.close(
+        singleReimbursementCloseInstruction(
+          advanceTransactionId: fixture.advance.id,
+          actualReceivedAmount: Money.parse('20.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'cash',
+          occurredAt: DateTime(2026, 7, 3),
+        ),
+      ),
+      throwsA(isA<BusinessException>()),
+    );
+  });
+
+  test(
+    'close accepts an explicit shortfall allocation within the remainder',
+    () async {
+      final fixture = _Fixture();
+
+      final result = await fixture.service.close(
+        singleReimbursementCloseInstruction(
+          advanceTransactionId: fixture.advance.id,
+          actualReceivedAmount: Money.parse('20.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'cash',
+          occurredAt: DateTime(2026, 7, 3),
+          gapExpenseAllocations: singleAllocation(
+            accountId: 'travel',
+            amount: Money.parse('20.00'),
+          ),
+        ),
+      );
+
+      expect(
+        result.transaction.lines
+            .singleWhere(
+              (line) => line.role == TransactionRole.reimbursementGapExpense,
+            )
+            .amount,
+        Money.parse('20.00'),
+      );
+    },
+  );
+
+  test(
+    'close rejects a gap allocation above the remaining category amount',
+    () async {
+      final fixture = _Fixture();
+
+      await expectLater(
+        () => fixture.service.close(
+          singleReimbursementCloseInstruction(
+            advanceTransactionId: fixture.advance.id,
+            actualReceivedAmount: Money.parse('20.00'),
+            receivableAccountId: 'receivable',
+            receiveAccountId: 'cash',
+            occurredAt: DateTime(2026, 7, 3),
+            gapExpenseAllocations: singleAllocation(
+              accountId: 'travel',
+              amount: Money.parse('101.00'),
+            ),
+          ),
+        ),
+        throwsA(isA<BusinessException>()),
+      );
+    },
+  );
 }
 
 class _Fixture {

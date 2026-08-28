@@ -158,6 +158,11 @@ abstract interface class ImportLedgerPort {
     required Money actualReceivedAmount,
     required String receivableAccountId,
     required String receiveAccountId,
+
+    /// The source category to use for an imported shortfall, when the source
+    /// explicitly defines one. The ledger adapter resolves the amount from
+    /// the transaction group's current outstanding balance.
+    String? gapExpenseCategoryId,
     required DateTime occurredAt,
     required DateTime postedAt,
     String? note,

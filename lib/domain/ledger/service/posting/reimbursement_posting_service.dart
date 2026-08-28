@@ -1,12 +1,10 @@
 import '../../entity/account.dart';
 import '../../entity/transaction_group.dart';
 import '../../entity/transaction.dart';
-import 'package:smartflow/core/money/money.dart';
 import '../../port/account_repository.dart';
 import '../../port/transaction_group_repository.dart';
 import '../../port/system_account_resolver.dart';
 import '../../valobj/ledger_enum.dart';
-import '../../valobj/account_amount_allocation.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import '../../valobj/posting_result.dart';
@@ -94,11 +92,10 @@ class ReimbursementPostingService {
     final gapIncomeAccountId = actual.minorUnits > outstanding.minorUnits
         ? await _systemAccountResolver.resolveReimbursementGapIncome()
         : null;
-    final gapExpenseAllocations = _gapExpenseAllocations(
-      instruction: instruction,
-      group: group,
-      outstanding: outstanding,
-    );
+    // A shortfall category is an input fact supplied by the caller.  The
+    // posting service validates it against the remaining parent categories,
+    // but never chooses a category on the caller's behalf.
+    final gapExpenseAllocations = instruction.gapExpenseAllocations;
     if (!group.allocationsFitRefundableCategories(gapExpenseAllocations)) {
       LedgerViolationReason.allocationExceedsAvailable.throwException();
     }
@@ -136,25 +133,6 @@ class ReimbursementPostingService {
         gapIncomeAccountId: gapIncomeAccountId,
       ),
     );
-  }
-
-  List<AccountAmountAllocation> _gapExpenseAllocations({
-    required ReimbursementCloseInstruction instruction,
-    required TransactionGroup group,
-    required Money outstanding,
-  }) {
-    final shortfall = outstanding - instruction.actualReceivedAmount;
-    if (shortfall.minorUnits <= 0) return const [];
-    if (instruction.gapExpenseAllocations.isNotEmpty) {
-      return instruction.gapExpenseAllocations;
-    }
-    final remaining = group.remainingRefundableCategoryAllocations();
-    if (remaining.length != 1) {
-      LedgerViolationReason.allocationRequired.throwException(
-        message: 'Gap expense category allocations are required.',
-      );
-    }
-    return [remaining.single.copyWith(amount: shortfall)];
   }
 
   Future<TransactionGroup> _loadOpenAdvance(String advanceTransactionId) async {

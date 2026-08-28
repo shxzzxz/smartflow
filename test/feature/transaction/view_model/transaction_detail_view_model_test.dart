@@ -388,6 +388,59 @@ void main() {
       expect(command.note, 'done');
     });
 
+    test(
+      'submits a single remaining category for a reimbursement shortfall',
+      () async {
+        final posting = _FakeTransactionPostingAppService();
+        final detail = _detail(
+          purpose: BusinessPurpose.reimbursementAdvance,
+          entries: [
+            _entry('cash', EntryDirection.credit),
+            _entry('company', EntryDirection.debit),
+            _entry('food', EntryDirection.debit),
+          ],
+          refundSummary: const RefundSummary(
+            refundedTotal: Money(minorUnits: 0),
+            originalCategoryAllocations: [
+              AccountAmountAllocation(
+                accountId: 'food',
+                amount: Money(minorUnits: 10000),
+              ),
+            ],
+            refundedCategoryAllocations: [],
+          ),
+          reimbursementSummary: const ReimbursementSummary(
+            advanceAmount: Money(minorUnits: 10000),
+            receivedAmount: Money(minorUnits: 0),
+            outstanding: Money(minorUnits: 7000),
+            isClosed: false,
+          ),
+        );
+        final container = _container(detail: detail, posting: posting);
+        await _readState(container);
+
+        final outcome = await container
+            .read(transactionDetailViewModelProvider('tx-1').notifier)
+            .submitReimbursement(
+              ReimbursementSubmitInput(
+                amount: const Money(minorUnits: 6000),
+                receiveAccountId: 'bank',
+                occurredAt: DateTime(2026, 1, 2, 9),
+                closeReimbursement: true,
+              ),
+            );
+
+        expect(outcome, isA<UiActionSuccess<void>>());
+        final command = posting.closeCommands.single;
+        expect(command.gapExpenseAllocations, hasLength(1));
+        expect(command.gapExpenseAllocations.single.accountId, 'food');
+        expect(
+          command.gapExpenseAllocations.single.amount,
+          const Money(minorUnits: 1000),
+        );
+      },
+    );
+
     test('unknown owner still allows note and posted time edits', () async {
       final update = _FakeTransactionUpdateAppService();
       final detail = _detail(
@@ -492,6 +545,7 @@ TransactionReadModel _detail({
   TransactionOwnership? ownership,
   List<Entry>? entries,
   Money? refundedTotal,
+  RefundSummary? refundSummary,
   ReimbursementSummary? reimbursementSummary,
 }) {
   final sourceEntries =
@@ -548,13 +602,15 @@ TransactionReadModel _detail({
     ),
     createdAt: DateTime(2026, 1, 1, 8, 1),
     lines: lines,
-    refundSummary: refundedTotal == null
-        ? null
-        : RefundSummary(
-            refundedTotal: refundedTotal,
-            originalCategoryAllocations: const [],
-            refundedCategoryAllocations: const [],
-          ),
+    refundSummary:
+        refundSummary ??
+        (refundedTotal == null
+            ? null
+            : RefundSummary(
+                refundedTotal: refundedTotal,
+                originalCategoryAllocations: const [],
+                refundedCategoryAllocations: const [],
+              )),
     reimbursementSummary: reimbursementSummary,
     children: [
       if (refundedTotal != null)

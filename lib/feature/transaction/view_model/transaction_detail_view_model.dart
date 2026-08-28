@@ -5,6 +5,7 @@ import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/error/app_exception.dart';
+import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../shared/account_profile/account_selection_policy.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
@@ -177,6 +178,9 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
       final note = trimToNull(input.noteText);
       final service = ref.read(transactionPostingAppServiceProvider);
       if (input.closeReimbursement) {
+        final gapExpenseAllocations =
+            input.gapExpenseAllocations ??
+            _defaultGapExpenseAllocations(loaded.detail, input.amount);
         await service.closeReimbursement(
           CloseReimbursementCommand(
             actualReceivedAmount: input.amount,
@@ -186,7 +190,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
               accountId: receiveAccountId,
               amount: input.amount,
             ),
-            gapExpenseAllocations: const [],
+            gapExpenseAllocations: gapExpenseAllocations,
             occurredAt: input.occurredAt,
             note: note,
           ),
@@ -259,4 +263,17 @@ String? _receivableAccountId(
   AccountLookup accountLookup,
 ) {
   return detail.accountOf(TransactionRole.receivable);
+}
+
+List<AccountAmountAllocation> _defaultGapExpenseAllocations(
+  TransactionReadModel detail,
+  Money actualReceivedAmount,
+) {
+  final outstanding = detail.reimbursementSummary?.outstanding;
+  if (outstanding == null) return const [];
+  final shortfall = outstanding - actualReceivedAmount;
+  final remaining =
+      detail.refundSummary?.remainingCategoryAllocations ?? const [];
+  if (shortfall.minorUnits <= 0 || remaining.length != 1) return const [];
+  return [remaining.single.copyWith(amount: shortfall)];
 }

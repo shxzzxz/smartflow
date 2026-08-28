@@ -90,17 +90,54 @@ void main() {
         close.settlementAllocations!,
         unified.settlementAllocations!,
       ]) {
+        expect(allocations.map((allocation) => allocation.accountId).toList(), [
+          'cash',
+          'bank',
+        ]);
         expect(
-          allocations.map((allocation) => allocation.accountId).toList(),
-          ['cash', 'bank'],
-        );
-        expect(
-          allocations.map((allocation) => allocation.amount.minorUnits).toList(),
+          allocations
+              .map((allocation) => allocation.amount.minorUnits)
+              .toList(),
           [0, 0],
         );
       }
     },
   );
+
+  test(
+    'submits a visible single-category default for reimbursement close',
+    () async {
+      final posting = _FakeTransactionPostingAppService();
+      final container = _container(posting: posting);
+      final provider = reimbursementCloseFormViewModelProvider('parent');
+      await container.read(provider.future);
+
+      final outcome = await container
+          .read(provider.notifier)
+          .submit(amountText: '50', noteText: '');
+
+      expect(outcome, isA<SubmitSuccess>());
+      final gaps = posting.closeCommands.single.gapExpenseAllocations;
+      expect(gaps, hasLength(1));
+      expect(gaps.single.accountId, 'expense');
+      expect(gaps.single.amount, const Money(minorUnits: 1000));
+    },
+  );
+
+  test('does not recreate a cleared single-category default', () async {
+    final posting = _FakeTransactionPostingAppService();
+    final container = _container(posting: posting);
+    final provider = reimbursementCloseFormViewModelProvider('parent');
+    await container.read(provider.future);
+    container.read(provider.notifier).setGapExpenseAllocations(const []);
+
+    final outcome = await container
+        .read(provider.notifier)
+        .submit(amountText: '50', noteText: '');
+
+    expect(outcome, isA<SubmitFailure>());
+    expect(posting.closeCommands, isEmpty);
+  });
 
   test('marks refund edit unavailable after reimbursement close', () async {
     final container = _container(closed: true);
@@ -168,6 +205,7 @@ ProviderContainer _container({
   bool includeReceipt = false,
   bool combinedPayment = false,
   _FakeTransactionEditAppService? editService,
+  _FakeTransactionPostingAppService? posting,
 }) {
   final cash = _account('cash');
   final bank = _account('bank');
@@ -203,10 +241,30 @@ ProviderContainer _container({
       transactionEditAppServiceProvider.overrideWithValue(
         editService ?? _FakeTransactionEditAppService(),
       ),
+      transactionPostingAppServiceProvider.overrideWithValue(
+        posting ?? _FakeTransactionPostingAppService(),
+      ),
     ],
   );
   addTearDown(container.dispose);
   return container;
+}
+
+class _FakeTransactionPostingAppService
+    implements TransactionPostingAppService {
+  final closeCommands = <CloseReimbursementCommand>[];
+
+  @override
+  Future<PostedTransactionResult> closeReimbursement(
+    CloseReimbursementCommand command,
+  ) async {
+    closeCommands.add(command);
+    return const PostedTransactionResult(transactionId: 'close');
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 TransactionReadModel _refundDetail() {
@@ -401,6 +459,14 @@ const _advanceLines = [
     lineNo: 2,
     role: TransactionRole.settlementOut,
     accountId: 'cash',
+    amount: Money(minorUnits: 10000),
+  ),
+  TransactionLine(
+    id: 'advance-receivable',
+    transactionId: 'parent',
+    lineNo: 3,
+    role: TransactionRole.receivable,
+    accountId: 'receivable',
     amount: Money(minorUnits: 10000),
   ),
 ];

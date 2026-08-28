@@ -7,6 +7,7 @@ import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
+import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 
 import '../../../../helper/fake_system_account_resolver.dart';
 import '../../../../helper/posting_instruction_fixtures.dart';
@@ -558,6 +559,10 @@ void main() {
         receivableAccountId: 'receivable',
         receiveAccountId: 'bank',
         occurredAt: DateTime(2026, 7, 2),
+        gapExpenseAllocations: singleAllocation(
+          accountId: 'travel-old',
+          amount: Money.parse('10.00'),
+        ),
       ),
       advance: parent,
       outstanding: parent.primaryAmount,

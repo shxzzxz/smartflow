@@ -323,10 +323,16 @@ class LedgerImportPort implements ImportLedgerPort {
     required Money actualReceivedAmount,
     required String receivableAccountId,
     required String receiveAccountId,
+    String? gapExpenseCategoryId,
     required DateTime occurredAt,
     required DateTime postedAt,
     String? note,
   }) async {
+    final gapExpenseAllocations = await _importGapExpenseAllocations(
+      topLevelTransactionId: topLevelTransactionId,
+      actualReceivedAmount: actualReceivedAmount,
+      categoryId: gapExpenseCategoryId,
+    );
     final result = await _posting.closeReimbursement(
       CloseReimbursementCommand(
         actualReceivedAmount: actualReceivedAmount,
@@ -336,13 +342,29 @@ class LedgerImportPort implements ImportLedgerPort {
           accountId: receiveAccountId,
           amount: actualReceivedAmount,
         ),
-        gapExpenseAllocations: const [],
+        gapExpenseAllocations: gapExpenseAllocations,
         occurredAt: occurredAt,
         postedAt: postedAt,
         note: note,
       ),
     );
     return result.transactionId;
+  }
+
+  Future<List<AccountAmountAllocation>> _importGapExpenseAllocations({
+    required String topLevelTransactionId,
+    required Money actualReceivedAmount,
+    required String? categoryId,
+  }) async {
+    if (categoryId == null) return const [];
+    final detail = await _transactions.findTransactionDetail(
+      topLevelTransactionId,
+    );
+    final outstanding = detail?.reimbursementSummary?.outstanding;
+    if (outstanding == null) return const [];
+    final shortfall = outstanding - actualReceivedAmount;
+    if (shortfall.minorUnits <= 0) return const [];
+    return singleAllocation(accountId: categoryId, amount: shortfall);
   }
 
   @override

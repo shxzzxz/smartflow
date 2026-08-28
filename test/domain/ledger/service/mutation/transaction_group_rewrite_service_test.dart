@@ -15,6 +15,7 @@ import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_violation_reason.dart';
+import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 import 'package:test/test.dart';
 
@@ -213,6 +214,10 @@ void main() {
           receiveAccountId: 'bank',
           occurredAt: DateTime(2026, 7, 2),
           postedAt: DateTime(2026, 7, 3),
+          gapExpenseAllocations: singleAllocation(
+            accountId: 'expense',
+            amount: Money.parse('100.00'),
+          ),
         ),
         advance: parent,
         outstanding: parent.primaryAmount,

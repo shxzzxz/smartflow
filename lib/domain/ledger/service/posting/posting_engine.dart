@@ -859,10 +859,7 @@ class PostingEngine {
       allocations: instruction.settlementAllocations,
       allowZeroTotal: true,
     );
-    final gapExpenseAllocations =
-        gap.minorUnits < 0 && instruction.gapExpenseAllocations.isEmpty
-        ? _singleGapExpenseAllocation(advance, -gap)
-        : instruction.gapExpenseAllocations;
+    final gapExpenseAllocations = instruction.gapExpenseAllocations;
     if (gap.minorUnits < 0) {
       _validateAllocations(total: -gap, allocations: gapExpenseAllocations);
     } else if (gapExpenseAllocations.isNotEmpty) {
@@ -958,20 +955,6 @@ class PostingEngine {
         ? TransactionRole.reimbursementExpenseCategory
         : TransactionRole.category;
     final categories = parent.linesOf(role).toList();
-    if (categories.length != 1) return const [];
-    return singleAllocation(
-      accountId: categories.single.accountId!,
-      amount: amount,
-    );
-  }
-
-  List<AccountAmountAllocation> _singleGapExpenseAllocation(
-    Transaction advance,
-    Money amount,
-  ) {
-    final categories = advance
-        .linesOf(TransactionRole.reimbursementExpenseCategory)
-        .toList();
     if (categories.length != 1) return const [];
     return singleAllocation(
       accountId: categories.single.accountId!,
