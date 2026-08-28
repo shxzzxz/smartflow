@@ -246,7 +246,9 @@ class TransactionGroupRewriteService {
           .throwException();
     }
     final settlements = patchAllocations(
-      current: _allocationsOf(currentReceipt, TransactionRole.settlementIn),
+      current: currentReceipt.accountAllocationsOf(
+        TransactionRole.settlementIn,
+      ),
       total: amount,
       explicit: instruction.settlementAllocations,
     );
@@ -303,8 +305,7 @@ class TransactionGroupRewriteService {
     final outstanding = group.reimbursementOutstandingExcluding(
       currentClose.id,
     );
-    final currentSettlements = _allocationsOf(
-      currentClose,
+    final currentSettlements = currentClose.accountAllocationsOf(
       TransactionRole.settlementIn,
     );
     final actual =
@@ -324,8 +325,7 @@ class TransactionGroupRewriteService {
     final shortfall = outstanding - actual;
     final gapExpenseAllocations = shortfall.minorUnits > 0
         ? patchAllocations(
-            current: _allocationsOf(
-              currentClose,
+            current: currentClose.accountAllocationsOf(
               TransactionRole.reimbursementGapExpense,
             ),
             total: shortfall,
@@ -532,18 +532,5 @@ class TransactionGroupRewriteService {
       return LedgerViolationReason.reimbursementParentNotAdvance;
     }
     return null;
-  }
-
-  List<AccountAmountAllocation> _allocationsOf(
-    Transaction transaction,
-    TransactionRole role,
-  ) {
-    return [
-      for (final line in transaction.linesOf(role))
-        AccountAmountAllocation(
-          accountId: line.accountId!,
-          amount: line.amount,
-        ),
-    ];
   }
 }

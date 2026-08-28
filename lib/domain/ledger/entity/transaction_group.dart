@@ -69,13 +69,7 @@ class TransactionGroup {
             BusinessPurpose.reimbursementAdvance
         ? TransactionRole.reimbursementExpenseCategory
         : TransactionRole.refundOffset;
-    return [
-      for (final line in refund.linesOf(role))
-        AccountAmountAllocation(
-          accountId: line.accountId!,
-          amount: line.amount,
-        ),
-    ];
+    return refund.accountAllocationsOf(role);
   }
 
   List<AccountAmountAllocation> remainingRefundableCategoryAllocations({
@@ -107,13 +101,7 @@ class TransactionGroup {
       _ => null,
     };
     if (role == null) return null;
-    final original = [
-      for (final line in parentTransaction.linesOf(role))
-        AccountAmountAllocation(
-          accountId: line.accountId!,
-          amount: line.amount,
-        ),
-    ];
+    final original = parentTransaction.accountAllocationsOf(role);
     final refunded = [
       for (final child in childTransactions.where(
         (child) =>

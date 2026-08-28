@@ -167,7 +167,9 @@ class TransactionGroupRewritePlanner {
   }) {
     final parentInstruction = _postingInstructionResolver.resolve(parent);
     if (parentInstruction is! ReimbursementAdvanceInstruction) return child;
-    final settlements = _allocationsOf(child, TransactionRole.settlementIn);
+    final settlements = child.accountAllocationsOf(
+      TransactionRole.settlementIn,
+    );
     if (settlements.isEmpty) {
       LedgerViolationReason.reimbursementReceiptAccountsUnresolved
           .throwException();
@@ -195,7 +197,9 @@ class TransactionGroupRewritePlanner {
   }) async {
     final parentInstruction = _postingInstructionResolver.resolve(parent);
     if (parentInstruction is! ReimbursementAdvanceInstruction) return child;
-    final settlements = _allocationsOf(child, TransactionRole.settlementIn);
+    final settlements = child.accountAllocationsOf(
+      TransactionRole.settlementIn,
+    );
     if (settlements.isEmpty) {
       LedgerViolationReason.reimbursementCloseAccountsUnresolved
           .throwException();
@@ -209,8 +213,7 @@ class TransactionGroupRewritePlanner {
     final gapExpenseAllocations = _rebaseSingleCategoryAllocations(
       currentParent: currentGroup.parentTransaction,
       nextParent: parent,
-      allocations: _allocationsOf(
-        child,
+      allocations: child.accountAllocationsOf(
         TransactionRole.reimbursementGapExpense,
       ),
     );
@@ -245,8 +248,7 @@ class TransactionGroupRewritePlanner {
         LedgerViolationReason.allocationExceedsAvailable.throwException();
       }
       if (child.businessPurpose == BusinessPurpose.reimbursementClose) {
-        final gaps = _allocationsOf(
-          child,
+        final gaps = child.accountAllocationsOf(
           TransactionRole.reimbursementGapExpense,
         );
         if (!group.allocationsFitRefundableCategories(gaps)) {
@@ -254,19 +256,6 @@ class TransactionGroupRewritePlanner {
         }
       }
     }
-  }
-
-  List<AccountAmountAllocation> _allocationsOf(
-    Transaction transaction,
-    TransactionRole role,
-  ) {
-    return [
-      for (final line in transaction.linesOf(role))
-        AccountAmountAllocation(
-          accountId: line.accountId!,
-          amount: line.amount,
-        ),
-    ];
   }
 
   List<AccountAmountAllocation> _rebaseSingleCategoryAllocations({

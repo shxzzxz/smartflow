@@ -10,6 +10,7 @@ import '../../valobj/posting_result.dart';
 import '../account/account_role_policy.dart';
 import 'account_posting_service.dart';
 import 'posting_engine.dart';
+import 'posting_application_service.dart';
 
 class LedgerPostingService {
   const LedgerPostingService({
@@ -18,51 +19,61 @@ class LedgerPostingService {
     required PostingEngine postingEngine,
     required AccountPostingService accountPostingService,
     required AccountRolePolicy accountRolePolicy,
+    PostingApplicationService? postingApplicationService,
   }) : _accountRepository = accountRepository,
        _systemAccountResolver = systemAccountResolver,
        _postingEngine = postingEngine,
+       _accountRolePolicy = accountRolePolicy,
        _accountPostingService = accountPostingService,
-       _accountRolePolicy = accountRolePolicy;
+       _postingApplicationService = postingApplicationService;
 
   final AccountRepository _accountRepository;
   final SystemAccountResolver _systemAccountResolver;
   final PostingEngine _postingEngine;
-  final AccountPostingService _accountPostingService;
   final AccountRolePolicy _accountRolePolicy;
+  final AccountPostingService _accountPostingService;
+  final PostingApplicationService? _postingApplicationService;
+
+  PostingApplicationService get _postingApplication =>
+      _postingApplicationService ??
+      PostingApplicationService(
+        accountRepository: _accountRepository,
+        accountPostingService: _accountPostingService,
+      );
 
   Future<PostingResult> postExpense(ExpenseInstruction instruction) async {
-    return _applyPosting(await createCandidate(instruction));
+    return _postingApplication.apply(await createCandidate(instruction));
   }
 
   Future<PostingResult> postIncome(IncomeInstruction instruction) async {
-    return _applyPosting(await createCandidate(instruction));
+    return _postingApplication.apply(await createCandidate(instruction));
   }
 
   Future<PostingResult> postTransfer(TransferInstruction instruction) async {
-    return _applyPosting(await createCandidate(instruction));
+    return _postingApplication.apply(await createCandidate(instruction));
   }
 
   Future<PostingResult> postRepayment(RepaymentInstruction instruction) async {
-    return _applyPosting(await createCandidate(instruction));
+    return _postingApplication.apply(await createCandidate(instruction));
   }
 
   Future<PostingResult> postBorrowing(BorrowingInstruction instruction) async {
-    return _applyPosting(await createCandidate(instruction));
+    return _postingApplication.apply(await createCandidate(instruction));
   }
 
   Future<PostingResult> postLending(LendingInstruction instruction) async =>
-      _applyPosting(await createCandidate(instruction));
+      _postingApplication.apply(await createCandidate(instruction));
 
   Future<PostingResult> postReceivableCollection(
     ReceivableCollectionInstruction instruction,
-  ) async => _applyPosting(await createCandidate(instruction));
+  ) async => _postingApplication.apply(await createCandidate(instruction));
 
   Future<PostingResult> postBadDebt(BadDebtInstruction instruction) async =>
-      _applyPosting(await createCandidate(instruction));
+      _postingApplication.apply(await createCandidate(instruction));
 
   Future<PostingResult> postDebtRelief(
     DebtReliefInstruction instruction,
-  ) async => _applyPosting(await createCandidate(instruction));
+  ) async => _postingApplication.apply(await createCandidate(instruction));
 
   Future<Transaction> createCandidate(
     PostingInstruction instruction, {
@@ -210,7 +221,7 @@ class LedgerPostingService {
     }
     final equityAccountId = await _systemAccountResolver
         .resolveOpeningBalance();
-    return _applyPosting(
+    return _postingApplication.apply(
       _postingEngine.createOpeningBalance(
         instruction: instruction,
         account: account,
@@ -244,7 +255,7 @@ class LedgerPostingService {
     final signedDelta = account.balanceDeltaTo(instruction.targetBalance);
     final equityAccountId = await _systemAccountResolver
         .resolveOpeningBalance();
-    return _applyPosting(
+    return _postingApplication.apply(
       _postingEngine.createBalanceAdjustment(
         instruction: instruction,
         account: account,
@@ -253,49 +264,5 @@ class LedgerPostingService {
       ),
       loadedAccounts: [account],
     );
-  }
-
-  Future<PostingResult> _applyPosting(
-    Transaction transaction, {
-    Iterable<Account> loadedAccounts = const [],
-  }) async {
-    final accountMap = {
-      for (final account in loadedAccounts) account.id: account,
-    };
-    final missingIds = transaction.accountIds.difference(
-      accountMap.keys.toSet(),
-    );
-    if (missingIds.isNotEmpty) {
-      final accounts = await _accountRepository.findByIds(missingIds);
-      accountMap.addEntries(
-        accounts.map((account) => MapEntry(account.id, account)),
-      );
-    }
-    final accountViolation = _validateAccountsLoaded(
-      transaction.accountIds,
-      accountMap,
-    );
-    if (accountViolation != null) accountViolation.throwException();
-    final updated = _accountPostingService.apply(
-      transaction: transaction,
-      accounts: accountMap,
-    );
-    return PostingResult(transaction: transaction, accounts: updated);
-  }
-
-  LedgerViolationReason? _validateAccountsLoaded(
-    Set<String> accountIds,
-    Map<String, Account> accounts,
-  ) {
-    for (final accountId in accountIds) {
-      final account = accounts[accountId];
-      if (account == null) {
-        return LedgerViolationReason.accountNotFound;
-      }
-      if (account.archivedAt != null) {
-        return LedgerViolationReason.accountArchived;
-      }
-    }
-    return null;
   }
 }

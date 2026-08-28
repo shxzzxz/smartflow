@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
@@ -21,6 +22,73 @@ void main() {
     expect(
       transaction.amountOf(TransactionRole.settlementIn),
       const Money(minorUnits: 2000),
+    );
+  });
+
+  test('accountAllocationsOf preserves every account-bearing line', () {
+    final transaction = Transaction(
+      id: 'expense',
+      businessPurpose: BusinessPurpose.dailyExpense,
+      occurredAt: DateTime(2026, 7, 23),
+      primaryAmount: const Money(minorUnits: 2000),
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+      sourceKind: SourceKind.manual,
+      lines: [
+        TransactionLine(
+          id: 'expense-1',
+          transactionId: 'expense',
+          lineNo: 1,
+          role: TransactionRole.category,
+          accountId: 'food',
+          amount: const Money(minorUnits: 1200),
+        ),
+        TransactionLine(
+          id: 'expense-2',
+          transactionId: 'expense',
+          lineNo: 2,
+          role: TransactionRole.category,
+          accountId: 'travel',
+          amount: const Money(minorUnits: 800),
+        ),
+      ],
+    );
+
+    expect(
+      transaction.accountAllocationsOf(TransactionRole.category),
+      hasLength(2),
+    );
+    expect(
+      transaction
+          .accountAllocationsOf(TransactionRole.category)
+          .map((allocation) => allocation.accountId),
+      ['food', 'travel'],
+    );
+  });
+
+  test('accountAllocationsOf rejects a missing account consistently', () {
+    final transaction = Transaction(
+      id: 'expense',
+      businessPurpose: BusinessPurpose.dailyExpense,
+      occurredAt: DateTime(2026, 7, 23),
+      primaryAmount: const Money(minorUnits: 1000),
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+      sourceKind: SourceKind.manual,
+      lines: [
+        TransactionLine(
+          id: 'expense-1',
+          transactionId: 'expense',
+          lineNo: 1,
+          role: TransactionRole.category,
+          amount: const Money(minorUnits: 1000),
+        ),
+      ],
+    );
+
+    expect(
+      () => transaction.accountAllocationsOf(TransactionRole.category),
+      throwsA(isA<BusinessException>()),
     );
   });
 

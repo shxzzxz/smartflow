@@ -8,6 +8,7 @@ import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.d
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/refund_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/reimbursement_posting_service.dart';
+import 'package:smartflow/domain/ledger/service/posting/posting_application_service.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
 import 'transaction_command.dart';
@@ -77,6 +78,40 @@ class TransactionPostingAppServiceImpl
     LedgerPostingService? ledgerPostingService,
     RefundPostingService? refundPostingService,
     ReimbursementPostingService? reimbursementPostingService,
+    PostingApplicationService? postingApplicationService,
+  }) : this._withPostingApplication(
+         accountRepository: accountRepository,
+         transactionGroupRepository: transactionGroupRepository,
+         systemAccountResolver: systemAccountResolver,
+         ledgerWriter: ledgerWriter,
+         idGenerator: idGenerator,
+         accountRolePolicy: accountRolePolicy,
+         postingEngine: postingEngine,
+         accountPostingService: accountPostingService,
+         ledgerPostingService: ledgerPostingService,
+         refundPostingService: refundPostingService,
+         reimbursementPostingService: reimbursementPostingService,
+         postingApplicationService:
+             postingApplicationService ??
+             PostingApplicationService(
+               accountRepository: accountRepository,
+               accountPostingService: accountPostingService,
+             ),
+       );
+
+  TransactionPostingAppServiceImpl._withPostingApplication({
+    required AccountRepository accountRepository,
+    required TransactionGroupRepository transactionGroupRepository,
+    required SystemAccountResolver systemAccountResolver,
+    required TransactionLedgerWriter ledgerWriter,
+    required IdGenerator idGenerator,
+    AccountRolePolicy? accountRolePolicy,
+    PostingEngine? postingEngine,
+    required AccountPostingService accountPostingService,
+    LedgerPostingService? ledgerPostingService,
+    RefundPostingService? refundPostingService,
+    ReimbursementPostingService? reimbursementPostingService,
+    required PostingApplicationService postingApplicationService,
   }) : _ledgerWriter = ledgerWriter,
        _ledgerPostingService =
            ledgerPostingService ??
@@ -89,6 +124,7 @@ class TransactionPostingAppServiceImpl
              accountRolePolicy:
                  accountRolePolicy ??
                  AccountRolePolicy(accountRepository: accountRepository),
+             postingApplicationService: postingApplicationService,
            ),
        _refundPostingService =
            refundPostingService ??
@@ -101,6 +137,7 @@ class TransactionPostingAppServiceImpl
              accountRolePolicy:
                  accountRolePolicy ??
                  AccountRolePolicy(accountRepository: accountRepository),
+             postingApplicationService: postingApplicationService,
            ),
        _reimbursementPostingService =
            reimbursementPostingService ??
@@ -114,6 +151,7 @@ class TransactionPostingAppServiceImpl
              accountRolePolicy:
                  accountRolePolicy ??
                  AccountRolePolicy(accountRepository: accountRepository),
+             postingApplicationService: postingApplicationService,
            );
 
   final TransactionLedgerWriter _ledgerWriter;

@@ -1,6 +1,5 @@
 import 'package:smartflow/core/money/money.dart';
 import '../../entity/transaction.dart';
-import '../../valobj/account_amount_allocation.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
@@ -49,16 +48,13 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
         message: 'A refund transaction is required.',
       );
     }
-    final settlements = _allocationsOf(
-      transaction,
+    final settlements = transaction.accountAllocationsOf(
       TransactionRole.settlementIn,
     );
-    final refundOffsets = _allocationsOf(
-      transaction,
+    final refundOffsets = transaction.accountAllocationsOf(
       TransactionRole.refundOffset,
     );
-    final reimbursementCategories = _allocationsOf(
-      transaction,
+    final reimbursementCategories = transaction.accountAllocationsOf(
       TransactionRole.reimbursementExpenseCategory,
     );
     // Reimbursement refunds have two independent facts: category allocations
@@ -85,9 +81,10 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
   }
 
   ExpenseInstruction _resolveExpense(Transaction transaction) {
-    final categories = _allocationsOf(transaction, TransactionRole.category);
-    final settlements = _allocationsOf(
-      transaction,
+    final categories = transaction.accountAllocationsOf(
+      TransactionRole.category,
+    );
+    final settlements = transaction.accountAllocationsOf(
       TransactionRole.settlementOut,
     );
     if (categories.isEmpty || settlements.isEmpty) {
@@ -137,15 +134,13 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
   ReimbursementAdvanceInstruction _resolveReimbursementAdvance(
     Transaction transaction,
   ) {
-    final categories = _allocationsOf(
-      transaction,
+    final categories = transaction.accountAllocationsOf(
       TransactionRole.reimbursementExpenseCategory,
     );
     final receivableAccountId = transaction.accountOf(
       TransactionRole.receivable,
     );
-    final settlements = _allocationsOf(
-      transaction,
+    final settlements = transaction.accountAllocationsOf(
       TransactionRole.settlementOut,
     );
     if (categories.isEmpty ||
@@ -332,14 +327,4 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       sourceKind: transaction.sourceKind,
     );
   }
-}
-
-List<AccountAmountAllocation> _allocationsOf(
-  Transaction transaction,
-  TransactionRole role,
-) {
-  return [
-    for (final line in transaction.linesOf(role))
-      AccountAmountAllocation(accountId: line.accountId!, amount: line.amount),
-  ];
 }

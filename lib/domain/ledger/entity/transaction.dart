@@ -3,6 +3,7 @@ import '../../../core/patch/patch.dart';
 import '../service/posting/posting_rule.dart';
 import '../valobj/ledger_enum.dart';
 import '../valobj/ledger_violation_reason.dart';
+import '../valobj/account_amount_allocation.dart';
 import '../valobj/transaction_ownership.dart';
 import 'entry.dart';
 import 'transaction_line.dart';
@@ -45,8 +46,28 @@ class Transaction {
   Iterable<TransactionLine> linesOf(TransactionRole role) =>
       lines.where((line) => line.role == role);
 
-  TransactionLine? lineOf(TransactionRole role) =>
-      linesOf(role).firstOrNull;
+  /// Reads all account-bearing lines for a role without collapsing multiple
+  /// allocations into the first line.
+  ///
+  /// Account-bearing roles are required to carry an account ID. Persisted
+  /// malformed lines are rejected consistently instead of failing with a
+  /// nullable force-unwrap in each caller.
+  List<AccountAmountAllocation> accountAllocationsOf(TransactionRole role) {
+    return [
+      for (final line in linesOf(role))
+        AccountAmountAllocation(
+          accountId:
+              line.accountId ??
+              LedgerViolationReason.lineAccountExpectationViolated
+                  .throwException(
+                    message: '${role.name} allocation is missing an account.',
+                  ),
+          amount: line.amount,
+        ),
+    ];
+  }
+
+  TransactionLine? lineOf(TransactionRole role) => linesOf(role).firstOrNull;
 
   /// Returns the sum of all lines for [role], or null when the role is absent.
   ///
