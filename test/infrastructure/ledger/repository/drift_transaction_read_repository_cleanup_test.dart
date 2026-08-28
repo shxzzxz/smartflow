@@ -75,6 +75,38 @@ void main() {
     await database.batch((batch) {
       batch.insertAll(database.transactionLines, [
         TransactionLinesCompanion.insert(
+          id: 'food-cash-category-fact',
+          transactionId: 'food-cash',
+          lineNo: 1,
+          role: TransactionRole.category,
+          accountId: const Value('cat-food'),
+          amountMinor: 1000,
+        ),
+        TransactionLinesCompanion.insert(
+          id: 'food-cash-settlement-fact',
+          transactionId: 'food-cash',
+          lineNo: 2,
+          role: TransactionRole.settlementOut,
+          accountId: const Value('acc-cash'),
+          amountMinor: 1000,
+        ),
+        TransactionLinesCompanion.insert(
+          id: 'parent-owned-category-fact',
+          transactionId: 'parent-of-owned-child',
+          lineNo: 1,
+          role: TransactionRole.category,
+          accountId: const Value('cat-food'),
+          amountMinor: 1000,
+        ),
+        TransactionLinesCompanion.insert(
+          id: 'parent-owned-settlement-fact',
+          transactionId: 'parent-of-owned-child',
+          lineNo: 2,
+          role: TransactionRole.settlementOut,
+          accountId: const Value('acc-cash'),
+          amountMinor: 1000,
+        ),
+        TransactionLinesCompanion.insert(
           id: 'food-bank-category-fact',
           transactionId: 'food-bank',
           lineNo: 1,
@@ -88,6 +120,14 @@ void main() {
           lineNo: 2,
           role: TransactionRole.settlementOut,
           accountId: const Value('acc-line-only'),
+          amountMinor: 1000,
+        ),
+        TransactionLinesCompanion.insert(
+          id: 'food-bank-bank-fact',
+          transactionId: 'food-bank',
+          lineNo: 3,
+          role: TransactionRole.settlementOut,
+          accountId: const Value('acc-bank'),
           amountMinor: 1000,
         ),
       ]);
@@ -129,7 +169,7 @@ void main() {
     );
   });
 
-  test('分类与账户条件取交集，且只按顶层交易自身分录匹配', () async {
+  test('分类与账户条件取交集，且只按顶层交易自身分项匹配', () async {
     final targets = await repository.findCleanupTargets(
       const TransactionCleanupQuery(
         categoryIds: {'cat-food'},
@@ -162,6 +202,14 @@ void main() {
     expect(preview.matchedGroupCount, 1);
   });
 
+  test('清理事实查询不从仅有分录的交易回退', () async {
+    final targets = await repository.findCleanupTargets(
+      const TransactionCleanupQuery(accountIds: {'acc-liability'}),
+    );
+
+    expect(targets, isEmpty);
+  });
+
   test('时间范围含起点、不含终点', () async {
     final fromBoundary = await repository.findCleanupTargets(
       TransactionCleanupQuery(
@@ -169,10 +217,7 @@ void main() {
         occurredUntil: DateTime(2026, 7, 1),
       ),
     );
-    expect(
-      fromBoundary.map((target) => target.transactionId),
-      ['food-cash'],
-    );
+    expect(fromBoundary.map((target) => target.transactionId), ['food-cash']);
 
     final untilBoundary = await repository.findCleanupTargets(
       TransactionCleanupQuery(
@@ -184,21 +229,19 @@ void main() {
   });
 
   test('预览统计命中总数与业务归属数量', () async {
-    final preview =
-        await repository
-            .watchCleanupPreview(const TransactionCleanupQuery())
-            .first;
+    final preview = await repository
+        .watchCleanupPreview(const TransactionCleanupQuery())
+        .first;
 
     expect(preview.matchedGroupCount, 5);
     expect(preview.ownedGroupCount, 2);
     expect(preview.deletableGroupCount, 3);
 
-    final scoped =
-        await repository
-            .watchCleanupPreview(
-              const TransactionCleanupQuery(accountIds: {'acc-bank'}),
-            )
-            .first;
+    final scoped = await repository
+        .watchCleanupPreview(
+          const TransactionCleanupQuery(accountIds: {'acc-bank'}),
+        )
+        .first;
     expect(scoped.matchedGroupCount, 1);
     expect(scoped.ownedGroupCount, 0);
   });
@@ -215,10 +258,9 @@ Transaction _transaction({
   const amount = Money(minorUnits: 1000);
   return Transaction(
     id: id,
-    businessPurpose:
-        parentId == null
-            ? BusinessPurpose.dailyExpense
-            : BusinessPurpose.refund,
+    businessPurpose: parentId == null
+        ? BusinessPurpose.dailyExpense
+        : BusinessPurpose.refund,
     occurredAt: occurredAt,
     primaryAmount: amount,
     parentTransactionId: parentId,

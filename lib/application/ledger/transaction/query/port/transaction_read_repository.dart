@@ -52,15 +52,14 @@ abstract interface class TransactionReadRepository {
     TransactionCleanupQuery query,
   );
 
-  /// 命中 [categoryId] 的顶层交易组：组内任一分录触达该分类，
-  /// 或组内任一交易分项引用该分类。
+  /// 命中 [categoryId] 的顶层交易组：组内分类事实分项引用该分类。
   Future<List<CategoryTransactionTarget>> findCategoryTransactionTargets(
     String categoryId,
   );
 
   /// 按交易列表稳定排序返回最近一笔命中分类的交易。
   ///
-  /// 分类既可能由分录引用，也可能由报销垫付的支出分类分项引用。
+  /// 分类事实来自分类分项，包括报销垫付的支出分类分项。
   Future<Transaction?> findLatestByCategory(CategoryTransactionQuery query);
 
   /// 响应 transactions / entries / transaction_lines / accounts 表变化；

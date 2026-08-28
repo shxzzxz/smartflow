@@ -180,8 +180,8 @@ class CashflowSummaryQuery {
 /// 数据清理的条件口径，匹配单位是交易组（顶层交易）。
 ///
 /// 条件类型之间取交集，集合内取并集；`null` 表示该条件不限，集合不允许为空。
-/// 分类与账户优先按顶层交易的分类/结算分项事实匹配，同时纳入历史分录作为
-/// 旧数据兼容来源；不匹配子交易。时间按顶层交易的交易时间匹配，
+/// 分类与账户按顶层交易的分类/结算分项事实匹配。
+/// 不匹配子交易。时间按顶层交易的交易时间匹配，
 /// `occurredUntil` 为排他端点。
 class TransactionCleanupQuery {
   const TransactionCleanupQuery({

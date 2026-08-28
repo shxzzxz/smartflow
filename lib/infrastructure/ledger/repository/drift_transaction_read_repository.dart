@@ -208,17 +208,6 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
     String categoryId,
   ) async {
     final members = _db.alias(_db.transactions, 'group_members');
-    final groupEntryMatch = existsQuery(
-      _db.selectOnly(_db.entries).join([
-          innerJoin(members, members.id.equalsExp(_db.entries.transactionId)),
-        ])
-        ..addColumns([_db.entries.id])
-        ..where(
-          _db.entries.accountId.equals(categoryId) &
-              (members.id.equalsExp(_db.transactions.id) |
-                  members.parentTransactionId.equalsExp(_db.transactions.id)),
-        ),
-    );
     final groupLineMatch = existsQuery(
       _db.selectOnly(_db.transactionLines).join([
           innerJoin(
@@ -229,6 +218,10 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
         ..addColumns([_db.transactionLines.id])
         ..where(
           _db.transactionLines.accountId.equals(categoryId) &
+              _db.transactionLines.role.isInValues(const {
+                TransactionRole.category,
+                TransactionRole.reimbursementExpenseCategory,
+              }) &
               (members.id.equalsExp(_db.transactions.id) |
                   members.parentTransactionId.equalsExp(_db.transactions.id)),
         ),
@@ -236,10 +229,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
     final purposeColumn = _db.transactions.businessPurpose;
     final select = _db.selectOnly(_db.transactions)
       ..addColumns([_db.transactions.id, purposeColumn])
-      ..where(
-        _db.transactions.parentTransactionId.isNull() &
-            (groupLineMatch | groupEntryMatch),
-      )
+      ..where(_db.transactions.parentTransactionId.isNull() & groupLineMatch)
       ..orderBy([
         OrderingTerm.asc(_db.transactions.occurredAt),
         OrderingTerm.asc(_db.transactions.id),
@@ -260,20 +250,16 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
   Future<Transaction?> findLatestByCategory(
     CategoryTransactionQuery query,
   ) async {
-    final categoryEntryMatch = existsQuery(
-      _db.selectOnly(_db.entries)
-        ..addColumns([_db.entries.id])
-        ..where(
-          _db.entries.transactionId.equalsExp(_db.transactions.id) &
-              _db.entries.accountId.equals(query.categoryId),
-        ),
-    );
     final categoryLineMatch = existsQuery(
       _db.selectOnly(_db.transactionLines)
         ..addColumns([_db.transactionLines.id])
         ..where(
           _db.transactionLines.transactionId.equalsExp(_db.transactions.id) &
-              _db.transactionLines.accountId.equals(query.categoryId),
+              _db.transactionLines.accountId.equals(query.categoryId) &
+              _db.transactionLines.role.isInValues(const {
+                TransactionRole.category,
+                TransactionRole.reimbursementExpenseCategory,
+              }),
         ),
     );
     final row =
@@ -286,7 +272,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
                       TransactionHierarchyFilter.child =>
                         table.parentTransactionId.isNotNull(),
                     } &
-                    (categoryEntryMatch | categoryLineMatch),
+                    categoryLineMatch,
               )
               ..orderBy([
                 (table) => OrderingTerm.desc(table.occurredAt),
@@ -332,32 +318,25 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
           expression &
           _db.transactions.occurredAt.isSmallerThanValue(occurredUntil);
     }
-    expression = _andFactAccountMatch(
-      expression,
-      query.categoryIds,
-      const {
-        TransactionRole.category,
-        TransactionRole.reimbursementExpenseCategory,
-      },
-    );
-    expression = _andFactAccountMatch(
-      expression,
-      query.accountIds,
-      const {TransactionRole.settlementIn, TransactionRole.settlementOut},
-    );
+    expression = _andFactAccountMatch(expression, query.categoryIds, const {
+      TransactionRole.category,
+      TransactionRole.reimbursementExpenseCategory,
+    });
+    expression = _andFactAccountMatch(expression, query.accountIds, const {
+      TransactionRole.settlementIn,
+      TransactionRole.settlementOut,
+    });
     return expression;
   }
 
-  /// Cleanup is a transaction-fact query. Existing rows may predate
-  /// transaction_lines, so entries remain a compatibility source as well.
+  /// Cleanup is a transaction-fact query and matches transaction lines only.
   Expression<bool> _andFactAccountMatch(
     Expression<bool> expression,
     Set<String>? accountIds,
     Set<TransactionRole> roles,
   ) {
     if (accountIds == null) return expression;
-    return expression &
-        (_entryAccountMatch(accountIds) | _lineAccountMatch(accountIds, roles));
+    return expression & _lineAccountMatch(accountIds, roles);
   }
 
   Expression<bool> _entryAccountMatch(Set<String> accountIds) {
