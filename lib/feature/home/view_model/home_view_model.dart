@@ -85,7 +85,10 @@ class HomeBatchMode extends _$HomeBatchMode {
 
   void enter() => state = true;
 
-  void exit() => state = false;
+  void exit() {
+    if (!ref.mounted) return;
+    state = false;
+  }
 }
 
 @riverpod

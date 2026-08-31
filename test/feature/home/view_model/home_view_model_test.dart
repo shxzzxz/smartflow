@@ -387,6 +387,18 @@ void main() {
       expect(state.items.map((item) => item.id), ['new-filter']);
       expect(state.hasPendingRefresh, isFalse);
     });
+
+    test('ignores exit calls on an auto-disposed batch mode notifier', () async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final subscription = container.listen(homeBatchModeProvider, (_, _) {});
+      final notifier = container.read(homeBatchModeProvider.notifier);
+      subscription.close();
+      await _flush();
+
+      expect(notifier.exit, returnsNormally);
+    });
   });
 }
 

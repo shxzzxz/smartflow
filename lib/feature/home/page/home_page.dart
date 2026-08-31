@@ -36,13 +36,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   bool _batchMode = false;
   bool _batchSubmitting = false;
   Set<String> _selectedTransactionIds = {};
-  HomeBatchMode? _batchModeNotifier;
-
-  @override
-  void dispose() {
-    _batchModeNotifier?.exit();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -234,7 +227,6 @@ class _HomePageState extends ConsumerState<HomePage> {
       _selectedTransactionIds = {transactionId};
     });
     final batchModeNotifier = ref.read(homeBatchModeProvider.notifier);
-    _batchModeNotifier = batchModeNotifier;
     batchModeNotifier.enter();
   }
 
