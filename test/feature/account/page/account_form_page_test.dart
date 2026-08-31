@@ -244,6 +244,39 @@ void main() {
     expect(textFields.elementAt(1).controller!.text, '1234.00');
   });
 
+  testWidgets('allows editing a negative current payable amount', (
+    tester,
+  ) async {
+    final account = AccountView(
+      id: 'account-1',
+      name: '应付账户',
+      kind: AccountProfileKind.payable,
+      balance: const Money(minorUnits: -12300),
+      iconKey: AccountProfileKind.payable.iconKey,
+      isArchived: false,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          accountViewProvider(
+            'account-1',
+          ).overrideWithValue(AsyncValue.data(account)),
+          _accountGroupsOverride(),
+        ],
+        child: const MaterialApp(home: AccountFormPage(accountId: 'account-1')),
+      ),
+    );
+    await tester.pump();
+
+    final amountField = _formTextFields(tester).elementAt(1);
+    expect(amountField.controller!.text, '-123.00');
+
+    await tester.enterText(find.byWidget(amountField), '-123.0');
+    await tester.pump();
+
+    expect(amountField.controller!.text, '-123.0');
+  });
+
   testWidgets('does not reuse controllers between account ids', (tester) async {
     final accountA = AccountView(
       id: 'account-a',

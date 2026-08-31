@@ -43,6 +43,22 @@ void main() {
       );
     });
 
+    test('allows editing an existing negative amount', () {
+      const oldValue = TextEditingValue(
+        text: '-123.00',
+        selection: TextSelection.collapsed(offset: 7),
+      );
+      const deletedLastDigit = TextEditingValue(
+        text: '-123.0',
+        selection: TextSelection.collapsed(offset: 6),
+      );
+
+      expect(
+        moneyInputFormatter.formatEditUpdate(oldValue, deletedLastDigit),
+        deletedLastDigit,
+      );
+    });
+
     test('deletes the last keypad character', () {
       expect(deleteLastMoneyInputText('12.3'), '12.');
       expect(deleteLastMoneyInputText(''), '');

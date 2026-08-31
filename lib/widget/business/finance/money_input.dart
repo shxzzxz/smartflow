@@ -73,8 +73,8 @@ int? parseMoneyMinorUnitsOrNull(String? value) {
 }
 
 bool _isAcceptedMoneyInputText(String text) {
-  if (!RegExp(r'^\d*\.?\d{0,2}$').hasMatch(text)) return false;
-  final digitCount = text.replaceAll('.', '').length;
+  if (!RegExp(r'^-?\d*\.?\d{0,2}$').hasMatch(text)) return false;
+  final digitCount = text.replaceAll(RegExp(r'[-.]'), '').length;
   if (digitCount > moneyInputMaxDigits) return false;
   return !(text.endsWith('.') && digitCount >= moneyInputMaxDigits);
 }
