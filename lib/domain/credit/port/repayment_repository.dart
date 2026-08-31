@@ -14,7 +14,7 @@ abstract interface class RepaymentRepository {
 
   /// Lists all repayments applied to a contract, including repayments whose
   /// aggregate target is a bill but whose items allocate to this contract's
-  /// bill items.
+  /// bill items. Bill-target repayment items are scoped to this contract.
   Future<List<Repayment>> listByContract(String contractId);
 
   Future<List<RepaymentItem>> listItems(String repaymentId);

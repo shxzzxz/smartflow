@@ -86,6 +86,14 @@ class DriftRepaymentRepository implements RepaymentRepository {
                 OrderingTerm.desc(_database.repayments.id),
               ]))
             .get();
+    final billItemIdsByRepaymentId = <String, Set<String>>{};
+    for (final row in repaymentRows) {
+      final repaymentId = row.readTable(_database.repayments).id;
+      final billItemId = row.readTable(_database.billItems).id;
+      billItemIdsByRepaymentId
+          .putIfAbsent(repaymentId, () => <String>{})
+          .add(billItemId);
+    }
     final billRepaymentIds = {
       for (final row in repaymentRows) row.readTable(_database.repayments).id,
     };
@@ -101,7 +109,16 @@ class DriftRepaymentRepository implements RepaymentRepository {
             .get();
     final items = await _listItemsByRepaymentIds(rows.map((row) => row.id));
     final billRepayments = [
-      for (final row in rows) _mapRepayment(row, items[row.id] ?? const []),
+      for (final row in rows)
+        _mapRepayment(
+          row,
+          (items[row.id] ?? const [])
+              .where(
+                (item) =>
+                    billItemIdsByRepaymentId[row.id]!.contains(item.billItemId),
+              )
+              .toList(),
+        ),
     ];
     return [...direct, ...billRepayments];
   }

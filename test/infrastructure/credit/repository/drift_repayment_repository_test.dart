@@ -159,6 +159,22 @@ void main() {
               status: BillItemStatus.paid,
             ),
           );
+      await database
+          .into(database.billItems)
+          .insert(
+            BillItemsCompanion.insert(
+              id: 'bill-item-2',
+              billId: 'bill-1',
+              itemType: BillItemType.installment,
+              contractId: const Value('contract-2'),
+              scheduleId: const Value('schedule-2'),
+              repaymentDate: DateTime(2026, 2, 1),
+              expectedPrincipalMinor: 2000,
+              expectedInterestMinor: 70,
+              expectedFeeMinor: 20,
+              status: BillItemStatus.paid,
+            ),
+          );
       await repository.saveRepayment(
         Repayment(
           id: 'repayment-1',
@@ -174,6 +190,14 @@ void main() {
               interest: 50,
               fee: 10,
             ),
+            _item(
+              id: 'item-2',
+              repaymentId: 'repayment-1',
+              billItemId: 'bill-item-2',
+              principal: 2000,
+              interest: 70,
+              fee: 20,
+            ),
           ],
         ),
       );
@@ -185,6 +209,13 @@ void main() {
         result.single.totalAllocated().interest,
         const Money(minorUnits: 50),
       );
+      expect(
+        result.single.totalAllocated().principal,
+        const Money(minorUnits: 1000),
+      );
+      expect(result.single.items.map((item) => item.billItemId), [
+        'bill-item-1',
+      ]);
     });
   });
 }
