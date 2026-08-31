@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../application/credit/credit_query_api.dart';
-import '../../../core/money/money.dart';
 import '../../../core/time/date_label.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
@@ -13,6 +12,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_swipe_action.dart';
+import '../../../design_system/widget/app_detail_summary_card.dart';
 import '../../../widget/business/finance/bill_item_row.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/bill_item_presentation.dart';
@@ -297,93 +297,43 @@ class _SummarySurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final styles = context.appTextStyles;
-    return AppSurface(
-      border: true,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(_periodLabel(summary.period), style: styles.groupTitle),
-                const Spacer(),
-                _StatusPill(status: summary.status),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.space12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _SummaryAmount(
-                    label: '账单总额',
-                    amount: summary.totalAmount,
-                    color: colors.onSurface,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.space16),
-                Expanded(
-                  child: _SummaryAmount(
-                    label: '待还金额',
-                    amount: summary.pendingAmount,
-                    color:
-                        summary.pendingAmount.minorUnits > 0
-                            ? colors.error
-                            : colors.onSurface,
-                  ),
-                ),
-              ],
-            ),
-            if (summary.overdueItemCount > 0) ...[
-              const SizedBox(height: AppSpacing.space10),
-              Text(
-                '${summary.overdueItemCount} 条逾期',
-                style: styles.listSupporting.copyWith(color: colors.error),
-              ),
-            ],
-            if (summary.windowStartDate != null) ...[
-              const SizedBox(height: AppSpacing.space10),
-              Text(
-                '起始日 ${formatDateLabel(summary.windowStartDate!)} · '
-                '出账日 ${formatDateLabel(summary.windowBillingDate!)} · '
-                '还款日 ${formatDateLabel(summary.windowRepaymentDate!)}',
-                style: styles.listSupporting.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ],
+    return AppDetailSummaryCard(
+      title: _periodLabel(summary.period),
+      headerTrailing: _StatusPill(status: summary.status),
+      mainItems: [
+        AppDetailSummaryCardItem(
+          label: '账单总额',
+          value: summary.totalAmount.format(),
+          valueColor: colors.onSurface,
         ),
-      ),
-    );
-  }
-}
-
-class _SummaryAmount extends StatelessWidget {
-  const _SummaryAmount({
-    required this.label,
-    required this.amount,
-    required this.color,
-  });
-
-  final String label;
-  final Money amount;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final styles = context.appTextStyles;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: styles.detailLabel),
-        const SizedBox(height: AppSpacing.space4),
-        Text(
-          amount.format(),
-          style: styles.amountPrimary.copyWith(color: color),
+        AppDetailSummaryCardItem(
+          label: '待还金额',
+          value: summary.pendingAmount.format(),
+          valueColor:
+              summary.pendingAmount.minorUnits > 0
+                  ? colors.error
+                  : colors.onSurface,
         ),
+      ],
+      supportingItems: [
+        if (summary.overdueItemCount > 0)
+          AppDetailSummaryCardItem(
+            label: '',
+            value: '${summary.overdueItemCount} 条逾期',
+            valueColor: colors.error,
+          ),
+        if (summary.windowStartDate != null)
+          AppDetailSummaryCardItem(
+            label: '起始日',
+            value: formatDateLabel(summary.windowStartDate!),
+          ),
+        if (summary.windowBillingDate != null)
+          AppDetailSummaryCardItem(
+            label: '结束日',
+            value: formatDateLabel(
+              summary.windowBillingDate!.subtract(const Duration(days: 1)),
+            ),
+          ),
       ],
     );
   }

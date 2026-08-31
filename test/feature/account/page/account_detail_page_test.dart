@@ -183,6 +183,64 @@ void main() {
     expect(find.textContaining('800.00'), findsNothing);
   });
 
+  testWidgets('renders the unified account detail card areas', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final account = _account(kind: AccountProfileKind.credit);
+    final overview = CreditAccountOverviewReadModel(
+      creditAccount: const CreditLiabilityAccountReadModel(
+        id: 'credit-extension',
+        accountId: 'account',
+        kind: CreditLiabilityAccountKind.credit,
+        creditLimit: Money(minorUnits: 100000),
+        billingDay: 5,
+        repaymentDay: 25,
+        billingDayToNext: true,
+      ),
+      liabilityBalance: account.balance,
+      availableCredit: const Money(minorUnits: 80000),
+      buckets: const CreditDebtBucketsReadModel(
+        billDebt: Money(minorUnits: 12000),
+        futureContractDebt: Money(minorUnits: 0),
+        unattributedDebt: Money(minorUnits: 3000),
+      ),
+    );
+
+    await tester.pumpWidget(
+      _app(
+        account: account,
+        creditOverview: AccountCreditOverviewState.loaded(overview: overview),
+      ),
+    );
+
+    expect(find.text('测试账户'), findsOneWidget);
+    expect(find.text('信用账户'), findsOneWidget);
+    expect(find.text('总欠款'), findsOneWidget);
+    expect(find.text('账单欠款'), findsOneWidget);
+    expect(find.text('未归属欠款'), findsOneWidget);
+    expect(find.textContaining('出账日'), findsOneWidget);
+    expect(find.textContaining('还款日'), findsOneWidget);
+    expect(find.textContaining('信用额度'), findsOneWidget);
+    expect(find.textContaining('剩余额度'), findsOneWidget);
+  });
+
+  testWidgets(
+    'omits the supporting area when an account has no supporting data',
+    (tester) async {
+      await tester.pumpWidget(
+        _app(account: _account(kind: AccountProfileKind.fund)),
+      );
+
+      expect(find.text('资金账户'), findsOneWidget);
+      expect(find.text('当前余额'), findsOneWidget);
+      expect(find.text('出账日'), findsNothing);
+      expect(find.text('还款日'), findsNothing);
+      expect(find.text('信用额度'), findsNothing);
+      expect(find.text('剩余额度'), findsNothing);
+    },
+  );
+
   testWidgets('opens the full bill list from the bill section header', (
     tester,
   ) async {

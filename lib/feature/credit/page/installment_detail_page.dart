@@ -12,6 +12,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_swipe_action.dart';
+import '../../../design_system/widget/app_detail_summary_card.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/contract_status_validation_presentation.dart';
@@ -233,113 +234,49 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final styles = context.appTextStyles;
-    final colors = Theme.of(context).colorScheme;
-    return AppSurface(
-      border: true,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                _StatusChip(status: contract.status),
-                const SizedBox(width: AppSpacing.space8),
-                Text(
-                  _methodLabel(contract.repaymentMethod),
-                  style: styles.formLabel.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.space10),
-            Text('本金', style: styles.detailLabel),
-            Text(contract.principal.format(), style: styles.amountPrimary),
-            const SizedBox(height: AppSpacing.space8),
-            Row(
-              children: [
-                Expanded(
-                  child: _LabelValue(
-                    label: '剩余本金',
-                    value: Money(minorUnits: remainingPrincipalMinor).format(),
-                  ),
-                ),
-                Expanded(
-                  child: _LabelValue(
-                    label: '期数',
-                    value: '${contract.totalPeriods} 期',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.space6),
-            Row(
-              children: [
-                Expanded(
-                  child: _LabelValue(
-                    label: '借款日期',
-                    value: formatDateLabel(contract.borrowingDate),
-                  ),
-                ),
-                Expanded(
-                  child: _LabelValue(
-                    label: '利率',
-                    value: _formatRate(
-                      contract.interestRatePeriod,
-                      contract.interestRatePpm,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.space6),
-            Row(
-              children: [
-                Expanded(
-                  child: _LabelValue(
-                    label: '已还利息',
-                    value: Money(minorUnits: paidInterestMinor).format(),
-                  ),
-                ),
-                Expanded(
-                  child: _LabelValue(
-                    label: '已还手续费',
-                    value: Money(minorUnits: paidFeeMinor).format(),
-                  ),
-                ),
-              ],
-            ),
-          ],
+    return AppDetailSummaryCard(
+      title: '分期合同',
+      headerTrailing: _StatusChip(status: contract.status),
+      mainItems: [
+        AppDetailSummaryCardItem(
+          label: '待还本金',
+          value: Money(minorUnits: remainingPrincipalMinor).format(),
         ),
-      ),
-    );
-  }
-}
-
-class _LabelValue extends StatelessWidget {
-  const _LabelValue({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final styles = context.appTextStyles;
-    final colors = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Text(
-          '$label：',
-          style: styles.formLabel.copyWith(color: colors.onSurfaceVariant),
+        AppDetailSummaryCardItem(
+          label: '已还利息',
+          value: Money(minorUnits: paidInterestMinor).format(),
         ),
-        Flexible(
-          child: Text(
-            value,
-            style: styles.formLabel,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+        AppDetailSummaryCardItem(
+          label: '已还手续费',
+          value: Money(minorUnits: paidFeeMinor).format(),
+        ),
+      ],
+      supportingItems: [
+        AppDetailSummaryCardItem(
+          label: '分期方式',
+          value: _methodLabel(contract.repaymentMethod),
+        ),
+        AppDetailSummaryCardItem(
+          label: '本金',
+          value: contract.principal.format(),
+        ),
+        AppDetailSummaryCardItem(
+          label: '借款日期',
+          value: formatDateLabel(contract.borrowingDate),
+        ),
+        AppDetailSummaryCardItem(
+          label: '期数',
+          value: '${contract.totalPeriods} 期',
+        ),
+        AppDetailSummaryCardItem(
+          label: '计息方式',
+          value: _accrualMethodLabel(contract.interestAccrualMethod),
+        ),
+        AppDetailSummaryCardItem(
+          label: '利率',
+          value: _formatRate(
+            contract.interestRatePeriod,
+            contract.interestRatePpm,
           ),
         ),
       ],
@@ -730,6 +667,13 @@ String _methodLabel(InstallmentRepaymentMethod method) {
     InstallmentRepaymentMethod.interestFirst => '先息后本',
     InstallmentRepaymentMethod.flatFee => '一次性手续费',
     InstallmentRepaymentMethod.custom => '自定义',
+  };
+}
+
+String _accrualMethodLabel(InterestAccrualMethod method) {
+  return switch (method) {
+    InterestAccrualMethod.daily => '按日计息',
+    InterestAccrualMethod.monthly => '按月计息',
   };
 }
 

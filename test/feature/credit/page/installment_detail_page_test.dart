@@ -6,6 +6,7 @@ import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
+import 'package:smartflow/design_system/widget/app_detail_summary_card.dart';
 import 'package:smartflow/feature/credit/page/installment_detail_page.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 
@@ -17,6 +18,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.byType(AppDetailSummaryCard), findsOneWidget);
+    expect(find.text('分期合同'), findsNWidgets(2));
+    expect(find.text('待还本金'), findsOneWidget);
+    expect(find.text('已还利息'), findsOneWidget);
+    expect(find.text('已还手续费'), findsOneWidget);
+    expect(find.textContaining('本金：'), findsOneWidget);
+    expect(find.textContaining('分期方式：等额本金'), findsOneWidget);
+    expect(find.textContaining('计息方式：按日计息'), findsOneWidget);
     await tester.drag(
       find.byKey(const ValueKey('installment-schedule-schedule-1')),
       const Offset(400, 0),

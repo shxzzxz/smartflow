@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
+import '../../../application/credit/credit_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../design_system/widget/app_detail_summary_card.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
@@ -315,171 +317,38 @@ class _AccountInfoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (account.isCreditLiability) {
-      return _CreditHeroCard(account: account, creditOverview: creditOverview);
-    }
-
-    return AppSurface(
-      border: true,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space12,
-          vertical: AppSpacing.space12,
-        ),
-        child: _AccountBalanceBlock(account: account),
-      ),
+    final colors = Theme.of(context).colorScheme;
+    return AppDetailSummaryCard(
+      title: account.name,
+      headerTrailing: _AccountTypePill(label: account.kind.label),
+      style: AppDetailSummaryCardStyle.accent,
+      mainItems: _mainItems(account, creditOverview, colors),
+      supportingItems: _supportingItems(account, creditOverview),
     );
   }
 }
 
-class _CreditHeroCard extends StatelessWidget {
-  const _CreditHeroCard({required this.account, required this.creditOverview});
+class _AccountTypePill extends StatelessWidget {
+  const _AccountTypePill({required this.label});
 
-  final AccountView account;
-  final AccountCreditOverviewState creditOverview;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final gradientEnd =
-        Color.lerp(colors.primary, colors.primaryContainer, 0.36) ??
-        colors.primary;
-    final metrics = _creditDebtMetrics(account, creditOverview);
-    final accountMetrics = _creditAccountMetrics(account, creditOverview);
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.radiusXl),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [colors.primary, gradientEnd],
-        ),
+        color: colors.onPrimary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+        border: Border.all(color: colors.onPrimary.withValues(alpha: 0.42)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                for (var i = 0; i < metrics.length; i++) ...[
-                  Expanded(child: _HeroMetric(item: metrics[i])),
-                  if (i < metrics.length - 1)
-                    const SizedBox(width: AppSpacing.space12),
-                ],
-              ],
-            ),
-            const SizedBox(height: AppSpacing.space18),
-            _HeroInfoRow(items: accountMetrics.take(2).toList()),
-            if (account.isCredit && accountMetrics.length > 2) ...[
-              const SizedBox(height: AppSpacing.space10),
-              _HeroInfoRow(items: accountMetrics.skip(2).toList()),
-            ],
-          ],
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space10,
+          vertical: AppSpacing.space6,
         ),
+        child: Text(label, style: context.appTextStyles.onPrimaryTinyStrong),
       ),
-    );
-  }
-}
-
-class _HeroMetric extends StatelessWidget {
-  const _HeroMetric({required this.item});
-
-  final _InfoItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final styles = context.appTextStyles;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          item.label,
-          style: styles.onPrimaryTiny,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: AppSpacing.space6),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text(
-            item.value,
-            style: styles.metricValue.copyWith(color: colors.onPrimary),
-            maxLines: 1,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HeroInfoRow extends StatelessWidget {
-  const _HeroInfoRow({required this.items});
-
-  final List<_InfoItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final styles = context.appTextStyles;
-    return Row(
-      children: [
-        for (var i = 0; i < items.length; i++) ...[
-          Expanded(
-            child: Text(
-              '${items[i].label} ${items[i].value}',
-              style: styles.onPrimaryTiny,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          if (i < items.length - 1) const SizedBox(width: AppSpacing.space12),
-        ],
-      ],
-    );
-  }
-}
-
-class _AccountBalanceBlock extends StatelessWidget {
-  const _AccountBalanceBlock({required this.account});
-
-  final AccountView account;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textStyles = context.appTextStyles;
-    final amountColor =
-        account.balance.minorUnits < 0 ? colors.error : colors.onSurface;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(
-                _balanceTitle(account),
-                style: textStyles.detailLabel.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.space8),
-        Text(
-          account.balance.format(),
-          style: textStyles.amountPrimary.copyWith(color: amountColor),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
     );
   }
 }
@@ -493,56 +362,86 @@ String _balanceTitle(AccountView account) {
   };
 }
 
-List<_InfoItem> _creditAccountMetrics(
+List<AppDetailSummaryCardItem> _mainItems(
   AccountView account,
   AccountCreditOverviewState creditOverview,
+  ColorScheme colors,
 ) {
-  final loadedOverview =
-      creditOverview is AccountCreditOverviewLoaded
-          ? creditOverview.overview
-          : null;
-  final creditLimit = loadedOverview?.creditAccount.creditLimit;
-  final availableCredit = loadedOverview?.availableCredit;
-  final items = [
-    _InfoItem(label: '信用额度', value: creditLimit?.format() ?? '-'),
-    _InfoItem(label: '剩余额度', value: availableCredit?.format() ?? '-'),
-  ];
-  if (account.isCredit) {
-    items.addAll([
-      _InfoItem(label: '出账日', value: _monthlyDay(account.billingDay)),
-      _InfoItem(label: '还款日', value: _monthlyDay(account.repaymentDay)),
-    ]);
+  if (!account.isCreditLiability) {
+    return [
+      AppDetailSummaryCardItem(
+        label: _balanceTitle(account),
+        value: account.balance.format(),
+        valueColor: account.balance.minorUnits < 0 ? colors.error : null,
+      ),
+    ];
   }
-  return items;
+
+  final loadedOverview = _loadedCreditOverview(creditOverview);
+  return [
+    AppDetailSummaryCardItem(
+      label: '总欠款',
+      value: account.balance.format(),
+      valueColor: account.balance.minorUnits < 0 ? colors.error : null,
+    ),
+    if (loadedOverview != null)
+      AppDetailSummaryCardItem(
+        label: '账单欠款',
+        value: loadedOverview.buckets.billDebt.format(),
+      ),
+    if (loadedOverview != null)
+      AppDetailSummaryCardItem(
+        label: '未归属欠款',
+        value: loadedOverview.buckets.unattributedDebt.format(),
+      ),
+  ];
 }
 
-List<_InfoItem> _creditDebtMetrics(
+List<AppDetailSummaryCardItem> _supportingItems(
   AccountView account,
   AccountCreditOverviewState creditOverview,
 ) {
   if (!account.isCreditLiability) return const [];
-  final loadedOverview =
-      creditOverview is AccountCreditOverviewLoaded
-          ? creditOverview.overview
-          : null;
-  return [
-    _InfoItem(label: '总欠款', value: account.balance.format()),
-    _InfoItem(
-      label: '账单欠款',
-      value: loadedOverview?.buckets.billDebt.format() ?? '-',
-    ),
-    _InfoItem(
-      label: '未归属欠款',
-      value: loadedOverview?.buckets.unattributedDebt.format() ?? '-',
-    ),
-  ];
+  final loadedOverview = _loadedCreditOverview(creditOverview);
+  final items = <AppDetailSummaryCardItem>[];
+  if (account.isCredit && account.billingDay != null) {
+    items.add(
+      AppDetailSummaryCardItem(
+        label: '出账日',
+        value: _monthlyDay(account.billingDay),
+      ),
+    );
+  }
+  if (account.isCredit && account.repaymentDay != null) {
+    items.add(
+      AppDetailSummaryCardItem(
+        label: '还款日',
+        value: _monthlyDay(account.repaymentDay),
+      ),
+    );
+  }
+  final creditLimit =
+      loadedOverview?.creditAccount.creditLimit ?? account.creditLimit;
+  if (creditLimit != null) {
+    items.add(
+      AppDetailSummaryCardItem(label: '信用额度', value: creditLimit.format()),
+    );
+  }
+  final availableCredit = loadedOverview?.availableCredit;
+  if (availableCredit != null) {
+    items.add(
+      AppDetailSummaryCardItem(label: '剩余额度', value: availableCredit.format()),
+    );
+  }
+  return items;
 }
 
-class _InfoItem {
-  const _InfoItem({required this.label, required this.value});
-
-  final String label;
-  final String value;
+CreditAccountOverviewReadModel? _loadedCreditOverview(
+  AccountCreditOverviewState creditOverview,
+) {
+  return creditOverview is AccountCreditOverviewLoaded
+      ? creditOverview.overview
+      : null;
 }
 
 String _monthlyDay(int? day) {

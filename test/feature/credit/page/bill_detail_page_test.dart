@@ -5,6 +5,7 @@ import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
+import 'package:smartflow/design_system/widget/app_detail_summary_card.dart';
 import 'package:smartflow/design_system/widget/app_swipe_action.dart';
 import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/feature/credit/page/bill_detail_page.dart';
@@ -49,6 +50,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.byType(AppDetailSummaryCard), findsOneWidget);
     final settledStatus = tester.widget<Text>(find.text('已了结'));
     final successColor =
         AppTheme.light().extension<AppThemeExtension>()!.success;
@@ -160,10 +162,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('起始日 2026-06-05 · 出账日 2026-07-05 · 还款日 2026-07-25'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('起始日：2026-06-05'), findsOneWidget);
+    expect(find.textContaining('结束日：2026-07-04'), findsOneWidget);
+    expect(find.textContaining('出账日'), findsNothing);
+    expect(find.textContaining('还款日'), findsNothing);
     expect(
       find.widgetWithIcon(IconButton, RemixIcons.edit_2_line),
       findsOneWidget,
