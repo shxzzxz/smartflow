@@ -40,11 +40,12 @@ Future<void> showCategoryActionSheet(
               subtitle: isRoot ? null : const Text('子分类'),
             ),
             const Divider(height: 1),
-            ListTile(
-              leading: const Icon(RemixIcons.edit_line),
-              title: const Text('编辑'),
-              onTap: () => Navigator.of(sheetContext).pop(_CategoryAction.edit),
-            ),
+            if (category.isManageableCategory)
+              ListTile(
+                leading: const Icon(RemixIcons.edit_line),
+                title: const Text('编辑'),
+                onTap: () => Navigator.of(sheetContext).pop(_CategoryAction.edit),
+              ),
             if (isRoot)
               ListTile(
                 leading: const Icon(RemixIcons.add_line),
@@ -54,7 +55,7 @@ Future<void> showCategoryActionSheet(
                       sheetContext,
                     ).pop(_CategoryAction.addChild),
               ),
-            if (!hasActiveChildren)
+            if (category.isManageableCategory && !hasActiveChildren)
               ListTile(
                 leading: const Icon(RemixIcons.folder_transfer_line),
                 title: const Text('移动到…'),

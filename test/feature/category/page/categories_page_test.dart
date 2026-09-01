@@ -166,7 +166,7 @@ void main() {
     expect(find.text('分类流水:breakfast'), findsOneWidget);
   });
 
-  testWidgets('hides migration and deletion actions for system categories', (
+  testWidgets('hides editing and moving actions for system categories', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(480, 1200));
@@ -189,7 +189,8 @@ void main() {
     await tester.tap(find.byTooltip('更多操作'));
     await tester.pumpAndSettle();
 
-    expect(find.text('编辑'), findsOneWidget);
+    expect(find.text('编辑'), findsNothing);
+    expect(find.text('移动到…'), findsNothing);
     expect(find.text('迁移交易'), findsNothing);
     expect(find.text('删除'), findsNothing);
   });
