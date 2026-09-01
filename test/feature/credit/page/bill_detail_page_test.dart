@@ -162,8 +162,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('起始日：2026-06-05'), findsOneWidget);
-    expect(find.textContaining('结束日：2026-07-04'), findsOneWidget);
+    expect(find.textContaining('起始日 2026-06-05'), findsOneWidget);
+    expect(find.textContaining('结束日 2026-07-04'), findsOneWidget);
     expect(find.textContaining('出账日'), findsNothing);
     expect(find.textContaining('还款日'), findsNothing);
     expect(

@@ -62,6 +62,41 @@ void main() {
     expect(find.text('出账日 每月05日'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('surface style uses accent typography and spacing', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        const AppDetailSummaryCard(
+          title: '账单',
+          mainItems: [AppDetailSummaryCardItem(label: '账单总额', value: '100.00')],
+          supportingItems: [
+            AppDetailSummaryCardItem(label: '起始日', value: '2026-07-01'),
+          ],
+        ),
+      ),
+    );
+
+    final title = tester.widget<Text>(find.text('账单'));
+    final label = tester.widget<Text>(find.text('账单总额'));
+    final value = tester.widget<Text>(find.text('100.00'));
+    final supporting = tester.widget<RichText>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is RichText && widget.text.toPlainText() == '起始日 2026-07-01',
+      ),
+    );
+    expect(title.style?.fontSize, 14);
+    expect(title.style?.fontWeight, FontWeight.w400);
+    expect(label.style?.fontSize, 12);
+    expect(label.style?.fontWeight, FontWeight.w400);
+    expect(value.style?.fontSize, 18);
+    expect(value.style?.fontWeight, FontWeight.w500);
+    expect(supporting.text.toPlainText(), '起始日 2026-07-01');
+    expect(find.byType(AppSurface), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 Widget _app(Widget child) {

@@ -49,7 +49,7 @@ class AppDetailSummaryCard extends StatelessWidget {
     return AppSurface(
       border: true,
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space14),
+        padding: const EdgeInsets.all(AppSpacing.space16),
         child: _buildContent(context),
       ),
     );
@@ -91,7 +91,7 @@ class AppDetailSummaryCard extends StatelessWidget {
           ),
         ],
         if (supportingItems.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.space18),
+          const SizedBox(height: AppSpacing.space12),
           _SupportingGrid(items: supportingItems, accent: _isAccent),
         ],
       ],
@@ -113,6 +113,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final styles = context.appTextStyles;
+    final colors = Theme.of(context).colorScheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -121,7 +122,9 @@ class _Header extends StatelessWidget {
             title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: accent ? styles.onPrimaryLabel : styles.groupTitle,
+            style: styles.onPrimaryLabel.copyWith(
+              color: accent ? colors.onPrimary : colors.onSurface,
+            ),
           ),
         ),
         if (trailing != null) ...[
@@ -285,7 +288,7 @@ class _AccentItem extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: styles.onPrimaryTiny,
         ),
-        const SizedBox(height: AppSpacing.space6),
+        const SizedBox(height: AppSpacing.space4),
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
@@ -320,7 +323,9 @@ class _SurfaceItem extends StatelessWidget {
             item.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: styles.detailLabel,
+            style: styles.onPrimaryTiny.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: AppSpacing.space4),
           FittedBox(
@@ -329,7 +334,7 @@ class _SurfaceItem extends StatelessWidget {
             child: Text(
               item.value,
               maxLines: 1,
-              style: styles.amountPrimary.copyWith(
+              style: styles.metricValue.copyWith(
                 color: item.valueColor ?? colors.onSurface,
               ),
             ),
@@ -337,27 +342,34 @@ class _SurfaceItem extends StatelessWidget {
         ],
       );
     }
+    if (item.label.isEmpty) {
+      return Text(
+        item.value,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: styles.onPrimaryTiny.copyWith(
+          color: item.valueColor ?? colors.onSurfaceVariant,
+        ),
+      );
+    }
     return Text.rich(
       TextSpan(
         children: [
-          if (item.label.isNotEmpty)
-            TextSpan(
-              text: '${item.label}：',
-              style: styles.formLabel.copyWith(color: colors.onSurfaceVariant),
+          TextSpan(
+            text: '${item.label} ',
+            style: styles.onPrimaryTiny.copyWith(
+              color: colors.onSurfaceVariant,
             ),
+          ),
           TextSpan(
             text: item.value,
-            style: styles.formLabel.copyWith(
-              color:
-                  item.valueColor ??
-                  (item.label.isEmpty
-                      ? colors.onSurfaceVariant
-                      : colors.onSurface),
+            style: styles.onPrimaryTiny.copyWith(
+              color: item.valueColor ?? colors.onSurface,
             ),
           ),
         ],
       ),
-      maxLines: item.span == 2 ? 2 : 1,
+      maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
   }

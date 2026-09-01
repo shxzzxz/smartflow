@@ -23,9 +23,9 @@ void main() {
     expect(find.text('待还本金'), findsOneWidget);
     expect(find.text('已还利息'), findsOneWidget);
     expect(find.text('已还手续费'), findsOneWidget);
-    expect(find.textContaining('本金：'), findsOneWidget);
-    expect(find.textContaining('分期方式：等额本金'), findsOneWidget);
-    expect(find.textContaining('计息方式：按日计息'), findsOneWidget);
+    expect(find.textContaining('本金 '), findsWidgets);
+    expect(find.textContaining('分期方式 等额本金'), findsOneWidget);
+    expect(find.textContaining('计息方式 按日计息'), findsOneWidget);
     await tester.drag(
       find.byKey(const ValueKey('installment-schedule-schedule-1')),
       const Offset(400, 0),

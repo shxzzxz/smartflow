@@ -13,6 +13,7 @@ import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_swipe_action.dart';
 import '../../../design_system/widget/app_detail_summary_card.dart';
+import '../../../design_system/widget/app_status_badge.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/contract_status_validation_presentation.dart';
@@ -234,9 +235,19 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final (statusLabel, statusColor) = switch (contract.status) {
+      InstallmentContractStatus.active => (
+        '进行中',
+        Theme.of(context).colorScheme.primary,
+      ),
+      InstallmentContractStatus.settled => (
+        '已结清',
+        Theme.of(context).colorScheme.tertiary,
+      ),
+    };
     return AppDetailSummaryCard(
       title: '分期合同',
-      headerTrailing: _StatusChip(status: contract.status),
+      headerTrailing: AppStatusBadge(label: statusLabel, color: statusColor),
       mainItems: [
         AppDetailSummaryCardItem(
           label: '待还本金',
@@ -280,40 +291,6 @@ class _Header extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-
-  final InstallmentContractStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final (label, color) = switch (status) {
-      InstallmentContractStatus.active => (
-        '进行中',
-        Theme.of(context).colorScheme.primary,
-      ),
-      InstallmentContractStatus.settled => (
-        '已结清',
-        Theme.of(context).colorScheme.tertiary,
-      ),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space8,
-        vertical: AppSpacing.space2,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: context.appTextStyles.formLabel.copyWith(color: color),
-      ),
     );
   }
 }

@@ -13,6 +13,7 @@ import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_swipe_action.dart';
 import '../../../design_system/widget/app_detail_summary_card.dart';
+import '../../../design_system/widget/app_status_badge.dart';
 import '../../../widget/business/finance/bill_item_row.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/bill_item_presentation.dart';
@@ -299,7 +300,10 @@ class _SummarySurface extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return AppDetailSummaryCard(
       title: _periodLabel(summary.period),
-      headerTrailing: _StatusPill(status: summary.status),
+      headerTrailing: AppStatusBadge(
+        label: billStatusLabel(summary.status),
+        color: _billStatusColor(context, summary.status),
+      ),
       mainItems: [
         AppDetailSummaryCardItem(
           label: '账单总额',
@@ -497,36 +501,14 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.status});
-
-  final BillStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final appColors = Theme.of(context).extension<AppThemeExtension>()!;
-    final color = switch (status) {
-      BillStatus.open => colors.primary,
-      BillStatus.billed => colors.error,
-      BillStatus.settled => appColors.success,
-    };
-    final label = billStatusLabel(status);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space8,
-        vertical: AppSpacing.space2,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.radiusFull),
-      ),
-      child: Text(
-        label,
-        style: context.appTextStyles.listSupporting.copyWith(color: color),
-      ),
-    );
-  }
+Color _billStatusColor(BuildContext context, BillStatus status) {
+  final colors = Theme.of(context).colorScheme;
+  final appColors = Theme.of(context).extension<AppThemeExtension>()!;
+  return switch (status) {
+    BillStatus.open => colors.primary,
+    BillStatus.billed => colors.error,
+    BillStatus.settled => appColors.success,
+  };
 }
 
 String _periodLabel(BillPeriod period) {
