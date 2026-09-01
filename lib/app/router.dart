@@ -36,6 +36,7 @@ import '../feature/profile/page/manual_page.dart';
 import '../feature/import/page/import_page.dart';
 import '../feature/import/presentation/import_presentation.dart';
 import '../feature/profile/page/data_cleanup_page.dart';
+import '../feature/profile/page/backup_page.dart';
 import '../feature/profile/page/log_viewer_page.dart';
 import '../feature/profile/page/profile_page.dart';
 import '../feature/profile/page/settings_page.dart';
@@ -410,6 +411,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/profile/data-cleanup',
       builder: (context, state) => const DataCleanupPage(),
+    ),
+    GoRoute(
+      path: '/profile/backup',
+      builder: (context, state) => const BackupPage(),
     ),
     GoRoute(
       path: '/category/new',

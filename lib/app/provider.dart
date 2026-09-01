@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
 
 import '../core/logging/app_log_file_sink.dart';
 import '../core/logging/app_log_reader.dart';
@@ -70,6 +71,12 @@ import '../application/shared/asset_section_collapse_store.dart';
 import '../application/shared/log_retention_store.dart';
 import '../application/shared/transaction_runner.dart';
 import '../application/shared/update_channel_store.dart';
+import '../application/shared/app_data_refresh.dart';
+import '../application/data_management/backup/backup_service.dart';
+import '../infrastructure/data_management/backup/drift_backup_gateway.dart';
+import '../infrastructure/data_management/backup/file_backup_package_store.dart';
+import '../application/data_management/backup/backup_archive.dart';
+import '../infrastructure/data_management/backup/platform_backup_archive.dart';
 import '../core/id/id_generator.dart';
 
 part 'provider.g.dart';
@@ -257,6 +264,31 @@ UpdateChannelStore updateChannelStore(Ref ref) {
 @Riverpod(keepAlive: true)
 AppSettingsStore appSettingsStore(Ref ref) {
   return DriftAppSettingsStore(ref.watch(appDatabaseProvider));
+}
+
+final backupServiceProvider = Provider<BackupService>((ref) {
+  return BackupService(
+    gateway: DriftBackupGateway(ref.watch(appDatabaseProvider)),
+    packageStore: const FileBackupPackageStore(),
+    appVersion: '0.7.0-dev.2+58',
+  );
+});
+
+final backupArchivePortProvider = Provider<BackupArchivePort>((ref) {
+  return const PlatformBackupArchive();
+});
+
+final appDataRefreshProvider = Provider<AppDataRefresh>((ref) {
+  return _AppDataRefresh(() => ref.invalidate(appDatabaseProvider));
+});
+
+class _AppDataRefresh implements AppDataRefresh {
+  const _AppDataRefresh(this._refresh);
+
+  final void Function() _refresh;
+
+  @override
+  void refresh() => _refresh();
 }
 
 @Riverpod(keepAlive: true)

@@ -107,6 +107,12 @@ class _ProfilePageState extends State<ProfilePage> {
                         description: '按分类、账户、时间批量清理交易',
                         onTap: () => context.push('/profile/data-cleanup'),
                       ),
+                      _ProfileActionRow(
+                        icon: RemixIcons.shield_check_line,
+                        label: '数据备份',
+                        description: '导出或恢复完整账本快照',
+                        onTap: () => context.push('/profile/backup'),
+                      ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.space16),
