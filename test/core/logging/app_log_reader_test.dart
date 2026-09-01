@@ -8,21 +8,37 @@ void main() {
   group('AppLogReader', () {
     test('merges entries across files newest first', () async {
       final directory = await _tempDirectory();
-      await _writeLines(directory, 'smartflow.log', [
+      await _writeLines(directory, 'smartflow-20260702001.log', [
         _line(time: '2026-07-02T10:00:00.000Z', message: 'current'),
       ]);
-      await _writeLines(directory, 'smartflow-1000.log', [
+      await _writeLines(directory, 'smartflow-20260701001.log', [
         _line(time: '2026-07-01T10:00:00.000Z', message: 'archived old'),
         _line(time: '2026-07-01T12:00:00.000Z', message: 'archived new'),
       ]);
 
-      final entries =
-          await AppLogReader(directory: directory).readEntries();
+      final entries = await AppLogReader(directory: directory).readEntries();
 
       expect(entries.map((entry) => entry.message), [
         'current',
         'archived new',
         'archived old',
+      ]);
+    });
+
+    test('reads legacy log file names for compatibility', () async {
+      final directory = await _tempDirectory();
+      await _writeLines(directory, 'smartflow.log', [
+        _line(time: '2026-07-02T10:00:00.000Z', message: 'legacy current'),
+      ]);
+      await _writeLines(directory, 'smartflow-1000.log', [
+        _line(time: '2026-07-01T10:00:00.000Z', message: 'legacy archive'),
+      ]);
+
+      final entries = await AppLogReader(directory: directory).readEntries();
+
+      expect(entries.map((entry) => entry.message), [
+        'legacy current',
+        'legacy archive',
       ]);
     });
 
@@ -34,8 +50,7 @@ void main() {
             '"error":"StateError: bad","stackTrace":"stack line"}',
       ]);
 
-      final entries =
-          await AppLogReader(directory: directory).readEntries();
+      final entries = await AppLogReader(directory: directory).readEntries();
 
       final entry = entries.single;
       expect(entry.level, Level.SEVERE);
@@ -59,8 +74,7 @@ void main() {
         _line(time: '2026-07-03T10:00:00.000Z', message: 'ignored'),
       ]);
 
-      final entries =
-          await AppLogReader(directory: directory).readEntries();
+      final entries = await AppLogReader(directory: directory).readEntries();
 
       expect(entries.map((entry) => entry.message), ['valid']);
     });
@@ -75,8 +89,7 @@ void main() {
         ),
       ]);
 
-      final entries =
-          await AppLogReader(directory: directory).readEntries();
+      final entries = await AppLogReader(directory: directory).readEntries();
 
       expect(entries.single.level, Level.INFO);
     });
@@ -86,18 +99,17 @@ void main() {
         '${Directory.systemTemp.path}${Platform.pathSeparator}absent_logs',
       );
 
-      final entries =
-          await AppLogReader(directory: directory).readEntries();
+      final entries = await AppLogReader(directory: directory).readEntries();
 
       expect(entries, isEmpty);
     });
 
     test('clearEntries removes current and archived log files', () async {
       final directory = await _tempDirectory();
-      await _writeLines(directory, 'smartflow.log', [
+      await _writeLines(directory, 'smartflow-20260702001.log', [
         _line(time: '2026-07-02T10:00:00.000Z', message: 'current'),
       ]);
-      await _writeLines(directory, 'smartflow-1000.log', [
+      await _writeLines(directory, 'smartflow-20260701001.log', [
         _line(time: '2026-07-01T10:00:00.000Z', message: 'archived'),
       ]);
       await _writeLines(directory, 'other.txt', ['keep']);
@@ -112,6 +124,20 @@ void main() {
         ).existsSync(),
         isTrue,
       );
+    });
+
+    test('clearEntries removes legacy log file names too', () async {
+      final directory = await _tempDirectory();
+      await _writeLines(directory, 'smartflow.log', [
+        _line(time: '2026-07-02T10:00:00.000Z', message: 'legacy current'),
+      ]);
+      await _writeLines(directory, 'smartflow-1000.log', [
+        _line(time: '2026-07-01T10:00:00.000Z', message: 'legacy archive'),
+      ]);
+
+      await AppLogReader(directory: directory).clearEntries();
+
+      expect(await AppLogReader(directory: directory).readEntries(), isEmpty);
     });
   });
 }

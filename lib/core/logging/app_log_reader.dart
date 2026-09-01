@@ -23,13 +23,13 @@ class AppLogEntry {
   final String? stackTrace;
 }
 
-/// 读取 [AppLogFileSink] 写出的 JSONL 日志文件。
+/// 读取新日期序号格式和历史格式的 JSONL 日志文件。
 class AppLogReader {
   const AppLogReader({required this.directory});
 
   final Directory directory;
 
-  /// 合并当前文件与归档文件的全部条目，按时间倒序返回；无法解析的行跳过。
+  /// 合并所有日志文件的条目，按时间倒序返回；无法解析的行跳过。
   Future<List<AppLogEntry>> readEntries() async {
     final entries = <AppLogEntry>[];
     for (final file in await _logFiles()) {
@@ -62,10 +62,8 @@ class AppLogReader {
     if (!await directory.exists()) return const [];
     final files = <File>[];
     await for (final entity in directory.list()) {
-      if (entity is! File) continue;
-      final name = entity.uri.pathSegments.last;
-      if (name == AppLogFileSink.currentFileName ||
-          (name.startsWith('smartflow-') && name.endsWith('.log'))) {
+      if (entity is File &&
+          AppLogFileSink.isLogFileName(entity.uri.pathSegments.last)) {
         files.add(entity);
       }
     }

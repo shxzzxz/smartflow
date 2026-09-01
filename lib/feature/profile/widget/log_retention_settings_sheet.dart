@@ -42,7 +42,7 @@ class _LogRetentionSettingsSheet extends ConsumerWidget {
             Text('清理设置', style: textStyles.sectionTitleStrong),
             const SizedBox(height: AppSpacing.space4),
             Text(
-              '超出保留范围的日志文件会自动删除，调整后立即生效。',
+              '日志按天或达到 1 MiB 自动分卷；保留天数和文件数同时生效，调整后立即清理。',
               style: textStyles.listSupporting.copyWith(
                 color: colors.onSurfaceVariant,
               ),
@@ -62,11 +62,11 @@ class _LogRetentionSettingsSheet extends ConsumerWidget {
             _RetentionOptionRow(
               label: '保留文件数',
               options: const [
-                AppSegment(value: 3, label: '3 个'),
-                AppSegment(value: 5, label: '5 个'),
-                AppSegment(value: 10, label: '10 个'),
+                AppSegment(value: 50, label: '50 个'),
+                AppSegment(value: 100, label: '100 个'),
+                AppSegment(value: 200, label: '200 个'),
               ],
-              selected: settings.maxFiles,
+              selected: _displayedFileCount(settings.maxFiles),
               onChanged: notifier.setMaxFiles,
             ),
           ],
@@ -74,6 +74,13 @@ class _LogRetentionSettingsSheet extends ConsumerWidget {
       ),
     );
   }
+}
+
+int _displayedFileCount(int value) {
+  return switch (value) {
+    50 || 100 || 200 => value,
+    _ => 100,
+  };
 }
 
 class _RetentionOptionRow extends StatelessWidget {
@@ -93,7 +100,9 @@ class _RetentionOptionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Text(label, style: context.appTextStyles.settingsTitle)),
+        Expanded(
+          child: Text(label, style: context.appTextStyles.settingsTitle),
+        ),
         const SizedBox(width: AppSpacing.space12),
         AppSegmentedControl<int>(
           segments: options,
