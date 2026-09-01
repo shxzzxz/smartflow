@@ -5,6 +5,7 @@ import '../../../app/provider.dart';
 import '../../../application/data_management/backup/backup_archive.dart';
 import '../../../application/data_management/backup/backup_models.dart';
 import '../../../application/data_management/backup/backup_service.dart';
+import '../../../core/error/app_exception.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 
 final _logger = Logger('feature.profile.backup');
@@ -123,6 +124,8 @@ class BackupViewModel extends Notifier<BackupPageState> {
       return UiActionOutcome.failure(
         UiError(code: 'backup.invalid', message: error.message),
       );
+    } on AppException catch (error) {
+      return UiActionOutcome.failure(UiError.fromException(error));
     } on Exception catch (error, stackTrace) {
       _logger.severe('$operation failed unexpectedly.', error, stackTrace);
       return const UiActionOutcome.failure(UiError.unknown());
