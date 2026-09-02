@@ -73,7 +73,7 @@ void main() {
       ),
     );
 
-    expect(find.byType(AppFormSection), findsAtLeastNWidgets(3));
+    expect(find.byType(AppFormSection), findsAtLeastNWidgets(2));
     expect(find.byType(Divider), findsNothing);
   });
 

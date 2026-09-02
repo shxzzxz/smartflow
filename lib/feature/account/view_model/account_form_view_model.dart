@@ -42,10 +42,12 @@ class AccountFormViewModel extends _$AccountFormViewModel {
         kind: value,
         groupId: initialAccountGroupIdForProfile(value),
         iconKey: value.iconKey,
-        billingDay:
-            value == AccountProfileKind.credit ? current.billingDay : null,
-        repaymentDay:
-            value == AccountProfileKind.credit ? current.repaymentDay : null,
+        billingDay: value == AccountProfileKind.credit
+            ? current.billingDay
+            : null,
+        repaymentDay: value == AccountProfileKind.credit
+            ? current.repaymentDay
+            : null,
         billingDayToNext: true,
       );
     });
@@ -181,14 +183,12 @@ class AccountFormViewModel extends _$AccountFormViewModel {
             openingBalance: openingBalance,
             note: note,
             creditLimit: creditLimit,
-            billingDay:
-                formState.kind == AccountProfileKind.credit
-                    ? formState.billingDay
-                    : null,
-            repaymentDay:
-                formState.kind == AccountProfileKind.credit
-                    ? formState.repaymentDay
-                    : null,
+            billingDay: formState.kind == AccountProfileKind.credit
+                ? formState.billingDay
+                : null,
+            repaymentDay: formState.kind == AccountProfileKind.credit
+                ? formState.repaymentDay
+                : null,
             billingDayToNext: formState.billingDayToNext,
             groupId: formState.groupId,
           ),
@@ -211,17 +211,16 @@ class AccountFormViewModel extends _$AccountFormViewModel {
             EditAccountCommand(
               id: id,
               name: name,
-              groupId:
-                  formState.groupId == null
-                      ? const Patch<String>.clear()
-                      : Patch.set(formState.groupId!),
+              groupId: formState.groupId == null
+                  ? const Patch<String>.clear()
+                  : Patch.set(formState.groupId!),
               iconKey: Patch.set(formState.iconKey),
-              note:
-                  note == null ? const Patch<String>.clear() : Patch.set(note),
-              targetBalance:
-                  showsManualBalanceField(formState.kind)
-                      ? openingBalance
-                      : null,
+              note: note == null
+                  ? const Patch<String>.clear()
+                  : Patch.set(note),
+              targetBalance: showsManualBalanceField(formState.kind)
+                  ? openingBalance
+                  : null,
             ),
           );
     }
@@ -233,24 +232,22 @@ class AccountFormViewModel extends _$AccountFormViewModel {
             name: name,
             iconKey: Patch.set(formState.iconKey),
             note: note == null ? const Patch<String>.clear() : Patch.set(note),
-            groupId:
-                formState.groupId == null
-                    ? const Patch<String>.clear()
-                    : Patch.set(formState.groupId!),
-            creditLimit:
-                creditLimit == null
-                    ? const Patch<Money>.clear()
-                    : Patch.set(creditLimit),
+            groupId: formState.groupId == null
+                ? const Patch<String>.clear()
+                : Patch.set(formState.groupId!),
+            creditLimit: creditLimit == null
+                ? const Patch<Money>.clear()
+                : Patch.set(creditLimit),
             billingDay:
                 formState.kind == AccountProfileKind.credit &&
-                        formState.billingDay != null
-                    ? Patch.set(formState.billingDay!)
-                    : const Patch<int>.clear(),
+                    formState.billingDay != null
+                ? Patch.set(formState.billingDay!)
+                : const Patch<int>.clear(),
             repaymentDay:
                 formState.kind == AccountProfileKind.credit &&
-                        formState.repaymentDay != null
-                    ? Patch.set(formState.repaymentDay!)
-                    : const Patch<int>.clear(),
+                    formState.repaymentDay != null
+                ? Patch.set(formState.repaymentDay!)
+                : const Patch<int>.clear(),
             billingDayToNext: formState.billingDayToNext,
             targetBalance: openingBalance,
           ),
@@ -341,10 +338,12 @@ class AccountFormState {
       initialValues: initialValues ?? this.initialValues,
       kind: kind ?? this.kind,
       iconKey: iconKey ?? this.iconKey,
-      billingDay:
-          billingDay == _sentinel ? this.billingDay : billingDay as int?,
-      repaymentDay:
-          repaymentDay == _sentinel ? this.repaymentDay : repaymentDay as int?,
+      billingDay: billingDay == _sentinel
+          ? this.billingDay
+          : billingDay as int?,
+      repaymentDay: repaymentDay == _sentinel
+          ? this.repaymentDay
+          : repaymentDay as int?,
       billingDayToNext: billingDayToNext ?? this.billingDayToNext,
       submitting: submitting ?? this.submitting,
       groupId: groupId == _sentinel ? this.groupId : groupId as String?,
@@ -403,11 +402,14 @@ String manualBalanceLabel({
   required AccountProfileKind kind,
   required bool isEdit,
 }) {
+  if (isCreditManagedAccountKind(kind)) {
+    return '当前欠款';
+  }
   if (kind == AccountProfileKind.receivable) {
-    return isEdit ? '当前应收' : '期初应收';
+    return isEdit ? '当前应收' : '应收金额';
   }
   if (isLiabilityAccountKind(kind)) {
-    return isEdit ? '当前应付' : '期初应付';
+    return isEdit ? '当前应付' : '应付金额';
   }
   return isEdit ? '当前余额' : '初始余额';
 }
@@ -416,11 +418,14 @@ String manualBalanceHint({
   required AccountProfileKind kind,
   required bool isEdit,
 }) {
+  if (isCreditManagedAccountKind(kind)) {
+    return '请输入当前欠款';
+  }
   if (kind == AccountProfileKind.receivable) {
-    return isEdit ? '请输入当前应收' : '请输入期初应收';
+    return isEdit ? '请输入当前应收' : '请输入应收金额';
   }
   if (isLiabilityAccountKind(kind)) {
-    return isEdit ? '请输入当前应付' : '请输入期初应付';
+    return isEdit ? '请输入当前应付' : '请输入应付金额';
   }
   return isEdit ? '请输入当前余额' : '请输入初始余额';
 }

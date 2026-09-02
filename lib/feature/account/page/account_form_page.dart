@@ -133,8 +133,9 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
     );
     final groups =
         ref.watch(accountGroupsProvider).value ?? const <AccountGroup>[];
-    final selectedGroup =
-        groups.where((group) => group.id == formState.groupId).firstOrNull;
+    final selectedGroup = groups
+        .where((group) => group.id == formState.groupId)
+        .firstOrNull;
 
     return Scaffold(
       backgroundColor: colors.surface,
@@ -162,7 +163,6 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
                   children: [
                     AppFormSection(
                       title: '账户图标',
-                      description: '选择一个容易识别的图标',
                       children: [
                         IconCatalogPicker(
                           usage: BusinessIconUsage.account,
@@ -182,11 +182,10 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
                           focusNode: _nameFocusNode,
                           hintText: '请输入账户名称',
                           textInputAction: TextInputAction.next,
-                          validator:
-                              (value) =>
-                                  value == null || value.trim().isEmpty
-                                      ? '请输入账户名称'
-                                      : null,
+                          validator: (value) =>
+                              value == null || value.trim().isEmpty
+                              ? '请输入账户名称'
+                              : null,
                         ),
                         if (showsManualBalanceField(formState.kind))
                           MoneyPlainFormRow(
@@ -206,20 +205,23 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
                           value: formState.groupId,
                           valueText: selectedGroup?.name,
                           placeholder: '未分组',
-                          onTap:
-                              (onSelected) =>
-                                  _showGroupSheet(groups, onSelected),
+                          onTap: (onSelected) =>
+                              _showGroupSheet(groups, onSelected),
                           onChanged: notifier.setGroupId,
+                        ),
+                        AppPlainTextFormRow(
+                          label: '备注',
+                          controller: _noteController,
+                          hintText: '请输入备注（可选）',
                         ),
                       ],
                     ),
                     if (isCreditManagedAccountKind(formState.kind)) ...[
                       const SizedBox(height: AppSpacing.space24),
                       AppFormSection(
-                        title:
-                            formState.kind == AccountProfileKind.credit
-                                ? '信用设置'
-                                : '负债设置',
+                        title: formState.kind == AccountProfileKind.credit
+                            ? '信用设置'
+                            : '负债设置',
                         children: [
                           MoneyPlainFormRow(
                             label: '信用额度',
@@ -231,18 +233,16 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
                             BillingRepaymentDayPlainFields(
                               billingDay: formState.billingDay,
                               repaymentDay: formState.repaymentDay,
-                              onSelectBillingDay:
-                                  () => _pickMonthlyDay(
-                                    title: '选择出账日',
-                                    selectedDay: formState.billingDay,
-                                    onChanged: notifier.setBillingDay,
-                                  ),
-                              onSelectRepaymentDay:
-                                  () => _pickMonthlyDay(
-                                    title: '选择还款日',
-                                    selectedDay: formState.repaymentDay,
-                                    onChanged: notifier.setRepaymentDay,
-                                  ),
+                              onSelectBillingDay: () => _pickMonthlyDay(
+                                title: '选择出账日',
+                                selectedDay: formState.billingDay,
+                                onChanged: notifier.setBillingDay,
+                              ),
+                              onSelectRepaymentDay: () => _pickMonthlyDay(
+                                title: '选择还款日',
+                                selectedDay: formState.repaymentDay,
+                                onChanged: notifier.setRepaymentDay,
+                              ),
                             ),
                             AppPlainSwitchRow(
                               label: '出账日计入下期',
@@ -253,17 +253,6 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
                         ],
                       ),
                     ],
-                    const SizedBox(height: AppSpacing.space24),
-                    AppFormSection(
-                      title: '其他',
-                      children: [
-                        AppPlainTextFormRow(
-                          label: '备注',
-                          controller: _noteController,
-                          hintText: '请输入备注（可选）',
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),
@@ -281,23 +270,22 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
     final selected = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
-      builder:
-          (sheetContext) => SafeArea(
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                ListTile(
-                  title: const Text('未分组'),
-                  onTap: () => Navigator.of(sheetContext).pop(''),
-                ),
-                for (final group in groups)
-                  ListTile(
-                    title: Text(group.name),
-                    onTap: () => Navigator.of(sheetContext).pop(group.id),
-                  ),
-              ],
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            ListTile(
+              title: const Text('未分组'),
+              onTap: () => Navigator.of(sheetContext).pop(''),
             ),
-          ),
+            for (final group in groups)
+              ListTile(
+                title: Text(group.name),
+                onTap: () => Navigator.of(sheetContext).pop(group.id),
+              ),
+          ],
+        ),
+      ),
     );
     if (!mounted || selected == null) return;
     onSelected(selected.isEmpty ? null : selected);
@@ -387,13 +375,12 @@ class _AccountFormHeader extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: submitting ? null : onSave,
-              child:
-                  submitting
-                      ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                      : const Text('保存'),
+              child: submitting
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('保存'),
             ),
           ),
           Text(title, style: context.appTextStyles.dateNavigationTitle),
@@ -475,8 +462,9 @@ class _AccountKindTab extends StatelessWidget {
                 style: textStyles
                     .segmentedControlLabel(selected: selected)
                     .copyWith(
-                      color:
-                          selected ? colors.primary : colors.onSurfaceVariant,
+                      color: selected
+                          ? colors.primary
+                          : colors.onSurfaceVariant,
                     ),
               ),
             ),
