@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart';
 
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
+import 'package:smartflow/design_system/token/radius.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 
 import 'business_icon.dart';
+import 'business_icon_bubble.dart';
 import 'icon_choice_grid.dart';
 
 class IconCatalogPicker extends StatefulWidget {
@@ -43,16 +45,45 @@ class _IconCatalogPickerState extends State<IconCatalogPicker> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextField(
-          onChanged: (value) => setState(() => _query = value),
-          style: context.appTextStyles.inputText,
-          decoration: InputDecoration(
-            hintText: '搜索图标',
-            hintStyle: context.appTextStyles.inputText.copyWith(
-              color: colors.onSurfaceVariant,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(color: colors.outlineVariant),
+                  borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+                ),
+                child: Center(
+                  child: BusinessIconBubble(
+                    size: 32,
+                    child: BusinessIcon(
+                      iconKey: widget.selectedKey,
+                      usage: widget.usage,
+                      size: 28,
+                    ),
+                  ),
+                ),
+              ),
             ),
-            prefixIcon: Icon(RemixIcons.search_line),
-          ),
+            const SizedBox(width: AppSpacing.space8),
+            Expanded(
+              child: TextField(
+                onChanged: (value) => setState(() => _query = value),
+                onTapOutside: (_) => FocusScope.of(context).unfocus(),
+                style: context.appTextStyles.inputText,
+                decoration: InputDecoration(
+                  hintText: '搜索图标',
+                  hintStyle: context.appTextStyles.inputText.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                  prefixIcon: Icon(RemixIcons.search_line),
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: AppSpacing.space12),
         if (choices.isEmpty)
@@ -63,7 +94,7 @@ class _IconCatalogPickerState extends State<IconCatalogPicker> {
         else
           IconChoiceGrid(
             choices: choices,
-            selectedKey: widget.selectedKey,
+            selectedKey: null,
             onChanged: widget.onChanged,
             maxVisibleRows: 3,
           ),
